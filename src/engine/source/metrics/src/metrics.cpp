@@ -118,6 +118,7 @@ void Metrics::setMetricsConfig()
         {
             case ProviderTypes::Tracer:
             {
+                m_instrumentsTypes.push_back("trace");
                 (*particularContext)->exporterType = EXPORTER_TYPES.at(config.at("exporterType"));
                 (*particularContext)->processorType = PROCESSOR_TYPES.at(config.at("processorType"));
 
@@ -126,6 +127,7 @@ void Metrics::setMetricsConfig()
             }
             case ProviderTypes::Meter:
             {
+                m_instrumentsTypes.push_back(config.at("instrumentType"));
                 (*particularContext)->instrumentType = INSTRUMENT_TYPES.at(config.at("instrumentType"));
                 (*particularContext)->subType = SUB_TYPES.at(config.at("subType"));
                 (*particularContext)->export_interval_millis = static_cast<std::chrono::milliseconds>(config.at("exportIntervalMillis"));
@@ -309,7 +311,7 @@ void Metrics::addCounterValue(std::string counterName, const uint64_t value) con
     }
     else
     {
-        throw std::runtime_error {"The Counter" + counterName + " has not been created."};
+        throw std::runtime_error {"The Counter " + counterName + " has not been created."};
     }
 }
 
@@ -369,7 +371,7 @@ void Metrics::addHistogramValue(std::string histogramName, const double value) c
     }
     else
     {
-        throw std::runtime_error {"The Histogram" + histogramName + " has not been created."};
+        throw std::runtime_error {"The Histogram " + histogramName + " has not been created."};
     }
 }
 
@@ -385,7 +387,7 @@ void Metrics::addHistogramValue(std::string histogramName, const uint64_t value,
     }
     else
     {
-        throw std::runtime_error {"The Histogram" + histogramName + " has not been created."};
+        throw std::runtime_error {"The Histogram " + histogramName + " has not been created."};
     }
 }
 
@@ -441,7 +443,7 @@ void Metrics::addUpDownCounterValue(std::string upDownCounterName, const double 
     }
     else
     {
-        throw std::runtime_error {"The UpDownCounter" + upDownCounterName + " has not been created."};
+        throw std::runtime_error {"The UpDownCounter " + upDownCounterName + " has not been created."};
     }
 }
 
@@ -456,7 +458,7 @@ void Metrics::addUpDownCounterValue(std::string upDownCounterName, const int64_t
     }
     else
     {
-        throw std::runtime_error {"The UpDownCounter" + upDownCounterName + " has not been created."};
+        throw std::runtime_error {"The UpDownCounter " + upDownCounterName + " has not been created."};
     }
 }
 
@@ -519,7 +521,7 @@ void Metrics::addObservableGauge(std::string observableGaugeName, opentelemetry:
     }
     else
     {
-        throw std::runtime_error {"The UpDownCounter" + observableGaugeName + " has not been created."};
+        throw std::runtime_error {"The UpDownCounter " + observableGaugeName + " has not been created."};
     }
 }
 
@@ -555,4 +557,19 @@ void Metrics::setEnableInstrument(const std::string& instrumentName, bool state)
     {
         throw std::runtime_error {"The Instrument " + instrumentName + " has not been created."};
     }
+}
+
+std::ostringstream Metrics::getListInstruments()
+{
+    std::ostringstream outputList;
+
+    auto instrumentType = m_instrumentsTypes.begin();
+    for (const auto& control : controller)
+    {
+        auto aux = control.second == true ? "enable" : "disable";
+        outputList << "\t" << control.first << ", " << aux << ", " << *instrumentType << std::endl;
+        std::advance(instrumentType, 1);
+    }
+
+    return outputList;
 }
