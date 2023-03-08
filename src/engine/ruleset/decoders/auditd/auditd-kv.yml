@@ -26,7 +26,7 @@ parse:
 normalize:
   - map:
       - auditd.log: +ef_merge/$~kv_map
-      - ~auditd.log.node: +ef_rename/$~node
+      - auditd.log.node: +ef_rename/$~node
       #TODO: issue on +s_eq can't use it as a value
       - ~null_parenthesis: (null)
       - ~kv_msg: +ef_delete
