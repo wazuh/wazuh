@@ -573,3 +573,8 @@ std::ostringstream Metrics::getListInstruments()
 
     return outputList;
 }
+
+void Metrics::generateCounterToTesting()
+{
+    instance().addCounterValue("MetricsTestCounter", 1UL);
+}

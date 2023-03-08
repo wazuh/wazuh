@@ -119,6 +119,10 @@ void configure(CLI::App_p app)
     // list
     auto list_subcommand = metricApp->add_subcommand("list", "Prints name, status and instruments types.");
     list_subcommand->callback([options]() { runListInstruments(options->socketPath); });
+
+    // test
+    auto test_subcommand = metricApp->add_subcommand("test", "Generate dummy metrics for testing.");
+    test_subcommand->callback([options]() { runTest(options->socketPath); });
 }
 
 void runDump(const std::string& socketPath)
@@ -162,6 +166,15 @@ void runListInstruments(const std::string& socketPath)
     auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_LIST_SUBCOMMAND),
                                          details::ORIGIN_NAME,
                                          details::getParameters(details::API_METRICS_LIST_SUBCOMMAND));
+
+    details::singleRequest(req, socketPath);
+}
+
+void runTest(const std::string& socketPath)
+{
+    auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_TEST_SUBCOMMAND),
+                                         details::ORIGIN_NAME,
+                                         details::getParameters(details::API_METRICS_TEST_SUBCOMMAND));
 
     details::singleRequest(req, socketPath);
 }
