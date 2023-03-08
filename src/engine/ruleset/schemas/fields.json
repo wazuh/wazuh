@@ -10795,6 +10795,188 @@
             "type": [
                 "string"
             ]
+        },
+        "rsa.counters.dclass_c1": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThis is a generic counter key that should be used with the label dclass.c1.str only.\n",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "rsa.counters.dclass_c1_str": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis is a generic counter string key that should be used with the label dclass.c1 only.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.db.index": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures IndexID of the index.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.internal.event_desc": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture a description of an event available directly or inferred.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.internal.messageid": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the deepest category id within a log type like message types or error codes.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.investigations.ec_activity": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures the particular event activity (Ex:Logoff).\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.investigations.ec_subject": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures the Subject of a particular Event (Ex:User).\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.investigations.ec_theme": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures the Theme of a particular Event (Ex:Authentication).\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.action": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the action performed in the given session.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.category": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the category of an event given by the vendor in the session.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.change_attrib": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the name of the attribute that's changing in a session.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.change_new": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the new values of the attribute that's changing in a session.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.client": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture only the name of the client application requesting resources of the server.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.context": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures Information which adds additional context to the event.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.disposition": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures the The end state of an action.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.event_type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures the event category type as specified by the event source.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.log_session_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture a sessionid from the session directly.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.obj_name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis is used to capture name of object.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.policy_name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the Policy Name only.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.result": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the outcome/result string value of an action in a session.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.result_code": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the outcome/result numeric value of an action in a session.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.rule_name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures the Rule Name.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.severity": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the severity given the session.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.version": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures Version of the application or OS which is generating the event.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.network.alias_host": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key should be used when the source or destination context of a hostname is not clear.Also it captures the Device Hostname. Any Hostname that isnt ad.computer.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.network.network_service": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis is used to capture layer 7 protocols/service names.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.network.vlan": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key should only be used to capture the ID of the Virtual LAN.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.time.event_time": {
+            "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThis key is used to capture the time mentioned in a raw session that represents the actual time an event occured in a standard normalized form.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.time.event_time_str": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the incomplete time mentioned in a session as a string.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.web.fqdn": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFully Qualified Domain Names.\n",
+            "type": [
+                "string"
+            ]
         }
     }
 }
