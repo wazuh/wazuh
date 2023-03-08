@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Created by Shuffle, AS. <frikky@shuffler.io>.
 # Based on the Slack integration using Webhooks
 #
