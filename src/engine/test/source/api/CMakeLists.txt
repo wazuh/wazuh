@@ -1,5 +1,6 @@
 add_executable(api_test
     registry_test.cpp
+    adapter_test.cpp
 )
 
 target_link_libraries(api_test gtest_main base api)
@@ -10,4 +11,4 @@ message(WARNING "TODO These tests are not built, fix them and remove this warnin
 
 # TODO
 # add_subdirectory(catalog)
-# add_subdirectory(kvdb)
+add_subdirectory(kvdb)
