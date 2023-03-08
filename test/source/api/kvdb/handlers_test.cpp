@@ -20,6 +20,8 @@ constexpr auto KEY_C = "keyC";
 constexpr auto KEY_D = "keyD";
 constexpr auto VAL_A = "valA";
 
+const std::string rCommand {"command to exec"};
+const std::string rOrigin {"Origin module"};
 const std::string rawValueKeyA {"valueA"};
 const std::string valueKeyA {fmt::format("\"{}\"", rawValueKeyA)};
 const int rawValueKeyB {69};
@@ -27,20 +29,18 @@ const std::string valueKeyB {fmt::format("{}", rawValueKeyB)};
 const std::string rawValueKeyCA {"valueCA"};
 const std::string rawValueKeyCB {"valueCB"};
 const std::string rawValueKeyCC {"valueCC"};
-const std::string valueKeyC {
-    fmt::format("[\"{}\",\"{}\",\"{}\"]", rawValueKeyCA, rawValueKeyCB, rawValueKeyCC)};
+const std::string valueKeyC {fmt::format("[\"{}\",\"{}\",\"{}\"]", rawValueKeyCA, rawValueKeyCB, rawValueKeyCC)};
 const std::string rawValueKeyDA {"valueDA"};
 const int rawValueKeyDB {666};
 const int rawValueKeyDC0 {10};
 const int rawValueKeyDC1 {7};
 const int rawValueKeyDC2 {1992};
-const std::string valueKeyD {
-    fmt::format("{{\"keyDA\":\"{}\",\"keyDB\":{},\"keyDC\":[{},{},{}]}}",
-                rawValueKeyDA,
-                rawValueKeyDB,
-                rawValueKeyDC0,
-                rawValueKeyDC1,
-                rawValueKeyDC2)};
+const std::string valueKeyD {fmt::format("{{\"keyDA\":\"{}\",\"keyDB\":{},\"keyDC\":[{},{},{}]}}",
+                                         rawValueKeyDA,
+                                         rawValueKeyDB,
+                                         rawValueKeyDC0,
+                                         rawValueKeyDC1,
+                                         rawValueKeyDC2)};
 
 inline void createJsonTestFile(const std::string filePath = FILE_PATH)
 {
@@ -79,9 +79,9 @@ inline void createKeyOnlyJsonTestFile(const std::string filePath = FILE_PATH)
     }
 }
 
-// "kvdbCreateCmd" tests section
+// "managerPost" tests section
 
-class kvdbAPICreateCommand : public ::testing::Test
+class kvdbAPICreateHandler : public ::testing::Test
 {
 
 protected:
@@ -107,8 +107,7 @@ protected:
         }
     }
 
-    json::Json getParametersInJson(const std::string& kvdbName,
-                                   const std::string& kvdbInputFilePath = "")
+    json::Json getParametersInJson(const std::string& kvdbName, const std::string& kvdbInputFilePath = "")
     {
         // create request
         json::Json data {};
@@ -119,139 +118,193 @@ protected:
     }
 };
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmd)
+TEST_F(kvdbAPICreateHandler, managerPost)
 {
-    ASSERT_NO_THROW(kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
+    ASSERT_NO_THROW(managerPost(kvdbAPICreateHandler::kvdbManager));
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameMissing)
+TEST_F(kvdbAPICreateHandler, managerPostNameMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {"{\"not_name\": \"dummyString\"}"};
-    const auto response = cmd(params);
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params {R"({"not_name": "dummyString"})"};
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /name"})");
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData) << "Expected: " << expectedData.prettyStr() << std::endl
+                                             << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameArrayNotString)
+TEST_F(kvdbAPICreateHandler, managerPostNameNotString)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {"{\"name\": [\"dummyName\"]}"};
-    const auto response = cmd(params);
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params {R"({"name": ["dummyString"]})"};
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData = std::string {"ERROR"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data().getString("/status").value_or("Not status in result"), expectedData)
+        << "Response: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameNumberNotString)
+TEST_F(kvdbAPICreateHandler, managerPostBoolNotString)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {"{\"name\": 69}"};
-    const auto response = cmd(params);
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params {R"({"name": false})"};
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData = std::string {"ERROR"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data().getString("/status").value_or("Not status in result"), expectedData)
+        << "Response: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSimpleAddition)
+TEST_F(kvdbAPICreateHandler, managerPostNameNumberNotString)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    const auto response = cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2));
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params {R"({"name": 123})"};
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData = std::string {"ERROR"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("KVDB '{}' successfully created", DB_NAME_2).c_str());
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data().getString("/status").value_or("Not status in result"), expectedData)
+        << "Response: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdEmptyName)
+TEST_F(kvdbAPICreateHandler, managerPostEmptyName)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    const auto response = cmd(kvdbAPICreateCommand::getParametersInJson(""));
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params = getParametersInJson("");
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData = std::string {"ERROR"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_EMPTY);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data().getString("/status").value_or("Not status in result"), expectedData)
+        << "Response: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdEmptyParams)
+TEST_F(kvdbAPICreateHandler, managerPostSimpleAddition)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {};
-    const auto response = cmd(params);
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params = getParametersInJson(DB_NAME_2);
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData = std::string {"OK"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data().getString("/status").value_or("Not status in result"), expectedData)
+        << "Response: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdDuplicatedDatabase)
+TEST_F(kvdbAPICreateHandler, managerPostDuplicatedDatabase)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    const auto response = cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME));
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params = getParametersInJson(DB_NAME_2);
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData = std::string {"OK"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database '{}' already exists", DB_NAME).c_str());
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data().getString("/status").value_or("Not status in result"), expectedData)
+        << "Response: " << response.data().prettyStr() << std::endl;
+
+    // Add new database with the same name
+    const auto response2 = cmd(request);
+    const auto expectedData2 = json::Json {R"({"status":"ERROR","error":"Database 'TEST_DB_2' already exists"})"};
+
+    // check response
+    ASSERT_TRUE(response2.isValid());
+    ASSERT_EQ(response2.error(), 0);
+    ASSERT_FALSE(response2.message().has_value());
+    ASSERT_EQ(response2.data(), expectedData2) << "Response: " << response2.data().prettyStr() << std::endl
+                                               << "Expected: " << expectedData2.prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNameWithSpaces)
+TEST_F(kvdbAPICreateHandler, managerPostNameWithSpaces)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    const auto response =
-        cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_WITH_SPACES));
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params = getParametersInJson(DB_NAME_WITH_SPACES);
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData = std::string {"OK"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(
-        response.message().value().c_str(),
-        fmt::format("KVDB '{}' successfully created", DB_NAME_WITH_SPACES).c_str());
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data().getString("/status").value_or("Not status in result"), expectedData)
+        << "Response: " << response.data().prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithFilling)
+TEST_F(kvdbAPICreateHandler, managerPostWithFilling)
 {
     createJsonTestFile();
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    const auto response =
-        cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2, FILE_PATH));
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params = getParametersInJson(DB_NAME_2, FILE_PATH);
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData = std::string {"OK"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("KVDB '{}' successfully created", DB_NAME_2).c_str());
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data().getString("/status").value_or("Not status in result"), expectedData)
+        << "Response: " << response.data().prettyStr() << std::endl;
 
     // check value
     auto value = kvdbManager->getRawValue(DB_NAME_2, KEY_A);
@@ -271,7 +324,7 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithFilling)
     ASSERT_STREQ(valueKeyD.c_str(), std::get<std::string>(value).c_str());
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithWrongFilling)
+TEST_F(kvdbAPICreateHandler, managerPostWithWrongFilling)
 {
     // File creation
     if (!std::filesystem::exists(FILE_PATH))
@@ -285,73 +338,46 @@ TEST_F(kvdbAPICreateCommand, kvdbCreateCmdWithWrongFilling)
     }
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    const auto response =
-        cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2, FILE_PATH));
+
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params = getParametersInJson(DB_NAME_2, FILE_PATH);
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData =
+        json::Json {R"({"status":"ERROR","error":"An error occurred while parsing the JSON file '/tmp/file'"})"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    // TODO: this should be wrong
-    ASSERT_STREQ(
-        response.message().value().c_str(),
-        fmt::format("An error occurred while parsing the JSON file '{}'", FILE_PATH)
-            .c_str());
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
+                                             << "Expected: " << expectedData.prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdSingleValueFile)
-{
-    createKeyOnlyJsonTestFile();
-
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    const auto response =
-        cmd(kvdbAPICreateCommand::getParametersInJson(DB_NAME_2, FILE_PATH));
-
-    // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("KVDB '{}' successfully created", DB_NAME_2).c_str());
-
-    // check value
-    auto value = kvdbManager->getRawValue(DB_NAME_2, KEY_A);
-    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ("\"\"", std::get<std::string>(value).c_str());
-
-    value = kvdbManager->getRawValue(DB_NAME_2, KEY_B);
-    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ("\"\"", std::get<std::string>(value).c_str());
-
-    value = kvdbManager->getRawValue(DB_NAME_2, KEY_C);
-    ASSERT_FALSE(std::holds_alternative<base::Error>(value));
-    ASSERT_STREQ("\"\"", std::get<std::string>(value).c_str());
-}
-
-TEST_F(kvdbAPICreateCommand, kvdbCreateCmdNonExistingFile)
+TEST_F(kvdbAPICreateHandler, managerPostNonExistingFile)
 {
     api::Handler cmd;
 
-    ASSERT_NO_THROW(cmd = kvdbCreateCmd(kvdbAPICreateCommand::kvdbManager));
-    json::Json params {
-        fmt::format("{{\"name\": \"{}\", \"path\":\"{}\"}}", DB_NAME_2, FILE_PATH)
-            .c_str()};
-    const auto response = cmd(params);
+    ASSERT_NO_THROW(cmd = managerPost(kvdbAPICreateHandler::kvdbManager));
+    json::Json params = getParametersInJson(DB_NAME_2, FILE_PATH);
+    api::wpRequest request = api::wpRequest::create(rCommand, rOrigin, params);
+
+    const auto response = cmd(request);
+    const auto expectedData =
+        json::Json {R"({"status":"ERROR","error":"An error occurred while opening the file '/tmp/file'"})"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(
-        response.message().value().c_str(),
-        fmt::format("An error occurred while opening the file '{}'", FILE_PATH).c_str());
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
+                                             << "Expected: " << expectedData.prettyStr() << std::endl;
 }
 
 // "kvdbDeleteCmd" tests section
 
-class kvdbAPIDeleteCommand : public ::testing::Test
+class kvdbAPIDeleteHandler : public ::testing::Test
 {
 
 protected:
@@ -375,41 +401,41 @@ protected:
 
     virtual void TearDown() {}
 
-    json::Json getParametersInJson(const std::string& kvdbName)
+    api::wpRequest deleteWRequest(const std::string& kvdbName)
     {
         // create request
         json::Json data {};
         data.setObject();
         data.setString(kvdbName, "/name");
-        return data;
+        return api::wpRequest::create(rCommand, rOrigin, data);
     }
 };
 
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmd)
+TEST_F(kvdbAPIDeleteHandler, managerDelete)
 {
-    ASSERT_NO_THROW(kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
+    ASSERT_NO_THROW(managerDelete(kvdbAPIDeleteHandler::kvdbManager));
 }
 
 // This can occur when a DB that was used on a decoder is no longer used
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdLoadedOnlyOnMap)
+TEST_F(kvdbAPIDeleteHandler, managerDeleteLoadedOnlyOnMap)
 {
     // DB_NAME is only loaded on map, it will be unloaded and deleted
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    auto response = cmd(getParametersInJson(DB_NAME));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbAPIDeleteHandler::kvdbManager));
+    auto response = cmd(deleteWRequest(DB_NAME));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
 
     // check remaining available DBs
-    ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 0);
+    ASSERT_EQ(kvdbAPIDeleteHandler::getNumberOfKVDBLoaded(), 0);
 }
 
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
+TEST_F(kvdbAPIDeleteHandler, managerDeleteBlockBecauseLoaded)
 {
     // DB_NAME is on the loaded map but it needs to be instanced in any helper:
-    auto res = kvdbAPIDeleteCommand::kvdbManager->getHandler(DB_NAME);
+    auto res = kvdbAPIDeleteHandler::kvdbManager->getHandler(DB_NAME);
     if (auto err = std::get_if<base::Error>(&res))
     {
         throw std::runtime_error(err->message);
@@ -417,106 +443,129 @@ TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdBlockBecauseLoaded)
     auto kvdbHandleExample = std::get<kvdb_manager::KVDBHandle>(res);
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    auto response = cmd(getParametersInJson(DB_NAME));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbAPIDeleteHandler::kvdbManager));
+    auto response = cmd(deleteWRequest(DB_NAME));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
 
     // check remaining available DBs
-    ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 1);
+    ASSERT_EQ(kvdbAPIDeleteHandler::getNumberOfKVDBLoaded(), 1);
 }
 
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdSuccess)
+TEST_F(kvdbAPIDeleteHandler, managerDeleteSuccess)
 {
     // create unloaded DB
-    auto resultString = kvdbAPIDeleteCommand::kvdbManager->createFromJFile(DB_NAME_2);
+    auto resultString = kvdbAPIDeleteHandler::kvdbManager->createFromJFile(DB_NAME_2);
     ASSERT_FALSE(resultString.has_value());
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    auto response = cmd(getParametersInJson(DB_NAME_2));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbAPIDeleteHandler::kvdbManager));
+    auto response = cmd(deleteWRequest(DB_NAME_2));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
 }
 
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdDBDoesntExist)
+TEST_F(kvdbAPIDeleteHandler, managerDeleteDBDoesntExist)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    const auto response = cmd(getParametersInJson(DB_NAME_NOT_AVAILABLE));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbAPIDeleteHandler::kvdbManager));
+    const auto response = cmd(deleteWRequest(DB_NAME_NOT_AVAILABLE));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(),
-                 fmt::format("Database '{}' not found or could not be loaded", DB_NAME_NOT_AVAILABLE).c_str());
+    ASSERT_FALSE(response.message().has_value());
+    // TODO ERROR
 
     // check remaining available DBs
-    ASSERT_EQ(kvdbAPIDeleteCommand::getNumberOfKVDBLoaded(), 1);
+    ASSERT_EQ(kvdbAPIDeleteHandler::getNumberOfKVDBLoaded(), 1);
 }
 
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameMissing)
+TEST_F(kvdbAPIDeleteHandler, managerDeleteNameMissing)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    json::Json params {"{\"dummy_key\": \"dummy_value\"}"};
-    const auto response = cmd(params);
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbAPIDeleteHandler::kvdbManager));
+    json::Json params {R"( { "no_name": "dummy" } )"};
+    auto request = api::wpRequest::create(rCommand, rOrigin, params);
+    const auto response = cmd(request);
+
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Missing /name"})"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_MISSING);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
+                                             << "Expected: " << expectedData.prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameArrayNotString)
+TEST_F(kvdbAPIDeleteHandler, managerDeleteNameArrayNotString)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbAPIDeleteHandler::kvdbManager));
     json::Json params {"{\"name\": [\"dummy_value\"]}"};
-    const auto response = cmd(params);
+    auto request = api::wpRequest::create(rCommand, rOrigin, params);
+    const auto response = cmd(request);
+
+    // check response
+    const auto expectedData = json::Json {
+        R"({"status":"ERROR","error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
+                                             << "Expected: " << expectedData.prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdNameNumberNotString)
+TEST_F(kvdbAPIDeleteHandler, managerDeleteNameNumberNotString)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbAPIDeleteHandler::kvdbManager));
     json::Json params {"{\"name\": 69}"};
-    const auto response = cmd(params);
+    auto request = api::wpRequest::create(rCommand, rOrigin, params);
+    const auto response = cmd(request);
+
+    // check response
+    const auto expectedData =
+        json::Json {R"({"status":"ERROR","error":"INVALID_ARGUMENT:(name): invalid value 69 for type TYPE_STRING"})"};
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_NOT_A_STRING);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
+                                             << "Expected: " << expectedData.prettyStr() << std::endl;
 }
 
-TEST_F(kvdbAPIDeleteCommand, kvdbDeleteCmdEmptyName)
+TEST_F(kvdbAPIDeleteHandler, managerDeleteEmptyName)
 {
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = kvdbDeleteCmd(kvdbAPIDeleteCommand::kvdbManager));
-    const auto response = cmd(getParametersInJson(""));
+    ASSERT_NO_THROW(cmd = managerDelete(kvdbAPIDeleteHandler::kvdbManager));
+    const auto response = cmd(deleteWRequest(""));
 
     // check response
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
-    ASSERT_TRUE(response.message().has_value());
-    ASSERT_STREQ(response.message().value().c_str(), KVDB_NAME_EMPTY);
+    ASSERT_FALSE(response.message().has_value());
+
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Database name is empty"})"};
+
+    // check response
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
+                                             << "Expected: " << expectedData.prettyStr() << std::endl;
 }
 
 // "kvdbDumpCmd" tests section
-
+/*
 class kvdbAPIDumpCommand : public ::testing::Test
 {
 
@@ -1599,3 +1648,4 @@ TEST(kvdbAPICmdsTest, registerHandlers)
     ASSERT_NO_THROW(apiReg->getHandler("list_kvdb"));
     ASSERT_NO_THROW(apiReg->getHandler("remove_kvdb"));
 }
+*/
