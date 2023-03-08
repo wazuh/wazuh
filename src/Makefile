@@ -300,10 +300,9 @@ endif # Linux
 else
 		SHARED=dll
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
-		OSSEC_CFLAGS+=-Wl,-l:libwinpthread-1.lib -L win32/ -Wl,--allow-multiple-definition -pthread
-		OSSEC_LDFLAGS+=-Wl,-l:libwinpthread-1.lib -L win32/ -Wl,--allow-multiple-definition -pthread
-		OSSEC_LDFLAGS+=-Wl,--allow-multiple-definition
-		AR_LDFLAGS+=-Wl,-l:libwinpthread-1.lib -L win32/ -Wl,--allow-multiple-definition -pthread
+		OSSEC_CFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic
+		AR_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic
 		PRECOMPILED_OS:=windows
 endif # winagent
 
@@ -435,16 +434,6 @@ $(error No windows cross-compiler found!) #MING_BASE:=unknown-
 endif
 endif
 endif
-
-ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread-1.dll))
-	WIN_PTHREAD_DLL:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
-else
-ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
-	WIN_PTHREAD_DLL:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
-endif
-endif
-WIN_PTHREAD_DEF=libwinpthread-1.def
-WIN_PTHREAD_LIB=libwinpthread-1.lib
 
 endif #winagent
 
@@ -794,9 +783,9 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
+winagent: external ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
-	#${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
+	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
@@ -824,10 +813,6 @@ win32/sysinfo: $(WAZUHEXT_LIB)
 win32/syscollector: win32/shared_modules win32/sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 
-win32/libwinpthread-1.dll: ${WIN_PTHREAD_DLL}
-	$(DLLTOOL) ${WIN_PTHREAD_DLL} -z $(WIN_PTHREAD_DEF) --export-all-symbols
-	$(DLLTOOL) --input-def $(WIN_PTHREAD_DEF) --output-delaylib win32/$(WIN_PTHREAD_LIB) --dllname ${WIN_PTHREAD_DLL}
-	cp $< $@
 
 ####################
 #### External ######
@@ -1727,7 +1712,7 @@ libwazuhext.$(SHARED): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 
 $(WAZUHEXT_LIB_DEF): libwazuhext.$(SHARED)
-	$(DLLTOOL) libwazuhext.$(SHARED) -z $(WAZUHEXT_LIB_DEF) --export-all-symbols
+	$(DLLTOOL) libwazuhext.$(SHARED) -z $(WAZUHEXT_LIB_DEF) --export-all-symbols --exclude-symbols tolower,_fileno
 
 else
 ifeq (${uname_S},SunOS)
@@ -1876,7 +1861,7 @@ active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disa
 $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
 
 # Minimal dependencies for building active responses programs
-AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_free_pattern.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
+AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 AR_PROGRAMS_DEPS += unit_tests/wrappers/externals/pcre2/pcre2_wrappers.o
@@ -1945,7 +1930,7 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 else
 ifeq (${TARGET}, winagent)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--allow-multiple-definition -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $(AR_PROGRAMS_DEPS) -Wl,--no-whole-archive ${OSSEC_LIBS} $(WAZUHEXT_LIB)
 else
 ifeq (${uname_S},SunOS)
 ifneq ($(uname_R),5.10)
@@ -2428,13 +2413,13 @@ win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
-win32/restart-wazuh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/restart-wazuh.o active-response/active_responses.o
+win32/restart-wazuh.exe: ${WAZUH_LIB} libwazuhext.dll active-response/restart-wazuh.o active-response/active_responses.o
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -s -o $@
 
-win32/route-null.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/route-null.o active-response/active_responses.o
+win32/route-null.exe: ${WAZUH_LIB} libwazuhext.dll active-response/route-null.o active-response/active_responses.o
 	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -s -o $@
 
-win32/netsh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/netsh.o active-response/active_responses.o
+win32/netsh.exe: ${WAZUH_LIB} libwazuhext.dll active-response/netsh.o active-response/active_responses.o
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -s -o $@
 
 ####################
@@ -2589,6 +2574,8 @@ clean-windows:
 	rm -f libwazuh.a
 	rm -f libwazuhshared.dll
 	rm -f libwazuhext.dll
+	rm -f libwazuhext.def
+	rm -f libwazuhext.lib
 	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
@@ -2608,7 +2595,6 @@ clean-windows:
 	rm -f win32/icon.o win32/resource.o
 	rm -f ${WINDOWS_BINS}
 	rm -f win32/wazuh-agent-*.exe
-	rm -f win32/libwinpthread-1.dll
 	rm -f win32/VERSION
 	rm -f win32/REVISION
 	rm -f win32/libstdc++-6.dll

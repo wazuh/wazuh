@@ -144,10 +144,10 @@
             <Custom Action="SetOSVersion10" Before="SetCustomActionDataValue">MAJORVERSION = "#10" AND MsiNTProductType = 1</Custom>
             <Custom Action="SetOSVersion11" Before="SetCustomActionDataValue">BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Custom>
             <Custom Action="SetOSVersion12" Before="SetCustomActionDataValue">BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Custom>
-            
+
             <!-- Close the GUI -->
             <Custom Action="CloseGUI" Before="InstallFinalize"></Custom>
-            
+
             <!-- Set deployment values -->
             <Custom Action="SetWazuhManager" Before="SetCustomActionDataValue">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
             <Custom Action="SetWazuhManagerPort" Before="SetCustomActionDataValue">SERVER_PORT &lt;&gt; "" AND WAZUH_MANAGER_PORT = ""</Custom>
@@ -174,7 +174,7 @@
 
             <!-- Start services if necessary -->
             <Custom Action="StartWazuhSvc" After="InstallServices">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
-            
+
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
 			<Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
  		    <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
@@ -224,9 +224,6 @@
                     <Component Id="LICENSE.TXT" DiskId="1" Guid="556F08A0-D372-4BB5-BC44-73CE45957084">
                         <File Id="LICENSE.TXT" Name="LICENSE.txt" Source="LICENSE.txt" />
                     </Component>
-                    <Component Id="LIBWINPTHREAD_1.DLL" DiskId="1" Guid="C15C5883-00FB-41D7-B9E6-53C8BC30761F">
-                        <File Id="LIBWINPTHREAD_1.DLL" Name="libwinpthread-1.dll" Source="libwinpthread-1.dll" />
-                    </Component>
                     <Component Id="LIBGCC_S_DW2_1.DLL" DiskId="1" Guid="EB7C893F-E5C8-4038-8FBA-EF33F8B72CB6">
                         <File Id="LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" Source="libgcc_s_dw2-1.dll" />
                     </Component>
@@ -269,7 +266,6 @@
                         <RemoveFile Id="NSIS_DOC_HTML" Name="doc.html" On="install" />
                         <RemoveFile Id="NSIS_WIN32UI_EXE" Name="win32ui.exe" On="install" />
                         <RemoveFile Id="NSIS_AGENT_AUTH_EXE" Name="agent-auth.exe" On="install" />
-                        <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBSTDCPP_6.DLL" Name="libstdc++-6.dll" On="install" />
