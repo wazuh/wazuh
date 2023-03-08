@@ -10876,6 +10876,12 @@
                 "string"
             ]
         },
+        "auditd.log.node": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nnode name",
+            "type": [
+                "string"
+            ]
+        },
         "auditd.data.apparmor": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\napparmor event information",
             "type": [

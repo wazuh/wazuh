@@ -162,3 +162,7 @@ auditd.log.data:
 auditd.log.path:
   description: 'possible hex key'
   type: keyword
+
+auditd.log.node:
+  description: 'node name'
+  type: keyword
