@@ -22,6 +22,7 @@ api::CommandFn metricsDumpCmd();
 api::CommandFn metricsGetCmd();
 api::CommandFn metricsEnableCmd();
 api::CommandFn metricsListCmd();
+api::CommandFn metricsTestCmd();
 
 void registerAllCmds(std::shared_ptr<api::Registry> registry);
 } // namespace api::metrics::cmds
