@@ -105,7 +105,7 @@ normalize:
     logpar:
       - ~content: :<~/ignore/ >AUDIT - pid=<~tmp.process.parent.id> user=<user.name> folder=<~tmp.file.directory> module=<~> status=<~tmp.rsa.misc.result> cmd_data=<~tmp.rsa.db.index>
     map:
-      - process.parent.id: $~tmp.process.parent.id
+      - process.parent.pid: $~tmp.process.parent.id
       - file.directory: $~tmp.file.directory
       - rsa.misc.result: $~tmp.rsa.misc.result
       - rsa.db.index: $~tmp.rsa.db.index
@@ -379,8 +379,6 @@ normalize:
   - map:
       - event.dataset: f5.bigipapm
       - event.module: f5
-      - fileset.name: bigipapm
-      - input.type: log
       - observer.product: Big-IP
       - observer.type: Access
       - observer.vendor: F5
