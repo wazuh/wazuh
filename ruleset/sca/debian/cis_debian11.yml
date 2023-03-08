@@ -2540,7 +2540,7 @@ checks:
     title: "Ensure auditd is installed."
     description: "auditd is the userspace component to the Linux Auditing System. It's responsible for writing audit records to the disk."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
-    remediation: "Run the following command to Install auditd # apt install auditd audispd-plugins"
+    remediation: "Run the following command to Install auditd # apt install auditd audispd-plugins."
     compliance:
       - cis: ["4.1.1.1"]
       - cis_csc_v8: ["8.5"]
@@ -2562,7 +2562,7 @@ checks:
     title: "Ensure auditd service is enabled and active."
     description: "Turn on the auditd daemon to record system events."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
-    remediation: "Run the following command to enable and start auditd: # systemctl --now enable auditd"
+    remediation: "Run the following command to enable and start auditd: # systemctl --now enable auditd."
     compliance:
       - cis: ["4.1.1.2"]
       - cis_csc_v8: ["8.2"]
@@ -2585,7 +2585,7 @@ checks:
     title: "Ensure auditing for processes that start prior to auditd is enabled."
     description: "Configure grub2 so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
     rationale: "Audit events need to be captured on processes that start up prior to auditd , so that potential malicious activity cannot go undetected."
-    remediation: 'Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: Example: GRUB_CMDLINE_LINUX="audit=1" Run the following command to update the grub2 configuration: # update-grub'
+    remediation: 'Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: Example: GRUB_CMDLINE_LINUX="audit=1" Run the following command to update the grub2 configuration: # update-grub.'
     compliance:
       - cis: ["4.1.1.3"]
       - cis_csc_v8: ["8.2"]
@@ -2607,7 +2607,7 @@ checks:
     title: "Ensure audit_backlog_limit is sufficient."
     description: "In the kernel-level audit subsystem, a socket buffer queue is used to hold audit events. Whenever a new audit event is received, it is logged and prepared to be added to this queue. The kernel boot parameter audit_backlog_limit=N, with N representing the amount of messages, will ensure that a queue cannot grow beyond a certain size. If an audit event is logged which would grow the queue beyond this limit, then a failure occurs and is handled according to the system configuration."
     rationale: "If an audit event is logged which would grow the queue beyond the audit_backlog_limit, then a failure occurs, auditd records will be lost, and potential malicious activity could go undetected."
-    remediation: 'Edit /etc/default/grub and add audit_backlog_limit=N to GRUB_CMDLINE_LINUX. The recommended size for N is 8192 or larger. Example: GRUB_CMDLINE_LINUX="audit_backlog_limit=8192" Run the following command to update the grub2 configuration: # update-grub'
+    remediation: 'Edit /etc/default/grub and add audit_backlog_limit=N to GRUB_CMDLINE_LINUX. The recommended size for N is 8192 or larger. Example: GRUB_CMDLINE_LINUX="audit_backlog_limit=8192" Run the following command to update the grub2 configuration: # update-grub.'
     compliance:
       - cis: ["4.1.1.4"]
       - cis_csc_v8: ["8.2"]
@@ -2633,7 +2633,7 @@ checks:
     title: "Ensure audit log storage size is configured."
     description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
     rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
-    remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB>"
+    remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB>."
     compliance:
       - cis: ["4.1.2.1"]
       - cis_csc_v8: ["8.3"]
@@ -2653,7 +2653,7 @@ checks:
     title: "Ensure audit logs are not automatically deleted."
     description: "The max_log_file_action setting determines how to handle the audit log file reaching the max file size. A value of keep_logs will rotate the logs but never delete old logs."
     rationale: "In high security contexts, the benefits of maintaining a long audit history exceed the cost of storing the audit history."
-    remediation: "Set the following parameter in /etc/audit/auditd.conf: max_log_file_action = keep_logs"
+    remediation: "Set the following parameter in /etc/audit/auditd.conf: max_log_file_action = keep_logs."
     compliance:
       - cis: ["4.1.2.2"]
       - cis_csc_v8: ["8.3"]
@@ -2674,7 +2674,7 @@ checks:
     description: "The auditd daemon can be configured to halt the system when the audit logs are full. The admin_space_left_action parameter tells the system what action to take when the system has detected that it is low on disk space. Valid values are ignore, syslog, suspend, single, and halt. - ignore, the audit daemon does nothing. - Syslog, the audit daemon will issue a warning to syslog. - Suspend, the audit daemon will stop writing records to the disk. - single, the audit daemon will put the computer system in single user mode. - halt, the audit daemon will shutdown the system."
     rationale: "In high security contexts, the risk of detecting unauthorized access or nonrepudiation exceeds the benefit of the system's availability."
     impact: "If the admin_space_left_action parameter is set to halt the audit daemon will shutdown the system when the disk partition containing the audit logs becomes full."
-    remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root set admin_space_left_action to either halt or single in /etc/audit/auditd.conf. Example: admin_space_left_action = halt"
+    remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root set admin_space_left_action to either halt or single in /etc/audit/auditd.conf. Example: admin_space_left_action = halt."
     compliance:
       - cis: ["4.1.2.3"]
       - cis_csc_v8: ["8.2, 8.3"]
@@ -2900,7 +2900,7 @@ checks:
     title: "Ensure login and logout events are collected."
     description: "Monitor login and logout events. The parameters below track changes to files associated with login/logout events. - /var/log/lastlog: maintain records of the last time a user successfully logged in. - /var/run/faillock: directory maintains records of login failures via the pam_faillock module."
     rationale: "Monitoring login/logout events could provide a system administrator with information associated with brute force attacks against user logins."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor login and logout events. Example: # printf " -w /var/log/lastlog -p wa -k logins -w /var/run/faillock -p wa -k logins " >> /etc/audit/rules.d/50-login.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor login and logout events. Example: # printf " -w /var/log/lastlog -p wa -k logins -w /var/run/faillock -p wa -k logins " >> /etc/audit/rules.d/50-login.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
     compliance:
       - cis: ["4.1.3.12"]
       - cis_csc_v8: ["8.5"]
@@ -2948,7 +2948,7 @@ checks:
     title: "Ensure events that modify the system's Mandatory Access Controls are collected."
     description: "Monitor AppArmor, an implementation of mandatory access controls. The parameters below monitor any write access (potential additional, deletion or modification of files in the directory) or attribute changes to the /etc/apparmor/ and /etc/apparmor.d/ directories. Note: If a different Mandatory Access Control method is used, changes to the corresponding directories should be audited."
     rationale: "Changes to files in the /etc/apparmor/ and /etc/apparmor.d/ directories could indicate that an unauthorized user is attempting to modify access controls and change security contexts, leading to a compromise of the system."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the systems Mandatory Access Controls. Example: # printf " -w /etc/apparmor/ -p wa -k MAC-policy -w /etc/apparmor.d/ -p wa -k MAC-policy " >> /etc/audit/rules.d/50-MAC-policy.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the systems Mandatory Access Controls. Example: # printf " -w /etc/apparmor/ -p wa -k MAC-policy -w /etc/apparmor.d/ -p wa -k MAC-policy " >> /etc/audit/rules.d/50-MAC-policy.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
     compliance:
       - cis: ["4.1.3.14"]
       - cis_csc_v8: ["8.5"]
@@ -3112,7 +3112,7 @@ checks:
     title: "Ensure the running and on disk configuration is the same."
     description: "The Audit system have both on disk and running configuration. It is possible for these configuration settings to differ. Note: Due to the limitations of augenrules and auditctl, it is not absolutely guaranteed that loading the rule sets via augenrules --load will result in all rules being loaded or even that the user will be informed if there was a problem loading the rules."
     rationale: "Configuration differences between what is currently running and what is on disk could cause unexpected problems or may give a false impression of compliance requirements."
-    remediation: 'If the rules are not aligned across all three () areas, run the following command to merge and load all rules: # augenrules --load Check if reboot is required. if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then echo "Reboot required to load rules"; fi'
+    remediation: 'If the rules are not aligned across all three () areas, run the following command to merge and load all rules: # augenrules --load Check if reboot is required. if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then echo "Reboot required to load rules"; fi.'
     compliance:
       - cis: ["4.1.3.21"]
       - cis_csc_v8: ["8.5"]
@@ -3164,7 +3164,7 @@ checks:
     title: "Ensure audit configuration files are 640 or more restrictive."
     description: "Audit configuration files control auditd and what events are audited."
     rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
-    remediation: "Run the following command to remove more permissive mode than 0640 from the audit configuration files: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec chmod u-x,g-wx,o-rwx {} +"
+    remediation: "Run the following command to remove more permissive mode than 0640 from the audit configuration files: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec chmod u-x,g-wx,o-rwx {} +."
     compliance:
       - cis: ["4.1.4.5"]
       - cis_csc_v8: ["3.3"]
@@ -3212,7 +3212,7 @@ checks:
     title: "Ensure audit configuration files belong to group root."
     description: "Audit configuration files control auditd and what events are audited."
     rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
-    remediation: "Run the following command to change group to root: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -group root -exec chgrp root {} +"
+    remediation: "Run the following command to change group to root: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -group root -exec chgrp root {} +."
     compliance:
       - cis: ["4.1.4.7"]
       - cis_csc_v8: ["3.3"]
@@ -3236,7 +3236,7 @@ checks:
     title: "Ensure audit tools are 755 or more restrictive."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
-    remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules"
+    remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
     compliance:
       - cis: ["4.1.4.8"]
       - cis_csc_v8: ["3.3"]
@@ -3259,7 +3259,7 @@ checks:
     title: "Ensure audit tools are owned by root."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
-    remediation: "Run the following command to change the owner of the audit tools to the root user: # chown root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules"
+    remediation: "Run the following command to change the owner of the audit tools to the root user: # chown root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
     compliance:
       - cis: ["4.1.4.9"]
       - cis_csc_v8: ["3.3"]
@@ -3282,7 +3282,7 @@ checks:
     title: "Ensure audit tools belong to group root."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
-    remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules .Run the following command to change owner and group of the audit tools to root user and group: # chown root:root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace/sbin/auditd /sbin/augenrules"
+    remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules Run the following command to change owner and group of the audit tools to root user and group: # chown root:root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
     compliance:
       - cis: ["4.1.4.10"]
       - cis_csc_v8: ["3.3"]
@@ -3305,7 +3305,7 @@ checks:
     title: "Ensure cryptographic mechanisms are used to protect the integrity of audit tools."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting the integrity of the tools used for auditing purposes is a critical step toward ensuring the integrity of audit information. Audit information includes all information (e.g., audit records, audit settings, and audit reports) needed to successfully audit information system activity. Attackers may replace the audit tools or inject code into the existing tools with the purpose of providing the capability to hide or erase system activity from the audit logs. Audit tools should be cryptographically signed in order to provide the capability to identify when the audit tools have been modified, manipulated, or replaced. An example is a checksum hash of the file or files."
-    remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide/aide.conf.d/ or to /etc/aide/aide.conf to protect the integrity of the audit tools: # Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512"
+    remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide/aide.conf.d/ or to /etc/aide/aide.conf to protect the integrity of the audit tools: # Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512."
     compliance:
       - cis: ["4.1.4.11"]
       - cis_csc_v8: ["4.1"]
@@ -3317,29 +3317,25 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-    condition: all
+    condition: any
     rules:
-      - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512'
-      - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512'
-      - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512'
-      - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512'
-      - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512'
-      - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
-
+      - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 &&  r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 &&  r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
+      
   ############################################################
   # 4.2 Configure Logging
   ############################################################
 
   ############################################################
   # 4.2.1 Configure journald
-  ############################################################
+  ############################################################ 4.2.1.1 Ensure journald is configured to send logs to a remote log host
 
-  # 4.2.1.1 Ensure journald is configured to send logs to a remote log host
+  # 4.2.1.1.1 Ensure systemd-journal-remote is installed (Automated)
   - id: 29631
     title: "Ensure systemd-journal-remote is installed."
     description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: "Run the following command to install systemd-journal-remote: # apt install systemd-journal-remote"
+    remediation: "Run the following command to install systemd-journal-remote: # apt install systemd-journal-remote."
     compliance:
       - cis: ["4.2.1.1.1"]
       - cis_csc_v8: ["8.2"]
@@ -3357,72 +3353,26 @@ checks:
     rules:
       - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' systemd-journal-remote -> r:install ok installed"
 
-  # 4.2.1.1.2 Ensure systemd-journal-remote is configured (Manual)
+  # 4.2.1.1.2 Ensure systemd-journal-remote is configured (Manual) - Not Implemented
+  # 4.2.1.1.3 Ensure systemd-journal-remote is enabled (Manual) - Not Implemented
+
+  # 4.2.1.1.4 Ensure journald is not configured to recieve logs from a remote client (Automated)
   - id: 29632
-    title: "Ensure systemd-journal-remote is configured."
-    description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: "Edit the /etc/systemd/journal-upload.conf file and ensure the following lines are set per your environment: URL=192.168.50.42 ServerKeyFile=/etc/ssl/private/journal-upload.pem ServerCertificateFile=/etc/ssl/certs/journal-upload.pem TrustedCertificateFile=/etc/ssl/ca/trusted.pem"
-    compliance:
-      - cis: ["4.2.1.1.2"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
-      - nist_sp_800-53: ["AU-7"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_mitigations: ["M1029"]
-    condition: all
-    rules:
-      - "f:/etc/systemd/journal-upload.conf -> r:URL="
-      - "f:/etc/systemd/journal-upload.conf -> r:ServerKeyFile="
-      - "f:/etc/systemd/journal-upload.conf -> r:ServerCertificateFile="
-      - "f:/etc/systemd/journal-upload.conf -> r:TrustedCertificateFile="
-
-  # 4.2.1.1.3 Ensure systemd-journal-remote is enabled (Manual)
-  - id: 29633
-    title: "Ensure systemd-journal-remote is enabled."
-    description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: "Run the following command to enable systemd-journal-remote: # systemctl --now enable systemd-journal-upload.service"
-    compliance:
-      - cis: ["4.2.1.1.3"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
-      - nist_sp_800-53: ["AU-7"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_mitigations: ["M1029"]
-    condition: all
-    rules:
-      - "c:systemctl is-enabled systemd-journal-upload.service -> r:enabled"
-
-  # 4.2.1.1.3 Ensure journald is not configured to recieve logs from a remote client (Automated)
-  - id: 29634
     title: "Ensure journald is not configured to recieve logs from a remote client."
-    description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs.With regards to receiving logs, there are two services; systemd-journal-remote.socket and systemd-journal-remote.service."
+    description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: - The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs. - With regards to receiving logs, there are two services; systemd-journal-remote.socket and systemd-journal-remote.service."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
-    remediation: "Run the following command to disable systemd-journal-remote.socket: # systemctl --now disable systemd-journal-remote.socket"
+    remediation: "Run the following command to disable systemd-journal-remote.socket: # systemctl --now disable systemd-journal-remote.socket."
     compliance:
       - cis: ["4.2.1.1.4"]
-      - cis_csc_v8: ["8.2", "4.8"]
-      - cis_csc_v7: ["6.2", "6.3", "9.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - cis_csc_v8: ["4.8","8.2"]
+      - cis_csc_v7: ["6.2","6.3","9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5","10.2", "10.3"]
+      - pci_dss_4.0: ["5.3.4", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2","1.2.5","2.2.4","6.4.1"]
       - nist_sp_800-53: ["AU-7"]
-      - iso_27001-2013: ["A.12.4.1", "A.13.1.3"]
-      - soc_2: ["CC6.3", "CC6.6"]
+      - soc_2: ["CC6.3","CC6.6"]
+      - iso_27001-2013: ["A.13.1.3","A.12.4.1"]
       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1029"]
@@ -3446,7 +3396,7 @@ checks:
       - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
@@ -3457,15 +3407,15 @@ checks:
     title: "Ensure journald is configured to compress large log files."
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
-    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes Restart the service: # systemctl restart systemd-journald"
+    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes Restart the service: # systemctl restart systemd-journald."
     compliance:
       - cis: ["4.2.1.3"]
       - cis_csc_v8: ["8.2", "8.3"]
       - cis_csc_v7: ["6.2", "6.3", "6.4"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.7"]
+      - pci_dss_3.2.1: ["10.2", "10.3", "10.7"]
+      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["A1.1"]
       - iso_27001-2013: ["A.12.4.1"]
@@ -3474,14 +3424,14 @@ checks:
       - mitre_mitigations: ["M1053"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf -> r:Compress=yes"
+      - 'f:/etc/systemd/journald.conf -> r:^\s*Compress=yes'
 
   # 4.2.1.4 Ensure journald is configured to write logfiles to persistent disk (Automated)
   - id: 29637
     title: "Ensure journald is configured to write logfiles to persistent disk."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss due to a reboot."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
-    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent Restart the service: # systemctl restart systemd-journald"
+    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent Restart the service: # systemctl restart systemd-journald."
     compliance:
       - cis: ["4.2.1.4"]
       - cis_csc_v8: ["8.2"]
@@ -3497,59 +3447,10 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "f:/etc/systemd/journald.conf -> r:Storage=persistent"
+      - 'f:/etc/systemd/journald.conf -> r:^\s*Storage=persistent'
 
-  # 4.2.1.5 Ensure journald is not configured to send logs to rsyslog (Manual)
-  - id: 29638
-    title: "Ensure journald is not configured to send logs to rsyslog."
-    description: "Data from journald should be kept in the confines of the service and not forwarded on to other services."
-    rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms."
-    remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journald"
-    compliance:
-      - cis: ["4.2.1.5"]
-      - cis_csc_v8: ["8.2", "8.9"]
-      - cis_csc_v7: ["6.2", "6.3", "6.5"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3"]
-      - nist_sp_800-53: ["AU-7", "AU-6(3)"]
-      - soc_2: ["PL1.4"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_mitigations: ["M1029"]
-    condition: all
-    rules:
-      - 'not f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
-
-  # 4.2.1.6 Ensure journald log rotation is configured per site policy (Manual)
-  - id: 29639
-    title: "Ensure journald log rotation is configured per site policy."
-    description: "Journald includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/systemd/journald.conf is the configuration file used to specify how logs generated by Journald should be rotated."
-    rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-    remediation: "Review /etc/systemd/journald.conf and verify logs are rotated according to site policy. The settings should be carefully understood as there are specific edge cases and prioritisation of parameters. The specific parameters for log rotation are: .SystemMaxUse= .SystemKeepFree= .RuntimeMaxUse=. RuntimeKeepFree= .MaxFileSec="
-    compliance:
-      - cis: ["4.2.1.6"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
-      - nist_sp_800-53: ["AU-7"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - mitre_techniques: ["T1070", "T1070.002"]
-      - mitre_tactics: ["TA0040"]
-      - mitre_mitigations: ["M1022"]
-    condition: all
-    rules:
-      - "f:/etc/systemd/journald.conf -> r:SystemMaxUse="
-      - "f:/etc/systemd/journald.conf -> r:SystemKeepFree="
-      - "f:/etc/systemd/journald.conf -> r:RuntimeMaxUse="
-      - "f:/etc/systemd/journald.conf -> r:RuntimeKeepFree="
-      - "f:/etc/systemd/journald.conf -> r:MaxFileSec="
-
+  # 4.2.1.5 Ensure journald is not configured to send logs to rsyslog (Manual) - Not Implemented
+  # 4.2.1.6 Ensure journald log rotation is configured per site policy (Manual) - Not Implemented
   # 4.2.1.7 Ensure journald default file permissions configured (Manual) - Not Implemented
 
   ############################################################
@@ -3561,7 +3462,7 @@ checks:
     title: "Ensure rsyslog is installed."
     description: "The rsyslog software is recommended in environments where journald does not meet operation requirements."
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
-    remediation: "Run the following command to install rsyslog: # apt install rsyslog"
+    remediation: "Run the following command to install rsyslog: # apt install rsyslog."
     compliance:
       - cis: ["4.2.2.1"]
       - cis_csc_v8: ["8.2"]
@@ -3583,7 +3484,7 @@ checks:
     title: "Ensure rsyslog service is enabled."
     description: "Once the rsyslog package is installed, ensure that the service is enabled."
     rationale: "If the rsyslog service is not enabled to start on boot, the system will not capture logging events."
-    remediation: "Run the following command to enable rsyslog: # systemctl --now enable rsyslog"
+    remediation: "Run the following command to enable rsyslog: # systemctl --now enable rsyslog."
     compliance:
       - cis: ["4.2.2.2"]
       - cis_csc_v8: ["8.2"]
@@ -3600,36 +3501,15 @@ checks:
     rules:
       - "c:systemctl is-enabled rsyslog -> r:enabled"
 
-  # 4.2.2.3 Ensure journald is configured to send logs to rsyslog (Manual)
-  - id: 29642
-    title: "Ensure journald is configured to send logs to rsyslog."
-    description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the RSyslog service provides a consistent means of log collection and export."
-    rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing."
-    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog"
-    compliance:
-      - cis: ["4.2.2.3"]
-      - cis_csc_v8: ["8.2", "8.9"]
-      - cis_csc_v7: ["6.2", "6.3", "6.5"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3"]
-      - nist_sp_800-53: ["AU-7", "AU-6(3)"]
-      - soc_2: ["PL1.4"]
-      - iso_27001-2013: ["A.12.4.1"]
-    condition: all
-    rules:
-      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
+  # 4.2.2.3 Ensure journald is configured to send logs to rsyslog (Manual) - Not Implemented
 
   # 4.2.2.4 Ensure rsyslog default file permissions are configured (Automated)
   - id: 29643
     title: "Ensure rsyslog default file permissions are configured."
     description: "RSyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
-    remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog"
     impact: "The systems global umask could override, but only making the file permissions stricter, what is configured in RSyslog with the FileCreateMode directive. RSyslog also has it's own $umask directive that can alter the intended file creation mode. In addition, consideration should be given to how FileCreateMode is used. Thus it is critical to ensure that the intended file creation mode is not overridden with less restrictive settings in /etc/rsyslog.conf, /etc/rsyslog.d/*conf files and that FileCreateMode is set before any file is created."
-    references:
-      - See the rsyslog.conf(5) man page for more information.
+    remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog."
     compliance:
       - cis: ["4.2.2.4"]
       - cis_csc_v8: ["3.3", "8.2"]
@@ -3637,16 +3517,16 @@ checks:
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2", "AU.L2-3.3.1"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)", "164.312(b)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3", "10.2", "10.3", "5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2","1.3.1","7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6", "AU-7"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5", "A.12.4.1"]
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
       - mitre_tactics: ["TA0007"]
-    condition: all
+    condition: any
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
-      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0640|^\$FileCreateMode 0600|^\$FileCreateMode 0400'
+      - 'd:/etc/rsyslog.d/ -> r:\.+.conf -> r:^\$FileCreateMode 0640|^\$FileCreateMode 0600|^\$FileCreateMode 0400'
 
   # 4.2.2.5 Ensure logging is configured (Manual) - Not Implemented
   # 4.2.2.6 Ensure rsyslog is configured to send logs to a remote log host (Manual) - Not Implemented
@@ -3656,7 +3536,7 @@ checks:
     title: "Ensure rsyslog is not configured to receive logs from a remote client."
     description: "RSyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
-    remediation: "Should there be any active log server configuration found in the auditing section, modify those file and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf."
+    remediation: 'Should there be any active log server configuration found in the auditing section, modify those file and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. Old format $ModLoad imtcp $InputTCPServerRun New format module(load="imtcp") input(type="imtcp" port="514") Restart the service: # systemctl restart rsyslog.'
     compliance:
       - cis: ["4.2.2.7"]
       - cis_csc_v8: ["8.2", "4.8"]
@@ -3666,17 +3546,16 @@ checks:
       - pci_dss_3.2.1: ["10.2", "10.3", "1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
-      - iso_27001-2013: ["A.12.4.1", "A.13.1.3"]
       - soc_2: ["CC6.3", "CC6.6"]
+      - iso_27001-2013: ["A.12.4.1", "A.13.1.3"]
       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
       - mitre_tactics: ["TA0005"]
-    condition: all
+    condition: any
     rules:
-      - "d:/etc/rsyslog.conf"
-      - 'd:/etc/rsyslog.conf -> r:\.+.conf$ -> r:^\h*module\(load="imtcp"\)'
-      - 'd:/etc/rsyslog.conf -> r:\.+.conf$ -> r:^\h*input\(type="imtcp" port="514"\)'
+      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\module load="imtcp"|input type="imtcp" port="514"'
+      - 'f:/etc/rsyslog.conf -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\module load="imtcp"|input type="imtcp" port="514"'
 
-  # 4.2.2.5 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not Implemented
+  # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not Implemented
 
   ############################################################
   # 5 Access, Authentication and Authorization
