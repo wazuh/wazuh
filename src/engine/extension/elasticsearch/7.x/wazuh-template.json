@@ -7592,6 +7592,9 @@
                             },
                             "path": {
                                 "type": "keyword"
+                            },
+                            "node": {
+                                "type": "keyword"
                             }
                         }
                     },
