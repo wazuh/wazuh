@@ -89,6 +89,15 @@ api::CommandFn metricsListCmd()
     };
 }
 
+api::CommandFn metricsTestCmd()
+{
+    return [](const json::Json& params) -> api::WazuhResponse
+    {
+        Metrics::instance().generateCounterToTesting();
+        return api::WazuhResponse("OK");
+    };
+}
+
 void registerAllCmds(std::shared_ptr<api::Registry> registry)
 {
     try
@@ -97,6 +106,7 @@ void registerAllCmds(std::shared_ptr<api::Registry> registry)
         registry->registerCommand("get_metrics", metricsGetCmd());
         registry->registerCommand("enable_metrics", metricsEnableCmd());
         registry->registerCommand("list_metrics", metricsListCmd());
+        registry->registerCommand("test_metrics", metricsTestCmd());
     }
     catch (const std::exception& e)
     {

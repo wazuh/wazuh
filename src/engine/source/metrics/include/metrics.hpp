@@ -148,6 +148,11 @@ public:
      * @return name, state and type of the instrument.
      */
     std::ostringstream getListInstruments();
+
+    /**
+     * @brief Generate dummy metrics for testing.
+     */
+    void generateCounterToTesting();
 private:
     /**
      * @brief Set the next handle on the chain
