@@ -7,18 +7,16 @@
 namespace base::utils::wazuhProtocol
 {
 
-
 enum class RESPONSE_ERROR_CODES
 {
     OK = 0,
     UNKNOWN_ERROR,
-    INVALID_JSON_REQUEST,
-    INVALID_MSG_SIZE,
-    INVALID_REQUEST,
-    COMMAND_NOT_FOUND,
-    INTERNAL_ERROR // This never happens, its only for coverage, the code should never reach this point
+    INVALID_JSON_REQUEST, // The request is not a valid json
+    INVALID_MSG_SIZE,     // The size of the message is not valid
+    INVALID_REQUEST,      // The request is not valid
+    COMMAND_NOT_FOUND,    // The command is not found
+    INTERNAL_ERROR        // This never happens, its only for coverage, the code should never reach this point
 };
-
 
 /**
  * @brief A standard protocol for internal communication between Wazuh components
@@ -42,9 +40,7 @@ public:
      * @param error Error code (0 if no error)
      * @param message Optional message
      */
-    explicit WazuhResponse(const json::Json& data,
-                           int error = 0,
-                           std::string_view message = "") noexcept
+    explicit WazuhResponse(const json::Json& data, int error = 0, std::string_view message = "") noexcept
         : m_data(data)
         , m_error(error)
     {
@@ -61,15 +57,12 @@ public:
      * @warning This constructor is only for server API use, if you want to send a response
      * from a module use the other one with a error code of 0
      */
-    explicit WazuhResponse(json::Json&& data,
-                           int error = 0,
-                           std::string_view message = "") noexcept
+    explicit WazuhResponse(json::Json&& data, int error = 0, std::string_view message = "") noexcept
         : m_data(data)
         , m_error(error)
     {
         m_message = message.empty() ? std::nullopt : std::optional<std::string> {message};
     }
-
 
     /**
      * @brief Construct a new Wazuh Response object
@@ -157,10 +150,7 @@ public:
         {
             json::Json jsonMesage;
             jsonMesage.setString(m_message.value(), "");
-            return fmt::format("{{\"data\":{},\"error\":{},\"message\":{}}}",
-                               m_data.str(),
-                               m_error,
-                               jsonMesage.str());
+            return fmt::format("{{\"data\":{},\"error\":{},\"message\":{}}}", m_data.str(), m_error, jsonMesage.str());
         }
         return fmt::format("{{\"data\":{},\"error\":{}}}", m_data.str(), m_error);
     }
@@ -187,7 +177,8 @@ public:
      *  "message": <string> (optional)
      * }
      */
-    static WazuhResponse fromStr(std::string_view response) {
+    static WazuhResponse fromStr(std::string_view response)
+    {
         json::Json rawResponse;
         try
         {
@@ -245,9 +236,8 @@ public:
      */
     static WazuhResponse invalidSize()
     {
-        return WazuhResponse(json::Json(R"({})"),
-                             static_cast<int>(RESPONSE_ERROR_CODES::INVALID_MSG_SIZE),
-                             "Invalid Size");
+        return WazuhResponse(
+            json::Json(R"({})"), static_cast<int>(RESPONSE_ERROR_CODES::INVALID_MSG_SIZE), "Invalid Size");
     }
 
     /**
@@ -256,9 +246,8 @@ public:
      */
     static WazuhResponse unknownError()
     {
-        return WazuhResponse(json::Json(R"({})"),
-                             static_cast<int>(RESPONSE_ERROR_CODES::UNKNOWN_ERROR),
-                             "Unknown error");
+        return WazuhResponse(
+            json::Json(R"({})"), static_cast<int>(RESPONSE_ERROR_CODES::UNKNOWN_ERROR), "Unknown error");
     }
 
     /**
@@ -269,7 +258,7 @@ public:
     {
         return WazuhResponse(json::Json(R"({})"),
                              static_cast<int>(RESPONSE_ERROR_CODES::INVALID_REQUEST),
-                             std::string{"Invalid request: "} + message);
+                             std::string {"Invalid request: "} + message);
     }
 
     /**
@@ -282,10 +271,10 @@ public:
     {
         return WazuhResponse(json::Json(R"({})"),
                              static_cast<int>(RESPONSE_ERROR_CODES::INTERNAL_ERROR),
-                             std::string{"Internal error: "} + message);
+                             std::string {"Internal error: "} + message);
     }
 };
 
-} // namespace api
+} // namespace base::utils::wazuhProtocol
 
 #endif // _API_WAZUH_RESPONSE_HPP
