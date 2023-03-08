@@ -20,6 +20,7 @@ constexpr auto API_METRICS_DUMP_SUBCOMMAND {"dump"};
 constexpr auto API_METRICS_GET_SUBCOMMAND {"get"};
 constexpr auto API_METRICS_ENABLE_SUBCOMMAND {"enable"};
 constexpr auto API_METRICS_LIST_SUBCOMMAND {"list"};
+constexpr auto API_METRICS_TEST_SUBCOMMAND {"test"};
 
 std::string commandName(const std::string& command);
 json::Json getParameters(const std::string& action);
@@ -34,6 +35,7 @@ void runDump(const std::string& socketPath);
 void runGetInstrument(const std::string& socketPath, const std::string& name);
 void runEnableInstrument(const std::string& socketPath, const std::string& nameInstrument, bool enableState = true);
 void runListInstruments(const std::string& socketPath);
+void runTest(const std::string& socketPath);
 } // namespace cmd::metrics
 
 #endif // _CMD_METRICS_HPP
