@@ -143,6 +143,12 @@ std::vector<std::string> KVDBManager::listDBs(bool loaded)
 std::variant<KVDBHandle, base::Error> KVDBManager::getHandler(const std::string& name,
                                                               bool createIfMissing)
 {
+    // Check if db is valid
+    if (name.empty())
+    {
+        return base::Error {"Database name is empty"};
+    }
+
     auto kvdb = getDB(name);
     if (!kvdb)
     {
@@ -341,6 +347,10 @@ std::optional<base::Error> KVDBManager::deleteKey(const std::string& name,
 
 bool KVDBManager::exist(const std::string& name)
 {
+    if(name.empty())
+    {
+        return false;
+    }
     std::shared_lock lkReadDBs(m_mtx);
 
     bool isLoaded = (m_dbs.find(name) != m_dbs.end());
