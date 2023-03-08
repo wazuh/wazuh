@@ -19,6 +19,7 @@ constexpr auto ORIGIN_NAME = "engine_integrated_metrics_api";
 
 constexpr auto API_METRICS_DUMP_SUBCOMMAND {"dump"};
 constexpr auto API_METRICS_ENABLE_SUBCOMMAND {"enable"};
+constexpr auto API_METRICS_LIST_SUBCOMMAND {"list"};
 
 std::string commandName(const std::string& command);
 
@@ -32,7 +33,7 @@ void configure(CLI::App_p app);
 
 void runDump(const std::string& socketPath);
 void runEnableInstrument(const std::string& socketPath, const std::string& nameInstrument, bool enableState = true);
-
+void runListInstrument(const std::string& socketPath);
 } // namespace cmd::metrics
 
 #endif // _CMD_METRICS_HPP

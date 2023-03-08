@@ -40,12 +40,22 @@ api::CommandFn metricsEnableCmd()
     };
 }
 
+api::CommandFn metricsListCmd()
+{
+    return [](const json::Json& params) -> api::WazuhResponse
+    {
+        auto result = Metrics::instance().getListInstruments();
+        return api::WazuhResponse(result.str());
+    };
+}
+
 void registerAllCmds(std::shared_ptr<api::Registry> registry)
 {
     try
     {
         registry->registerCommand("dump_metrics", metricsDumpCmd());
         registry->registerCommand("enable_metrics", metricsEnableCmd());
+        registry->registerCommand("list_metrics", metricsListCmd());
     }
     catch (const std::exception& e)
     {
