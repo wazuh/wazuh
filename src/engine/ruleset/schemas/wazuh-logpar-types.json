@@ -1067,6 +1067,7 @@
         "auditd.log.sw": "keyword",
         "auditd.log.data": "keyword",
         "auditd.log.path": "keyword",
+        "auditd.log.node": "keyword",
         "auditd.data.apparmor": "keyword",
         "auditd.data.cgroup": "keyword",
         "auditd.data.file": "keyword",
