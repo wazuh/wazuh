@@ -1296,6 +1296,9 @@ endif
 
 # Agent dependencies
 EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm
+ifneq (,$(filter ${uname_S},Darwin OpenBSD FreeBSD NetBSD))
+	EXTERNAL_RES += libinotify-kqueue
+endif
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
