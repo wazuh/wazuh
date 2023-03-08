@@ -25,8 +25,7 @@ namespace
 struct Options
 {
     std::string socketPath;
-    std::string nameInstrument;
-    bool enableState;
+    std::string name;
 };
 
 } // namespace
@@ -44,6 +43,18 @@ json::Json getParameters(const std::string& action)
     json::Json data {};
     data.setObject();
     data.setString(action, "/action");
+    return data;
+}
+
+json::Json getParameters(const std::string& action, const std::string& name)
+{
+    json::Json data {};
+    data.setObject();
+    data.setString(action, "/action");
+    if (!name.empty())
+    {
+        data.setString(name, "/name");
+    }
     return data;
 }
 
@@ -86,21 +97,17 @@ void configure(CLI::App_p app)
     metricApp->add_option("-a, --api_socket", options->socketPath, "engine api address")->default_val(ENGINE_API_SOCK);
 
     // metrics subcommands
-    // list
+    // dump
     auto dump_subcommand = metricApp->add_subcommand("dump", "Prints all collected metrics.");
     dump_subcommand->callback([options]() { runDump(options->socketPath); });
 
-    auto enable_subcommand = metricApp->add_subcommand("enable", "Enable or disable a specific instrument.");
-    enable_subcommand
-        ->add_option("nameInstrument", options->nameInstrument, "Name of the instrument whose status will be modified.")
-        ->default_val("");
-    enable_subcommand
-        ->add_option("enableState", options->enableState, "New instrument status.")
-        ->default_val(true);
-    enable_subcommand->callback([options]() { runEnableInstrument(options->socketPath, options->nameInstrument, options->enableState); });
+    // get
+    auto name = "name";
+    std::string nameDesc = "Name that identifies the metric.";
 
-    auto list_subcommand = metricApp->add_subcommand("list", "Prints name, status and instruments types.");
-    list_subcommand->callback([options]() { runListInstrument(options->socketPath); });
+    auto get_subcommand = metricApp->add_subcommand("get", "Print a single metric as json.");
+    get_subcommand->add_option(name, options->name, nameDesc)->required();
+    get_subcommand->callback([options]() { runGet(options->socketPath, options->name); });
 }
 
 void runDump(const std::string& socketPath)
@@ -112,29 +119,12 @@ void runDump(const std::string& socketPath)
     details::singleRequest(req, socketPath);
 }
 
-void runEnableInstrument(const std::string& socketPath, const std::string& nameInstrument, bool enableState)
+void runGet(const std::string& socketPath, const std::string& name)
 {
-    json::Json params;
-    params.setObject();
-    if (!nameInstrument.empty())
-    {
-        params.setString(nameInstrument, "/nameInstrument");
-    }
 
-    params.setBool(enableState, "/enableState");
-
-    auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_ENABLE_SUBCOMMAND),
+    auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_GET_SUBCOMMAND),
                                          details::ORIGIN_NAME,
-                                         params);
-
-    details::singleRequest(req, socketPath);
-}
-
-void runListInstrument(const std::string& socketPath)
-{
-    auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_LIST_SUBCOMMAND),
-                                         details::ORIGIN_NAME,
-                                         details::getParameters(details::API_METRICS_LIST_SUBCOMMAND));
+                                         details::getParameters(details::API_METRICS_GET_SUBCOMMAND, name));
 
     details::singleRequest(req, socketPath);
 }
