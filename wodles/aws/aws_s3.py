@@ -2394,34 +2394,26 @@ class AWSWAFBucket(AWSCustomBucket):
         return json.loads(json.dumps(content))
 
 
-class AWSLBBucket(AWSCustomBucket):
+class AWSLBBucket(AWSLogsBucket):
     """Class that has common methods unique to the load balancers."""
 
     def __init__(self, *args, **kwargs):
+        AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'elasticloadbalancing'
-        AWSCustomBucket.__init__(self, *args, **kwargs)
 
-    def get_base_prefix(self):
-        return f'{self.prefix}AWSLogs/{self.suffix}'
-
-    def get_service_prefix(self, account_id):
-        return f'{self.get_base_prefix()}{account_id}/{self.service}/'
-
-    def iter_regions_and_accounts(self, account_id, regions):
-        AWSBucket.iter_regions_and_accounts(self, account_id, regions)
-
-    def get_full_prefix(self, account_id, account_region):
-        return f'{self.get_service_prefix(account_id)}{account_region}/'
-
-    def mark_complete(self, aws_account_id, aws_region, log_file):
-        AWSBucket.mark_complete(self, aws_account_id, aws_region, log_file)
+    def get_creation_date(self, log_file):
+        name_regex = re.match(r".*(\d\d\d\d[\/\-]\d\d[\/\-]\d\d).*", log_file['Key'])
+        if name_regex is None:
+            return int(log_file['LastModified'].strftime('%Y%m%d'))
+        else:
+            return int(name_regex.group(1).replace('/', '').replace('-', ''))
 
 
 class AWSALBBucket(AWSLBBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'alb'
-        AWSLBBucket.__init__(self, db_table_name, **kwargs)
+        self.db_table_name = 'alb'
+        AWSLBBucket.__init__(self, **kwargs)
 
     def load_information_from_file(self, log_key):
         """Load data from a ALB access log file."""
