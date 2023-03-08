@@ -55,8 +55,6 @@ std::variant<json::Json, base::Error> DataHub::dumpCmd()
 std::variant<json::Json, base::Error> DataHub::getCmd(const std::string& instrumentName)
 {
     const std::lock_guard<std::mutex> lock(m_mutex);
-    json::Json contentDataHub;
-    contentDataHub.setArray();
 
     auto metric = m_resources.find(instrumentName);
     if (metric != m_resources.end())
@@ -64,5 +62,5 @@ std::variant<json::Json, base::Error> DataHub::getCmd(const std::string& instrum
         return metric->second;
     }
 
-    return base::Error {fmt::format("Instrument '{}' not found.", instrumentName)};
+    return base::Error {fmt::format("Instrument '{}' does not exist or wasn't loaded.", instrumentName)};
 }

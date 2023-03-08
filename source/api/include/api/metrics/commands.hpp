@@ -20,6 +20,8 @@ constexpr char METRICS_NAME_EMPTY[] {"Metrics \"Name\" parameter cannot be empty
 std::tuple<bool, std::string> getNameOrError(const json::Json& params);
 api::CommandFn metricsDumpCmd();
 api::CommandFn metricsGetCmd();
+api::CommandFn metricsEnableCmd();
+api::CommandFn metricsListCmd();
 
 void registerAllCmds(std::shared_ptr<api::Registry> registry);
 } // namespace api::metrics::cmds
