@@ -6,7 +6,7 @@ def apply_in_each_decoder(resource_handler, directory, method):
     modified_files = []
     path = Path(directory)
     for p in path.rglob('*.yml'):
-        # get string from file
+        # TODO: Cannot use yaml reader because it looses comment and changes order
         base_file = resource_handler.read_plain_text_file(str(p))
         new_file_content = method(str(base_file))
         # check if anything has changed
@@ -17,65 +17,49 @@ def apply_in_each_decoder(resource_handler, directory, method):
     return modified_files
 
 
-def name_replace_helper_function(oldName, newName):
-    def modification(file_string):
-        new_file_string = file_string.replace(oldName, newName)
-        if new_file_string != file_string:
-            return new_file_string
+def name_replace_helper_function(names_list_content):
+    def modification(original_file_string):
+        file_string = original_file_string
+        for old_name, new_name in names_list_content.items():
+            # If names does not start with '+' add it
+            if old_name[0] != '+': old_name = '+' + old_name
+            if new_name[0] != '+': new_name = '+' + new_name
+            file_string = file_string.replace(old_name, new_name)
+        if original_file_string != file_string:
+            return file_string
         else:
             return ""
     return modification
 
 
-def helper_function_name_change(resource_handler, directory, oldName, newName):
-    # check before if it starts with '+' if not add it
-    if oldName[0] != '+':
-        oldName = '+' + oldName
-    if newName[0] != '+':
-        newName = '+' + newName
-    print('Replacing ' + oldName + ' with ' + newName)
-
-    modifiedFiles = apply_in_each_decoder(
-        resource_handler, directory, name_replace_helper_function(oldName, newName))
-
-    for name in modifiedFiles:
-        print('Modified ' + str(name))
-
-    return len(modifiedFiles)
-
-
 def run(args, resource_handler: rs.ResourceHandler):
-    oldName = args['old-name']
-    newName = args['new-name']
+    old_name = args['old-name']
+    new_name = args['new-name']
     directory = args['directory']
-    list_file = args['list-file']
+    list_file_path = args['list-file']
+    names_list = dict()
 
-    if list_file:
-        list_file_content = resource_handler.load_file(
-            list_file, rs.Format.JSON)
-        if not list_file_content:
+    # If add_mutually_exclusive_group could be use at this level this logic gets simpler
+    if list_file_path and not old_name and not new_name:
+        names_list = resource_handler.load_file(
+            list_file_path, rs.Format.JSON)
+        if not names_list:
             print("File must not be empty if used.")
             exit(1)
-        for key in list_file_content:
-            files_modified = helper_function_name_change(
-                resource_handler, directory, key, list_file_content[key])
-        if files_modified > 0:
-            print('Success ' + str(files_modified) + ' decoders updated.')
-        else:
-            print('None decoder was updated.')
-    elif not oldName or not newName:
-        print("If no file is used then old-name and new-name paramaters are needed.")
-        exit(1)
+    elif old_name and new_name and not list_file_path:
+        names_list[str(old_name)] = new_name
     else:
-        # TODO: couldn't unify in same dict
-        files_modified = helper_function_name_change(
-            resource_handler, directory, oldName, newName)
-        if files_modified > 0:
-            print('Success ' + str(files_modified) + ' decoders updated.')
-        else:
-            print('None decoder was updated.')
+        print("Must choose between single function helper change (-o and -n) or list from input file (-l).")
+        exit(1)
 
-    print('Update decoders to make changes effective.')
+    modifiedFiles = apply_in_each_decoder(
+        resource_handler, directory, name_replace_helper_function(names_list))
+
+    if len(modifiedFiles) > 0:
+        print(str(len(modifiedFiles)) + ' decoders updated.')
+        for name in modifiedFiles:
+            print(str(name))
+        print(f'\nUpdate decoders to make changes effective.')
 
 
 def configure(subparsers):
