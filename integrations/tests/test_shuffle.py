@@ -13,6 +13,11 @@ import requests
 import shuffle as shuffle
 from unittest.mock import patch, mock_open
 
+# Exit error codes
+ERR_BAD_ARGUMENTS       = 2
+ERR_FILE_NOT_FOUND      = 6
+ERR_INVALID_JSON        = 7
+
 sys.path.append(os.path.join(os.path.dirname(
     os.path.realpath(__file__)), '..', '..'))
 
@@ -55,7 +60,7 @@ def test_main_bad_arguments_exit():
     with patch("shuffle.open", mock_open()), \
             pytest.raises(SystemExit) as pytest_wrapped_e:
         shuffle.main(sys_args_template[0:2])
-    assert pytest_wrapped_e.value.code == 2
+    assert pytest_wrapped_e.value.code == ERR_BAD_ARGUMENTS
 
 
 def test_main_exception():
@@ -78,8 +83,8 @@ def test_main():
 
 
 @pytest.mark.parametrize('side_effect, return_value', [
-    (FileNotFoundError, 3),
-    (json.decoder.JSONDecodeError("Expecting value", "", 0), 4)
+    (FileNotFoundError, ERR_FILE_NOT_FOUND),
+    (json.decoder.JSONDecodeError("Expecting value", "", 0), ERR_INVALID_JSON)
 ])
 def test_process_args_exit(side_effect, return_value):
     """Test the process_args function exit codes.

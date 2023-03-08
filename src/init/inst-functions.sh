@@ -1045,10 +1045,10 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/integrations
-    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/pagerduty ${INSTALLDIR}/integrations/pagerduty.py
-    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/slack ${INSTALLDIR}/integrations/slack.py
-    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/virustotal ${INSTALLDIR}/integrations/virustotal.py
-    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/shuffle.py ${INSTALLDIR}/integrations/shuffle.py
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/pagerduty.py  ${INSTALLDIR}/integrations/pagerduty.py
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/slack.py      ${INSTALLDIR}/integrations/slack.py
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/virustotal.py ${INSTALLDIR}/integrations/virustotal.py
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/shuffle.py    ${INSTALLDIR}/integrations/shuffle.py
     touch ${INSTALLDIR}/logs/integrations.log
     chmod 640 ${INSTALLDIR}/logs/integrations.log
     chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/logs/integrations.log

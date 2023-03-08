@@ -14,6 +14,11 @@ import pagerduty as pagerduty
 import sys
 from unittest.mock import patch, mock_open
 
+# Exit error codes
+ERR_NO_APIKEY           = 1
+ERR_BAD_ARGUMENTS       = 2
+ERR_FILE_NOT_FOUND      = 6
+ERR_INVALID_JSON        = 7
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..')) #Necessary to run PyTest
 try:
@@ -23,7 +28,7 @@ try:
         raise KeyError
 except KeyError:
     print("No environment variable 'APIKEY_PD' found. Define your pagerduty apikey before run this test")
-    sys.exit(1)
+    sys.exit(ERR_NO_APIKEY)
     
 """
     Mockup messages for testing
@@ -69,7 +74,7 @@ def test_main_bad_arguments_exit():
     """Test that main function exits when wrong number of arguments are passed."""
     with patch("pagerduty.open", mock_open()), pytest.raises(SystemExit) as pytest_wrapped_e:
         pagerduty.main(sys_args_template[0:2])
-    assert pytest_wrapped_e.value.code == 2
+    assert pytest_wrapped_e.value.code == ERR_BAD_ARGUMENTS
     
 def test_main_exception():
     """Test exception handling in main when process_args raises an exception."""
@@ -86,8 +91,8 @@ def test_main():
         process.assert_called_once_with(sys_args_template)
         
 @pytest.mark.parametrize('side_effect, return_value', [
-    (FileNotFoundError, 3),
-    (json.decoder.JSONDecodeError("Expecting value", "", 0), 4)
+    (FileNotFoundError, ERR_FILE_NOT_FOUND),
+    (json.decoder.JSONDecodeError("Expecting value", "", 0), ERR_INVALID_JSON)
 ])
 def test_process_args_exit(side_effect, return_value):
     """Test the process_args function exit codes.

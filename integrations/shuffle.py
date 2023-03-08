@@ -18,21 +18,27 @@ import os
 import sys
 import time
 
+# Exit error codes
+ERR_NO_REQUEST_MODULE   = 1
+ERR_BAD_ARGUMENTS       = 2
+ERR_FILE_NOT_FOUND      = 6
+ERR_INVALID_JSON        = 7
+
 try:
     import requests
     from requests.auth import HTTPBasicAuth
 except ModuleNotFoundError as e:
     print("No module 'requests' found. Install: pip install requests")
-    sys.exit(1)
+    sys.exit(ERR_NO_REQUEST_MODULE)
 
 # ossec.conf configuration structure
-#  <integration>
-#      <name>shuffle</name>
-#      <hook_url>http://<IP>:3001/api/v1/hooks/<HOOK_ID></hook_url>
-#      <level>3</level>
-#      <alert_format>json</alert_format>\
-#      <options>JSON_OBJ</options>
-#  </integration>
+# <integration>
+#  <name>shuffle</name>
+#  <hook_url>http://IP:3001/api/v1/hooks/HOOK_ID</hook_url> <!-- Replace with your Shuffle hook URL -->
+#  <level>3</level>
+#  <alert_format>json</alert_format>
+#  <options>JSON</options> <!-- Replace with your custom JSON object -->
+# </integration>
 
 # Global vars
 debug_enabled   = False
@@ -76,7 +82,7 @@ def main(args: list[str]):
 
         if bad_arguments:
             debug("# Exiting: Bad arguments. Inputted: %s" % args)
-            sys.exit(2)
+            sys.exit(ERR_BAD_ARGUMENTS)
 
         # Core function
         process_args(args)
@@ -262,10 +268,10 @@ def get_json_alert(alert_file_location: str) -> any:
             return json.load(alert_file)
     except FileNotFoundError:
         debug("# Alert file %s doesn't exist" % alert_file_location)
-        sys.exit(3)
+        sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
         debug("Failed getting json_alert %s" % e)
-        sys.exit(4)
+        sys.exit(ERR_INVALID_JSON)
         
 def get_json_options(options_file_location: str) -> any:
     """ 
@@ -293,10 +299,10 @@ def get_json_options(options_file_location: str) -> any:
             return json.load(options_file)
     except FileNotFoundError:
         debug("# Option file %s doesn't exist" % options_file_location)
-        sys.exit(3)
+        sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
         debug("Failed getting json_alert %s" % e)
-        sys.exit(4)
+        sys.exit(ERR_INVALID_JSON)
 
 if __name__ == "__main__":
     main(sys.argv)

@@ -14,6 +14,11 @@ import slack as slack
 import sys
 from unittest.mock import patch, mock_open
 
+# Exit error codes
+ERR_NO_APIKEY           = 1
+ERR_BAD_ARGUMENTS       = 2
+ERR_FILE_NOT_FOUND      = 6
+ERR_INVALID_JSON        = 7
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..')) #Necessary to run PyTest
 
@@ -56,7 +61,7 @@ try:
         raise KeyError
 except KeyError:
     print("No environment variable 'SLACK_WHK' found. Define your Slack webhook before run this test")
-    sys.exit(1)
+    sys.exit(ERR_NO_APIKEY)
 
 sys_args_template = ['/var/ossec/integrations/slack.py', '/tmp/slack-XXXXXX-XXXXXXX.alert', '', f'{slack_webhook}', '>/dev/null 2>&1','/tmp/slack-XXXXXX-XXXXXXX.options']
                
@@ -65,7 +70,7 @@ def test_main_bad_arguments_exit():
     """Test that main function exits when wrong number of arguments are passed."""
     with patch("slack.open", mock_open()), pytest.raises(SystemExit) as pytest_wrapped_e:
         slack.main(sys_args_template[0:2])
-    assert pytest_wrapped_e.value.code == 2
+    assert pytest_wrapped_e.value.code == ERR_BAD_ARGUMENTS
     
 def test_main_exception():
     """Test exception handling in main when process_args raises an exception."""
@@ -82,8 +87,8 @@ def test_main():
         process.assert_called_once_with(sys_args_template)
         
 @pytest.mark.parametrize('side_effect, return_value', [
-    (FileNotFoundError, 3),
-    (json.decoder.JSONDecodeError("Expecting value", "", 0), 4)
+    (FileNotFoundError, ERR_FILE_NOT_FOUND),
+    (json.decoder.JSONDecodeError("Expecting value", "", 0), ERR_INVALID_JSON)
 ])
 def test_process_args_exit(side_effect, return_value):
     """Test the process_args function exit codes.
