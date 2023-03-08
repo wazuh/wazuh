@@ -28,7 +28,6 @@
 #include "os_net/os_net.h"
 #include "active-response.h"
 #include "config.h"
-#include "limits.h"
 #include "rules.h"
 #include "mitre.h"
 #include "stats.h"

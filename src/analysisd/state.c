@@ -16,7 +16,6 @@
 #include "analysisd.h"
 #include "state.h"
 #include "config.h"
-#include "limits.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests

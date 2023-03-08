@@ -16,7 +16,7 @@
 #include "shared.h"
 #include "../../analysisd/limits.h"
 
-extern sem_t credits_eps_semaphore;
+extern sem_t limits.credits_eps_semaphore;
 extern limits_t limits;
 
 void generate_eps_credits(unsigned int credits);
@@ -48,25 +48,25 @@ static int test_teardown(void **state) {
 void test_generate_eps_credits_ok(void ** state)
 {
     int current_credits;
-    sem_init(&credits_eps_semaphore, 0, 0);
+    sem_init(&limits.credits_eps_semaphore, 0, 0);
 
     generate_eps_credits(5);
 
-    sem_getvalue(&credits_eps_semaphore, &current_credits);
+    sem_getvalue(&limits.credits_eps_semaphore, &current_credits);
     assert_int_equal(5, current_credits);
-    sem_destroy(&credits_eps_semaphore);
+    sem_destroy(&limits.credits_eps_semaphore);
 }
 
 void test_generate_eps_credits_ok_zero(void ** state)
 {
     int current_credits;
-    sem_init(&credits_eps_semaphore, 0, 0);
+    sem_init(&limits.credits_eps_semaphore, 0, 0);
 
     generate_eps_credits(0);
 
-    sem_getvalue(&credits_eps_semaphore, &current_credits);
+    sem_getvalue(&limits.credits_eps_semaphore, &current_credits);
     assert_int_equal(0, current_credits);
-    sem_destroy(&credits_eps_semaphore);
+    sem_destroy(&limits.credits_eps_semaphore);
 }
 
 // increase_event_counter
@@ -91,63 +91,63 @@ void test_limit_reached_disabled(void ** state)
 void test_limit_reached_enabled_non_zero(void ** state)
 {
     limits.enabled = true;
-    sem_init(&credits_eps_semaphore, 0, 5);
+    sem_init(&limits.credits_eps_semaphore, 0, 5);
 
     bool result = limit_reached(NULL);
 
     assert_false(result);
-    sem_destroy(&credits_eps_semaphore);
+    sem_destroy(&limits.credits_eps_semaphore);
 }
 
 void test_limit_reached_enabled_non_zero_value(void ** state)
 {
     int credits = 0;
     limits.enabled = true;
-    sem_init(&credits_eps_semaphore, 0, 5);
+    sem_init(&limits.credits_eps_semaphore, 0, 5);
 
     bool result = limit_reached(&credits);
 
     assert_false(result);
     assert_int_equal(credits, 5);
-    sem_destroy(&credits_eps_semaphore);
+    sem_destroy(&limits.credits_eps_semaphore);
 }
 
 void test_limit_reached_enabled_zero(void ** state)
 {
     limits.enabled = true;
-    sem_init(&credits_eps_semaphore, 0, 0);
+    sem_init(&limits.credits_eps_semaphore, 0, 0);
 
     bool result = limit_reached(NULL);
 
     assert_true(result);
-    sem_destroy(&credits_eps_semaphore);
+    sem_destroy(&limits.credits_eps_semaphore);
 }
 
 void test_limit_reached_enabled_zero_value(void ** state)
 {
     int credits = 0;
     limits.enabled = true;
-    sem_init(&credits_eps_semaphore, 0, 0);
+    sem_init(&limits.credits_eps_semaphore, 0, 0);
 
     bool result = limit_reached(&credits);
 
     assert_true(result);
     assert_int_equal(credits, 0);
-    sem_destroy(&credits_eps_semaphore);
+    sem_destroy(&limits.credits_eps_semaphore);
 }
 
 // get_eps_credit
 void test_get_eps_credit_ok(void ** state)
 {
     int current_credits;
-    sem_init(&credits_eps_semaphore, 0, 5);
+    sem_init(&limits.credits_eps_semaphore, 0, 5);
 
     get_eps_credit();
 
-    sem_getvalue(&credits_eps_semaphore, &current_credits);
+    sem_getvalue(&limits.credits_eps_semaphore, &current_credits);
     assert_int_equal(4, current_credits);
     assert_int_equal(1, limits.circ_buf[limits.current_cell]);
-    sem_destroy(&credits_eps_semaphore);
+    sem_destroy(&limits.credits_eps_semaphore);
 }
 
 // load_limits
@@ -200,9 +200,9 @@ void test_load_limits_ok(void ** state)
     assert_int_equal(limits.eps, 100);
     assert_int_equal(limits.timeframe, 5);
     assert_true(limits.enabled);
-    sem_getvalue(&credits_eps_semaphore, &current_credits);
+    sem_getvalue(&limits.credits_eps_semaphore, &current_credits);
     assert_int_equal(500, current_credits);
-    sem_destroy(&credits_eps_semaphore);
+    sem_destroy(&limits.credits_eps_semaphore);
 }
 
 // update_limits

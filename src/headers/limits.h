@@ -21,15 +21,18 @@ typedef struct _limits_t {
     unsigned int current_cell;
     unsigned int * circ_buf;
     bool enabled;
+    pthread_mutex_t limit_eps_mutex;
+    sem_t credits_eps_semaphore;
 } limits_t;
 
 /**
- * @brief Load the limits structure
- * @param eps eps amount
- * @param timeframe timeframe size
- * @param maximum_found eps amount block found
+ * @brief Initialize a limits_t struct with the given eps and timeframe settings.
+ *
+ * @param eps Number of events per second configured (credits).
+ * @param timeframe Frequency (seconds) at which the structure credits will be updated.
+ * @return Pointer to the limits_t initialized.
  */
-void load_limits(unsigned int eps, unsigned int timeframe, bool maximum_found);
+limits_t *init_limits(unsigned int eps, unsigned int timeframe);
 
 /**
  * @brief Update and validate limits
