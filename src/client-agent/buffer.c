@@ -43,17 +43,7 @@ struct{
 static char ** buffer;
 static pthread_mutex_t mutex_lock;
 static pthread_cond_t cond_no_empty;
-
 static time_t start, end;
-
-/**
- * @brief Sleep according to max_eps parameter
- *
- * Sleep (1 / max_eps) - ts_loop
- *
- * @param ts_loop Loop time.
- */
-static void delay(struct timespec * ts_loop);
 
 /* Create agent buffer */
 void buffer_init(){
@@ -135,6 +125,15 @@ int buffer_append(const char *msg){
     }
 }
 
+void *update_limits_thread() {
+    while (1) {
+        sleep(1);
+        update_limits(agentd_limits);
+    }
+
+    return NULL;
+}
+
 /* Send messages from buffer to the server */
 #ifdef WIN32
 DWORD WINAPI dispatch_buffer(__attribute__((unused)) LPVOID arg) {
@@ -147,11 +146,9 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     char normal_msg[OS_MAXSTR];
 
     char warn_str[OS_SIZE_2048];
-    struct timespec ts0;
-    struct timespec ts1;
 
     while(1){
-        gettime(&ts0);
+        get_eps_credit(agentd_limits);
 
         w_mutex_lock(&mutex_lock);
 
@@ -233,22 +230,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         send_msg(msg_output, -1);
         free(msg_output);
 
-        gettime(&ts1);
-        time_sub(&ts1, &ts0);
-
-        if (ts1.tv_sec >= 0) {
-            delay(&ts1);
-        }
-    }
-}
-
-void delay(struct timespec * ts_loop) {
-    long interval_ns = 1000000000 / agt->events_persec;
-    struct timespec ts_timeout = { interval_ns / 1000000000, interval_ns % 1000000000 };
-    time_sub(&ts_timeout, ts_loop);
-
-    if (ts_timeout.tv_sec >= 0) {
-        nanosleep(&ts_timeout, NULL);
     }
 }
 

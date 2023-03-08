@@ -61,6 +61,9 @@ void buffer_init();
 /* Send message to a buffer with the aim to avoid flooding issues */
 int buffer_append(const char *msg);
 
+/* Thread to limits eps of message sended from the buffer */
+void *update_limits_thread();
+
 /* Thread to dispatch messages from the buffer */
 #ifdef WIN32
 DWORD WINAPI dispatch_buffer(LPVOID arg);
@@ -162,6 +165,7 @@ extern int timeout;
 extern int interval;
 extern int remote_conf;
 extern int min_eps;
+extern limits_t *agentd_limits;
 
 
 /* Global variables. Only modified during startup. */
