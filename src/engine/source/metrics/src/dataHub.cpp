@@ -42,7 +42,7 @@ std::variant<json::Json, base::Error> DataHub::dumpCmd()
 
     if (m_resources.empty())
     {
-        return base::Error {fmt::format("DataHub is empty.")};
+        return base::Error {fmt::format("There is no instrument defined.")};
     }
 
     for (auto &r : m_resources) {
@@ -50,4 +50,19 @@ std::variant<json::Json, base::Error> DataHub::dumpCmd()
     }
 
     return contentDataHub;
+}
+
+std::variant<json::Json, base::Error> DataHub::getCmd(const std::string& instrumentName)
+{
+    const std::lock_guard<std::mutex> lock(m_mutex);
+    json::Json contentDataHub;
+    contentDataHub.setArray();
+
+    auto metric = m_resources.find(instrumentName);
+    if (metric != m_resources.end())
+    {
+        return metric->second;
+    }
+
+    return base::Error {fmt::format("Instrument '{}' not found.", instrumentName)};
 }
