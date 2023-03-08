@@ -95,9 +95,9 @@ Example:
 -->
 
 <decoder name="iptables-OpenWRT">
-   <parent>kernel</parent>
    <type>firewall</type>
-   <prematch>^[\d+.\d+] \S+\.*IN=</prematch>
+   <parent>kernel</parent>
+   <prematch>^[\d+.\d+] \S*\(\.*IN=</prematch>
    <regex>^[\d+.\d+] (\S*)\(</regex>
    <order>action</order>
 </decoder>
@@ -193,21 +193,21 @@ Mar 15 23:14:34 manager kernel: [ 290.678326] usb 1-1: USB disconnect, device nu
 <!-- UFW - Uncomplicated Firewall
 Examples:
 Sep 20 15:52:00 managerHost kernel: [ 2870.303541] [UFW AUDIT] IN= OUT=ppp0 SRC=117.197.243.67 DST=218.248.255.163 LEN=62 TOS=0x00 PREC=0x00 TTL=64 ID=52751 DF PROTO=UDP SPT=57548 DPT=53 LEN=42
-Feb  4 23:33:37 hostname kernel: [ 3529.289825] [UFW BLOCK] IN=eth0 OUT= MAC=00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd SRC=444.333.222.111 DST=111.222.333.444 LEN=103 TOS=0x00 PREC=0x00 TTL=52 ID=0 DF PROTO=UDP SPT=53 DPT=36427 LEN=83
+Feb  4 23:33:37 hostname kernel: [ 3529.289825] [UFW BLOCK] IN=eth0 OUT= MAC=00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd SRC=254.253.252.251 DST=191.192.193.194 LEN=103 TOS=0x00 PREC=0x00 TTL=52 ID=0 DF PROTO=UDP SPT=53 DPT=36427 LEN=83
+Dec 26 09:05:47 server01 kernel: [126140.629122] [UFW BLOCK] IN=eth0 OUT= MAC=00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd SRC=254.253.252.251 DST=191.192.193.194 LEN=52 TOS=0x02 PREC=0x00 TTL=128 ID=9209 DF PROTO=TCP SPT=17833 DPT=22 WINDOW=8192 RES=0x00 CWR ECE SYN URGP=0
 -->
 <decoder name="ufw">
-   <parent>kernel</parent>
    <type>firewall</type>
+   <parent>kernel</parent>
    <prematch>^[\s*\d+.\d+] [\.*] IN=</prematch>
-
-   <regex>^[\s*\d+.\d+] [(\.*)] \.+ SRC=(\S+) DST=(\S+)</regex>
+   <regex>^[\s*\d+.\d+] [(UFW \.*)] \.+ SRC=(\S+) DST=(\S+)</regex>
    <regex> \.+ PROTO=(\w+) </regex>
    <order>action,srcip,dstip,protocol</order>
 </decoder>
 
 <decoder name="ufw">
-   <parent>kernel</parent>
    <type>firewall</type>
+   <parent>kernel</parent>
    <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
    <order>srcport,dstport</order>
 </decoder>

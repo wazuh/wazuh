@@ -265,26 +265,16 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     snprintf(relative_path, PATH_MAX, "%s", children[j]->content);
 
                     #ifdef WIN32
-                    if (relative_path[1] && relative_path[2]) {
-                        if ((relative_path[1] == ':') || (relative_path[0] == '\\' && relative_path[1] == '\\')) {
-                            sprintf(realpath_buffer,"%s", relative_path);
-                        } else {
-                            const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
-                            if (!path_length) {
-                                mwarn("File '%s' not found.", relative_path);
-                                continue;
-                            }
-                        }
+                    const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
+                    if (!path_length) {
+                        mwarn("File '%s' not found.", relative_path);
+                        continue;
                     }
                     #else
-                    if(relative_path[0] == '/') {
-                        sprintf(realpath_buffer,"%s", relative_path);
-                    } else {
-                        const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
-                        if (!realpath_buffer_ref) {
-                            mwarn("File '%s' not found.", relative_path);
-                            continue;
-                        }
+                    const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
+                    if (!realpath_buffer_ref) {
+                        mwarn("File '%s' not found.", relative_path);
+                        continue;
                     }
                     #endif
 
@@ -311,7 +301,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         os_calloc(1,sizeof(wm_sca_policy_t), policy);
                         policy->enabled = enabled;
                         policy->policy_id = NULL;
+                        #ifdef WIN32
+                        policy->remote = strstr(realpath_buffer, "shared\\") != NULL;
+                        #else
                         policy->remote = strstr(realpath_buffer, "etc/shared/") != NULL;
+                        #endif
                         os_strdup(realpath_buffer, policy->policy_path);
                         sca->policies[policies_count] = policy;
                         sca->policies[policies_count + 1] = NULL;

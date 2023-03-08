@@ -1984,6 +1984,7 @@ void test_wdb_osinfo_save_cache_fail(void ** state) {
     int output = 0;
     wdb_t * data = (wdb_t *) *state;
     cJSON * osinfo_retrieved_info = __real_cJSON_Parse("[{\"triaged\":1, \"reference\":\"1234\"}]");
+    char debug_msg[OS_SIZE_512] = {0};
 
     will_return(__wrap_wdb_begin2, 0);
     will_return(__wrap_wdb_agents_get_sys_osinfo, osinfo_retrieved_info);
@@ -1994,7 +1995,8 @@ void test_wdb_osinfo_save_cache_fail(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
     will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_osinfo_save(): cannot cache statement (12)");
+    snprintf(debug_msg, OS_SIZE_512, "at wdb_osinfo_save(): cannot cache statement (%d)", WDB_STMT_OSINFO_DEL);
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
     output = wdb_osinfo_save(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
                              "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",

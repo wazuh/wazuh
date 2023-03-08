@@ -13,7 +13,6 @@ OSSEC_LIST_FILES=""
 RESTORE_OSSEC_OWN=0
 SYSTEMD_SERVICE_UNIT_PATH=""
 INIT_PATH=""
-CHK_CONFIG=0
 
 # Create the ossec user and group if they don't exist
 function create_ossec_ug {
@@ -155,14 +154,12 @@ fi
 # Init backup
 # REHL <= 6 / Amazon linux
 if [ -f "/etc/rc.d/init.d/${SERVICE}" ] && [ ! -h /etc/rc.d/init.d ]; then
-    CHK_CONFIG=1
     INIT_PATH="/etc/rc.d/init.d/${SERVICE}"
     mkdir -p "${TMP_DIR_BACKUP}/etc/rc.d/init.d/"
     cp -a "${INIT_PATH}" "${TMP_DIR_BACKUP}${INIT_PATH}"
 fi
 
 if [ -f "/etc/init.d/${SERVICE}" ] && [ ! -h /etc/init.d ]; then
-    CHK_CONFIG=1
     INIT_PATH="/etc/init.d/${SERVICE}"
     mkdir -p "${TMP_DIR_BACKUP}/etc/init.d/"
     cp -a "${INIT_PATH}" "${TMP_DIR_BACKUP}${INIT_PATH}"
@@ -263,9 +260,11 @@ else
 
     # Restore service
     if [ -n "${INIT_PATH}" ]; then
-        if [ $CHK_CONFIG -eq 1 ]; then
+        chk=$(which chkconfig)
+        if [ -n "$chk" ]; then
             /sbin/chkconfig --add ${SERVICE} >> ./logs/upgrade.log 2>&1
         fi
+        systemctl enable ${SERVICE} >> ./logs/upgrade.log 2>&1
     fi
 
     if [ -n "${SYSTEMD_SERVICE_UNIT_PATH}" ]; then

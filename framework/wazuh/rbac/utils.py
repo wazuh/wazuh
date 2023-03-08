@@ -18,13 +18,13 @@ def clear_cache():
     cache_event.set()
 
 
-def token_cache(cache):
+def token_cache(cache: TTLCache):
     """Apply cache depending on whether the request comes from the master node or from a worker node.
 
     Parameters
     ----------
     cache : TTLCache
-        Cache object
+        Cache object.
 
     Returns
     -------

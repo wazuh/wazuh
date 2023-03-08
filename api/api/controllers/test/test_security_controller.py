@@ -3,6 +3,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 from aiohttp import web_response
+
 from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
@@ -25,21 +26,22 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.rbac import preprocessor
         from wazuh.tests.util import RBAC_bypasser
+
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('raw', [True, False])
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
-@pytest.mark.parametrize('mock_bool', [True, False])
-async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool):
+async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, raw):
     """Verify 'login_user' endpoint is working as expected."""
     result = await login_user(user='001',
-                              raw=mock_bool)
+                              raw=raw)
     f_kwargs = {'user_id': '001'
                 }
     mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
@@ -48,9 +50,11 @@ async def test_login_user(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfu
                                       is_async=False,
                                       logger=ANY
                                       )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_token.assert_called_once_with(user_id=f_kwargs['user_id'], data=mock_exc.return_value.dikt)
     assert isinstance(result, web_response.Response)
+    assert result.content_type == 'text/plain' if raw else result.content_type == 'application/json'
 
 
 @pytest.mark.asyncio
@@ -73,28 +77,27 @@ async def test_login_user_ko(mock_token, mock_exc, mock_dapi, mock_remove, mock_
                                       is_async=False,
                                       logger=ANY
                                       )
-    mock_exc.assert_has_calls([call(mock_dfunc.return_value),
-                              call(mock_token.side_effect)])
+    mock_exc.assert_has_calls([call(mock_dfunc.return_value), call(mock_token.side_effect)])
     assert mock_exc.call_count == 2
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, web_response.Response)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('raw', [True, False])
 @patch('api.controllers.security_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.security_controller.generate_token', return_value='token')
-@pytest.mark.parametrize('mock_bool', [True, False])
-async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
-                            mock_request=AsyncMock()):
+async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_dfunc, raw, mock_request=AsyncMock()):
     """Verify 'run_as_login' endpoint is working as expected."""
     result = await run_as_login(request=mock_request,
                                 user='001',
-                                raw=mock_bool)
+                                raw=raw)
+    auth_context = await mock_request.json()
     f_kwargs = {'user_id': '001',
-                'auth_context': await mock_request.json()
+                'auth_context': auth_context
                 }
     mock_dapi.assert_called_once_with(f=preprocessor.get_permissions,
                                       f_kwargs=mock_remove.return_value,
@@ -102,9 +105,12 @@ async def test_run_as_login(mock_token, mock_exc, mock_dapi, mock_remove, mock_d
                                       is_async=False,
                                       logger=ANY
                                       )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_token.assert_called_once_with(user_id=f_kwargs['user_id'], data=mock_exc.return_value.dikt,
+                                       auth_context=auth_context)
     assert isinstance(result, web_response.Response)
+    assert result.content_type == 'text/plain' if raw else result.content_type == 'application/json'
 
 
 @pytest.mark.asyncio
@@ -130,8 +136,7 @@ async def test_run_as_login_ko(mock_token, mock_exc, mock_dapi, mock_remove, moc
                                       is_async=False,
                                       logger=ANY
                                       )
-    mock_exc.assert_has_calls([call(mock_dfunc.return_value),
-                              call(mock_token.side_effect)])
+    mock_exc.assert_has_calls([call(mock_dfunc.return_value), call(mock_token.side_effect)])
     assert mock_exc.call_count == 2
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, web_response.Response)
@@ -767,7 +772,7 @@ async def test_set_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                 'run_as': {
                     'user': mock_request['token_info']['sub'],
                     'run_as': mock_request['token_info']['run_as']
-                    }
+                }
                 }
     mock_dapi.assert_called_once_with(f=security.set_role_rule,
                                       f_kwargs=mock_remove.return_value,
@@ -908,7 +913,7 @@ async def test_revoke_all_tokens_ko(mock_type, mock_len, mock_exc, mock_dapi, mo
                                           nodes=mock_snodes.return_value
                                           )
         mock_exc.assert_has_calls([call(mock_dfunc.return_value),
-                                  call(WazuhPermissionError(4000, mock_exc.return_value.message))])
+                                   call(WazuhPermissionError(4000, mock_exc.return_value.message))])
         assert mock_exc.call_count == 2
         mock_remove.assert_called_once_with({})
         assert isinstance(result, web_response.Response)

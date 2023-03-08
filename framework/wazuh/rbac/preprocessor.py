@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
+from typing import Union
 
 from wazuh.core.exception import WazuhError, WazuhPermissionError
 from wazuh.core.results import WazuhResult
@@ -14,11 +15,15 @@ class PreProcessor:
     def __init__(self):
         self.odict = dict()
 
-    def remove_previous_elements(self, resource, action):
-        """Remove previous incompatible resources
+    def remove_previous_elements(self, resource: str, action: str):
+        """Remove previous incompatible resources.
 
-        :param resource: New resource that will be compared with the previous ones
-        :param action: Action that covers the new resource
+        Parameters
+        ----------
+        resource : str
+            New resource that will be compared with the previous ones.
+        action : str
+            Action that covers the new resource.
         """
         if len(resource) > 1:  # Combination
             for actual_resource in list(self.odict[action].keys()):
@@ -42,12 +47,17 @@ class PreProcessor:
                         self.odict[action].pop(key)
 
     @staticmethod
-    def is_combination(resource):
+    def is_combination(resource: str) -> tuple:
         """Check whether a given resource is a combination or not.
 
-        :param resource: Resource to be checked
-        :return Tuple with a flag that indicates whether it is a combination or not and if so,
-        the list of separate resources
+        resource : str
+            Resource to be checked.
+
+        Returns
+        -------
+        tuple
+            Tuple with a flag that indicates whether it is a combination or not and if so, the list of separate
+            resources.
         """
         split_resource = resource.split('&')
         if len(split_resource) > 1:
@@ -55,10 +65,18 @@ class PreProcessor:
 
         return False, [resource]
 
-    def process_policy(self, policy):
+    def process_policy(self, policy: dict):
         """Receive an unprocessed policy and transforms it into a specific format for treatment in the decorator.
 
-        :param policy: Policy of the user
+        Parameters
+        ----------
+        policy : dict
+            Policy of the user.
+
+        Raises
+        ------
+        WazuhError(4500)
+            The specified resources are invalid.
         """
         resource_regex = \
             r'^(\*)|' \
@@ -82,10 +100,18 @@ class PreProcessor:
         return self.odict
 
 
-def optimize_resources(roles=None):
-    """Preprocess the policies of the user for a more easy treatment in the decorator of the RBAC
+def optimize_resources(roles: list = None) -> dict:
+    """Preprocess the policies of the user for a more easy treatment in the decorator of the RBAC.
 
-    :param roles: Roles of the current user
+    Parameters
+    ----------
+    roles : list
+        Roles of the current user.
+
+    Returns
+    -------
+    dict
+        Final dictionary.
     """
     policies = get_policies_from_roles(roles=roles)
 
@@ -96,11 +122,20 @@ def optimize_resources(roles=None):
     return preprocessor.get_optimize_dict()
 
 
-def get_roles(auth_context=None, user_id=None):
-    """Obtain the roles of a user using auth_context or user_id
+def get_roles(auth_context: Union[dict, str] = None, user_id: int = None) -> list:
+    """Obtain the roles of a user using auth_context or user_id.
 
-    :param auth_context: Authorization context of the current user
-    :param user_id: Username of the current user
+    Parameters
+    ----------
+    auth_context : dict or str
+        Authorization context of the current user.
+    user_id : int
+        Username of the current user.
+
+    Returns
+    -------
+    list
+        List of roles.
     """
     with AuthenticationManager() as am:
         user_id = am.get_user(username=user_id)['id']
@@ -115,11 +150,25 @@ def get_roles(auth_context=None, user_id=None):
     return roles
 
 
-def get_permissions(user_id=None, auth_context=None):
-    """Obtain the permissions of a user using auth_context or user_id
+def get_permissions(user_id: int = None, auth_context: Union[dict, str] = None) -> WazuhResult:
+    """Obtain the permissions of a user using auth_context or user_id.
 
-    :param auth_context: Authorization context of the current user
-    :param user_id: Username of the current user
+    Parameters
+    ----------
+    auth_context : dict or str
+        Authorization context of the current user.
+    user_id : int
+        Username of the current user.
+
+    Raises
+    ------
+    WazuhPermissionError(6004)
+        If the current user does not have authentication enabled through authorization context.
+
+    Returns
+    -------
+    WazuhResult
+        WazuhResult object with the user permissions.
     """
     with AuthenticationManager() as auth:
         if not auth.user_allow_run_as(user_id) and auth_context:

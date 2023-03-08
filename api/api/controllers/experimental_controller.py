@@ -21,21 +21,26 @@ logger = logging.getLogger('wazuh-api')
 
 
 def check_experimental_feature_value(func):
+    """Decorator used to check whether the experimental features are enabled in the API configuration or not."""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         if not configuration.api_conf['experimental_features']:
             raise_if_exc(WazuhResourceNotFound(1122))
         else:
             return func(*args, **kwargs)
+
     return wrapper
 
 
 @check_experimental_feature_value
-async def clear_rootcheck_database(request, pretty=False, wait_for_complete=False, agents_list=None):
-    """Clear the rootcheck database for all agents or a list of them.
+async def clear_rootcheck_database(request, pretty: bool = False, wait_for_complete: bool = False,
+                                   agents_list: list = None) -> web.Response:
+    """Clear the rootcheck database for all the agents or a list of them.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -46,6 +51,7 @@ async def clear_rootcheck_database(request, pretty=False, wait_for_complete=Fals
     Returns
     -------
     web.Response
+        API response.
     """
     # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
     if 'all' in agents_list:
@@ -68,13 +74,24 @@ async def clear_rootcheck_database(request, pretty=False, wait_for_complete=Fals
 
 
 @check_experimental_feature_value
-async def clear_syscheck_database(request, pretty=False, wait_for_complete=False, agents_list=None):
+async def clear_syscheck_database(request, pretty: bool = False, wait_for_complete: bool = False,
+                                  agents_list: list = None) -> web.Response:
     """Clear the syscheck database for all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :return: AllItemsResponseAgentIDs
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : list
+        List of agent's IDs.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
     if 'all' in agents_list:
@@ -97,28 +114,52 @@ async def clear_syscheck_database(request, pretty=False, wait_for_complete=False
 
 
 @check_experimental_feature_value
-async def get_cis_cat_results(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0, limit=None,
-                              select=None, sort=None, search=None, benchmark=None, profile=None, fail=None, error=None,
-                              notchecked=None, unknown=None, score=None):
-    """ Get ciscat results info from all agents or a list of them.
+async def get_cis_cat_results(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
+                              offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                              search: str = None, benchmark: str = None, profile: str = None, fail: int = None,
+                              error: int = None, notchecked: int = None, unknown: int = None,
+                              score: int = None) -> web.Response:
+    """Get ciscat results info from all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param benchmark: Filters by benchmark
-    :param profile: Filters by evaluated profile
-    :param fail: Filters by failed checks
-    :param error: Filters by encountered errors
-    :param notchecked: Filters by not checked
-    :param unknown: Filters by unknown results.
-    :param score: Filters by final score
-    :return: AllItemsResponseCiscatResult
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    benchmark : str
+        Filters by benchmark type.
+    profile : str
+        Filters by evaluated profile.
+    fail : int
+        Filters by failed checks.
+    error : int
+        Filters by encountered errors.
+    notchecked : int
+        Filters by notchecked value.
+    unknown : int
+        Filters by unknown results.
+    score : int
+        Filters by final score.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': agents_list,
                 'offset': offset,
@@ -153,21 +194,38 @@ async def get_cis_cat_results(request, pretty=False, wait_for_complete=False, ag
 
 
 @check_experimental_feature_value
-async def get_hardware_info(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0, limit=None,
-                            select=None, sort=None, search=None, board_serial=None):
-    """ Get hardware info from all agents or a list of them.
+async def get_hardware_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
+                            offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                            search: str = None, board_serial: str = None) -> web.Response:
+    """Get hardware info from all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param board_serial: Filters by board_serial
-    :return: AllItemsResponseSyscollectorHardware
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    board_serial : str
+        Filters by board_serial value.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     filters = {
         'board_serial': board_serial
@@ -201,26 +259,47 @@ async def get_hardware_info(request, pretty=False, wait_for_complete=False, agen
 
 
 @check_experimental_feature_value
-async def get_network_address_info(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0,
-                                   limit=None, select=None, sort=None, search=None, iface_name=None, proto=None,
-                                   address=None, broadcast=None, netmask=None):
-    """ Get the IPv4 and IPv6 addresses associated to all network interfaces
+async def get_network_address_info(request, pretty: bool = False, wait_for_complete: bool = False,
+                                   agents_list: str = '*', offset: int = 0, limit: str = None, select: str = None,
+                                   sort: str = None, search: str = None, iface_name: str = None, proto: str = None,
+                                   address: str = None, broadcast: str = None, netmask: str = None) -> web.Response:
+    """Get the IPv4 and IPv6 addresses associated to all network interfaces.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param iface_name: Filters by interface name
-    :param proto: Filters by IP protocol
-    :param address: IP address associated with the network interface
-    :param broadcast: Filters by broadcast direction
-    :param netmask: Filters by netmask
-    :return: AllItemsResponseSyscollectorNetwork
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    iface_name : str
+        Filters by interface name.
+    proto : str
+        Filters by IP protocol.
+    address : str
+        Filters by IP address associated with the network interface.
+    broadcast : str
+        Filters by broadcast address.
+    netmask : str
+        Filters by netmask.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': agents_list,
                 'offset': offset,
@@ -253,24 +332,43 @@ async def get_network_address_info(request, pretty=False, wait_for_complete=Fals
 
 
 @check_experimental_feature_value
-async def get_network_interface_info(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0,
-                                     limit=None, select=None, sort=None, search=None, adapter=None, state=None,
-                                     mtu=None):
-    """ Get all network interfaces from all agents or a list of them.
+async def get_network_interface_info(request, pretty: bool = False, wait_for_complete: bool = False,
+                                     agents_list: str = '*', offset: int = 0, limit: int = None, select: str = None,
+                                     sort: str = None, search: str = None, adapter: str = None, state: str = None,
+                                     mtu: str = None) -> web.Response:
+    """Get all network interfaces from all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param adapter: Filters by adapter
-    :param state: Filters by state
-    :param mtu: Filters by mtu
-    :return: AllItemsResponseSyscollectorInterface
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    adapter : str
+        Filters by adapter.
+    state : str
+        Filters by state.
+    mtu : str
+        Filters by mtu.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     filters = {
         'adapter': adapter,
@@ -308,24 +406,43 @@ async def get_network_interface_info(request, pretty=False, wait_for_complete=Fa
 
 
 @check_experimental_feature_value
-async def get_network_protocol_info(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0,
-                                    limit=None, select=None, sort=None, search=None, iface=None, gateway=None,
-                                    dhcp=None):
-    """ Get network protocol info from all agents or a list of them.
+async def get_network_protocol_info(request, pretty: bool = False, wait_for_complete: bool = False,
+                                    agents_list: str = '*', offset: int = 0, limit: int = None, select: str = None,
+                                    sort: str = None, search: str = None, iface: str = None, gateway: str = None,
+                                    dhcp: str = None) -> web.Response:
+    """Get network protocol info from all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param iface: Filters by iface
-    :param gateway: Filters by gateway
-    :param dhcp: Filters by dhcp
-    :return: AllItemsResponseSyscollectorProtocol
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    iface : str
+        Filters by iface.
+    gateway : str
+        Filters by gateway.
+    dhcp : str
+        Filters by dhcp.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': agents_list,
                 'offset': offset,
@@ -357,26 +474,47 @@ async def get_network_protocol_info(request, pretty=False, wait_for_complete=Fal
 
 
 @check_experimental_feature_value
-async def get_os_info(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0, limit=None,
-                      select=None, sort=None, search=None, os_name=None, architecture=None, os_version=None,
-                      version=None, release=None):
-    """ Get OS info from all agents or a list of them.
+async def get_os_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
+                      offset: int = 0, limit: int = None, select: str = None, sort: str = None, search: str = None,
+                      os_name: str = None, architecture: str = None, os_version: str = None, version: str = None,
+                      release: str = None) -> web.Response:
+    """Get OS info from all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param os_name: Filters by os_name
-    :param architecture: Filters by architecture
-    :param os_version: Filters by os_version
-    :param version: Filters by version
-    :param release: Filters by release
-    :return: AllItemsResponseSyscollectorOS
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    os_name : str
+        Filters by os_name.
+    architecture : str
+        Filters by architecture.
+    os_version : str
+        Filters by os_version.
+    version : str
+        Filters by version.
+    release : str
+        Filters by release.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': agents_list,
                 'offset': offset,
@@ -409,25 +547,45 @@ async def get_os_info(request, pretty=False, wait_for_complete=False, agents_lis
 
 
 @check_experimental_feature_value
-async def get_packages_info(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0, limit=None,
-                            select=None,
-                            sort=None, search=None, vendor=None, name=None, architecture=None, version=None):
-    """ Get packages info from all agents or a list of them.
+async def get_packages_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
+                            offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                            search: str = None, vendor: str = None, name: str = None, architecture: str = None,
+                            version: str = None) -> web.Response:
+    """Get packages info from all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param vendor: Filters by vendor
-    :param name: Filters by name
-    :param architecture: Filters by architecture
-    :param version: Filters by format
-    :return: AllItemsResponseSyscollectorPackages
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    vendor : str
+        Filters by vendor.
+    name : str
+        Filters by name.
+    architecture : str
+        Filters by architecture.
+    version : str
+        Filters by version.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': agents_list,
                 'offset': offset,
@@ -460,26 +618,47 @@ async def get_packages_info(request, pretty=False, wait_for_complete=False, agen
 
 
 @check_experimental_feature_value
-async def get_ports_info(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0, limit=None,
-                         select=None, sort=None, search=None, pid=None, protocol=None, tx_queue=None, state=None,
-                         process=None):
-    """ Get ports info from all agents or a list of them.
+async def get_ports_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
+                         offset: int = 0, limit: int = None, select: str = None, sort: str = None, search: str = None,
+                         pid: str = None, protocol: str = None, tx_queue: str = None, state: str = None,
+                         process: str = None) -> web.Response:
+    """Get ports info from all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param pid: Filters by pid
-    :param protocol: Filters by protocol
-    :param tx_queue: Filters by tx_queue
-    :param state: Filters by state
-    :param process: Filters by process
-    :return: AllItemsResponseSyscollectorPorts
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    pid : str
+        Filters by pid.
+    protocol : str
+        Filters by protocol.
+    tx_queue : str
+        Filters by tx_queue.
+    state : str
+        Filters by state.
+    process : str
+        Filters by process.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     filters = {
         'pid': pid,
@@ -518,36 +697,67 @@ async def get_ports_info(request, pretty=False, wait_for_complete=False, agents_
 
 
 @check_experimental_feature_value
-async def get_processes_info(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0, limit=None,
-                             select=None, sort=None, search=None, pid=None, state=None, ppid=None, egroup=None,
-                             euser=None, fgroup=None, name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
-                             ruser=None, sgroup=None, suser=None):
-    """ Get processes info from all agents or a list of them.
+async def get_processes_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
+                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                             search: str = None, pid: str = None, state: str = None, ppid: str = None,
+                             egroup: str = None, euser: str = None, fgroup: str = None, name: str = None,
+                             nlwp: str = None, pgrp: str = None, priority: str = None, rgroup: str = None,
+                             ruser: str = None, sgroup: str = None, suser: str = None) -> web.Response:
+    """Get processes info from all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param pid: Filters by process pid
-    :param state: Filters by process state
-    :param ppid: Filters by process parent pid
-    :param egroup: Filters by process egroup
-    :param euser Filters by process euser
-    :param fgroup: Filters by process fgroup
-    :param name: Filters by process name
-    :param nlwp: Filters by process nlwp
-    :param pgrp: Filters by process pgrp
-    :param priority: Filters by process priority
-    :param rgroup: Filters by process rgroup
-    :param ruser: Filters by process ruser
-    :param sgroup: Filters by process sgroup
-    :param suser: Filters by process suser
-    :return: AllItemsResponseSyscollectorProcesses
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    pid : str
+        Filters by pid.
+    state : str
+        Filters by state.
+    ppid : str
+        Filters by process parent pid.
+    egroup : str
+        Filters by process egroup.
+    euser : str
+        Filters by process euser.
+    fgroup : str
+        Filters by process fgroup.
+    name : str
+        Filters by process name.
+    nlwp : str
+        Filters by process nlwp.
+    pgrp : str
+        Filters by process pgrp.
+    priority : str
+        Filters by process priority.
+    rgroup : str
+        Filters by process rgroup.
+    ruser : str
+        Filters by process ruser.
+    sgroup : str
+        Filters by process sgroup.
+    suser : str
+        Filters by process suser.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'agent_list': agents_list,
                 'offset': offset,
@@ -589,21 +799,40 @@ async def get_processes_info(request, pretty=False, wait_for_complete=False, age
 
 
 @check_experimental_feature_value
-async def get_hotfixes_info(request, pretty=False, wait_for_complete=False, agents_list='*', offset=0, limit=None,
-                            sort=None, search=None, select=None, hotfix=None):
-    """ Get hotfixes info from all agents or a list of them.
+async def get_hotfixes_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
+                            offset: int = 0, limit: int = None, sort: str = None, search: str = None,
+                            select: str = None, hotfix: str = None) -> web.Response:
+    """Get hotfixes info from all agents or a list of them.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param select: Select which fields to return (separated by comma)
-    :param hotfix: Filters by hotfix in Windows agents
-    :return:AllItemsResponseSyscollectorHotfixes
+    Parameters
+    ----------
+    request : connexion.request
+    agents_list : str
+        List of agent's IDs.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
+    hotfix : str
+        Filters by hotfix in Windows agents.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     filters = {'hotfix': hotfix}
 

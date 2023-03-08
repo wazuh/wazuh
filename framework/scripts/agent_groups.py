@@ -26,7 +26,19 @@ logger = logging.getLogger('wazuh')
 
 
 # Functions
-def get_stdin(msg):
+def get_stdin(msg: str) -> str:
+    """Get an answer given by standard input.
+
+    Parameters
+    ---------
+    msg : str
+        Message to be printed.
+
+    Returns
+    -------
+    str
+        Answer given by standard input.
+    """
     return input(msg)
 
 
@@ -51,8 +63,8 @@ async def show_groups():
     print(f"Unassigned agents: {unassigned_agents.total_affected_items}.")
 
 
-async def show_group(agent_id):
-    """Show the groups an agent belong to.
+async def show_group(agent_id: str):
+    """Print the groups to which a specified agent belongs.
 
     Parameters
     ----------
@@ -73,13 +85,13 @@ async def show_group(agent_id):
     print(msg)
 
 
-async def show_synced_agent(agent_id):
-    """Show if an agent is synchronized.
+async def show_synced_agent(agent_id: str):
+    """Show if a specified agent has its groups configuration synchronized.
 
     Parameters
     ----------
     agent_id : str
-        The agent we want to know if is synchronized.
+        ID of the agent.
     """
     result = await cluster_utils.forward_function(func=agent.get_agents_sync_group, f_kwargs={'agent_list': [agent_id]})
     check_if_exception(result)
@@ -92,13 +104,13 @@ async def show_synced_agent(agent_id):
     print(msg)
 
 
-async def show_agents_with_group(group_id):
-    """Show agents that belong to a specific group.
+async def show_agents_with_group(group_id: str):
+    """Print the ID and name of the agents belonging to a specified group.
 
     Parameters
     ----------
     group_id : str
-        The group we would like to see the agents for.
+        ID of the group.
     """
     result = await cluster_utils.forward_function(func=agent.get_agents_in_group,
                                                   f_kwargs={'group_list': [group_id], 'select': ['name'],
@@ -113,13 +125,13 @@ async def show_agents_with_group(group_id):
             print(f"  ID: {a['id']}  Name: {a['name']}.")
 
 
-async def show_group_files(group_id):
-    """Obtain the configuration files for certain group.
+async def show_group_files(group_id: str):
+    """Print a specified group's files names and its respective hashes.
 
     Parameters
     ----------
     group_id : str
-        The group we want to check the configuration files for.
+        ID of the group we want to check the configuration files from.
     """
     result = await cluster_utils.forward_function(func=agent.get_group_files, f_kwargs={'group_list': [group_id]})
     check_if_exception(result)
@@ -136,17 +148,18 @@ async def show_group_files(group_id):
         print("  {0}{1}[{2}]".format(item['filename'], spaces * ' ', item['hash']))
 
 
-async def unset_group(agent_id, group_id=None, quiet=False):
-    """Function to te remove agents from groups.
+async def unset_group(agent_id: str, group_id: str = None, quiet: bool = False):
+    """Remove a specified agent assignation with a single group or with all its groups.
 
     Parameters
     ----------
     agent_id : str
-        The agent we want to unset.
+        Agent ID.
     group_id : str
-        The group we want to unset the agent from.
+        ID of the group for which the agent will no longer be assigned. If no group_id is provided, all the group
+        assignations will be removed.
     quiet : bool
-        No confirmation mode.
+        Show confirmation message waiting for a stdin answer.
     """
     if quiet:
         ans = 'y'
@@ -170,15 +183,15 @@ async def unset_group(agent_id, group_id=None, quiet=False):
     print(msg)
 
 
-async def remove_group(group_id, quiet=False):
-    """Remove a group.
+async def remove_group(group_id: str, quiet: bool = False):
+    """Remove a specified group.
 
     Parameters
     ----------
     group_id : str
-        The group we want to remove.
+        ID of the group to be removed.
     quiet : bool
-        No confirmation mode.
+        Show confirmation message waiting for a stdin answer.
     """
     ans = 'y' if quiet else get_stdin(f"Do you want to remove the '{group_id}' group? [y/N]: ")
 
@@ -202,19 +215,19 @@ async def remove_group(group_id, quiet=False):
     print(msg)
 
 
-async def set_group(agent_id, group_id, quiet=False, replace=False):
-    """Function to add agents to certain groups.
+async def set_group(agent_id: str, group_id: str, quiet: bool = False, replace: bool = False):
+    """Assign a specified agent to a specified group.
 
     Parameters
     ----------
     agent_id : str
-        List of agents we would like to add.
+        Agent ID.
     group_id : str
-        List of groups we would like to add them to.
+        Group ID.
     quiet : bool
-        No confirmation mode.
+        Show confirmation message waiting for a stdin answer.
     replace : bool
-        Force only one group.
+        Whether to append the new group to current agent's groups or to replace it.
     """
     agent_id = f"{int(agent_id)}".zfill(3)
 
@@ -237,15 +250,15 @@ async def set_group(agent_id, group_id, quiet=False, replace=False):
     print(msg)
 
 
-async def create_group(group_id, quiet=False):
-    """Create a group.
+async def create_group(group_id: str, quiet: bool = False):
+    """Create a group given its ID.
 
     Parameters
     ----------
     group_id : str
-        The name of the group we want to create.
+        ID of the group to be created
     quiet : bool
-        No confirmation mode.
+        Show confirmation message waiting for a stdin answer.
     """
     ans = 'y' if quiet else get_stdin(f"Do you want to create the group '{group_id}'? [y/N]: ")
 
@@ -260,12 +273,18 @@ async def create_group(group_id, quiet=False):
     print(msg)
 
 
-def check_if_exception(result):
-    """Check if the value return is an exception.
+def check_if_exception(result: object):
+    """Check if a specified object is an exception.
+    If the object is an exception, raise it.
+
+    Raises
+    ------
+    Exception
 
     Parameters
     ----------
-    result : value returned by function
+    result : object
+        Object to be checked.
     """
     if isinstance(result, Exception):
         raise result
@@ -307,7 +326,14 @@ def usage():
     print(msg)
 
 
-def invalid_option(msg=None):
+def invalid_option(msg: str = None):
+    """Exit with an invalid options message.
+
+    Parameters
+    ----------
+    msg : str
+        Extra information for the invalid options message.
+    """
     if msg:
         print("Invalid options: {0}".format(msg))
     else:
@@ -317,12 +343,12 @@ def invalid_option(msg=None):
     exit(1)
 
 
-def get_script_arguments():
+def get_script_arguments() -> argparse.Namespace:
     """Get script arguments.
 
     Returns
     -------
-    ArgumentParser object
+    argparse.Namespace
         Arguments passed to the script.
     """
     parser = argparse.ArgumentParser()

@@ -13,6 +13,7 @@
 #include <shared.h>
 #include <os_net/os_net.h>
 #include "remoted.h"
+#include "state.h"
 
 extern wnotify_t * notify;
 
@@ -180,7 +181,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
     return sent_bytes;
 }
 
-int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
+int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size, char * agent_id) {
     int retval = -1;
     int header_size = sizeof(uint32_t);
     char data[msg_size + header_size];
@@ -224,6 +225,7 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
     w_mutex_unlock(&mutex);
 
     if (retval < 0) {
+        rem_inc_send_discarded(agent_id);
         mwarn("Package dropped. Could not append data into buffer.");
     }
 

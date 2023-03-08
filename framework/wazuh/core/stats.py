@@ -1,24 +1,28 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+import contextlib
+import datetime
 import json
 import os
 import re
+from typing import Union
 
 from wazuh.core import common, utils
+from wazuh.core import wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.wazuh_socket import WazuhSocket
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 
 
-def hourly_():
+def hourly_() -> list:
     """Compute hourly averages.
 
     Returns
     -------
-    array
+    list
         Averages and iterations.
     """
     averages = []
@@ -40,12 +44,12 @@ def hourly_():
     return [{'averages': averages, 'interactions': interactions}]
 
 
-def weekly_():
+def weekly_() -> list:
     """Compute weekly averages.
 
     Returns
     -------
-    array
+    list
         Hours and interactions for each week day.
     """
     weekly_results = []
@@ -70,17 +74,17 @@ def weekly_():
     return weekly_results
 
 
-def totals_(date=utils.get_utc_now()):
+def totals_(date: datetime.datetime = utils.get_utc_now()) -> list:
     """Compute statistical information for the current or specified date.
 
     Parameters
     ----------
-    date: date
+    date: datetime
         Date object with the date value of the stats, current date by default.
 
     Returns
     -------
-    array
+    list
         array of dictionaries. Each dictionary represents an hour.
 
     Raises
@@ -117,7 +121,71 @@ def totals_(date=utils.get_utc_now()):
     return affected
 
 
-def get_daemons_stats_(filename):
+def get_daemons_stats_socket(socket: str, agents_list: Union[list[int], str] = None, last_id: int = None) -> dict:
+    """Send message to Wazuh socket to get statistical information.
+
+    Parameters
+    ----------
+    socket : str
+        Full path of the socket to communicate with.
+    agents_list : list[int], optional
+        List of IDs of the agents to get the statistics from.
+        If agents_list is None or empty, the global statistics are requested.
+    last_id : int, optional
+        Integer used to indicate the agent ID from which the daemon statistics must be returned.
+        It must be used when agents_list includes the `all` keyword.
+
+    Raises
+    ------
+    WazuhInternalError (1121)
+        If there was an error when trying to connect to the socket.
+
+    Returns
+    -------
+    dict
+        Dictionary with daemon's statistical information.
+    """
+    # Create message
+    full_message = wazuh_socket.create_wazuh_socket_message(
+        origin={'module': common.origin_module.get()},
+        command='getstats' if not agents_list else 'getagentsstats',
+        parameters=
+        {} if not agents_list else
+        {'agents': agents_list} if last_id is None else
+        {'agents': agents_list, 'last_id': last_id}
+    )
+
+    # Connect to socket
+    try:
+        s = wazuh_socket.WazuhSocketJSON(socket)
+    except Exception:
+        raise WazuhInternalError(1121, extra_message=socket)
+
+    # Send message and receive socket response
+    try:
+        s.send(full_message)
+        response = s.receive(raw=last_id is not None)
+    finally:
+        s.close()
+
+    # Timestamps transformations
+    with contextlib.suppress(KeyError):
+        response_data = response if last_id is None else response['data']
+
+        # timestamp field
+        response_data['timestamp'] = utils.get_date_from_timestamp(response_data['timestamp'])
+
+        # uptime field
+        if not agents_list:
+            response_data['uptime'] = utils.get_date_from_timestamp(response_data['uptime'])
+        else:
+            for agent in response_data['agents']:
+                agent['uptime'] = utils.get_date_from_timestamp(agent['uptime'])
+
+    return response
+
+
+def get_daemons_stats_(filename: str) -> list:
     """Get daemons stats from an input file.
 
     Parameters
@@ -127,7 +195,7 @@ def get_daemons_stats_(filename):
 
     Returns
     -------
-    array
+    list
         Stats of the input file.
 
     Raises
@@ -151,19 +219,19 @@ def get_daemons_stats_(filename):
     return [items]
 
 
-def get_daemons_stats_from_socket(agent_id, daemon):
+def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
     """Get a daemon stats from an agent or manager.
 
     Parameters
     ----------
-    agent_id: string
+    agent_id: str
         Id of the agent to get stats from.
-    daemon: string
+    daemon: str
         Name of the service to get stats from.
 
     Returns
     -------
-    Dict
+    dict
         Object with daemon's stats.
     """
     if not agent_id or not daemon:
@@ -178,12 +246,12 @@ def get_daemons_stats_from_socket(agent_id, daemon):
         dest_socket = os.path.join(sockets_path, daemon)
         command = "getstate"
     else:
-        dest_socket = os.path.join(sockets_path, "request")
+        dest_socket = common.REMOTED_SOCKET
         command = f"{str(agent_id).zfill(3)} {daemon} getstate"
 
     # Socket connection
     try:
-        s = WazuhSocket(dest_socket)
+        s = wazuh_socket.WazuhSocket(dest_socket)
     except Exception:
         raise WazuhInternalError(1121)
 

@@ -1,12 +1,11 @@
-import logging
 import json
+import logging
 import os
 
 from sqlalchemy import create_engine, Column, Text, String, UniqueConstraint
 from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
 
 DATABASE_NAME = "azure.db"
 database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), DATABASE_NAME)
@@ -182,6 +181,7 @@ def update_row(table: Base, md5: str, min_date: str, max_date: str, query: str =
     except (IntegrityError, OperationalError, StatementError) as e:
         session.rollback()
         raise AzureORMError(str(e))
+
 
 def load_dates_json() -> dict:
     """Read the "last_dates_file" containing the different processed dates. It will be created with empty values in

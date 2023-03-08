@@ -51,12 +51,13 @@ cJSON *wm_osquery_dump(const wm_osquery_monitor_t *osquery_monitor);
 static volatile int active = 1;
 
 const wm_context WM_OSQUERYMONITOR_CONTEXT = {
-    "osquery",
-    (wm_routine)wm_osquery_monitor_main,
-    (void(*)(void *))wm_osquery_monitor_destroy,
-    (cJSON * (*)(const void *))wm_osquery_dump,
-    NULL,
-    NULL
+    .name = "osquery",
+    .start = (wm_routine)wm_osquery_monitor_main,
+    .destroy = (void(*)(void *))wm_osquery_monitor_destroy,
+    .dump = (cJSON * (*)(const void *))wm_osquery_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 void *Read_Log(wm_osquery_monitor_t * osquery)

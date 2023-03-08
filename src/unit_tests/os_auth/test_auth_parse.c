@@ -85,6 +85,9 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
     { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
     { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated group field"}, {"Unterminated group field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {"Unterminated IP field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {"Unterminated key field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
 
     {0}
 };
@@ -122,14 +125,13 @@ extern w_err_t w_auth_parse_data(const char* buf,
 
 static void test_w_auth_parse_data(void **state) {
     char response[2048] = {0};
-    char buffer[OS_SIZE_20480] = {0};
     char ip[IPSIZE + 1];
     char *agentname = NULL;
     char *groups = NULL;
     char *key_hash = NULL;
     w_err_t err;
 
-    unsigned int max = config.flags.use_source_ip == 1 ? 4 : 1;
+    unsigned int max = config.flags.use_source_ip == 1 ? 5 : 1;
     for (unsigned int a = 0; a < max; a++) {
         expect_any(__wrap_OS_IsValidIP, ip_address);
         expect_any(__wrap_OS_IsValidIP, final_ip);
@@ -140,8 +142,7 @@ static void test_w_auth_parse_data(void **state) {
         set_expected_log(&parse_values[i].expected_log);
         response[0] = '\0';
         strncpy(ip, parse_values[i].src_ip, IPSIZE);
-        strncpy(buffer, parse_values[i].buffer, strlen(parse_values[i].buffer) + 1);
-        err = w_auth_parse_data(buffer, response, parse_values[i].pass, ip, &agentname, &groups, &key_hash);
+        err = w_auth_parse_data(parse_values[i].buffer, response, parse_values[i].pass, ip, &agentname, &groups, &key_hash);
 
         assert_int_equal(err, parse_values[i].expected_response.err);
         if (err == OS_SUCCESS) {

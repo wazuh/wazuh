@@ -95,6 +95,12 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 #endif
+
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         const char *jsonErrPtr;
         if (obj = cJSON_ParseWithOpts(str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
           for (i = 0; lf->labels && lf->labels[i].key; i++) {

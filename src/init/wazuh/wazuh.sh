@@ -100,7 +100,7 @@ WazuhUpgrade()
     # Remove/relocate existing SQLite databases
     rm -f $PREINSTALLEDDIR/var/db/.profile.db*
     rm -f $PREINSTALLEDDIR/var/db/.template.db*
-    rm -f $PREINSTALLEDDIR/var/db/agents/*
+    rm -rf $PREINSTALLEDDIR/var/db/agents
 
     if [ -f "$PREINSTALLEDDIR/var/db/global.db" ]; then
         cp $PREINSTALLEDDIR/var/db/global.db $PREINSTALLEDDIR/queue/db/
@@ -209,8 +209,13 @@ WazuhUpgrade()
     # Replace and delete ossec group along with ossec users
     OSSEC_GROUP=ossec
     if (grep "^ossec:" /etc/group > /dev/null 2>&1) || (dscl . -read /Groups/ossec > /dev/null 2>&1)  ; then
-        find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:wazuh {} \;
-        find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
+        if [ "X$1" = "Xserver" ]; then
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -print0 | xargs -0 chown root:wazuh
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -print0 | xargs -0 chown wazuh:wazuh
+        else
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:wazuh {} \;
+            find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
+        fi
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP
 

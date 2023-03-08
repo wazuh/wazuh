@@ -1,6 +1,7 @@
-include_directories((${SRC_FOLDER}/syscheckd))
-include_directories((${SRC_FOLDER}/unit_tests))
-include_directories((${SRC_FOLDER}/config))
+include_directories(${SRC_FOLDER}/syscheckd/include)
+include_directories(${SRC_FOLDER}/syscheckd/src)
+include_directories(${SRC_FOLDER}/unit_tests)
+include_directories(${SRC_FOLDER}/config)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
@@ -18,7 +19,11 @@ if(NOT ${TARGET} STREQUAL "winagent")
                         -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink -Wl,--wrap,audit_delete_rule \
                         -Wl,--wrap,select -Wl,--wrap,audit_parse -Wl,--wrap=abspath -Wl,--wrap,atomic_int_get \
                         -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc \
-                        -Wl,--wrap,pthread_cond_timedwait -Wl,--wrap,gettime")
+                        -Wl,--wrap,pthread_cond_timedwait -Wl,--wrap,gettime -Wl,--wrap,fim_db_init \
+                        -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                        -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                        -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                        -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows")
 
     target_link_libraries(test_audit_healthcheck SYSCHECK_O ${TEST_DEPS})
 
@@ -30,14 +35,18 @@ if(NOT ${TARGET} STREQUAL "winagent")
     target_compile_options(test_audit_rule_handling PRIVATE "-Wall")
 
     set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2,--wrap=_merror,--wrap=_mwarn,--wrap=audit_add_rule\
-                              -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock \
+                              -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=fim_db_init \
                               -Wl,--wrap=pthread_rwlock_rdlock,--wrap=pthread_rwlock_wrlock,--wrap=pthread_rwlock_unlock \
                               -Wl,--wrap=fopen,--wrap=fclose,--wrap=fflush,--wrap=fgets,--wrap=fgetpos \
                               -Wl,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=remove,--wrap=fgetc \
                               -Wl,--wrap=getpid,--wrap=sleep,--wrap=unlink,--wrap=audit_delete_rule \
                               -Wl,--wrap=select,--wrap=audit_parse,--wrap=audit_get_rule_list,--wrap=audit_close \
                               -Wl,--wrap=search_audit_rule,--wrap=audit_open -Wl,--wrap,atomic_int_get \
-                              -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc")
+                              -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc \
+                              -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                              -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                              -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                              -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows")
 
     target_link_libraries(test_audit_rule_handling SYSCHECK_O ${TEST_DEPS})
 
@@ -61,8 +70,12 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,search_audit_rule -Wl,--wrap,abspath -Wl,--wrap,atomic_int_get \
                               -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec -Wl,--wrap,atomic_int_inc \
                               -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
-                              -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,OS_SHA1_Str \
+                              -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,OS_SHA1_Str -Wl,--wrap,fim_db_init \
                               -Wl,--wrap,OS_SHA1_File -Wl,--wrap,audit_open -Wl,--wrap,audit_close \
+                              -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                              -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                              -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                              -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                               ${DEBUG_OP_WRAPPERS}")
 
     target_link_libraries(test_syscheck_audit SYSCHECK_O ${TEST_DEPS})
@@ -86,7 +99,12 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,fim_audit_reload_rules -Wl,--wrap,remove_audit_rule_syscheck \
                            -Wl,--wrap,atomic_int_get -Wl,--wrap,atomic_int_set -Wl,--wrap,atomic_int_dec \
                            -Wl,--wrap,atomic_int_inc -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
-                           -Wl,--wrap,pthread_rwlock_rdlock ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                           -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init \
+                           -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
+                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                           ${DEBUG_OP_WRAPPERS}")
 
     target_link_libraries(test_audit_parse SYSCHECK_O ${TEST_DEPS})
 
@@ -97,15 +115,23 @@ else()
     target_compile_options(test_win_whodata PRIVATE "-Wall")
     set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG \
                            -Wl,--wrap,free_whodata_event -Wl,--wrap,IsFile -Wl,--wrap=remove \
+                           -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                            -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,atexit \
                            -Wl,--wrap,check_path_type -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,fim_whodata_event \
-                           -Wl,--wrap,fim_checker -Wl,--wrap,os_random \
-                           -Wl,--wrap,convert_windows_string -Wl,--wrap,FOREVER \
+                           -Wl,--wrap,fim_checker -Wl,--wrap,os_random -Wl,--wrap,wpopenv -Wl,--wrap,atomic_int_get\
+                           -Wl,--wrap,convert_windows_string -Wl,--wrap,FOREVER -Wl,--wrap,wpclose \
                            -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,fprintf \
                            -Wl,--wrap,fgets -Wl,--wrap,wstr_split -Wl,--wrap,pthread_rwlock_wrlock \
                            -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,getDefine_Int -Wl,--wrap,pthread_rwlock_rdlock \
                            -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                           ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
+                           -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
+                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                           -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
+                           -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg \
+                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
+                           ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS})
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")

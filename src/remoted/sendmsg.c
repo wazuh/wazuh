@@ -11,42 +11,32 @@
 #include "shared.h"
 #include <pthread.h>
 #include "remoted.h"
+#include "state.h"
 #include "os_net/os_net.h"
 
 extern netbuffer_t netbuffer_send;
 
 /* pthread key update mutex */
-static pthread_rwlock_t keyupdate_rwlock;
+static rwlock_t keyupdate_rwlock;
 
 void key_lock_init()
 {
-    pthread_rwlockattr_t attr;
-    pthread_rwlockattr_init(&attr);
-
-#ifdef __linux__
-    /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
-     * Do not use recursive locking.
-     */
-    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
-#endif
-
-    w_rwlock_init(&keyupdate_rwlock, &attr);
-    pthread_rwlockattr_destroy(&attr);
+    rwlock_init(&keyupdate_rwlock);
 }
 
 void key_lock_read()
 {
-    w_rwlock_rdlock(&keyupdate_rwlock);
+    rwlock_lock_read(&keyupdate_rwlock);
 }
 
 void key_lock_write()
 {
-    w_rwlock_wrlock(&keyupdate_rwlock);
+    rwlock_lock_write(&keyupdate_rwlock);
 }
 
 void key_unlock()
 {
-    w_rwlock_unlock(&keyupdate_rwlock);
+    rwlock_unlock(&keyupdate_rwlock);
 }
 
 /* Check for key updates */
@@ -73,7 +63,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     int key_id;
     ssize_t msg_size;
     char crypt_msg[OS_MAXSTR + 1] = {0};
-    int retval = 0;
+    int retval = OS_INVALID;
     int error = 0;
 
     key_lock_read();
@@ -82,7 +72,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     if (key_id < 0) {
         key_unlock();
         merror(AR_NOAGENT_ERROR, agent_id);
-        return (-1);
+        return OS_INVALID;
     }
 
     w_mutex_lock(&keys.keyentries[key_id]->mutex);
@@ -92,7 +82,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         mdebug1(SEND_DISCON, keys.keyentries[key_id]->id);
-        return (-1);
+        return OS_INVALID;
     }
 
     w_mutex_unlock(&keys.keyentries[key_id]->mutex);
@@ -105,21 +95,21 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         merror(SEC_ERROR);
-        return (-1);
+        return OS_INVALID;
     }
 
     crypt_msg[msg_size] = '\0';
 
+    ssize_t bytes_sent = 0;
     /* Send initial message */
     if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {
         /* UDP mode, send the message */
-        retval = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
+        bytes_sent = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size);
         error = errno;
+        retval = bytes_sent == msg_size ? OS_SUCCESS : OS_INVALID;
     } else if (keys.keyentries[key_id]->sock >= 0) {
         /* TCP mode, enqueue the message in the send buffer */
-        if (retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size), !retval) {
-            rem_inc_msg_queued();
-        }
+        retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size, keys.keyentries[key_id]->id);
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         return retval;
@@ -127,7 +117,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         mdebug1("Send operation cancelled due to closed socket.");
-        return -1;
+        return OS_INVALID;
     }
 
     /* Check UDP send result */
@@ -151,7 +141,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
             merror(SEND_ERROR " [%d]", agent_id, strerror(error), keys.keyentries[key_id]->sock);
         }
     } else {
-        rem_add_send(retval);
+        rem_add_send(bytes_sent);
     }
 
     w_mutex_unlock(&keys.keyentries[key_id]->mutex);

@@ -25,6 +25,42 @@
 
 namespace Utils
 {
+    static void ISO8859ToUTF8(std::string& data)
+    {
+        // Convert from ISO-8859-1 to UTF-8
+        std::string strOut;
+        // 0xc0 is 11000000 in binary, used to mask the first 2 bits of the character of a 2-byte sequence
+        constexpr auto UTF8_2BYTE_SEQ{ 0xc0 };
+        // 6 is the number of bits to shift the character to the right
+        constexpr auto UTF8_2BYTE_SEQ_VALUE_LEN{ 6 };
+        // 0x80 is 10000000 in binary, is the first code point of a 2-byte sequence
+        constexpr auto UTF8_2BYTE_FIRST_CODE_VALUE{ 0x80 };
+        // 0x3f is 00111111 in binary, used to mask the last 6 bits of the character of a 2-byte sequence
+        constexpr auto UTF8_2BYTE_MASK{ 0x3f };
+
+        for (auto it = data.begin(); it != data.end(); ++it)
+        {
+            const uint8_t ch = *it;
+
+            // ASCII character
+            if (ch < UTF8_2BYTE_FIRST_CODE_VALUE)
+            {
+                strOut.push_back(ch);
+            }
+            // Extended ASCII
+            else
+            {
+                // 2-byte sequence
+                // 110xxxxx
+                strOut.push_back(UTF8_2BYTE_SEQ | ch >> UTF8_2BYTE_SEQ_VALUE_LEN);
+                // 10xxxxxx
+                strOut.push_back(UTF8_2BYTE_FIRST_CODE_VALUE | (ch & UTF8_2BYTE_MASK));
+            }
+        }
+
+        data = strOut;
+    }
+
     static bool replaceAll(std::string& data,
                            const std::string& toSearch,
                            const std::string& toReplace)
@@ -220,6 +256,30 @@ namespace Utils
 
         return str;
     }
+
+    static std::pair<std::string, std::string> splitKeyValueNonEscapedDelimiter(const std::string& str,
+                                                                                const char delimiter,
+                                                                                const char escapeChar)
+    {
+        std::pair<std::string, std::string> retVal { std::make_pair(str, "") };
+        const auto findText { std::string{escapeChar} + std::string{delimiter} };
+        auto found { str.find_first_of(findText) };
+        constexpr auto DELIMITER_ESCAPE_LENGTH { 2 };
+
+        while (std::string::npos != found)
+        {
+            if (str.at(found) == delimiter)
+            {
+                retVal = std::make_pair(str.substr(0, found), str.substr(found + 1));
+                break;
+            }
+
+            found = str.find_first_of(findText, found + DELIMITER_ESCAPE_LENGTH);
+        }
+
+        return retVal;
+    }
+
     static bool findRegexInString(const std::string& in,
                                   std::string& match,
                                   const std::regex& pattern,

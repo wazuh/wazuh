@@ -67,7 +67,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v4.4.0"
+#define __ossec_version "v4.6.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -123,14 +123,12 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Key request socket
 #define KEY_REQUEST_SOCK "queue/sockets/krequest"
 
-// Remote requests socket
-#define REMOTE_REQ_SOCK "queue/sockets/request"
-
 // Local requests socket
 #define COM_LOCAL_SOCK  "queue/sockets/com"
 #define LC_LOCAL_SOCK  "queue/sockets/logcollector"
 #define SYS_LOCAL_SOCK  "queue/sockets/syscheck"
 #define WM_LOCAL_SOCK  "queue/sockets/wmodules"
+#define REMOTE_LOCAL_SOCK  "queue/sockets/remote"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
 #define MAIL_LOCAL_SOCK "queue/sockets/mail"
 #define LESSD_LOCAL_SOCK "queue/sockets/agentless"
@@ -141,7 +139,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CONTROL_SOCK "queue/sockets/control"
 #define LOGTEST_SOCK "queue/sockets/logtest"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
-
 
 // Tasks socket
 #define TASK_QUEUE "queue/tasks/task"
@@ -192,9 +189,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Default group name */
 #define DEFAULT_GROUP "default"
-
-/* Syscheck directory */
-#define SYSCHECK_DIR    "queue/syscheck"
 
 /* Syscollector normalization configs */
 #ifdef WAZUH_UNIT_TESTING

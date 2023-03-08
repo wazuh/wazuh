@@ -9,7 +9,7 @@ from collections.abc import KeysView
 from io import StringIO
 from shutil import copyfile
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY
 from xml.etree.ElementTree import Element
 
 import pytest
@@ -217,56 +217,129 @@ def test_cut_array_ko(limit, offset, expected_exception):
         utils.cut_array(array=['one', 'two', 'three'], limit=limit, offset=offset)
 
 
-@pytest.mark.parametrize('array, filters, limit, search_text, sort_by, expected_items, len_expected_items', [
-    ([{'item': 'value_one'}, {'item': 'value_two'}, {'item': 'value_three'}],
-     {'item': 'value_one'}, 1, None, None, [{'item': 'value_one'}], 1),
-    ([{'item': 'value_one'}, {'item': 'value_one'}, {'item': 'value_three'}],
-     {}, 1, 'one', None, [{'item': 'value_one'}], 2),
-    ([{'item': 'value_one'}, {'item': 'value_one'}, {'item': 'value_three'}],
-     {}, 2, 'one', None, [{'item': 'value_one'}, {'item': 'value_one'}], 2),
-    ([{'item': 'value_2'}, {'item': 'value_1'}, {'item': 'value_3'}],
-     {}, 500, None, ['item'], [{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}], 3),
-])
-def test_process_array(array, filters, limit, search_text, sort_by, expected_items, len_expected_items):
-    """Test cut_array function."""
-    result = utils.process_array(array=array, filters=filters, limit=limit, offset=0, search_text=search_text,
-                                 sort_by=sort_by)
+@pytest.mark.parametrize('array, q, filters, limit, search_text, select, sort_by, expected_items, expected_total_items',
+                         [
+                             # Test cases with queries
+                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+                              'datetime=2017-10-25T14:48:53.732000Z', None, None, None, None, None,
+                              [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
-    assert result == {'items': expected_items, 'totalItems': len_expected_items}
+                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+                              'datetime<2017-10-26', None, None, None, None, None,
+                              [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
+                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+                              'datetime>2019-10-26,datetime<2017-10-26', None, None, None, None, None,
+                              [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
-@pytest.mark.parametrize('array, q, expected_items', [
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
-                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
-     'datetime=2017-10-25T14:48:53.732000Z', [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}]),
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
-                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
-     'datetime<2017-10-26', [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}]),
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
-                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
-     'datetime>2019-10-26,datetime<2017-10-26', [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}]),
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
-                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
-     'datetime>2017-10-26;datetime<2018-05-15T12:34:12.644000Z', [{'item': 'value_1',
-                                                                   'datetime': '2018-05-15T12:34:12.544000Z'}]),
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53Z'}, {'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}],
-     'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', [{'item': 'value_1',
-                                                                   'datetime': '2018-05-15T12:34:12Z'}]),
-])
-def test_process_array_q(array, q, expected_items):
-    """Check the proper functioning of the q parameter.
+                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+                              'datetime>2017-10-26;datetime<2018-05-15T12:34:12.644000Z', None, None, None, None, None,
+                              [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}], 1),
+
+                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53Z'},
+                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}],
+                              'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', None, None, None, None, None,
+                              [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}], 1),
+
+                             # Test cases with filters, limit and search
+                             ([{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}],
+                              None, {'item': 'value_1'}, 1, None, None, None,
+                              [{'item': 'value_1'}], 1),
+
+                             ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
+                              None, None, 1, 'e_1', None, None,
+                              [{'item': 'value_1'}], 2),
+
+                             ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
+                              None, None, 2, 'e_1', None, None,
+                              [{'item': 'value_1'}, {'item': 'value_1'}], 2),
+
+                             # Test cases with sort
+                             ([{'item': 'value_2'}, {'item': 'value_1'}, {'item': 'value_3'}],
+                              None, None, None, None, None, ['item'],
+                              [{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}], 3),
+
+                             # Complex test cases
+                             ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
+                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
+                              'datetime~2017', {'item': 'value_1'}, 1, 'frame', None, None,
+                              [{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z',
+                                'component': 'framework'}], 1),
+
+                             ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
+                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
+                              'datetime~2019', {'item': 'value_1'}, 1, None, None, None,
+                              [], 0),
+
+                             ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
+                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
+                              'datetime~2017', {'item': 'value_1'}, 1, None, ['component', 'item'], None,
+                              [{'item': 'value_1', 'component': 'framework'}], 1),
+                         ])
+def test_process_array(array, q, filters, limit, search_text, sort_by, select, expected_items, expected_total_items):
+    """Test that the process_array function is working properly with simple and complex examples.
 
     Parameters
     ----------
     array : list
-        List of values on which to apply the filter.
+        List of values on which to apply the processing.
     q : str
+        Query used to filter the array.
+    filters : dict
+        Define the required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    limit : int
+        Maximum number of elements to return.
+    search_text : str
+        String representing the text to search in the array.
+    select : list
+        List of fields to select.
+    sort_by : list
+        List of fields to sort by.
     expected_items : list
-        List of items after applying the filter
+        List of items expected after having applied the processing.
+    expected_total_items : int
+        Total items expected after having applied the processing.
     """
-    result = utils.process_array(array=array, q=q)
+    result = utils.process_array(array=array, filters=filters, limit=limit, offset=0, search_text=search_text,
+                                 select=select, sort_by=sort_by, q=q)
 
-    assert result == {'items': expected_items, 'totalItems': len(expected_items)}
+    assert result == {'items': expected_items, 'totalItems': expected_total_items}
+
+
+@patch('wazuh.core.utils.len', return_value=1)
+@patch('wazuh.core.utils.cut_array')
+@patch('wazuh.core.utils.select_array', return_value=ANY)
+@patch('wazuh.core.utils.filter_array_by_query', return_value=ANY)
+@patch('wazuh.core.utils.search_array', return_value=ANY)
+@patch('wazuh.core.utils.sort_array', return_value=ANY)
+def test_process_array_ops_order(mock_sort_array, mock_search_array, mock_filter_array_by_query, mock_select_array,
+                                 mock_cut_array, mock_len):
+    """Test that the process_array function calls the sort, search, filter by query, select and cut operations in the
+    expected order and with the expected parameters."""
+    manager_mock = Mock()
+    manager_mock.attach_mock(mock_sort_array, 'mock_sort_array')
+    manager_mock.attach_mock(mock_search_array, 'mock_search_array')
+    manager_mock.attach_mock(mock_filter_array_by_query, 'mock_filter_array_by_query')
+    manager_mock.attach_mock(mock_select_array, 'mock_select_array')
+    manager_mock.attach_mock(mock_cut_array, 'mock_cut_array')
+
+    utils.process_array(array=[{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}],
+                        filters={'item': 'value_1'}, limit=1, offset=0, search_text='e_1', select=['item'],
+                        sort_by=['item'], q='item~value')
+
+    # The array in the sort_array function parameter is the initial one after the filters
+    # The array parameter of the other functions is ANY
+    assert manager_mock.mock_calls == [
+        call.mock_sort_array([{'item': 'value_1'}], sort_by=['item'], sort_ascending=True, allowed_sort_fields=None),
+        call.mock_search_array(ANY, search_text='e_1', complementary_search=False, search_in_fields=None),
+        call.mock_filter_array_by_query('item~value', ANY),
+        call.mock_select_array(ANY, select=['item'], required_fields=None, allowed_select_fields=None),
+        call.mock_cut_array(ANY, offset=0, limit=1)
+    ]
 
 
 def test_sort_array_type():
@@ -711,41 +784,6 @@ def test_failed_test_get_timeframe_in_seconds():
     """Test get_timeframe_in_seconds function exceptions."""
     with pytest.raises(exception.WazuhException, match=".* 1411 .*"):
         utils.get_timeframe_in_seconds('error')
-
-
-@pytest.mark.parametrize('value', [
-    True,
-    False
-])
-@patch('sqlite3.connect')
-@patch("wazuh.core.database.isfile", return_value=True)
-@patch('socket.socket.connect')
-def test_WazuhDBQuery__init__(mock_socket_conn, mock_isfile, mock_sqli_conn, value):
-    """Test WazuhDBQuery.__init__."""
-    with patch('wazuh.core.utils.glob.glob', return_value=value):
-        if value:
-            utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                               search=None, select=None, filters=None,
-                               fields={'1': None, '2': None}, default_sort_field=None,
-                               default_sort_order='ASC', query=None,
-                               backend=utils.SQLiteBackend(utils.common.DATABASE_PATH),
-                               min_select_fields=1, count=5, get_data=None,
-                               date_fields={'lastKeepAlive', 'dateAdd'},
-                               extra_fields={'internal_key'})
-
-            mock_sqli_conn.assert_called_once()
-
-        else:
-            with pytest.raises(exception.WazuhException, match=".* 1600 .*"):
-                utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                                   search=None, select=None, filters=None,
-                                   fields={'1': None, '2': None},
-                                   default_sort_field=None, default_sort_order='ASC',
-                                   query=None, get_data=None,
-                                   backend=utils.SQLiteBackend(utils.common.DATABASE_PATH),
-                                   min_select_fields=1, count=5,
-                                   date_fields={'lastKeepAlive', 'dateAdd'},
-                                   extra_fields={'internal_key'})
 
 
 @pytest.mark.parametrize('query_filter, expected_query_filter, expected_wef', [
@@ -1195,25 +1233,6 @@ def test_WazuhDBQuery_substitute_params(mock_socket_conn, mock_isfile, mock_conn
     query._get_total_items()
 
     mock_conn_db.assert_called_once_with()
-
-
-@patch('wazuh.core.utils.path.exists', return_value=True)
-@patch('wazuh.core.utils.glob.glob', return_value=True)
-@patch('wazuh.core.utils.SQLiteBackend.connect_to_db')
-@patch("wazuh.core.database.isfile", return_value=True)
-@patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_get_data(mock_socket_conn, mock_isfile, mock_sqli_conn, mock_glob, mock_exists):
-    """Test SQLiteBackend._get_data function."""
-    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
-                               search=None, select={'fields': set(['os.name'])},
-                               fields={'os.name': 'ubuntu', 'os.version': '18.04'},
-                               default_sort_field=None, query=None,
-                               backend=utils.SQLiteBackend(utils.common.DATABASE_PATH), count=5,
-                               get_data=None, min_select_fields=set(['os.version']))
-
-    query.backend._get_data()
-
-    mock_sqli_conn.assert_called_once_with()
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
@@ -1725,9 +1744,10 @@ def test_add_dynamic_detail(detail, value, attribs, details):
         assert details[detail][key] == value
 
 
+@patch('wazuh.core.utils.check_disabled_limits_in_conf')
 @patch('wazuh.core.utils.check_remote_commands')
 @patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_remote_commands):
+def test_validate_wazuh_xml(mock_remote_commands, mock_disabled_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
     with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
@@ -1875,3 +1895,25 @@ def test_get_utc_now():
     date = utils.get_utc_strptime(mock_date, default_format)
     assert isinstance(date, datetime.datetime)
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
+
+
+@pytest.mark.parametrize("configuration", [
+    "<global><limits><eps><whatever>yes</whatever></eps></limits></global>",
+    "<global><logall>no</logall></global><global><limits><eps><whatever>yes</whatever></eps></limits>"
+    "</global>"
+])
+@pytest.mark.parametrize("limits_conf, expect_exc", [
+    ({'eps': {'allow': True}}, False),
+    ({'eps': {'allow': False}}, True)
+])
+def test_check_disabled_limits_in_conf(configuration, limits_conf, expect_exc):
+    """Test if forbidden limits in the API settings are blocked."""
+    new_conf = utils.configuration.api_conf
+    new_conf['upload_configuration']['limits'].update(limits_conf)
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=new_conf):
+        if expect_exc:
+            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
+                utils.check_disabled_limits_in_conf(configuration)
+        else:
+            utils.check_disabled_limits_in_conf(configuration)

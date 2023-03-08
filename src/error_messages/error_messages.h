@@ -107,6 +107,15 @@
 #define TCP_EPIPE       "(1248): Unable to send message. Connection has been closed by remote server."
 #define CONN_REF        "(1249): Unable to send message. Connection with remote server refused."
 #define ACCESS_ERROR    "(1250): Error trying to execute \"%s\": %s (%d)."
+#define MUTEX_INIT      "(1330) Cannot initialize mutex: %s (%d)."
+#define MUTEX_DESTROY   "(1331) Cannot destroy mutex: %s (%d)."
+#define MUTEX_LOCK      "(1332) Cannot lock mutex: %s (%d)."
+#define MUTEX_UNLOCK    "(1333) Cannot unlock mutex: %s (%d)."
+#define RWLOCK_INIT     "(1334) Cannot initialize rwlock: %s (%d)."
+#define RWLOCK_DESTROY  "(1335) Cannot destroy rwlock: %s (%d)."
+#define RWLOCK_LOCK_RD  "(1336) Cannot lock rwlock for reading: %s (%d)."
+#define RWLOCK_LOCK_WR  "(1337) Cannot lock rwlock for writing: %s (%d)."
+#define RWLOCK_UNLOCK   "(1338) Cannot unlock rwlock: %s (%d)."
 
 /* Mail errors */
 #define CHLDWAIT_ERROR  "(1261): Waiting for child process. (status: %d)."
@@ -123,6 +132,7 @@
 #define MAX_RK_MSG        "(1255): Maximum number of global files reached: %d"
 
 /* syscheck */
+#define SK_SHUTDOWN     "(1756): Shutdown received. Releasing resources."
 #define SK_INV_REG      "(1757): Invalid syscheck registry entry: '%s'."
 #define SK_REG_OPEN     "(1758): Unable to open registry key: '%s'."
 
@@ -139,9 +149,10 @@
 #define INVALID_RULE_ELEMENT    "(1279): Invalid rule element."
 #define INVALID_PREFIX          "(1283): Incorrect prefix message, message type: %s."
 #define INVALID_OPERATION       "(1284): Incorrect/unknown operation, type: %s."
-#define INVALID_RESPONSE        "(1285): Response without content, the event cannot be raised."
+#define INVALID_RESPONSE        "(1285): Response with unexpected content."
 #define A_QUERY_ERROR           "(1286): Wazuh-db query error, check wdb logs."
 #define INVALID_TYPE            "(1287): Incorrect/unknown type value %s."
+#define WDBC_QUERY_EX_ERROR     "(1288): Wazuh-db query execution error."
 
 /* logcollector */
 #define SYSTEM_ERROR     "(1600): Internal error. Exiting.."
@@ -235,6 +246,8 @@
 #define GET_FLAGS_ERROR "(1972): The flags couldn't be obtained from the file descriptor: %s (%d)."
 #define SET_FLAGS_ERROR "(1973): The flags couldn't be set in the file descriptor: %s (%d)."
 #define WPOPENV_ERROR   "(1974): An error ocurred while calling wpopenv(): %s (%d)."
+#define LF_LOG_REGEX    "(1975): Syntax error on regex %s: '%s'"
+#define LF_MATCH_REGEX  "(1976): Ignoring the log line '%s' due to %s config: '%s'"
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -291,6 +304,7 @@
 #define AG_NOKEYS_EXIT  "(4109): Unable to start without auth keys. Exiting."
 #define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
 #define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed."
+#define AG_INV_INT      "(4114): All server addresses are IPv6 link-local and no interface to any <server> block has been configured."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."
@@ -331,7 +345,8 @@
 #define DB_CACHE_ERROR        "(5213): Cannot cache statement."
 #define DB_CACHE_NULL_STMT    "(5214): Null statement on internal cache."
 #define DB_AGENT_SQL_ERROR    "(5215): DB(%s) SQL Error: '%s'."
-#define DB_INVALID_DELTA_MSG  "(5216): Delta (%s) field count mismatch: expect %zu, received %zu."
+#define DB_INVALID_DELTA_MSG  "(5216): DB(%s) Could not bind delta field '%s' from '%s' scan."
+#define DB_DELTA_PARSING_ERR  "(5217): Could not parse syscollector delta information as JSON."
 
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5500): The '%s' database could not be fetched."
@@ -427,12 +442,10 @@
 #define VU_OVAL_VULN_NOT_FOUND      "(5590): No vulnerabilities could be found in the OVAL for agent '%.3d'"
 #define VU_PKG_INVALID_VER          "(5591): Invalid version for package '%s' of the inventory: '%s'"
 #define VU_SUSE_VERSION_ERROR       "(5592): Invalid SUSE OS version."
+#define VU_INVALID_CPE_VERSION      "(5593): Couldn't get the version of the CPE for the %s package."
 
 /* File integrity monitoring error messages*/
-#define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
-#define FIM_ERROR_ACCESING                          "(6601): Error accessing '%s': '%s' (%d)"
 #define FIM_ERROR_WHODATA_SUM_MAX                   "(6603): The whodata sum for '%s' file could not be included in the alert as it is too large."
-#define FIM_ERROR_NOTHING_TOCKECK                   "(6604): No directories to check."
 #define FIM_ERROR_CHECK_THREAD                      "(6605): Could not create the Whodata check thread."
 #define FIM_ERROR_SELECT                            "(6606): Select failed (for real time file integrity monitoring)."
 #define FIM_ERROR_INOTIFY_INITIALIZE                "(6607): Unable to initialize inotify."
@@ -443,7 +456,6 @@
 #define FIM_ERROR_REALTIME_READ_BUFFER              "(6612): Unable to read from real time buffer."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK         "(6613): Real time Windows callback process: '%s' (%lx)."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
-#define FIM_ERROR_UPDATE_ENTRY                      "(6615): Can't update entry invalid file '%s'."
 
 #define FIM_ERROR_AUDIT_MODE                        "(6617): Unable to get audit mode: %s (%d)."
 #define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
@@ -471,7 +483,6 @@
 #define FIM_ERROR_WHODATA_MAXNUM_WATCHES            "(6640): Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d)."
 #define FIM_ERROR_WHODATA_COMPILE_REGEX             "(6641): Cannot compile '%s' regular expression."
 #define FIM_ERROR_WHODATA_HEALTHCHECK_START         "(6642): Audit health check couldn't be completed correctly."
-
 
 #define FIM_ERROR_WHODATA_CONTEXT                   "(6645): Error creating the whodata context. Error %lu."
 #define FIM_ERROR_SACL_ACE_DELETE                   "(6646): DeleteAce() failed restoring the SACLs. Error '%ld'"
@@ -524,31 +535,20 @@
 #define FIM_ERROR_WHODATA_ACE_NUMBER                "(6693): The ACE number %i of '%s' could not be copied to the new ACL."
 #define FIM_ERROR_WHODATA_ACE_NOADDED               "(6694): The new ACE could not be added to '%s'. Error: '%ld'."
 #define FIM_ERROR_WHODATA_SETNAMEDSECURITY          "(6695): SetNamedSecurityInfo() failed. Error: '%lu'"
-#define FIM_CRITICAL_ERROR_DB                       "(6696): Unable to create syscheck database. Exiting."
 #define FIM_CRITICAL_ERROR_OUT_MEM                  "(6697): Out of memory. Exiting."
 #define FIM_CRITICAL_DATA_CREATE                    "(6698): Creating Data Structure: %s. Exiting."
 #define FIM_CRITICAL_ERROR_SELECT                   "(6699): At '%s': select(): %s. Exiting."
 #define FIM_ERROR_INOTIFY_ADD_MAX_REACHED           "(6700): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d': The maximum limit of inotify watches has been reached."
 #define FIM_UNKNOWN_ATTRIBUTE                       "(6701): Unknown attribute '%s' for directory option."
-#define FIM_ERROR_INSERT_INODE_HASH                 "(6702): Unable to add inode to db: '%s' => '%s'"
 
-#define FIM_DB_ERROR_COUNT_RANGE                    "(6703): Couldn't get range size between '%s' and '%s'"
-#define FIM_DB_ERROR_GET_PATH                       "(6704): Couldn't get path of '%s'"
-#define FIM_DB_ERROR_SYNC_DB                        "(6705): Failed to synchronize database."
-#define FIM_DB_ERROR_GET_ROW_PATH                   "(6706): Couldn't get %s %s row's path."
-#define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum."
-#define FIM_DB_ERROR_RM_PATTERN                     "(6708): Failed to delete a range of paths using pattern '%s'."
-#define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
 #define FIM_ERROR_GET_ABSOLUTE_PATH                 "(6711): Cannot get absolute path of '%s': %s (%d)"
-#define FIM_ERROR_REMOVE_COLON                      "(6712): Cannot remove heading colon from full path '%s'"
 #define FIM_DIFF_DELETE_DIFF_FOLDER_ERROR           "(6713): Cannot remove diff folder for file: '%s'"
 #ifdef WIN32
 #define FIM_DIFF_COMMAND_OUTPUT_ERROR               "(6714): Command fc output an error"
 #else
 #define FIM_DIFF_COMMAND_OUTPUT_ERROR               "(6714): Command diff output an error"
 #endif
-#define FIM_DIFF_FILE_PATH_TOO_LONG                 "(6715): The path of the file monitored '%s' is too long to compute differences."
 #define FIM_WARN_OPEN_HANDLE_FILE                   "(6716): Could not open handle for '%s'. Error code: %lu"
 #define FIM_WARN_GET_FILETIME                       "(6717): Could not get the filetime of the file '%s'. Error code: %lu."
 #ifndef WIN32
@@ -556,6 +556,7 @@
 #else
 #define FIM_ERROR_EXPAND_ENV_VAR                    "(6718): Could not expand the environment variable %s (%ld)."
 #endif
+#define FIM_ERROR_TRANSACTION                       "(6719): Could not start DBSync transaction (%s)"
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
@@ -670,7 +671,7 @@
 #define TOLERANCE_TIME  "Tolerance time set to Zero, defined flooding condition when buffer is full."
 
 /* OSSEC alert messages */
-#define OS_AD_STARTED   "ossec: Ossec started."
+#define OS_MG_STARTED   "ossec: Manager started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
 #define OS_AG_STOPPED   "ossec: Agent stopped: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."

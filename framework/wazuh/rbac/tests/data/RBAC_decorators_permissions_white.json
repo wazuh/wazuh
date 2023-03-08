@@ -33,7 +33,8 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": ["001"]
+      "agent_list": ["001"],
+      "call_func": true
     },
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
     "allowed_resources": [["001"]]
@@ -52,6 +53,25 @@
     },
     "function_params": {
       "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [["000", "001", "002", "003", "004", "005"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null,
+      "call_func": false
     },
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
     "allowed_resources": [["000", "001", "002", "003", "004", "005"]]
@@ -256,7 +276,8 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "agent_list": null
+      "agent_list": null,
+      "call_func": true
     },
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group2": ["001", "002", "003"], "agent:group:group1": ["001", "004", "005"]},
     "allowed_resources": [["001", "002", "003", "004", "005"]]

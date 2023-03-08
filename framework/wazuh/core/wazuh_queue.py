@@ -10,7 +10,7 @@ from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 
-def create_wazuh_queue_socket_msg(flag: str, str_agent_id: str, msg: str, is_restart: bool = False):
+def create_wazuh_queue_socket_msg(flag: str, str_agent_id: str, msg: str, is_restart: bool = False) -> str:
     """Create message that will be sent to the WazuhQueue socket.
 
     Parameters

@@ -119,10 +119,10 @@ static pthread_mutexattr_t win_el_mutex_attr;
 
 /* can read synchronization */
 static int _can_read = 0;
-static pthread_rwlock_t can_read_rwlock;
+static rwlock_t can_read_rwlock;
 
 /* Multiple readers / one write mutex */
-static pthread_rwlock_t files_update_rwlock;
+static rwlock_t files_update_rwlock;
 
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
@@ -132,6 +132,35 @@ static OSHash *excluded_binaries = NULL;
 STATIC w_macos_log_procceses_t * macos_processes = NULL;
 
 #endif
+
+int check_ignore_and_restrict(OSList * ignore_exp_list, OSList * restrict_exp_list, const char *log_line) {
+    OSListNode *node_it;
+    w_expression_t *exp_it;
+
+    if (ignore_exp_list) {
+        OSList_foreach(node_it, ignore_exp_list) {
+            exp_it = node_it->data;
+            /* Check ignore regex, if it matches, do not process the log */
+            if (w_expression_match(exp_it, log_line, NULL, NULL)) {
+                mdebug2(LF_MATCH_REGEX, log_line, "ignore", w_expression_get_regex_pattern(exp_it));
+                return true;
+            }
+        }
+    }
+
+    if (restrict_exp_list) {
+        OSList_foreach(node_it, restrict_exp_list) {
+            exp_it = node_it->data;
+            /* Check restrict regex, only if match every log is processed */
+            if (!w_expression_match(exp_it, log_line, NULL, NULL)) {
+                mdebug2(LF_MATCH_REGEX, log_line, "restrict", w_expression_get_regex_pattern(exp_it));
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 
 /* Handle file management */
 void LogCollectorStart()
@@ -412,16 +441,6 @@ void LogCollectorStart()
             }
 #endif
         }
-
-        if (current->alias) {
-            int ii = 0;
-            while (current->alias[ii] != '\0') {
-                if (current->alias[ii] == ':') {
-                    current->alias[ii] = '\\';
-                }
-                ii++;
-            }
-        }
     }
 
     //Save status localfiles to disk
@@ -451,7 +470,7 @@ void LogCollectorStart()
         /* Free hash table content for excluded files */
         if (f_free_excluded >= free_excluded_files_interval) {
             set_can_read(0); // Stop reading threads
-            w_rwlock_wrlock(&files_update_rwlock);
+            rwlock_lock_write(&files_update_rwlock);
             set_can_read(1); // Clean signal once we have the lock
             mdebug1("Refreshing excluded files list.");
 
@@ -471,12 +490,12 @@ void LogCollectorStart()
 
             f_free_excluded = 0;
 
-            w_rwlock_unlock(&files_update_rwlock);
+            rwlock_unlock(&files_update_rwlock);
         }
 
         if (f_check >= vcheck_files) {
             set_can_read(0); // Stop reading threads
-            w_rwlock_wrlock(&files_update_rwlock);
+            rwlock_lock_write(&files_update_rwlock);
             set_can_read(1); // Clean signal once we have the lock
             int i;
             int j = -1;
@@ -507,14 +526,14 @@ void LogCollectorStart()
 
                 // Delay: yield mutex
 
-                w_rwlock_unlock(&files_update_rwlock);
+                rwlock_unlock(&files_update_rwlock);
 
                 if (reload_delay) {
                     nanosleep(&delay, NULL);
                 }
 
                 set_can_read(0); // Stop reading threads
-                w_rwlock_wrlock(&files_update_rwlock);
+                rwlock_lock_write(&files_update_rwlock);
                 set_can_read(1); // Clean signal once we have the lock
 
                 // Open files again, and restore position
@@ -701,7 +720,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        w_msg_hash_queues_push(msg_alert, "wazuh-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File inode changed. %s",
                                current->file);
@@ -734,7 +753,7 @@ void LogCollectorStart()
                                  current->file);
 
                         /* Send message about log rotated */
-                        w_msg_hash_queues_push(msg_alert, "wazuh-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
+                        w_msg_hash_queues_push(msg_alert, "logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
                         mdebug1("File size reduced. %s",
                                 current->file);
@@ -893,7 +912,7 @@ void LogCollectorStart()
             check_text_only();
 
 
-            w_rwlock_unlock(&files_update_rwlock);
+            rwlock_unlock(&files_update_rwlock);
 
             if (f_reload >= reload_interval) {
                 f_reload = 0;
@@ -2135,9 +2154,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
         /* Check which file is available */
         for (i = 0, j = -1;; i++) {
 
-            w_rwlock_rdlock(&files_update_rwlock);
+            rwlock_lock_read(&files_update_rwlock);
             if (f_control = update_current(&current, &i, &j), f_control) {
-                w_rwlock_unlock(&files_update_rwlock);
+                rwlock_unlock(&files_update_rwlock);
 
                 if (f_control == NEXT_IT) {
                     continue;
@@ -2164,7 +2183,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     }
 #endif
                     w_mutex_unlock(&current->mutex);
-                    w_rwlock_unlock(&files_update_rwlock);
+                    rwlock_unlock(&files_update_rwlock);
                     continue;
                 }
 
@@ -2189,7 +2208,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             fclose(current->fp);
                             current->fp = NULL;
                             w_mutex_unlock(&current->mutex);
-                            w_rwlock_unlock(&files_update_rwlock);
+                            rwlock_unlock(&files_update_rwlock);
                             continue;
                         }
                     }
@@ -2203,7 +2222,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                    if ((r = fgetc(current->fp)) == EOF) {
                        clearerr(current->fp);
                        w_mutex_unlock(&current->mutex);
-                       w_rwlock_unlock(&files_update_rwlock);
+                       rwlock_unlock(&files_update_rwlock);
                        continue;
                    }
 
@@ -2217,7 +2236,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 if (current->h && (GetFileInformationByHandle(current->h, &lpFileInformation) == 0)) {
                     merror("Unable to get file information by handle.");
                     w_mutex_unlock(&current->mutex);
-                    w_rwlock_unlock(&files_update_rwlock);
+                    rwlock_unlock(&files_update_rwlock);
                     continue;
                 } else {
                     FILETIME ft_handle = lpFileInformation.ftLastWriteTime;
@@ -2235,7 +2254,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         current->fp = NULL;
                         current->h = NULL;
                         w_mutex_unlock(&current->mutex);
-                        w_rwlock_unlock(&files_update_rwlock);
+                        rwlock_unlock(&files_update_rwlock);
                         continue;
                     }
                 }
@@ -2326,7 +2345,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         /* Try to open it again */
                         if (handle_file(i, j, 0, 1)) {
                             w_mutex_unlock(&current->mutex);
-                            w_rwlock_unlock(&files_update_rwlock);
+                            rwlock_unlock(&files_update_rwlock);
                             continue;
                         }
 #ifdef WIN32
@@ -2357,7 +2376,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 }
             }
 
-            w_rwlock_unlock(&files_update_rwlock);
+            rwlock_unlock(&files_update_rwlock);
         }
     }
 
@@ -2393,19 +2412,8 @@ void w_create_input_threads(){
 
 void files_lock_init()
 {
-    pthread_rwlockattr_t attr;
-    pthread_rwlockattr_init(&attr);
-
-#ifdef __linux__
-    /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
-     * Do not use recursive locking.
-     */
-    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
-#endif
-
-    w_rwlock_init(&files_update_rwlock, &attr);
-    w_rwlock_init(&can_read_rwlock, &attr);
-    pthread_rwlockattr_destroy(&attr);
+    rwlock_init(&files_update_rwlock);
+    rwlock_init(&can_read_rwlock);
 }
 
 static void check_text_only() {
@@ -2609,17 +2617,17 @@ static void check_pattern_expand_excluded() {
 
 static void set_can_read(int value){
 
-    w_rwlock_wrlock(&can_read_rwlock);
-    _can_read = value;
-    w_rwlock_unlock(&can_read_rwlock);
+    RWLOCK_LOCK_WRITE(&can_read_rwlock, {
+        _can_read = value;
+    });
 }
 
 int can_read() {
 
     int ret;
-    w_rwlock_rdlock(&can_read_rwlock);
-    ret = _can_read;
-    w_rwlock_unlock(&can_read_rwlock);
+    RWLOCK_LOCK_READ(&can_read_rwlock, {
+        ret = _can_read;
+    });
     return ret;
 }
 

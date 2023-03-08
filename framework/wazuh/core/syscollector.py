@@ -9,8 +9,7 @@ from wazuh.core.utils import plain_dict_to_nested_dict, get_fields_to_nest, Wazu
 
 
 class Type(Enum):
-    """Class that enumerates the different types of agent elements
-    """
+    """Class that enumerates the different types of agent elements."""
     OS = 'os'
     HARDWARE = 'hardware'
     PACKAGES = 'packages'
@@ -22,17 +21,25 @@ class Type(Enum):
     HOTFIXES = 'hotfixes'
 
 
-def get_valid_fields(element_type, agent_id=None):
-    """This function provides a data structure for each element
+def get_valid_fields(element_type: Type, agent_id: str = None) -> dict:
+    """Provide a data structure for each element.
 
-    :param element_type: This is the type of resource we are requesting
-    :param agent_id: This parameter allows us to know if the agent is Windows or Linux.
-    :return Valid fields for requested item
+    Parameters
+    ----------
+    element_type : Type
+        This is the type of resource we are requesting.
+    agent_id : str
+        This parameter allows us to know if the agent is Windows or Linux.
+
+    Returns
+    -------
+    dict
+        Valid fields for requested item.
     """
     windows_fields = {'hostname': 'hostname', 'os.version': 'os_version', 'os.name': 'os_name',
-                                  'architecture': 'architecture', 'os.major': 'os_major', 'os.minor': 'os_minor',
-                                  'os.build': 'os_build', 'version': 'version', 'scan.time': 'scan_time',
-                                  'scan.id': 'scan_id', 'os_release': 'os_release', 'os.display_version': 'os_display_version'}
+                      'architecture': 'architecture', 'os.major': 'os_major', 'os.minor': 'os_minor',
+                      'os.build': 'os_build', 'version': 'version', 'scan.time': 'scan_time',
+                      'scan.id': 'scan_id', 'os_release': 'os_release', 'os.display_version': 'os_display_version'}
     valid_select_fields = {
         Type.OS: ('sys_osinfo', {'Windows': windows_fields,
                                  'Linux': {
@@ -71,7 +78,7 @@ def get_valid_fields(element_type, agent_id=None):
                                          'rx.dropped': 'rx_dropped'}),
         Type.HOTFIXES: ('sys_hotfixes', {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'hotfix': 'hotfix'})
     }
-    
+
     if element_type == Type.OS:
         agent_obj = Agent(agent_id)
         agent_obj.get_basic_information()
@@ -87,8 +94,8 @@ def get_valid_fields(element_type, agent_id=None):
 
 
 class WazuhDBQuerySyscollector(WazuhDBQuery):
-    """Class responsible for obtaining resources from agents
-    """
+    """Class responsible for obtaining resources from agents."""
+
     def _filter_status(self, status_filter):
         pass
 

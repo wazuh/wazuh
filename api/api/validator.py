@@ -21,8 +21,8 @@ _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]
 _boolean = re.compile(r'^true$|^false$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[\w.\-]+$')
-_group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[\w.\-]+$')
+_group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[A-Za-z0-9.\-_]+$')
+_group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[A-Za-z0-9.\-_]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:['
                      r'\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
@@ -100,7 +100,15 @@ api_config_schema = {
             "properties": {
                 "level": {"type": "string"},
                 "path": {"type": "string"},  # Deprecated. To be removed on later versions
-                "format": {"type": "string", "enum": ["plain", "json", "plain,json", "json,plain"]}
+                "format": {"type": "string", "enum": ["plain", "json", "plain,json", "json,plain"]},
+                "max_size": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "size": {"type": "string"}
+                    }
+                }
             },
         },
         "cors": {
@@ -141,27 +149,48 @@ api_config_schema = {
                 "max_request_per_minute": {"type": "integer"},
             },
         },
-        "remote_commands": {
+        "upload_configuration": {
             "type": "object",
             "additionalProperties": False,
             "properties": {
-                "localfile": {
+                "remote_commands": {
                     "type": "object",
                     "additionalProperties": False,
                     "properties": {
-                        "enabled": {"type": "boolean"},
-                        "exceptions": {"type": "array", "items": {"type": "string"}},
+                        "localfile": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {"type": "boolean"},
+                                "exceptions": {"type": "array", "items": {"type": "string"}},
+                            },
+                        },
+                        "wodle_command": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {"type": "boolean"},
+                                "exceptions": {"type": "array", "items": {"type": "string"}},
+                            },
+                        },
                     },
                 },
-                "wodle_command": {
+                "limits": {
                     "type": "object",
                     "additionalProperties": False,
                     "properties": {
-                        "enabled": {"type": "boolean"},
-                        "exceptions": {"type": "array", "items": {"type": "string"}},
-                    },
-                },
-            },
+                        "eps": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         },
     },
 }
@@ -180,6 +209,7 @@ WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
         'monitor': {"global", "internal"},
         'request': {"global", "remote", "internal"},
         'syscheck': {"syscheck", "rootcheck", "internal"},
+        'wazuh-db': {"wdb", "internal"},
         'wmodules': {"wmodules"}
     }
 )
@@ -290,7 +320,7 @@ def check_component_configuration_pair(component: str, configuration: str) -> Wa
         is returned and not raised because we use the object to create a problem on API level.
     """
     if configuration not in WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]:
-        return WazuhError(1127, extra_message=f"Valid configuration values for '{component}': "
+        return WazuhError(1128, extra_message=f"Valid configuration values for '{component}': "
                                               f"{WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]}")
 
 

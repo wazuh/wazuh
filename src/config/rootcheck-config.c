@@ -119,10 +119,8 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_rootkit_files) == 0) {
-            rootcheck->checks.rc_files = 1;
             os_strdup(node[i]->content, rootcheck->rootkit_files);
         } else if (strcmp(node[i]->element, xml_rootkit_trojans) == 0) {
-            rootcheck->checks.rc_trojans = 1;
             os_strdup(node[i]->content, rootcheck->rootkit_trojans);
         } else if (strcmp(node[i]->element, xml_winaudit) == 0) {
 #ifdef WIN32

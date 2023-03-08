@@ -20,6 +20,7 @@
 #include "../wrappers/wazuh/remoted/shared_download_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 #include "../wrappers/posix/dirent_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/remoted/request_wrappers.h"
 #include "../wrappers/wazuh/remoted/remoted_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
@@ -50,6 +51,25 @@ void free_keyentry(keyentry *key) {
     os_free(key->raw_key);
 }
 
+static void free_group(void *data) {
+    if (data) {
+        group_t *group = (group_t *)data;
+        if (group->f_time) {
+            OSHash_Clean(group->f_time, free_file_time);
+        }
+        os_free(group->name);
+        os_free(group);
+    }
+}
+
+static void free_group_c_group(void *data) {
+    if (data) {
+        group_t *group = (group_t *)data;
+        os_free(group->name);
+        os_free(group);
+    }
+}
+
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     check_expected(msg);
     return 0;
@@ -66,280 +86,419 @@ static int test_teardown_group(void ** state) {
 }
 
 static int test_c_group_setup(void ** state) {
-    os_calloc(1, (2) * sizeof(group_t *), groups);
-    os_calloc(1, sizeof(group_t), groups[0]);
-    groups[0]->name = strdup("test_default");
-    groups[1] = NULL;
+    group_t *group = NULL;
+
+    test_mode = 0;
+
+    groups = OSHash_Create();
+
+    os_calloc(1, sizeof(group_t), group);
+    group->name = strdup("test_default");
+    OSHash_Add_ex(groups, "test_default", group);
+
+    test_mode = 1;
+
+    state[0] = group;
 
     return 0;
 }
 
 static int test_find_group_setup(void ** state) {
-    os_calloc(1, (3) * sizeof(group_t *), groups);
-    os_calloc(1, sizeof(group_t), groups[0]);
-    groups[0]->name = strdup("test_default");
-    os_calloc(2, sizeof(file_sum *), groups[0]->f_sum);
-    os_calloc(1, sizeof(file_sum), groups[0]->f_sum[0]);
-    os_strdup("test_file", groups[0]->f_sum[0]->name);
-    strncpy(groups[0]->f_sum[0]->sum, "ABCDEF1234567890", 32);
-    os_calloc(1, sizeof(group_t), groups[1]);
-    groups[1]->name = strdup("test_test_default");
-    os_calloc(2, sizeof(file_sum *), groups[1]->f_sum);
-    os_calloc(1, sizeof(file_sum), groups[1]->f_sum[0]);
-    os_strdup("test_test_file", groups[1]->f_sum[0]->name);
-    strncpy(groups[1]->f_sum[0]->sum, "12345ABCDEF67890", 32);
-    groups[2] = NULL;
+    group_t *group1 = NULL;
+    group_t *group2 = NULL;
+
+    test_mode = 0;
+
+    groups = OSHash_Create();
+
+    os_calloc(1, sizeof(group_t), group1);
+    group1->name = strdup("test_default");
+    snprintf(group1->merged_sum, 17, "ABCDEF1234567890");
+    OSHash_Add_ex(groups, "test_default", group1);
+
+    os_calloc(1, sizeof(group_t), group2);
+    group2->name = strdup("test_test_default");
+    snprintf(group2->merged_sum, 17, "ABCDEF1234567809");
+    OSHash_Add_ex(groups, "test_test_default", group2);
+
+    test_mode = 1;
+
+    state[0] = group1;
+    state[1] = group2;
+
+    return 0;
+}
+
+static int test_process_deleted_groups_setup(void ** state) {
+    group_t *group1 = NULL;
+    group_t *group2 = NULL;
+
+    test_mode = 0;
+
+    os_calloc(1, sizeof(group_t), group1);
+    group1->name = strdup("test_default");
+
+    os_calloc(1, sizeof(group_t), group2);
+    group2->name = strdup("test_test_default");
+
+    test_mode = 1;
+
+    state[0] = group1;
+    state[1] = group2;
 
     return 0;
 }
 
 static int test_find_multi_group_setup(void ** state) {
-    os_calloc(1, (3) * sizeof(group_t *), multi_groups);
-    os_calloc(1, sizeof(group_t), multi_groups[0]);
-    multi_groups[0]->name = strdup("test_default2");
-    os_calloc(2, sizeof(file_sum *), multi_groups[0]->f_sum);
-    os_calloc(1, sizeof(file_sum), multi_groups[0]->f_sum[0]);
-    os_strdup("test_file2", multi_groups[0]->f_sum[0]->name);
-    strncpy(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF", 32);
-    os_calloc(1, sizeof(group_t), multi_groups[1]);
-    multi_groups[1]->name = strdup("test_test_default2");
-    os_calloc(2, sizeof(file_sum *), multi_groups[1]->f_sum);
-    os_calloc(1, sizeof(file_sum), multi_groups[1]->f_sum[0]);
-    os_strdup("test_test_file2", multi_groups[1]->f_sum[0]->name);
-    strncpy(multi_groups[1]->f_sum[0]->sum, "67890ABCDEF12345", 32);
-    multi_groups[2] = NULL;
+    group_t *multigroup1 = NULL;
+    group_t *multigroup2 = NULL;
+
+    test_mode = 0;
+
+    multi_groups = OSHash_Create();
+
+    os_calloc(1, sizeof(group_t), multigroup1);
+    multigroup1->name = strdup("test_default2");
+    snprintf(multigroup1->merged_sum, 17, "1234567890ABCDEF");
+    OSHash_Add_ex(multi_groups, "test_default2", multigroup1);
+
+    os_calloc(1, sizeof(group_t), multigroup2);
+    multigroup2->name = strdup("test_test_default2");
+    snprintf(multigroup2->merged_sum, 17, "1234567890ABCDFE");
+    OSHash_Add_ex(multi_groups, "test_test_default2", multigroup2);
+
+    test_mode = 1;
+
+    state[0] = multigroup1;
+    state[1] = multigroup2;
 
     return 0;
 }
 
-static int test_fsum_changed_setup(void ** state) {
-    file_sum **f_sum1;
-    file_sum **f_sum2;
-    os_calloc(3, sizeof(file_sum *), f_sum1);
-    os_calloc(1, sizeof(file_sum), f_sum1[0]);
-    os_calloc(1, sizeof(file_sum), f_sum1[1]);
-    strncpy(f_sum1[0]->sum, "FEDCBA0987654321", 32);
-    os_strdup("file1", f_sum1[0]->name);
-    strncpy(f_sum1[1]->sum, "0987654321FEDCBA", 32);
-    os_strdup("file2", f_sum1[1]->name);
-    os_calloc(3, sizeof(file_sum *), f_sum2);
-    os_calloc(1, sizeof(file_sum), f_sum2[0]);
-    os_calloc(1, sizeof(file_sum), f_sum2[1]);
-    strncpy(f_sum2[0]->sum, "0987654321FEDCBA", 32);
-    os_strdup("file2", f_sum2[0]->name);
-    strncpy(f_sum2[1]->sum, "FEDCBA0987654321", 32);
-    os_strdup("file1", f_sum2[1]->name);
+static int test_process_deleted_multi_groups_setup(void ** state) {
+    group_t *multigroup1 = NULL;
+    group_t *multigroup2 = NULL;
 
-    state[0] = f_sum1;
-    state[1] = f_sum2;
+    test_mode = 0;
+
+    os_calloc(1, sizeof(group_t), multigroup1);
+    multigroup1->name = strdup("test_default2");
+
+    os_calloc(1, sizeof(group_t), multigroup2);
+    multigroup2->name = strdup("test_test_default2");
+
+    test_mode = 1;
+
+    state[0] = multigroup1;
+    state[1] = multigroup2;
+
+    return 0;
+}
+
+static int test_ftime_changed_setup(void ** state) {
+    file_time *file1 = NULL;
+    file_time *file2 = NULL;
+    file_time *file3 = NULL;
+    file_time *file4 = NULL;
+
+    test_mode = 0;
+
+    os_calloc(1, sizeof(file_time), file1);
+    file1->name = strdup("file1");
+    file1->m_time = 123456789;
+
+    os_calloc(1, sizeof(file_time), file2);
+    file2->name = strdup("file2");
+    file2->m_time = 123456798;
+
+    test_mode = 1;
+
+    state[0] = file1;
+    state[1] = file2;
 
     return 0;
 }
 
 static int test_process_group_setup(void ** state) {
-    os_calloc(1, (2) * sizeof(group_t *), groups);
-    os_calloc(1, sizeof(group_t), groups[0]);
-    groups[0]->name = strdup("test_default");
-    os_calloc(2, sizeof(file_sum *), groups[0]->f_sum);
-    os_calloc(1, sizeof(file_sum), groups[0]->f_sum[0]);
-    strncpy(groups[0]->f_sum[0]->sum, "AAAAAAAAAAAAAAAA", 32);
-    os_strdup("merged.mg", groups[0]->f_sum[0]->name);
-    groups[1] = NULL;
+    group_t *group = NULL;
+    file_time *file = NULL;
+
+    test_mode = 0;
+
+    groups = OSHash_Create();
+
+    os_calloc(1, sizeof(group_t), group);
+    group->name = strdup("test_default");
+    group->f_time = OSHash_Create();
+    os_calloc(1, sizeof(file_time), file);
+    file->name = strdup("merged.mg");
+    file->m_time = 123456789;
+    OSHash_Add_ex(group->f_time, "merged.mg", file);
+    strncpy(group->merged_sum, "AAAAAAAAAAAAAAAA", 32);
+    OSHash_Add_ex(groups, "test_default", group);
+
+    if (setup_hashmap(state) != 0) {
+        return 1;
+    }
+
+    test_mode = 1;
+
+    state[0] = group->f_time;
+    state[1] = group;
 
     return 0;
 }
 
 static int test_process_multi_groups_setup(void ** state) {
-    os_calloc(1, (2) * sizeof(group_t *), multi_groups);
-    os_calloc(1, sizeof(group_t), multi_groups[0]);
-    multi_groups[0]->name = strdup("groupA,groupB");
-    os_calloc(2, sizeof(file_sum *), multi_groups[0]->f_sum);
-    os_calloc(1, sizeof(file_sum), multi_groups[0]->f_sum[0]);
-    os_strdup("test_file2", multi_groups[0]->f_sum[0]->name);
-    strncpy(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF", 32);
-    multi_groups[1] = NULL;
+    group_t *multigroup = NULL;
+    file_time *file = NULL;
+
+    test_mode = 0;
+
+    multi_groups = OSHash_Create();
+
+    os_calloc(1, sizeof(group_t), multigroup);
+    multigroup->name = strdup("groupA,groupB");
+    multigroup->f_time = OSHash_Create();
+    os_calloc(1, sizeof(file_time), file);
+    file->name = strdup("test_file2");
+    file->m_time = 123456789;
+    OSHash_Add_ex(multigroup->f_time, "test_file2", file);
+    OSHash_Add_ex(multi_groups, "groupA,groupB", multigroup);
+
+    if (setup_hashmap(state) != 0) {
+        return 1;
+    }
+
+    test_mode = 1;
 
     return 0;
 }
 
-static int test_process_multi_groups_group_changed_setup(void ** state) {
-    os_calloc(1, (2) * sizeof(group_t *), multi_groups);
-    os_calloc(1, sizeof(group_t), multi_groups[0]);
-    multi_groups[0]->name = strdup("group1,group2");
-    os_calloc(2, sizeof(file_sum *), multi_groups[0]->f_sum);
-    os_calloc(1, sizeof(file_sum), multi_groups[0]->f_sum[0]);
-    os_strdup("test_file2", multi_groups[0]->f_sum[0]->name);
-    strncpy(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF", 32);
-    multi_groups[1] = NULL;
+static int test_process_multi_groups_groups_setup(void ** state) {
+    group_t *group1 = NULL;
+    group_t *group2 = NULL;
+    group_t *multigroup = NULL;
+    file_time *file = NULL;
 
-    os_calloc(1, (3) * sizeof(group_t *), groups);
-    os_calloc(1, sizeof(group_t), groups[0]);
-    groups[0]->name = strdup("group1");
-    groups[0]->has_changed = true;
-    groups[0]->exists = true;
-    os_calloc(1, sizeof(group_t), groups[1]);
-    groups[1]->name = strdup("group2");
-    groups[1]->has_changed = false;
-    groups[1]->exists = true;
-    groups[2] = NULL;
+    test_mode = 0;
 
-    return 0;
-}
+    multi_groups = OSHash_Create();
 
-static int test_process_multi_groups_group_not_changed_setup(void ** state) {
+    os_calloc(1, sizeof(group_t), multigroup);
+    multigroup->name = strdup("group1,group2");
+    multigroup->f_time = OSHash_Create();
+    os_calloc(1, sizeof(file_time), file);
+    file->name = strdup("test_file2");
+    file->m_time = 123456789;
+    OSHash_Add_ex(multigroup->f_time, "test_file2", file);
+    OSHash_Add_ex(multi_groups, "group1,group2", multigroup);
 
-    os_calloc(1, (2) * sizeof(group_t *), multi_groups);
-    os_calloc(1, sizeof(group_t), multi_groups[0]);
-    multi_groups[0]->name = strdup("group1,group2");
-    os_calloc(2, sizeof(file_sum *), multi_groups[0]->f_sum);
-    os_calloc(1, sizeof(file_sum), multi_groups[0]->f_sum[0]);
-    os_strdup("test_file2", multi_groups[0]->f_sum[0]->name);
-    strncpy(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF", 32);
-    multi_groups[1] = NULL;
+    groups = OSHash_Create();
 
-    os_calloc(1, (3) * sizeof(group_t *), groups);
-    os_calloc(1, sizeof(group_t), groups[0]);
-    groups[0]->name = strdup("group1");
-    groups[0]->has_changed = false;
-    groups[0]->exists = true;
-    os_calloc(1, sizeof(group_t), groups[1]);
-    groups[1]->name = strdup("group2");
-    groups[1]->has_changed = false;
-    groups[1]->exists = true;
-    groups[2] = NULL;
+    os_calloc(1, sizeof(group_t), group1);
+    group1->name = strdup("group1");
+    group1->has_changed = true;
+    group1->exists = true;
+    OSHash_Add_ex(groups, "group1", group1);
+
+    os_calloc(1, sizeof(group_t), group2);
+    group2->name = strdup("group2");
+    group2->has_changed = false;
+    group2->exists = true;
+    OSHash_Add_ex(groups, "group2", group2);
+
+    if (setup_hashmap(state) != 0) {
+        return 1;
+    }
+
+    test_mode = 1;
+
+    state[0] = group1;
+    state[1] = multigroup;
 
     return 0;
 }
 
 static int test_c_files_setup(void ** state) {
-    os_calloc(1, (3) * sizeof(group_t *), groups);
-    os_calloc(1, sizeof(group_t), groups[0]);
-    groups[0]->name = strdup("test_default");
-    os_calloc(2, sizeof(file_sum *), groups[0]->f_sum);
-    os_calloc(1, sizeof(file_sum), groups[0]->f_sum[0]);
-    os_strdup("test_file", groups[0]->f_sum[0]->name);
-    strncpy(groups[0]->f_sum[0]->sum, "ABCDEF1234567890", 32);
-    os_calloc(1, sizeof(group_t), groups[1]);
-    groups[1]->name = strdup("test_test_default");
-    os_calloc(2, sizeof(file_sum *), groups[1]->f_sum);
-    os_calloc(1, sizeof(file_sum), groups[1]->f_sum[0]);
-    os_strdup("test_test_file", groups[1]->f_sum[0]->name);
-    strncpy(groups[1]->f_sum[0]->sum, "12345ABCDEF67890", 32);
-    groups[2] = NULL;
+    group_t *group1 = NULL;
+    group_t *group2 = NULL;
+    group_t *multigroup1 = NULL;
+    group_t *multigroup2 = NULL;
+    file_time *file1 = NULL;
+    file_time *file2 = NULL;
+    file_time *file3 = NULL;
+    file_time *file4 = NULL;
 
-    os_calloc(1, (3) * sizeof(group_t *), multi_groups);
-    os_calloc(1, sizeof(group_t), multi_groups[0]);
-    multi_groups[0]->name = strdup("test_default2");
-    os_calloc(2, sizeof(file_sum *), multi_groups[0]->f_sum);
-    os_calloc(1, sizeof(file_sum), multi_groups[0]->f_sum[0]);
-    os_strdup("test_file2", multi_groups[0]->f_sum[0]->name);
-    strncpy(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF", 32);
-    os_calloc(1, sizeof(group_t), multi_groups[1]);
-    multi_groups[1]->name = strdup("test_test_default2");
-    os_calloc(2, sizeof(file_sum *), multi_groups[1]->f_sum);
-    os_calloc(1, sizeof(file_sum), multi_groups[1]->f_sum[0]);
-    os_strdup("test_test_file2", multi_groups[1]->f_sum[0]->name);
-    strncpy(multi_groups[1]->f_sum[0]->sum, "67890ABCDEF12345", 32);
-    multi_groups[2] = NULL;
+    test_mode = 0;
+
+    groups = OSHash_Create();
+
+    os_calloc(1, sizeof(group_t), group1);
+    group1->name = strdup("test_default");
+    group1->f_time = OSHash_Create();
+    os_calloc(1, sizeof(file_time), file1);
+    file1->name = strdup("test_file");
+    file1->m_time = 123456789;
+    OSHash_Add_ex(group1->f_time, "test_file", file1);
+    OSHash_Add_ex(groups, "test_default", group1);
+
+    os_calloc(1, sizeof(group_t), group2);
+    group2->name = strdup("test_test_default");
+    group2->f_time = OSHash_Create();
+    os_calloc(1, sizeof(file_time), file2);
+    file2->name = strdup("test_test_file");
+    file2->m_time = 123456798;
+    OSHash_Add_ex(group2->f_time, "test_test_file", file2);
+    OSHash_Add_ex(groups, "test_test_default", group2);
+
+    multi_groups = OSHash_Create();
+
+    os_calloc(1, sizeof(group_t), multigroup1);
+    multigroup1->name = strdup("test_default2");
+    multigroup1->f_time = OSHash_Create();
+    os_calloc(1, sizeof(file_time), file3);
+    file3->name = strdup("test_file2");
+    file3->m_time = 123456789;
+    OSHash_Add_ex(multigroup1->f_time, "test_file2", file3);
+    OSHash_Add_ex(multi_groups, "test_default2", multigroup1);
+
+    os_calloc(1, sizeof(group_t), multigroup2);
+    multigroup2->name = strdup("test_test_default2");
+    multigroup2->f_time = OSHash_Create();
+    os_calloc(1, sizeof(file_time), file4);
+    file4->name = strdup("test_test_file2");
+    file4->m_time = 123456798;
+    OSHash_Add_ex(multigroup2->f_time, "test_test_file2", file4);
+    OSHash_Add_ex(multi_groups, "test_test_default2", multigroup2);
+
+    test_mode = 1;
 
     return 0;
 }
 
 static int test_c_group_teardown(void ** state) {
-    int i;
-    int j;
-    file_sum **f_sum = NULL;
+    test_mode = 0;
 
     if (groups) {
-        for (i = 0; groups[i]; i++) {
-            free_file_sum(groups[i]->f_sum);
-            os_free(groups[i]->name);
-            os_free(groups[i]);
-        }
-
-        os_free(groups);
+        OSHash_Clean(groups, free_group_c_group);
     }
+
+    test_mode = 1;
 
     return 0;
 }
 
 static int test_c_multi_group_teardown(void ** state) {
-    int i;
-    int j;
-    file_sum **f_sum = NULL;
+    test_mode = 0;
 
     if (multi_groups) {
-        for (i = 0; multi_groups[i]; i++) {
-            free_file_sum(multi_groups[i]->f_sum);
-            os_free(multi_groups[i]->name);
-            os_free(multi_groups[i]);
-        }
-
-        os_free(multi_groups);
+        OSHash_Clean(multi_groups, free_group);
     }
 
-    return 0;
-}
-
-static int test_fsum_changed_teardown(void ** state) {
-    file_sum **f_sum1 = (file_sum **)state[0];
-    file_sum **f_sum2 = (file_sum **)state[1];
-    free_file_sum(f_sum1);
-    free_file_sum(f_sum2);
+    test_mode = 1;
 
     return 0;
 }
 
-static int test_process_multi_group_check_group_changed_teardown(void ** state) {
-    int i;
-    int j;
+static int test_process_deleted_groups_teardown(void ** state) {
+    group_t *group = (group_t *)state[1];
+
+    test_mode = 0;
+
+    free_group_c_group(group);
+
+    test_mode = 1;
+
+    return 0;
+}
+
+static int test_ftime_changed_teardown(void ** state) {
+    file_time *file1 = (file_time *)state[0];
+    file_time *file2 = (file_time *)state[1];
+
+    test_mode = 0;
+
+    free_file_time(file1);
+    free_file_time(file2);
+
+    test_mode = 1;
+
+    return 0;
+}
+
+static int test_process_groups_teardown(void ** state) {
+    OSHash *f_time = (OSHash *)state[0];
+
+    test_mode = 0;
+
+    OSHash_Clean(f_time, free_file_time);
+
+    if (groups) {
+        OSHash_Clean(groups, free_group_c_group);
+    }
+
+    if (teardown_hashmap(NULL) != 0) {
+        return -1;
+    }
+
+    test_mode = 1;
+
+    return 0;
+}
+
+static int test_process_multi_groups_teardown(void ** state) {
+    test_mode = 0;
 
     if (multi_groups) {
-        for (i = 0; multi_groups[i]; i++) {
-            os_free(multi_groups[i]->name);
-            os_free(multi_groups[i]);
-        }
+        OSHash_Clean(multi_groups, free_group);
+    }
 
-        os_free(multi_groups);
+    if (teardown_hashmap(NULL) != 0) {
+        return -1;
+    }
+
+    test_mode = 1;
+
+    return 0;
+}
+
+static int test_process_multi_groups_groups_teardown(void ** state) {
+    OSHash *f_time = (OSHash *)state[0];
+
+    test_mode = 0;
+
+    OSHash_Clean(f_time, free_file_time);
+
+    if (multi_groups) {
+        OSHash_Clean(multi_groups, free_group_c_group);
     }
 
     if (groups) {
-        for (j = 0; groups[j]; j++) {
-            free_file_sum(groups[j]->f_sum);
-            os_free(groups[j]->name);
-            os_free(groups[j]);
-        }
-
-        os_free(groups);
+        OSHash_Clean(groups, free_group);
     }
+
+    if (teardown_hashmap(NULL) != 0) {
+        return -1;
+    }
+
+    test_mode = 1;
 
     return 0;
 }
 
 static int test_c_files_teardown(void ** state) {
-    int i;
-    int j;
-    file_sum **f_sum = NULL;
+    test_mode = 0;
 
     if (groups) {
-        for (i = 0; groups[i]; i++) {
-            free_file_sum(groups[i]->f_sum);
-            os_free(groups[i]->name);
-            os_free(groups[i]);
-        }
-
-        os_free(groups);
+        OSHash_Clean(groups, free_group);
     }
 
     if (multi_groups) {
-        for (i = 0; multi_groups[i]; i++) {
-            free_file_sum(multi_groups[i]->f_sum);
-            os_free(multi_groups[i]->name);
-            os_free(multi_groups[i]);
-        }
-
-        os_free(multi_groups);
+        OSHash_Clean(multi_groups, free_group);
     }
+
+    test_mode = 1;
 
     return 0;
 }
@@ -362,32 +521,8 @@ void test_lookfor_agent_group_with_group()
     int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
     assert_int_equal(OS_SUCCESS, ret);
     assert_string_equal(r_group, test_group);
-}
 
-void test_lookfor_agent_group_null_groups()
-{
-    const int agent_id = 1;
-    const char agent_id_str[] = "001";
-    char *msg = "Linux |localhost.localdomain |4.18.0-240.22.1.el8_3.x86_64 |#1 SMP Thu Apr 8 19:01:30 UTC 2021 |x86_64 [CentOS Linux|centos: 8.3] - Wazuh v4.2.0 / ab73af41699f13fdd81903b5f23d8d00\nc2305e0ac17e7176e924294c69cc7a24 merged.mg\n#\"_agent_ip\":10.0.2.4";
-    char *r_group = NULL;
-
-    expect_value(__wrap_wdb_get_agent_group, id, agent_id);
-    will_return(__wrap_wdb_get_agent_group, NULL);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
-
-    will_return(__wrap_w_is_single_node, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Group assigned: 'default'");
-
-    expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
-    will_return(__wrap_wdb_set_agent_groups_csv, 0);
-
-    int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
-    assert_int_equal(OS_SUCCESS, ret);
-    assert_string_equal(r_group, "default");
-
-    os_free(r_group);
+    os_free(test_group);
 }
 
 void test_lookfor_agent_group_set_default_group()
@@ -402,7 +537,11 @@ void test_lookfor_agent_group_set_default_group()
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     will_return(__wrap_w_is_single_node, 0);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
     will_return(__wrap_wdb_set_agent_groups_csv, 0);
@@ -414,6 +553,122 @@ void test_lookfor_agent_group_set_default_group()
     assert_string_equal(r_group, "default");
 
     os_free(r_group);
+}
+
+void test_lookfor_agent_group_set_group_worker()
+{
+    const int agent_id = 1;
+    const char agent_id_str[] = "001";
+    char *msg = "Linux |localhost.localdomain |4.18.0-240.22.1.el8_3.x86_64 |#1 SMP Thu Apr 8 19:01:30 UTC 2021 |x86_64 [CentOS Linux|centos: 8.3] - Wazuh v4.2.0 / ab73af41699f13fdd81903b5f23d8d00\nc2305e0ac17e7176e924294c69cc7a24 merged.mg\n#\"_agent_ip\":10.0.2.4";
+    char *r_group = NULL;
+
+    cJSON *input = cJSON_CreateObject();
+
+    cJSON *parameters = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(parameters, "agent", "001");
+    cJSON_AddStringToObject(parameters, "md5", "c2305e0ac17e7176e924294c69cc7a24");
+
+    cJSON_AddStringToObject(input, "command", "assigngroup");
+    cJSON_AddItemToObject(input, "parameters", parameters);
+
+    cJSON * cluster_request = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(cluster_request, "daemon_name", "remoted");
+    cJSON_AddItemToObject(cluster_request, "message", input);
+
+    char *message = "{\"daemon_name\":\"remoted\","
+                     "\"message\":{\"command\":\"assigngroup\","
+                                  "\"parameters\":{\"agent\":\"001\","
+                                                  "\"md5\":\"c2305e0ac17e7176e924294c69cc7a24\"}}}";
+
+    char *response = "{\"error\":0,\"data\":{\"group\":\"test1\"}}";
+
+    expect_value(__wrap_wdb_get_agent_group, id, agent_id);
+    will_return(__wrap_wdb_get_agent_group, NULL);
+
+    expect_string(__wrap_w_create_sendsync_payload, daemon_name, "remoted");
+    will_return(__wrap_w_create_sendsync_payload, 1);
+    will_return(__wrap_w_create_sendsync_payload, cluster_request);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Sending message to master node: '{\"daemon_name\":\"remoted\","
+                                                                                    "\"message\":{\"command\":\"assigngroup\","
+                                                                                                 "\"parameters\":{\"agent\":\"001\","
+                                                                                                                 "\"md5\":\"c2305e0ac17e7176e924294c69cc7a24\"}}}'");
+
+    expect_string(__wrap_w_send_clustered_message, command, "sendsync");
+    expect_string(__wrap_w_send_clustered_message, payload, message);
+    will_return(__wrap_w_send_clustered_message, response);
+    will_return(__wrap_w_send_clustered_message, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Message received from master node: '{\"error\":0,\"data\":{\"group\":\"test1\"}}'");
+
+    logr.worker_node = 1;
+    int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
+    logr.worker_node = 0;
+
+    assert_int_equal(OS_SUCCESS, ret);
+    assert_string_equal(r_group, "test1");
+
+    os_free(r_group);
+}
+
+void test_lookfor_agent_group_set_group_worker_error()
+{
+    const int agent_id = 1;
+    const char agent_id_str[] = "001";
+    char *msg = "Linux |localhost.localdomain |4.18.0-240.22.1.el8_3.x86_64 |#1 SMP Thu Apr 8 19:01:30 UTC 2021 |x86_64 [CentOS Linux|centos: 8.3] - Wazuh v4.2.0 / ab73af41699f13fdd81903b5f23d8d00\nc2305e0ac17e7176e924294c69cc7a24 merged.mg\n#\"_agent_ip\":10.0.2.4";
+    char *r_group = NULL;
+
+    cJSON *input = cJSON_CreateObject();
+
+    cJSON *parameters = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(parameters, "agent", "001");
+    cJSON_AddStringToObject(parameters, "md5", "c2305e0ac17e7176e924294c69cc7a24");
+
+    cJSON_AddStringToObject(input, "command", "assigngroup");
+    cJSON_AddItemToObject(input, "parameters", parameters);
+
+    cJSON * cluster_request = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(cluster_request, "daemon_name", "remoted");
+    cJSON_AddItemToObject(cluster_request, "message", input);
+
+    char *message = "{\"daemon_name\":\"remoted\","
+                     "\"message\":{\"command\":\"assigngroup\","
+                                  "\"parameters\":{\"agent\":\"001\","
+                                                  "\"md5\":\"c2305e0ac17e7176e924294c69cc7a24\"}}}";
+
+    char *response = "{\"error\":1,\"data\":{}}";
+
+    expect_value(__wrap_wdb_get_agent_group, id, agent_id);
+    will_return(__wrap_wdb_get_agent_group, NULL);
+
+    expect_string(__wrap_w_create_sendsync_payload, daemon_name, "remoted");
+    will_return(__wrap_w_create_sendsync_payload, 1);
+    will_return(__wrap_w_create_sendsync_payload, cluster_request);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Sending message to master node: '{\"daemon_name\":\"remoted\","
+                                                                                    "\"message\":{\"command\":\"assigngroup\","
+                                                                                                 "\"parameters\":{\"agent\":\"001\","
+                                                                                                                 "\"md5\":\"c2305e0ac17e7176e924294c69cc7a24\"}}}'");
+
+    expect_string(__wrap_w_send_clustered_message, command, "sendsync");
+    expect_string(__wrap_w_send_clustered_message, payload, message);
+    will_return(__wrap_w_send_clustered_message, response);
+    will_return(__wrap_w_send_clustered_message, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Message received from master node: '{\"error\":1,\"data\":{}}'");
+
+    expect_string(__wrap__merror, formatted_msg, "Agent '001' invalid or empty group assigned.");
+
+    logr.worker_node = 1;
+    int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
+    logr.worker_node = 0;
+
+    assert_int_equal(OS_INVALID, ret);
+    assert_null(r_group);
 }
 
 void test_lookfor_agent_group_msg_without_enter()
@@ -467,56 +722,412 @@ void test_lookfor_agent_group_message_without_second_enter()
     assert_null(r_group);
 }
 
-void test_c_group_fail(void **state)
+void test_c_group_no_changes(void **state)
 {
-    const char *group = "test_default";
+    disk_storage = 0;
 
-    expect_string(__wrap_w_parser_get_group, name, groups[0]->name);
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, (FILE *)1);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
+    expect_value(__wrap_OS_MD5_Str, length, 13);
+    will_return(__wrap_OS_MD5_Str, "md5_test");
+    will_return(__wrap_OS_MD5_Str, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/merged.mg");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, 0);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "merged.mg");
+    will_return(__wrap_OSHash_Add_ex, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't add file 'merged.mg' to group hash table.");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    assert_string_equal(group->name, "test_default");
+    assert_string_equal(group->merged_sum, "md5_test");
+    assert_non_null(group->f_time);
+}
+
+void test_c_group_no_changes_disk(void **state)
+{
+    disk_storage = 1;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, (FILE *)1);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
+
+    // Start validate_shared_files function
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    // End validate_shared_files function
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg.tmp");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_unlink, file, "etc/shared/test_default/merged.mg.tmp");
+    will_return(__wrap_unlink, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/merged.mg");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, 0);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "merged.mg");
+    will_return(__wrap_OSHash_Add_ex, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't add file 'merged.mg' to group hash table.");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    assert_string_equal(group->name, "test_default");
+    assert_string_equal(group->merged_sum, "md5_test");
+    assert_non_null(group->f_time);
+}
+
+void test_c_group_changes(void **state)
+{
+    disk_storage = 0;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, (FILE *)1);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
+
+    // Start validate_shared_files function
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    // End validate_shared_files function
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
+    expect_value(__wrap_OS_MD5_Str, length, 13);
+    will_return(__wrap_OS_MD5_Str, "md5_test");
+    will_return(__wrap_OS_MD5_Str, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test2");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, (FILE *)2);
+
+    will_return(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, (FILE *)2);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test2");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/merged.mg");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to get entry attributes 'etc/shared/test_default/merged.mg'");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    assert_string_equal(group->name, "test_default");
+    assert_string_equal(group->merged_sum, "md5_test2");
+    assert_non_null(group->f_time);
+}
+
+void test_c_group_changes_disk(void **state)
+{
+    disk_storage = 1;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, (FILE *)1);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
+
+    // Start validate_shared_files function
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    // End validate_shared_files function
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg.tmp");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test2");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
+    will_return(__wrap_OS_MoveFile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test2");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/merged.mg");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to get entry attributes 'etc/shared/test_default/merged.mg'");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    assert_string_equal(group->name, "test_default");
+    assert_string_equal(group->merged_sum, "md5_test2");
+    assert_non_null(group->f_time);
+}
+
+void test_c_group_fail(void **state)
+{
+    disk_storage = 0;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, (FILE *)1);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
+
+    // Start validate_shared_files function
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    // End validate_shared_files function
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
+    expect_value(__wrap_OS_MD5_Str, length, 13);
+    will_return(__wrap_OS_MD5_Str, "md5_test");
+    will_return(__wrap_OS_MD5_Str, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_MergeAppendFile, tag, "test_default");
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 1);
+    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, (FILE *)2);
 
-    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
-    will_return(__wrap_OS_MoveFile, 0);
+    will_return(__wrap_fwrite, 1);
+
+    expect_value(__wrap_fclose, _File, (FILE *)2);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
 
     expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
 
-    c_group(group, &groups[0]->f_sum, SHAREDCFG_DIR, true);
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "merged.mg");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
-
+    assert_string_equal(group->name, "test_default");
+    assert_string_equal(group->merged_sum, "");
+    assert_non_null(group->f_time);
 }
 
-void test_c_group_downloaded_file_is_corrupted(void **state)
+void test_c_group_fail_disk(void **state)
 {
-    const char *group = "test_default";
+    disk_storage = 1;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, (FILE *)1);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
+
+    // Start validate_shared_files function
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
+    // End validate_shared_files function
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg.tmp");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg.tmp'");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    assert_string_equal(group->name, "test_default");
+    assert_string_equal(group->merged_sum, "");
+    assert_non_null(group->f_time);
+}
+
+void test_c_group_downloaded_file(void **state)
+{
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
 
     // Initialize r_group structure
     remote_files_group *r_group = NULL;
@@ -531,7 +1142,105 @@ void test_c_group_downloaded_file_is_corrupted(void **state)
     r_group->merge_file_index = 0;
     r_group->merged_is_downloaded = 1;
 
-    expect_string(__wrap_w_parser_get_group, name, groups[0]->name);
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, r_group);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Downloading shared file 'etc/shared/test_default/merged.mg' from 'r_group->files_url'");
+
+    expect_string(__wrap_wurl_request, url, r_group->files->url);
+    expect_string(__wrap_wurl_request, dest, "var/download/merged.mg");
+    will_return(__wrap_wurl_request, 0);
+
+    expect_string(__wrap_TestUnmergeFiles, finalpath, "var/download/merged.mg");
+    will_return(__wrap_TestUnmergeFiles, 1);
+
+    expect_string(__wrap_OS_MoveFile, src, "var/download/merged.mg");
+    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
+    will_return(__wrap_OS_MoveFile, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    os_free(r_group->name)
+    os_free(r_group->files->name);
+    os_free(r_group->files->url);
+    os_free(r_group->files);
+    os_free(r_group);
+}
+
+void test_c_group_downloaded_file_no_poll(void **state)
+{
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    // Initialize r_group structure
+    remote_files_group *r_group = NULL;
+    os_malloc(sizeof(remote_files_group), r_group);
+    os_strdup("r_group_name", r_group->name);
+    os_malloc(sizeof(file), r_group->files);
+    os_strdup("r_group->files_name", r_group->files->name);
+    os_strdup("r_group->files_url", r_group->files->url);
+
+    r_group->poll = 0;
+    r_group->current_polling_time = 1;
+    r_group->merge_file_index = 0;
+    r_group->merged_is_downloaded = 1;
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, r_group);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    os_free(r_group->name)
+    os_free(r_group->files->name);
+    os_free(r_group->files->url);
+    os_free(r_group->files);
+    os_free(r_group);
+}
+
+void test_c_group_downloaded_file_is_corrupted(void **state)
+{
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    // Initialize r_group structure
+    remote_files_group *r_group = NULL;
+    os_malloc(sizeof(remote_files_group), r_group);
+    os_strdup("r_group_name", r_group->name);
+    os_malloc(sizeof(file), r_group->files);
+    os_strdup("r_group->files_name", r_group->files->name);
+    os_strdup("r_group->files_url", r_group->files->url);
+
+    r_group->poll = 0;
+    r_group->current_polling_time = 0;
+    r_group->merge_file_index = 0;
+    r_group->merged_is_downloaded = 1;
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, r_group);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Downloading shared file 'etc/shared/test_default/merged.mg' from 'r_group->files_url'");
@@ -543,10 +1252,13 @@ void test_c_group_downloaded_file_is_corrupted(void **state)
     expect_string(__wrap_TestUnmergeFiles, finalpath, "var/download/merged.mg");
     will_return(__wrap_TestUnmergeFiles, 0);
 
+    expect_string(__wrap_unlink, file, "var/download/merged.mg");
+    will_return(__wrap_unlink, -1);
+
     expect_string(__wrap__merror, formatted_msg, "The downloaded file 'var/download/merged.mg' is corrupted.");
     expect_string(__wrap__merror, formatted_msg, "Failed to delete file 'var/download/merged.mg'");
 
-    c_group(group, &groups[0]->f_sum, SHAREDCFG_DIR, true);
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 
     os_free(r_group->name)
     os_free(r_group->files->name);
@@ -557,7 +1269,9 @@ void test_c_group_downloaded_file_is_corrupted(void **state)
 
 void test_c_group_download_all_files(void **state)
 {
-    const char *group = "test_default";
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
 
     // Initialize r_group structure
     remote_files_group *r_group = NULL;
@@ -575,7 +1289,10 @@ void test_c_group_download_all_files(void **state)
     r_group->merge_file_index = -1;
     r_group->merged_is_downloaded = 1;
 
-    expect_string(__wrap_w_parser_get_group, name, groups[0]->name);
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, r_group);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Downloading shared file 'etc/shared/test_default/r_group->files_name' from 'r_group->files_url'");
@@ -595,7 +1312,7 @@ void test_c_group_download_all_files(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
 
-    c_group(group, &groups[0]->f_sum, SHAREDCFG_DIR, true);
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 
     os_free(r_group->name)
     os_free(r_group->files->name);
@@ -604,9 +1321,11 @@ void test_c_group_download_all_files(void **state)
     os_free(r_group);
 }
 
-void test_c_group_read_directory(void **state)
+void test_c_group_no_create_shared_file(void **state)
 {
-    const char *group = "test_default";
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
 
     // Initialize r_group structure
     remote_files_group *r_group = NULL;
@@ -621,16 +1340,18 @@ void test_c_group_read_directory(void **state)
     r_group->merge_file_index = 0;
     r_group->merged_is_downloaded = 0;
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
@@ -638,7 +1359,7 @@ void test_c_group_read_directory(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    c_group(group, &groups[0]->f_sum, SHAREDCFG_DIR, false);
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, false, false);
 
     os_free(r_group->name)
     os_free(r_group->files->name);
@@ -646,18 +1367,18 @@ void test_c_group_read_directory(void **state)
     os_free(r_group->files);
     os_free(r_group);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "merged.mg");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
+    assert_string_equal(group->name, "test_default");
+    assert_string_equal(group->merged_sum, "");
+    assert_non_null(group->f_time);
 }
 
 void test_c_group_invalid_share_file(void **state)
 {
-    const char *group = "test_default";
+    disk_storage = 0;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
 
     // Initialize r_group structure
     remote_files_group *r_group = NULL;
@@ -672,42 +1393,302 @@ void test_c_group_invalid_share_file(void **state)
     r_group->merge_file_index = 0;
     r_group->merged_is_downloaded = 0;
 
-    expect_string(__wrap_w_parser_get_group, name, groups[0]->name);
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_MergeAppendFile, tag, "test_default");
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, (FILE *)1);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    struct stat stat_buf = { .st_mtime = 123456788 };
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
     expect_value(__wrap_MergeAppendFile, path_offset, -1);
     will_return(__wrap_MergeAppendFile, 1);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "ar.conf");
+    will_return(__wrap_OSHash_Add_ex, 1);
 
-    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 1);
+    expect_string(__wrap__merror, formatted_msg, "Couldn't add file 'ar.conf' to group hash table.");
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
-    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
-    will_return(__wrap_OS_MoveFile, 0);
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
+    expect_value(__wrap_OS_MD5_Str, length, 13);
+    will_return(__wrap_OS_MD5_Str, "md5_test");
+    will_return(__wrap_OS_MD5_Str, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
+    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, NULL);
 
-    c_group(group, &groups[0]->f_sum, SHAREDCFG_DIR, true);
+    will_return(__wrap_strerror, "No such file or directory");
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'etc/shared/test_default/merged.mg' due to [(0)-(No such file or directory)].");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    os_free(r_group->name)
+    os_free(r_group->files->name);
+    os_free(r_group->files->url);
+    os_free(r_group->files);
+    os_free(r_group);
+}
+
+void test_c_group_append_file_error(void **state)
+{
+    disk_storage = 0;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    // Initialize r_group structure
+    remote_files_group *r_group = NULL;
+    os_malloc(sizeof(remote_files_group), r_group);
+    os_strdup("r_group_name", r_group->name);
+    os_malloc(sizeof(file), r_group->files);
+    os_strdup("r_group->files_name", r_group->files->name);
+    os_strdup("r_group->files_url", r_group->files->url);
+
+    r_group->poll = 0;
+    r_group->current_polling_time = 0;
+    r_group->merge_file_index = 0;
+    r_group->merged_is_downloaded = 0;
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, (FILE *)1);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    struct stat stat_buf = { .st_mtime = 123456788 };
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 1);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "ar.conf");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't add file 'ar.conf' to group hash table.");
+
+    // Start validate_shared_files function
+    char ** files = NULL;
+    os_malloc((2) * sizeof(char *), files);
+    files[0] = strdup("test-file");
+    files[1] = NULL;
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, files);
+
+    struct stat stat_buf2 = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf2);
+    will_return(__wrap_stat, 0);
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 10);
+    invalid_files = OSHash_Create();
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
+    expect_value(__wrap_MergeAppendFile, path_offset, 0x18);
+    will_return(__wrap_MergeAppendFile, 0);
+    // End validate_shared_files function
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    os_free(r_group->name)
+    os_free(r_group->files->name);
+    os_free(r_group->files->url);
+    os_free(r_group->files);
+    os_free(r_group);
+}
+
+void test_c_group_append_ar_error(void **state)
+{
+    disk_storage = 0;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    // Initialize r_group structure
+    remote_files_group *r_group = NULL;
+    os_malloc(sizeof(remote_files_group), r_group);
+    os_strdup("r_group_name", r_group->name);
+    os_malloc(sizeof(file), r_group->files);
+    os_strdup("r_group->files_name", r_group->files->name);
+    os_strdup("r_group->files_url", r_group->files->url);
+
+    r_group->poll = 0;
+    r_group->current_polling_time = 0;
+    r_group->merge_file_index = 0;
+    r_group->merged_is_downloaded = 0;
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, (FILE *)1);
+
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    struct stat stat_buf = { .st_mtime = 123456788 };
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
+    expect_value(__wrap_MergeAppendFile, path_offset, -1);
+    will_return(__wrap_MergeAppendFile, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    os_free(r_group->name)
+    os_free(r_group->files->name);
+    os_free(r_group->files->url);
+    os_free(r_group->files);
+    os_free(r_group);
+}
+
+void test_c_group_truncate_error(void **state)
+{
+    disk_storage = 0;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    // Initialize r_group structure
+    remote_files_group *r_group = NULL;
+    os_malloc(sizeof(remote_files_group), r_group);
+    os_strdup("r_group_name", r_group->name);
+    os_malloc(sizeof(file), r_group->files);
+    os_strdup("r_group->files_name", r_group->files->name);
+    os_strdup("r_group->files_url", r_group->files->url);
+
+    r_group->poll = 0;
+    r_group->current_polling_time = 0;
+    r_group->merge_file_index = 0;
+    r_group->merged_is_downloaded = 0;
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, NULL);
+
+    will_return(__wrap_strerror, "No such file or directory");
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to open memory stream due to [(0)-(No such file or directory)].");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
+
+    os_free(r_group->name)
+    os_free(r_group->files->name);
+    os_free(r_group->files->url);
+    os_free(r_group->files);
+    os_free(r_group);
+}
+
+void test_c_group_truncate_error_disk(void **state)
+{
+    disk_storage = 1;
+
+    group_t *group = (group_t *)state[0];
+
+    const char *group_name = "test_default";
+
+    // Initialize r_group structure
+    remote_files_group *r_group = NULL;
+    os_malloc(sizeof(remote_files_group), r_group);
+    os_strdup("r_group_name", r_group->name);
+    os_malloc(sizeof(file), r_group->files);
+    os_strdup("r_group->files_name", r_group->files->name);
+    os_strdup("r_group->files_url", r_group->files->url);
+
+    r_group->poll = 0;
+    r_group->current_polling_time = 0;
+    r_group->merge_file_index = 0;
+    r_group->merged_is_downloaded = 0;
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_w_parser_get_group, name, group->name);
+    will_return(__wrap_w_parser_get_group, NULL);
+
+    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, NULL);
+
+    will_return(__wrap_strerror, "No such file or directory");
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to create merged file: 'etc/shared/test_default/merged.mg.tmp' due to [(0)-(No such file or directory)].");
+
+    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
 
     os_free(r_group->name)
     os_free(r_group->files->name);
@@ -719,29 +1700,33 @@ void test_c_group_invalid_share_file(void **state)
 void test_c_multi_group_hash_multigroup_null(void **state)
 {
     char *multi_group = NULL;
-    file_sum ***_f_sum = NULL;
+    OSHash *_f_time = (OSHash *)10;
+    os_md5 sum;
     char *hash_multigroup = NULL;
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
+    c_multi_group(multi_group, &_f_time, &sum, hash_multigroup, true);
 }
 
 void test_c_multi_group_open_directory_fail(void **state)
 {
     char *multi_group = NULL;
-    file_sum ***_f_sum = NULL;
+    OSHash *_f_time = (OSHash *)10;
+    os_md5 sum;
     char *hash_multigroup = NULL;
 
     os_strdup("multi_group_test", multi_group);
     os_strdup("multi_group_hash", hash_multigroup);
 
-    will_return(__wrap_cldir_ex, 0);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/multi_group_hash");
+    will_return(__wrap_cldir_ex_ignore, 0);
+
     will_return(__wrap_opendir, 0);
 
     will_return(__wrap_strerror, "No such file or directory");
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
+    c_multi_group(multi_group, &_f_time, &sum, hash_multigroup, true);
 
     os_free(hash_multigroup);
     os_free(multi_group);
@@ -750,14 +1735,16 @@ void test_c_multi_group_open_directory_fail(void **state)
 void test_c_multi_group_call_copy_directory(void **state)
 {
     char *multi_group = NULL;
+    OSHash *_f_time = (OSHash *)10;
+    os_md5 sum;
     char *hash_multigroup = NULL;
-    file_sum ***_f_sum = NULL;
-    os_malloc(sizeof(file_sum *), _f_sum);
 
     os_strdup("multi_group_test", multi_group);
     os_strdup("multi_group_hash", hash_multigroup);
 
-    will_return(__wrap_cldir_ex, 0);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/multi_group_hash");
+    will_return(__wrap_cldir_ex_ignore, 0);
+
     will_return(__wrap_opendir, 1);
 
     expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
@@ -765,17 +1752,13 @@ void test_c_multi_group_call_copy_directory(void **state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
 
-    expect_string(__wrap_wdb_remove_group_db, name, "multi_group_test");
-    will_return(__wrap_wdb_remove_group_db, OS_SUCCESS);
-
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
+    c_multi_group(multi_group, &_f_time, &sum, hash_multigroup, true);
 
-    os_free(_f_sum);
     os_free(hash_multigroup);
     os_free(multi_group);
 }
@@ -783,26 +1766,29 @@ void test_c_multi_group_call_copy_directory(void **state)
 void test_c_multi_group_read_dir_fail_no_entry(void **state)
 {
     char *multi_group = NULL;
-    file_sum ***_f_sum = NULL;
+    OSHash *_f_time = (OSHash *)10;
+    os_md5 sum;
     char *hash_multigroup = NULL;
 
     os_strdup("multi_group_test", multi_group);
     os_strdup("multi_group_hash", hash_multigroup);
 
-    will_return(__wrap_cldir_ex, 0);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/multi_group_hash");
+    will_return(__wrap_cldir_ex_ignore, 0);
+
     will_return(__wrap_opendir, 1);
 
     expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
     will_return(__wrap_wreaddir, NULL);
 
-    /* Open the multi-group files and generate merged */
+    // Open the multi-group files and generate merged //
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "Not a directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': Not a directory");
 
     errno = ENOTDIR;
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
+    c_multi_group(multi_group, &_f_time, &sum, hash_multigroup, true);
 
     errno = 0;
 
@@ -813,13 +1799,16 @@ void test_c_multi_group_read_dir_fail_no_entry(void **state)
 void test_c_multi_group_Ignore_hidden_files(void **state)
 {
     char *multi_group = NULL;
-    file_sum ***_f_sum = NULL;
+    OSHash *_f_time = (OSHash *)10;
+    os_md5 sum;
     char *hash_multigroup = NULL;
 
     os_strdup("multi_group_test", multi_group);
     os_strdup("multi_group_hash", hash_multigroup);
 
-    will_return(__wrap_cldir_ex, 0);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/multi_group_hash");
+    will_return(__wrap_cldir_ex_ignore, 0);
+
     will_return(__wrap_opendir, 1);
 
     char** files = NULL;
@@ -833,6 +1822,8 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
     will_return(__wrap_wreaddir, files);
 
+    will_return(__wrap_opendir, 0);
+
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/file_2");
     will_return(__wrap_OSHash_Get, NULL);
@@ -843,6 +1834,7 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
+    will_return(__wrap_opendir, 0);
 
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/agent.conf");
@@ -858,16 +1850,18 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
     os_calloc(1, sizeof(time_t), last_modify);
     *last_modify = 10000;
 
+    will_return(__wrap_opendir, 0);
+
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "etc/shared/multi_group_test/ignore_file");
     will_return(__wrap_OSHash_Get, last_modify);
 
-    /* Open the multi-group files and generate merged */
+    // Open the multi-group files and generate merged //
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
+    c_multi_group(multi_group, &_f_time, &sum, hash_multigroup, true);
 
     os_free(last_modify);
     os_free(hash_multigroup);
@@ -877,15 +1871,17 @@ void test_c_multi_group_Ignore_hidden_files(void **state)
 void test_c_multi_group_subdir_fail(void **state)
 {
     char *multi_group = NULL;
-    file_sum ***_f_sum = NULL;
+    OSHash *_f_time = (OSHash *)10;
+    os_md5 sum;
     char *hash_multigroup = NULL;
 
     os_strdup("multi_group_test", multi_group);
     os_strdup("hash_multi_group_test",hash_multigroup);
 
-    will_return(__wrap_cldir_ex, 0);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/hash_multi_group_test");
+    will_return(__wrap_cldir_ex_ignore, 0);
 
-    /* Open the multi-group files and generate merged */
+    // Open the multi-group files and generate merged //
     will_return(__wrap_opendir, 1);
 
     // Start copy_directory function
@@ -901,28 +1897,29 @@ void test_c_multi_group_subdir_fail(void **state)
     will_return(__wrap_strerror, "ERROR");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': ERROR");
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
+    c_multi_group(multi_group, &_f_time, &sum, hash_multigroup, true);
 
     errno = 0;
-    os_free(_f_sum);
     os_free(hash_multigroup);
     os_free(multi_group);
 }
 
 void test_c_multi_group_call_c_group(void **state)
 {
-    char *multi_group = NULL;
-    file_sum ***_f_sum = NULL;
-    os_malloc(sizeof(file_sum *), _f_sum);
+    disk_storage = 0;
 
+    char *multi_group = NULL;
+    OSHash *_f_time = (OSHash *)10;
+    os_md5 sum;
     char *hash_multigroup = NULL;
 
     os_strdup("multi_group_test", multi_group);
     os_strdup("hash_multi_group_test",hash_multigroup);
 
-    will_return(__wrap_cldir_ex, 0);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/hash_multi_group_test");
+    will_return(__wrap_cldir_ex_ignore, 0);
 
-    /* Open the multi-group files and generate merged */
+    // Open the multi-group files and generate merged //
     will_return(__wrap_opendir, 1);
 
     // Start copy_directory function
@@ -932,312 +1929,483 @@ void test_c_multi_group_call_c_group(void **state)
     errno = 1;
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
 
-    expect_string(__wrap_wdb_remove_group_db, name, "multi_group_test");
-    will_return(__wrap_wdb_remove_group_db, OS_SUCCESS);
-
     // End copy_directory function
 
     will_return(__wrap_opendir, 1);
 
     // Start c_group function
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
     expect_string(__wrap_w_parser_get_group, name, "hash_multi_group_test");
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_MergeAppendFile, finalpath, "var/multigroups/hash_multi_group_test/merged.mg.tmp");
-    expect_string(__wrap_MergeAppendFile, tag, "hash_multi_group_test");
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 1);
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, NULL);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
+    will_return(__wrap_strerror, "No such file or directory");
 
-    // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "var/multigroups/hash_multi_group_test");
-    will_return(__wrap_wreaddir, NULL);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'var/multigroups/hash_multi_group_test'");
-    // End validate_shared_files function
-
-    expect_string(__wrap_OS_MoveFile, src, "var/multigroups/hash_multi_group_test/merged.mg.tmp");
-    expect_string(__wrap_OS_MoveFile, dst, "var/multigroups/hash_multi_group_test/merged.mg");
-    will_return(__wrap_OS_MoveFile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "var/multigroups/hash_multi_group_test/merged.mg");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test_mult");
-    will_return(__wrap_OS_MD5_File, 0);
+    expect_string(__wrap__merror, formatted_msg, "Unable to open memory stream due to [(1)-(No such file or directory)].");
     // End c_group function
 
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/hash_multi_group_test");
+    will_return(__wrap_cldir_ex_ignore, 0);
 
-    assert_non_null(_f_sum);
-    assert_non_null(_f_sum[0][0]);
-    assert_non_null(_f_sum[0][0]);
-    assert_string_equal(_f_sum[0][0]->name, "merged.mg");
-    assert_string_equal((char *)_f_sum[0][0]->sum, "md5_test_mult");
-    assert_null(_f_sum[0][1]);
+    c_multi_group(multi_group, &_f_time, &sum, hash_multigroup, true);
 
     errno = 0;
-    os_free(_f_sum[0][0]->name);
-    os_free(_f_sum[0][0]);
-    os_free(_f_sum[0]);
-    os_free(_f_sum);
+
     os_free(hash_multigroup);
     os_free(multi_group);
-}
-
-void test_find_group_found(void **state)
-{
-    group_t *group = find_group("test_default");
-
-    assert_non_null(group);
-    assert_string_equal(group->name, "test_default");
-    assert_non_null(group->f_sum);
-    assert_non_null(group->f_sum[0]);
-    assert_string_equal(group->f_sum[0]->name, "test_file");
-    assert_string_equal(group->f_sum[0]->sum, "ABCDEF1234567890");
-    assert_null(group->f_sum[1]);
-}
-
-void test_find_group_not_found(void **state)
-{
-    group_t *group = find_group("invalid_group");
-
-    assert_null(group);
-}
-
-void test_find_multi_group_found(void **state)
-{
-    group_t *multi_group = find_multi_group("test_default2");
-
-    assert_non_null(multi_group);
-    assert_string_equal(multi_group->name, "test_default2");
-    assert_non_null(multi_group->f_sum);
-    assert_non_null(multi_group->f_sum[0]);
-    assert_string_equal(multi_group->f_sum[0]->name, "test_file2");
-    assert_string_equal(multi_group->f_sum[0]->sum, "1234567890ABCDEF");
-    assert_null(multi_group->f_sum[1]);
-}
-
-void test_find_multi_group_not_found(void **state)
-{
-    group_t *multi_group = find_multi_group("invalid_multi_group");
-
-    assert_null(multi_group);
 }
 
 void test_find_group_from_file_found(void **state)
 {
     char group_name[OS_SIZE_65536] = {0};
-    group_t *group = find_group_from_file("test_file", "ABCDEF1234567890", group_name);
+
+    OSHashNode* node = NULL;
+    os_calloc(1, sizeof(OSHashNode), node);
+    node->data = state[0];
+
+    expect_value(__wrap_OSHash_Begin, self, groups);
+    will_return(__wrap_OSHash_Begin, node);
+
+    group_t *group = find_group_from_sum("ABCDEF1234567890", group_name);
 
     assert_string_equal(group_name, "test_default");
     assert_non_null(group);
     assert_string_equal(group->name, "test_default");
-    assert_non_null(group->f_sum);
-    assert_non_null(group->f_sum[0]);
-    assert_string_equal(group->f_sum[0]->name, "test_file");
-    assert_string_equal(group->f_sum[0]->sum, "ABCDEF1234567890");
-    assert_null(group->f_sum[1]);
+
+    os_free(node);
 }
 
 void test_find_group_from_file_not_found(void **state)
 {
     char group_name[OS_SIZE_65536] = {0};
-    group_t *group = find_group_from_file("invalid_file", "", group_name);
+
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->data = state[0];
+
+    OSHashNode* node2 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node2);
+    node2->data = state[1];
+
+    expect_value(__wrap_OSHash_Begin, self, groups);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Next, self, groups);
+    will_return(__wrap_OSHash_Next, node2);
+
+    expect_value(__wrap_OSHash_Next, self, groups);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    group_t *group = find_group_from_sum("2121212121", group_name);
 
     assert_string_equal(group_name, "\0");
     assert_null(group);
+
+    os_free(node1);
+    os_free(node2);
 }
 
 void test_find_multi_group_from_file_found(void **state)
 {
     char multi_group_name[OS_SIZE_65536] = {0};
-    group_t *multi_group = find_multi_group_from_file("test_file2", "1234567890ABCDEF", multi_group_name);
 
-    assert_string_equal(multi_group_name, "test_default2");
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->data = state[0];
+
+    OSHashNode* node2 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node2);
+    node2->data = state[1];
+
+    expect_value(__wrap_OSHash_Begin, self, multi_groups);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Next, self, multi_groups);
+    will_return(__wrap_OSHash_Next, node2);
+
+    group_t *multi_group = find_multi_group_from_sum("1234567890ABCDFE", multi_group_name);
+
+    assert_string_equal(multi_group_name, "test_test_default2");
     assert_non_null(multi_group);
-    assert_string_equal(multi_group->name, "test_default2");
-    assert_non_null(multi_group->f_sum);
-    assert_non_null(multi_group->f_sum[0]);
-    assert_string_equal(multi_group->f_sum[0]->name, "test_file2");
-    assert_string_equal(multi_group->f_sum[0]->sum, "1234567890ABCDEF");
-    assert_null(multi_group->f_sum[1]);
+    assert_string_equal(multi_group->name, "test_test_default2");
+
+    os_free(node1);
+    os_free(node2);
 }
 
 void test_find_multi_group_from_file_not_found(void **state)
 {
     char multi_group_name[OS_SIZE_65536] = {0};
-    group_t *multi_group = find_multi_group_from_file("invalid_file", "", multi_group_name);
+
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->data = state[0];
+
+    OSHashNode* node2 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node2);
+    node2->data = state[1];
+
+    expect_value(__wrap_OSHash_Begin, self, multi_groups);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Next, self, multi_groups);
+    will_return(__wrap_OSHash_Next, node2);
+
+    expect_value(__wrap_OSHash_Next, self, multi_groups);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    group_t *multi_group = find_multi_group_from_sum("4545454545", multi_group_name);
 
     assert_string_equal(multi_group_name, "\0");
     assert_null(multi_group);
+
+    os_free(node1);
+    os_free(node2);
 }
 
-void test_fsum_changed_same_fsum(void **state)
+void test_ftime_changed_same_fsum(void **state)
 {
-    file_sum **f_sum1 = (file_sum **)state[0];
-    file_sum **f_sum2 = (file_sum **)state[1];
+    file_time *file1 = (file_time *)state[0];
 
-    assert_false(fsum_changed(f_sum1, f_sum2));
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->data = file1;
+
+    OSHash *hash1 = (OSHash *)10;
+    OSHash *hash2 = (OSHash *)11;
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, hash1);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, hash2);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
+
+    expect_value(__wrap_OSHash_Begin, self, hash1);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, hash2);
+    expect_string(__wrap_OSHash_Get_ex, key, "file1");
+    will_return(__wrap_OSHash_Get_ex, file1);
+
+    expect_value(__wrap_OSHash_Next, self, hash1);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    assert_false(ftime_changed(hash1, hash2));
+
+    os_free(node1);
 }
 
-void test_fsum_changed_different_fsum_sum(void **state)
+void test_ftime_changed_different_fsum_sum(void **state)
 {
-    file_sum **f_sum1 = (file_sum **)state[0];
-    file_sum **f_sum2 = (file_sum **)state[1];
+    file_time *file1 = (file_time *)state[0];
+    file_time *file2 = (file_time *)state[1];
 
-    strncpy(f_sum2[1]->sum, "0987654321FEDCAB", 32);
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->data = file1;
 
-    assert_true(fsum_changed(f_sum1, f_sum2));
+    OSHash *hash1 = (OSHash *)10;
+    OSHash *hash2 = (OSHash *)11;
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, hash1);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, hash2);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
+
+    expect_value(__wrap_OSHash_Begin, self, hash1);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, hash2);
+    expect_string(__wrap_OSHash_Get_ex, key, "file1");
+    will_return(__wrap_OSHash_Get_ex, file2);
+
+    assert_true(ftime_changed(hash1, hash2));
+
+    os_free(node1);
 }
 
-void test_fsum_changed_different_fsum_name(void **state)
+void test_ftime_changed_different_fsum_name(void **state)
 {
-    file_sum **f_sum1 = (file_sum **)state[0];
-    file_sum **f_sum2 = (file_sum **)state[1];
+    file_time *file1 = (file_time *)state[0];
 
-    os_free(f_sum2[0]->name);
-    os_strdup("file3", f_sum2[0]->name);
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->data = file1;
 
-    assert_true(fsum_changed(f_sum1, f_sum2));
+    OSHash *hash1 = (OSHash *)10;
+    OSHash *hash2 = (OSHash *)11;
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, hash1);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, hash2);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
+
+    expect_value(__wrap_OSHash_Begin, self, hash1);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, hash2);
+    expect_string(__wrap_OSHash_Get_ex, key, "file1");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    assert_true(ftime_changed(hash1, hash2));
+
+    os_free(node1);
 }
 
-void test_fsum_changed_different_size(void **state)
+void test_ftime_changed_different_size(void **state)
 {
-    file_sum **f_sum1 = (file_sum **)state[0];
-    file_sum **f_sum2 = NULL;
+    OSHash *hash1 = (OSHash *)10;
+    OSHash *hash2 = (OSHash *)11;
 
-    os_calloc(2, sizeof(file_sum *), f_sum2);
-    os_calloc(1, sizeof(file_sum), f_sum2[0]);
-    strncpy(f_sum2[0]->sum, "0987654321FEDCBA", 32);
-    os_strdup("file2", f_sum2[0]->name);
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, hash1);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
 
-    assert_true(fsum_changed(f_sum1, f_sum2));
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, hash2);
+    will_return(__wrap_OSHash_Get_Elem_ex, 1);
 
-    free_file_sum(f_sum2);
+    assert_true(ftime_changed(hash1, hash2));
 }
 
-void test_fsum_changed_one_null(void **state)
+void test_ftime_changed_one_null(void **state)
 {
-    file_sum **f_sum1 = (file_sum **)state[0];
-    file_sum **f_sum2 = NULL;
+    OSHash *hash1 = (OSHash *)10;
+    OSHash *hash2 = NULL;
 
-    assert_true(fsum_changed(f_sum1, f_sum2));
+    assert_true(ftime_changed(hash1, hash2));
 }
 
-void test_fsum_changed_both_null(void **state)
+void test_ftime_changed_both_null(void **state)
 {
-    file_sum **f_sum1 = NULL;
-    file_sum **f_sum2 = NULL;
+    OSHash *hash1 = NULL;
+    OSHash *hash2 = NULL;
 
-    assert_false(fsum_changed(f_sum1, f_sum2));
+    assert_false(ftime_changed(hash1, hash2));
 }
 
 void test_group_changed_not_changed(void **state)
 {
-    groups[0]->exists = true;
-    groups[0]->has_changed = false;
-    groups[1]->exists = true;
-    groups[1]->has_changed = false;
+    group_t *group1 = (group_t *)state[0];
+    group_t *group2 = (group_t *)state[1];
+
+    group1->exists = true;
+    group1->has_changed = false;
+    group2->exists = true;
+    group2->has_changed = false;
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_default");
+    will_return(__wrap_OSHash_Get_ex, group1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_test_default");
+    will_return(__wrap_OSHash_Get_ex, group2);
 
     assert_false(group_changed("test_default,test_test_default"));
 }
 
 void test_group_changed_has_changed(void **state)
 {
-    groups[0]->exists = true;
-    groups[0]->has_changed = false;
-    groups[1]->exists = true;
-    groups[1]->has_changed = true;
+    group_t *group1 = (group_t *)state[0];
+    group_t *group2 = (group_t *)state[1];
+
+    group1->exists = true;
+    group1->has_changed = false;
+    group2->exists = true;
+    group2->has_changed = true;
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_default");
+    will_return(__wrap_OSHash_Get_ex, group1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_test_default");
+    will_return(__wrap_OSHash_Get_ex, group2);
 
     assert_true(group_changed("test_default,test_test_default"));
 }
 
 void test_group_changed_not_exists(void **state)
 {
-    groups[0]->exists = true;
-    groups[0]->has_changed = false;
-    groups[1]->exists = false;
-    groups[1]->has_changed = false;
+    group_t *group1 = (group_t *)state[0];
+    group_t *group2 = (group_t *)state[1];
+
+    group1->exists = true;
+    group1->has_changed = false;
+    group2->exists = false;
+    group2->has_changed = false;
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_default");
+    will_return(__wrap_OSHash_Get_ex, group1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_test_default");
+    will_return(__wrap_OSHash_Get_ex, group2);
 
     assert_true(group_changed("test_default,test_test_default"));
 }
 
 void test_group_changed_invalid_group(void **state)
 {
-    groups[0]->exists = true;
-    groups[0]->has_changed = false;
-    groups[1]->exists = true;
-    groups[1]->has_changed = false;
+    group_t *group1 = (group_t *)state[0];
+    group_t *group2 = (group_t *)state[1];
+
+    group1->exists = true;
+    group1->has_changed = false;
+    group2->exists = true;
+    group2->has_changed = false;
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_default");
+    will_return(__wrap_OSHash_Get_ex, group1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_test_default");
+    will_return(__wrap_OSHash_Get_ex, group2);
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "invalid_group");
+    will_return(__wrap_OSHash_Get_ex, NULL);
 
     assert_true(group_changed("test_default,test_test_default,invalid_group"));
 }
 
 void test_process_deleted_groups_delete(void **state)
 {
-    groups[0]->exists = false;
-    groups[0]->has_changed = false;
-    groups[1]->exists = true;
-    groups[1]->has_changed = false;
+    group_t *group1 = (group_t *)state[0];
+    group_t *group2 = (group_t *)state[1];
+
+    group1->exists = false;
+    group1->has_changed = false;
+    group2->exists = true;
+    group2->has_changed = false;
+
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->key = "test_default";
+    node1->data = group1;
+
+    OSHashNode* node2 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node2);
+    node2->key = "test_test_default";
+    node2->data = group2;
+
+    expect_value(__wrap_OSHash_Begin, self, groups);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Next, self, groups);
+    will_return(__wrap_OSHash_Next, node2);
+
+    expect_value(__wrap_OSHash_Delete_ex, self, groups);
+    expect_string(__wrap_OSHash_Delete_ex, key, "test_default");
+    will_return(__wrap_OSHash_Delete_ex, NULL);
+
+    will_return(__wrap_OSHash_Clean, 0);
+
+    expect_value(__wrap_OSHash_Next, self, groups);
+    will_return(__wrap_OSHash_Next, NULL);
 
     process_deleted_groups();
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test_test_file");
-    assert_string_equal(groups[0]->f_sum[0]->sum, "12345ABCDEF67890");
-    assert_null(groups[0]->f_sum[1]);
-    assert_false(groups[0]->has_changed);
-    assert_false(groups[0]->exists);
-    assert_null(groups[1]);
+    assert_non_null(group2);
+    assert_string_equal(group2->name, "test_test_default");
+    assert_false(group2->has_changed);
+    assert_false(group2->exists);
+
+    os_free(node1);
+    os_free(node2);
 }
 
 void test_process_deleted_groups_no_changes(void **state)
 {
-    groups[0]->exists = true;
-    groups[0]->has_changed = false;
-    groups[1]->exists = true;
-    groups[1]->has_changed = false;
+    group_t *group1 = (group_t *)state[0];
+    group_t *group2 = (group_t *)state[1];
+
+    group1->exists = true;
+    group1->has_changed = false;
+    group2->exists = true;
+    group2->has_changed = false;
+
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->key = "test_default";
+    node1->data = group1;
+
+    OSHashNode* node2 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node2);
+    node2->key = "test_test_default";
+    node2->data = group2;
+
+    expect_value(__wrap_OSHash_Begin, self, groups);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Next, self, groups);
+    will_return(__wrap_OSHash_Next, node2);
+
+    expect_value(__wrap_OSHash_Next, self, groups);
+    will_return(__wrap_OSHash_Next, NULL);
 
     process_deleted_groups();
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test_file");
-    assert_string_equal(groups[0]->f_sum[0]->sum, "ABCDEF1234567890");
-    assert_null(groups[0]->f_sum[1]);
-    assert_false(groups[0]->has_changed);
-    assert_false(groups[0]->exists);
-    assert_non_null(groups[1]);
-    assert_string_equal(groups[1]->name, "test_test_default");
-    assert_non_null(groups[1]->f_sum);
-    assert_non_null(groups[1]->f_sum[0]);
-    assert_string_equal(groups[1]->f_sum[0]->name, "test_test_file");
-    assert_string_equal(groups[1]->f_sum[0]->sum, "12345ABCDEF67890");
-    assert_null(groups[1]->f_sum[1]);
-    assert_false(groups[1]->has_changed);
-    assert_false(groups[1]->exists);
-    assert_null(groups[2]);
+    assert_non_null(group1);
+    assert_string_equal(group1->name, "test_default");
+    assert_false(group1->has_changed);
+    assert_false(group1->exists);
+    assert_non_null(group2);
+    assert_string_equal(group2->name, "test_test_default");
+    assert_false(group2->has_changed);
+    assert_false(group2->exists);
+
+    os_free(node1);
+    os_free(node2);
 }
 
 void test_process_deleted_multi_groups_delete(void **state)
 {
-    multi_groups[0]->exists = false;
-    multi_groups[0]->has_changed = false;
-    multi_groups[1]->exists = true;
-    multi_groups[1]->has_changed = false;
+    group_t *multigroup1 = (group_t *)state[0];
+    group_t *multigroup2 = (group_t *)state[1];
+
+    multigroup1->exists = false;
+    multigroup1->has_changed = false;
+    multigroup2->exists = true;
+    multigroup2->has_changed = false;
+
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->key = "test_default2";
+    node1->data = multigroup1;
+
+    OSHashNode* node2 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node2);
+    node2->key = "test_test_default2";
+    node2->data = multigroup2;
 
     will_return(__wrap_OSHash_Clean, 0);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, NULL);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_value(__wrap_OSHash_Begin, self, multi_groups);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Next, self, multi_groups);
+    will_return(__wrap_OSHash_Next, node2);
+
+    expect_value(__wrap_OSHash_Delete_ex, self, multi_groups);
+    expect_string(__wrap_OSHash_Delete_ex, key, "test_default2");
+    will_return(__wrap_OSHash_Delete_ex, NULL);
+
+    will_return(__wrap_OSHash_Clean, 0);
+
+    expect_value(__wrap_OSHash_Next, self, multi_groups);
+    will_return(__wrap_OSHash_Next, NULL);
 
     expect_any(__wrap_OS_SHA256_String, str);
     will_return(__wrap_OS_SHA256_String, "6e3a107738e7d0fc85241f04ed9686d37738e7d08086fb46e3a100fc85241f04");
@@ -1245,53 +2413,128 @@ void test_process_deleted_multi_groups_delete(void **state)
     expect_string(__wrap_rmdir_ex, name, "var/multigroups/6e3a1077");
     will_return(__wrap_rmdir_ex, 0);
 
-    process_deleted_multi_groups();
+    process_deleted_multi_groups(false);
 
-    assert_non_null(multi_groups[0]);
-    assert_string_equal(multi_groups[0]->name, "test_test_default2");
-    assert_non_null(multi_groups[0]->f_sum);
-    assert_non_null(multi_groups[0]->f_sum[0]);
-    assert_string_equal(multi_groups[0]->f_sum[0]->name, "test_test_file2");
-    assert_string_equal(multi_groups[0]->f_sum[0]->sum, "67890ABCDEF12345");
-    assert_null(multi_groups[0]->f_sum[1]);
-    assert_false(multi_groups[0]->has_changed);
-    assert_false(multi_groups[0]->exists);
-    assert_null(multi_groups[1]);
+    assert_non_null(multigroup2);
+    assert_string_equal(multigroup2->name, "test_test_default2");
+    assert_false(multigroup2->has_changed);
+    assert_false(multigroup2->exists);
+
+    os_free(node1);
+    os_free(node2);
 }
 
 void test_process_deleted_multi_groups_no_changes(void **state)
 {
-    multi_groups[0]->exists = true;
-    multi_groups[0]->has_changed = false;
-    multi_groups[1]->exists = true;
-    multi_groups[1]->has_changed = false;
+    group_t *multigroup1 = (group_t *)state[0];
+    group_t *multigroup2 = (group_t *)state[1];
+
+    multigroup1->exists = true;
+    multigroup1->has_changed = false;
+    multigroup2->exists = true;
+    multigroup2->has_changed = false;
+
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->key = "test_default2";
+    node1->data = multigroup1;
+
+    OSHashNode* node2 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node2);
+    node2->key = "test_test_default2";
+    node2->data = multigroup2;
 
     will_return(__wrap_OSHash_Clean, 0);
 
     expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, NULL);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    process_deleted_multi_groups();
+    expect_value(__wrap_OSHash_Begin, self, multi_groups);
+    will_return(__wrap_OSHash_Begin, node1);
 
-    assert_non_null(multi_groups[0]);
-    assert_string_equal(multi_groups[0]->name, "test_default2");
-    assert_non_null(multi_groups[0]->f_sum);
-    assert_non_null(multi_groups[0]->f_sum[0]);
-    assert_string_equal(multi_groups[0]->f_sum[0]->name, "test_file2");
-    assert_string_equal(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF");
-    assert_null(multi_groups[0]->f_sum[1]);
-    assert_false(multi_groups[0]->has_changed);
-    assert_false(multi_groups[0]->exists);
-    assert_non_null(multi_groups[1]);
-    assert_string_equal(multi_groups[1]->name, "test_test_default2");
-    assert_non_null(multi_groups[1]->f_sum);
-    assert_non_null(multi_groups[1]->f_sum[0]);
-    assert_string_equal(multi_groups[1]->f_sum[0]->name, "test_test_file2");
-    assert_string_equal(multi_groups[1]->f_sum[0]->sum, "67890ABCDEF12345");
-    assert_null(multi_groups[1]->f_sum[1]);
-    assert_false(multi_groups[1]->has_changed);
-    assert_false(multi_groups[1]->exists);
-    assert_null(multi_groups[2]);
+    expect_value(__wrap_OSHash_Next, self, multi_groups);
+    will_return(__wrap_OSHash_Next, node2);
+
+    expect_value(__wrap_OSHash_Next, self, multi_groups);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    process_deleted_multi_groups(false);
+
+    assert_non_null(multigroup1);
+    assert_string_equal(multigroup1->name, "test_default2");
+    assert_false(multigroup1->has_changed);
+    assert_false(multigroup1->exists);
+    assert_non_null(multigroup2);
+    assert_string_equal(multigroup2->name, "test_test_default2");
+    assert_false(multigroup2->has_changed);
+    assert_false(multigroup2->exists);
+
+    os_free(node1);
+    os_free(node2);
+}
+
+void test_process_deleted_multi_groups_no_changes_initial_scan(void **state)
+{
+    group_t *multigroup1 = (group_t *)state[0];
+    group_t *multigroup2 = (group_t *)state[1];
+
+    multigroup1->exists = true;
+    multigroup1->has_changed = false;
+    multigroup2->exists = true;
+    multigroup2->has_changed = false;
+
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->key = "test_default2";
+    node1->data = multigroup1;
+
+    OSHashNode* node2 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node2);
+    node2->key = "test_test_default2";
+    node2->data = multigroup2;
+
+    OSHashNode* node3 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node3);
+    node3->key = "ignore";
+    node3->data = "ignore_hash";
+
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
+    will_return(__wrap_OSHash_Begin, node3);
+
+    expect_value(__wrap_OSHash_Next, self, m_hash);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups");
+    will_return(__wrap_cldir_ex_ignore, 0);
+
+    will_return(__wrap_OSHash_Clean, 0);
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_value(__wrap_OSHash_Begin, self, multi_groups);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Next, self, multi_groups);
+    will_return(__wrap_OSHash_Next, node2);
+
+    expect_value(__wrap_OSHash_Next, self, multi_groups);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    process_deleted_multi_groups(true);
+
+    assert_non_null(multigroup1);
+    assert_string_equal(multigroup1->name, "test_default2");
+    assert_false(multigroup1->has_changed);
+    assert_false(multigroup1->exists);
+    assert_non_null(multigroup2);
+    assert_string_equal(multigroup2->name, "test_test_default2");
+    assert_false(multigroup2->has_changed);
+    assert_false(multigroup2->exists);
+
+    os_free(node1);
+    os_free(node2);
+    os_free(node3);
 }
 
 void test_process_groups_open_directory_fail(void **state)
@@ -1326,7 +2569,7 @@ void test_process_groups_subdir_null(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At process_groups(): Could not open directory 'etc/shared/test'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test'");
 
     will_return(__wrap_readdir, NULL);
 
@@ -1371,6 +2614,8 @@ void test_process_groups_skip_2(void **state)
 
 void test_process_groups_find_group_null(void **state)
 {
+    disk_storage = 0;
+
     struct dirent *entry;
     os_calloc(1, sizeof(struct dirent), entry);
     strcpy(entry->d_name, "test");
@@ -1380,6 +2625,8 @@ void test_process_groups_find_group_null(void **state)
     os_strdup("file_1", subdir[0]);
     subdir[1] = NULL;
 
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))free_group_c_group);
+
     will_return(__wrap_opendir, 1);
 
     will_return(__wrap_readdir, entry);
@@ -1387,55 +2634,76 @@ void test_process_groups_find_group_null(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test");
     will_return(__wrap_wreaddir, subdir);
 
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, groups);
+    expect_string(__wrap_OSHash_Add_ex, key, "test");
+    will_return(__wrap_OSHash_Add_ex, 2);
+
     // Start c_group function
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
     expect_string(__wrap_w_parser_get_group, name, "test");
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test/merged.mg.tmp");
-    expect_string(__wrap_MergeAppendFile, tag, "test");
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 1);
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, (FILE *)1);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test'");
     // End validate_shared_files function
-    // End c_group function
 
-    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test/merged.mg.tmp");
-    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test/merged.mg");
-    will_return(__wrap_OS_MoveFile, 0);
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
+    expect_value(__wrap_OS_MD5_Str, length, 13);
+    will_return(__wrap_OS_MD5_Str, "md5_test");
+    will_return(__wrap_OS_MD5_Str, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_merged");
-    will_return(__wrap_OS_MD5_File, 0);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap_fopen, path, "etc/shared/test/merged.mg");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, NULL);
+
+    will_return(__wrap_strerror, "No such file or directory");
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'etc/shared/test/merged.mg' due to [(0)-(No such file or directory)].");
+    // End c_group function
 
     will_return(__wrap_readdir, NULL);
 
     process_groups();
-
-    assert_non_null(groups[1]);
-    assert_string_equal(groups[1]->name, "test");
-    assert_non_null(groups[1]->f_sum);
-    assert_non_null(groups[1]->f_sum[0]);
-    assert_string_equal(groups[1]->f_sum[0]->name, "merged.mg");
-    assert_true(groups[1]->has_changed);
-    assert_true(groups[1]->exists);
-    assert_null(groups[2]);
 
     os_free(entry);
 }
 
 void test_process_groups_find_group_changed(void **state)
 {
+    disk_storage = 0;
+
+    group_t *group = (group_t *)state[1];
+
     struct dirent *entry;
     os_calloc(1, sizeof(struct dirent), entry);
     strcpy(entry->d_name, "test_default");
@@ -1452,76 +2720,104 @@ void test_process_groups_find_group_changed(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, subdir);
 
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_default");
+    will_return(__wrap_OSHash_Get_ex, group);
+
     // Start c_group function
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "new_md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
+
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
     will_return(__wrap_OS_MD5_File, "1212121212121");
-    will_return(__wrap_OS_MD5_File, 0);
+    will_return(__wrap_OS_MD5_File, -1);
     // End c_group function
 
+    // Start ftime_changed
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, group->f_time);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, (OSHash *)10);
+    will_return(__wrap_OSHash_Get_Elem_ex, 1);
+    // End ftime_changed
+
+    will_return(__wrap_OSHash_Clean, NULL);
+
     // Start c_group function
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)11);
+
     expect_string(__wrap_w_parser_get_group, name, "test_default");
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_MergeAppendFile, finalpath, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_MergeAppendFile, tag, "test_default");
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 1);
+    will_return(__wrap_open_memstream, strdup("buffer stream"));
+    will_return(__wrap_open_memstream, 13);
+    will_return(__wrap_open_memstream, (FILE *)1);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "new_md5_test_2");
-    will_return(__wrap_OS_MD5_File, -1);
+    expect_value(__wrap_fprintf, __stream, (FILE *)1);
+    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
-    expect_string(__wrap_OS_MoveFile, src, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
-    will_return(__wrap_OS_MoveFile, 0);
+
+    expect_value(__wrap_fclose, _File, (FILE *)1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
+    expect_value(__wrap_OS_MD5_Str, length, 13);
+    will_return(__wrap_OS_MD5_Str, "md5_test");
+    will_return(__wrap_OS_MD5_Str, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "3434343434343");
-    will_return(__wrap_OS_MD5_File, 0);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, -1);
+
+    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_fopen, mode, "w");
+    will_return(__wrap_fopen, NULL);
+
+    will_return(__wrap_strerror, "No such file or directory");
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'etc/shared/test_default/merged.mg' due to [(0)-(No such file or directory)].");
     // End c_group function
 
     expect_string(__wrap__mdebug2, formatted_msg, "Group 'test_default' has changed.");
 
+    will_return(__wrap_OSHash_Clean, NULL);
+
     will_return(__wrap_readdir, NULL);
 
     process_groups();
-
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "merged.mg");
-    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "3434343434343");
-    assert_null(groups[0]->f_sum[1]);
-    assert_true(groups[0]->has_changed);
-    assert_true(groups[0]->exists);
-    assert_null(groups[1]);
 
     os_free(entry);
 }
 
 void test_process_groups_find_group_not_changed(void **state)
 {
+    group_t *group = (group_t *)state[1];
+
     struct dirent *entry;
     os_calloc(1, sizeof(struct dirent), entry);
     strcpy(entry->d_name, "test_default");
@@ -1533,6 +2829,10 @@ void test_process_groups_find_group_not_changed(void **state)
     os_strdup("agent.conf", subdir[2]);
     subdir[3] = NULL;
 
+    OSHashNode* node1 = NULL;
+    os_calloc(1, sizeof(OSHashNode), node1);
+    node1->data = group->f_time;
+
     will_return(__wrap_opendir, 1);
 
     will_return(__wrap_readdir, entry);
@@ -1540,47 +2840,64 @@ void test_process_groups_find_group_not_changed(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, subdir);
 
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_default");
+    will_return(__wrap_OSHash_Get_ex, group);
+
     // Start c_group function
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/ar.conf");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "new_md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
+
+    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
+
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "AAAAAAAAAAAAAAAA");
-    will_return(__wrap_OS_MD5_File, 0);
+    will_return(__wrap_OS_MD5_File, "1212121212121");
+    will_return(__wrap_OS_MD5_File, -1);
     // End c_group function
+
+    // Start ftime_changed
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, group->f_time);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
+
+    expect_value(__wrap_OSHash_Get_Elem_ex, self, (OSHash *)10);
+    will_return(__wrap_OSHash_Get_Elem_ex, 2);
+
+    expect_value(__wrap_OSHash_Begin, self, group->f_time);
+    will_return(__wrap_OSHash_Begin, node1);
+
+    expect_value(__wrap_OSHash_Get_ex, self, (OSHash *)10);
+    expect_any(__wrap_OSHash_Get_ex, key);
+    will_return(__wrap_OSHash_Get_ex, group->f_time);
+
+    expect_value(__wrap_OSHash_Next, self, group->f_time);
+    will_return(__wrap_OSHash_Next, NULL);
+    // End ftime_changed
+
+    will_return(__wrap_OSHash_Clean, NULL);
 
     will_return(__wrap_readdir, NULL);
 
     process_groups();
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "merged.mg");
-    assert_null(groups[0]->f_sum[1]);
-    assert_false(groups[0]->has_changed);
-    assert_true(groups[0]->exists);
-    assert_null(groups[1]);
-
     os_free(entry);
+    os_free(node1);
 }
 
-void test_process_multi_groups_no_agents(void **state)
+void test_process_multi_groups_no_groups(void **state)
 {
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, NULL);
+    will_return(__wrap_wdb_get_distinct_agent_groups, NULL);
 
-    expect_value(__wrap_OSHash_Begin, self, NULL);
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, NULL);
 
     process_multi_groups();
@@ -1588,20 +2905,11 @@ void test_process_multi_groups_no_agents(void **state)
 
 void test_process_multi_groups_single_group(void **state)
 {
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1\",\"group_hash\":\"ec282560\"}]");
 
-    cJSON* j_agent_info = cJSON_Parse("{\"group\":\"group1\",\"group_hash\":\"ec282560\"}");
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
-
-    expect_value(__wrap_OSHash_Begin, self, NULL);
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, NULL);
 
     process_multi_groups();
@@ -1609,24 +2917,13 @@ void test_process_multi_groups_single_group(void **state)
 
 void test_process_multi_groups_OSHash_Add_fail(void **state)
 {
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
-
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
-
-    m_hash = __real_OSHash_Create();
-
+    OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
     expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
-    expect_string(__wrap_OSHash_Add_ex, data, "ef48b4cd");
     will_return(__wrap_OSHash_Add_ex, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
@@ -1635,27 +2932,84 @@ void test_process_multi_groups_OSHash_Add_fail(void **state)
     will_return(__wrap_OSHash_Begin, NULL);
 
     process_multi_groups();
+}
 
-    __real_OSHash_Clean(m_hash, cleaner);
+void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_first(void **state)
+{
+    cJSON* j_agent_info = cJSON_Parse("[[],[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
+
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    process_multi_groups();
+}
+
+void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_second(void **state)
+{
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}],[]]");
+
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
+
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    process_multi_groups();
+}
+
+void test_process_multi_groups_OSHash_Add_fail_multi_chunk(void **state)
+{
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}], [{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]]");
+
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group3,group4");
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group3,group4' to hash table 'm_hash'");
+
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    process_multi_groups();
 }
 
 void test_process_multi_groups_open_fail(void **state)
 {
-    test_mode = 0;
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
 
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
-
-    m_hash = __real_OSHash_Create();
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 2);
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
@@ -1680,27 +3034,22 @@ void test_process_multi_groups_open_fail(void **state)
 
     os_free(hash_node->key);
     os_free(hash_node);
-    __real_OSHash_Clean(m_hash, cleaner);
-    test_mode = 1;
 }
 
 void test_process_multi_groups_find_multi_group_null(void **state)
 {
-    test_mode = 0;
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))free_group_c_group);
 
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 0);
 
-    m_hash = __real_OSHash_Create();
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
@@ -1718,9 +3067,19 @@ void test_process_multi_groups_find_multi_group_null(void **state)
     expect_string(__wrap_wreaddir, name, "var/multigroups/ef48b4cd");
     will_return(__wrap_wreaddir, subdir);
 
+    expect_value(__wrap_OSHash_Get_ex, self, multi_groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, multi_groups);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 2);
+
     // Start c_multi_group
     // Open the multi-group files and generate merged
-    will_return(__wrap_cldir_ex, 0);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/ef48b4cd");
+    will_return(__wrap_cldir_ex_ignore, 0);
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
@@ -1731,34 +3090,27 @@ void test_process_multi_groups_find_multi_group_null(void **state)
 
     process_multi_groups();
 
-    assert_non_null(multi_groups[1]);
-    assert_string_equal(multi_groups[1]->name, "group1,group2");
-    assert_true(multi_groups[1]->exists);
-    assert_null(multi_groups[2]);
-
     os_free(hash_node->key);
     os_free(hash_node);
-    __real_OSHash_Clean(m_hash, cleaner);
-    test_mode = 1;
 }
 
 void test_process_multi_groups_group_changed(void **state)
 {
-    test_mode = 0;
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    group_t *group = (group_t *)state[0];
+    group_t *multigroup = (group_t *)state[1];
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    state[0] = multigroup->f_time;
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
 
-    m_hash = __real_OSHash_Create();
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 2);
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
@@ -1776,9 +3128,22 @@ void test_process_multi_groups_group_changed(void **state)
     expect_string(__wrap_wreaddir, name, "var/multigroups/ef48b4cd");
     will_return(__wrap_wreaddir, subdir);
 
+    expect_value(__wrap_OSHash_Get_ex, self, multi_groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Get_ex, multigroup);
+
+    // Start group_changed
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "group1");
+    will_return(__wrap_OSHash_Get_ex, group);
+    // End group_changed
+
+    will_return(__wrap_OSHash_Clean, NULL);
+
     // Start c_multi_group
     // Open the multi-group files and generate merged
-    will_return(__wrap_cldir_ex, 0);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/ef48b4cd");
+    will_return(__wrap_cldir_ex_ignore, 0);
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
@@ -1791,33 +3156,29 @@ void test_process_multi_groups_group_changed(void **state)
 
     process_multi_groups();
 
-    assert_non_null(multi_groups[0]);
-    assert_string_equal(multi_groups[0]->name, "group1,group2");
-    assert_null(multi_groups[1]);
-
     os_free(hash_node->key);
     os_free(hash_node);
-    __real_OSHash_Clean(m_hash, cleaner);
-    test_mode = 1;
 }
 
 void test_process_multi_groups_changed_outside(void **state)
 {
-    test_mode = 0;
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    group_t *group = (group_t *)state[0];
+    group_t *multigroup = (group_t *)state[1];
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    group->has_changed = false;
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
+    state[0] = multigroup->f_time;
 
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    m_hash = __real_OSHash_Create();
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 2);
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
@@ -1835,14 +3196,33 @@ void test_process_multi_groups_changed_outside(void **state)
     expect_string(__wrap_wreaddir, name, "var/multigroups/ef48b4cd");
     will_return(__wrap_wreaddir, subdir);
 
+    expect_value(__wrap_OSHash_Get_ex, self, multi_groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Get_ex, multigroup);
+
+    // Start group_changed
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "group1");
+    will_return(__wrap_OSHash_Get_ex, group);
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "group2");
+    will_return(__wrap_OSHash_Get_ex, group);
+    // End group_changed
+
+    will_return(__wrap_OSHash_Clean, NULL);
+
     // Start c_multi_group
     // Open the multi-group files, no generate merged
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/ef48b4cd");
+    will_return(__wrap_cldir_ex_ignore, 0);
+
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
 
     // Open the multi-group files and generate merged
-    will_return(__wrap_cldir_ex, 0);
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/ef48b4cd");
+    will_return(__wrap_cldir_ex_ignore, 0);
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
@@ -1853,35 +3233,33 @@ void test_process_multi_groups_changed_outside(void **state)
     expect_value(__wrap_OSHash_Next, self, m_hash);
     will_return(__wrap_OSHash_Next, NULL);
 
-    process_multi_groups();
+    will_return(__wrap_OSHash_Clean, NULL);
 
-    assert_non_null(multi_groups[0]);
-    assert_string_equal(multi_groups[0]->name, "group1,group2");
-    assert_null(multi_groups[1]);
+    process_multi_groups();
 
     os_free(hash_node->key);
     os_free(hash_node);
-    __real_OSHash_Clean(m_hash, cleaner);
-    test_mode = 1;
 }
 
 void test_process_multi_groups_changed_outside_nocmerged(void **state)
 {
-    test_mode = 0;
-    int *agents_array = NULL;
-    os_calloc(2, sizeof(int), agents_array);
-    agents_array[0] = 1;
-    agents_array[1] = -1;
+    group_t *group = (group_t *)state[0];
+    group_t *multigroup = (group_t *)state[1];
 
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    group->has_changed = false;
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, agents_array);
+    state[0] = multigroup->f_time;
 
-    expect_value(__wrap_wdb_get_agent_info, id, 1);
-    will_return(__wrap_wdb_get_agent_info, j_agent_info);
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
 
-    m_hash = __real_OSHash_Create();
+    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, m_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Add_ex, 2);
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
@@ -1899,8 +3277,26 @@ void test_process_multi_groups_changed_outside_nocmerged(void **state)
     expect_string(__wrap_wreaddir, name, "var/multigroups/ef48b4cd");
     will_return(__wrap_wreaddir, subdir);
 
+    expect_value(__wrap_OSHash_Get_ex, self, multi_groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "group1,group2");
+    will_return(__wrap_OSHash_Get_ex, multigroup);
+
+    // Start group_changed
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "group1");
+    will_return(__wrap_OSHash_Get_ex, group);
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "group2");
+    will_return(__wrap_OSHash_Get_ex, group);
+    // End group_changed
+
+    will_return(__wrap_OSHash_Clean, NULL);
+
     // Start c_multi_group
     // Open the multi-group files, no generate merged
+    expect_string(__wrap_cldir_ex_ignore, name, "var/multigroups/ef48b4cd");
+    will_return(__wrap_cldir_ex_ignore, 0);
+
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
@@ -1914,115 +3310,61 @@ void test_process_multi_groups_changed_outside_nocmerged(void **state)
 
     logr.nocmerged = 0;
 
-    assert_non_null(multi_groups[0]);
-    assert_string_equal(multi_groups[0]->name, "group1,group2");
-    assert_null(multi_groups[1]);
-
     os_free(hash_node->key);
     os_free(hash_node);
-    __real_OSHash_Clean(m_hash, cleaner);
-    test_mode = 1;
 }
 
 void test_c_files(void **state)
 {
-    expect_string(__wrap__mdebug2, formatted_msg, "Updating shared files sums.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating shared files.");
+
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
-    groups[0]->exists = true;
-    groups[0]->has_changed = false;
-    groups[1]->exists = true;
-    groups[1]->has_changed = false;
-
-    multi_groups[0]->exists = true;
-    multi_groups[0]->has_changed = false;
-    multi_groups[1]->exists = true;
-    multi_groups[1]->has_changed = false;
-
-    will_return(__wrap_OSHash_Clean, 0);
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, NULL);
-
-    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
-    will_return(__wrap_wdb_get_all_agents, NULL);
+    will_return(__wrap_wdb_get_distinct_agent_groups, NULL);
 
     m_hash = (OSHash *)1;
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "End updating shared files sums.");
+    expect_value(__wrap_OSHash_Begin, self, groups);
+    will_return(__wrap_OSHash_Begin, NULL);
 
-    c_files();
+    will_return(__wrap_OSHash_Clean, 0);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test_file");
-    assert_string_equal(groups[0]->f_sum[0]->sum, "ABCDEF1234567890");
-    assert_null(groups[0]->f_sum[1]);
-    assert_false(groups[0]->has_changed);
-    assert_false(groups[0]->exists);
-    assert_non_null(groups[1]);
-    assert_string_equal(groups[1]->name, "test_test_default");
-    assert_non_null(groups[1]->f_sum);
-    assert_non_null(groups[1]->f_sum[0]);
-    assert_string_equal(groups[1]->f_sum[0]->name, "test_test_file");
-    assert_string_equal(groups[1]->f_sum[0]->sum, "12345ABCDEF67890");
-    assert_null(groups[1]->f_sum[1]);
-    assert_false(groups[1]->has_changed);
-    assert_false(groups[1]->exists);
-    assert_null(groups[2]);
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    assert_non_null(multi_groups[0]);
-    assert_string_equal(multi_groups[0]->name, "test_default2");
-    assert_non_null(multi_groups[0]->f_sum);
-    assert_non_null(multi_groups[0]->f_sum[0]);
-    assert_string_equal(multi_groups[0]->f_sum[0]->name, "test_file2");
-    assert_string_equal(multi_groups[0]->f_sum[0]->sum, "1234567890ABCDEF");
-    assert_null(multi_groups[0]->f_sum[1]);
-    assert_false(multi_groups[0]->has_changed);
-    assert_false(multi_groups[0]->exists);
-    assert_non_null(multi_groups[1]);
-    assert_string_equal(multi_groups[1]->name, "test_test_default2");
-    assert_non_null(multi_groups[1]->f_sum);
-    assert_non_null(multi_groups[1]->f_sum[0]);
-    assert_string_equal(multi_groups[1]->f_sum[0]->name, "test_test_file2");
-    assert_string_equal(multi_groups[1]->f_sum[0]->sum, "67890ABCDEF12345");
-    assert_null(multi_groups[1]->f_sum[1]);
-    assert_false(multi_groups[1]->has_changed);
-    assert_false(multi_groups[1]->exists);
-    assert_null(multi_groups[2]);
+    expect_value(__wrap_OSHash_Begin, self, multi_groups);
+    will_return(__wrap_OSHash_Begin, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "End updating shared files.");
+
+    c_files(false);
 }
 
 void test_validate_shared_files_files_null(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test_default'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_null(groups[1]);
-    assert_null(f_sum);
-    assert_int_equal(f_size, 0);
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_hidden_file(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2033,22 +3375,13 @@ void test_validate_shared_files_hidden_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_null(groups[1]);
-    assert_null(f_sum[0]);
-    assert_int_equal(f_size, 0);
-
-    free_file_sum(f_sum);
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_merged_file(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2059,25 +3392,16 @@ void test_validate_shared_files_merged_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_null(groups[1]);
-    assert_null(f_sum[0]);
-    assert_int_equal(f_size, 0);
-
-    free_file_sum(f_sum);
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_max_path_size_warning(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
     char log_str[PATH_MAX + 1] = {0};
 
-    snprintf(log_str, PATH_MAX, "At validate_shared_files(): path too long '%s/test-file'", LONG_PATH);
+    snprintf(log_str, PATH_MAX, "Path too long '%s/test-file'", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -2092,25 +3416,16 @@ void test_validate_shared_files_max_path_size_warning(void **state)
 
     reported_path_size_exceeded = 0;
 
-    validate_shared_files(LONG_PATH, "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_null(groups[1]);
-    assert_null(f_sum[0]);
-    assert_int_equal(f_size, 0);
-
-    free_file_sum(f_sum);
+    validate_shared_files(LONG_PATH, finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_max_path_size_debug(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
     char log_str[PATH_MAX + 1] = {0};
 
-    snprintf(log_str, PATH_MAX, "At validate_shared_files(): path too long '%s/test-file'", LONG_PATH);
+    snprintf(log_str, PATH_MAX, "Path too long '%s/test-file'", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -2125,23 +3440,15 @@ void test_validate_shared_files_max_path_size_debug(void **state)
 
     reported_path_size_exceeded = 1;
 
-    validate_shared_files(LONG_PATH, "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
+    validate_shared_files(LONG_PATH, finalfp, &_f_time, false, false, -1);
 
     reported_path_size_exceeded = 0;
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_null(groups[1]);
-    assert_null(f_sum[0]);
-    assert_int_equal(f_size, 0);
-
-    free_file_sum(f_sum);
 }
 
 void test_validate_shared_files_valid_file_limite_size(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
     char file_str[PATH_MAX + 1] = {0};
     snprintf(file_str, PATH_MAX, "%s/test-file", LONG_PATH);
 
@@ -2159,11 +3466,6 @@ void test_validate_shared_files_valid_file_limite_size(void **state)
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, file_str);
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
     invalid_files = OSHash_Create();
@@ -2175,62 +3477,20 @@ void test_validate_shared_files_valid_file_limite_size(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, file_str);
     will_return(__wrap_checkBinaryFile, 0);
 
-    validate_shared_files(LONG_PATH, "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, file_str);
+    will_return(__wrap_OSHash_Add_ex, 1);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, file_str);
-    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
-    assert_int_equal(f_size, 1);
-}
+    expect_any(__wrap__merror, formatted_msg);
 
-void test_validate_shared_files_md5_fail(void **state)
-{
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
-
-    // Initialize files structure
-    char ** files = NULL;
-    os_malloc((2) * sizeof(char *), files);
-    files[0] = strdup("test-file");
-    files[1] = NULL;
-
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
-    will_return(__wrap_wreaddir, files);
-
-    struct stat stat_buf = { .st_mode = S_IFREG };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/test-file'");
-
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
-
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_null(groups[1]);
-    assert_null(f_sum[0]);
-    assert_int_equal(f_size, 0);
+    validate_shared_files(LONG_PATH, finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_still_invalid(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2245,11 +3505,6 @@ void test_validate_shared_files_still_invalid(void **state)
     expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
@@ -2271,25 +3526,17 @@ void test_validate_shared_files_still_invalid(void **state)
     expect_any(__wrap_OSHash_Set, data);
     will_return(__wrap_OSHash_Set, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "File 'etc/shared/test_default/test-file' in group 'test_default' modified but still invalid.");
+    expect_string(__wrap__mdebug1, formatted_msg, "File 'etc/shared/test_default/test-file' modified but still invalid.");
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
-
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_null(groups[1]);
-    assert_null(f_sum[0]);
-    assert_int_equal(f_size, 0);
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 
     os_free(last_modify);
 }
 
 void test_validate_shared_files_valid_now(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2304,11 +3551,6 @@ void test_validate_shared_files_valid_now(void **state)
     expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
@@ -2329,26 +3571,22 @@ void test_validate_shared_files_valid_now(void **state)
     expect_string(__wrap_OSHash_Delete, key, "etc/shared/test_default/test-file");
     will_return(__wrap_OSHash_Delete, NULL);
 
-    expect_string(__wrap__minfo, formatted_msg, "File 'etc/shared/test_default/test-file' in group 'test_default' is valid after last modification.");
+    expect_string(__wrap__minfo, formatted_msg, "File 'etc/shared/test_default/test-file' is valid after last modification.");
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    will_return(__wrap_OSHash_Add_ex, 1);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
-    assert_int_equal(f_size, 1);
+    expect_any(__wrap__merror, formatted_msg);
+
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_valid_file(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2364,11 +3602,6 @@ void test_validate_shared_files_valid_file(void **state)
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
     invalid_files = OSHash_Create();
@@ -2380,25 +3613,20 @@ void test_validate_shared_files_valid_file(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    will_return(__wrap_OSHash_Add_ex, 1);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
-    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
-    assert_int_equal(f_size, 1);
+    expect_any(__wrap__merror, formatted_msg);
+
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_stat_error(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2415,17 +3643,12 @@ void test_validate_shared_files_stat_error(void **state)
     will_return(__wrap_stat, &stat_buf_err);
     will_return(__wrap_stat, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "At validate_shared_files(): Unable to get entry attributes 'etc/shared/test_default/stat-error-file'");
+    expect_string(__wrap__merror, formatted_msg, "Unable to get entry attributes 'etc/shared/test_default/stat-error-file'");
 
     struct stat stat_buf = { .st_mode = S_IFREG };
     expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
@@ -2438,25 +3661,20 @@ void test_validate_shared_files_stat_error(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    will_return(__wrap_OSHash_Add_ex, 1);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
-    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
-    assert_int_equal(f_size, 1);
+    expect_any(__wrap__merror, formatted_msg);
+
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_merge_file(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2471,11 +3689,6 @@ void test_validate_shared_files_merge_file(void **state)
     expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
@@ -2488,29 +3701,24 @@ void test_validate_shared_files_merge_file(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
-    expect_string(__wrap_MergeAppendFile, finalpath, "merged_tmp");
+    expect_value(__wrap_MergeAppendFile, finalfp, finalfp);
     expect_value(__wrap_MergeAppendFile, path_offset, 0x18);
     will_return(__wrap_MergeAppendFile, 1);
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, true, -1);
-    groups[0]->f_sum = f_sum;
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    will_return(__wrap_OSHash_Add_ex, 1);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
-    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
-    assert_int_equal(f_size, 1);
+    expect_any(__wrap__merror, formatted_msg);
+
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, true, false, -1);
 }
 
-void test_validate_shared_files_fail_add(void **state)
+void test_validate_shared_files_merge_file_append_fail(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2526,10 +3734,42 @@ void test_validate_shared_files_fail_add(void **state)
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 10);
+    invalid_files = OSHash_Create();
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_value(__wrap_MergeAppendFile, finalfp, finalfp);
+    expect_value(__wrap_MergeAppendFile, path_offset, 0x18);
+    will_return(__wrap_MergeAppendFile, 0);
+
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, true, false, -1);
+}
+
+void test_validate_shared_files_fail_add(void **state)
+{
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
+
+    // Initialize files structure
+    char ** files = NULL;
+    os_malloc((2) * sizeof(char *), files);
+    files[0] = strdup("test-file");
+    files[1] = NULL;
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, files);
+
+    struct stat stat_buf = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
@@ -2547,22 +3787,13 @@ void test_validate_shared_files_fail_add(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Unable to add file 'etc/shared/test_default/test-file' to hash table of invalid files.");
 
-
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
-
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_null(groups[1]);
-    assert_null(f_sum[0]);
-    assert_int_equal(f_size, 0);
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_subfolder_empty(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2581,24 +3812,64 @@ void test_validate_shared_files_subfolder_empty(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test_default/test-subfolder'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default/test-subfolder'");
 
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
+}
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
+void test_validate_shared_files_subfolder_append_fail(void **state)
+{
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_null(groups[1]);
-    assert_null(f_sum[0]);
-    assert_int_equal(f_size, 0);
+    // Initialize files structure
+    char ** files = NULL;
+    os_malloc((2) * sizeof(char *), files);
+    files[0] = strdup("test-subfolder");
+    files[1] = NULL;
+    char ** files2 = NULL;
+    os_malloc((2) * sizeof(char *), files2);
+    files2[0] = strdup("test-file");
+    files2[1] = NULL;
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, files);
+
+    struct stat stat_buf = { .st_mode = 0040000 };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
+    will_return(__wrap_wreaddir, files2);
+
+    struct stat stat_buf2 = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-file");
+    will_return(__wrap_stat, &stat_buf2);
+    will_return(__wrap_stat, 0);
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 10);
+    invalid_files = OSHash_Create();
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-subfolder/test-file");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-subfolder/test-file");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    expect_value(__wrap_MergeAppendFile, finalfp, finalfp);
+    expect_value(__wrap_MergeAppendFile, path_offset, 0x18);
+    will_return(__wrap_MergeAppendFile, 0);
+
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, true, false, -1);
 }
 
 void test_validate_shared_files_valid_file_subfolder_empty(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2615,11 +3886,6 @@ void test_validate_shared_files_valid_file_subfolder_empty(void **state)
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
     invalid_files = OSHash_Create();
@@ -2631,6 +3897,13 @@ void test_validate_shared_files_valid_file_subfolder_empty(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file");
+    will_return(__wrap_OSHash_Add_ex, 1);
+
+    expect_any(__wrap__merror, formatted_msg);
+
     struct stat stat_buf_2 = { .st_mode = S_IFDIR };
     expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
     will_return(__wrap_stat, &stat_buf_2);
@@ -2639,28 +3912,15 @@ void test_validate_shared_files_valid_file_subfolder_empty(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At validate_shared_files(): Could not open directory 'etc/shared/test_default/test-subfolder'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default/test-subfolder'");
 
-
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
-
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
-    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
-    assert_int_equal(f_size, 1);
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_subfolder_valid_file(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2690,11 +3950,6 @@ void test_validate_shared_files_subfolder_valid_file(void **state)
     will_return(__wrap_stat, &stat_buf_2);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-subfolder/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
     invalid_files = OSHash_Create();
@@ -2706,25 +3961,20 @@ void test_validate_shared_files_subfolder_valid_file(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-subfolder/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-subfolder/test-file");
+    will_return(__wrap_OSHash_Add_ex, 1);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-subfolder/test-file");
-    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
-    assert_int_equal(f_size, 1);
+    expect_any(__wrap__merror, formatted_msg);
+
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2755,11 +4005,6 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     will_return(__wrap_stat, &stat_buf_2);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-subfolder/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
     invalid_files = OSHash_Create();
@@ -2771,15 +4016,17 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-subfolder/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-subfolder/test-file");
+    will_return(__wrap_OSHash_Add_ex, 1);
+
+    expect_any(__wrap__merror, formatted_msg);
+
     struct stat stat_buf_3 = { .st_mode = S_IFREG };
     expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file-main-folder");
     will_return(__wrap_stat, &stat_buf_3);
     will_return(__wrap_stat, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file-main-folder");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_file_main");
-    will_return(__wrap_OS_MD5_File, 0);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
@@ -2792,27 +4039,20 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file-main-folder");
     will_return(__wrap_checkBinaryFile, 0);
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-file-main-folder");
+    will_return(__wrap_OSHash_Add_ex, 1);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-subfolder/test-file");
-    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
-    assert_string_equal(groups[0]->f_sum[1]->name, "etc/shared/test_default/test-file-main-folder");
-    assert_string_equal((char *)groups[0]->f_sum[1]->sum, "md5_file_main");
-    assert_null(groups[0]->f_sum[2]);
-    assert_null(groups[1]);
-    assert_int_equal(f_size, 2);
+    expect_any(__wrap__merror, formatted_msg);
+
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
 void test_validate_shared_files_sub_subfolder_valid_file(void **state)
 {
-    file_sum **f_sum = NULL;
-    unsigned int f_size = 0;
-    os_calloc(2, sizeof(file_sum *), f_sum);
+    FILE * finalfp = (FILE *)5;
+    OSHash *_f_time = (OSHash *)10;
 
     // Initialize files structure
     char ** files = NULL;
@@ -2856,11 +4096,6 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     will_return(__wrap_stat, &stat_buf_3);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, 0);
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 10);
     invalid_files = OSHash_Create();
@@ -2872,21 +4107,17 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
-    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
-    groups[0]->f_sum = f_sum;
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
+    expect_string(__wrap_OSHash_Add_ex, key, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
+    will_return(__wrap_OSHash_Add_ex, 1);
 
-    assert_non_null(groups[0]);
-    assert_string_equal(groups[0]->name, "test_default");
-    assert_non_null(groups[0]->f_sum);
-    assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
-    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
-    assert_null(groups[0]->f_sum[1]);
-    assert_null(groups[1]);
-    assert_int_equal(f_size, 1);
+    expect_any(__wrap__merror, formatted_msg);
+
+    validate_shared_files("etc/shared/test_default", finalfp, &_f_time, false, false, -1);
 }
 
-void test_copy_directory_files_null_initial(void **state)
+void test_copy_directory_files_null(void **state)
 {
     expect_string(__wrap_wreaddir, name, "src_path");
     will_return(__wrap_wreaddir, NULL);
@@ -2894,23 +4125,7 @@ void test_copy_directory_files_null_initial(void **state)
     errno = 1;
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'src_path'. Group folder was deleted.");
 
-    expect_string(__wrap_wdb_remove_group_db, name, "group_test");
-    will_return(__wrap_wdb_remove_group_db, OS_SUCCESS);
-
-    copy_directory("src_path", "dst_path", "group_test", true);
-
-}
-
-void test_copy_directory_files_null_not_initial(void **state)
-{
-    expect_string(__wrap_wreaddir, name, "src_path");
-    will_return(__wrap_wreaddir, NULL);
-
-    errno = 1;
-    will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mdebug2, formatted_msg, "Could not open directory 'src_path': ERROR (1)");
-
-    copy_directory("src_path", "dst_path", "group_test", false);
+    copy_directory("src_path", "dst_path", "group_test");
 
 }
 
@@ -2925,7 +4140,7 @@ void test_copy_directory_hidden_file(void **state)
     expect_string(__wrap_wreaddir, name, "src_path");
     will_return(__wrap_wreaddir, files);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_merged_file(void **state)
@@ -2939,13 +4154,13 @@ void test_copy_directory_merged_file(void **state)
     expect_string(__wrap_wreaddir, name, "src_path");
     will_return(__wrap_wreaddir, files);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_source_path_too_long_warning(void **state)
 {
     char log_str[PATH_MAX + 1] = {0};
-    snprintf(log_str, PATH_MAX, "At copy_directory(): source path too long '%s/test-file'", LONG_PATH);
+    snprintf(log_str, PATH_MAX, "Source path too long '%s/test-file'", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -2960,13 +4175,13 @@ void test_copy_directory_source_path_too_long_warning(void **state)
 
     reported_path_size_exceeded = 0;
 
-    copy_directory(LONG_PATH, "dst_path", "group_test", true);
+    copy_directory(LONG_PATH, "dst_path", "group_test");
 }
 
 void test_copy_directory_source_path_too_long_debug(void **state)
 {
     char log_str[PATH_MAX + 1] = {0};
-    snprintf(log_str, PATH_MAX, "At copy_directory(): source path too long '%s/test-file'", LONG_PATH);
+    snprintf(log_str, PATH_MAX, "Source path too long '%s/test-file'", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -2981,7 +4196,7 @@ void test_copy_directory_source_path_too_long_debug(void **state)
 
     reported_path_size_exceeded = 1;
 
-    copy_directory(LONG_PATH, "dst_path", "group_test", true);
+    copy_directory(LONG_PATH, "dst_path", "group_test");
 
     reported_path_size_exceeded = 0;
 }
@@ -2989,7 +4204,7 @@ void test_copy_directory_source_path_too_long_debug(void **state)
 void test_copy_directory_destination_path_too_long_warning(void **state)
 {
     char log_str[PATH_MAX + 1] = {0};
-    snprintf(log_str, PATH_MAX, "At copy_directory(): destination path too long '%s/test-file'", LONG_PATH);
+    snprintf(log_str, PATH_MAX, "Destination path too long '%s/test-file'", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -3004,13 +4219,13 @@ void test_copy_directory_destination_path_too_long_warning(void **state)
 
     reported_path_size_exceeded = 0;
 
-    copy_directory("src_path", LONG_PATH, "group_test", true);
+    copy_directory("src_path", LONG_PATH, "group_test");
 }
 
 void test_copy_directory_destination_path_too_long_debug(void **state)
 {
     char log_str[PATH_MAX + 1] = {0};
-    snprintf(log_str, PATH_MAX, "At copy_directory(): destination path too long '%s/test-file'", LONG_PATH);
+    snprintf(log_str, PATH_MAX, "Destination path too long '%s/test-file'", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -3025,7 +4240,7 @@ void test_copy_directory_destination_path_too_long_debug(void **state)
 
     reported_path_size_exceeded = 1;
 
-    copy_directory("src_path", LONG_PATH, "group_test", true);
+    copy_directory("src_path", LONG_PATH, "group_test");
 
     reported_path_size_exceeded = 0;
 }
@@ -3055,7 +4270,7 @@ void test_copy_directory_invalid_file(void **state)
     expect_string(__wrap_OSHash_Get, key, "src_path/test-file");
     will_return(__wrap_OSHash_Get, last_modify);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 
     os_free(last_modify);
 }
@@ -3087,7 +4302,7 @@ void test_copy_directory_agent_conf_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_valid_file(void **state)
@@ -3117,7 +4332,7 @@ void test_copy_directory_valid_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_valid_file_subfolder_file(void **state)
@@ -3181,7 +4396,7 @@ void test_copy_directory_valid_file_subfolder_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_copy_directory_mkdir_fail(void **state)
@@ -3207,7 +4422,7 @@ void test_copy_directory_mkdir_fail(void **state)
     will_return(__wrap_strerror, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Cannot create directory 'dst_path/subfolder': ERROR (10)");
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
     errno = 0;
 }
 
@@ -3234,10 +4449,9 @@ void test_copy_directory_mkdir_exist(void **state)
     expect_string(__wrap_wreaddir, name, "src_path/subfolder");
     will_return(__wrap_wreaddir, NULL);
 
-    will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mdebug2, formatted_msg, "Could not open directory 'src_path/subfolder': ERROR (17)");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'src_path/subfolder'. Group folder was deleted.");
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
     errno = 0;
 }
 
@@ -3315,7 +4529,7 @@ void test_copy_directory_file_subfolder_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test", true);
+    copy_directory("src_path", "dst_path", "group_test");
 }
 
 void test_save_controlmsg_request_error(void **state)
@@ -3331,22 +4545,27 @@ void test_save_controlmsg_request_error(void **state)
     save_controlmsg(key, r_msg, msg_length, wdb_sock);
 }
 
-
 void test_save_controlmsg_request_success(void **state)
 {
-    keyentry * key =  NULL;
     char r_msg[OS_SIZE_128] = {0};
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
     strcpy(r_msg, "req payload is here");
 
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+
     expect_string(__wrap_req_save, counter, "payload");
     expect_string(__wrap_req_save, buffer, "is here");
     expect_value(__wrap_req_save, length, OS_SIZE_128 - strlen(HC_REQUEST) - strlen("payload "));
     will_return(__wrap_req_save, 0);
 
-    save_controlmsg(key, r_msg, msg_length, wdb_sock);
+    expect_string(__wrap_rem_inc_recv_ctrl_request, agent_id, "001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
 }
 
 void test_save_controlmsg_invalid_msg(void **state)
@@ -3361,7 +4580,6 @@ void test_save_controlmsg_invalid_msg(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
     expect_string(__wrap__mwarn, formatted_msg, "Invalid message from agent: 'NEW_AGENT' (001)");
 
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
@@ -3371,8 +4589,6 @@ void test_save_controlmsg_invalid_msg(void **state)
 
 void test_save_controlmsg_could_not_add_pending_data(void **state)
 {
-    test_mode = true;
-
     char r_msg[OS_SIZE_128] = {0};
     strcpy(r_msg, "Invalid message \n with enter");
 
@@ -3384,9 +4600,15 @@ void test_save_controlmsg_could_not_add_pending_data(void **state)
 
     expect_string(__wrap_send_msg, msg, "001");
 
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
+
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
     pending_data = OSHash_Create();
+
+    expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
@@ -3397,6 +4619,8 @@ void test_save_controlmsg_could_not_add_pending_data(void **state)
 
     expect_string(__wrap__merror, formatted_msg, "Couldn't add pending data into hash table.");
 
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
     free_keyentry(&key);
@@ -3404,8 +4628,6 @@ void test_save_controlmsg_could_not_add_pending_data(void **state)
 
 void test_save_controlmsg_unable_to_save_last_keepalive(void **state)
 {
-    test_mode = true;
-
     char r_msg[OS_SIZE_128] = {0};
     strcpy(r_msg, "Invalid message \n with enter");
 
@@ -3416,6 +4638,10 @@ void test_save_controlmsg_unable_to_save_last_keepalive(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -3429,6 +4655,9 @@ void test_save_controlmsg_unable_to_save_last_keepalive(void **state)
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, &data);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_wdb_update_agent_keepalive, id, 1);
     expect_string(__wrap_wdb_update_agent_keepalive, connection_status, AGENT_CS_ACTIVE);
@@ -3444,8 +4673,6 @@ void test_save_controlmsg_unable_to_save_last_keepalive(void **state)
 
 void test_save_controlmsg_update_msg_error_parsing(void **state)
 {
-    test_mode = true;
-
     char r_msg[OS_SIZE_128] = {0};
     strcpy(r_msg, "valid message \n with enter");
 
@@ -3457,6 +4684,10 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
 
     expect_string(__wrap_send_msg, msg, "001");
 
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
+
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
     pending_data = OSHash_Create();
@@ -3467,24 +4698,38 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
     data->changed = true;
     data->message = message;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, data);
 
     expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
 
-    static group_t *test_groups = NULL;
-    groups = &test_groups;
-    multi_groups = &test_groups;
+    groups = (OSHash *)10;
+    multi_groups = (OSHash *)10;
 
     char* group = NULL;
     w_strdup("test_group", group);
     expect_value(__wrap_wdb_get_agent_group, id, 1);
     will_return(__wrap_wdb_get_agent_group, group);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
 
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_group");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_value(__wrap_OSHash_Get_ex, self, multi_groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_group");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
     expect_string(__wrap__mdebug1, formatted_msg, "No such group 'test_group' for agent '001'");
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     agent_info_data *agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);
@@ -3508,8 +4753,6 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
 
 void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
 {
-    test_mode = true;
-
     char r_msg[OS_SIZE_128] = {0};
     strcpy(r_msg, "valid message \n with enter");
 
@@ -3521,6 +4764,10 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
 
     expect_string(__wrap_send_msg, msg, "001");
 
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
+
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
     pending_data = OSHash_Create();
@@ -3531,38 +4778,38 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     data->changed = false;
     data->message = message;
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, data);
 
     expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
 
-    os_calloc(1, (2) * sizeof(group_t *), groups);
-    os_calloc(1, sizeof(group_t), groups[0]);
-    groups[0]->name = strdup("test_group");
-    groups[0]->has_changed = false;
-    groups[0]->exists = true;
-    groups[1] = NULL;
+    groups = (OSHash *)10;
+    multi_groups = (OSHash *)10;
 
-    os_calloc(2, sizeof(file_sum *), groups[0]->f_sum);
-    os_calloc(1, sizeof(file_sum), groups[0]->f_sum[0]);
-    os_strdup("test_group", groups[0]->f_sum[0]->name);
-    strncpy(groups[0]->f_sum[0]->sum, "ABCDEF1234567890", 32);
-    groups[0]->f_sum[1] = NULL;
+    group_t *group = NULL;
+    os_calloc(1, sizeof(group_t), group);
+    group->name = strdup("test_group");
+    memset(&group->merged_sum, 0, sizeof(os_md5));
+    snprintf(group->merged_sum, 7, "112359");
 
-    os_calloc(1, (2) * sizeof(group_t *), multi_groups);
-    os_calloc(1, sizeof(group_t), multi_groups[0]);
-    multi_groups[0]->name = strdup("test_group");
-    multi_groups[0]->has_changed = false;
-    multi_groups[0]->exists = true;
-    multi_groups[1] = NULL;
+    expect_function_call(__wrap_pthread_mutex_lock);
 
-    char* group = NULL;
-    w_strdup("test_group", group);
+    char* group_name = NULL;
+    w_strdup("test_group", group_name);
     expect_value(__wrap_wdb_get_agent_group, id, 1);
-    will_return(__wrap_wdb_get_agent_group, group);
+    will_return(__wrap_wdb_get_agent_group, group_name);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
+
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "test_group");
+    will_return(__wrap_OSHash_Get_ex, group);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     agent_info_data *agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);
@@ -3578,6 +4825,9 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     will_return(__wrap_parse_agent_update_msg, agent_data);
     will_return(__wrap_parse_agent_update_msg, OS_SUCCESS);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     expect_any(__wrap_wdb_update_agent_data, agent_data);
     will_return(__wrap_wdb_update_agent_data, OS_INVALID);
 
@@ -3589,6 +4839,9 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to update information in global.db for agent: 001");
 
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    os_free(group->name);
+    os_free(group);
 
     os_free(agent_data->manager_host);
     os_free(agent_data);
@@ -3603,8 +4856,6 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
 
 void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 {
-    test_mode = true;
-
     char r_msg[OS_SIZE_128] = {0};
     strcpy(r_msg, "valid message \n with enter");
 
@@ -3615,6 +4866,10 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -3630,10 +4885,14 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, data);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+
     expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
 
     expect_value(__wrap_wdb_get_agent_group, id, 1);
     will_return(__wrap_wdb_get_agent_group, NULL);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__merror, formatted_msg, "Error getting group for agent '001'");
 
@@ -3648,6 +4907,9 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
     expect_string(__wrap_parse_agent_update_msg, msg, "valid message \n");
     will_return(__wrap_parse_agent_update_msg, agent_data);
     will_return(__wrap_parse_agent_update_msg, OS_SUCCESS);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_any(__wrap_wdb_update_agent_data, agent_data);
     will_return(__wrap_wdb_update_agent_data, OS_INVALID);
@@ -3667,7 +4929,6 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
 void test_save_controlmsg_startup(void **state)
 {
-    test_mode = true;
     char r_msg[OS_SIZE_128] = {0};
     strcpy(r_msg, HC_STARTUP);
     keyentry key;
@@ -3677,6 +4938,10 @@ void test_save_controlmsg_startup(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
 
@@ -3693,6 +4958,9 @@ void test_save_controlmsg_startup(void **state)
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, &data);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     expect_value(__wrap_wdb_update_agent_keepalive, id, 1);
     expect_string(__wrap_wdb_update_agent_keepalive, connection_status, AGENT_CS_PENDING);
     expect_string(__wrap_wdb_update_agent_keepalive, sync_status, "synced");
@@ -3708,7 +4976,6 @@ void test_save_controlmsg_startup(void **state)
 
 void test_save_controlmsg_shutdown(void **state)
 {
-    test_mode = true;
     char r_msg[OS_SIZE_128] = {0};
     strcpy(r_msg, HC_SHUTDOWN);
     keyentry key;
@@ -3719,7 +4986,7 @@ void test_save_controlmsg_shutdown(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
+    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 
     expect_any(__wrap_get_ipv4_string, address);
     expect_any(__wrap_get_ipv4_string, address_size);
@@ -3739,6 +5006,9 @@ void test_save_controlmsg_shutdown(void **state)
     expect_value(__wrap_OSHash_Get, self, pending_data);
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, &data);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
@@ -3775,7 +5045,6 @@ void test_save_controlmsg_shutdown(void **state)
 
 void test_save_controlmsg_shutdown_wdb_fail(void **state)
 {
-    test_mode = true;
     char r_msg[OS_SIZE_128] = {0};
     strcpy(r_msg, HC_SHUTDOWN);
     keyentry key;
@@ -3785,7 +5054,7 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
+    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 
     expect_any(__wrap_get_ipv6_string, address);
     expect_any(__wrap_get_ipv6_string, address_size);
@@ -3806,6 +5075,9 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     expect_string(__wrap_OSHash_Get, key, "001");
     will_return(__wrap_OSHash_Get, &data);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
     expect_string(__wrap_wdb_update_agent_connection_status, sync_status, "synced");
@@ -3823,70 +5095,84 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         // Tests lookfor_agent_group
+        cmocka_unit_test(test_lookfor_agent_group_with_group),
         cmocka_unit_test(test_lookfor_agent_group_set_default_group),
-        cmocka_unit_test(test_lookfor_agent_group_null_groups),
+        cmocka_unit_test(test_lookfor_agent_group_set_group_worker),
+        cmocka_unit_test(test_lookfor_agent_group_set_group_worker_error),
         cmocka_unit_test(test_lookfor_agent_group_msg_without_enter),
         cmocka_unit_test(test_lookfor_agent_group_bad_message),
         cmocka_unit_test(test_lookfor_agent_group_message_without_second_enter),
         // Tests c_group
+        cmocka_unit_test_setup_teardown(test_c_group_no_changes, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_no_changes_disk, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_changes, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_changes_disk, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_fail, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_fail_disk, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file_no_poll, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_downloaded_file_is_corrupted, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_download_all_files, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_read_directory, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_no_create_shared_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_invalid_share_file, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_append_file_error, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_append_ar_error, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_truncate_error, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_c_group_truncate_error_disk, test_c_group_setup, test_c_group_teardown),
         // Tests c_multi_group
         cmocka_unit_test(test_c_multi_group_hash_multigroup_null),
         cmocka_unit_test(test_c_multi_group_open_directory_fail),
         cmocka_unit_test(test_c_multi_group_call_copy_directory),
+        cmocka_unit_test(test_c_multi_group_read_dir_fail_no_entry),
+        cmocka_unit_test(test_c_multi_group_Ignore_hidden_files),
+        cmocka_unit_test(test_c_multi_group_subdir_fail),
         cmocka_unit_test(test_c_multi_group_call_c_group),
-        // Test find_group
-        cmocka_unit_test_setup_teardown(test_find_group_found, test_find_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_find_group_not_found, test_find_group_setup, test_c_group_teardown),
-        // Test find_multi_group
-        cmocka_unit_test_setup_teardown(test_find_multi_group_found, test_find_multi_group_setup, test_c_multi_group_teardown),
-        cmocka_unit_test_setup_teardown(test_find_multi_group_not_found, test_find_multi_group_setup, test_c_multi_group_teardown),
-        // Test find_group_from_file
+        // Test find_group_from_sum
         cmocka_unit_test_setup_teardown(test_find_group_from_file_found, test_find_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_find_group_from_file_not_found, test_find_group_setup, test_c_group_teardown),
-        // Test find_multi_group_from_file
+        // Test find_multi_group_from_sum
         cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_found, test_find_multi_group_setup, test_c_multi_group_teardown),
         cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_not_found, test_find_multi_group_setup, test_c_multi_group_teardown),
-        // Test fsum_changed
-        cmocka_unit_test_setup_teardown(test_fsum_changed_same_fsum, test_fsum_changed_setup, test_fsum_changed_teardown),
-        cmocka_unit_test_setup_teardown(test_fsum_changed_different_fsum_sum, test_fsum_changed_setup, test_fsum_changed_teardown),
-        cmocka_unit_test_setup_teardown(test_fsum_changed_different_fsum_name, test_fsum_changed_setup, test_fsum_changed_teardown),
-        cmocka_unit_test_setup_teardown(test_fsum_changed_different_size, test_fsum_changed_setup, test_fsum_changed_teardown),
-        cmocka_unit_test_setup_teardown(test_fsum_changed_one_null, test_fsum_changed_setup, test_fsum_changed_teardown),
-        cmocka_unit_test(test_fsum_changed_both_null),
+        // Test ftime_changed
+        cmocka_unit_test_setup_teardown(test_ftime_changed_same_fsum, test_ftime_changed_setup, test_ftime_changed_teardown),
+        cmocka_unit_test_setup_teardown(test_ftime_changed_different_fsum_sum, test_ftime_changed_setup, test_ftime_changed_teardown),
+        cmocka_unit_test_setup_teardown(test_ftime_changed_different_fsum_name, test_ftime_changed_setup, test_ftime_changed_teardown),
+        cmocka_unit_test_setup_teardown(test_ftime_changed_different_size, test_ftime_changed_setup, test_ftime_changed_teardown),
+        cmocka_unit_test_setup_teardown(test_ftime_changed_one_null, test_ftime_changed_setup, test_ftime_changed_teardown),
+        cmocka_unit_test(test_ftime_changed_both_null),
         // Test group_changed
         cmocka_unit_test_setup_teardown(test_group_changed_not_changed, test_find_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_group_changed_has_changed, test_find_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_group_changed_not_exists, test_find_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_group_changed_invalid_group, test_find_group_setup, test_c_group_teardown),
         // Test process_deleted_groups
-        cmocka_unit_test_setup_teardown(test_process_deleted_groups_delete, test_find_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_process_deleted_groups_delete, test_process_deleted_groups_setup, test_process_deleted_groups_teardown),
         cmocka_unit_test_setup_teardown(test_process_deleted_groups_no_changes, test_find_group_setup, test_c_group_teardown),
         // Test process_deleted_multi_groups
-        cmocka_unit_test_setup_teardown(test_process_deleted_multi_groups_delete, test_find_multi_group_setup, test_c_multi_group_teardown),
+        cmocka_unit_test_setup_teardown(test_process_deleted_multi_groups_delete, test_process_deleted_multi_groups_setup, test_process_deleted_groups_teardown),
         cmocka_unit_test_setup_teardown(test_process_deleted_multi_groups_no_changes, test_find_multi_group_setup, test_c_multi_group_teardown),
+        cmocka_unit_test_setup_teardown(test_process_deleted_multi_groups_no_changes_initial_scan, test_find_multi_group_setup, test_c_multi_group_teardown),
         // Test process_groups
         cmocka_unit_test(test_process_groups_open_directory_fail),
         cmocka_unit_test(test_process_groups_readdir_fail),
         cmocka_unit_test(test_process_groups_subdir_null),
         cmocka_unit_test(test_process_groups_skip),
         cmocka_unit_test(test_process_groups_skip_2),
-        cmocka_unit_test_setup_teardown(test_process_groups_find_group_null, test_process_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_process_groups_find_group_changed, test_process_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_process_groups_find_group_not_changed, test_process_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_process_groups_find_group_null, test_process_group_setup, test_process_groups_teardown),
+        cmocka_unit_test_setup_teardown(test_process_groups_find_group_changed, test_process_group_setup, test_process_groups_teardown),
+        cmocka_unit_test_setup_teardown(test_process_groups_find_group_not_changed, test_process_group_setup, test_process_groups_teardown),
         // Test process_multi_groups
-        cmocka_unit_test(test_process_multi_groups_no_agents),
+        cmocka_unit_test(test_process_multi_groups_no_groups),
         cmocka_unit_test(test_process_multi_groups_single_group),
         cmocka_unit_test(test_process_multi_groups_OSHash_Add_fail),
-        cmocka_unit_test(test_process_multi_groups_open_fail),
-        cmocka_unit_test_setup_teardown(test_process_multi_groups_find_multi_group_null, test_process_multi_groups_setup, test_c_multi_group_teardown),
-        cmocka_unit_test_setup_teardown(test_process_multi_groups_group_changed, test_process_multi_groups_group_changed_setup, test_process_multi_group_check_group_changed_teardown),
-        cmocka_unit_test_setup_teardown(test_process_multi_groups_changed_outside, test_process_multi_groups_group_not_changed_setup, test_process_multi_group_check_group_changed_teardown),
-        cmocka_unit_test_setup_teardown(test_process_multi_groups_changed_outside_nocmerged, test_process_multi_groups_group_not_changed_setup, test_process_multi_group_check_group_changed_teardown),
+        cmocka_unit_test(test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_first),
+        cmocka_unit_test(test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_second),
+        cmocka_unit_test(test_process_multi_groups_OSHash_Add_fail_multi_chunk),
+        cmocka_unit_test_setup_teardown(test_process_multi_groups_open_fail, test_process_multi_groups_setup, test_process_multi_groups_teardown),
+        cmocka_unit_test_setup_teardown(test_process_multi_groups_find_multi_group_null, test_process_multi_groups_setup, test_process_multi_groups_teardown),
+        cmocka_unit_test_setup_teardown(test_process_multi_groups_group_changed, test_process_multi_groups_groups_setup, test_process_multi_groups_groups_teardown),
+        cmocka_unit_test_setup_teardown(test_process_multi_groups_changed_outside, test_process_multi_groups_groups_setup, test_process_multi_groups_groups_teardown),
+        cmocka_unit_test_setup_teardown(test_process_multi_groups_changed_outside_nocmerged, test_process_multi_groups_groups_setup, test_process_multi_groups_groups_teardown),
         // Test c_files
         cmocka_unit_test_setup_teardown(test_c_files, test_c_files_setup, test_c_files_teardown),
         // Test validate_shared_files
@@ -3896,21 +5182,21 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_validate_shared_files_max_path_size_warning, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_max_path_size_debug, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_file_limite_size, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_validate_shared_files_md5_fail, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_still_invalid, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_now, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_fail_add, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_stat_error, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_merge_file, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_validate_shared_files_merge_file_append_fail, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_subfolder_empty, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_validate_shared_files_subfolder_append_fail, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_file_subfolder_empty, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_subfolder_valid_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_file_subfolder_valid_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_sub_subfolder_valid_file, test_c_group_setup, test_c_group_teardown),
         // Test copy_directory
-        cmocka_unit_test(test_copy_directory_files_null_initial),
-        cmocka_unit_test(test_copy_directory_files_null_not_initial),
+        cmocka_unit_test(test_copy_directory_files_null),
         cmocka_unit_test(test_copy_directory_hidden_file),
         cmocka_unit_test(test_copy_directory_merged_file),
         cmocka_unit_test(test_copy_directory_source_path_too_long_warning),

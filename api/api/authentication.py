@@ -3,9 +3,12 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import hashlib
+import json
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
+from typing import Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -28,19 +31,22 @@ from wazuh.rbac.preprocessor import optimize_resources
 pool = ThreadPoolExecutor(max_workers=1)
 
 
-def check_user_master(user, password):
-    """This function must be executed in master node.
+def check_user_master(user: str, password: str) -> dict:
+    """Validate a username-password pair.
+
+    This function must be executed in the master node.
 
     Parameters
     ----------
     user : str
-        Unique username
+        Unique username.
     password : str
-        User password
+        User password.
 
     Returns
     -------
-    Dict with the result of the query
+    dict
+        Dictionary with the result of the query.
     """
     with AuthenticationManager() as auth_:
         if auth_.check_user(user, password):
@@ -49,20 +55,22 @@ def check_user_master(user, password):
     return {'result': False}
 
 
-def check_user(user, password, required_scopes=None):
-    """Convenience method to use in OpenAPI specification
+def check_user(user: str, password: str, required_scopes=None) -> Union[dict, None]:
+    """Validate a username-password pair.
+
+    Convenience method to use in OpenAPI specification.
 
     Parameters
     ----------
     user : str
-        Unique username
+        Unique username.
     password : str
-        User password
-    required_scopes
+        User password.
 
     Returns
     -------
-    Dict with the username and his status
+    dict or None
+        Dictionary with the username and its status or None.
     """
     dapi = DistributedAPI(f=check_user_master,
                           f_kwargs={'user': user, 'password': password},
@@ -87,7 +95,13 @@ _public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 
 
 def generate_keypair():
-    """Generate key files to keep safe or load existing public and private keys."""
+    """Generate key files to keep safe or load existing public and private keys.
+
+    Raises
+    ------
+    WazuhInternalError(6003)
+        If there was an error trying to load the JWT secret.
+    """
     try:
         if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
             private_key, public_key = change_keypair()
@@ -129,27 +143,35 @@ def change_keypair():
     return private_key, public_key
 
 
-def get_security_conf():
+def get_security_conf() -> dict:
+    """Read the security configuration file.
+
+    Returns
+    -------
+    dict
+        Dictionary with the content of the security.yaml file.
+    """
     conf.security_conf.update(conf.read_yaml_config(config_file=SECURITY_CONFIG_PATH,
                                                     default_conf=conf.default_security_configuration))
     return conf.security_conf
 
 
-def generate_token(user_id=None, data=None, run_as=False):
-    """Generate an encoded jwt token. This method should be called once a user is properly logged on.
+def generate_token(user_id: str = None, data: dict = None, auth_context: dict = None) -> str:
+    """Generate an encoded JWT token. This method should be called once a user is properly logged on.
 
     Parameters
     ----------
     user_id : str
-        Unique username
+        Unique username.
     data : dict
-        Roles permissions for the user
-    run_as : bool
-        Indicate if the user has logged in with run_as or not
+        Roles permissions for the user.
+    auth_context : dict
+        Authorization context used in the run as login request.
 
     Returns
     -------
-    JWT encode token
+    str
+        Encoded JWT token.
     """
     dapi = DistributedAPI(f=get_security_conf,
                           request_type='local_master',
@@ -161,37 +183,39 @@ def generate_token(user_id=None, data=None, run_as=False):
     timestamp = int(core_utils.get_utc_now().timestamp())
 
     payload = {
-        "iss": JWT_ISSUER,
-        "aud": "Wazuh API REST",
-        "nbf": timestamp,
-        "exp": timestamp + result['auth_token_exp_timeout'],
-        "sub": str(user_id),
-        "run_as": run_as,
-        "rbac_roles": data['roles'],
-        "rbac_mode": result['rbac_mode']
-    }
+                  "iss": JWT_ISSUER,
+                  "aud": "Wazuh API REST",
+                  "nbf": timestamp,
+                  "exp": timestamp + result['auth_token_exp_timeout'],
+                  "sub": str(user_id),
+                  "run_as": auth_context is not None,
+                  "rbac_roles": data['roles'],
+                  "rbac_mode": result['rbac_mode']
+              } | ({"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(), digest_size=16).hexdigest()}
+                   if auth_context is not None else {})
 
     return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
 
 
 @rbac_utils.token_cache(rbac_utils.tokens_cache)
-def check_token(username, roles, token_nbf_time, run_as):
+def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) -> dict:
     """Check the validity of a token with the current time and the generation time of the token.
 
     Parameters
     ----------
     username : str
-        Unique username
+        Unique username.
     roles : tuple
-        Tuple of roles related with the current token
+        Tuple of roles related with the current token.
     token_nbf_time : int
-        Issued at time of the current token
+        Issued at time of the current token.
     run_as : bool
-        Indicate if the token has been granted through run_as endpoint
+        Indicate if the token has been granted through authorization context endpoint.
 
     Returns
     -------
-    Dict with the result
+    dict
+        Dictionary with the result.
     """
     # Check that the user exists
     with AuthenticationManager() as am:
@@ -215,18 +239,24 @@ def check_token(username, roles, token_nbf_time, run_as):
     return {'valid': True, 'policies': policies}
 
 
-def decode_token(token):
-    """Decode a jwt formatted token and add processed policies.
+def decode_token(token: str) -> dict:
+    """Decode a JWT formatted token and add processed policies.
     Raise an Unauthorized exception in case validation fails.
 
     Parameters
     ----------
     token : str
-        JWT formatted token
+        JWT formatted token.
+
+    Raises
+    ------
+    Unauthorized
+        If the token validation fails.
 
     Returns
     -------
-    Dict payload ot the token
+    dict
+        Dictionary with the token payload.
     """
     try:
         # Decode JWT token with local secret

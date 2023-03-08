@@ -22,6 +22,7 @@
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/rbtree_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
@@ -120,363 +121,6 @@ int teardown_wdb_global_helpers(void **state) {
     test_mode = 0;
     errno = 0;
     return 0;
-}
-
-/* Tests wdb_create_agent_db */
-
-void test_wdb_create_agent_db_error_no_name(void **state)
-{
-    int ret = 0;
-    int agent_id = 0;
-    const char* agent_name = NULL;
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_create_agent_db_error_already_exist(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    char agent_name[] = "agent1";
-
-    // Agent database does exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_SUCCESS);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent database already exist.");
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_SUCCESS, ret);
-}
-
-void test_wdb_create_agent_db_error_accesing_file(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    char agent_name[] = "agent1";
-
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
-    // Opening source database file
-    errno = ETXTBSY;
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    will_return(__wrap_strerror, "Device or resource busy");
-    expect_string(__wrap__merror, formatted_msg, "Error accessing file (var/db/.template.db): (Device or resource busy)");
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_create_agent_db_error_creating_source_profile(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    const char* agent_name = "agent1";
-
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
-    // Opening source database file
-    errno = ENOENT;
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-    // Creating profile
-    expect_string(__wrap__mdebug1, formatted_msg, "Profile database not found, creating.");
-    expect_string(__wrap_wdb_create_profile, path, "var/db/.template.db");
-    will_return(__wrap_wdb_create_profile, OS_INVALID);
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_create_agent_db_error_reopening_source_profile(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    const char* agent_name = "agent1";
-
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
-    // Opening source database file
-    errno = ENOENT;
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-    // Creating profile
-    expect_string(__wrap__mdebug1, formatted_msg, "Profile database not found, creating.");
-    expect_string(__wrap_wdb_create_profile, path, "var/db/.template.db");
-    will_return(__wrap_wdb_create_profile, OS_SUCCESS);
-    // Opening source database file
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-    expect_string(__wrap__merror, formatted_msg, "Couldn't open profile 'var/db/.template.db'.");
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_create_agent_db_error_opening_dest_profile(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    const char* agent_name = "agent1";
-
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
-    // Opening source database file
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
-    // Opening destination database file
-    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 0);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, OS_SUCCESS);
-    expect_string(__wrap__merror, formatted_msg, "Couldn't create database 'var/db/agents/001-agent1.db'.");
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_create_agent_db_error_writing_profile(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    const char* agent_name = "agent1";
-
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
-    // Opening source database file
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
-    // Opening destination database file
-    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
-    // Writing destination profile
-    will_return(__wrap_fread, "teststring");
-    will_return(__wrap_fread, 10);
-    will_return(__wrap_fwrite, 0);
-    // Closing files
-    expect_value(__wrap_fclose, _File, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return_always(__wrap_fclose, OS_SUCCESS);
-    expect_string(__wrap__merror, formatted_msg, "Couldn't write/close file 'var/db/agents/001-agent1.db' completely.");
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_create_agent_db_error_getting_ids(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    const char* agent_name = "agent1";
-
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
-    // Opening source database file
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
-    // Opening destination database file
-    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
-    // Writing destination profile
-    will_return(__wrap_fread, "teststring");
-    will_return(__wrap_fread, 10);
-    will_return(__wrap_fwrite, 10);
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-    // Closing files
-    expect_value(__wrap_fclose, _File, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return_always(__wrap_fclose, OS_SUCCESS);
-    // Getting IDs
-    expect_string(__wrap_Privsep_GetUser, name, "root");
-    will_return(__wrap_Privsep_GetUser, (uid_t) - 1);
-    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
-    will_return(__wrap_Privsep_GetGroup, (gid_t) - 1);
-    will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "(1203): Invalid user 'root' or group 'wazuh' given: error (0)");
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_create_agent_db_error_changing_owner(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    const char* agent_name = "agent1";
-
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
-    // Opening source database file
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
-    // Opening destination database file
-    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
-    // Writing destination profile
-    will_return(__wrap_fread, "teststring");
-    will_return(__wrap_fread, 10);
-    will_return(__wrap_fwrite, 10);
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-    // Closing files
-    expect_value(__wrap_fclose, _File, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return_always(__wrap_fclose, OS_SUCCESS);
-    // Getting IDs
-    expect_string(__wrap_Privsep_GetUser, name, "root");
-    will_return(__wrap_Privsep_GetUser, 0);
-    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
-    will_return(__wrap_Privsep_GetGroup, 0);
-    // Changing owner
-    expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
-    expect_value(__wrap_chown, __owner, 0);
-    expect_value(__wrap_chown, __group, 0);
-    will_return(__wrap_chown, OS_INVALID);
-    will_return(__wrap_strerror, "error");
-
-    const char * error_msg = "(1135): Could not chown object 'var/db/agents/001-agent1.db' due to";
-    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_create_agent_db_error_changing_mode(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    const char* agent_name = "agent1";
-
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
-    // Opening source database file
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
-    // Opening destination database file
-    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
-    // Writing destination profile
-    will_return(__wrap_fread, "teststring");
-    will_return(__wrap_fread, 10);
-    will_return(__wrap_fwrite, 10);
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-    // Closing files
-    expect_value(__wrap_fclose, _File, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return_always(__wrap_fclose, OS_SUCCESS);
-    // Getting IDs
-    expect_string(__wrap_Privsep_GetUser, name, "root");
-    will_return(__wrap_Privsep_GetUser, 0);
-    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
-    will_return(__wrap_Privsep_GetGroup, 0);
-    // Changing owner
-    expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
-    expect_value(__wrap_chown, __owner, 0);
-    expect_value(__wrap_chown, __group, 0);
-    will_return(__wrap_chown, OS_SUCCESS);
-    // Changing mode
-    expect_string(__wrap_chmod, path, "var/db/agents/001-agent1.db");
-    will_return(__wrap_chmod, OS_INVALID);
-    will_return(__wrap_strerror, "error");
-
-    const char * error_msg = "(1127): Could not chmod object 'var/db/agents/001-agent1.db' due to";
-    expect_memory(__wrap__merror, formatted_msg, error_msg, strlen(error_msg));
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_create_agent_db_success(void **state)
-{
-    int ret = 0;
-    int agent_id = 1;
-    const char* agent_name = "agent1";
-
-    // Agent database doesn't exists
-    expect_string(__wrap_stat, __file, "var/db/agents/001-agent1.db");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, OS_INVALID);
-    // Opening source database file
-    expect_string(__wrap_fopen, path, "var/db/.template.db");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
-    // Opening destination database file
-    expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
-    // Writing destination profile
-    will_return(__wrap_fread, "teststring");
-    will_return(__wrap_fread, 10);
-    will_return(__wrap_fwrite, 10);
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-    // Closing files
-    expect_value(__wrap_fclose, _File, 1);
-    expect_value(__wrap_fclose, _File, 1);
-    will_return_always(__wrap_fclose, OS_SUCCESS);
-    // Getting IDs
-    expect_string(__wrap_Privsep_GetUser, name, "root");
-    will_return(__wrap_Privsep_GetUser, 0);
-    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
-    will_return(__wrap_Privsep_GetGroup, 0);
-    // Changing owner
-    expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
-    expect_value(__wrap_chown, __owner, 0);
-    expect_value(__wrap_chown, __group, 0);
-    will_return(__wrap_chown, OS_SUCCESS);
-    // Changing mode
-    expect_string(__wrap_chmod, path, "var/db/agents/001-agent1.db");
-    will_return(__wrap_chmod, OS_SUCCESS);
-
-    ret = wdb_create_agent_db(agent_id, agent_name);
-
-    assert_int_equal(OS_SUCCESS, ret);
 }
 
 /* Tests wdb_insert_agent */
@@ -2033,68 +1677,6 @@ void test_wdb_get_agent_name_not_found(void **state) {
     os_free(name);
 }
 
-/* Tests wdb_remove_agent_db */
-
-void test_wdb_remove_agent_db_error_removing_db(void **state) {
-    int ret = 0;
-    int id = 1;
-    char *name = "agent1";
-
-    // Removing DB files
-    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
-    will_return(__wrap_remove, OS_INVALID);
-
-    ret = wdb_remove_agent_db(id, name);
-
-    assert_int_equal(OS_INVALID, ret);
-}
-
-void test_wdb_remove_agent_db_error_removing_db_shm_wal(void **state) {
-    int ret = 0;
-    int id = 1;
-    char *name = "agent1";
-
-    // Removing DB files
-    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
-    will_return(__wrap_remove, OS_SUCCESS);
-
-    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
-    will_return(__wrap_remove, OS_INVALID);
-    will_return(__wrap_strerror, "error");
-
-    const char * error_shm = "(1129): Could not unlink file 'var/db/agents/001-agent1.db-shm' due to";
-    expect_memory(__wrap__mdebug2, formatted_msg, error_shm, strlen(error_shm));
-
-    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-wal");
-    will_return(__wrap_remove, OS_INVALID);
-    will_return(__wrap_strerror, "error");
-
-    const char * error_wal = "(1129): Could not unlink file 'var/db/agents/001-agent1.db-wal' due to";
-    expect_memory(__wrap__mdebug2, formatted_msg, error_wal, strlen(error_wal));
-
-    ret = wdb_remove_agent_db(id, name);
-
-    assert_int_equal(OS_SUCCESS, ret);
-}
-
-void test_wdb_remove_agent_db_success(void **state) {
-    int ret = 0;
-    int id = 1;
-    char *name = "agent1";
-
-    // Removing DB files
-    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
-    will_return(__wrap_remove, OS_SUCCESS);
-    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
-    will_return(__wrap_remove, OS_SUCCESS);
-    expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-wal");
-    will_return(__wrap_remove, OS_SUCCESS);
-
-    ret = wdb_remove_agent_db(id, name);
-
-    assert_int_equal(OS_SUCCESS, ret);
-}
-
 /* Tests wdb_remove_agent */
 
 void test_wdb_remove_agent_remove_db_error(void **state)
@@ -2449,6 +2031,90 @@ void test_wdb_get_all_agents_success(void **state) {
     assert_int_equal(-1, array[3]);
 
     os_free(array);
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(id2);
+    __real_cJSON_Delete(id3);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+/* Tests wdb_get_all_agents_rbtree */
+
+void test_wdb_get_all_agents_rbtree_wdbc_query_error(void **state) {
+    const char *query_str = "global get-all-agents last_id 0";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent's IDs.");
+
+    rb_tree *tree = wdb_get_all_agents_rbtree(false, NULL);
+
+    assert_null(tree);
+}
+
+void test_wdb_get_all_agents_rbtree_wdbc_parse_error(void **state) {
+    const char *query_str = "global get-all-agents last_id 0";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent's IDs.");
+
+    rb_tree *tree = wdb_get_all_agents_rbtree(false, NULL);
+
+    assert_null(tree);
+}
+
+void test_wdb_get_all_agents_rbtree_success(void **state) {
+    const char *query_str = "global get-all-agents last_id 0";
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1},{\"id\":2},{\"id\":3}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+    cJSON* id2 = cJSON_CreateNumber(2);
+    cJSON* id3 = cJSON_CreateNumber(3);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, test_payload);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    will_return(__wrap_cJSON_GetObjectItem, id3);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    rb_tree *tree = wdb_get_all_agents_rbtree(false, NULL);
+
+    assert_non_null(tree);
+
+    rbtree_destroy(tree);
     __real_cJSON_Delete(test_json);
     __real_cJSON_Delete(id1);
     __real_cJSON_Delete(id2);
@@ -3132,6 +2798,26 @@ void test_wdb_get_agents_by_connection_status_query_error(void **state)
     assert_null(array);
 }
 
+void test_wdb_get_agents_ids_of_current_node_query_error(void **state)
+{
+    const char *query_str = "global get-agents-by-connection-status 0 active node01 -1";
+    const char *response = "err";
+    char *cluster_node_name = NULL;
+    cluster_node_name = strdup("node01");
+
+    // Calling Wazuh DB
+    will_return(__wrap_get_node_name, cluster_node_name);
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    int *array = wdb_get_agents_ids_of_current_node("active", NULL, 0, -1);
+
+    assert_null(array);
+}
+
 void test_wdb_get_agents_by_connection_status_parse_error(void **state)
 {
     const char *query_str = "global get-agents-by-connection-status 0 active";
@@ -3149,6 +2835,30 @@ void test_wdb_get_agents_by_connection_status_parse_error(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
     int *array = wdb_get_agents_by_connection_status("active", NULL);
+
+    assert_null(array);
+}
+
+void test_wdb_get_agents_ids_of_current_node_parse_error(void **state)
+{
+    const char *query_str = "global get-agents-by-connection-status 0 active node01 -1";
+    const char *response = "err";
+    char *cluster_node_name = NULL;
+    cluster_node_name = strdup("node01");
+
+    // Calling Wazuh DB
+    will_return(__wrap_get_node_name, cluster_node_name);
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+
+    int *array = wdb_get_agents_ids_of_current_node("active", NULL, 0, -1);
 
     assert_null(array);
 }
@@ -3182,6 +2892,56 @@ void test_wdb_get_agents_by_connection_status_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     int *array = wdb_get_agents_by_connection_status("active", NULL);
+
+    assert_non_null(array);
+    assert_int_equal(1, array[0]);
+    assert_int_equal(2, array[1]);
+    assert_int_equal(3, array[2]);
+    assert_int_equal(-1, array[3]);
+
+    os_free(array);
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(id2);
+    __real_cJSON_Delete(id3);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_get_agents_ids_of_current_node_success(void **state)
+{
+    const char *query_str = "global get-agents-by-connection-status 0 active node01 -1";
+    char *cluster_node_name = NULL;
+    cluster_node_name = strdup("node01");
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1},{\"id\":2},{\"id\":3}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+    cJSON* id2 = cJSON_CreateNumber(2);
+    cJSON* id3 = cJSON_CreateNumber(3);
+
+    // Calling Wazuh DB
+    will_return(__wrap_get_node_name, cluster_node_name);
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, test_payload);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    will_return(__wrap_cJSON_GetObjectItem, id3);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    int *array = wdb_get_agents_ids_of_current_node("active", NULL, 0, -1);
 
     assert_non_null(array);
     assert_int_equal(1, array[0]);
@@ -3387,6 +3147,141 @@ void test_wdb_parse_chunk_to_int_err(void **state) {
 
     assert_int_equal(WDBC_ERROR, status);
     assert_null(array);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+/* Tests wdb_parse_chunk_to_rbtree */
+
+void test_wdb_parse_chunk_to_rbtree_ok(void **state) {
+    rb_tree* tree = (rb_tree*)1;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+    cJSON* test_json = __real_cJSON_Parse(test_payload+3);
+    cJSON* id1 = cJSON_CreateNumber(1);
+
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+
+    assert_int_equal(WDBC_OK, status);
+
+    __real_cJSON_Delete(test_json);
+    __real_cJSON_Delete(id1);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_rbtree_due(void **state) {
+    rb_tree* tree = (rb_tree*)1;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "due [{\"id\":1}]");
+    cJSON* test_json1 = __real_cJSON_Parse(test_payload+4);
+    cJSON* id1 = cJSON_CreateNumber(1);
+
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_DUE);
+    will_return(__wrap_cJSON_Parse, test_json1);
+    will_return(__wrap_cJSON_GetObjectItem, id1);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+    assert_int_equal(WDBC_DUE, status);
+
+    // Setting second payload
+    strcpy(test_payload, "ok [{\"id\":2}]");
+    cJSON* test_json2 = __real_cJSON_Parse(test_payload+3);
+    cJSON* id2 = cJSON_CreateNumber(2);
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, test_json2);
+    will_return(__wrap_cJSON_GetObjectItem, id2);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+    assert_int_equal(WDBC_OK, status);
+
+    __real_cJSON_Delete(test_json1);
+    __real_cJSON_Delete(id1);
+    __real_cJSON_Delete(test_json2);
+    __real_cJSON_Delete(id2);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_rbtree_err(void **state) {
+    rb_tree* tree = (rb_tree*)1;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+
+    // Parsing result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+    will_return(__wrap_cJSON_Parse, NULL);
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+
+    assert_int_equal(WDBC_ERROR, status);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_rbtree_err_no_item(void **state) {
+    rb_tree* tree = (rb_tree*)1;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid item.");
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, NULL, &last_item);
+
+    assert_int_equal(WDBC_ERROR, status);
+
+    // Cleaning payload
+    set_payload = 0;
+    memset(test_payload, '\0', OS_MAXSTR);
+}
+
+void test_wdb_parse_chunk_to_rbtree_err_no_output(void **state) {
+    rb_tree* tree = NULL;
+    int last_item = 0;
+
+    // Setting the payload
+    set_payload = 1;
+    strcpy(test_payload, "ok [{\"id\":1}]");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid RB tree.");
+
+    wdbc_result status = wdb_parse_chunk_to_rbtree(test_payload, &tree, "id", &last_item);
+
+    assert_int_equal(WDBC_ERROR, status);
 
     // Cleaning payload
     set_payload = 0;
@@ -3645,23 +3540,365 @@ void test_wdb_set_agent_groups_success(void **state) {
     assert_int_equal(OS_SUCCESS,res);
 }
 
+/* Tests wdb_get_distinct_agent_groups */
+
+void test_wdb_get_distinct_agent_groups_error_no_json_response(void **state) {
+    cJSON *root = NULL;
+    const char *query_str = "global get-distinct-groups ";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateArray, NULL);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent's groups.");
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    root = wdb_get_distinct_agent_groups(NULL);
+
+    assert_null(root);
+}
+
+void test_wdb_get_distinct_agent_groups_error_parse_chunk(void **state) {
+    cJSON *root = NULL;
+    const char *query_str = "global get-distinct-groups ";
+    const char *response = "ok []";
+
+    will_return(__wrap_cJSON_CreateArray, NULL);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid JSON array.");
+
+    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get agent's groups.");
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    root = wdb_get_distinct_agent_groups(NULL);
+
+    assert_null(root);
+}
+
+void test_wdb_get_distinct_agent_groups_success(void **state) {
+    cJSON *root = NULL;
+    const char *query_str = "global get-distinct-groups ";
+    const char *response = "ok [{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]";
+    cJSON *str_obj = __real_cJSON_CreateString("abcdef");
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]");
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_string(__wrap_wdbc_parse_result, result, response);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    will_return(__wrap_cJSON_Parse, parse_json);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    will_return(__wrap_cJSON_GetObjectItem, str_obj);
+
+    root = wdb_get_distinct_agent_groups(NULL);
+
+    __real_cJSON_Delete(root);
+    __real_cJSON_Delete(parse_json);
+    __real_cJSON_Delete(str_obj);
+}
+
+void test_wdb_get_distinct_agent_groups_success_due_ok(void **state) {
+    cJSON *root = NULL;
+    const char *query_str1 = "global get-distinct-groups ";
+    const char *query_str2 = "global get-distinct-groups ef48b4cd";
+    const char *response1 = "ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]";
+    const char *response2 = "ok [{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]";
+    cJSON *str_obj1 = __real_cJSON_CreateString("ef48b4cd");
+    cJSON *str_obj2 = __real_cJSON_CreateString("abcdef");
+    cJSON *parse_json1 = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    cJSON *parse_json2 = __real_cJSON_Parse("[{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]");
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+
+    // Calling Wazuh DB 1
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str1);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response1);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_string(__wrap_wdbc_parse_result, result, response1);
+    will_return(__wrap_wdbc_parse_result, WDBC_DUE);
+
+    will_return(__wrap_cJSON_Parse, parse_json1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    will_return(__wrap_cJSON_GetObjectItem, str_obj1);
+
+    // Calling Wazuh DB 2
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str2);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response2);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    expect_string(__wrap_wdbc_parse_result, result, response2);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    will_return(__wrap_cJSON_Parse, parse_json2);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    will_return(__wrap_cJSON_GetObjectItem, str_obj2);
+
+    root = wdb_get_distinct_agent_groups(NULL);
+
+    __real_cJSON_Delete(root);
+    __real_cJSON_Delete(parse_json1);
+    __real_cJSON_Delete(str_obj1);
+    __real_cJSON_Delete(parse_json2);
+    __real_cJSON_Delete(str_obj2);
+}
+
+/* Tests wdb_parse_chunk_to_json_by_string_item */
+
+void test_wdb_parse_chunk_to_json_by_string_item_output_json_null(void **state) {
+    char *input = "ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]";
+    char *last_item_value;
+    wdbc_result result;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid JSON array.");
+
+    result = wdb_parse_chunk_to_json_by_string_item(input, NULL, "group_hash", &last_item_value);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_parse_chunk_to_json_by_string_item_item_null(void **state) {
+    char *input = "ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]";
+    cJSON *output_json = __real_cJSON_CreateArray();
+    char *last_item_value;
+    wdbc_result result;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid item.");
+
+    result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, NULL, &last_item_value);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(output_json);
+}
+
+void test_wdb_parse_chunk_to_json_by_string_item_output_json_no_array(void **state) {
+    char *input = "ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]";
+    cJSON *output_json = __real_cJSON_CreateString("wrong object");
+    char *last_item_value;
+    wdbc_result result;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid JSON array.");
+
+    result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+
+    assert_int_equal(result, WDBC_ERROR);
+    __real_cJSON_Delete(output_json);
+}
+
+void test_wdb_parse_chunk_to_json_by_string_item_parse_result_error(void **state) {
+    char *input = NULL;
+    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    cJSON *output_json = __real_cJSON_CreateArray();
+    char *last_item_value;
+    wdbc_result exc_result;
+
+    expect_string(__wrap_wdbc_parse_result, result, input);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+
+    assert_int_equal(exc_result, WDBC_ERROR);
+    __real_cJSON_Delete(output_json);
+    os_free(input);
+}
+
+void test_wdb_parse_chunk_to_json_by_string_item_cjson_parse_error(void **state) {
+    char *input = NULL;
+    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    cJSON *output_json = __real_cJSON_CreateArray();
+    char *last_item_value;
+    wdbc_result exc_result;
+
+    expect_string(__wrap_wdbc_parse_result, result, input);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    will_return(__wrap_cJSON_Parse, NULL);
+
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+
+    assert_int_equal(exc_result, WDBC_ERROR);
+    __real_cJSON_Delete(output_json);
+    os_free(input);
+}
+
+void test_wdb_parse_chunk_to_json_by_string_item_empty_array(void **state) {
+    char *input = NULL;
+    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    cJSON *output_json = __real_cJSON_CreateArray();
+    cJSON *parse_json = __real_cJSON_CreateArray();
+    char *last_item_value;
+    wdbc_result exc_result;
+
+    expect_string(__wrap_wdbc_parse_result, result, input);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    will_return(__wrap_cJSON_Parse, parse_json);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+
+    assert_int_equal(exc_result, WDBC_OK);
+    __real_cJSON_Delete(output_json);
+    __real_cJSON_Delete(parse_json);
+    os_free(input);
+}
+
+void test_wdb_parse_chunk_to_json_by_string_item_last_item_json_null(void **state) {
+    char *input = NULL;
+    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    cJSON *output_json = __real_cJSON_CreateArray();
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    char *last_item_value = NULL;
+    wdbc_result exc_result;
+
+    expect_string(__wrap_wdbc_parse_result, result, input);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    will_return(__wrap_cJSON_Parse, parse_json);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+
+    assert_int_equal(exc_result, WDBC_OK);
+    assert_null(last_item_value);
+    __real_cJSON_Delete(output_json);
+    __real_cJSON_Delete(parse_json);
+    os_free(input);
+}
+
+void test_wdb_parse_chunk_to_json_by_string_item_string_value_fail(void **state) {
+    char *input = NULL;
+    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    cJSON *output_json = __real_cJSON_CreateArray();
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    char *last_item_value = NULL;
+    wdbc_result exc_result;
+    cJSON *int_obj = cJSON_CreateNumber(1);
+
+    expect_string(__wrap_wdbc_parse_result, result, input);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    will_return(__wrap_cJSON_Parse, parse_json);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    will_return(__wrap_cJSON_GetObjectItem, int_obj);
+
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+
+    assert_int_equal(exc_result, WDBC_OK);
+    assert_null(last_item_value);
+    __real_cJSON_Delete(output_json);
+    __real_cJSON_Delete(parse_json);
+    __real_cJSON_Delete(int_obj);
+    os_free(input);
+}
+
+void test_wdb_parse_chunk_to_json_by_string_last_item_value_null(void **state) {
+    char *input = NULL;
+    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    cJSON *output_json = __real_cJSON_CreateArray();
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    char *last_item_value = NULL;
+    wdbc_result exc_result;
+    cJSON *str_obj = __real_cJSON_CreateString("ef48b4cd");
+
+    expect_string(__wrap_wdbc_parse_result, result, input);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    will_return(__wrap_cJSON_Parse, parse_json);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    will_return(__wrap_cJSON_GetObjectItem, str_obj);
+
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", NULL);
+
+    assert_int_equal(exc_result, WDBC_OK);
+    assert_null(last_item_value);
+    __real_cJSON_Delete(output_json);
+    __real_cJSON_Delete(parse_json);
+    __real_cJSON_Delete(str_obj);
+    os_free(input);
+}
+
+void test_wdb_parse_chunk_to_json_by_string_item_success(void **state) {
+    char *input = NULL;
+    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    cJSON *output_json = __real_cJSON_CreateArray();
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    char *last_item_value;
+    wdbc_result exc_result;
+    cJSON *str_obj = __real_cJSON_CreateString("ef48b4cd");
+
+    expect_string(__wrap_wdbc_parse_result, result, input);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    will_return(__wrap_cJSON_Parse, parse_json);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    will_return(__wrap_cJSON_GetObjectItem, str_obj);
+
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+
+    assert_int_equal(exc_result, WDBC_OK);
+    assert_string_equal(last_item_value, "ef48b4cd");
+    __real_cJSON_Delete(output_json);
+    __real_cJSON_Delete(parse_json);
+    __real_cJSON_Delete(str_obj);
+    os_free(input);
+    os_free(last_item_value);
+}
 
 int main()
 {
     const struct CMUnitTest tests[] =
     {
-        /* Tests wdb_create_agent_db */
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_no_name, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_accesing_file, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_already_exist, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_creating_source_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_reopening_source_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_opening_dest_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_writing_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_getting_ids, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_owner, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_mode, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_insert_agent */
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -3704,10 +3941,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_not_found, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_remove_agent_db */
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_error_removing_db, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_error_removing_db_shm_wal, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_remove_agent */
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_remove_db_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -3726,6 +3959,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_get_all_agents_rbtree */
+        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_find_group */
         cmocka_unit_test_setup_teardown(test_wdb_find_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_find_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -3762,6 +3999,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_get_agents_ids_of_current_node */
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_ids_of_current_node_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_ids_of_current_node_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_ids_of_current_node_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_disconnect_agents */
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -3770,12 +4011,34 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_due, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_err, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_parse_chunk_to_rbtree */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_due, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_err, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_err_no_item, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_err_no_output, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_set_agent_groups */
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_csv_success, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_success, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_error_no_mode, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_query_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_socket_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
+        /* Tests wdb_get_distinct_agent_groups */
+        cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_parse_chunk, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_success_due_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        /* Tests wdb_parse_chunk_to_json_by_string_item */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_item_output_json_null, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_item_item_null, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_item_output_json_no_array, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_item_parse_result_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_item_cjson_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_item_empty_array, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_item_last_item_json_null, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_item_string_value_fail, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_last_item_value_null, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_json_by_string_item_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

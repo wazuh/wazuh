@@ -207,36 +207,10 @@ def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, e
         Dict with the Wazuh version to be applied.
     """
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=wazuh_version):
-        with patch('wazuh.syscheck.glob',
-                   return_value=[os.path.join(common.DATABASE_PATH_AGENTS, '{}.db'.format(agent_id[0]))]):
-            result = last_scan(agent_id)
-            assert isinstance(result, AffectedItemsWazuhResult)
-            assert isinstance(result.affected_items, list)
-            assert result.total_affected_items == 1
-
-
-@pytest.mark.parametrize('version', [
-    {'version': 'Wazuh v3.6.0'}
-])
-@patch('wazuh.syscheck.glob', return_value=None)
-def test_syscheck_last_scan_internal_error(glob_mock, version):
-    """Test function `last_scan` from syscheck module.
-
-    It will expect a WazuhInternalError.
-
-    Parameters
-    ----------
-    version : dict
-        Dict with the Wazuh version to be applied.
-
-    Raises
-    ------
-    WazuhInternalError
-        Raised when there is not a valid database file.
-    """
-    with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
-        with pytest.raises(WazuhInternalError):
-            last_scan(['001'])
+        result = last_scan(agent_id)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert isinstance(result.affected_items, list)
+        assert result.total_affected_items == 1
 
 
 @pytest.mark.parametrize('agent_id, select, filters, distinct, q', [

@@ -1,30 +1,40 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-from wazuh.core.exception import WazuhException, WazuhInternalError
-from wazuh import common
+import asyncio
+import os.path
 import socket
 from json import dumps, loads
 from struct import pack, unpack
-import asyncio
 
+from wazuh import common
+from wazuh.core.exception import WazuhException, WazuhInternalError
 
 SOCKET_COMMUNICATION_PROTOCOL_VERSION = 1
 
 
 class WazuhSocket:
-
     MAX_SIZE = 65536
 
     def __init__(self, path):
         self.path = path
         self._connect()
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __enter__(self):
+        return self
+
     def _connect(self):
         try:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.s.connect(self.path)
+        except FileNotFoundError:
+            raise WazuhInternalError(1013, extra_message=os.path.basename(self.path))
+        except ConnectionRefusedError:
+            raise WazuhInternalError(1121, extra_message=f"Socket '{os.path.basename(self.path)}' cannot receive "
+                                                         "connections")
         except Exception as e:
             raise WazuhException(1013, str(e))
 
@@ -53,7 +63,6 @@ class WazuhSocket:
 
 
 class WazuhSocketJSON(WazuhSocket):
-
     MAX_SIZE = 65536
 
     def __init__(self, path):
@@ -75,6 +84,7 @@ class WazuhSocketJSON(WazuhSocket):
 
 class WazuhAsyncProtocol(asyncio.Protocol):
     """Wazuh implementation of asyncio.Protocol class."""
+
     def __init__(self, loop):
         self.loop = loop
         self.on_data_received = loop.create_future()
@@ -98,13 +108,14 @@ class WazuhAsyncProtocol(asyncio.Protocol):
 
 class WazuhAsyncSocket:
     """Handler class to connect and operate with sockets asynchronously."""
+
     def __init__(self):
         self.transport = None
         self.protocol = None
         self.s = None
         self.loop = None
 
-    async def connect(self, path_to_socket):
+    async def connect(self, path_to_socket: str):
         """Establish connection with the socket and creates both Transport and Protocol objects to operate with it.
 
         Parameters
@@ -138,12 +149,12 @@ class WazuhAsyncSocket:
         if not self.transport.is_closing():
             self.transport.close()
 
-    async def send(self, msg_bytes, header_format=None):
+    async def send(self, msg_bytes: bytes, header_format: str = None) -> bytes:
         """Add a header to the message and sends it to the socket. Returns that message.
 
         Parameters
         ----------
-        msg_bytes : byte
+        msg_bytes : bytes
             A set of bytes to be send.
         header_format : str, optional
             Format of the header to be packed in the message.
@@ -154,6 +165,11 @@ class WazuhAsyncSocket:
             If the `msg_bytes` type is not bytes.
         WazuhException(1014)
             If the message length was 0.
+
+        Returns
+        -------
+        bytes
+            Bytes sent.
         """
         if not isinstance(msg_bytes, bytes):
             raise WazuhException(1105, "Type must be bytes")
@@ -170,7 +186,7 @@ class WazuhAsyncSocket:
             raise WazuhException(1014, "Number of sent bytes is 0")
         return data
 
-    async def receive(self, header_size=None):
+    async def receive(self, header_size: int = None) -> bytes:
         """Return the content of the socket.
 
         Parameters
@@ -182,6 +198,11 @@ class WazuhAsyncSocket:
         ------
         WazuhException(1014)
             If there is no connection with the socket.
+
+        Returns
+        -------
+        bytes
+            Bytes received.
         """
         try:
             await self.protocol.on_data_received
@@ -193,10 +214,11 @@ class WazuhAsyncSocket:
 
 class WazuhAsyncSocketJSON(WazuhAsyncSocket):
     """Handler class to connect and operate asynchronously with a socket using messages in JSON format."""
+
     def __init__(self):
         WazuhAsyncSocket.__init__(self)
 
-    async def send(self, msg, header_format=None):
+    async def send(self, msg: str, header_format: str = None) -> bytes:
         """Converts the message from JSON format to bytes and send it to the socket. Returns that message.
 
         Parameters
@@ -205,10 +227,15 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
             The message in JSON format.
         header_format : str, optional
             Format of the header to be packed in the message.
+
+        Returns
+        -------
+        bytes
+            Bytes sent.
         """
         return await WazuhAsyncSocket.send(self, dumps(msg).encode(), header_format)
 
-    async def receive(self, header_size=None):
+    async def receive(self, header_size: int = None) -> dict:
         """Get the data from the socket and converts it to JSON.
 
         Parameters
@@ -219,7 +246,13 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
         Raises
         ------
         WazuhException
-            If the message obtained from the socket was an error message."""
+            If the message obtained from the socket was an error message.
+
+        Returns
+        -------
+        dict
+            Data received.
+        """
         response = await WazuhAsyncSocket.receive(self, header_size)
         response = loads(response.decode())
 
@@ -232,12 +265,13 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
 
 daemons = {
     "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4},
-    "task-manager": {"protocol" : "TCP", "path": common.TASKS_SOCKET, "header_format": "<I", "size": 4},
-    "wazuh-db": {"protocol": "TCP", "path": common.WDB_SOCKET, "header_format": "<I", "size": 4}
+    "task-manager": {"protocol": "TCP", "path": common.TASKS_SOCKET, "header_format": "<I", "size": 4},
+    "wazuh-db": {"protocol": "TCP", "path": common.WDB_SOCKET, "header_format": "<I", "size": 4},
+    "remoted": {"protocol": "TCP", "path": common.REMOTED_SOCKET, "header_format": "<I", "size": 4}
 }
 
 
-async def wazuh_sendasync(daemon_name, message=None):
+async def wazuh_sendasync(daemon_name: str, message: str = None) -> dict:
     """Send a message to the specified daemon's socket and wait for its response.
 
     Parameters
@@ -246,6 +280,11 @@ async def wazuh_sendasync(daemon_name, message=None):
         Name of the daemon to send the message.
     message : str, optional
         Message in JSON format to be sent to the daemon's socket.
+
+    Returns
+    -------
+    dict
+        Data received.
     """
     sock = WazuhAsyncSocketJSON()
     await sock.connect(daemons[daemon_name]['path'])
@@ -256,7 +295,7 @@ async def wazuh_sendasync(daemon_name, message=None):
     return data
 
 
-async def wazuh_sendsync(daemon_name=None, message=None):
+async def wazuh_sendsync(daemon_name: str = None, message: str = None) -> dict:
     """Send a message to the specified daemon's socket and wait for its response.
 
     Parameters
@@ -265,6 +304,16 @@ async def wazuh_sendsync(daemon_name=None, message=None):
         Name of the daemon to send the message.
     message : str, optional
         Message in JSON format to be sent to the daemon's socket.
+
+    Raises
+    ------
+    WazuhInternalError(1014)
+        Error communicating with socket.
+
+    Returns
+    -------
+    dict
+        Data received.
     """
     try:
         sock = WazuhSocket(daemons[daemon_name]['path'])

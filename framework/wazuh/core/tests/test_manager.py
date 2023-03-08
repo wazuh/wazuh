@@ -4,8 +4,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-from unittest.mock import patch
 from datetime import timezone, datetime
+from unittest.mock import patch
 
 import pytest
 
@@ -16,6 +16,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
+ossec_log_json_path = '{0}/ossec_log.log'.format(test_data_path)
 
 
 class InitManager:
@@ -41,8 +42,8 @@ def test_manager():
     return test_manager
 
 
-def get_logs():
-    with open(ossec_log_path) as f:
+def get_logs(json_log: bool = False):
+    with open(ossec_log_json_path if json_log else ossec_log_path) as f:
         return f.read()
 
 
@@ -107,16 +108,26 @@ def test_get_ossec_log_fields_ko():
     assert not result
 
 
-def test_get_ossec_logs():
+@pytest.mark.parametrize("log_format", [
+    LoggingFormat.plain, LoggingFormat.json
+])
+def test_get_ossec_logs(log_format):
     """Test get_ossec_logs() method returns result with expected information"""
-    logs = get_logs().splitlines()
+    logs = get_logs(json_log=log_format == LoggingFormat.json).splitlines()
 
-    with patch('wazuh.core.manager.tail', return_value=logs):
-        result = get_ossec_logs()
-        assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
+    with patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=log_format):
+        with pytest.raises(WazuhInternalError, match=".*1020.*"):
+            get_ossec_logs()
+
+        with patch('wazuh.core.manager.exists', return_value=True):
+            with patch('wazuh.core.manager.tail', return_value=logs):
+                result = get_ossec_logs()
+                assert all(key in log for key in ('timestamp', 'tag', 'level', 'description') for log in result)
 
 
-def test_get_logs_summary():
+@patch("wazuh.core.manager.get_wazuh_active_logging_format", return_value=LoggingFormat.plain)
+@patch('wazuh.core.manager.exists', return_value=True)
+def test_get_logs_summary(mock_exists, mock_active_logging_format):
     """Test get_logs_summary() method returns result with expected information"""
     logs = get_logs().splitlines()
     with patch('wazuh.core.manager.tail', return_value=logs):
@@ -137,7 +148,7 @@ def test_validate_ossec_conf(mock_wazuhsocket, mock_exists):
         result = validate_ossec_conf()
 
         assert result == {'status': 'OK'}
-        mock_exists.assert_called_with(join(common.WAZUH_PATH, 'queue', 'sockets', 'com'))
+        mock_exists.assert_called_with(os.path.join(common.WAZUH_PATH, 'queue', 'sockets', 'com'))
 
 
 @patch("wazuh.core.manager.exists", return_value=True)

@@ -29,7 +29,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
     if (syslog_config->socket < 0) {
         resolve_hostname(&syslog_config->server, 5);
 
-        syslog_config->socket = OS_ConnectUDP(syslog_config->port, get_ip_from_resolved_hostname(syslog_config->server), 0);
+        syslog_config->socket = OS_ConnectUDP(syslog_config->port, get_ip_from_resolved_hostname(syslog_config->server), 0, 0);
         if (syslog_config->socket < 0) {
             return (0);
         }
@@ -435,7 +435,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, SyslogConfig *syslog_config) {
     if (syslog_config->socket < 0) {
         resolve_hostname(&syslog_config->server, 5);
 
-        syslog_config->socket = OS_ConnectUDP(syslog_config->port, get_ip_from_resolved_hostname(syslog_config->server), 0);
+        syslog_config->socket = OS_ConnectUDP(syslog_config->port, get_ip_from_resolved_hostname(syslog_config->server), 0, 0);
         if (syslog_config->socket < 0) {
             return (0);
         }

@@ -5,6 +5,7 @@
 import json
 import re
 from collections import defaultdict
+from typing import Union
 
 from wazuh.rbac import orm
 
@@ -34,17 +35,17 @@ class RBAChecker:
     _regex_prefix = "r'"
 
     # If we don't pass it the role to check, it will take all of the system.
-    def __init__(self, auth_context=None, role=None, user_id=None):
-        """Class constructor to match the roles of the system with a given authorization context
+    def __init__(self, auth_context: Union[dict, str] = None, role: Union[list, orm.Roles] = None, user_id: int = None):
+        """Class constructor to match the roles of the system with a given authorization context.
 
         Parameters
         ----------
         auth_context : dict or str
-            Authorization context to be checked
-        role : list of Roles or Role or None
-            Roles(list)/Role/None(All roles in the system) to be checked against the authorization context
+            Authorization context to be checked.
+        role : list or orm.Roles
+            Roles(list)/Role/None(All roles in the system) to be checked against the authorization context.
         user_id : int
-            Current user_id
+            Current user_id.
         """
         self.user_id = user_id
         if auth_context is None:
@@ -74,40 +75,63 @@ class RBAChecker:
 
         self.roles_list = processed_roles_list
 
-    def get_authorization_context(self):
-        """Return the authorization context
+    def get_authorization_context(self) -> str:
+        """Return the authorization context.
 
-        :return: Provided authorization context
+        Returns
+        -------
+        str
+            Provided authorization context.
         """
         return self.authorization_context
 
-    def get_roles(self):
-        """Return all roles
+    def get_roles(self) -> list:
+        """Return all roles.
 
-        :return: List of roles to handle
+        Returns
+        -------
+        list
+            List of roles to handle.
         """
         return self.roles_list
 
     @staticmethod
-    def preprocess_to_list(role_chunk, auth_chunk):
-        """Assigns the correct type to authorization context and role chunks
+    def preprocess_to_list(role_chunk: list, auth_chunk: list) -> tuple:
+        """Assign the correct type to authorization context and role chunks.
 
-        :param role_chunk: Role chunk
-        :param auth_chunk: Authorization context chunk
-        :return: List with role_chunk and auth_chunk processed
+        Parameters
+        ----------
+        role_chunk : list
+            Role chunk.
+        auth_chunk : list
+            Authorization context chunk.
+
+        Returns
+        -------
+        tuple
+            List with role_chunk and auth_chunk processed.
         """
         role_chunk = sorted(role_chunk) if isinstance(role_chunk, list) else role_chunk
         auth_chunk = sorted(auth_chunk) if isinstance(auth_chunk, list) else auth_chunk
 
         return role_chunk, auth_chunk
 
-    def process_lists(self, role_chunk: list, auth_context: list, mode):
+    def process_lists(self, role_chunk: list, auth_context: list, mode: str) -> int:
         """Process lists of role chunks and authorization context chunks
 
-        :param role_chunk: List inside the role
-        :param auth_context: List inside the auth_context
-        :param mode: Mode to match both lists
-        :return: 1 or 0, 1 if the function is evaluated as True else return False
+        Parameters
+        ----------
+        role_chunk : list
+            List inside the role.
+        auth_context : list
+            List inside the auth_context.
+        mode : str
+            Mode to match both lists.
+
+        Returns
+        -------
+        int
+            1 or 0, 1 if the function is evaluated as True else return False.
         """
         counter = 0
         for index, value in enumerate(auth_context):
@@ -128,12 +152,20 @@ class RBAChecker:
 
         return 0
 
-    def set_mode(self, mode, role_id=None):
-        """Links the FIND/FIND$ modes with their respective functions (MATCH/MATCH$)
+    def set_mode(self, mode: str, role_id: int = None) -> str:
+        """Link the FIND/FIND$ modes with their respective functions (MATCH/MATCH$).
 
-        :param mode: FIND/FIND$
-        :param role_id: Actual role id to be checked
-        :return mode: FIND -> MATCH | FIND$ -> MATCH$
+        Parameters
+        ----------
+        mode : str
+            FIND/FIND$.
+        role_id : int
+            Actual role id to be checked.
+
+        Returns
+        -------
+        str
+            mode: FIND -> MATCH | FIND$ -> MATCH$.
         """
         if mode == self._functions[2]:  # FIND
             mode = self._functions[0]  # MATCH
@@ -142,15 +174,24 @@ class RBAChecker:
 
         return mode
 
-    def check_logic_operation(self, rule_key, rule_value, validator_counter):
-        """Evaluate a specified logic operation role-auth_context
+    def check_logic_operation(self, rule_key: str, rule_value: dict, validator_counter: int) -> Union[bool, None]:
+        """Evaluate a specified logic operation role-auth_context.
 
-        :param rule_key: Possible logic operation
-        :param rule_value: Clause to be evaluated
-        :param validator_counter: Number of successes within the logical operation
-        :return: True/False/None, it is possible that the database has been modified externally to Wazuh,
-        Potential Security Breach, Currently, if this is the case and the unknown role is invalid, it will not
-        cause any problems to the system, it will be ignored.
+        Parameters
+        ----------
+        rule_key : str
+            Possible logic operation.
+        rule_value : dict
+            Clause to be evaluated.
+        validator_counter : int
+            Number of successes within the logical operation.
+
+        Returns
+        -------
+        bool or None
+            True/False/None, it is possible that the database has been modified externally to Wazuh, Potential Security
+            Breach, Currently, if this is the case and the unknown role is invalid, it will not cause any problems to
+            the system, it will be ignored.
         """
         if rule_key == self._logical_operators[0]:  # AND
             if validator_counter == len(rule_value):
@@ -163,11 +204,18 @@ class RBAChecker:
 
         return None
 
-    def check_regex(self, expression):
-        """Checks if a certain string is a regular expression
+    def check_regex(self, expression: str) -> Union[re.Pattern, bool]:
+        """Check if a certain string is a regular expression.
 
-        :param expression: Regular expression to be checked
-        :return: Compiled regex if a valid regex is provided else return False
+        Parameters
+        ----------
+        expression : str
+            Regular expression to be checked.
+
+        Returns
+        -------
+        re.Pattern or bool
+            Compiled regex if a valid regex is provided else return False.
         """
         if isinstance(expression, str):
             if not expression.startswith(self._regex_prefix):
@@ -180,14 +228,24 @@ class RBAChecker:
                 return False
         return False
 
-    def match_item(self, role_chunk, auth_context=None, mode='MATCH'):
-        """This function will go through all authorization contexts and system roles
-        recursively until it finds the structure indicated in role_chunk
+    def match_item(self, role_chunk: Union[list, dict], auth_context: Union[list, dict] = None,
+                   mode: str = 'MATCH') -> Union[int, bool]:
+        """This function will go through all authorization contexts and system roles recursively until it finds the
+        structure indicated in role_chunk.
 
-        :param role_chunk: Chunk of one stored role in the class
-        :param auth_context: Received authorization context
-        :param mode: MATCH or MATCH$
-        :return: True if match else False
+        Parameters
+        ----------
+        role_chunk : list or dict
+            Chunk of one stored role in the class.
+        auth_context : list or dict
+            Received authorization context.
+        mode : str
+            MATCH or MATCH$.
+
+        Returns
+        -------
+        int or bool
+            True or 1 if match else False or 0.
         """
         auth_context = self.authorization_context if auth_context is None else auth_context
         validator_counter = 0
@@ -223,15 +281,26 @@ class RBAChecker:
 
         return False
 
-    def find_item(self, role_chunk, auth_context=None, mode='FIND', role_id=None):
-        """This function will use the match function and will launch it recursively on
-        all the authorization context tree, on all the levels.
+    def find_item(self, role_chunk: Union[list, dict], auth_context: dict = None, mode: str = 'FIND',
+                  role_id: int = None) -> bool:
+        """This function will use the match function and will launch it recursively on all the authorization context
+        tree, on all the levels.
 
-        :param role_chunk: Chunk of one stored role in the class
-        :param auth_context: Received authorization context
-        :param mode: FIND -> MATCH | FIND$ -> MATCH$
-        :param role_id: ID of the current role
-        :return:
+        Parameters
+        ----------
+        role_chunk : list or dict
+            Chunk of one stored role in the class.
+        auth_context : dict
+            Received authorization context.
+        mode : str
+            FIND -> MATCH | FIND$ -> MATCH$.
+        role_id : int
+            ID of the current role.
+
+        Returns
+        -------
+        bool
+            True if the item was found, false otherwise.
         """
         auth_context = self.authorization_context if auth_context is None else auth_context
         mode = self.set_mode(mode, role_id)
@@ -254,13 +323,21 @@ class RBAChecker:
 
         return False
 
-    def check_rule(self, rule, role_id=None):
+    def check_rule(self, rule: dict, role_id: int = None) -> Union[bool, int]:
         """This is the controller for the match of the roles with the authorization context,
         this function is the one that will launch the others.
 
-        :param rule: The rule of the current role
-        :param role_id: ID of the current role
-        :return:
+        Parameters
+        ----------
+        rule : dict
+            The rule of the current role.
+        role_id : int
+            ID of the current role.
+
+        Returns
+        -------
+        bool or int
+            True or 1 if the authorization context matched the role, or False or 0 otherwise.
         """
         for rule_key, rule_value in rule.items():
             if rule_key in self._logical_operators:  # The current key is a logical operator
@@ -283,21 +360,33 @@ class RBAChecker:
 
         return False
 
-    def get_user_roles(self):
-        """This function will return a list of role IDs, if these match with the authorization context"""
+    def get_user_roles(self) -> list:
+        """This function will return a list of role IDs if these match with the authorization context.
+
+        Returns
+        -------
+        list
+            List or role IDs matching the auth context.
+        """
         list_roles = list()
         for role in self.roles_list:
             for rule in role['rules']:
                 # wazuh-wui has id 2
-                if (rule['id'] > orm.max_id_reserved or self.user_id == 2) and self.check_rule(rule['rule']):
+                if (rule['id'] > orm.MAX_ID_RESERVED or self.user_id == 2) and self.check_rule(rule['rule']):
                     list_roles.append(role['id'])
                     break
 
         return list_roles
 
-    def run_auth_context(self):
+    def run_auth_context(self) -> defaultdict:
         """This function will return the final policies of a user according to the roles matching the authorization
-        context"""
+        context.
+
+        Returns
+        -------
+        defaultdict
+            Final policies of a user according to the roles matching the authorization context.
+        """
         user_roles = self.get_user_roles()
         user_roles_policies = defaultdict(list)
         with orm.RolesPoliciesManager() as rpm:
@@ -308,15 +397,32 @@ class RBAChecker:
 
         return user_roles_policies
 
-    def run_auth_context_roles(self):
-        """This function will return the roles of a user matching the authorization context"""
+    def run_auth_context_roles(self) -> list:
+        """This function will return the roles of a user matching the authorization context.
+
+        Returns
+        -------
+        list
+            List or role IDs matching the auth context.
+        """
         user_roles = self.get_user_roles()
 
         return user_roles
 
     @staticmethod
-    def run_user_role_link(user_id):
-        """This function will return the final policies of a user according to its roles in the RBAC database"""
+    def run_user_role_link(user_id: int) -> defaultdict:
+        """This function will return the final policies of a user according to its roles in the RBAC database.
+
+        Parameters
+        ----------
+        user_id : int
+            User to get the policies from.
+
+        Returns
+        -------
+        defaultdict
+            Final policies of a user according to its roles in the RBAC database.
+        """
         with orm.UserRolesManager() as urm:
             user_roles = list(role for role in urm.get_all_roles_from_user(user_id=user_id))
         user_roles_policies = defaultdict(list)
@@ -329,16 +435,38 @@ class RBAChecker:
         return user_roles_policies
 
     @staticmethod
-    def run_user_role_link_roles(user_id):
-        """This function will return the roles in the RBAC database for a user"""
+    def run_user_role_link_roles(user_id: int) -> list:
+        """This function will return the roles in the RBAC database for a user.
+
+        Parameters
+        ----------
+        user_id : int
+            User to get the roles from.
+
+        Returns
+        -------
+        list
+            List of roles related to the user.
+        """
         with orm.UserRolesManager() as urm:
             user_roles = list(role.id for role in urm.get_all_roles_from_user(user_id=user_id))
 
         return user_roles
 
 
-def get_policies_from_roles(roles=None):
-    """This function will return the final policies of a user according to its roles"""
+def get_policies_from_roles(roles: list = None) -> list:
+    """This function will return the final policies of a user according to its roles.
+
+    Parameters
+    ----------
+    roles : list
+        List of roles.
+
+    Returns
+    -------
+    list
+        Policies of a user according to a list of roles.
+    """
     policies = list()
     with orm.RolesPoliciesManager() as rpm:
         for role in roles:

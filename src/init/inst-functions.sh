@@ -224,14 +224,10 @@ GenerateAuthCert()
         # Generation auto-signed certificate if not exists
         if [ ! -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ ! -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
-                if type openssl >/dev/null 2>&1; then
                     echo "Generating self-signed certificate for wazuh-authd..."
-                    openssl req -x509 -batch -nodes -days 365 -newkey rsa:2048 -subj "/C=US/ST=California/CN=Wazuh/" -keyout ${INSTALLDIR}/etc/sslmanager.key -out ${INSTALLDIR}/etc/sslmanager.cert 2>/dev/null
+                    ${INSTALLDIR}/bin/wazuh-authd -C 365 -B 2048 -K ${INSTALLDIR}/etc/sslmanager.key -X ${INSTALLDIR}/etc/sslmanager.cert -S "/C=US/ST=California/CN=wazuh/"
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.key
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
-                else
-                    echo "ERROR: OpenSSL not found. Cannot generate certificate for wazuh-authd."
-                fi
             fi
         fi
     fi
@@ -793,6 +789,22 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
+        if [ -f syscheckd/build/lib/libfimdb.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/lib/libfimdb.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libfimdb.dylib ${INSTALLDIR}/lib/libfimdb.dylib
+        fi
+    elif [ -f syscheckd/build/lib/libfimdb.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} syscheckd/build/lib/libfimdb.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libfimdb.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
         if [ -f wazuh_modules/syscollector/build/lib/libsyscollector.dylib ]
         then
             ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/syscollector/build/lib/libsyscollector.dylib ${INSTALLDIR}/lib
@@ -809,16 +821,27 @@ InstallCommon()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsyscollector.so
         fi
     fi
-    if [ ${NUNAME} = 'SunOS' ]
+
+    if [ -f libstdc++.so.6 ]
     then
-        if [ ${VUNAME} = '5.10' ]
-        then
-            ${INSTALL} -m 0750 -o root -g 0 libgcc_s.so.1 ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
+        fi
+    fi
+
+    if [ -f libgcc_s.so.1 ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
         fi
     fi
 
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${INSTALLDIR}/bin
+  ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/bin/wazuh-syscheckd ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
@@ -934,7 +957,6 @@ InstallLocal()
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/rules
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/var/multigroups
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/db
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/db/agents
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/download
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/archives
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/alerts
@@ -995,6 +1017,7 @@ InstallLocal()
     ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/pagerduty ${INSTALLDIR}/integrations/pagerduty
     ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/slack ${INSTALLDIR}/integrations/slack.py
     ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/virustotal ${INSTALLDIR}/integrations/virustotal.py
+    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/shuffle.py ${INSTALLDIR}/integrations/shuffle.py
     touch ${INSTALLDIR}/logs/integrations.log
     chmod 640 ${INSTALLDIR}/logs/integrations.log
     chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/logs/integrations.log
@@ -1114,6 +1137,7 @@ InstallServer()
     # Add the wrappers for python script in active-response
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/slack
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/virustotal
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/shuffle
 
 }
 

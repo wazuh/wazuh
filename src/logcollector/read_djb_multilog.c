@@ -177,11 +177,16 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
+        /* Check ignore and restrict log regex, if configured. */
+        if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+            continue;
+        }
+
         mdebug2("Reading DJB multilog message: '%s'", buffer);
 
         /* Send message to queue */
         if (drop_it == 0) {
-            w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, MYSQL_MQ);
+            w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
     }
 

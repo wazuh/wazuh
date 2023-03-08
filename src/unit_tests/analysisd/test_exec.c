@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../wrappers/common.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/os_regex/os_regex_wrappers.h"
 #include "../wrappers/wazuh/shared/labels_op_wrappers.h"
@@ -59,6 +60,9 @@ static int test_setup(void **state) {
     init_data->ar->command = "restart-wazuh";
 
     *state = init_data;
+
+    test_mode = 1;
+
     return OS_SUCCESS;
 }
 
@@ -71,6 +75,8 @@ static int test_teardown(void **state) {
     os_free(data->lf);
     os_free(data->ar);
     os_free(data);
+
+    test_mode = 0;
 
     return OS_SUCCESS;
 }
@@ -863,13 +869,12 @@ void test_send_exec_msg_OS_TIMEOUT(void **state){
 
 void test_get_ip_success(void **state)
 {
-    test_mode = 1;
     test_struct_t *data  = (test_struct_t *)*state;
-    Config.white_list = 1;
+    Config.white_list = (os_ip **)1;
     Config.hostname_white_list = (OSMatch **) realloc(Config.hostname_white_list, sizeof(OSMatch *)*2);
     os_calloc(1, sizeof(OSMatch), Config.hostname_white_list[0]);
     Config.hostname_white_list[1] = NULL;
-    const char *expected_ip = "192.168.0.100";
+    char *expected_ip = "192.168.0.100";
     data->lf->srcip = expected_ip;
 
     expect_string(__wrap_OS_IPFoundList, ip_address, expected_ip);
@@ -878,7 +883,7 @@ void test_get_ip_success(void **state)
     expect_string(__wrap_OSMatch_Execute, str, expected_ip);
     will_return(__wrap_OSMatch_Execute, 0);
 
-    assert_string_equal(expected_ip,get_ip(data->lf));
+    assert_string_equal(expected_ip, get_ip(data->lf));
 
     os_free(Config.hostname_white_list[0]);
     os_free(Config.hostname_white_list);

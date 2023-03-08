@@ -12,8 +12,8 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.syscheck import WazuhDBQuerySyscheck, syscheck_delete_agent
 from wazuh.core.utils import WazuhVersion
 from wazuh.core.wazuh_queue import WazuhQueue
-from wazuh.rbac.decorators import expose_resources
 from wazuh.core.wdb import WazuhDBConnection
+from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
@@ -22,12 +22,12 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
 
     Parameters
     ----------
-    agent_list : Union[str, None]
+    agent_list : str or None
         List of the agents IDs to run the scan for.
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         Confirmation/Error message.
     """
     result = AffectedItemsWazuhResult(all_msg='Syscheck scan was restarted on returned agents',
@@ -67,7 +67,7 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=["syscheck:clear"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1760, 1015]})
-def clear(agent_list: list = None):
+def clear(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Clear the syscheck database of the specified agents.
 
     Parameters
@@ -77,7 +77,7 @@ def clear(agent_list: list = None):
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         Confirmation/Error message.
     """
     result = AffectedItemsWazuhResult(all_msg='Syscheck database was cleared on returned agents',
@@ -121,17 +121,22 @@ def clear(agent_list: list = None):
 
 
 @expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
-def last_scan(agent_list):
+def last_scan(agent_list: list) -> AffectedItemsWazuhResult:
     """Get the last scan of an agent.
 
     Parameters
     ----------
-    agent_list : str
-        Agent ID.
+    agent_list : list
+        List containing the agent ID.
+
+    Raises
+    ------
+    WazuhInternalError(1600)
+        If there is no database for the specified agent.
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         Confirmation/Error message.
     """
     my_agent = Agent(agent_list[0])
@@ -147,54 +152,32 @@ def last_scan(agent_list):
 
         return result
 
-    if WazuhVersion(agent_version) < WazuhVersion('Wazuh v3.7.0'):
-        db_agent = glob('{0}/{1}-*.db'.format(common.DATABASE_PATH_AGENTS, agent_list[0]))
-        if not db_agent:
-            raise WazuhInternalError(1600, extra_message=agent_list[0])
-        else:
-            db_agent = db_agent[0]
-        conn = Connection(db_agent)
+    with WazuhDBQuerySyscheck(agent_id=agent_list[0], query='module=fim', offset=0, sort=None,
+                              search=None, limit=common.DATABASE_LIMIT, select={'end', 'start'},
+                              fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
+                              table='scan_info', default_sort_field='start_scan') as db_query:
+        fim_scan_info = db_query.run()['items'][0]
 
-        data = {}
-        # end time
-        query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
-        conn.execute(query)
-        for t in conn:
-            data['end'] = t['max(date_last)'] if t['max(date_last)'] is not None else "ND"
-
-        # start time
-        query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
-        conn.execute(query)
-        for t in conn:
-            data['start'] = t['max(date_last)'] if t['max(date_last)'] is not None else "ND"
-
-        result.affected_items.append(data)
-    else:
-        with WazuhDBQuerySyscheck(agent_id=agent_list[0], query='module=fim', offset=0, sort=None,
-                                  search=None, limit=common.DATABASE_LIMIT, select={'end', 'start'},
-                                  fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
-                                  table='scan_info', default_sort_field='start_scan') as db_query:
-            fim_scan_info = db_query.run()['items'][0]
-
-        end = None if not fim_scan_info['end'] else fim_scan_info['end']
-        start = None if not fim_scan_info['start'] else fim_scan_info['start']
-        # If start is None or the scan is running, end will be None.
-        result.affected_items.append(
-            {'start': start, 'end': None if start is None else None if end is None or end < start else end})
+    end = None if not fim_scan_info['end'] else fim_scan_info['end']
+    start = None if not fim_scan_info['start'] else fim_scan_info['start']
+    # If start is None or the scan is running, end will be None.
+    result.affected_items.append(
+        {'start': start, 'end': None if start is None else None if end is None or end < start else end})
     result.total_affected_items = len(result.affected_items)
 
     return result
 
 
 @expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
-def files(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None, filters=None,
-          q='', nested=True, summary=False, distinct=False):
+def files(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
+          search: str = None, select: list = None, filters: dict = None, q: str = '', nested: bool = True,
+          summary: bool = False, distinct: bool = False) -> AffectedItemsWazuhResult:
     """Return a list of files from the syscheck database of the specified agents.
 
     Parameters
     ----------
-    agent_list : str
-        Agent ID.
+    agent_list : list
+        List containing the agent ID.
     filters : dict
         Fields to filter by.
     summary : bool
@@ -203,7 +186,7 @@ def files(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, sea
         First item to return.
     limit : int
         Maximum number of items to return.
-    sort : str
+    sort : dict
         Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
     search : str
         Looks for items with the specified string.
@@ -218,7 +201,7 @@ def files(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, sea
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         Confirmation/Error message.
     """
     if filters is None:

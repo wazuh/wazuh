@@ -1,0 +1,79 @@
+name: Deployment variable tests
+on:
+    pull_request:
+        paths:
+            - 'src/init/register_configure_agent.sh'
+            - 'src/win32/InstallerScripts.vbs'
+
+jobs:
+    test_ubuntu:
+        name: Test Deployment variables on Ubuntu
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v2
+
+          - name: Wait for build to succeed
+            uses: fountainhead/action-wait-for-check@v1.0.0
+            id: wait-for-build-deb
+            with:
+              token: ${{ secrets.GITHUB_TOKEN }}
+              checkName: 'Build Linux amd64 agent deb package'
+              ref: ${{ github.event.pull_request.head.sha || github.sha }}
+              timeoutSeconds: 3600
+              intervalSeconds: 60
+
+          - name: Fail after timeout
+            if: steps.wait-for-build.outputs.conclusion == 'timed_out'
+            run: exit 1
+
+          - name: Run test
+            if: steps.wait-for-build-deb.outputs.conclusion == 'success'
+            run: sudo bash .github/actions/test_deploy_ubuntu.sh ${{ github.event.pull_request.head.sha || github.sha }}
+
+    test_macos:
+        name: Test Deployment variables on macOS
+        runs-on: macOS-latest
+        steps:
+          - uses: actions/checkout@v2
+
+          - name: Wait for build to succeed
+            uses: fountainhead/action-wait-for-check@v1.0.0
+            id: wait-for-build-macos
+            with:
+              token: ${{ secrets.GITHUB_TOKEN }}
+              checkName: 'Build macOS agent package signed MacOS'
+              ref: ${{ github.event.pull_request.head.sha || github.sha }}
+              timeoutSeconds: 3600
+              intervalSeconds: 60
+          
+          - name: Fail after timeout
+            if: steps.wait-for-build.outputs.conclusion == 'timed_out'
+            run: exit 1
+
+          - name: Run test
+            if: steps.wait-for-build-macos.outputs.conclusion == 'success'
+            run: sudo bash .github/actions/test_deploy_macos.sh ${{ github.event.pull_request.head.sha || github.sha }}
+
+    test_windows:
+        name: Test Deployment variables on Windows
+        runs-on: windows-latest
+        steps:
+          - uses: actions/checkout@v2
+
+          - name: Wait for build to succeed
+            uses: fountainhead/action-wait-for-check@v1.0.0
+            id: wait-for-build-win
+            with:
+              token: ${{ secrets.GITHUB_TOKEN }}
+              checkName: 'Build Windows i386 agent package'
+              ref: ${{ github.event.pull_request.head.sha || github.sha }}
+              timeoutSeconds: 3600
+              intervalSeconds: 60
+
+          - name: Fail after timeout
+            if: steps.wait-for-build.outputs.conclusion == 'timed_out'
+            run: exit 1
+
+          - name: Run test
+            if: steps.wait-for-build-win.outputs.conclusion == 'success'
+            run: .github/actions/test_deploy_win.ps1 ${{ github.event.pull_request.head.sha || github.sha }}

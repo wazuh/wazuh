@@ -200,26 +200,14 @@ void DeleteState();
 
 
 /**
- * @brief Merge the specified files into one single file.
- *
- * @param finalpath Path of the generated file.
- * @param files Files to be merged.
- * @param tag Tag to be added on the generated file.
- * @return 1 if the merged file was created, 0 on error.
- */
-int MergeFiles(const char *finalpath, char **files, const char *tag) __attribute__((nonnull(1, 2)));
-
-
-/**
  * @brief Merge files recursively into one single file.
  *
- * @param finalpath Path of the generated file.
+ * @param finalfp Handler of the file.
  * @param files Files to be merged.
- * @param tag Tag to be added on the generated file.
  * @param path_offset Offset for recursion.
  * @return 1 if the merged file was created, 0 on error.
  */
-int MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset) __attribute__((nonnull(1)));
+int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribute__((nonnull(1, 2)));
 
 
 /**

@@ -110,8 +110,9 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     /* Clear the memory */
     FreeAlertData(al_data);
 
-    /* Send message to queue */
-    if (drop_it == 0) {
+    /* Check ignore and restrict log regex, if configured. */
+    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, syslog_msg)) {
+        /* Send message to queue */
         w_msg_hash_queues_push(syslog_msg, lf->file, strlen(syslog_msg) + 1, lf->log_target, LOCALFILE_MQ);
     }
 

@@ -5,7 +5,7 @@
 from json import JSONDecodeError
 from logging import getLogger
 
-from aiohttp import web
+from aiohttp import web, web_request
 from aiohttp.web_exceptions import HTTPException
 from connexion.exceptions import ProblemException, OAuthProblem, Unauthorized
 from connexion.problem import problem as connexion_problem
@@ -22,7 +22,19 @@ secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
 logger = getLogger('wazuh-api')
 
 
-def _cleanup_detail_field(detail):
+def _cleanup_detail_field(detail: str) -> str:
+    """Replace double endlines with '. ' and simple endlines with ''.
+
+    Parameters
+    ----------
+    detail : str
+        String to be modified.
+
+    Returns
+    -------
+    str
+        New value for the detail field.
+    """
     return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
 
 
@@ -39,8 +51,16 @@ request_counter = 0
 current_time = None
 
 
-async def unlock_ip(request, block_time):
-    """This function blocks/unblocks the IPs that are requesting an API token"""
+async def unlock_ip(request: web_request.BaseRequest, block_time: int):
+    """This function blocks/unblocks the IPs that are requesting an API token.
+
+    Parameters
+    ----------
+    request : web_request.BaseRequest
+        API request.
+    block_time : int
+        Block time used to decide if the IP is going to be unlocked.
+    """
     global ip_block, ip_stats
     try:
         if get_utc_now().timestamp() - block_time >= ip_stats[request.remote]['timestamp']:
@@ -54,8 +74,16 @@ async def unlock_ip(request, block_time):
         raise_if_exc(WazuhPermissionError(6000))
 
 
-async def prevent_bruteforce_attack(request, attempts=5):
-    """This function checks that the IPs that are requesting an API token do not do so repeatedly"""
+async def prevent_bruteforce_attack(request: web_request.BaseRequest, attempts: int = 5):
+    """This function checks that the IPs that are requesting an API token do not do so repeatedly.
+
+    Parameters
+    ----------
+    request : web_request.BaseRequest
+        API request.
+    attempts : int
+        Number of attempts until an IP is blocked.
+    """
     global ip_stats, ip_block
     if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and \
             request.method in {'GET', 'POST'}:
@@ -84,8 +112,16 @@ async def request_logging(request, handler):
 
 
 @web.middleware
-async def prevent_denial_of_service(request, max_requests=300):
-    """This function checks that the maximum number of requests per minute set in the configuration is not exceeded"""
+async def prevent_denial_of_service(request: web_request.BaseRequest, max_requests: int = 300):
+    """This function checks that the maximum number of requests per minute set in the configuration is not exceeded.
+
+    Parameters
+    ----------
+    request : web_request.BaseRequest
+        API request.
+    max_requests : int
+        Maximum number of requests per minute permitted.
+    """
     global current_time, request_counter
     if not current_time:
         current_time = get_utc_now().timestamp()
@@ -116,7 +152,8 @@ async def response_postprocessing(request, handler):
     """Remove unwanted fields from error responses like 400 or 403.
 
     Additionally, it cleans the output given by connexion's exceptions. If no exception is raised during the
-    'await handler(request) it means the output will be a 200 response and no fields needs to be removed."""
+    'await handler(request) it means the output will be a 200 response and no fields needs to be removed.
+    """
 
     def remove_unwanted_fields(fields_to_remove=None):
         fields_to_remove = fields_to_remove or ['status', 'type']

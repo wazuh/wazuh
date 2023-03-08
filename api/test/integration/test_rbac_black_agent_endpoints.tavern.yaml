@@ -130,7 +130,7 @@ test_name: GET /agents/{agent_id}/config/{component}/{configuration}
 
 stages:
 
-  - name: Try to get Request-Agent-Client for agent 004 (Denied)
+  - name: Try to get client configuration from agent component for agent 004 (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/004/config/agent/client"
@@ -140,7 +140,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Get Request-Agent-Client for agent 003 (Allowed)
+  - name: Get client configuration from agent component for agent 003 (Allowed)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/003/config/agent/client"
@@ -216,6 +216,50 @@ stages:
          failed_items: []
          total_affected_items: 1
          total_failed_items: 0
+
+---
+test_name: GET /agents/{agent_id}/daemons/stats
+
+stages:
+
+  - name: Get daemons stats from agent 001 (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - timestamp: !anystr
+              name: wazuh-remoted
+              agents:
+                - id: 1
+                  uptime: !anystr
+                  metrics: !anything
+            - timestamp: !anystr
+              name: wazuh-analysisd
+              agents:
+                - id: 1
+                  uptime: !anystr
+                  metrics: !anything
+          failed_items: [ ]
+          total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Try to get daemon stats from agent 002 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /agents/{agent_id}/stats/{component}

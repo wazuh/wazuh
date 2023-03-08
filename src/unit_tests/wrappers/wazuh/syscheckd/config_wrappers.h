@@ -11,7 +11,7 @@
 #ifndef SYSCHECKD_CONFIG_WRAPPERS_H
 #define SYSCHECKD_CONFIG_WRAPPERS_H
 
-#include "syscheckd/syscheck.h"
+#include "syscheckd/include/syscheck.h"
 #include "external/cJSON/cJSON.h"
 
 void __wrap_free_whodata_event(whodata_evt *w_evt);

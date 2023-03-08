@@ -14,11 +14,12 @@ with patch('wazuh.common.wazuh_uid'):
         from api.controllers.manager_controller import (
             get_api_config, get_conf_validation, get_configuration, get_info,
             get_log, get_log_summary, get_manager_config_ondemand, get_stats,
-            get_stats_analysisd, get_stats_hourly, get_stats_remoted,
+            get_stats_analysisd, get_stats_hourly, get_stats_remoted, get_daemon_stats,
             get_stats_weekly, get_status, put_restart, update_configuration)
         from wazuh import manager
         from wazuh.core import common
         from wazuh.tests.util import RBAC_bypasser
+
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
@@ -93,6 +94,29 @@ async def test_get_configuration(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
             assert isinstance(result, web_response.Response)
         else:
             assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@patch('api.controllers.manager_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.manager_controller.remove_nones_to_dict')
+@patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.manager_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_get_daemon_stats_node(mock_exc, mock_dapi, mock_remove, mock_dfunc):
+    """Verify 'get_daemon_stats_node' function is working as expected."""
+    mock_request = MagicMock()
+    result = await get_daemon_stats(request=mock_request, daemons_list=['daemon_1', 'daemon_2'])
+
+    f_kwargs = {'daemons_list': ['daemon_1', 'daemon_2']}
+    mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='local_any',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies'])
+    mock_remove.assert_called_once_with(f_kwargs)
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    assert isinstance(result, web_response.Response)
 
 
 @pytest.mark.asyncio
@@ -178,7 +202,7 @@ async def test_get_stats_analysisd(mock_exc, mock_dapi, mock_remove, mock_dfunc,
     result = await get_stats_analysisd(request=mock_request)
     f_kwargs = {'filename': common.ANALYSISD_STATS
                 }
-    mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
+    mock_dapi.assert_called_once_with(f=stats.deprecated_get_daemons_stats,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
                                       is_async=False,
@@ -201,7 +225,7 @@ async def test_get_stats_remoted(mock_exc, mock_dapi, mock_remove, mock_dfunc, m
     result = await get_stats_remoted(request=mock_request)
     f_kwargs = {'filename': common.REMOTED_STATS
                 }
-    mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
+    mock_dapi.assert_called_once_with(f=stats.deprecated_get_daemons_stats,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
                                       is_async=False,

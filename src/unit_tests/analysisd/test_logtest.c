@@ -3260,6 +3260,44 @@ void test_w_logtest_decoding_phase_no_program_name(void ** state)
 }
 
 // w_logtest_preprocessing_phase
+void test_w_logtest_preprocessing_phase_json_location_to_scape_ok(void ** state)
+{
+    Eventinfo lf = {0};
+    cJSON request = {0};
+
+    cJSON json_event = {0};
+    cJSON json_event_child = {0};
+    char * raw_event = strdup("{event}");
+    char * str_location = strdup("loc:at\\ion");
+
+    lf.log = strdup("{event}");
+
+    json_event.child = &json_event_child;
+
+
+    const int expect_retval = 0;
+    int retval;
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
+    will_return(__wrap_cJSON_PrintUnformatted, raw_event);
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 8);
+    will_return(__wrap_cJSON_GetStringValue, str_location);
+
+    will_return(__wrap_OS_CleanMSG, 0);
+
+
+    retval = w_logtest_preprocessing_phase(&lf, &request);
+
+    assert_int_equal(retval, expect_retval);
+
+
+    os_free(str_location);
+    os_free(lf.log);
+
+
+}
+
 void test_w_logtest_preprocessing_phase_json_event_ok(void ** state)
 {
     Eventinfo lf = {0};
@@ -6587,6 +6625,7 @@ int main(void)
         // Tests w_logtest_generate_error_response
         cmocka_unit_test(test_w_logtest_generate_error_response_ok),
         // Tests w_logtest_preprocessing_phase
+        cmocka_unit_test(test_w_logtest_preprocessing_phase_json_location_to_scape_ok),
         cmocka_unit_test(test_w_logtest_preprocessing_phase_json_event_ok),
         cmocka_unit_test(test_w_logtest_preprocessing_phase_json_event_fail),
         cmocka_unit_test(test_w_logtest_preprocessing_phase_str_event_ok),

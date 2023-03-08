@@ -3,8 +3,9 @@ from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 from aiohttp import web_response
-from api.controllers.test.utils import CustomAffectedItems
 from connexion.lifecycle import ConnexionResponse
+
+from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -17,7 +18,7 @@ with patch('wazuh.common.wazuh_uid'):
             delete_single_agent_single_group, get_agent_config,
             get_agent_fields, get_agent_key, get_agent_no_group,
             get_agent_outdated, get_agent_summary_os, get_agent_summary_status,
-            get_agent_upgrade, get_agents, get_agents_in_group,
+            get_agent_upgrade, get_agents, get_agents_in_group, get_daemon_stats,
             get_component_stats, get_group_config, get_group_file_json,
             get_group_file_xml, get_group_files, get_list_group,
             get_sync_agent, insert_agent, post_group, post_new_agent,
@@ -234,7 +235,8 @@ async def test_restart_agents_by_node(mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.agent_controller.check_component_configuration_pair')
-async def test_get_agent_config(mock_check_pair, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request=MagicMock()):
+async def test_get_agent_config(mock_check_pair, mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
+                                mock_request=MagicMock()):
     """Verify 'get_agent_config' endpoint is working as expected."""
     kwargs_param = {'configuration': 'configuration_value'
                     }
@@ -514,6 +516,33 @@ async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, web_response.Response)
+
+
+@pytest.mark.asyncio
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_get_daemon_stats(mock_exc, mock_dapi, mock_remove, mock_dfunc):
+    """Verify 'get_daemon_stats' function is working as expected."""
+    mock_request = MagicMock()
+    result = await get_daemon_stats(request=mock_request,
+                                    agent_id='001',
+                                    daemons_list=['daemon_1', 'daemon_2'])
+
+    f_kwargs = {'agent_list': ['001'],
+                'daemons_list': ['daemon_1', 'daemon_2']}
+    mock_dapi.assert_called_once_with(f=stats.get_daemons_stats_agents,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=False,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request['token_info']['rbac_policies'])
+    mock_remove.assert_called_once_with(f_kwargs)
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+
     assert isinstance(result, web_response.Response)
 
 
@@ -986,7 +1015,7 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
             f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']]
                         }
             mock_dapi.assert_has_calls(calls_get_agents,
-                                       calls_restart_agents_by_group,)
+                                       calls_restart_agents_by_group)
             assert mock_dapi.call_count == 2
             mock_exc.assert_has_calls([call(mock_dfunc.return_value),
                                        call(mock_dfunc.return_value)])

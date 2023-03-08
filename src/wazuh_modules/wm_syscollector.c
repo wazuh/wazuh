@@ -16,6 +16,7 @@
 #include "sym_load.h"
 #include "defs.h"
 #include "mq_op.h"
+#include "headers/logging_helper.h"
 
 #ifdef WIN32
 static DWORD WINAPI wm_sys_main(void *arg);         // Module main function. It won't return
@@ -27,19 +28,20 @@ static void wm_sys_stop(wm_sys_t *sys);         // Module stopper
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 cJSON *wm_sys_dump(const wm_sys_t *sys);
 int wm_sync_message(const char *data);
-pthread_cond_t sys_stop_condition;
-pthread_mutex_t sys_stop_mutex;
+pthread_cond_t sys_stop_condition = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool need_shutdown_wait = false;
-pthread_mutex_t sys_reconnect_mutex;
+pthread_mutex_t sys_reconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool shutdown_process_started = false;
 
 const wm_context WM_SYS_CONTEXT = {
-    "syscollector",
-    (wm_routine)wm_sys_main,
-    (void(*)(void *))wm_sys_destroy,
-    (cJSON * (*)(const void *))wm_sys_dump,
-    (int(*)(const char*))wm_sync_message,
-    (void(*)(void *))wm_sys_stop
+    .name = "syscollector",
+    .start = (wm_routine)wm_sys_main,
+    .destroy = (void(*)(void *))wm_sys_destroy,
+    .dump = (cJSON * (*)(const void *))wm_sys_dump,
+    .sync = (int(*)(const char*))wm_sync_message,
+    .stop = (void(*)(void *))wm_sys_stop,
+    .query = NULL,
 };
 
 void *syscollector_module = NULL;
@@ -86,25 +88,6 @@ static void wm_sys_send_diff_message(const void* data) {
 
 static void wm_sys_send_dbsync_message(const void* data) {
     wm_sys_send_message(data, DBSYNC_MQ);
-}
-
-static void wm_sys_log(const syscollector_log_level_t level, const char* log) {
-
-    switch(level) {
-        case SYS_LOG_ERROR:
-            mterror(WM_SYS_LOGTAG, "%s", log);
-            break;
-        case SYS_LOG_INFO:
-            mtinfo(WM_SYS_LOGTAG, "%s", log);
-            break;
-        case SYS_LOG_DEBUG:
-            mtdebug1(WM_SYS_LOGTAG, "%s", log);
-            break;
-        case SYS_LOG_DEBUG_VERBOSE:
-            mtdebug2(WM_SYS_LOGTAG, "%s", log);
-            break;
-        default:;
-    }
 }
 
 static void wm_sys_log_config(wm_sys_t *sys)
@@ -172,7 +155,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
                                wm_sys_send_dbsync_message,
-                               wm_sys_log,
+                               taggedLogFunction,
                                SYSCOLLECTOR_DB_DISK_PATH,
                                SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
                                SYSCOLLECTOR_NORM_TYPE,

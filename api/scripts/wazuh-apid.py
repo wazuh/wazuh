@@ -45,8 +45,10 @@ def start():
     If another Wazuh API is running, this function fails.
     This function exits with 0 if successful or 1 if failed because the API was already running.
     """
-
-    create_rbac_db()
+    try:
+        check_database_integrity()
+    except Exception as db_integrity_exc:
+        raise APIError(2012, details=str(db_integrity_exc))
 
     # Spawn child processes with their own needed imports
     if 'thread_pool' not in common.mp_pools.get():
@@ -178,34 +180,54 @@ if __name__ == '__main__':
         sys.exit(0)
 
     import logging
+    from api.api_exception import APIError
+    from wazuh.core import common
     from api import alogging, configuration
+    from api.api_exception import APIError
+    from api.util import APILoggerSize, to_relative_path
+
     from wazuh.core import common, utils
+
 
     def set_logging(log_path=f'{API_LOG_PATH}.log', foreground_mode=False, debug_mode='info'):
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
             api_logger = alogging.APILogger(
                 log_path=log_path, foreground_mode=foreground_mode, logger_name=logger_name,
-                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode
+                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode,
+                max_size=APILoggerSize(api_conf['logs']['max_size']['size']).size
+                if api_conf['logs']['max_size']['enabled'] else 0
             )
+
             api_logger.setup_logger()
         if os.path.exists(log_path):
             os.chown(log_path, common.wazuh_uid(), common.wazuh_gid())
             os.chmod(log_path, 0o660)
 
-    if args.config_file is not None:
-        configuration.api_conf.update(configuration.read_yaml_config(config_file=args.config_file))
-    api_conf = configuration.api_conf
-    security_conf = configuration.security_conf
+    try:
+        from wazuh.core import utils
+        from api import alogging, configuration
+
+        if args.config_file is not None:
+            configuration.api_conf.update(configuration.read_yaml_config(config_file=args.config_file))
+        api_conf = configuration.api_conf
+        security_conf = configuration.security_conf
+    except APIError as e:
+        print(f"Error when trying to start the Wazuh API. {e}")
+        sys.exit(1)
 
     # Set up logger
-    plain_log = 'plain' in api_conf['logs']['format']
-    json_log = 'json' in api_conf['logs']['format']
-    if plain_log:
-        set_logging(log_path=f'{API_LOG_PATH}.log', debug_mode=api_conf['logs']['level'],
-                    foreground_mode=args.foreground)
-    if json_log:
-        set_logging(log_path=f'{API_LOG_PATH}.json', debug_mode=api_conf['logs']['level'],
-                    foreground_mode=args.foreground and not plain_log)
+    try:
+        plain_log = 'plain' in api_conf['logs']['format']
+        json_log = 'json' in api_conf['logs']['format']
+        if plain_log:
+            set_logging(log_path=f'{API_LOG_PATH}.log', debug_mode=api_conf['logs']['level'],
+                        foreground_mode=args.foreground)
+        if json_log:
+            set_logging(log_path=f'{API_LOG_PATH}.json', debug_mode=api_conf['logs']['level'],
+                        foreground_mode=args.foreground and not plain_log)
+    except APIError as api_log_error:
+        print(f"Error when trying to start the Wazuh API. {api_log_error}")
+        sys.exit(1)
 
     logger = logging.getLogger('wazuh-api')
 
@@ -217,13 +239,12 @@ if __name__ == '__main__':
     from aiohttp_cache import setup_cache
     from api import __path__ as api_path
     # noinspection PyUnresolvedReferences
-    from api.api_exception import APIError
     from api.constants import CONFIG_FILE_PATH
     from api.middlewares import security_middleware, response_postprocessing, request_logging, set_secure_headers
     from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
-    from wazuh.rbac.orm import create_rbac_db
+    from wazuh.rbac.orm import check_database_integrity
 
     # Check deprecated options. To delete after expected versions
     if 'use_only_authd' in api_conf:

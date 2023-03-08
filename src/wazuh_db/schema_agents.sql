@@ -161,7 +161,7 @@ CREATE INDEX IF NOT EXISTS ports_id ON sys_ports (scan_id);
 CREATE TABLE IF NOT EXISTS sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg')),
+    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg', 'apk')),
     name TEXT,
     priority TEXT,
     section TEXT,
@@ -330,7 +330,6 @@ CREATE TABLE IF NOT EXISTS sca_check (
    command TEXT,
    `references` TEXT,
    result TEXT,
-   `status` TEXT,
    reason TEXT,
    condition TEXT
 );
@@ -398,12 +397,14 @@ CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '9');
+INSERT INTO metadata (key, value) VALUES ('db_version', '11');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
 INSERT INTO sync_info (component) VALUES ('fim_file');
 INSERT INTO sync_info (component) VALUES ('fim_registry');
+INSERT INTO sync_info (component) VALUES ('fim_registry_key');
+INSERT INTO sync_info (component) VALUES ('fim_registry_value');
 INSERT INTO sync_info (component) VALUES ('syscollector-processes');
 INSERT INTO sync_info (component) VALUES ('syscollector-packages');
 INSERT INTO sync_info (component) VALUES ('syscollector-hotfixes');

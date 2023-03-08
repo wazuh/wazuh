@@ -22,12 +22,13 @@ cJSON *wm_oscap_dump(const wm_oscap *oscap);
 // OpenSCAP module context definition
 
 const wm_context WM_OSCAP_CONTEXT = {
-    "open-scap",
-    (wm_routine)wm_oscap_main,
-    (void(*)(void *))wm_oscap_destroy,
-    (cJSON * (*)(const void *))wm_oscap_dump,
-    NULL,
-    NULL
+    .name = "open-scap",
+    .start = (wm_routine)wm_oscap_main,
+    .destroy = (void(*)(void *))wm_oscap_destroy,
+    .dump = (cJSON * (*)(const void *))wm_oscap_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 #ifndef WIN32
@@ -372,4 +373,3 @@ void wm_oscap_destroy(wm_oscap *oscap) {
 
     free(oscap);
 }
-

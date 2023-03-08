@@ -115,7 +115,7 @@ def test_clear(mock_connect, mock_info, agent_list, expected_affected_items, exp
         List of expected agent IDs in the result.
     expected_calls : list
         List of expected calls to the mocked WazuhDBConnection._send function.
-    wdb_side_effect : Union[WazuhError, list]
+    wdb_side_effect : WazuhError or list
         Side effect used in the mocked WazuhDBConnection._send function.
     """
     with patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=wdb_side_effect) as mock_wdbconn:

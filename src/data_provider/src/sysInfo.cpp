@@ -10,18 +10,7 @@
  */
 #include "sysInfo.hpp"
 #include "sysInfo.h"
-
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
+#include "cjsonSmartDeleter.hpp"
 
 nlohmann::json SysInfo::hardware()
 {
@@ -228,7 +217,7 @@ int sysinfo_packages_cb(callback_data_t callback_data)
             {
                 [callback_data](nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(GENERIC, spJson.get(), callback_data.user_data);
                 }
             };
@@ -260,7 +249,7 @@ int sysinfo_processes_cb(callback_data_t callback_data)
             {
                 [callback_data](nlohmann::json & jsonResult)
                 {
-                    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                     callback_data.callback(GENERIC, spJson.get(), callback_data.user_data);
                 }
             };

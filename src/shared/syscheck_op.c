@@ -760,7 +760,17 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
             mdebug1("Account owner not found for '%s'", path);
         }
         else {
-            merror("Error in LookupAccountSid.");
+            LPSTR messageBuffer = NULL;
+            LPSTR end;
+
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                          NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
+            if (end = strchr(messageBuffer, '\r'), end) {
+                *end = '\0';
+            }
+
+            mwarn(FIM_REGISTRY_ACC_SID, "user", dwErrorCode, messageBuffer);
+            LocalFree(messageBuffer);
         }
 
         *AcctName = '\0';
@@ -1089,12 +1099,21 @@ char *get_registry_group(char **sid, HANDLE hndl) {
         DWORD dwErrorCode = 0;
 
         dwErrorCode = GetLastError();
-
         if (dwErrorCode == ERROR_NONE_MAPPED) {
             mdebug1("Group not found for registry key");
         }
         else {
-            merror("Error in LookupAccountSid.");
+            LPSTR messageBuffer = NULL;
+            LPSTR end;
+
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                          NULL, dwErrorCode, 0, (LPTSTR) &messageBuffer, 0, NULL);
+            if (end = strchr(messageBuffer, '\r'), end) {
+                *end = '\0';
+            }
+
+            mwarn(FIM_REGISTRY_ACC_SID, "group", dwErrorCode, messageBuffer);
+            LocalFree(messageBuffer);
         }
 
         *GrpName = '\0';
@@ -1517,7 +1536,8 @@ cJSON *win_perm_to_json(char *perms) {
         char *username = perm_node;
         perm_node = strchr(perm_node, '(');
         if (!perm_node) {
-            goto error;
+            mdebug1("Uncontrolled condition when parsing the username from '%s'. Skipping permission.", username);
+            continue;
         }
         *(perm_node++) = '\0';
         {
@@ -1531,7 +1551,8 @@ cJSON *win_perm_to_json(char *perms) {
         char *perm_type = perm_node;
         perm_node = strchr(perm_node, ')');
         if (!perm_node) {
-            goto error;
+            mdebug1("Uncontrolled condition when parsing the permission type from '%s'. Skipping permission.", perm_type);
+            continue;
         }
         *(perm_node++) = '\0';
 
@@ -1609,6 +1630,12 @@ cJSON *win_perm_to_json(char *perms) {
     }
 
     free(perms_cpy);
+    if(cJSON_GetArraySize(perms_json) == 0)
+    {
+        cJSON_Delete(perms_json);
+        return NULL;
+    }
+
     return perms_json;
 error:
     mdebug1("Uncontrolled condition when parsing a Windows permission from '%s'.", perms);

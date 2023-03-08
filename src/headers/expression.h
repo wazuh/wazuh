@@ -75,6 +75,12 @@ void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type);
 void w_free_expression_t(w_expression_t ** var);
 
 /**
+ * @brief Call the free function w_free_expression_t with expression type reference
+ * @param var variable to free
+ */
+void w_free_expression(w_expression_t * var);
+
+/**
  * @brief add ip to os_ip array
  * @param ips array which save ip
  * @param ip ip to save

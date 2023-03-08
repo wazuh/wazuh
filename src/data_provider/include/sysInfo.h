@@ -18,6 +18,7 @@
 #ifdef WAZUH_UNIT_TESTING
 #define EXPORTED
 #else
+#ifndef EXPORTED
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -30,7 +31,7 @@
 #define EXPORTED
 #endif
 #endif
-
+#endif
 
 #include "cJSON.h"
 #ifdef __cplusplus

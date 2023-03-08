@@ -21,7 +21,20 @@ void* so_get_module_handle(const char *so){
 #ifdef WIN32
     char file_name[MAX_PATH] = { 0 };
     snprintf(file_name, MAX_PATH-1, "%s.dll", so);
-    return LoadLibrary(file_name);
+
+    HMODULE handle = NULL;
+    char full_path[MAX_PATH] = { 0 };
+
+    // Get full path to the module's file.
+    // If the function succeeds, the return value is the length of the string that is copied to the buffer,
+    // in characters, not including the terminating null character.
+    // If the function fails, the return value is NULL.
+
+    if (GetFullPathName(file_name, MAX_PATH, full_path, NULL)) {
+        handle = LoadLibrary(full_path);
+    }
+
+    return handle;
 #else
     char file_name[4096] = { 0 };
 #if defined(__MACH__)

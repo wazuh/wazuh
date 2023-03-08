@@ -3,20 +3,29 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from datetime import datetime, timezone
-from unittest.mock import patch
+from types import MappingProxyType
+from unittest.mock import call, patch, ANY
 
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
-        from wazuh.core.sca import *
-        from wazuh.core import common
+        from wazuh.core import sca as core_sca
+        from wazuh.core.exception import WazuhError
 
 
 @pytest.mark.parametrize('agent_id, offset, limit, sort, search, select, query, count, get_data', [
     ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True}, {'id'}, None, False, True),
+    ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True}, {'id'}, None, False, True),
 ])
-def test_wazuh_db_query_sca__init__(agent_id, offset, limit, sort, search, select, query, count, get_data):
+@pytest.mark.parametrize('distinct', [
+    True, False
+])
+@patch('wazuh.core.agent.Agent.get_basic_information')
+@patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None)
+@patch('wazuh.core.utils.WazuhDBQuery.__init__')
+def test_WazuhDBQuerySCA__init__(mock_wdbq, mock_backend, mock_get_basic_info, distinct, agent_id, offset, limit, sort,
+                                 search, query, count, get_data, select):
     """Test if method __init__ of WazuhDBQuerySCA works properly.
 
     Parameters
@@ -39,57 +48,33 @@ def test_wazuh_db_query_sca__init__(agent_id, offset, limit, sort, search, selec
         Whether to compute the total of items or not.
     get_data: bool
         Whether to return data or not.
+    distinct: bool
+        Look for distinct values.
     """
-    with patch('wazuh.core.utils.WazuhDBQuery.__init__') as mock_wdbq, \
-            patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None), \
-            patch('wazuh.core.agent.Agent.get_basic_information') as mock_get_basic_info:
-        WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search, select=select,
-                        query=query, count=count, get_data=get_data)
-        mock_wdbq.assert_called_once()
-        mock_get_basic_info.assert_called_once()
+    wdbq_sca = core_sca.WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
+                                        select=select, query=query, count=count, get_data=get_data, distinct=distinct)
+    wdbq_sca.agent_id = agent_id
+    wdbq_sca.default_query = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id' \
+        if not distinct else 'SELECT DISTINCT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ' \
+                             'ON sca.id=si.policy_id'
 
-
-@pytest.mark.parametrize('agent_id, offset, limit, sort, search, select, query, count, get_data', [
-    ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True}, {'id'}, None, False, True),
-])
-def test_wazuh_db_query_sca__default_count_query(agent_id, offset, limit, sort, search, select, query, count, get_data):
-    """Check if WazuhDBQueryTask's method _default_count_query works properly.
-
-    Parameters
-    ----------
-    agent_id: str
-        Agent ID to fetch information about.
-    offset: int
-        First item to return.
-    limit: int
-        Maximum number of items to return.
-    sort: dict
-        Criteria used to sort the resulting items.
-    search: dict
-        Values used to filter the query.
-    select: list
-        Fields to return.
-    query: str
-        Query to filter in database.
-    count: bool
-        Whether to compute the total of items or not.
-    get_data: bool
-        Whether to return data or not.
-    """
-    with patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None), \
-            patch('wazuh.core.agent.Agent.get_basic_information'):
-        wdbq_sca = WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                   select=select, query=query, count=count, get_data=get_data)
-        assert wdbq_sca._default_count_query() == f"SELECT COUNT(DISTINCT policy_id)" + " FROM ({0})"
+    mock_get_basic_info.assert_called_once()
+    mock_wdbq.assert_called_once_with(ANY, offset=offset, limit=limit, table='sca_policy', sort=sort, search=search,
+                                      select=select, fields=core_sca.WazuhDBQuerySCA.DB_FIELDS,
+                                      default_sort_field='policy_id', default_sort_order='DESC', filters={},
+                                      query=query, count=count, get_data=get_data,
+                                      date_fields={'end_scan', 'start_scan'},
+                                      min_select_fields={'policy_id'} if not distinct else set(), backend=ANY)
+    mock_backend.assert_called_once_with(agent_id)
 
 
 @pytest.mark.parametrize('agent_id, offset, limit, sort, search, select, query, count, get_data', [
     ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True},
      {'id', 'start_scan', 'end_scan', 'policy_id', 'pass', 'fail'}, None, False, True),
 ])
-def test_wazuh_db_query_sca__format_data_into_dictionary(agent_id, offset, limit, sort, search, select, query, count,
-                                                         get_data):
-    """Check if WazuhDBQueryTask's method _format_data_into_dictionary works properly.
+def test_WazuhDBQuerySCA__format_data_into_dictionary(agent_id, offset, limit, sort, search, select, query, count,
+                                                      get_data):
+    """Check if WazuhDBQuerySCA's method _format_data_into_dictionary works properly.
 
     Parameters
     ----------
@@ -119,8 +104,8 @@ def test_wazuh_db_query_sca__format_data_into_dictionary(agent_id, offset, limit
 
     with patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None), \
             patch('wazuh.core.agent.Agent.get_basic_information'):
-        wdbq_sca = WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                   select=select, query=query, count=count, get_data=get_data)
+        wdbq_sca = core_sca.WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
+                                            select=select, query=query, count=count, get_data=get_data)
 
     wdbq_sca._data = data
     result = wdbq_sca._format_data_into_dictionary()
@@ -133,199 +118,149 @@ def test_wazuh_db_query_sca__format_data_into_dictionary(agent_id, offset, limit
     assert result['items'][0]['fail'] == 6
 
 
-@pytest.mark.parametrize('test_where', [True, False])
-@pytest.mark.parametrize('agent_id, offset, limit, sort, search, select, query, count, get_data', [
-    ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True}, {'id'}, None, False, True),
+@pytest.mark.parametrize('sca_checks_test_list, expected_default_query', [
+    ([1, 2, 3, 4], "SELECT {0} FROM sca_check WHERE id IN (1, 2, 3, 4)"),
+    ([], "SELECT {0} FROM sca_check")
 ])
-def test_wazuh_db_query_sca_check__parse_filters(agent_id, offset, limit, sort, search, select, query, count, get_data,
-                                                 test_where):
-    """Checks if WazuhDBQuerySCACheck's _parse_filters method works properly
+@pytest.mark.parametrize('select', [
+    ['test'], [], None
+])
+@patch('wazuh.core.sca.WazuhDBQuerySCA.__init__')
+def test_WazuhDBQuerySCACheck__init__(mock_wdbqsca, select, sca_checks_test_list, expected_default_query):
+    """Test if method __init__ of WazuhDBQuerySCACheck works properly.
 
     Parameters
     ----------
-    agent_id: str
-        Agent ID to fetch information about.
-    offset: int
-        First item to return.
-    limit: int
-        Maximum number of items to return.
-    sort: dict
-        Criteria used to sort the resulting items.
-    search: dict
-        Values used to filter the query.
-    select: list
+    select : list or None
         Fields to return.
-    query: str
-        Query to filter in database.
-    count: bool
-        Whether to compute the total of items or not.
-    get_data: bool
-        Whether to return data or not.
-    test_where: bool
-        Whether query should have appended ' WHERE ' or ' AND '
+    sca_checks_test_list : list
+        List of SCA checks IDs.
+    expected_default_query : str
+        Expected default query.
     """
-    with patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None), \
-            patch('wazuh.core.agent.Agent.get_basic_information'):
-        wdbq_sca_check = WazuhDBQuerySCACheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                              select=select, query=query, count=count, get_data=get_data)
-    with patch('wazuh.core.utils.WazuhDBQuery._parse_legacy_filters') as mock_parse_legacy, \
-            patch('wazuh.core.utils.WazuhDBQuery._parse_query') as mock_parse_query:
-        wdbq_sca_check.legacy_filters = {'test': 'value'}
-        wdbq_sca_check.q = 'test query'
-        if test_where:
-            wdbq_sca_check.query += ' WHERE'
-        wdbq_sca_check._parse_filters()
-        mock_parse_legacy.assert_called_once()
-        mock_parse_query.assert_called_once()
-        if test_where:
-            assert ' WHERE ' in wdbq_sca_check.query[-7:]
-        else:
-            assert ' AND ' in wdbq_sca_check.query[-5:]
+    core_sca.WazuhDBQuerySCACheck(agent_id='000', select=select, sort={'fields': ['title'], 'order': 'asc'},
+                                  sca_checks_ids=sca_checks_test_list)
+    select = {'id'} if select == [] else select
+
+    mock_wdbqsca.assert_called_once_with(ANY, agent_id='000', offset=0, limit=None,
+                                         sort={'fields': ['title'], 'order': 'asc'}, filters={}, search=None,
+                                         count=False,
+                                         get_data=True, min_select_fields={'id'},
+                                         select=select or list(core_sca.SCA_CHECK_DB_FIELDS.keys()),
+                                         default_query=expected_default_query, fields=core_sca.SCA_CHECK_DB_FIELDS,
+                                         default_sort_field='id', default_sort_order='ASC', query='')
 
 
-@pytest.mark.parametrize('agent_id, offset, limit, sort, search, select, query, count, get_data', [
-    ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True}, {'id'}, None, False, True),
+@patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None)
+@patch('wazuh.core.agent.Agent.get_basic_information')
+@patch('os.path.exists', return_value=True)
+def test_WazuhDBQuerySCACheck_parse_select_filter(mock_exists, mock_get_basic_info, mock_backend):
+    """Test if method _parse_select_filter of WazuhDBQuerySCACheck works properly."""
+    wdbq_sca_check = core_sca.WazuhDBQuerySCACheck(agent_id='000', sort={'value': 'test'},
+                                                   select=['test'], sca_checks_ids=[])
+    try:
+        wdbq_sca_check._parse_select_filter(['test'])
+    except WazuhError as e:
+        assert e.code == 1724
+        expected_fields = set(wdbq_sca_check.fields.keys()).union(core_sca.SCA_CHECK_COMPLIANCE_DB_FIELDS.keys()).union(
+            core_sca.SCA_CHECK_RULES_DB_FIELDS.keys()) - {'id_check'}
+        assert all(field in e.message for field in expected_fields)
+
+
+@pytest.mark.parametrize('query', [
+    'field~test', ''
 ])
-def test_wazuh_db_query_sca_check__add_limit_to_query(agent_id, offset, limit, sort, search, select, query, count,
-                                                      get_data):
-    """Check if WazuhDBQuerySCACheck's method _add_limit_to_query works properly.
-    Parameters
-    ----------
-    agent_id: str
-        Agent ID to fetch information about.
-    offset: int
-        First item to return.
-    limit: int
-        Maximum number of items to return.
-    sort: dict
-        Criteria used to sort the resulting items.
-    search: dict
-        Values used to filter the query.
-    select: list
-        Fields to return.
-    query: str
-        Query to filter in database.
-    count: bool
-        Whether to compute the total of items or not.
-    get_data: bool
-        Whether to return data or not.
-    """
-    with patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None), \
-            patch('wazuh.core.agent.Agent.get_basic_information') as mock_get_basic_info:
-        wdbq_sca_check = WazuhDBQuerySCACheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                              select=select, query=query, count=count, get_data=get_data)
-
-    wdbq_sca_check._add_limit_to_query()
-    assert ' LIMIT :inner_limit OFFSET :inner_offset' in wdbq_sca_check.query
-    assert wdbq_sca_check.request['inner_offset'] == wdbq_sca_check.offset
-    assert wdbq_sca_check.request['inner_limit'] == wdbq_sca_check.limit
-    assert wdbq_sca_check.request['offset'] == 0
-    assert wdbq_sca_check.request['limit'] == 0
-
-
-@pytest.mark.parametrize('expected_error', ['1405', '1406'])
-@pytest.mark.parametrize('agent_id, offset, limit, sort, search, select, query, count, get_data', [
-    ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True}, {'id'}, None, False, True),
-])
-def test_wazuh_db_query_sca_check__add_limit_to_query_ko(agent_id, offset, limit, sort, search, select, query, count,
-                                                         get_data, expected_error):
-    """Check if WazuhDBQuerySCACheck's method _add_limit_to_query raises exceptions when used incorrectly.
+@patch('wazuh.core.sca.WazuhDBQuerySCA.__init__')
+def test_WazuhDBQuerySCACheckIDs__init__(mock_wdbqsca, query):
+    """Test if method __init__ of WazuhDBQuerySCACheckIDs works properly.
 
     Parameters
     ----------
-    agent_id: str
-        Agent ID to fetch information about.
-    offset: int
-        First item to return.
-    limit: int
-        Maximum number of items to return.
-    sort: dict
-        Criteria used to sort the resulting items.
-    search: dict
-        Values used to filter the query.
-    select: list
-        Fields to return.
-    query: str
-        Query to filter in database.
-    count: bool
-        Whether to compute the total of items or not.
-    get_data: bool
-        Whether to return data or not.
-    expected_error: str
-        Expected exception code.
+    query : str
+        Query used to initialize the WazuhDBQuerySCACheckIDs object.
     """
-    with patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None), \
-            patch('wazuh.core.agent.Agent.get_basic_information') as mock_get_basic_info:
-        wdbq_sca_check = WazuhDBQuerySCACheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                              select=select, query=query, count=count, get_data=get_data)
+    expected_fields = core_sca.SCA_CHECK_DB_FIELDS | core_sca.SCA_CHECK_COMPLIANCE_DB_FIELDS | \
+                      core_sca.SCA_CHECK_RULES_DB_FIELDS
+    expected_fields.pop('id_check')
 
-    wdbq_sca_check.limit = common.MAXIMUM_DATABASE_LIMIT + 1 if expected_error == '1405' else 0
+    core_sca.WazuhDBQuerySCACheckIDs(agent_id='000', offset=10, limit=20, filters={'test': 'value'},
+                                     search={'value': 'test'},
+                                     query=query, policy_id='test_policy_id', sort={})
 
-    with pytest.raises(WazuhError, match=f".* {expected_error} .*"):
-        wdbq_sca_check._add_limit_to_query()
+    mock_wdbqsca.assert_called_once_with(ANY, agent_id='000', offset=10, limit=20, sort={}, filters={'test': 'value'},
+                                         search={'value': 'test'}, count=True, get_data=True, select=[],
+                                         default_query="SELECT DISTINCT(id) FROM sca_check a "
+                                                       "LEFT JOIN sca_check_compliance b ON a.id=b.id_check "
+                                                       "LEFT JOIN sca_check_rules c ON a.id=c.id_check",
+                                         fields=expected_fields, default_sort_field='id', default_sort_order='ASC',
+                                         query=f"policy_id=test_policy_id;{query}" if query
+                                         else "policy_id=test_policy_id")
 
 
-@pytest.mark.parametrize('data', [(),
-                                  ({'id': 10, 'start_scan': 1556125759, 'end_scan': 1556125760,
-                                    'policy_id': 'cis_debian', 'pass': 20, 'fail': 6})
-                                  ])
-@pytest.mark.parametrize('agent_id, offset, limit, sort, search, select, query, count, get_data', [
-    ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True}, {'id'}, None, False, True),
-    ('001', 0, 10, {'order': 'asc'}, {'value': 'test', 'negation': True}, {'id'}, None, True, True),
+@pytest.mark.parametrize('sca_checks_test_list', [
+    [1, 2, 3, 4], []
 ])
-def test_wazuh_db_query_sca_check_run(agent_id, offset, limit, sort, search, select, query, count, get_data, data):
-    """Check that WazuhDBQuerySCACheck's method run works properly.
+@pytest.mark.parametrize('table', [
+    'sca_check_compliance', 'sca_check_rules'
+])
+@pytest.mark.parametrize('select', [
+    None, ['test']
+])
+@patch('wazuh.core.sca.WazuhDBQuerySCA.__init__')
+def test_WazuhDBQuerySCACheckRelational__init__(mock_wdbqsca, select, table, sca_checks_test_list):
+    """Test if method __init__ of WazuhDBQuerySCACheckRelational works properly.
 
     Parameters
     ----------
-    agent_id: str
-        Agent ID to fetch information about.
-    offset: int
-        First item to return.
-    limit: int
-        Maximum number of items to return.
-    sort: dict
-        Criteria used to sort the resulting items.
-    search: dict
-        Values used to filter the query.
-    select: list
-        Fields to return.
-    query: str
-        Query to filter in database.
-    count: bool
-        Whether to compute the total of items or not.
-    get_data: bool
-        Whether to return data or not.
-    data: dict
-         Data to simulate a working agent.
+    select : list or None
+        Fields to select.
+    table : str
+        Table used to initialize the WazuhDBQuerySCACheckRelational object.
+    sca_checks_test_list : list
+        List of SCA checks IDs.
     """
-    with patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None), \
-            patch('wazuh.core.agent.Agent.get_basic_information') as mock_get_basic_info:
-        wdbq_sca_check = WazuhDBQuerySCACheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                                              select=select, query=query, count=count, get_data=get_data)
-    with patch('wazuh.core.utils.WazuhDBQuery._add_select_to_query') as mock_add_select, \
-            patch('wazuh.core.utils.WazuhDBQuery._add_filters_to_query') as mock_add_filters, \
-            patch('wazuh.core.utils.WazuhDBQuery._add_search_to_query') as mock_add_search, \
-            patch('wazuh.core.sca.WazuhDBQuerySCACheck._add_limit_to_query') as mock_add_limit, \
-            patch('wazuh.core.utils.WazuhDBQuery._add_sort_to_query') as mock_add_sort, \
-            patch('wazuh.core.utils.WazuhDBQuery._execute_data_query') as mock_execute_data, \
-            patch('wazuh.core.utils.WazuhDBQuery._get_total_items') as mock_get_items, \
-            patch('wazuh.core.sca.WazuhDBQuerySCA._format_data_into_dictionary') as mock_format_data:
-        wdbq_sca_check.data = data
-        wdbq_sca_check.run()
-        mock_add_select.assert_called_once()
-        mock_add_filters.assert_called_once()
-        mock_add_search.assert_called_once()
+    query_sca_check_relational = core_sca.WazuhDBQuerySCACheckRelational(agent_id='000', table=table,
+                                                                         id_check_list=sca_checks_test_list,
+                                                                         select=select)
+    expected_fields = MappingProxyType({'sca_check_rules': core_sca.SCA_CHECK_RULES_DB_FIELDS,
+                                        'sca_check_compliance': core_sca.SCA_CHECK_COMPLIANCE_DB_FIELDS})
+    expected_default_query = "SELECT {0} FROM " + table
+    if sca_checks_test_list:
+        expected_default_query += f" WHERE id_check IN {str(sca_checks_test_list).replace('[', '(').replace(']', ')')}"
 
-        if count:
-            mock_get_items.assert_called_once()
-            if not data:
-                # If it's only counting the number of items and it's not expecting data in return
-                # the execution should end here
-                return
+    assert query_sca_check_relational.sca_check_table == table
+    mock_wdbqsca.assert_called_once_with(ANY, agent_id='000', default_query=expected_default_query,
+                                         fields=expected_fields[table], offset=0, limit=None, sort=None,
+                                         select=select or list(expected_fields[table].keys()), count=False,
+                                         get_data=True, default_sort_field='id_check', default_sort_order='ASC',
+                                         query=None, search=None, min_select_fields=set())
 
-        mock_add_limit.assert_called_once()
-        mock_add_sort.assert_called_once()
-        if data:
-            mock_execute_data.assert_called_once()
-            mock_format_data.assert_called_once()
+
+@pytest.mark.parametrize('select', [
+    ['test'], None
+])
+@patch('wazuh.core.sca.WazuhDBQuerySCA.__enter__')
+@patch('wazuh.core.sca.WazuhDBQuerySCA.__init__', return_value=None)
+@patch('wazuh.core.sca.WazuhDBQuery.__exit__')
+def test_WazuhDBQueryDistinctSCACheck__init__(mock_exit, mock_wdbqsca, mock_enter, select):
+    """Test if method __init__ of WazuhDBQueryDistinctSCACheck works properly."""
+    mock_enter.return_value.query = "SELECT * FROM sca_check a LEFT JOIN sca_check_compliance b ON a.id=b.id_check LEFT JOIN " \
+                                    "sca_check_rules c ON a.id=c.id_check"
+    fields = core_sca.SCA_CHECK_DB_FIELDS | core_sca.SCA_CHECK_COMPLIANCE_DB_FIELDS | core_sca.SCA_CHECK_RULES_DB_FIELDS
+    fields.pop('id_check')
+
+    core_sca.WazuhDBQueryDistinctSCACheck(agent_id='000', offset=10, limit=20, filters={'test': 'value'},
+                                          search={'value': 'test'}, query='test~a', policy_id='test_policy_id',
+                                          sort={'fields': ['title'], 'order': 'asc'}, select=select)
+
+    # Assertions
+    mock_wdbqsca.assert_has_calls(
+        [call(agent_id='000', offset=0, limit=None, sort={'fields': ['title'], 'order': 'asc'},
+              query='policy_id=test_policy_id;test~a', count=False, get_data=False, select=[], default_sort_field='id',
+              default_sort_order='ASC', filters={'test': 'value'}, fields=fields,
+              default_query=core_sca.WazuhDBQueryDistinctSCACheck.INNER_QUERY_PATTERN, search={'value': 'test'}),
+         call(ANY, agent_id='000', offset=10, limit=20, sort={'fields': ['title'], 'order': 'asc'}, filters={},
+              search={}, count=True, get_data=True, select=select or list(fields.keys()),
+              default_query="SELECT DISTINCT {0} FROM " + f"({mock_enter.return_value.query})", fields=fields,
+              default_sort_field='id', default_sort_order='ASC', min_select_fields=set(), query='')],
+        any_order=False)

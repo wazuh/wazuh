@@ -21,7 +21,6 @@
 #include "GeoIP.h"
 #endif
 
-
 extern long int __crt_ftell; /* Global ftell pointer */
 extern _Config Config;       /* Global Config structure */
 

@@ -46,12 +46,13 @@ const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event s
 // CIS-CAT module context definition
 
 const wm_context WM_CISCAT_CONTEXT = {
-    "cis-cat",
-    (wm_routine)wm_ciscat_main,
-    (void(*)(void *))wm_ciscat_destroy,
-    (cJSON * (*)(const void *))wm_ciscat_dump,
-    NULL,
-    NULL
+    .name = "cis-cat",
+    .start = (wm_routine)wm_ciscat_main,
+    .destroy = (void(*)(void *))wm_ciscat_destroy,
+    .dump = (cJSON * (*)(const void *))wm_ciscat_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 // CIS-CAT module main function. It won't return.

@@ -17,18 +17,14 @@ from uuid import uuid4
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.agent import WazuhDBQueryAgents
-from wazuh.core.cluster.common import as_wazuh_object
-from wazuh.core.cluster.local_client import LocalClient
 from wazuh.core.cluster.utils import get_cluster_items, read_config
-from wazuh.core.exception import WazuhClusterError
 from wazuh.core.utils import blake2b, mkdir_with_mode, get_utc_now, get_date_from_timestamp, to_relative_path
 
 logger = logging.getLogger('wazuh')
 
 # Separators used in compression/decompression functions to delimit files.
-FILE_SEP = '|@!@|'
-PATH_SEP = '|!@!|'
+FILE_SEP = '|@@//@@|'
+PATH_SEP = '|//@@//|'
 
 
 #
@@ -186,7 +182,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                                 file_metadata['merge_type'] = 'TYPE'
                                 file_metadata['merge_name'] = abs_file_path
                             if get_hash:
-                                file_metadata['blake2_hash'] = blake2b(abs_file_path)
+                                file_metadata['hash'] = blake2b(abs_file_path)
                             # Use the relative file path as a key to save its metadata dictionary.
                             walk_files[relative_file_path] = file_metadata
                     except FileNotFoundError as e:
@@ -263,7 +259,7 @@ def get_ruleset_status(previous_status):
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
 
-    return {file_path: file_data['blake2_hash'] for file_path, file_data in final_items.items()}
+    return {file_path: file_data['hash'] for file_path, file_data in final_items.items()}
 
 
 def update_cluster_control(failed_file, ko_files, exists=True):
@@ -480,8 +476,6 @@ def compare_files(good_files, check_files, node_name):
     -------
     files : dict
         Paths (keys) and metadata (values) of the files classified into four groups.
-    count : int
-        Number of files inside each classification.
     """
 
     def split_on_condition(seq, condition):
@@ -525,8 +519,7 @@ def compare_files(good_files, check_files, node_name):
     #     extra_valid_function()
 
     # 'all_shared' files are the ones present in both sets but with different BLAKE2b checksum.
-    all_shared = [x for x in check_files.keys() & good_files.keys() if
-                  check_files[x]['blake2_hash'] != good_files[x]['blake2_hash']]
+    all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['hash'] != good_files[x]['hash']]
 
     # 'shared_e_v' are files present in both nodes but need to be merged before sending them to the worker. Only
     # 'agent-groups' files fit into this category.
@@ -546,10 +539,7 @@ def compare_files(good_files, check_files, node_name):
     else:
         shared_files = {key: good_files[key] for key in shared}
 
-    files = {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
-    count = {'missing': len(missing_files), 'extra': len(extra_files), 'shared': len(all_shared)}
-
-    return files, count
+    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
 
 
 def clean_up(node_name=""):
@@ -666,7 +656,7 @@ def unmerge_info(merge_type, path_file, filename):
         Name of the destination directory inside queue. I.e: {wazuh_path}/PATH/{merge_type}/<unmerge_files>.
     path_file : str
         Path to the unzipped merged file.
-    filename
+    filename : str
         Filename of the merged file.
 
     Yields
@@ -731,29 +721,3 @@ async def run_in_pool(loop, pool, f, *args, **kwargs):
         return await wait_for(task, timeout=None)
     else:
         return f(*args, **kwargs)
-
-
-async def get_node_ruleset_integrity(lc: LocalClient) -> dict:
-    """Retrieve custom ruleset integrity.
-
-    Parameters
-    ----------
-    lc : LocalClient
-        LocalClient instance.
-
-    Returns
-    -------
-    dict
-        Dictionary with results
-    """
-    response = await lc.execute(command=b"get_hash", data=b"", wait_for_complete=False)
-
-    try:
-        result = json.loads(response, object_hook=as_wazuh_object)
-    except json.JSONDecodeError as e:
-        raise WazuhClusterError(3020) if "timeout" in response else e
-
-    if isinstance(result, Exception):
-        raise result
-
-    return result

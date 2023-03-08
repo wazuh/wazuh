@@ -737,18 +737,303 @@ void test_os_shell_double_escape(void ** state) {
     os_free(ret2);
 }
 
-void test_strarray_size_null() {
+void test_strarray_size_null(void ** state) {
     assert_int_equal(strarray_size(0), 0);
 }
 
-void test_strarray_size_zero() {
+void test_strarray_size_zero(void ** state) {
     char *str_array[] = {0};
     assert_int_equal(strarray_size(str_array), 0);
 }
 
-void test_strarray_size() {
+void test_strarray_size(void ** state) {
     char *str_array[] = {"one", "two", "three", "four", "five", 0};
     assert_int_equal(strarray_size(str_array), 5);
+}
+
+void test_wstr_escape_dststr_null(void ** state) {
+
+    ssize_t ret = wstr_escape(NULL, 0, "test string without colons", '\\', ':');
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wstr_escape_str_null(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), NULL, '\\', ':');
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wstr_escape_not_escape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "test string without colons", '\\', ':');
+    assert_string_equal(dststr, "test string without colons");
+    assert_int_equal(ret, 26);
+}
+
+void test_wstr_escape_colons_escape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "test string with one : colons", '\\', ':');
+    assert_string_equal(dststr, "test string with one \\: colons");
+    assert_int_equal(ret, 30);
+}
+
+void test_wstr_escape_corner_colons_escape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), ":::test string with multi : colons:::", '|', ':');
+    assert_string_equal(dststr, "|:|:|:test string with multi |: colons|:|:|:");
+    assert_int_equal(ret, 44);
+}
+
+void test_wstr_escape_backslash_and_colons_escape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "\\ \\ \\\\ \\: \\", '\\', ':');
+    assert_string_equal(dststr, "\\\\ \\\\ \\\\\\\\ \\\\\\: \\\\");
+    assert_int_equal(ret, 18);
+}
+
+void test_wstr_escape_at_sign_and_asterisk(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "@ @@ * # * @@ @", '*', '@');
+    assert_string_equal(dststr, "*@ *@*@ ** # ** *@*@ *@");
+    assert_int_equal(ret, 23);
+}
+
+void test_wstr_escape_buff_overflow(void ** state) {
+
+    char dststr[10];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "1 2 3 4 5 6 7", '*', '@');
+    assert_string_equal(dststr, "1 2 3 4 5");
+    assert_int_equal(ret, 9);
+}
+
+void test_wstr_escape_buff_overflow_escape_same_size(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "123456789", '\\', ':');
+    assert_string_equal(dststr, "12345678");
+    assert_int_equal(ret, 8);
+}
+
+
+void test_wstr_escape_buff_overflow_escape_same_size_colons(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "12345678:", '\\', ':');
+    assert_string_equal(dststr, "12345678");
+    assert_int_equal(ret, 8);
+}
+
+void test_wstr_escape_buff_overflow_escape_same_size_before_last_colons(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "1234567:9", '\\', ':');
+    assert_string_equal(dststr, "1234567");
+    assert_int_equal(ret, 7);
+}
+
+void test_wstr_escape_buff_overflow_escape_same_size_last_before_last_colons(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "1234567::", '\\', ':');
+    assert_string_equal(dststr, "1234567");
+    assert_int_equal(ret, 7);
+}
+
+void test_wstr_escape_buff_overflow_escape_same_size_multi_colons(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "123456:::", '\\', ':');
+    assert_string_equal(dststr, "123456\\:");
+    assert_int_equal(ret, 8);
+}
+
+void test_wstr_escape_buff_overflow_escape(void ** state) {
+
+    char dststr[10];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "1 : 3 : 5 6 7", '\\', ':');
+    assert_string_equal(dststr, "1 \\: 3 \\:");
+    assert_int_equal(ret, 9);
+}
+
+void test_wstr_escape_one_scape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_escape(dststr, sizeof(dststr), "\\", '\\', ':');
+    assert_string_equal(dststr, "\\\\");
+    assert_int_equal(ret, 2);
+}
+
+void test_wstr_unescape_dststr_null(void ** state) {
+
+    ssize_t ret = wstr_unescape(NULL, 0, "test string without colons", '\\');
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wstr_unescape_str_null(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), NULL, '\\');
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wstr_unescape_not_escape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "test string without colons", '\\');
+    assert_string_equal(dststr, "test string without colons");
+    assert_int_equal(ret, 26);
+}
+
+void test_wstr_unescape_colons_escape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "test string with one \\: colons", '\\');
+    assert_string_equal(dststr, "test string with one : colons");
+    assert_int_equal(ret, 29);
+}
+
+void test_wstr_unescape_corner_colons_escape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "|:|:|:test string with multi |: colons|:|:|:", '|');
+    assert_string_equal(dststr, ":::test string with multi : colons:::");
+    assert_int_equal(ret, 37);
+}
+
+void test_wstr_unescape_backslash_and_colons_escape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "\\\\ \\\\ \\\\\\\\ \\\\\\: \\\\", '\\');
+    assert_string_equal(dststr, "\\ \\ \\\\ \\: \\");
+    assert_int_equal(ret, 11);
+}
+
+void test_wstr_unescape_at_sign_and_asterisk(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "*@ *@*@ ** # ** *@*@ *@", '*');
+    assert_string_equal(dststr, "@ @@ * # * @@ @");
+    assert_int_equal(ret, 15);
+}
+
+void test_wstr_unescape_buff_overflow(void ** state) {
+
+    char dststr[10];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "1 2 3 4 5 6 7", '*');
+    assert_string_equal(dststr, "1 2 3 4 5");
+    assert_int_equal(ret, 9);
+}
+
+void test_wstr_unescape_buff_overflow_same_size(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "1234567*9", '*');
+    assert_string_equal(dststr, "12345679");
+    assert_int_equal(ret, 8);
+}
+
+void test_wstr_unescape_buff_overflow_same_size_last_escape(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "12345678*", '*');
+    assert_string_equal(dststr, "12345678");
+    assert_int_equal(ret, 8);
+}
+
+void test_wstr_unescape_buff_overflow_same_size_last_escape_asterisk(void ** state) {
+
+    char dststr[9];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "1234567**", '*');
+    assert_string_equal(dststr, "1234567*");
+    assert_int_equal(ret, 8);
+}
+
+void test_wstr_unescape_buff_overflow_escape(void ** state) {
+
+    char dststr[10];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "1 \\: 3 \\: 5 6 7", '\\');
+    assert_string_equal(dststr, "1 : 3 : 5");
+    assert_int_equal(ret, 9);
+}
+
+void test_wstr_unescape_one_scape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "\\", '\\');
+    assert_string_equal(dststr, "\\");
+    assert_int_equal(ret, 1);
+}
+
+void test_wstr_unescape_end_scape(void ** state) {
+
+    char dststr[OS_BUFFER_SIZE];
+
+    ssize_t ret = wstr_unescape(dststr, sizeof(dststr), "test \\a b\\", '\\');
+    assert_string_equal(dststr, "test a b\\");
+    assert_int_equal(ret, 9);
+}
+
+void test_wstr_chr_str_eof(void ** state) {
+
+    char * ret = wstr_chr_escape("\0", ':', '\\');
+    assert_null(ret);
+}
+
+void test_wstr_chr_str_without_character(void ** state) {
+
+    char str[OS_BUFFER_SIZE] = "test string without colons";
+    char * ret = wstr_chr_escape(str, ':', '\\');
+    assert_null(ret);
+}
+
+void test_wstr_chr_str_without_escaped_colons(void ** state) {
+
+    char str[OS_BUFFER_SIZE] = "test string with : escaped colons";
+    char * ret = wstr_chr_escape(str, ':', '\\');
+    assert_non_null(ret);
+    assert_ptr_equal(ret, str+17);
+    assert_int_equal(*ret, str[17]);
+}
+
+void test_wstr_chr_str_with_escaped_colons(void ** state) {
+
+    char str[OS_BUFFER_SIZE] = "test string with \\: escaped : colons";
+    char * ret = wstr_chr_escape(str, ':', '\\');
+    assert_non_null(ret);
+    assert_ptr_equal(ret, str+28);
+    assert_int_equal(*ret, str[28]);
 }
 
 /* Tests */
@@ -814,7 +1099,6 @@ int main(void) {
         cmocka_unit_test(test_w_strcat_list_empty_list),
         cmocka_unit_test(test_w_strcat_list_one_element_list),
         cmocka_unit_test(test_w_strcat_list_large_list),
-
         // Test os_shell_escape
         cmocka_unit_test(test_os_shell_escape_already_escaped),
         cmocka_unit_test(test_os_shell_escape_not_escaped),
@@ -823,10 +1107,47 @@ int main(void) {
         cmocka_unit_test(test_os_shell_avoid_escape_all),
         cmocka_unit_test(test_os_shell_escape_backslash),
         cmocka_unit_test(test_os_shell_double_escape),
-
+        // Test strarray_size
         cmocka_unit_test(test_strarray_size_null),
         cmocka_unit_test(test_strarray_size_zero),
-        cmocka_unit_test(test_strarray_size)
+        cmocka_unit_test(test_strarray_size),
+        // Test wstr_escape
+        cmocka_unit_test(test_wstr_escape_dststr_null),
+        cmocka_unit_test(test_wstr_escape_str_null),
+        cmocka_unit_test(test_wstr_escape_not_escape),
+        cmocka_unit_test(test_wstr_escape_colons_escape),
+        cmocka_unit_test(test_wstr_escape_corner_colons_escape),
+        cmocka_unit_test(test_wstr_escape_backslash_and_colons_escape),
+        cmocka_unit_test(test_wstr_escape_at_sign_and_asterisk),
+        cmocka_unit_test(test_wstr_escape_buff_overflow),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size_colons),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size_before_last_colons),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size_last_before_last_colons),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape_same_size_multi_colons),
+        cmocka_unit_test(test_wstr_escape_buff_overflow_escape),
+        cmocka_unit_test(test_wstr_escape_one_scape),
+        // Test wstr_unescape
+        cmocka_unit_test(test_wstr_unescape_dststr_null),
+        cmocka_unit_test(test_wstr_unescape_str_null),
+        cmocka_unit_test(test_wstr_unescape_not_escape),
+        cmocka_unit_test(test_wstr_unescape_colons_escape),
+        cmocka_unit_test(test_wstr_unescape_corner_colons_escape),
+        cmocka_unit_test(test_wstr_unescape_backslash_and_colons_escape),
+        cmocka_unit_test(test_wstr_unescape_at_sign_and_asterisk),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow_same_size),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow_same_size_last_escape),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow_same_size_last_escape_asterisk),
+        cmocka_unit_test(test_wstr_unescape_buff_overflow_escape),
+        cmocka_unit_test(test_wstr_unescape_one_scape),
+        cmocka_unit_test(test_wstr_unescape_end_scape),
+        // Test wstr_chr
+        cmocka_unit_test(test_wstr_chr_str_eof),
+        cmocka_unit_test(test_wstr_chr_str_without_character),
+        cmocka_unit_test(test_wstr_chr_str_without_escaped_colons),
+        cmocka_unit_test(test_wstr_chr_str_with_escaped_colons),
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

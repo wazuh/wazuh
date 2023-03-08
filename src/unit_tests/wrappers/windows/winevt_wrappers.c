@@ -59,3 +59,7 @@ EVT_HANDLE wrap_EvtSubscribe(EVT_HANDLE             Session,
     check_expected(Flags);
     return mock_type(EVT_HANDLE);
 }
+
+BOOL wrap_EvtClose(__UNUSED_PARAM(EVT_HANDLE object)) {
+    return mock_type(BOOL);
+}

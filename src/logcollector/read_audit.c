@@ -15,7 +15,7 @@
 #define MAX_HEADER 64
 
 /* Compile message from cache and send through queue */
-static void audit_send_msg(char **cache, int top, const char *file, int drop_it, logtarget * targets) {
+static void audit_send_msg(char **cache, int top, int drop_it, logreader *lf) {
     int i;
     size_t n = 0;
     size_t z;
@@ -34,10 +34,12 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
 
         free(cache[i]);
     }
+    message[n] = '\0';
 
-    if (!drop_it) {
-        message[n] = '\0';
-        w_msg_hash_queues_push(message, (char *)file, strlen(message) + 1, targets, LOCALFILE_MQ);
+    /* Check ignore and restrict log regex, if configured. */
+    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, message)) {
+        /* Send message to queue */
+        w_msg_hash_queues_push(message, (char *)lf->file, strlen(message) + 1, lf->log_target, LOCALFILE_MQ);
     }
 }
 
@@ -116,8 +118,13 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         // Extract header: "\.*type=\.* msg=audit(.*):"
         //                                        --
 
-        if (!((id = strstr(buffer, "type=")) && (id = strstr(id + 5, " msg=audit(")) && (p = strstr(id += 11, "): ")))) {
-            merror("Discarding audit message because of invalid syntax.");
+        if (strlen(buffer) == 0) {
+            mdebug2("audit reader: empty line, skipping.");
+            break;
+        }
+
+        if (!((id = strstr(buffer, "type=")) && (id = strstr(id + 5, " msg=audit(")) && (p = strstr(id += 11, "):")))) {
+            mwarn("Discarding audit message because of invalid syntax.");
             break;
         }
 
@@ -126,7 +133,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         if (strncmp(id, header, z)) {
             // Current message belongs to another event: send cached messages
             if (icache > 0)
-                audit_send_msg(cache, icache, lf->file, drop_it, lf->log_target);
+                audit_send_msg(cache, icache, drop_it, lf);
 
             // Store current event
             *cache = strdup(buffer);
@@ -142,7 +149,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     }
 
     if (icache > 0)
-        audit_send_msg(cache, icache, lf->file, drop_it, lf->log_target);
+        audit_send_msg(cache, icache, drop_it, lf);
     if (is_valid_context_file) {
         w_update_file_status(lf->file, offset, &context);
     }

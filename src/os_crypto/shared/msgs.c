@@ -27,14 +27,14 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
 static char *CheckSum(char *msg, size_t length) __attribute((nonnull));
 
 /* Sending counts */
-static unsigned int global_count = 0;
-static unsigned int local_count  = 0;
+static _Atomic (unsigned int) global_count = 0;
+static _Atomic (unsigned int) local_count  = 0;
 
 /* Average compression rates */
-static unsigned int evt_count = 0;
-static unsigned int rcv_count = 0;
-static size_t c_orig_size = 0;
-static size_t c_comp_size = 0;
+static _Atomic (unsigned int) evt_count = 0;
+static _Atomic (unsigned int) rcv_count = 0;
+static _Atomic (size_t) c_orig_size = 0;
+static _Atomic (size_t) c_comp_size = 0;
 
 /* Global variables (read from define file) */
 unsigned int _s_comp_print = 0;
@@ -321,7 +321,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     }
 
     /* Decrypt message */
-    switch(keys->keyentries[id]->crypto_method){
+    switch((crypt_method)keys->keyentries[id]->crypto_method){
         case W_METH_BLOWFISH:
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
                         buffer_size, OS_DECRYPT)) {

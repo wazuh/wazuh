@@ -1,0 +1,21 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml Test tool - Sequence Diagram
+title FIMDB - Test tool
+
+actor FIMDBTestTool as tool
+participant Configuration as config
+participant IAction as action
+database Output as output
+
+tool -> config : Get Configuration
+config --> tool
+tool -> tool : Initialize
+loop n-actions
+tool -> action : Execute action
+action -> output : Write action output
+action --> tool
+end
+@enduml

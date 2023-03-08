@@ -27,7 +27,7 @@ extern int w_enrollment_concat_src_ip(char *buff, const size_t remain_size, cons
 extern void w_enrollment_concat_group(char *buff, const char* centralized_group);
 extern void w_enrollment_concat_key(char *buff, keyentry* key_entry);
 extern int w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
-extern int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address);
+extern int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address, uint32_t network_interface);
 extern int w_enrollment_send_message(w_enrollment_ctx *cfg);
 extern int w_enrollment_store_key_entry(const char* keys);
 extern int w_enrollment_process_agent_key(char *buffer);
@@ -480,11 +480,11 @@ void test_verificy_ca_certificate_valid_certificate(void **state) {
 /********** w_enrollment_connect *******/
 void test_w_enrollment_connect_empty_address(void **state) {
     w_enrollment_ctx *cfg = *state;
-    expect_assert_failure(w_enrollment_connect(cfg, NULL));
+    expect_assert_failure(w_enrollment_connect(cfg, NULL, 0));
 }
 
 void test_w_enrollment_connect_empty_config(void **state) {
-    expect_assert_failure(w_enrollment_connect(NULL, "hostname"));
+    expect_assert_failure(w_enrollment_connect(NULL, "hostname", 0));
 }
 
 void test_w_enrollment_connect_invalid_hostname(void **state) {
@@ -494,7 +494,7 @@ void test_w_enrollment_connect_invalid_hostname(void **state) {
     will_return(__wrap_OS_GetHost, NULL);
     expect_string(__wrap__merror, formatted_msg, "Could not resolve hostname: valid_hostname\n");
 
-    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name);
+    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name, 0);
     assert_int_equal(ret, ENROLLMENT_WRONG_CONFIGURATION);
 }
 
@@ -513,7 +513,7 @@ void test_w_enrollment_connect_could_not_setup(void **state) {
     will_return(__wrap_os_ssl_keys, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Could not set up SSL connection! Check certification configuration.");
-    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name);
+    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name, 0);
     assert_int_equal(ret, ENROLLMENT_WRONG_CONFIGURATION);
 }
 
@@ -540,7 +540,7 @@ void test_w_enrollment_connect_socket_error(void **state) {
     will_return(__wrap_OS_ConnectTCP, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1208): Unable to connect to enrollment service at '[127.0.0.1]:1234'");
-    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name);
+    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name, 0);
     assert_int_equal(ret, ENROLLMENT_CONNECTION_FAILURE);
 }
 
@@ -578,7 +578,7 @@ void test_w_enrollment_connect_SSL_connect_error(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 5);
     will_return(__wrap_OS_CloseSocket, 0);
 
-    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name);
+    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name, 0);
     assert_int_equal(ret, ENROLLMENT_CONNECTION_FAILURE);
 }
 
@@ -617,7 +617,7 @@ void test_w_enrollment_connect_success(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "Verifying manager's certificate");
     expect_string(__wrap__minfo, formatted_msg, "Manager has been verified successfully");
 
-    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name);
+    int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name, 0);
     assert_int_equal(ret, 5);
 }
 
@@ -1018,7 +1018,7 @@ void test_w_enrollment_process_response_success(void **state) {
 /**********************************************/
 /******* w_enrollment_request_key ********/
 void test_w_enrollment_request_key_null_cfg(void **state) {
-    expect_assert_failure(w_enrollment_request_key(NULL, "server_adress"));
+    expect_assert_failure(w_enrollment_request_key(NULL, "server_adress", 0));
 }
 
 void test_w_enrollment_request_key(void **state) {
@@ -1122,7 +1122,7 @@ void test_w_enrollment_request_key(void **state) {
         will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
         expect_string(__wrap__mdebug1, formatted_msg, "Connection closed.");
     }
-    int ret = w_enrollment_request_key(cfg, NULL);
+    int ret = w_enrollment_request_key(cfg, NULL, 0);
     assert_int_equal(ret, 0);
 }
 

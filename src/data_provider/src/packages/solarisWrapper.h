@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 12, 2022.
  *
  * This program is free software; you can redistribute it
@@ -222,6 +222,8 @@ class SolarisWrapper final : public IPackageWrapper
                 while (file.good())
                 {
                     std::getline(file, line);
+                    // Convert 'line' to UTF-8
+                    Utils::ISO8859ToUTF8(line);
                     const auto fields { Utils::split(line, '=') };
 
                     if (fields.size() > 1)

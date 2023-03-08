@@ -325,7 +325,8 @@ def process_spawn_sleep(child):
     time.sleep(0.1)
 
 
-async def forward_function(func: callable, f_kwargs: dict = None, request_type: str = 'local_master'):
+async def forward_function(func: callable, f_kwargs: dict = None, request_type: str = 'local_master',
+                           nodes: list = None, broadcasting: bool = False):
     """Distribute function to master node.
 
     Parameters
@@ -336,7 +337,10 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
         Function kwargs.
     request_type : str
         Request type.
-
+    nodes : list
+        System cluster nodes.
+    broadcasting : bool
+        Whether the function will be broadcasted or not.
     Returns
     -------
     Return either a dict or `WazuhResult` instance in case the execution did not fail. Return an exception otherwise.
@@ -346,6 +350,7 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
     from asyncio import run
     from wazuh.core.cluster.dapi.dapi import DistributedAPI
     dapi = DistributedAPI(f=func, f_kwargs=f_kwargs, request_type=request_type,
-                          is_async=False, wait_for_complete=True, logger=logger)
+                          is_async=False, wait_for_complete=True, logger=logger, nodes=nodes,
+                          broadcasting=broadcasting)
     pool = concurrent.futures.ThreadPoolExecutor()
     return pool.submit(run, dapi.distribute_function()).result()

@@ -9,6 +9,13 @@
  * Foundation.
  */
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
 #include "wm_control.h"
 #include "sysInfo.h"
@@ -21,16 +28,17 @@ static void wm_control_destroy();
 cJSON *wm_control_dump();
 
 const wm_context WM_CONTROL_CONTEXT = {
-    "control",
-    (wm_routine)wm_control_main,
-    (void(*)(void *))wm_control_destroy,
-    (cJSON * (*)(const void *))wm_control_dump,
-    NULL,
-    NULL
+    .name = "control",
+    .start = (wm_routine)wm_control_main,
+    .destroy = (void(*)(void *))wm_control_destroy,
+    .dump = (cJSON * (*)(const void *))wm_control_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
-void *sysinfo_module = NULL;
-sysinfo_networks_func sysinfo_network_ptr = NULL;
-sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
+STATIC void *sysinfo_module = NULL;
+STATIC sysinfo_networks_func sysinfo_network_ptr = NULL;
+STATIC sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
 /**
  * @brief Get the Primary IP address
@@ -61,10 +69,24 @@ char* getPrimaryIP(){
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
                         if (gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring," ")) {
-                            const cJSON *ip = cJSON_GetObjectItem(element, "IPv6");
-                            if (!ip) {
-                                ip = cJSON_GetObjectItem(element, "IPv4");
-                                if (!ip) {
+                            
+                            const char * primaryIpType = NULL;
+                            const char * secondaryIpType = NULL;
+
+                            if (strchr(gateway->valuestring, ':') != NULL) {
+                                //Assume gateway is IPv6. IPv6 IP will be prioritary
+                                primaryIpType = "IPv6";
+                                secondaryIpType = "IPv4";
+                            } else {
+                                //Assume gateway is IPv4. IPv4 IP will be prioritary
+                                primaryIpType = "IPv4";
+                                secondaryIpType = "IPv6";
+                            }
+
+                            const cJSON * ip = cJSON_GetObjectItem(element, primaryIpType);
+                            if (NULL == ip) {
+                                ip = cJSON_GetObjectItem(element, secondaryIpType);
+                                if (NULL == ip) {
                                     continue;
                                 }
                             }

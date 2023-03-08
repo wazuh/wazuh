@@ -26,12 +26,17 @@ class Status(Enum):
     S_ALL = 'all'
 
 
-def add_detail(detail, value, details):
+def add_detail(detail: str, value: str, details: dict):
     """Add a rule detail (i.e. category, noalert, etc.).
 
-    :param detail: Detail name.
-    :param value: Detail value.
-    :param details: Details dict.
+    Parameters
+    ----------
+    detail : str
+        Detail name.
+    value : str
+        Detail value.
+    details : dict
+        Details dict.
     """
     if detail in details:
         # If it was an element, we create a list.
@@ -44,7 +49,24 @@ def add_detail(detail, value, details):
         details[detail] = value
 
 
-def check_status(status):
+def check_status(status: str) -> str:
+    """Check status is a value of the Status enumeration.
+
+    Parameters
+    ----------
+    status: str
+        Status to check.
+
+    Raises
+    ------
+    WazuhError(1202)
+        If the status is not one of the enumeration.
+
+    Returns
+    -------
+    str
+        Status.
+    """
     if status is None:
         return Status.S_ALL.value
     elif status in [Status.S_ALL.value, Status.S_ENABLED.value, Status.S_DISABLED.value]:
@@ -53,7 +75,18 @@ def check_status(status):
         raise WazuhError(1202)
 
 
-def set_groups(groups, general_groups, rule):
+def set_groups(groups: list, general_groups: list, rule: dict):
+    """Add specific and general groups to a specific rule.
+
+    Parameters
+    ----------
+    groups : list
+        Groups to add to the rule.
+    general_groups : list
+        General groups to add to the rule.
+    rule : dict
+        Rule to be updated.
+    """
     groups.extend(general_groups)
     for g in groups:
         for req in RULE_REQUIREMENTS:
@@ -66,7 +99,30 @@ def set_groups(groups, general_groups, rule):
             rule['groups'].append(g) if g != '' else None
 
 
-def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
+def load_rules_from_file(rule_filename: str, rule_relative_path: str, rule_status: str) -> list:
+    """Load rules given its file name.
+
+    Parameters
+    ----------
+    rule_filename : str
+        Name of the rule file.
+    rule_relative_path : str
+        Relative path to the rule file.
+    rule_status : str
+        Rule status.
+
+    Raises
+    ------
+    WazuhError(1201)
+        Error reading rule files.
+    WazuhError(1207)
+        Error reading rule files, wrong permissions.
+
+    Returns
+    -------
+    list
+        List of rules.
+    """
     try:
         rules = list()
         root = load_wazuh_xml(os.path.join(common.WAZUH_PATH, rule_relative_path, rule_filename))

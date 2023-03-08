@@ -13,7 +13,7 @@ stages:
     response:
       status_code: 200
       json: &basic_response
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -93,7 +93,7 @@ stages:
           expected_name: data.affected_items[0].name
           expected_ip: data.affected_items[0].ip
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - status: active
@@ -189,7 +189,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '006'
@@ -207,7 +207,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -223,7 +223,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data: &affected_empty_answer
           affected_items: []
           failed_items: []
@@ -318,7 +318,7 @@ stages:
     response: &old_wazuh_agents_response
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '009'
@@ -363,7 +363,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -388,7 +388,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -407,7 +407,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -432,7 +432,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -451,7 +451,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -476,7 +476,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -495,7 +495,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -520,7 +520,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -537,7 +537,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -561,7 +561,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -579,7 +579,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -603,7 +603,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -621,7 +621,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -646,7 +646,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - manager: "{expected_manager_host:s}"
@@ -662,7 +662,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -686,7 +686,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '009'
@@ -704,7 +704,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '009'
@@ -724,7 +724,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '009'
@@ -753,7 +753,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '001'
@@ -774,7 +774,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -854,7 +854,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '002'
@@ -968,7 +968,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '009'
@@ -986,7 +986,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '009'
@@ -1003,7 +1003,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '010'
@@ -1020,7 +1020,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '000'
@@ -1062,7 +1062,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '009'
@@ -1093,7 +1093,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - status: active
@@ -1124,7 +1124,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - dateAdd: !anystr
@@ -1163,7 +1163,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -1289,7 +1289,7 @@ test_name: GET /agents/{agent_id}/config/{component}/{configuration}
 stages:
 
   # GET /agents/001/config/agent/client
-  - name: Request-Agent-Client
+  - name: Get client configuration from agent component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/client"
@@ -1299,7 +1299,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           client:
             auto_restart: !anystr
@@ -1310,7 +1310,7 @@ stages:
             server: !anything
             time-reconnect: !anyint
 
-  - name: Request-Agent-Buffer
+  - name: Get buffer configuration from agent component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/buffer"
@@ -1320,14 +1320,14 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           buffer:
             disabled: !anystr
             queue_size: !anyint
             events_per_second: !anyint
 
-  - name: Request-Agent-Labels
+  - name: Get labels configuration from agent component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/labels"
@@ -1337,11 +1337,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           labels: !anything
 
-  - name: Request-Agent-Internal
+  - name: Get internal configuration from agent component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/internal"
@@ -1351,7 +1351,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           internal:
             agent:
@@ -1379,7 +1379,7 @@ stages:
               request_rto_sec: !anyint
               verify_msg_id: !anyint
 
-  - name: Request-Analysis-Global
+  - name: Get global configuration from analysis component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/global"
@@ -1389,7 +1389,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           global:
             alerts_log: !anystr
@@ -1408,7 +1408,7 @@ stages:
             white_list: !anything
             zeromq_output: !anystr
 
-  - name: Request-Analysis-Active-response
+  - name: Get active_response configuration from analysis component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/active_response"
@@ -1418,11 +1418,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           active-response: !anything
 
-  - name: Request-Analysis-Alerts
+  - name: Get alerts configuration from analysis component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/alerts"
@@ -1432,13 +1432,13 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           alerts:
             email_alert_level: !anyint
             log_alert_level: !anyint
 
-  - name: Request-Analysis-Command
+  - name: Get command configuration from analysis component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/command"
@@ -1448,11 +1448,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           command: !anything
 
-  - name: Request-Analysis-Internal
+  - name: Get internal configuration from analysis component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/internal"
@@ -1462,7 +1462,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           internal:
             analysisd:
@@ -1480,7 +1480,7 @@ stages:
               stats_mindiff: !anyint
               stats_percent_diff: !anyint
 
-  - name: Request-Auth-Auth
+  - name: Get auth configuration from auth component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/auth/auth"
@@ -1490,7 +1490,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           auth:
             ciphers: !anystr
@@ -1505,7 +1505,7 @@ stages:
             use_password: !anystr
             use_source_ip: !anystr
 
-  - name: Request-Com-Active-response (Manager)
+  - name: Get active-response configuration from com component (Manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/active-response"
@@ -1515,12 +1515,12 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           active-response:
             disabled: !anystr
 
-  - name: Request-Com-Active-response (Agent)
+  - name: Get active-response configuration from com component (Agent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/active-response"
@@ -1530,12 +1530,12 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           active-response:
             disabled: !anystr
 
-  - name: Request-Com-Internal (Manager)
+  - name: Get internal configuration from com component (Manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/internal"
@@ -1545,14 +1545,14 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           internal:
             execd:
               request_timeout: !anyint
               max_restart_lock: !anyint
 
-  - name: Request-Com-Internal (Agent)
+  - name: Get internal configuration from com component (Agent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/internal"
@@ -1562,14 +1562,14 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           internal:
             execd:
               request_timeout: !anyint
               max_restart_lock: !anyint
 
-  - name: Request-Logcollector-Localfile (Manager)
+  - name: Get localfile configuration from logcollector component (Manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/localfile"
@@ -1579,11 +1579,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           localfile: !anything
 
-  - name: Request-Logcollector-Localfile (Agent)
+  - name: Get localfile configuration from logcollector component (Agent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/localfile"
@@ -1593,11 +1593,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           localfile: !anything
 
-  - name: Request-Logcollector-Socker (Manager)
+  - name: Get socket configuration from logcollector component (Manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/socket"
@@ -1607,7 +1607,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Request-Logcollector-Socker (Agent)
+  - name: Get socket configuration from logcollector component (Agent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/socket"
@@ -1617,7 +1617,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Request-Logcollector-Internal (Manager)
+  - name: Get internal configuration from logcollector component (Manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/internal"
@@ -1627,7 +1627,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           internal:
             logcollector:
@@ -1647,7 +1647,7 @@ stages:
               sock_fail_time: !anyint
               vcheck_files: !anyint
 
-  - name: Request-Logcollector-Internal (Agent)
+  - name: Get internal configuration from logcollector component (Agent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/internal"
@@ -1657,7 +1657,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           internal:
             logcollector:
@@ -1677,7 +1677,7 @@ stages:
               sock_fail_time: !anyint
               vcheck_files: !anyint
 
-  - name: Request-Monitor-Internal
+  - name: Get internal configuration from monitor component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/monitor/internal"
@@ -1687,7 +1687,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           monitord:
             compress: !anyint
@@ -1700,7 +1700,7 @@ stages:
             sign: !anyint
             size_rotate: !anyint
 
-  - name: Request-Request-Remote
+  - name: Get remote configuration from request component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/remote"
@@ -1710,7 +1710,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           remote:
             - connection: !anystr
@@ -1719,7 +1719,7 @@ stages:
               protocol: !anylist
               queue_size: !anystr
 
-  - name: Request-Request-Internal
+  - name: Get internal configuration from request component
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/internal"
@@ -1729,7 +1729,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           internal:
             remoted:
@@ -1752,7 +1752,7 @@ stages:
               shared_reload: !anyint
               verify_msg_id: !anyint
 
-  - name: Request-Syscheck-Syscheck (Manager)
+  - name: Get syscheck configuration from syscheck component (Manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/syscheck"
@@ -1762,7 +1762,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           syscheck:
             directories: !anything
@@ -1774,7 +1774,7 @@ stages:
             skip_nfs: !anystr
             whodata: !anything
 
-  - name: Request-Syscheck-Syscheck (Agent)
+  - name: Get syscheck configuration from syscheck component (Agent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/syscheck"
@@ -1784,7 +1784,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           syscheck:
             directories: !anything
@@ -1796,7 +1796,7 @@ stages:
             skip_nfs: !anystr
             whodata: !anything
 
-  - name: Request-Syscheck-Rootcheck (Manager)
+  - name: Get rootcheck configuration from syscheck component (Manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/rootcheck"
@@ -1806,7 +1806,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           rootcheck:
             check_dev: !anystr
@@ -1824,7 +1824,7 @@ stages:
             scanall: !anystr
             skip_nfs: !anystr
 
-  - name: Request-Syscheck-Rootcheck (Agent)
+  - name: Get rootcheck configuration from syscheck component (Agent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/rootcheck"
@@ -1834,7 +1834,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           rootcheck:
             check_dev: !anystr
@@ -1852,7 +1852,7 @@ stages:
             scanall: !anystr
             skip_nfs: !anystr
 
-  - name: Request-Syscheck-Internal (Manager)
+  - name: Get internal configuration from syscheck component (Manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/internal"
@@ -1862,7 +1862,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           internal:
             rootcheck:
@@ -1875,7 +1875,7 @@ stages:
               file_max_size: !anyint
               symlink_scan_interval: !anyint
 
-  - name: Request-Syscheck-Internal (Agent)
+  - name: Get internal configuration from syscheck component (Agent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/internal"
@@ -1885,7 +1885,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           internal:
             syscheck:
@@ -1898,8 +1898,44 @@ stages:
             rootcheck:
               sleep: !anyint
 
+  - name: Get internal configuration from wazuh-db component
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wazuh-db/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          wazuh_db:
+            commit_time_max: !anyint
+            commit_time_min: !anyint
+            open_db_limit: !anyint
+            worker_pool_size: !anyint
 
-  - name: Request-Wmodules-Wmodules (Manager)
+  - name: Get wdb configuration from wazuh-db component
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wazuh-db/wdb"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          wdb:
+            backup:
+              - database: !anystr
+                enabled: !anybool
+                interval: !anyint
+                max_files: !anyint
+
+  - name: Get wmodules configuration from wmodules component (Manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wmodules/wmodules"
@@ -1909,11 +1945,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           wmodules: !anything
 
-  - name: Request-Wmodules-Wmodules (Agent)
+  - name: Get wmodules configuration from wmodules component (Agent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wmodules/wmodules"
@@ -1923,7 +1959,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           wmodules: !anything
 
@@ -1934,7 +1970,7 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response: &resource_not_found
+    response:
       status_code: 404
       json:
         error: 1701
@@ -1997,7 +2033,7 @@ stages:
     response:
       status_code: 400
       json:
-        error: 1127
+        error: 1128
 
 ---
 test_name: GET /agents/{agent_id}/config/{component}/{configuration} (only cluster configuration)
@@ -2007,7 +2043,7 @@ marks:
 
 stages:
 
-- name: Request-Com-Cluster (Manager)
+- name: Get cluster configuration from com component (Manager)
   request:
     verify: False
     url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/cluster"
@@ -2017,7 +2053,7 @@ stages:
   response:
     status_code: 200
     json:
-      error: !anyint
+      error: 0
       data:
         bind_addr: !anystr
         disabled: !anybool
@@ -2044,7 +2080,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -2065,7 +2101,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -2098,7 +2134,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '001'
@@ -2122,7 +2158,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -2143,7 +2179,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -2176,13 +2212,129 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '001'
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: GET /agents/{agent_id}/daemons/stats
+
+stages:
+
+  - name: Try to get daemon stats from agent 000 (manager)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+              id:
+                - "000"
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Get all daemons' stats from agent 001
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - timestamp: !anystr
+              name: wazuh-remoted
+              agents:
+                - id: 1
+                  uptime: !anystr
+                  metrics: !anything
+            - timestamp: !anystr
+              name: wazuh-analysisd
+              agents:
+                - id: 1
+                  uptime: !anystr
+                  metrics: !anything
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Try to get all daemons' stats from agent 001 with a wrong daemons list
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      method: GET
+      params:
+        daemons_list: wrong_daemon_1,wrong_daemon_2
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: !anystr
+        detail: !anystr
+
+  - name: Get all daemons' stats from agent 001 with a specified daemons list
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      method: GET
+      params:
+        daemons_list: wazuh-remoted
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - timestamp: !anystr
+              name: wazuh-remoted
+              agents:
+                - id: 1
+                  uptime: !anystr
+                  metrics: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Try to get daemon stats from a non-existent agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/021/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "021"
+          total_affected_items: 0
+          total_failed_items: 1
 
 ---
 test_name: GET /agents/{agent_id}/stats/{component}
@@ -2245,7 +2397,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *stats_response
@@ -2350,7 +2502,7 @@ stages:
         json:
           expected_total_agents: data.affected_items[2].count
       json:
-        error: !anyint
+        error: 0
         data: &get_groups_answer
           affected_items:
             - name: 'default'
@@ -2375,7 +2527,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - name: 'group2'
@@ -2415,7 +2567,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -2513,7 +2665,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - name: 'default'
@@ -2531,7 +2683,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -2555,7 +2707,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - name: 'group1'
@@ -2595,7 +2747,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *get_groups_answer
 
@@ -2614,7 +2766,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '003'
@@ -2635,7 +2787,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '006'
@@ -2767,7 +2919,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '008'
@@ -2787,7 +2939,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -2881,7 +3033,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '003'
@@ -2912,7 +3064,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '007'
@@ -2930,7 +3082,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '003'
@@ -3047,7 +3199,7 @@ stages:
     response:
       status_code: 200
       json: &groups_id_config_response
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - config: !anything
@@ -3123,7 +3275,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           total_affected_items: 1
@@ -3177,7 +3329,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - filename: !anystr
@@ -3202,7 +3354,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - filename: "{filename_saved}"
@@ -3242,7 +3394,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           total_affected_items: !anyint
@@ -3292,7 +3444,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           total_affected_items: 0
@@ -3351,7 +3503,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - filename: !anystr
@@ -3369,7 +3521,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           total_affected_items: 0
@@ -3418,7 +3570,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - filename: !anystr
@@ -3442,7 +3594,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data: !anything
 
   - name: Try get one file of a group, bad group
@@ -3524,7 +3676,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data: &get_agents_by_name_response
           affected_items:
             - id: '001'
@@ -3545,7 +3697,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -3620,7 +3772,7 @@ stages:
     response:
       status_code: 200
       json: &no_group_response
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '011'
@@ -3639,7 +3791,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '011'
@@ -3745,7 +3897,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '011'
@@ -3762,7 +3914,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -3884,7 +4036,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '009'
@@ -3992,7 +4144,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: '006'
@@ -4052,7 +4204,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - count: !anyint
@@ -4076,7 +4228,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - count: !anyint
@@ -4121,7 +4273,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - count: !anyint
@@ -4141,7 +4293,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - count: !anyint
@@ -4248,7 +4400,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - count: 2
@@ -4266,7 +4418,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           <<: *affected_empty_answer
 
@@ -4302,7 +4454,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - count: 4
@@ -4352,7 +4504,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []
@@ -4374,7 +4526,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           connection:
             active: 8
@@ -4402,7 +4554,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - ubuntu

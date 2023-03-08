@@ -152,14 +152,15 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre, ABC):
     def _filter_status(self, status_filter):
         pass
 
-    def _format_data_into_dictionary(self):
+    def _format_data_into_dictionary(self) -> dict:
         """This function generates a dictionary where the key will be the value of the key that dict_key contains
          and the value will be the value of the remaining key.
 
         Returns
         -------
-        Dictionary where the key will be the value of the key that dict_key contains and
-        the value will be the value of the remaining key.
+        dict
+            Dictionary where the key will be the value of the key that dict_key contains and
+            the value will be the value of the remaining key.
         """
         relational_dict = {}
         for t in self._data:

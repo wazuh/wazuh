@@ -34,10 +34,6 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
             snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 1));
-
-            if (strcmp(output, "failed") && strcmp(output,"passed")) {
-                snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 2));
-            }
             return 1;
             break;
         case SQLITE_DONE:
@@ -53,7 +49,7 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
 int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description,
         char *rationale, char *remediation, char *condition, char *file,
         char *directory, char *process, char *registry, char *reference,
-        char *result, char *policy_id, char *command, char *status, char *reason)
+        char *result, char *policy_id, char *command, char *reason)
 {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
@@ -83,10 +79,8 @@ int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description
     sqlite3_bind_text(stmt, 12, result, -1, NULL);
     sqlite3_bind_text(stmt, 13, policy_id, -1, NULL);
     sqlite3_bind_text(stmt, 14, command, -1, NULL);
-    sqlite3_bind_text(stmt, 15, status, -1, NULL);
-    sqlite3_bind_text(stmt, 16, reason, -1, NULL);
-    sqlite3_bind_text(stmt, 17, condition, -1, NULL);
-
+    sqlite3_bind_text(stmt, 15, reason, -1, NULL);
+    sqlite3_bind_text(stmt, 16, condition, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_DONE:
@@ -644,10 +638,13 @@ int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output) {
 end:
     if(has_result) {
         if(str) {
+            char * results = wstr_replace(str, "not applicable", "");
+
             os_sha256 hash;
-            OS_SHA256_String(str,hash);
+            OS_SHA256_String(results, hash);
             snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", hash);
             os_free(str);
+            os_free(results);
         }
         return 1;
     }
@@ -655,7 +652,7 @@ end:
 }
 
 /* Update a configuration assessment entry. Returns affected rows on success or -1 on error (new) */
-int wdb_sca_update(wdb_t * wdb, char * result, int id, int scan_id, char * status, char * reason) {
+int wdb_sca_update(wdb_t * wdb, char * result, int id, int scan_id, char * reason) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
@@ -671,12 +668,11 @@ int wdb_sca_update(wdb_t * wdb, char * result, int id, int scan_id, char * statu
 
     stmt = wdb->stmt[WDB_STMT_SCA_UPDATE];
 
-    sqlite3_bind_text(stmt, 1, result,-1, NULL);
+    sqlite3_bind_int(stmt, 1, scan_id);
 
-    sqlite3_bind_int(stmt, 2, scan_id);
-    sqlite3_bind_text(stmt, 3, status,-1, NULL);
-    sqlite3_bind_text(stmt, 4, reason,-1, NULL);
-    sqlite3_bind_int(stmt, 5, id);
+    sqlite3_bind_text(stmt, 2, result,-1, NULL);
+    sqlite3_bind_text(stmt, 3, reason,-1, NULL);
+    sqlite3_bind_int(stmt, 4, id);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);

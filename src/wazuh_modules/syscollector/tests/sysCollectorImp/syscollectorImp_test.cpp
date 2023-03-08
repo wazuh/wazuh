@@ -53,14 +53,14 @@ void reportFunction(const std::string& /*payload*/)
     // std::cout << payload << std::endl;
 }
 
-void logFunction(const syscollector_log_level_t /*level*/, const std::string& /*log*/)
+void logFunction(const modules_log_level_t /*level*/, const std::string& /*log*/)
 {
-    // static const std::map<syscollector_log_level_t, std::string> s_logStringMap
+    // static const std::map<modules_log_level_t, std::string> s_logStringMap
     // {
-    //     {SYS_LOG_ERROR, "ERROR"},
-    //     {SYS_LOG_INFO, "INFO"},
-    //     {SYS_LOG_DEBUG, "DEBUG"},
-    //     {SYS_LOG_DEBUG_VERBOSE, "DEBUG2"}
+    //     {LOG_ERROR, "ERROR"},
+    //     {LOG_INFO, "INFO"},
+    //     {LOG_DEBUG, "DEBUG"},
+    //     {LOG_DEBUG_VERBOSE, "DEBUG2"}
     // };
     // std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
 }
@@ -449,6 +449,10 @@ TEST_F(SyscollectorImpTest, noHardware)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_hwinfo","data":{},"type":"integrity_clear"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -468,6 +472,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -617,6 +622,10 @@ TEST_F(SyscollectorImpTest, noOs)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_osinfo","data":{},"type":"integrity_clear"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -636,6 +645,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -760,6 +770,19 @@ TEST_F(SyscollectorImpTest, noNetwork)
     {
         R"({"component":"syscollector_hotfixes","data":{"begin":"KB12345678","end":"KB12345678"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult20
+    {
+        R"({"component":"syscollector_network_address","data":{},"type":"integrity_clear"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_network_protocol","data":{},"type":"integrity_clear"})"
+    };
+    const auto expectedResult22
+    {
+        R"({"component":"syscollector_network_iface","data":{},"type":"integrity_clear"})"
+    };
+
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -773,6 +796,9 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult22)).Times(1);
 
     std::thread t
     {
@@ -919,6 +945,11 @@ TEST_F(SyscollectorImpTest, noPackages)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_packages","data":{},"type":"integrity_clear"})"
+    };
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -937,6 +968,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -1085,6 +1117,10 @@ TEST_F(SyscollectorImpTest, noPorts)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_ports","data":{},"type":"integrity_clear"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -1104,7 +1140,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
-
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -1266,6 +1302,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -1433,6 +1470,12 @@ TEST_F(SyscollectorImpTest, noProcesses)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_processes","data":{},"type":"integrity_clear"})"
+    };
+
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -1451,7 +1494,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
-
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -1601,6 +1644,10 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+    const auto expectedResult19
+    {
+        R"({"component":"syscollector_hotfixes","data":{},"type":"integrity_clear"})"
+    };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -1620,6 +1667,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(wrapper, callbackMock(expectedResult16)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
 
     std::thread t
     {

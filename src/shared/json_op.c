@@ -71,7 +71,6 @@ end:
     return retval;
 }
 
-// Clear C/C++ style comments from a JSON string
 void json_strip(char * json) {
     char * line;
     char * cursor;
@@ -113,4 +112,35 @@ void json_strip(char * json) {
             *next++ = '\n';
         }
     }
+
+}
+
+int* json_parse_agents(const cJSON* agents) {
+    int *agent_ids = NULL;
+    int agents_size = 0;
+    int agent_index = 0;
+    int error_flag = 0;
+
+    agents_size = cJSON_GetArraySize(agents);
+
+    os_calloc(agents_size + 1, sizeof(int), agent_ids);
+    agent_ids[agent_index] = OS_INVALID;
+
+    while(!error_flag && (agent_index < agents_size)) {
+        cJSON *agent = cJSON_GetArrayItem(agents, agent_index);
+        if (agent->type == cJSON_Number) {
+            agent_ids[agent_index] = agent->valueint;
+            agent_ids[agent_index + 1] = OS_INVALID;
+        } else {
+            error_flag = 1;
+        }
+        agent_index++;
+    }
+
+    if (error_flag) {
+        os_free(agent_ids);
+        return NULL;
+    }
+
+    return agent_ids;
 }

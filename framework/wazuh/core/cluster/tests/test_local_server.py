@@ -1,6 +1,7 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import json
 import logging
 import sys
 from contextvars import ContextVar
@@ -113,6 +114,19 @@ def test_LocalServerHandler_get_health():
     lsh = LocalServerHandler(server=None, loop=loop, fernet_key=None, cluster_items={})
     with pytest.raises(NotImplementedError):
         lsh.get_health(filter_nodes=b"a")
+
+
+def test_LocalServerHandler_get_ruleset_hashes():
+    """Set the behavior of the get_ruleset_hashes function."""
+    class ServerMock:
+        def __init__(self):
+            self.node = MagicMock()
+
+    lsh = LocalServerHandler(server=ServerMock(), loop=loop, fernet_key=None, cluster_items={})
+    with patch("wazuh.core.cluster.local_server.cluster.get_ruleset_status",
+               return_value={'test_path': 'hash'}) as get_ruleset_status_mock:
+        assert lsh.get_ruleset_hashes() == (b'ok', json.dumps({'test_path': 'hash'}).encode())
+        get_ruleset_status_mock.assert_called_once()
 
 
 def test_LocalServerHandler_send_file_request():

@@ -32,7 +32,8 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
 
     Returns
     -------
-    AffectedItemsWazuhResult.
+    AffectedItemsWazuhResult
+        Affected items.
     """
     result = AffectedItemsWazuhResult(all_msg='AR command was sent to all agents',
                                       some_msg='AR command was not sent to some agents',

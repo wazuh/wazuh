@@ -331,7 +331,6 @@
       "data.sca.check.registry",
       "data.sca.check.remediation",
       "data.sca.check.result",
-      "data.sca.check.status",
       "data.sca.check.title",
       "data.sca.description",
       "data.sca.file",
@@ -1630,9 +1629,6 @@
                     "type": "keyword"
                   },
                   "reason": {
-                    "type": "keyword"
-                  },
-                  "status": {
                     "type": "keyword"
                   }
                 }

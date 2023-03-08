@@ -246,21 +246,6 @@ cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data) {
     return ret;
 }
 
-cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, __attribute__ ((__unused__)) cJSON *message) {
-    check_expected(daemon_name);
-
-    return mock_type(cJSON*);
-}
-
-int __wrap_w_send_clustered_message(const char* command, const char* payload, char* response) {
-    check_expected(command);
-    check_expected(payload);
-
-    strcpy(response, mock_type(char*));
-
-    return mock();
-}
-
 bool __wrap_wm_agent_upgrade_validate_task_ids_message(__attribute__ ((__unused__)) const cJSON *input_json, int *agent_id, int *task_id, char** data) {
     if (agent_id) *agent_id = mock();
     if (task_id) *task_id = mock();

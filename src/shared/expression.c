@@ -83,6 +83,10 @@ void w_free_expression_t(w_expression_t ** var) {
     os_free(*var);
 }
 
+void w_free_expression(w_expression_t * var) {
+    w_free_expression_t(&var);
+}
+
 bool w_expression_add_osip(w_expression_t ** var, char * ip) {
 
     unsigned int ip_s = 0;
@@ -190,7 +194,7 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
             if (match_data = pcre2_match_data_create_from_pattern(expression->pcre2->code, NULL), !match_data) {
                 break;
             }
-            captured_groups = pcre2_match(expression->pcre2->code, (PCRE2_SPTR) str_test, 
+            captured_groups = pcre2_match(expression->pcre2->code, (PCRE2_SPTR) str_test,
                                           strlen(str_test), 0, 0, match_data, NULL);
 
             /* successful match */
@@ -244,7 +248,6 @@ void w_expression_PCRE2_fill_regex_match(int captured_groups, const char * str_t
     os_realloc(*sub_strings, sizeof(char *) * captured_groups, *sub_strings);
     memset((void *) *sub_strings, 0, sizeof(char *) * captured_groups);
     str_sizes->sub_strings_size = sizeof(char *) * captured_groups;
-    str_sizes->prts_str_alloc_size = sizeof(char *) * (captured_groups - 1);
 
     ovector = pcre2_get_ovector_pointer(match_data);
     for (int i = 1; i < captured_groups; i++) {
@@ -308,7 +311,7 @@ const char * w_expression_get_regex_type(w_expression_t * expression) {
         case EXP_TYPE_PCRE2:
             retval = PCRE2_STR;
             break;
-        
+
         case EXP_TYPE_STRING:
             retval = STRING_STR;
             break;

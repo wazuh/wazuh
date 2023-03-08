@@ -2,18 +2,121 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from struct import pack
-from unittest.mock import patch
+import asyncio  # noqa
+import struct
+from unittest.mock import patch, AsyncMock, MagicMock, call
 
 import pytest
 
+from wazuh.core import common
 from wazuh.core import exception
-from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
+from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 
 
 def format_msg(msg):
-    return pack('<I', len(bytes(msg)))
+    return struct.pack('<I', len(bytes(msg)))
+
+
+def test_async_init():
+    """Verify that AsyncWazuhDBConnection attributes are correct."""
+    async_wdb = AsyncWazuhDBConnection('test')
+    assert async_wdb.socket_path == common.WDB_SOCKET
+    assert async_wdb.loop == 'test'
+    assert async_wdb._reader is None
+    assert async_wdb._writer is None
+
+
+@patch('asyncio.open_unix_connection', return_value=[AsyncMock(), MagicMock()])
+async def test_async_open_connection(open_unix_connection_mock):
+    """Verify that open_unix_connection is called with expected parameters."""
+    async_wdb = AsyncWazuhDBConnection(loop='test_loop')
+    await async_wdb.open_connection()
+    assert async_wdb._reader is not None
+    assert async_wdb._writer is not None
+    open_unix_connection_mock.assert_called_once_with(path=common.WDB_SOCKET, loop='test_loop')
+
+
+def test_async_close():
+    """Check whether stream close method is called."""
+    async_wdb = AsyncWazuhDBConnection()
+    async_wdb._writer = MagicMock()
+    async_wdb.close()
+    async_wdb._writer.close.assert_called_once_with()
+
+
+@pytest.mark.parametrize('raw, expected_response', [
+    (False, {'test': 'test response'}),
+    (True, ['ok', '{"test": "test response"}'])
+])
+async def test_async_send(raw, expected_response):
+    """Assert that expected response is returned and methods are called with expected parameters."""
+    msg = 'test message'
+    encoded_response = 'ok {"test": "test response"}'.encode(encoding='utf-8')
+    async_wdb = AsyncWazuhDBConnection()
+    async_wdb._reader = AsyncMock()
+    async_wdb._reader.readexactly.side_effect = [struct.pack('<I', len(encoded_response)), encoded_response]
+    async_wdb._writer = MagicMock()
+    async_wdb._writer.drain = AsyncMock()
+
+    result = await async_wdb._send(msg, raw=raw)
+
+    assert result == expected_response
+    async_wdb._writer.write.assert_called_once_with(
+        struct.pack('<I', len(msg.encode(encoding='utf-8'))) + msg.encode(encoding='utf-8'))
+    async_wdb._writer.drain.assert_called_once_with()
+    async_wdb._reader.readexactly.assert_has_calls([call(4), call(28)])
+
+
+async def test_async_send_ko():
+    """Verify that expected exception codes are raised."""
+    async_wdb = AsyncWazuhDBConnection()
+
+    # Reader and writer are None.
+    with pytest.raises(exception.WazuhInternalError, match=".* 2005 .*"):
+        await async_wdb._send('test')
+
+    # EOF reached before n can be read.
+    async_wdb._writer = MagicMock()
+    async_wdb._writer.drain = AsyncMock()
+    async_wdb._reader = AsyncMock()
+    async_wdb._reader.readexactly.side_effect = lambda x: exec('raise(asyncio.IncompleteReadError("test", 5))')
+    with pytest.raises(exception.WazuhInternalError, match=r'\b2010\b'):
+        await async_wdb._send('test')
+
+    # Wazuh-db error response.
+    encoded_response = 'err Error message'.encode(encoding='utf-8')
+    async_wdb._reader.readexactly.side_effect = [struct.pack('<I', len(encoded_response)), encoded_response]
+    with pytest.raises(exception.WazuhError, match=r'\b2003\b'):
+        await async_wdb._send('test')
+
+
+async def test_run_wdb_command():
+    """Test `WazuhDBConnection.run_wdb_command` method."""
+    send_result = ('status', '["data"]')
+    command = "any wdb command"
+
+    wdb_con = AsyncWazuhDBConnection()
+    with patch('wazuh.core.wdb.AsyncWazuhDBConnection._send', return_value=send_result) as wdb_send_mock:
+        result = await wdb_con.run_wdb_command(command)
+        wdb_send_mock.assert_called_once_with(command, raw=True)
+
+    assert result == send_result, 'Expected command response does not match'
+
+
+@pytest.mark.parametrize('wdb_response', [
+    ('err', 'Extra custom test message'),
+    ('err', )
+])
+async def test_run_wdb_command_ko(wdb_response):
+    """Test `WazuhDBConnection.run_wdb_command` method expected exceptions."""
+    with patch('wazuh.core.wdb.AsyncWazuhDBConnection._send', return_value=wdb_response):
+        wdb_con = AsyncWazuhDBConnection()
+        with pytest.raises(exception.WazuhInternalError, match=".* 2007 .*") as expected_exc:
+            await wdb_con.run_wdb_command("global sync-agent-info-get ")
+
+        if len(wdb_response) > 1:
+            assert wdb_response[1] in expected_exc.value.message, 'Extra message was not added to exception'
 
 
 def test_failed_connection():
@@ -127,36 +230,6 @@ def test_query_lower_private(send_mock, connect_mock):
     mywdb = WazuhDBConnection()
     with pytest.raises(exception.WazuhException, match=".* 2004 .*"):
         mywdb.execute("Agent sql select 'test'")
-
-
-@patch("socket.socket.connect")
-def test_run_wdb_command(connect_mock):
-    """Test `WazuhDBConnection.run_wdb_command` method."""
-    send_result = ('status', '["data"]')
-    command = "any wdb command"
-
-    wdb_con = WazuhDBConnection()
-    with patch('wazuh.core.wdb.WazuhDBConnection._send', return_value=send_result) as wdb_send_mock:
-        result = wdb_con.run_wdb_command(command)
-        wdb_send_mock.assert_called_once_with(command, raw=True)
-
-    assert result == send_result, 'Expected command response does not match'
-
-
-@pytest.mark.parametrize('wdb_response', [
-    ('err', 'Extra custom test message'),
-    ('err', )
-])
-@patch("socket.socket.connect")
-def test_run_wdb_command_ko(connect_mock, wdb_response):
-    """Test `WazuhDBConnection.run_wdb_command` method expected exceptions."""
-    with patch('wazuh.core.wdb.WazuhDBConnection._send', return_value=wdb_response):
-        wdb_con = WazuhDBConnection()
-        with pytest.raises(exception.WazuhInternalError, match=".* 2007 .*") as expected_exc:
-            wdb_con.run_wdb_command("global sync-agent-info-get ")
-
-        if len(wdb_response) > 1:
-            assert wdb_response[1] in expected_exc.value.message, 'Extra message was not added to exception'
 
 
 @patch("socket.socket.connect")

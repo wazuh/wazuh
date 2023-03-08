@@ -19,6 +19,7 @@ typedef char os_sha1[41];
 typedef char os_sha256[65];
 
 int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode);
+int __wrap_OS_MD5_Str(const char *str, ssize_t length, os_md5 output);
 void expect_OS_MD5_File_call(const char *fname, os_md5 output, int mode, int ret);
 
 int __wrap_OS_MD5_SHA1_SHA256_File(const char *fname, const char **prefilter_cmd, os_md5 md5output, os_sha1 sha1output,

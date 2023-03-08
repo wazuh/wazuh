@@ -66,11 +66,7 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
     }
     #endif
 
-    if (!nodes) {
-        return 0;
-    }
-
-    for(int i = 0; nodes[i]; i++)
+    for (int i = 0; nodes && nodes[i]; i++)
     {
         if(!nodes[i]->element) {
             merror(XML_ELEMNULL);

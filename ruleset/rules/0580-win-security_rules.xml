@@ -1,5 +1,5 @@
 <!--
-  -  Copyright (C) 2015, Wazuh Inc.
+  Copyright (C) 2015, Wazuh Inc.
 -->
 
 <!--
@@ -16,6 +16,9 @@
     <field name="win.system.severityValue">^INFORMATION$</field>
     <options>no_full_log</options>
     <description>Windows security informational event.</description>
+    <mitre>
+      <id>T1005</id>
+    </mitre>
   </rule>
 
   <rule id="60101" level="0">
@@ -23,6 +26,9 @@
     <field name="win.system.severityValue">^WARNING$</field>
     <options>no_full_log</options>
     <description>Windows security warning event.</description>
+    <mitre>
+      <id>T1005</id>
+    </mitre>
     <group>gpg13_4.12,</group>
   </rule>
 
@@ -31,6 +37,9 @@
     <field name="win.system.severityValue">^ERROR$</field>
     <options>no_full_log</options>
     <description>Windows security error event.</description>
+    <mitre>
+      <id>T1005</id>
+    </mitre>
     <group>gdpr_IV_35.7.d,gpg13_4.3,system_error,</group>
   </rule>
 
@@ -54,6 +63,9 @@
     <field name="win.system.eventID">^529$|^530$|^531$|^532$|^533$|^534$|^535$|^536$|^537$|^539$|^4625$</field>
     <options>no_full_log</options>
     <description>Windows logon failure.</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
     <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.1,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -250,6 +262,9 @@
     <field name="win.system.eventID">^530$</field>
     <options>no_full_log</options>
     <description>Logon failure - Account logon time restriction violation.</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.1,hipaa_164.312.a.1,hipaa_164.312.b,login_denied,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,pci_dss_8.1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -258,6 +273,9 @@
     <field name="win.system.eventID">^531$</field>
     <options>no_full_log</options>
     <description>Logon failure - Account currently disabled.</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.5,hipaa_164.312.a.1,hipaa_164.312.b,login_denied,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,pci_dss_8.1.4,tsc_CC6.2,tsc_CC6.3,tsc_CC6.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -266,6 +284,9 @@
     <field name="win.system.eventID">^532$</field>
     <options>no_full_log</options>
     <description>Logon failure - Specified account expired.</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.5,hipaa_164.312.a.1,hipaa_164.312.b,login_denied,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,pci_dss_8.1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -274,6 +295,9 @@
     <field name="win.system.eventID">^533$</field>
     <options>no_full_log</options>
     <description>Logon failure - User not allowed to login at this computer.</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.5,hipaa_164.312.b,login_denied,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -282,6 +306,9 @@
     <field name="win.system.eventID">^534$</field>
     <options>no_full_log</options>
     <description>Logon failure - User not granted logon type.</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.5,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -290,6 +317,9 @@
     <field name="win.system.eventID">^535$</field>
     <options>no_full_log</options>
     <description>Logon failure - Account's password expired.</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>authentication_failed,gdpr_IV_32.2,gpg13_7.5,hipaa_164.312.b,hipaa_164.312.d,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.5,pci_dss_10.2.5,pci_dss_8.2.4,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -298,6 +328,9 @@
     <field name="win.system.eventID">^536$|^537$</field>
     <options>no_full_log</options>
     <description>Logon failure - Internal error.</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>authentication_failed,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.1,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -344,6 +377,9 @@
     <field name="win.system.eventID">^631$|^635$|^658$</field>
     <options>no_full_log</options>
     <description>Security enabled group created.</description>
+    <mitre>
+      <id>T1484.001</id>
+    </mitre>
     <group>account_changed,adduser,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -352,6 +388,9 @@
     <field name="win.system.eventID">^634$|^638$|^662$</field>
     <options>no_full_log</options>
     <description>Security enabled group deleted.</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>account_changed,adduser,gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
@@ -549,7 +588,7 @@
 
   <rule id="60154" level="12">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^\p*S-1-5-32-544$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-544}$|^S-1-5-32-544$</field>
     <options>no_full_log</options>
     <description>Administrators group changed.</description>
     <mitre>
@@ -560,7 +599,7 @@
 
   <rule id="60155" level="5">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-1-0}$|^S-1-1-0$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-1-0}$|^S-1-1-0$</field>
     <options>no_full_log</options>
     <description>Everyone group changed.</description>
     <mitre>
@@ -571,7 +610,7 @@
 
   <rule id="60156" level="12">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-9}$|^S-1-5-9$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-9}$|^S-1-5-9$</field>
     <options>no_full_log</options>
     <description>Enterprise domain controllers group changed.</description>
     <mitre>
@@ -582,7 +621,7 @@
 
   <rule id="60157" level="5">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-11}$|^S-1-5-11$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-11}$|^S-1-5-11$</field>
     <options>no_full_log</options>
     <description>Authenticated users group changed.</description>
     <mitre>
@@ -593,7 +632,7 @@
 
   <rule id="60158" level="5">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-13}$|^S-1-5-13$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-13}$|^S-1-5-13$</field>
     <options>no_full_log</options>
     <description>Terminal server users group changed.</description>
     <mitre>
@@ -604,7 +643,7 @@
 
   <rule id="60159" level="12">
     <if_sid>60141,60142</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-512}$|^S-1-5-21\S+-512$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-512}$|^S-1-5-21\S+-512$</field>
     <options>no_full_log</options>
     <description>Domain admins group changed.</description>
     <mitre>
@@ -615,7 +654,7 @@
 
   <rule id="60160" level="5">
     <if_sid>60141,60142</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-513}$|^S-1-5-21\S+-513$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-513}$|^S-1-5-21\S+-513$</field>
     <options>no_full_log</options>
     <description>Domain users group changed.</description>
     <mitre>
@@ -634,7 +673,7 @@
 
   <rule id="60162" level="12">
     <if_sid>60141,60142</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-514}$|^S-1-5-21\S+-514$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-514}$|^S-1-5-21\S+-514$</field>
     <options>no_full_log</options>
     <description>Domain guests group changed.</description>
     <mitre>
@@ -645,7 +684,7 @@
 
   <rule id="60163" level="5">
     <if_sid>60141,60142</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-515}$|^S-1-5-21\S+-515$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-515}$|^S-1-5-21\S+-515$</field>
     <options>no_full_log</options>
     <description>Domain computers group changed.</description>
     <mitre>
@@ -656,7 +695,7 @@
 
   <rule id="60164" level="12">
     <if_sid>60141,60142</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-516}$|^S-1-5-21\S+-516$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-516}$|^S-1-5-21\S+-516$</field>
     <options>no_full_log</options>
     <description>Domain controllers group changed.</description>
     <mitre>
@@ -666,8 +705,8 @@
   </rule>
 
   <rule id="60165" level="10">
-    <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-517}$|^S-1-5-21\S+-517$</field>
+    <if_sid>60141,60142</if_sid>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-517}$|^S-1-5-21\S+-517$</field>
     <options>no_full_log</options>
     <description>Cert publishers group changed.</description>
     <mitre>
@@ -677,8 +716,8 @@
   </rule>
 
   <rule id="60166" level="12">
-    <if_sid>60141,60142</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-518}$|^S-1-5-21\S+-518$</field>
+    <if_sid>60149,60150,60151,60152,60141,60142</if_sid>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-518}$|^S-1-5-21\S+-518$</field>
     <options>no_full_log</options>
     <description>Schema admins group changed.</description>
     <mitre>
@@ -688,8 +727,8 @@
   </rule>
 
   <rule id="60167" level="12">
-    <if_sid>60149,60150,60151,60152</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-519}$|^S-1-5-21\S+-519$</field>
+    <if_sid>60149,60150,60151,60152,60141,60142</if_sid>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-519}$|^S-1-5-21\S+-519$</field>
     <options>no_full_log</options>
     <description>Enterprise admins group changed.</description>
     <mitre>
@@ -700,7 +739,7 @@
 
   <rule id="60168" level="10">
     <if_sid>60141,60142</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-520}$|^S-1-5-21\S+-520$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-520}$|^S-1-5-21\S+-520$</field>
     <options>no_full_log</options>
     <description>Group policy creator owners group changed.</description>
     <mitre>
@@ -711,7 +750,7 @@
 
   <rule id="60169" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-21\S+-553}$|^S-1-5-21\S+-553$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-553}$|^S-1-5-21\S+-553$</field>
     <options>no_full_log</options>
     <description>RAS and IAS servers group changed.</description>
     <mitre>
@@ -722,7 +761,7 @@
 
   <rule id="60170" level="5">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-545}$|^S-1-5-32\S+-545$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-545}$|^S-1-5-32-545$</field>
     <options>no_full_log</options>
     <description>Users group changed.</description>
     <mitre>
@@ -733,7 +772,7 @@
 
   <rule id="60171" level="12">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-546}$|^S-1-5-32\S+-546$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-546}$|^S-1-5-32-546$</field>
     <options>no_full_log</options>
     <description>Guests group changed.</description>
     <mitre>
@@ -744,7 +783,7 @@
 
   <rule id="60172" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-547}$|^S-1-5-32\S+-547$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-547}$|^S-1-5-32-547$</field>
     <options>no_full_log</options>
     <description>Power users group changed.</description>
     <mitre>
@@ -755,7 +794,7 @@
 
   <rule id="60173" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-548}$|^S-1-5-32\S+-548$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-548}$|^S-1-5-32-548$</field>
     <options>no_full_log</options>
     <description>Account operators group changed.</description>
     <mitre>
@@ -766,7 +805,7 @@
 
   <rule id="60174" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-549}$|^S-1-5-32\S+-549$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-549}$|^S-1-5-32-549$</field>
     <options>no_full_log</options>
     <description>Server operators group changed.</description>
     <mitre>
@@ -777,18 +816,18 @@
 
   <rule id="60175" level="8">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-550}$|^S-1-5-32\S+-550$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-550}$|^S-1-5-32-550$</field>
     <options>no_full_log</options>
     <description>Print operators group changed.</description>
     <mitre>
-      <id>T1484</id>
+      <id>T1484.001</id>
     </mitre>
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,group_changed,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,win_group_changed,</group>
   </rule>
 
   <rule id="60176" level="12">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-551}$|^S-1-5-32\S+-551$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-551}$|^S-1-5-32-551$</field>
     <options>no_full_log</options>
     <description>Backup operators group changed.</description>
     <mitre>
@@ -799,7 +838,7 @@
 
   <rule id="60177" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-552}$|^S-1-5-32\S+-552$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-552}$|^S-1-5-32-552$</field>
     <options>no_full_log</options>
     <description>Replicators group changed.</description>
     <mitre>
@@ -810,18 +849,18 @@
 
   <rule id="60178" level="8">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-554}$|^S-1-5-32\S+-554$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-554}$|^S-1-5-32-554$</field>
     <options>no_full_log</options>
     <description>Pre-Windows 2000 compatible access group changed.</description>
     <mitre>
-      <id>T1484</id>
+      <id>T1484.001</id>
     </mitre>
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,group_changed,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,win_group_changed,</group>
   </rule>
 
   <rule id="60179" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-555}$|^S-1-5-32\S+-555$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-555}$|^S-1-5-32-555$</field>
     <options>no_full_log</options>
     <description>Remote desktop users group changed.</description>
     <mitre>
@@ -832,7 +871,7 @@
 
   <rule id="60180" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-556}$|^S-1-5-32\S+-556$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-556}$|^S-1-5-32-556$</field>
     <options>no_full_log</options>
     <description>Network configuration operators group changed.</description>
     <mitre>
@@ -843,7 +882,7 @@
 
   <rule id="60181" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-557}$|^S-1-5-32\S+-557$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-557}$|^S-1-5-32-557$</field>
     <options>no_full_log</options>
     <description>Incoming forest trust builders group changed.</description>
     <mitre>
@@ -854,62 +893,62 @@
 
   <rule id="60182" level="8">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-558}$|^S-1-5-32\S+-558$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-558}$|^S-1-5-32-558$</field>
     <options>no_full_log</options>
     <description>Performance monitor users group changed.</description>
     <mitre>
-      <id>T1484</id>
+      <id>T1484.001</id>
     </mitre>
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,group_changed,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,win_group_changed,</group>
   </rule>
 
   <rule id="60183" level="8">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-559}$|^S-1-5-32\S+-559$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-559}$|^S-1-5-32-559$</field>
     <options>no_full_log</options>
     <description>Performance log users group changed.</description>
     <mitre>
-      <id>T1484</id>
+      <id>T1484.001</id>
     </mitre>
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,group_changed,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,win_group_changed,</group>
   </rule>
 
   <rule id="60184" level="8">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-560}$|^S-1-5-32\S+-560$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-560}$|^S-1-5-32-560$</field>
     <options>no_full_log</options>
     <description>Windows authorization access group changed.</description>
     <mitre>
-      <id>T1484</id>
+      <id>T1484.001</id>
     </mitre>
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,group_changed,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,win_group_changed,</group>
   </rule>
 
   <rule id="60185" level="8">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-561}$|^S-1-5-32\S+-561$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-561}$|^S-1-5-32-561$</field>
     <options>no_full_log</options>
     <description>Terminal server license servers group changed.</description>
     <mitre>
-      <id>T1484</id>
+      <id>T1484.001</id>
     </mitre>
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,group_changed,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,win_group_changed,</group>
   </rule>
 
   <rule id="60186" level="8">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32\S+-562}$|^S-1-5-32\S+-562$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-562}$|^S-1-5-32-562$</field>
     <options>no_full_log</options>
     <description>Distributed COM users group changed.</description>
     <mitre>
-      <id>T1484</id>
+      <id>T1484.001</id>
     </mitre>
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,group_changed,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,win_group_changed,</group>
   </rule>
 
   <rule id="60187" level="12">
-    <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-\s*21\s*-498}$|^S-1-5-\s*21\s*-498$</field>
+    <if_sid>60149,60150,60151,60152</if_sid>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-498}$|^S-1-5-21\S+-498$</field>
     <options>no_full_log</options>
     <description>Enterprise read-only domain controllers group changed.</description>
     <mitre>
@@ -919,8 +958,8 @@
   </rule>
 
   <rule id="60188" level="12">
-    <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-\s*21\s*-529}$|^S-1-5-\s*21\s*-529$</field>
+    <if_sid>60141,60142</if_sid>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-521}$|^S-1-5-21\S+-521$</field>
     <options>no_full_log</options>
     <description>Read-only domain controllers group changed.</description>
     <mitre>
@@ -931,7 +970,7 @@
 
   <rule id="60189" level="12">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32-569}$|^S-1-5-32-569$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-569}$|^S-1-5-32-569$</field>
     <options>no_full_log</options>
     <description>Cryptographic operators group changed.</description>
     <mitre>
@@ -942,7 +981,7 @@
 
   <rule id="60190" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-\s*21\s*-571}$|^S-1-5-\s*21\s*-571$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-571}$|^S-1-5-21\S+-571$</field>
     <options>no_full_log</options>
     <description>Allowed RODC password replication group changed.</description>
     <mitre>
@@ -953,7 +992,7 @@
 
   <rule id="60191" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-\s*21\s*-572}$|^S-1-5-\s*21\s*-572$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-21\S+-572}$|^S-1-5-21\S+-572$</field>
     <options>no_full_log</options>
     <description>Denied RODC password replication group changed.</description>
     <mitre>
@@ -964,7 +1003,7 @@
 
   <rule id="60192" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32-573}$|^S-1-5-32-573$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-573}$|^S-1-5-32-573$</field>
     <options>no_full_log</options>
     <description>Event log readers group changed.</description>
     <mitre>
@@ -975,7 +1014,7 @@
 
   <rule id="60193" level="10">
     <if_sid>60144,60145</if_sid>
-    <field name="win.eventdata.subjectUserSid">^%{S-1-5-32-574}$|^S-1-5-32-574$</field>
+    <field name="win.eventdata.targetSid">^%{S-1-5-32-574}$|^S-1-5-32-574$</field>
     <options>no_full_log</options>
     <description>Certificate service DCOM access group changed.</description>
     <mitre>
@@ -1052,6 +1091,9 @@
     <field name="win.system.eventID">^634$|^4730$</field>
     <options>no_full_log</options>
     <description>Security enabled global group deleted $(win.eventdata.memberSid).</description>
+    <mitre>
+      <id>T1531</id>
+    </mitre>
     <group>gdpr_IV_32.2,gdpr_IV_35.7.d,gpg13_7.10,group_deleted,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_IA.4,pci_dss_10.2.5,pci_dss_8.1.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,win_group_deleted,</group>
   </rule>
 

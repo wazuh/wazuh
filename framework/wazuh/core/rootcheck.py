@@ -16,8 +16,40 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
         'cis': 'cis'
     }
 
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, distinct,
-                 default_sort_field='date_last', filters=None, fields=fields):
+    def __init__(self, agent_id: str, offset: int, limit: int, sort: dict, search: dict, select: list, query: str,
+                 count: bool, get_data: bool, distinct: bool, default_sort_field: str = 'date_last',
+                 filters: dict = None, fields: dict = fields):
+        """Class constructor.
+
+        Parameters
+        ----------
+        agent_id : str
+            Agent ID.
+        offset : int
+            First item to return.
+        limit : int
+            Maximum number of items to return.
+        sort : dict
+            Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        select : list
+            Select fields to return. Format: ["field1","field2"].
+        search : dict
+            Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+        filters : dict
+            Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+        query : str
+            Query to filter in database. Format: field operator value.
+        default_sort_field : str
+            By default, return elements sorted by this field. Default: 'date_last'
+        count : bool
+            Whether to compute totalItems or not.
+        get_data : bool
+            Whether to return data or not.
+        fields : dict
+            Rootcheck fields.
+        distinct : bool
+            Look for distinct values.
+        """
 
         if filters is None:
             filters = {}
@@ -30,10 +62,18 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
                               min_select_fields=set(), count=count, get_data=get_data, distinct=distinct,
                               date_fields={'date_first', 'date_last'})
 
-    def _default_query(self):
+    def _default_query(self) -> str:
+        """Get default query.
+
+        Returns
+        -------
+        str
+            Default query.
+        """
         return "SELECT {0} FROM " if not self.distinct else "SELECT DISTINCT {0} FROM "
 
     def _parse_filters(self):
+        """Parse query filters."""
         if self.legacy_filters:
             self._parse_legacy_filters()
         if self.q:
@@ -48,7 +88,19 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
             self.query_filters.insert(0, statuses[0])
             self.query_filters[-1]['separator'] = ''
 
-    def _filter_status(self, filter_status):
+    def _filter_status(self, filter_status: dict):
+        """Add status filter to query.
+
+        Parameters
+        ----------
+        filter_status : dict
+            Dictionary containing the filters to add.
+
+        Raises
+        ------
+        WazuhException(1603)
+            Invalid status. Valid statuses are: all, solved and outstanding.
+        """
         partial = "SELECT {0} AS status, date_first, date_last, log, pci_dss, cis FROM pm_event AS t WHERE " \
                   "date_last {1} (SELECT date_last-86400 FROM pm_event WHERE log = 'Ending rootcheck scan.')"
         log_not_in = ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', " \
@@ -84,11 +136,18 @@ class WazuhDBQueryRootcheck(WazuhDBQuery):
         return False
 
 
-def last_scan(agent_id):
+def last_scan(agent_id: str) -> dict:
     """Get the last rootcheck scan of an agent.
 
-    :param agent_id: Agent ID.
-    :return: Dictionary: end, start.
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+
+    Returns
+    -------
+    dict
+        Dictionary: end, start.
     """
     Agent(agent_id).get_basic_information()
     wdb_conn = WazuhDBConnection()
@@ -110,4 +169,13 @@ def last_scan(agent_id):
 
 
 def rootcheck_delete_agent(agent: str, wdb_conn: WazuhDBConnection) -> None:
+    """Send message to wdb to delete the rootcheck DB of an agent.
+
+    Parameters
+    ----------
+    agent : str
+        Agent ID.
+    wdb_conn : WazuhDBConnection
+        Object representing the connection to the wdb socket.
+    """
     wdb_conn.execute(f"agent {agent} rootcheck delete", delete=True)

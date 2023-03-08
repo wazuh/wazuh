@@ -14,25 +14,26 @@ from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, inva
     load_spec, sanitize_rbac_policy, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
-from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
-    UserRolesManager, RolesRulesManager, RulesManager
-from wazuh.rbac.orm import SecurityError, max_id_reserved
+from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager
+from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
+from wazuh.rbac.orm import UserRolesManager, RolesRulesManager, RulesManager
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
 
 
-def get_user_me(token):
-    """Get the information of the current user
+def get_user_me(token: dict) -> AffectedItemsWazuhResult:
+    """Get the information of the current user.
 
     Parameters
     ----------
     token : dict
-        Current token information
+        Current token information.
 
     Returns
     -------
-    AffectedItemsWazuhResult with the desired information
+    AffectedItemsWazuhResult
+        User information.
     """
     result = AffectedItemsWazuhResult(all_msg='Current user information was returned')
     affected_items = list()
@@ -67,33 +68,34 @@ def get_user_me(token):
                   post_proc_kwargs={'exclude_codes': [5001]})
 def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
               sort_ascending: bool = True, search_text: str = None, select: str = None,
-              complementary_search: bool = False, search_in_fields: list = None):
-    """Get the information of a specified user
+              complementary_search: bool = False, search_in_fields: list = None) -> AffectedItemsWazuhResult:
+    """Get the information of a specified user.
 
     Parameters
     ----------
     user_ids : list
-        List of user ids
+        List of user ids.
     offset : int
-        First item to return
+        First item to return.
     limit : int
-        Maximum number of items to return
+        Maximum number of items to return.
     sort_by : dict
         Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
     sort_ascending : bool
-        Sort in ascending (true) or descending (false) order
+        Sort in ascending (true) or descending (false) order.
     search_text : str
-        Text to search
+        Text to search.
     select : str
-        Select which fields to return (separated by comma)
+        Select which fields to return (separated by comma).
     complementary_search : bool
-        Find items without the text to search
+        Find items without the text to search.
     search_in_fields : list
-        Fields to search in
+        Fields to search in.
 
     Returns
     -------
-    AffectedItemsWazuhResult with the desired information
+    AffectedItemsWazuhResult
+        User information.
     """
     result = AffectedItemsWazuhResult(none_msg='No user was returned',
                                       some_msg='Some users were not returned',
@@ -116,20 +118,20 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABA
 
 
 @expose_resources(actions=['security:edit_run_as'], resources=['*:*:*'])
-def edit_run_as(user_id: str = None, allow_run_as: bool = False):
-    """Enable/Disable the user's allow_run_as flag
+def edit_run_as(user_id: str = None, allow_run_as: bool = False) -> AffectedItemsWazuhResult:
+    """Enable/Disable the user's allow_run_as flag.
 
     Parameters
     ----------
     user_id : str
-        User ID
+        User ID.
     allow_run_as : bool
-        Enable or disable authorization context login method for the specified user
+        Enable or disable authorization context login method for the specified user.
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
-        Status message
+    AffectedItemsWazuhResult
+        Status message.
     """
     result = AffectedItemsWazuhResult(none_msg=f"The parameter allow_run_as could not be "
                                                f"{'enabled' if allow_run_as else 'disabled'} for the user",
@@ -151,20 +153,20 @@ def edit_run_as(user_id: str = None, allow_run_as: bool = False):
 
 
 @expose_resources(actions=['security:create_user'], resources=['*:*:*'])
-def create_user(username: str = None, password: str = None):
-    """Create a new user
+def create_user(username: str = None, password: str = None) -> AffectedItemsWazuhResult:
+    """Create a new user.
 
     Parameters
     ----------
     username : str
-        Name for the new user
+        Name for the new user.
     password : str
-        Password for the new user
+        Password for the new user.
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
-        Status message
+    AffectedItemsWazuhResult
+        Status message.
     """
     if len(password) > 64 or len(password) < 8:
         raise WazuhError(5009)
@@ -188,19 +190,30 @@ def create_user(username: str = None, password: str = None):
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id: str = None, password: str = None):
+def update_user(user_id: str = None, password: str = None, current_user: str = None) -> AffectedItemsWazuhResult:
     """Update a specified user
 
     Parameters
     ----------
     user_id : list
-        User ID
+        User ID.
     password : str
-        Password for the new user
+        Password for the new user.
+    current_user : str
+        Name of the user that made the request.
+    Raises
+    ------
+    WazuhError(4001)
+        If no password is provided.
+    WazuhError(5009)
+        Insecure user password provided (length).
+    WazuhError(5007)
+        Insecure user password provided (variety of characters).
 
     Returns
     -------
-    Status message
+    AffectedItemsWazuhResult
+        Status message.
     """
     if password is None:
         raise WazuhError(4001)
@@ -209,6 +222,14 @@ def update_user(user_id: str = None, password: str = None):
             raise WazuhError(5009)
         elif not _user_password.match(password):
             raise WazuhError(5007)
+
+        if int(user_id[0]) <= MAX_ID_RESERVED and current_user is not None:
+            with AuthenticationManager() as auth_manager:
+                current_user_id = auth_manager.get_user(current_user)['id']
+
+            if current_user_id > MAX_ID_RESERVED:
+                raise WazuhError(5011)
+
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
@@ -225,17 +246,18 @@ def update_user(user_id: str = None, password: str = None):
 
 @expose_resources(actions=['security:delete'], resources=['user:id:{user_ids}'],
                   post_proc_kwargs={'exclude_codes': [5001, 5004, 5008]})
-def remove_users(user_ids):
-    """Remove a specified list of users
+def remove_users(user_ids: list) -> AffectedItemsWazuhResult:
+    """Remove a specified list of users.
 
     Parameters
     ----------
     user_ids : list
-        List of IDs
+        List of IDs.
 
     Returns
     -------
-    Status message
+    AffectedItemsWazuhResult
+        Status message.
     """
     result = AffectedItemsWazuhResult(none_msg='No user was deleted',
                                       some_msg='Some users were not deleted',
@@ -244,7 +266,7 @@ def remove_users(user_ids):
         for user_id in user_ids:
             user_id = int(user_id)
             current_user = auth.get_user(common.current_user.get())
-            if not isinstance(current_user, bool) and user_id == int(current_user['id']) and user_id > max_id_reserved:
+            if not isinstance(current_user, bool) and user_id == int(current_user['id']) and user_id > MAX_ID_RESERVED:
                 result.add_failed_item(id_=user_id, error=WazuhError(5008))
                 continue
             user = auth.get_user_id(user_id)
@@ -266,34 +288,36 @@ def remove_users(user_ids):
 
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002]})
-def get_roles(role_ids=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None, select=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
+              select: str = None, sort_ascending: bool = True, search_text: str = None,
+              complementary_search: bool = False, search_in_fields: list = None) -> AffectedItemsWazuhResult:
     """Return information from all system roles, does not return information from its associated policies.
 
     Parameters
     ----------
     role_ids : list, optional
-        List of roles ids to be obtained
+        List of roles ids to be obtained.
     offset : int, optional
-        First item to return
+        First item to return.
     limit : int, optional
-        Maximum number of items to return
+        Maximum number of items to return.
     sort_by : dict
         Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
     sort_ascending : bool
-        Sort in ascending (true) or descending (false) order
+        Sort in ascending (true) or descending (false) order.
     search_text : str
-        Text to search
+        Text to search.
     select : str
-        Select which fields to return (separated by comma)
+        Select which fields to return (separated by comma).
     complementary_search : bool
-        Find items without the text to search
+        Find items without the text to search.
     search_in_fields : list
-        Fields to search in
+        Fields to search in.
 
     Returns
     -------
-    Roles information
+    AffectedItemsWazuhResult
+        Roles information.
     """
     affected_items = list()
     result = AffectedItemsWazuhResult(none_msg='No role was returned',
@@ -319,11 +343,18 @@ def get_roles(role_ids=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None
 
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008]})
-def remove_roles(role_ids):
-    """Removes a certain role from the system
+def remove_roles(role_ids: list) -> AffectedItemsWazuhResult:
+    """Remove a certain role from the system.
 
-    :param role_ids: List of roles ids (None for all roles)
-    :return Result of operation
+    Parameters
+    ----------
+    role_ids : list
+        List of role ids (None for all roles).
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
     result = AffectedItemsWazuhResult(none_msg='No role was deleted',
                                       some_msg='Some roles were not deleted',
@@ -349,11 +380,18 @@ def remove_roles(role_ids):
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
-def add_role(name=None):
-    """Creates a role in the system
+def add_role(name: str = None) -> AffectedItemsWazuhResult:
+    """Create a role in the system.
 
-    :param name: The new role name
-    :return Role information
+    Parameters
+    ----------
+    name : str
+        New role name.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
     result = AffectedItemsWazuhResult(none_msg='Role was not created',
                                       all_msg='Role was successfully created')
@@ -371,12 +409,25 @@ def add_role(name=None):
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}'])
-def update_role(role_id=None, name=None):
-    """Updates a role in the system
+def update_role(role_id: str = None, name: str = None) -> AffectedItemsWazuhResult:
+    """Update a role in the system.
 
-    :param role_id: Role id to be update
-    :param name: The new role name
-    :return Role information
+    Parameters
+    ----------
+    role_id : str
+        Role ID.
+    name : str
+        New role name.
+
+    Raises
+    ------
+    WazuhError(4001)
+        If no name is provided.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
     if name is None:
         raise WazuhError(4001)
@@ -403,34 +454,36 @@ def update_role(role_id=None, name=None):
 
 @expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007]})
-def get_policies(policy_ids, offset=0, limit=common.DATABASE_LIMIT, sort_by=None, select=None,
-                 sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
+                 select: str = None, sort_ascending: bool = True, search_text: str = None,
+                 complementary_search: bool = False, search_in_fields: list = None) -> AffectedItemsWazuhResult:
     """Return the information of a certain policy.
 
     Parameters
     ----------
     policy_ids : list
-        ID of the policy on which the information will be collected (All for all policies)
+        ID of the policy on which the information will be collected (All for all policies).
     offset : int
-        First item to return
+        First item to return.
     limit : int
-        Maximum number of items to return
+        Maximum number of items to return.
     sort_by : dict
         Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
     sort_ascending : bool
-        Sort in ascending (true) or descending (false) order
+        Sort in ascending (true) or descending (false) order.
     search_text : str
-        Text to search
+        Text to search.
     select : str
-        Select which fields to return (separated by comma)
+        Select which fields to return (separated by comma).
     complementary_search : bool
-        Find items without the text to search
+        Find items without the text to search.
     search_in_fields : list
-        Fields to search in
+        Fields to search in.
 
     Returns
     -------
-    Policies information
+    AffectedItemsWazuhResult
+        Policies information.
     """
     result = AffectedItemsWazuhResult(none_msg='No policy was returned',
                                       some_msg='Some policies were not returned',
@@ -456,11 +509,18 @@ def get_policies(policy_ids, offset=0, limit=common.DATABASE_LIMIT, sort_by=None
 
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007, 4008]})
-def remove_policies(policy_ids=None):
-    """Removes a certain policy from the system
+def remove_policies(policy_ids: list = None) -> AffectedItemsWazuhResult:
+    """Remove policies from the system.
 
-    :param policy_ids: ID of the policy to be removed (All for all policies)
-    :return Result of operation
+    Parameters
+    ----------
+    policy_ids : list
+        IDs of the policies to be removed (All for all policies).
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of operation.
     """
     result = AffectedItemsWazuhResult(none_msg='No policy was deleted',
                                       some_msg='Some policies were not deleted',
@@ -487,12 +547,20 @@ def remove_policies(policy_ids=None):
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'],
                   post_proc_kwargs={'exclude_codes': [4006, 4009]})
-def add_policy(name=None, policy=None):
-    """Creates a policy in the system
+def add_policy(name: str = None, policy: dict = None) -> AffectedItemsWazuhResult:
+    """Create a policy in the system.
 
-    :param name: The new policy name
-    :param policy: The new policy
-    :return Policy information
+    Parameters
+    ----------
+    policy : dict
+        New policy.
+    name : str
+        New policy name.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
     result = AffectedItemsWazuhResult(none_msg='Policy was not created',
                                       all_msg='Policy was successfully created')
@@ -511,13 +579,27 @@ def add_policy(name=None, policy=None):
 
 
 @expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'])
-def update_policy(policy_id=None, name=None, policy=None):
-    """Updates a policy in the system
+def update_policy(policy_id: str = None, name: str = None, policy: dict = None) -> AffectedItemsWazuhResult:
+    """Update a policy in the system
 
-    :param policy_id: Policy id to be update
-    :param name: The new policy name
-    :param policy: The new policy
-    :return Policy information
+    Parameters
+    ----------
+    policy_id : str
+        Policy id to be updated.
+    policy : dict
+        New policy.
+    name : str
+        New policy name.
+
+    Raises
+    ------
+    WazuhError(4001)
+        If no name nor policy are provided.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
     if name is None and policy is None:
         raise WazuhError(4001)
@@ -545,34 +627,36 @@ def update_policy(policy_id=None, name=None, policy=None):
 
 @expose_resources(actions=['security:read'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022]})
-def get_rules(rule_ids=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None, select=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
+              select: str = None, sort_ascending: bool = True, search_text: str = None,
+              complementary_search: bool = False, search_in_fields: list = None) -> AffectedItemsWazuhResult:
     """Return information from all the security rules. It does not return information from its associated roles.
 
     Parameters
     ----------
     rule_ids : list
-        List of rule ids (None for all rules)
+        List of rule ids (None for all rules).
     offset : int
-        First item to return
+        First item to return.
     limit : int, optional
-        Maximum number of items to return
+        Maximum number of items to return.
     sort_by : dict
         Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
     sort_ascending : bool
-        Sort in ascending (true) or descending (false) order
+        Sort in ascending (true) or descending (false) order.
     search_text : str
-        Text to search
+        Text to search.
     select : str
-        Select which fields to return (separated by comma)
+        Select which fields to return (separated by comma).
     complementary_search : bool
-        Find items without the text to search
+        Find items without the text to search.
     search_in_fields : list
-        Fields to search in
+        Fields to search in.
 
     Returns
     -------
-    Rules information
+    AffectedItemsWazuhResult
+        Rules information.
     """
     affected_items = list()
     result = AffectedItemsWazuhResult(none_msg='No security rule was returned',
@@ -598,12 +682,20 @@ def get_rules(rule_ids=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None
 
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
-def add_rule(name=None, rule=None):
+def add_rule(name: str = None, rule: dict = None) -> AffectedItemsWazuhResult:
     """Create a rule in the system.
 
-    :param name: The new rule name
-    :param rule: The new rule
-    :return Rule information
+    Parameters
+    ----------
+    rule : dict
+        New rule.
+    name : str
+        New rule name.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
     result = AffectedItemsWazuhResult(none_msg='Security rule was not created',
                                       all_msg='Security rule was successfully created')
@@ -622,11 +714,18 @@ def add_rule(name=None, rule=None):
 
 @expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022, 4008]})
-def remove_rules(rule_ids=None):
+def remove_rules(rule_ids: list = None) -> AffectedItemsWazuhResult:
     """Remove a rule from the system.
 
-    :param rule_ids: List of rule ids (None for all rules)
-    :return Result of operation
+    Parameters
+    ----------
+    rule_ids
+        Listo of rule ids (None for all rules).
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
     result = AffectedItemsWazuhResult(none_msg='No security rule was deleted',
                                       some_msg='Some security rules were not deleted',
@@ -652,13 +751,27 @@ def remove_rules(rule_ids=None):
 
 
 @expose_resources(actions=['security:update'], resources=['rule:id:{rule_id}'])
-def update_rule(rule_id=None, name=None, rule=None):
+def update_rule(rule_id: str = None, name: str = None, rule: dict = None) -> AffectedItemsWazuhResult:
     """Update a rule from the system.
 
-    :param rule_id: Rule id to be updated
-    :param name: The new name
-    :param rule: The new rule
-    :return Rule information
+    Parameters
+    ----------
+    rule_id : str
+        Rule id to be updated.
+    rule : dict
+        New rule.
+    name : str
+        New rule name.
+
+    Raises
+    ------
+    WazuhError(4001)
+        If no name nor rule are provided.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
     if name is None and rule is None:
         raise WazuhError(4001)
@@ -683,17 +796,18 @@ def update_rule(rule_id=None, name=None, rule=None):
     return result
 
 
-def get_username(user_id):
-    """Return the username of the specified user_id
+def get_username(user_id: str) -> AffectedItemsWazuhResult:
+    """Return the username of the specified user_id.
 
     Parameters
     ----------
-    user_id : list
+    user_id : str
         User ID
 
     Returns
     -------
-    username if the user_id exists, unknown in other case
+    AffectedItemsWazuhResult
+        Username if the user_id exists, unknown in other case.
     """
     with AuthenticationManager() as am:
         user = am.get_user_id(user_id=int(user_id[0]))
@@ -704,22 +818,27 @@ def get_username(user_id):
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4017, 4008, 5001]})
-def set_user_role(user_id, role_ids, position=None):
+def set_user_role(user_id: list, role_ids: list, position: int = None) -> AffectedItemsWazuhResult:
     """Create a relationship between a user and a role.
 
     Parameters
     ----------
     user_id : list
-        User ID
-    role_ids : list of int
-        List of role ids
+        User ID.
+    role_ids : list
+        List of role ids.
     position : int
-        Position where the new role will be inserted
+        Position where the new role will be inserted.
+
+    Raises
+    ------
+    WazuhError(4018)
+        If position is a negative number.
 
     Returns
     -------
-    Dict
-        User-Roles information
+    AffectedItemsWazuhResult
+        User-Roles information.
     """
     if position is not None and position < 0:
         raise WazuhError(4018)
@@ -759,20 +878,25 @@ def set_user_role(user_id, role_ids, position=None):
                   post_proc_func=None)
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4016, 4008]})
-def remove_user_role(user_id, role_ids):
+def remove_user_role(user_id: str, role_ids: list) -> AffectedItemsWazuhResult:
     """Remove a relationship between a user and a role.
 
     Parameters
     ----------
     user_id : list
-        User ID
-    role_ids : list of int
-        List of role ids
+        User ID.
+    role_ids : list
+        List of role ids.
+
+    Raises
+    ------
+    WazuhResourceNotFound(5001)
+        If the user does not exist.
 
     Returns
     -------
-    Dict
-        User-Roles information
+    AffectedItemsWazuhResult
+        User-Roles information.
     """
     username = get_username(user_id=user_id)
     if username == 'unknown':
@@ -805,21 +929,22 @@ def remove_user_role(user_id, role_ids):
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4023]})
-def set_role_rule(role_id, rule_ids, run_as=False):
+def set_role_rule(role_id: str, rule_ids: list, run_as: bool = False) -> AffectedItemsWazuhResult:
     """Create a relationship between a role and one or more rules.
 
     Parameters
     ----------
-    role_id : int
-        The new role_id
-    rule_ids : list of int
-        List of rule ids
+    role_id : str
+        The new role_id.
+    rule_ids : list
+        List of rule ids.
     run_as : dict
-        Login with an authorization context or not
+        Login with an authorization context or not.
 
     Returns
     -------
-
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
 
     result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
@@ -854,12 +979,25 @@ def set_role_rule(role_id, rule_ids, run_as=False):
                   post_proc_func=None)
 @expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4008, 4022, 4024]})
-def remove_role_rule(role_id, rule_ids):
+def remove_role_rule(role_id: str, rule_ids: list) -> AffectedItemsWazuhResult:
     """Remove a relationship between a role and one or more rules.
 
-    :param role_id: The new role_id
-    :param rule_ids: List of rule ids
-    :return Result of operation
+    Parameters
+    ----------
+    role_id : str
+        The new role_id.
+    rule_ids : list
+        List of rule ids.
+
+    Raises
+    ------
+    WazuhResourceNotFound(4002)
+        If the role does not exist.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the operation.
     """
 
     role = get_role(role_id[0])
@@ -895,22 +1033,22 @@ def remove_role_rule(role_id, rule_ids):
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4011]})
-def set_role_policy(role_id, policy_ids, position=None):
-    """Create a relationship between a role and a policy
+def set_role_policy(role_id: str, policy_ids: list, position: int = None) -> AffectedItemsWazuhResult:
+    """Create a relationship between a role and a policy.
 
     Parameters
     ----------
-    role_id : int
-        The new role_id
-    policy_ids : list of int
-        List of policy IDs
+    role_id : str
+        The new role_id.
+    policy_ids : list
+        List of policy IDs.
     position : int
-        Position where the new role will be inserted
+        Position where the new role will be inserted.
 
     Returns
     -------
-    dict
-        Role-Policies information
+    AffectedItemsWazuhResult
+        Role-Policies information.
     """
     result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
                                       some_msg=f'Some policies were not linked to role {role_id[0]}',
@@ -943,7 +1081,7 @@ def set_role_policy(role_id, policy_ids, position=None):
     return result
 
 
-def get_role(role_id):
+def get_role(role_id: str) -> bool:
     """Return the role name of the specified role_id.
 
     Parameters
@@ -953,8 +1091,8 @@ def get_role(role_id):
 
     Returns
     -------
-    role_check : bool
-        True if the role_id exists, False in other case.
+    bool
+        True if the role_id exists, False otherwise.
     """
 
     role_check = False
@@ -971,12 +1109,25 @@ def get_role(role_id):
                   post_proc_func=None)
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007, 4008, 4010]})
-def remove_role_policy(role_id, policy_ids):
-    """Removes a relationship between a role and a policy
+def remove_role_policy(role_id: str, policy_ids: list) -> AffectedItemsWazuhResult:
+    """Remove a relationship between a role and a policy
 
-    :param role_id: The new role_id
-    :param policy_ids: List of policies ids
-    :return Result of operation
+    Parameters
+    ----------
+    role_id : str
+        The new role_id.
+    policy_ids : list
+        List of policy IDs.
+
+    Raises
+    ------
+    WazuhResourceNotFound(4002)
+        If the role does not exist.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+         Result of operation.
     """
 
     role = get_role(role_id[0])
@@ -1011,8 +1162,14 @@ def remove_role_policy(role_id, policy_ids):
     return result
 
 
-def revoke_current_user_tokens():
-    """Revoke all current user's tokens"""
+def revoke_current_user_tokens() -> WazuhResult:
+    """Revoke all current user's tokens.
+
+    Returns
+    -------
+    WazuhResult
+         Result of operation.
+    """
     with AuthenticationManager() as am:
         invalid_users_tokens(users=[am.get_user(common.current_user.get())['id']])
 
@@ -1022,21 +1179,27 @@ def revoke_current_user_tokens():
 @expose_resources(actions=['security:revoke'], resources=['*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': {
                       'none_msg': 'Permission denied in all manager nodes: Resource type: *:*'}})
-def wrapper_revoke_tokens():
-    """ Revoke all tokens """
+def wrapper_revoke_tokens() -> WazuhResult:
+    """Revoke all tokens.
+
+    Returns
+    -------
+    WazuhResult
+         Result of operation.
+    """
     revoke_tokens()
 
     return WazuhResult({'message': 'Tokens were successfully revoked'})
 
 
 @lru_cache(maxsize=None)
-def get_api_endpoints():
-    """Get a list with all API endpoints
+def get_api_endpoints() -> list:
+    """Get a list with all API endpoints.
 
     Returns
     -------
     list
-        API endpoints
+        API endpoints.
     """
     info_data = load_spec()
     endpoints_list = list()
@@ -1048,18 +1211,23 @@ def get_api_endpoints():
 
 
 @lru_cache(maxsize=None)
-def get_rbac_resources(resource: str = None):
-    """Get the RBAC resources from the catalog
+def get_rbac_resources(resource: str = None) -> WazuhResult:
+    """Get the RBAC resources from the catalog.
 
     Parameters
     ----------
     resource : str
         Show the information of the specified resource. Ex: agent:id
 
+    Raises
+    ------
+    WazuhError(4019)
+        If no resource is specified.
+
     Returns
     -------
-    dict
-        RBAC resources
+    WazuhResult
+        RBAC resources.
     """
     if not resource:
         return WazuhResult({'data': load_spec()['x-rbac-catalog']['resources']})
@@ -1070,18 +1238,23 @@ def get_rbac_resources(resource: str = None):
 
 
 @lru_cache(maxsize=None)
-def get_rbac_actions(endpoint: str = None):
-    """Get the RBAC actions from the catalog
+def get_rbac_actions(endpoint: str = None) -> WazuhResult:
+    """Get the RBAC actions from the catalog.
 
     Parameters
     ----------
     endpoint : str
         Show actions and resources for the specified endpoint. Ex: GET /agents
 
+    Raises
+    ------
+    WazuhError(4020)
+        Invalid endpoint specified.
+
     Returns
     -------
-    dict
-        RBAC resources
+    WazuhResult
+        RBAC actions.
     """
     endpoints_list = get_api_endpoints()
     if endpoint and endpoint not in endpoints_list:
@@ -1110,13 +1283,19 @@ def get_rbac_actions(endpoint: str = None):
 
 
 @expose_resources(actions=['security:read_config'], resources=['*:*:*'])
-def get_security_config():
-    """Returns current security configuration."""
+def get_security_config() -> WazuhResult:
+    """Return current security configuration.
+
+    Returns
+    -------
+    WazuhResult
+        Security information.
+    """
     return WazuhResult({'data': get_security_conf()})
 
 
 @expose_resources(actions=['security:update_config'], resources=['*:*:*'])
-def update_security_config(updated_config=None):
+def update_security_config(updated_config: dict = None) -> str:
     """Update or restore current security configuration.
 
     Update the shared configuration object "security_conf" with
@@ -1129,7 +1308,7 @@ def update_security_config(updated_config=None):
 
     Returns
     -------
-    result : str
+    str
         Confirmation/Error message.
     """
     try:

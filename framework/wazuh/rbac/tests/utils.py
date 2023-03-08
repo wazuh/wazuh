@@ -22,8 +22,10 @@ def init_db(schema, test_data_path):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as orm
                     reload(orm)
-                    orm.create_rbac_db()
+                    orm.db_manager.connect(orm.DB_FILE)
+                    orm.db_manager.create_database(orm.DB_FILE)
+                    orm.db_manager.insert_default_resources(orm.DB_FILE)
     try:
-        create_memory_db(schema, orm._Session(), test_data_path)
+        create_memory_db(schema, orm.db_manager.sessions[orm.DB_FILE], test_data_path)
     except OperationalError:
         pass

@@ -535,7 +535,7 @@ stages:
         error: 0
         data:
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: 2
           total_failed_items: 0
       verify_response_with:
         function: tavern_utils:test_validate_search
@@ -598,7 +598,7 @@ stages:
             - <<: *references_response
               id: "attack-pattern--01a5a209-b94c-450b-b7f9-946497d91055"
           failed_items: []
-          total_affected_items: 6
+          total_affected_items: 4
           total_failed_items: 0
 
   - name: Filter references using q parameter (complex query)
@@ -619,11 +619,8 @@ stages:
             - <<: *references_response
               source: "Wikipedia pwdump"
               type: "software"
-            - <<: *references_response
-              source: "Wikipedia FTP"
-              type: "software"
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: 2
           total_failed_items: 0
 
 ---

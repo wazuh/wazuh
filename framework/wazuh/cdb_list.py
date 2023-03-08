@@ -15,8 +15,10 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=['lists:read'], resources=['list:file:{filename}'])
-def get_lists(filename=None, offset=0, limit=common.DATABASE_LIMIT, select=None, sort_by=None, sort_ascending=True,
-              search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None):
+def get_lists(filename: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
+              sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
+              complementary_search: bool = False, search_in_fields: str = None,
+              relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Get CDB lists content.
 
     Parameters
@@ -26,12 +28,12 @@ def get_lists(filename=None, offset=0, limit=common.DATABASE_LIMIT, select=None,
     offset : int
         First item to return.
     limit : int
-        Maximum number of items to return.
+        Maximum number of items to return. Default: common.DATABASE_LIMIT
     select : list
         List of selected fields to return.
     sort_by : dict
         Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    sort_ascending : boolean
+    sort_ascending : bool
         Sort in ascending (true) or descending (false) order.
     search_text : str
         Find items with the specified string.
@@ -45,7 +47,7 @@ def get_lists(filename=None, offset=0, limit=common.DATABASE_LIMIT, select=None,
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         Lists content.
     """
     result = AffectedItemsWazuhResult(all_msg='All specified lists were returned',
@@ -72,7 +74,7 @@ def get_lists(filename=None, offset=0, limit=common.DATABASE_LIMIT, select=None,
 
 
 @expose_resources(actions=['lists:read'], resources=['list:file:{filename}'])
-def get_list_file(filename=None, raw=None):
+def get_list_file(filename: list = None, raw: bool = None) -> AffectedItemsWazuhResult:
     """Get a CDB list file content. The file is recursively searched.
 
     Parameters
@@ -84,7 +86,7 @@ def get_list_file(filename=None, raw=None):
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         CDB list content.
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list was returned',
@@ -105,7 +107,7 @@ def get_list_file(filename=None, raw=None):
 
 
 @expose_resources(actions=['lists:update'], resources=['*:*:*'])
-def upload_list_file(filename=None, content=None, overwrite=False):
+def upload_list_file(filename: str = None, content: str = None, overwrite: bool = False) -> AffectedItemsWazuhResult:
     """Upload a new list file.
 
     Parameters
@@ -119,7 +121,7 @@ def upload_list_file(filename=None, content=None, overwrite=False):
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         Confirmation message.
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file uploaded successfully',
@@ -157,7 +159,7 @@ def upload_list_file(filename=None, content=None, overwrite=False):
 
 
 @expose_resources(actions=['lists:delete'], resources=['list:file:{filename}'])
-def delete_list_file(filename):
+def delete_list_file(filename: list) -> AffectedItemsWazuhResult:
     """Delete a CDB list file.
 
     Parameters
@@ -167,7 +169,7 @@ def delete_list_file(filename):
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         Confirmation message.
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file was successfully deleted',
@@ -185,8 +187,9 @@ def delete_list_file(filename):
 
 
 @expose_resources(actions=['lists:read'], resources=['list:file:{filename}'])
-def get_path_lists(filename=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None, sort_ascending=True,
-                   search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None):
+def get_path_lists(filename: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
+                   sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
+                   search_in_fields: str = None, relative_dirname: str = None) -> AffectedItemsWazuhResult:
     """Get paths of all CDB lists.
 
     Parameters
@@ -199,7 +202,7 @@ def get_path_lists(filename=None, offset=0, limit=common.DATABASE_LIMIT, sort_by
         Maximum number of items to return.
     sort_by : dict
         Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    sort_ascending : boolean
+    sort_ascending : bool
         Sort in ascending (true) or descending (false) order.
     search_text : str
         Find items with the specified string.
@@ -213,7 +216,7 @@ def get_path_lists(filename=None, offset=0, limit=common.DATABASE_LIMIT, sort_by
 
     Returns
     -------
-    result : AffectedItemsWazuhResult
+    AffectedItemsWazuhResult
         Paths of all CDB lists.
     """
     result = AffectedItemsWazuhResult(all_msg='All specified paths were returned',

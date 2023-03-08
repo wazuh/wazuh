@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 12, 2022.
  *
  * This program is free software; you can redistribute it
@@ -27,4 +27,3 @@ class SysInfoSolarisPackagesTest : public ::testing::Test
 };
 
 #endif //_SYSINFO_SOLARIS_PACKAGES_TEST_H
-

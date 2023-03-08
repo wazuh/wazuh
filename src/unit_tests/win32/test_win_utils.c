@@ -17,7 +17,6 @@
 #include "../../data_provider/include/sysInfo.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
-
 #ifdef TEST_WINAGENT
 
 #define TIME_INCREMENT ((time_t)(60))
@@ -29,10 +28,23 @@ static agent global_config = { .main_ip_update_interval = (int)TIME_INCREMENT };
 static int test_case_selector = 0;
 static int error_code_sysinfo_network = 0;
 
+int __wrap_send_msg(const char *msg, ssize_t msg_length) {
+    check_expected(msg);
+    return mock();
+}
+
 int mock_sysinfo_networks_func(cJSON **object) {
 
     static const char *ip_update_success =
     "{ \"iface\": [ { \"gateway\":\"mock_gateway\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
+    static const char *ipv6_gw_ipv4_addr_update_success =
+    "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
+    static const char *ipv6_gw_ipv6_addr_update_success =
+    "{ \"iface\": [ { \"gateway\":\"fe80::\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
+    static const char *ipv4_gw_ipv4_addr_update_success =
+    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv4\": [ { \"address\":\"111.222.333.444\" } ] } ] }";
+    static const char *ipv4_gw_ipv6_addr_update_success =
+    "{ \"iface\": [ { \"gateway\":\"192.168.1.1\", \"IPv6\": [ { \"address\":\"fe80::a00:27ff:fee0:d046\" } ] } ] }";
     static const char *iface_bad_name = "{\"iface_fail\":[]}";
     static const char *iface_no_elements = "{\"iface\":[]";
     static const char *gateway_unknown = "{ \"iface\": [ { \"gateway\":\"unknown\" } ] }";
@@ -50,6 +62,18 @@ int mock_sysinfo_networks_func(cJSON **object) {
         break;
     case 4:
         json_string = gateway_unknown;
+        break;
+    case 5:
+        json_string = ipv6_gw_ipv4_addr_update_success;
+        break;
+    case 6:
+        json_string = ipv6_gw_ipv6_addr_update_success;
+        break;
+    case 7:
+        json_string = ipv4_gw_ipv4_addr_update_success;
+        break;
+    case  8:
+        json_string = ipv4_gw_ipv6_addr_update_success;
         break;
     }
 
@@ -83,6 +107,58 @@ static void test_get_agent_ip_update_ip_success(void **state) {
     agent_ip = get_agent_ip();
 
     assert_string_equal(agent_ip, address);
+}
+
+static void test_get_agent_ip_update_ipv6_gateway_ipv6_success(void ** state) {
+
+    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
+    time_mock_value += TIME_INCREMENT + 1;
+    error_code_sysinfo_network = 0;
+    test_case_selector = 6;
+
+    char * agent_ip = get_agent_ip();
+
+    assert_string_equal(agent_ip, address);
+    os_free(agent_ip);
+}
+
+static void test_get_agent_ip_update_ipv6_gateway_ipv4_success(void ** state) {
+
+    const char * address = {"111.222.333.444"};
+    time_mock_value += TIME_INCREMENT + 1;
+    error_code_sysinfo_network = 0;
+    test_case_selector = 5;
+
+    char * agent_ip = get_agent_ip();
+
+    assert_string_equal(agent_ip, address);
+    os_free(agent_ip);
+}
+
+static void test_get_agent_ip_update_ipv4_gateway_ipv4_success(void ** state) {
+
+    const char * address = {"111.222.333.444"};
+    time_mock_value += TIME_INCREMENT + 1;
+    error_code_sysinfo_network = 0;
+    test_case_selector = 7;
+
+    char * agent_ip = get_agent_ip();
+
+    assert_string_equal(agent_ip, address);
+    os_free(agent_ip);
+}
+
+static void test_get_agent_ip_update_ipv4_gateway_ipv6_success(void ** state) {
+
+    const char * address = {"FE80:0000:0000:0000:0A00:27FF:FEE0:D046"};
+    time_mock_value += TIME_INCREMENT + 1;
+    error_code_sysinfo_network = 0;
+    test_case_selector = 8;
+
+    char * agent_ip = get_agent_ip();
+
+    assert_string_equal(agent_ip, address);
+    os_free(agent_ip);
 }
 
 static void test_get_agent_ip_sysinfo_error(void **state) {
@@ -148,11 +224,103 @@ static void test_get_agent_ip_no_update(void **state) {
     assert_string_equal(agent_ip, address);
 }
 
+static void test_SendMSGAction_mutex_abandoned(void **state) {
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_ABANDONED);
+
+    expect_string(__wrap__merror, formatted_msg, "Error waiting mutex (abandoned).");
+
+    int ret = SendMSG(0, "message", "locmsg", LOCALFILE_MQ);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_SendMSGAction_mutex_error(void **state) {
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, -8);
+
+    expect_string(__wrap__merror, formatted_msg, "Error waiting mutex.");
+
+    int ret = SendMSG(0, "message", "locmsg", LOCALFILE_MQ);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_SendMSGAction_non_escape(void **state) {
+
+    agt->buffer = 0;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_string(__wrap_send_msg, msg, "1:locmsg:message");
+    will_return(__wrap_send_msg, 0);
+
+    expect_any_always(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 1);
+
+    int ret = SendMSG(0, "message", "locmsg", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_SendMSGAction_escape(void **state) {
+
+    agt->buffer = 0;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_string(__wrap_send_msg, msg, "1:loc||msg|:test:message");
+    will_return(__wrap_send_msg, 0);
+
+    expect_any_always(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 0);
+    expect_string(__wrap__merror, formatted_msg, "Error releasing mutex.");
+
+    int ret = SendMSG(0, "message", "loc|msg:test", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_SendMSGAction_multi_escape(void **state) {
+
+    agt->buffer = 0;
+
+    expect_any(wrap_WaitForSingleObject, hMutex);
+    expect_value(wrap_WaitForSingleObject, value, 1000000L);
+    will_return(wrap_WaitForSingleObject, WAIT_OBJECT_0);
+
+    expect_string(__wrap_send_msg, msg, "1:a||||a|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:|:a||||a:message");
+    will_return(__wrap_send_msg, 0);
+
+    expect_any_always(wrap_ReleaseMutex, hMutex);
+    will_return(wrap_ReleaseMutex, 1);
+
+    int ret = SendMSG(0, "message", "a||a::::::::::::::::a||a", LOCALFILE_MQ);
+
+    assert_int_equal(ret, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_get_agent_ip_update_ip_success), cmocka_unit_test(test_get_agent_ip_sysinfo_error),
         cmocka_unit_test(test_get_agent_ip_iface_bad_name),    cmocka_unit_test(test_get_agent_ip_iface_no_elements),
         cmocka_unit_test(test_get_agent_ip_gateway_unknown),   cmocka_unit_test(test_get_agent_ip_no_update),
+        cmocka_unit_test(test_get_agent_ip_update_ipv6_gateway_ipv6_success),
+        cmocka_unit_test(test_get_agent_ip_update_ipv6_gateway_ipv4_success),
+        cmocka_unit_test(test_get_agent_ip_update_ipv4_gateway_ipv4_success),
+        cmocka_unit_test(test_get_agent_ip_update_ipv4_gateway_ipv6_success),
+        cmocka_unit_test(test_SendMSGAction_mutex_abandoned), cmocka_unit_test(test_SendMSGAction_mutex_error),
+        cmocka_unit_test(test_SendMSGAction_non_escape), cmocka_unit_test(test_SendMSGAction_escape),
+        cmocka_unit_test(test_SendMSGAction_multi_escape),
+
     };
 
     return cmocka_run_group_tests(tests, setup_group, NULL);

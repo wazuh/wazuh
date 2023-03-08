@@ -15,8 +15,11 @@
 
 size_t wmcom_dispatch(char * command, char ** output){
 
-
     if (strncmp(command, "getconfig", 9) == 0){
+        /*
+         * getconfig wmodules
+         * getconfig internal_options
+        */
         char *rcv_comm = command;
         char *rcv_args = NULL;
 
@@ -31,7 +34,18 @@ size_t wmcom_dispatch(char * command, char ** output){
             return strlen(*output);
         }
         return wmcom_getconfig(rcv_args, output);
+    } else if (strncmp(command, "query ", 6) == 0) {
+        /*
+         * query vulnerability-detector run_now
+        */
+        return wm_module_query(command + 6, output);
     } else if (wmcom_sync(command) == 0) {
+        /*
+         * syscollector_hwinfo dbsync checksum_fail { ... }
+         * syscollector_osinfo dbsync checksum_fail { ... }
+         * syscollector_ports dbsync checksum_fail { ... }
+         * syscollector_processes dbsync checksum_fail { ... }
+        */
         return 0;
     } else {
         mdebug1("WMCOM Unrecognized command '%s'.", command);

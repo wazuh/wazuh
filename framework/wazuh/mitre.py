@@ -13,7 +13,8 @@ def mitre_metadata() -> AffectedItemsWazuhResult:
 
     Returns
     -------
-    Metadata of MITRE's db.
+    AffectedItemsWazuhResult
+        Metadata of MITRE's db.
     """
     result = AffectedItemsWazuhResult(none_msg='No MITRE metadata information was returned',
                                       all_msg='MITRE Metadata information was returned')
@@ -28,14 +29,15 @@ def mitre_metadata() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_mitigations(filters: dict = None, offset=0, limit=common.DATABASE_LIMIT, select=None, sort_by=None,
-                      sort_ascending=True, search_text=None, complementary_search=False,
-                      search_in_fields=None, q='') -> AffectedItemsWazuhResult:
+def mitre_mitigations(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
+                      sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
+                      complementary_search: bool = False, search_in_fields: list = None,
+                      q: str = '') -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's mitigations and its relations.
 
     Parameters
     ----------
-    filters : str
+    filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     offset : int
         First item to return.
@@ -72,14 +74,15 @@ def mitre_mitigations(filters: dict = None, offset=0, limit=common.DATABASE_LIMI
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_references(filters: dict = None, offset=0, limit=common.DATABASE_LIMIT, select=None, sort_by=None,
-                     sort_ascending=True, search_text=None, complementary_search=False,
-                     search_in_fields=None, q='') -> AffectedItemsWazuhResult:
+def mitre_references(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
+                     sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
+                     complementary_search: bool = False, search_in_fields: list = None,
+                     q: str = '') -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's references.
 
     Parameters
     ----------
-    filters : str
+    filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     offset : int
         First item to return.
@@ -116,14 +119,15 @@ def mitre_references(filters: dict = None, offset=0, limit=common.DATABASE_LIMIT
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_techniques(filters: dict = None, offset=0, limit=common.DATABASE_LIMIT, select=None, sort_by=None,
-                     sort_ascending=True, search_text=None, complementary_search=False,
-                     search_in_fields=None, q='') -> AffectedItemsWazuhResult:
+def mitre_techniques(filters: dict = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
+                     sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
+                     complementary_search: bool = False, search_in_fields: list = None,
+                     q: str = '') -> AffectedItemsWazuhResult:
     """Get information of specified MITRE's techniques and its relations.
 
     Parameters
     ----------
-    filters : str
+    filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     offset : int
         First item to return.
@@ -213,7 +217,7 @@ def mitre_groups(filters: dict = None, offset: int = 0, limit: int = common.DATA
 
     Parameters
     ----------
-    filters : str
+    filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     offset : int
         First item to return.
@@ -258,7 +262,7 @@ def mitre_software(filters: dict = None, offset: int = 0, limit: int = common.DA
 
     Parameters
     ----------
-    filters : str
+    filters : dict
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     offset : int
         First item to return.

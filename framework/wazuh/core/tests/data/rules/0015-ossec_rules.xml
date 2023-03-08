@@ -25,7 +25,7 @@
   <rule id="502" level="3">
     <if_sid>500</if_sid>
     <options>alert_by_email</options>
-    <match>Ossec started</match>
+    <match>Manager started</match>
     <description>Ossec server started.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>

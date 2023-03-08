@@ -94,9 +94,7 @@ async def test_print_nodes(local_client_mock, get_agents_mock, print_table_mock,
                                     'sync_integrity_free': 'True',
                                     'last_sync_agentinfo': {'date_start_master': '0', 'date_end_master': '0',
                                                             'n_synced_chunks': 0},
-                                    'last_sync_agentgroups': {'date_start_master': '0', 'date_end_master': '0',
-                                                              'n_synced_chunks': 0},
-                                    'sync_agent_info_free': 'True', 'sync_agent_groups_free': 'True'}}}})
+                                    'sync_agent_info_free': 'True'}}}})
 async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, get_utc_strptime_mock, print_mock):
     """Test if the current status of the cluster is properly printed."""
 
@@ -149,14 +147,7 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
                                           f"       Number of synchronized chunks: "
                                           f"{worker_status['last_sync_agentinfo']['n_synced_chunks']}."
                                           f"\n                Permission to synchronize agent-info: "
-                                          f"{worker_status['sync_agent_info_free']}.\n            "
-                                          f"Agent-groups:\n                Last synchronization: 0.001s ("
-                                          f"{worker_status['last_sync_agentgroups']['date_start_master']} - "
-                                          f"{worker_status['last_sync_agentgroups']['date_start_master']}).\n         "
-                                          f"       Number of synchronized chunks: "
-                                          f"{worker_status['last_sync_agentgroups']['n_synced_chunks']}."
-                                          f"\n                Permission to synchronize agent-groups: "
-                                          f"{worker_status['sync_agent_groups_free']}.\n"
+                                          f"{worker_status['sync_agent_info_free']}.\n"
                                           )])
 
         # Common assertions
@@ -165,9 +156,7 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
             [call(worker_status['last_sync_integrity']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
              call(worker_status['last_sync_integrity']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
              call(worker_status['last_sync_agentinfo']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-             call(worker_status['last_sync_agentinfo']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-             call(worker_status['last_sync_agentgroups']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-             call(worker_status['last_sync_agentgroups']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ')])
+             call(worker_status['last_sync_agentinfo']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ')])
 
         # filter_node dependant assertions
         filter_node and get_nodes_mock.assert_not_called()
@@ -187,8 +176,7 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
                                        f"({get_health_mock.return_value['nodes']['wazuh_worker2']['info']['ip']}): "
                                        f"Integrity check: {worker_status['last_check_integrity']['date_end_master']} "
                                        f"| Integrity sync: {worker_status['last_sync_integrity']['date_end_master']} |"
-                                       f" Agents-info: {worker_status['last_sync_agentinfo']['date_end_master']} |"
-                                       f" Agents-groups: {worker_status['last_sync_agentgroups']['date_end_master']} | "
+                                       f" Agents-info: {worker_status['last_sync_agentinfo']['date_end_master']} | "
                                        f"Last keep alive: {worker_status['last_keep_alive']}.\n")
 
 

@@ -446,8 +446,7 @@ void test__w_logcollector_generate_state_one_target_restart(void ** state) {
 void test__w_logcollector_state_update_file_new_data(void ** state) {
     w_lc_state_storage_t stat = {0};
     stat.states = *state;
-    __real_OSHash_SetFreeDataPointer(stat.states, (void (*)(void *))free_state_file);
-
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))free_state_file);
 
     expect_value(__wrap_OSHash_Get, self, stat.states);
     expect_string(__wrap_OSHash_Get, key, "/test_path");

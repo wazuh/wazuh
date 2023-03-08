@@ -56,7 +56,9 @@ def reload_default_rbac_resources():
             with patch('shutil.chown'), patch('os.chmod'):
                 import wazuh.rbac.orm as orm
                 reload(orm)
-                orm.create_rbac_db()
+                orm.db_manager.connect(orm.DB_FILE)
+                orm.db_manager.create_database(orm.DB_FILE)
+                orm.db_manager.insert_default_resources(orm.DB_FILE)
                 import wazuh.rbac.decorators as decorators
                 from wazuh.tests.util import RBAC_bypasser
 
@@ -75,13 +77,14 @@ def db_setup():
                     # Clear mappers
                     sqlalchemy_orm.clear_mappers()
                     # Invalidate in-memory database
-                    conn = orm._engine.connect()
-                    orm._Session().close()
-                    conn.invalidate()
-                    orm._engine.dispose()
+                    orm.db_manager.connect(orm.DB_FILE)
+                    orm.db_manager.sessions[orm.DB_FILE].close()
+                    orm.db_manager.engines[orm.DB_FILE].dispose()
 
                     reload(orm)
-                    orm.create_rbac_db()
+                    orm.db_manager.connect(orm.DB_FILE)
+                    orm.db_manager.create_database(orm.DB_FILE)
+                    orm.db_manager.insert_default_resources(orm.DB_FILE)
                     import wazuh.rbac.decorators as decorators
                     from wazuh.tests.util import RBAC_bypasser
 
@@ -90,7 +93,7 @@ def db_setup():
                     from wazuh.core.results import WazuhResult
                     from wazuh.core import security as core_security
     try:
-        create_memory_db('schema_security_test.sql', orm._Session())
+        create_memory_db('schema_security_test.sql', orm.db_manager.sessions[orm.DB_FILE])
     except OperationalError:
         pass
 
@@ -177,107 +180,6 @@ def test_rbac_catalog(db_setup, security_function, params, expected_result):
             final_params[param] = value
     result = getattr(security, security_function)(**final_params).to_dict()
     assert result['result']['data'] == expected_result
-
-
-def test_add_new_default_policies(new_default_resources):
-    """Check that new default policies are set in the correct range and that the migration proccess moves any possible
-    default policy in the user range to the default range."""
-
-    def mock_open_default_resources(*args, **kwargs):
-        args = list(args)
-        file_path = args[0]
-
-        if file_path.endswith('policies.yaml'):
-            new_args = [os.path.join(test_data_path, 'default', 'new_default_policies.yml')]
-        elif file_path.endswith('relationships.yaml'):
-            new_args = [os.path.join(test_data_path, 'default', 'mock_relationships.yml')]
-        else:
-            new_args = [file_path]
-
-        new_args += args[1:]
-
-        return open(*new_args, **kwargs)
-
-    security, orm = new_default_resources
-    with orm.PoliciesManager() as pm:
-        policies = sorted([p.id for p in pm.get_policies()]) or [1]
-        max_default_policy_id = max(filter(lambda x: not (x > orm.cloud_reserved_range), policies))
-
-    with patch('wazuh.rbac.orm.open', side_effect=mock_open_default_resources):
-        security, orm = reload_default_rbac_resources()
-
-    with orm.PoliciesManager() as pm:
-        new_policies = sorted([p.id for p in pm.get_policies()]) or [1]
-        new_max_default_policy_id = max(filter(lambda x: not (x > orm.cloud_reserved_range), new_policies))
-
-    assert len(policies) + 1 == len(new_policies)
-    assert max(policies) == max(new_policies)
-    assert max_default_policy_id + 2 == new_max_default_policy_id
-
-
-def test_migrate_default_policies(new_default_resources):
-    """Check that the migration process overwrites default policies in the user range including their relationships
-    and positions."""
-
-    def mock_open_default_resources(*args, **kwargs):
-        args = list(args)
-        file_path = args[0]
-
-        if file_path.endswith('policies.yaml'):
-            new_args = [os.path.join(test_data_path, 'default', 'migration_policies.yml')]
-        elif file_path.endswith('relationships.yaml'):
-            new_args = [os.path.join(test_data_path, 'default', 'mock_relationships.yml')]
-        else:
-            new_args = [file_path]
-
-        new_args += args[1:]
-
-        return open(*new_args, **kwargs)
-
-    security, orm = new_default_resources
-    with orm.RolesManager() as rm:
-        role1, role2 = rm.get_role('new_role1')['id'], rm.get_role('new_role2')['id']
-    policy1, policy2 = 'new_policy1', 'new_policy2'
-    user_policy = 'user_policy'
-    with orm.PoliciesManager() as pm:
-        policies = sorted([p.id for p in pm.get_policies()]) or [1]
-        max_default_policy_id = max(filter(lambda x: not (x > orm.cloud_reserved_range), policies))
-
-    with orm.RolesPoliciesManager() as rpm:
-        role1_policies = [p.id for p in rpm.get_all_policies_from_role(role_id=role1)]
-        role2_policies = [p.id for p in rpm.get_all_policies_from_role(role_id=role2)]
-
-    # Assert these new policies are in the user range
-    with orm.PoliciesManager() as pm:
-        policy1_id = pm.get_policy(policy1)['id']
-        policy2_id = pm.get_policy(policy2)['id']
-        user_policy_id = pm.get_policy(user_policy)['id']
-        assert policy1_id > orm.max_id_reserved
-        assert policy2_id > orm.max_id_reserved
-        assert user_policy_id > orm.max_id_reserved
-        assert {policy1_id, policy2_id, user_policy_id} == set(role1_policies)
-        assert {policy1_id, policy2_id, user_policy_id} == set(role2_policies)
-
-    with patch('wazuh.rbac.orm.open', side_effect=mock_open_default_resources):
-        security, orm = reload_default_rbac_resources()
-
-    with orm.RolesPoliciesManager() as rpm:
-        new_role1_policies = [p.id for p in rpm.get_all_policies_from_role(role_id=role1)]
-        new_role2_policies = [p.id for p in rpm.get_all_policies_from_role(role_id=role2)]
-
-    new_policy1_id, new_policy2_id = max_default_policy_id + 1, max_default_policy_id + 2
-    with orm.PoliciesManager() as pm:
-        assert new_policy1_id == pm.get_policy(policy1)['id']
-        assert new_policy2_id == pm.get_policy(policy2)['id']
-
-    assert role1_policies.index(policy1_id) == new_role1_policies.index(new_policy1_id)
-    assert role1_policies.index(policy2_id) == new_role1_policies.index(new_policy2_id)
-
-    assert role2_policies.index(policy1_id) == new_role2_policies.index(new_policy1_id)
-    assert role2_policies.index(policy2_id) == new_role2_policies.index(new_policy2_id)
-
-    assert role1_policies.index(user_policy_id) == new_role1_policies.index(user_policy_id)
-    assert role2_policies.index(user_policy_id) == new_role2_policies.index(user_policy_id)
 
 
 @pytest.mark.parametrize('policy_case', sanitize_policies['policies'])

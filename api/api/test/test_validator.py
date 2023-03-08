@@ -8,11 +8,10 @@ import os
 import jsonschema as js
 import pytest
 
-from api.validator import (check_exp, check_xml, _alphanumeric_param,
-                           _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes,
-                           _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,
-                           _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path,
-                           allowed_fields, is_safe_path, _wazuh_version,
+from api.validator import (check_exp, check_xml, _alphanumeric_param, _array_numbers, _array_names, _boolean, _dates,
+                           _empty_boolean, _hashes, _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges,
+                           _search_param, _sort_param, _timeframe_type, _type_format, _yes_no_boolean,
+                           _get_dirnames_path, allowed_fields, is_safe_path, _wazuh_version,
                            _symbols_alphanumeric_param, _base64, _group_names, _group_names_or_all, _iso8601_date,
                            _iso8601_date_time, _numbers_or_all, _cdb_filename_path, _xml_filename_path, _xml_filename,
                            check_component_configuration_pair, _active_response_command)
@@ -83,10 +82,10 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     # relative paths
     ('etc/lists/new_lists3', _get_dirnames_path),
     # version
-    ('v4.3.0', _wazuh_version),
-    ('4.3.0', _wazuh_version),
-    ('wazuh 4.3.0', _wazuh_version),
-    ('wazuh v4.3.0', _wazuh_version),
+    ('v4.4.0', _wazuh_version),
+    ('4.4.0', _wazuh_version),
+    ('wazuh 4.4.0', _wazuh_version),
+    ('wazuh v4.4.0', _wazuh_version),
     # miscellaneous
     ('aHR0cHM6Ly9zdGFja2FidXNlLmNvbS90YWcvamF2YS8=', _base64)
 ])
@@ -109,6 +108,9 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('all', _group_names),
     ('.', _group_names),
     ('..', _group_names),
+    ('解放加大了看', _group_names),
+    ('тестирование',_group_names),
+    ('בדיקה', _group_names),
     ('.', _group_names_or_all),
     ('..', _group_names_or_all),
     # IPs
@@ -152,10 +154,10 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('../ossec', _get_dirnames_path),
     ('etc/rules/../../../dir', _get_dirnames_path),
     # version
-    ('v4.3', _wazuh_version),
-    ('4.3', _wazuh_version),
-    ('wazuh 4.3', _wazuh_version),
-    ('wazuh v4.3', _wazuh_version),
+    ('v4.4', _wazuh_version),
+    ('4.4', _wazuh_version),
+    ('wazuh 4.4', _wazuh_version),
+    ('wazuh v4.4', _wazuh_version),
     # miscellaneous
     ('aDhjasdh3=', _base64)
 ])
@@ -292,7 +294,7 @@ def test_validation_json_ko(value, format):
 
 @pytest.mark.parametrize("component, configuration, expected_response", [
     ("agent", "client", None),
-    ("agent", "wmodules", WazuhError(1127))
+    ("agent", "wmodules", WazuhError(1128))
 ])
 def test_check_component_configuration_pair(component, configuration, expected_response):
     """Verify that `check_component_configuration_pair` function returns an exception when the configuration does

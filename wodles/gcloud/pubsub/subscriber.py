@@ -105,12 +105,12 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
         except google.api_core.exceptions.NotFound as e:
             if 'project not found or user does not have access' in e.message:
-                raise exceptions.GCloudError(1204, subscription=self.subscription_path.split('/')[1])
+                raise exceptions.GCloudError(1205, project=self.subscription_path.split('/')[1])
             else:
-                raise exceptions.GCloudError(1205, project=self.subscription_path.split('/')[-1])
+                raise exceptions.GCloudError(1204, subscription=self.subscription_path.split('/')[-1])
 
         if required_permissions.difference(response.permissions) != set():
-            raise exceptions.GCloudError(1206)
+            raise exceptions.GCloudError(1206, permissions=required_permissions.difference(response.permissions))
 
     def pull_request(self, max_messages: int) -> int:
         """Make request for pulling messages from the subscription and acknowledge them.
