@@ -20,8 +20,9 @@ constexpr auto KEY_C = "keyC";
 constexpr auto KEY_D = "keyD";
 constexpr auto VAL_A = "valA";
 
-const std::string rCommand {"command to exec"};
-const std::string rOrigin {"Origin module"};
+const std::string rCommand {"dummy cmd"};
+const std::string rOrigin {"Dummy org module"};
+
 const std::string rawValueKeyA {"valueA"};
 const std::string valueKeyA {fmt::format("\"{}\"", rawValueKeyA)};
 const int rawValueKeyB {69};
