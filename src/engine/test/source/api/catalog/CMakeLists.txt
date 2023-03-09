@@ -1,6 +1,6 @@
 add_executable(catalog_test
   catalog_test.cpp
-  command_test.cpp
+  handlers_test.cpp
   resource_test.cpp
 )
 
