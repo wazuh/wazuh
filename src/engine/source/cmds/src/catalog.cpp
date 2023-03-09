@@ -14,7 +14,6 @@
 
 #include "apiclnt/client.hpp"
 #include "defaultSettings.hpp"
-#include "metrics.hpp"
 
 namespace cmd::catalog
 {
