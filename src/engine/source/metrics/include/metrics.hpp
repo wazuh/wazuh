@@ -254,7 +254,7 @@ protected:
 
 private:
     std::shared_ptr<DataHub> m_dataHub;
-    std::vector<std::string> m_instrumentsTypes;
+    std::list<std::string> m_instrumentsTypes;
     std::string m_moduleName;
     std::vector<std::shared_ptr<MetricsContext>> m_upContext;
     std::vector<std::shared_ptr<ExporterHandler>> m_upExporter;

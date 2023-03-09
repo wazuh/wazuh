@@ -118,7 +118,7 @@ void Metrics::setMetricsConfig()
         {
             case ProviderTypes::Tracer:
             {
-                m_instrumentsTypes.push_back("trace");
+                m_instrumentsTypes.push_front("trace");
                 (*particularContext)->exporterType = EXPORTER_TYPES.at(config.at("exporterType"));
                 (*particularContext)->processorType = PROCESSOR_TYPES.at(config.at("processorType"));
 
@@ -127,7 +127,7 @@ void Metrics::setMetricsConfig()
             }
             case ProviderTypes::Meter:
             {
-                m_instrumentsTypes.push_back(config.at("instrumentType"));
+                m_instrumentsTypes.push_front(config.at("instrumentType"));
                 (*particularContext)->instrumentType = INSTRUMENT_TYPES.at(config.at("instrumentType"));
                 (*particularContext)->subType = SUB_TYPES.at(config.at("subType"));
                 (*particularContext)->export_interval_millis = static_cast<std::chrono::milliseconds>(config.at("exportIntervalMillis"));
