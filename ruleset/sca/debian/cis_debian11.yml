@@ -405,7 +405,7 @@ checks:
     title: "Ensure nosuid option set on /var/log partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot create setuid files in /var/log."
-    remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
+    remediation: "IF the /var/log partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 . Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
     compliance:
       - cis: ["1.1.5.4"]
       - cis_csc_v8: ["3.3"]
@@ -723,9 +723,9 @@ checks:
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
       - cmmc_v2.0: ["AC.L2-3.1.7"]
-      - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
-      - pci_dss_3.2.1: ["10.2.1", "11.5"]
-      - pci_dss_4.0: ["10.2.1", "10.2.1.1"]
+      - hipaa: ["164.312(b)","164.312(c)(1)","164.312(c)(2)"]
+      - pci_dss_3.2.1: ["10.2.1","11.5"]
+      - pci_dss_4.0: ["10.2.1","10.2.1.1"]
       - nist_sp_800-53: ["AC-6(9)"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.12.4.3"]
@@ -856,9 +856,9 @@ checks:
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
       - cmmc_v2.0: ["AC.L2-3.1.7"]
-      - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
-      - pci_dss_3.2.1: ["10.2.1", "11.5"]
-      - pci_dss_4.0: ["10.2.1", "10.2.1.1"]
+      - hipaa: ["164.312(b)","164.312(c)(1)","164.312(c)(2)"]
+      - pci_dss_3.2.1: ["10.2.1","11.5"]
+      - pci_dss_4.0: ["10.2.1","10.2.1.1"]
       - nist_sp_800-53: ["AC-6(9)"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.12.4.3"]
@@ -1050,7 +1050,7 @@ checks:
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
     compliance:
       - cis: ["1.7.3"]
-      - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
+      - mitre_techniques: ["T1018", "T1082",  "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
@@ -1079,8 +1079,8 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: any
     rules:
-      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-      - "not f: etc/motd"
+     - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+     - 'not f: etc/motd'   
   # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
   - id: 29542
     title: "Ensure permissions on /etc/issue are configured."
@@ -1156,24 +1156,17 @@ checks:
       - mitre_tactics: ["TA0002"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' gdm3 -> r:unknown ok not-installed"
-
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' gdm3 -> r:unknown ok not-installed|dpkg-query: no packages found matching gdm3"
+  
   # 1.8.2 Ensure GDM login banner is configured (Automated) - Not implemented
-
   # 1.8.3 Ensure GDM disable-user-list option is enabled (Automated) - Not implemented
-
   # 1.8.4 Ensure GDM screen locks when the user is idle (Automated) - Not implemented
-
   # 1.8.5 Ensure GDM screen locks cannot be overridden (Automated) - Not implemented
-
   # 1.8.6 Ensure GDM automatic mounting of removable media is disabled (Automated) - Not implemented
-
   # 1.8.7 Ensure GDM disabling automatic mounting of removable media is not overridden - Not implemented
-
   # 1.8.8 Ensure GDM autorun-never is enabled (Automated) - Not implemented
-
   # 1.8.9 Ensure GDM autorun-never is not overridden (Automated) - Not implemented
-
+  
   # 1.8.10 Ensure XDCMP is not enabled (Automated)
   - id: 29545
     title: "Ensure XDCMP is not enabled."
@@ -1193,16 +1186,17 @@ checks:
       - mitre_techniques: ["T1040", "T1056", "T1056.001", "T1557"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
-    condition: none
+    condition: any
     rules:
-      - 'f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
-
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' gdm3 -> r:unknown ok not-installed"
+      - 'not f:/etc/gdm3/daemon.conf -> r:^\s*Enable\s*=\s*true'
+  
   # 1.9 Ensure updates, patches, and additional security software are installed (Automated)
   - id: 29546
     title: "Ensure updates, patches, and additional security software are installed."
     description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
     rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Run the following command to update all packages following local site policy guidance on applying updates and patches: # apt upgrade OR # apt dist-upgrade"
+    remediation: "Run the following command to update all packages following local site policy guidance on applying updates and patches: # apt upgrade OR # apt dist-upgrade."
     compliance:
       - cis: ["1.9"]
       - cis_csc_v8: ["7.3"]
@@ -1231,7 +1225,7 @@ checks:
   ############################################################
 
   # 2.1.2.1 Ensure chrony is configured with authorized timeserver (Manual) - Not Implemented
-
+  
   # 2.1.2.2 Ensure chrony is running as user _chrony (Automated)
   - id: 29548
     title: "Ensure chrony is running as user _chrony."
@@ -1482,7 +1476,7 @@ checks:
     impact: "Removing CUPS will prevent printing from the system, a common task for workstation systems."
     remediation: "Run one of the following commands to remove cups : # apt purge cups"
     references:
-      - http://www.cups.org.
+      -  http://www.cups.org.
     compliance:
       - cis: ["2.2.3"]
       - cis_csc_v8: ["4.8"]
@@ -1532,7 +1526,7 @@ checks:
     rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be removed to reduce the potential attack surface."
     remediation: "Run one of the following commands to remove slapd: # apt purge slapd"
     references:
-      - http://www.openldap.org.
+      -  http://www.openldap.org.
     compliance:
       - cis: ["2.2.5"]
       - cis_csc_v8: ["4.8"]
@@ -1793,7 +1787,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1105", "T1203", "T1210", "T1543", "T1543.002", "T1570"]
+      - mitre_techniques: ["T1105", "T1203", "T1210", "T1543", "T1543.002", "T1570", ]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: any
@@ -1870,7 +1864,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203",  "T1543", "T1543.002"]
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
@@ -1894,7 +1888,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040", "T1203", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1040",  "T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
@@ -1917,7 +1911,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040", "T1203", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1040",  "T1203",  "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
@@ -2555,7 +2549,7 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' auditd audispd-plugins -> r:install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' auditd audispd-plugins -> r:install ok installed"
 
   # 4.1.1.2 Ensure auditd service is enabled and active (Automated)
   - id: 29599
@@ -2721,8 +2715,8 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
-      - "c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
-      - "c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope"
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
 
   # 4.1.3.2 Ensure actions as another user are always logged (Automated)
   - id: 29606
@@ -2746,7 +2740,7 @@ checks:
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid && r:-F auid!=unset && r:-F auid!=1 && r:-F auid!=4294967295 && r:-C uid!=euid && r:-S execve && r:-k user_emulation|-F key=user_emulation'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid && r:-F auid!=unset && r:-F auid!=1 && r:-F auid!=4294967295 && r:-C uid!=euid && r:-S execve && r:-k user_emulation|-F key=user_emulation"
+      - 'c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid && r:-F auid!=unset && r:-F auid!=1 && r:-F auid!=4294967295 && r:-C uid!=euid && r:-S execve && r:-k user_emulation|-F key=user_emulation'
 
   # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not Implemented
 
@@ -2770,10 +2764,10 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:-k time-change|-F key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && && r:settimeofday && r:-k time-change|-F key=time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:-k time-change|-F key=time-change"
-      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change"
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && && r:settimeofday && r:-k time-change|-F key=time-change'
+      - 'c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 29608
@@ -2801,11 +2795,11 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|-F key=system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|-F key=system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|-F key=system-locale'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S sethostname,setdomainname && r:-k system-locale|-F key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|-F key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|-F key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|-F key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|-F key=system-locale"
+      - 'c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S sethostname,setdomainname && r:-k system-locale|-F key=system-locale'
+      - 'c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|-F key=system-locale'
+      - 'c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|-F key=system-locale'
+      - 'c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|-F key=system-locale'
+      - 'c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|-F key=system-locale'
 
   # 4.1.3.6 Ensure use of privileged commands are collected (Automated) - Not Implemented
   # 4.1.3.7 Ensure unsuccessful file access attempts are collected (Automated) - Not Implemented
@@ -2836,11 +2830,11 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity'
-      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity"
-      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity"
+      - 'c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity'
+      - 'c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity'
+      - 'c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity'
+      - 'c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity'
+      - 'c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity'
 
   # 4.1.3.9 Ensure discretionary access control permission modification events are collected (Automated) - Not Implemented
 
@@ -2891,9 +2885,9 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session'
-      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session"
-      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session"
-      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session"
+      - 'c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session'
+      - 'c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session'
+      - 'c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session'
 
   # 4.1.3.12 Ensure login and logout events are collected (Automated)
   - id: 29612
@@ -2917,8 +2911,8 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins'
-      - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins"
-      - "c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins"
+      - 'c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
+      - 'c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins'
 
   # 4.1.3.13 Ensure file deletion events by users are collected (Automated)
   - id: 29613
@@ -2937,7 +2931,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
       - iso_27001-2013: ["A.12.4.1"]
       - mitre_techniques: ["T1562", "T1562.006"]
-      - mitre_tactics: ["TA0005"]
+      - mitre_tactics: ["TA0005"]      
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|-F key=delete'
@@ -2966,7 +2960,7 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
-      - "c:auditctl -l -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy"
+      - 'c:auditctl -l -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy'
       - 'c:auditctl -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
 
   # 4.1.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded (Automated)
@@ -2987,8 +2981,8 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
 
   # 4.1.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded (Automated)
   - id: 29616
@@ -3075,9 +3069,9 @@ checks:
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
       - "c:ls -l /usr/sbin/lsmod -> r:/bin/kmod"
       - "c:ls -l /usr/sbin/rmmod -> r:/bin/kmod"
       - "c:ls -l /usr/sbin/insmod -> r:/bin/kmod"
@@ -3300,7 +3294,27 @@ checks:
     rules:
       - 'not c:sh -c "stat -c \"%n %a %G\" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules" -> r:^/sbin && !r:root'
 
-  # 4.1.4.11 Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated) - Not Implemented
+  # 4.1.4.11 Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated)
+  - id: 29630
+    title: "Ensure cryptographic mechanisms are used to protect the integrity of audit tools."
+    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
+    rationale: "Protecting the integrity of the tools used for auditing purposes is a critical step toward ensuring the integrity of audit information. Audit information includes all information (e.g., audit records, audit settings, and audit reports) needed to successfully audit information system activity. Attackers may replace the audit tools or inject code into the existing tools with the purpose of providing the capability to hide or erase system activity from the audit logs. Audit tools should be cryptographically signed in order to provide the capability to identify when the audit tools have been modified, manipulated, or replaced. An example is a checksum hash of the file or files."
+    remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide/aide.conf.d/ or to /etc/aide/aide.conf to protect the integrity of the audit tools: # Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512."
+    compliance:
+      - cis: ["4.1.4.11"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+    condition: any
+    rules:
+      - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 &&  r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 &&  r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
 
   ############################################################
   # 4.2 Configure Logging
@@ -3308,8 +3322,7 @@ checks:
 
   ############################################################
   # 4.2.1 Configure journald
-  ############################################################
-  # 4.2.1.1 Ensure journald is configured to send logs to a remote log host
+  ############################################################ 4.2.1.1 Ensure journald is configured to send logs to a remote log host
 
   # 4.2.1.1.1 Ensure systemd-journal-remote is installed (Automated)
   - id: 29631
@@ -3345,15 +3358,15 @@ checks:
     remediation: "Run the following command to disable systemd-journal-remote.socket: # systemctl --now disable systemd-journal-remote.socket."
     compliance:
       - cis: ["4.2.1.1.4"]
-      - cis_csc_v8: ["4.8", "8.2"]
-      - cis_csc_v7: ["6.2", "6.3", "9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AU.L2-3.3.1"]
+      - cis_csc_v8: ["4.8","8.2"]
+      - cis_csc_v7: ["6.2","6.3","9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "1.2.5", "2.2.4", "6.4.1"]
+      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5","10.2", "10.3"]
+      - pci_dss_4.0: ["5.3.4", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2","1.2.5","2.2.4","6.4.1"]
       - nist_sp_800-53: ["AU-7"]
-      - soc_2: ["CC6.3", "CC6.6"]
-      - iso_27001-2013: ["A.13.1.3", "A.12.4.1"]
+      - soc_2: ["CC6.3","CC6.6"]
+      - iso_27001-2013: ["A.13.1.3","A.12.4.1"]
       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1029"]
@@ -3498,7 +3511,7 @@ checks:
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2", "AU.L2-3.3.1"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)", "164.312(b)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3", "10.2", "10.3", "5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "1.3.1", "7.1"]
+      - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2","1.3.1","7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6", "AU-7"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5", "A.12.4.1"]
@@ -3533,8 +3546,8 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: any
     rules:
-      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\s*\t*module load="imtcp"|input type="imtcp" port="514"'
-      - 'f:/etc/rsyslog.conf -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\s*\t*module load="imtcp"|input type="imtcp" port="514"'
+      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\module load="imtcp"|input type="imtcp" port="514"'
+      - 'f:/etc/rsyslog.conf -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\module load="imtcp"|input type="imtcp" port="514"'
 
   # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not Implemented
 
@@ -3792,7 +3805,7 @@ checks:
     title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: 'Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chmod u-x,go-wx {} \; # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chown root:root {} \;.'
+    remediation: 'Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chmod u-x,go-wx {} \; # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chown root:root {} \;'
     compliance:
       - cis: ["5.2.3"]
       - cis_csc_v8: ["3.3"]
@@ -3810,7 +3823,7 @@ checks:
     condition: none
     rules:
       - 'c:sh -c "find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat {} \;" -> r:Access:\s*\( && !r:-rw-r--r--'
-
+    
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 29656
     title: "Ensure SSH access is limited."
@@ -3870,6 +3883,8 @@ checks:
     description: "The UsePAM directive enables the Pluggable Authentication Module (PAM) interface. If set to yes this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication directives in addition to PAM account and session module processing for all authentication types."
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.6"]
       - cis_csc_v8: ["4.1"]
@@ -3894,6 +3909,8 @@ checks:
     description: "The PermitRootLogin parameter specifies if the root user can log in using SSH. The default is prohibit-password."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root. This limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.7"]
       - cis_csc_v8: ["5.4"]
@@ -3917,6 +3934,8 @@ checks:
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.8"]
       - cis_csc_v8: ["4.1"]
@@ -3940,6 +3959,8 @@ checks:
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.9"]
       - cis_csc_v8: ["4.1"]
@@ -3963,6 +3984,8 @@ checks:
     description: "The PermitUserEnvironment option allows users to present environment options to the SSH daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has SSH executing trojan'd programs)."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.10"]
       - cis_csc_v8: ["4.1"]
@@ -3987,6 +4010,8 @@ checks:
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.11"]
       - cis_csc_v8: ["4.1"]
@@ -4038,6 +4063,7 @@ checks:
       - https://nvd.nist.gov/vuln/detail/CVE-2016-2183
       - https://www.openssh.com/txt/cbc.adv
       - https://nvd.nist.gov/vuln/detail/CVE-2008-5161
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.13"]
       - cis_csc_v8: ["3.10"]
@@ -4063,6 +4089,7 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs.Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256."
     references:
       - More information on SSH downgrade attacks can be found here: http://www.mitls.org/pages/attacks/SLOTH
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.14"]
       - cis_csc_v8: ["3.10"]
@@ -4158,6 +4185,8 @@ checks:
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.18"]
       - cis_csc_v8: ["8.5"]
@@ -4181,6 +4210,8 @@ checks:
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxStartups 10:30:60."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.19"]
       - cis_csc_v8: ["4.1"]
@@ -4204,6 +4235,8 @@ checks:
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.20"]
       - mitre_techniques: ["T1499", "T1499.002"]
@@ -4213,12 +4246,16 @@ checks:
       - 'c:sshd -T -> n:^\s*maxsessions\s+(\d+) compare <= 10'
       - 'not f:/etc/ssh/sshd_config -> ^\s*MaxSessions\s+(1[1-9]|[2-9][0-9]|[1-9][0-9][0-9]+)'
 
+
+
   # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 29673
     title: "Ensure SSH LoginGraceTime is set to one minute or less."
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds(1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60."
+    references:
+      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.21"]
       - cis_csc_v8: ["4.1"]
@@ -4236,6 +4273,8 @@ checks:
     rules:
       - 'c:sshd -T -> n:logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
       - 'not f:/etc/ssh/sshd_config -> \s*LoginGraceTime\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+|[^1]m)'
+
+
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 29674
@@ -4265,6 +4304,8 @@ checks:
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
     rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the users password is not entered within a configurable time limit. This limit is policy-specific."
     remediation: "First determine is LDAP functionality is required. If so, then install sudo-ldap, else install sudo. Example: # apt install sudo."
+    references:
+      - SUDO(8)
     compliance:
       - cis: ["5.3.1"]
       - cis_csc_v8: ["5.4"]
@@ -4286,8 +4327,11 @@ checks:
     title: "Ensure sudo commands use pty."
     description: "sudo can be configured to run only from a pseudo terminal (pseudo-pty)."
     rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
-    impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
+    impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."    
     remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH TO FILE> and add the following line: Defaults use_pty."
+    references:
+      - SUDO(8)
+      - VISUDO(8)
     compliance:
       - cis: ["5.3.2"]
       - cis_csc_v8: ["5.4"]
@@ -4310,7 +4354,10 @@ checks:
     description: "sudo can use a custom log file."
     rationale: "A sudo log file simplifies auditing of sudo commands."
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
-    remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile="/var/log/sudo.log".'
+    remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile="/var/log/sudo.log."'
+    references:
+      - SUDO(8)
+      - VISUDO(8)
     compliance:
       - cis: ["5.3.3"]
       - cis_csc_v8: ["8.5"]
@@ -4468,6 +4515,8 @@ checks:
       - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*\(default=die\)\s*t*pam_faillock.so\s*authfail'
       - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*sufficient\s*\t*pam_faillock.so\s*authsucc'
       - 'f:/etc/pam.d/common-account -> !r:^\s*\t*# && r:account\s*\t*required\s*\t*pam_faillock.so'
+
+
 
   # 5.4.3 Ensure password reuse is limited (Automated)
   - id: 29684
@@ -4662,7 +4711,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4686,7 +4735,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4710,7 +4759,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4734,7 +4783,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4758,7 +4807,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4782,7 +4831,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4806,7 +4855,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4826,11 +4875,12 @@ checks:
       - cis: ["6.1.8"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
+
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -5017,3 +5067,4 @@ checks:
   # 6.2.15 Ensure no local interactive user has .forward files (Automated) - Not Implemented
   # 6.2.16 Ensure no local interactive user has .rhosts files (Automated) - Not Implemented
   # 6.2.17 Ensure local interactive user dot files are not group or world writable (Automated) - Not Implemented
+
