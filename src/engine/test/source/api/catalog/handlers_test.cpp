@@ -1,6 +1,6 @@
 #include "catalogTestShared.hpp"
 
-#include <api/catalog/commands.hpp>
+#include <api/catalog/handlers.hpp>
 #include <gtest/gtest.h>
 
 const std::string rCommand {"dummy cmd"};
@@ -16,7 +16,7 @@ TEST(Handlers, resourseGet)
                      successName.parts()[2]});
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourceGet(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceGet(catalog));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"json\"}}", name.fullName()).c_str()};
 
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
@@ -41,7 +41,7 @@ TEST(Handlers, resourseGet_Persist)
         auto config = getConfig();
         auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
-        ASSERT_NO_THROW(cmd = api::catalog::cmds::resourceGet(catalog));
+        ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceGet(catalog));
     }
     json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"json\"}}", name.fullName()).c_str()};
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
@@ -61,9 +61,9 @@ TEST(Handlers, resourseGet_MissingName)
     auto config = getConfig();
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
-    ASSERT_NO_THROW(api::catalog::cmds::resourceGet(catalog));
+    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
     json::Json params {R"({"format": "json"})"};
-    auto response = api::catalog::cmds::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
+    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing /name parameter"})");
 
     // check response
@@ -82,9 +82,9 @@ TEST(Handlers, resourseGet_MissingFormat)
                      successName.parts()[1],
                      successName.parts()[2]});
 
-    ASSERT_NO_THROW(api::catalog::cmds::resourceGet(catalog));
+    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
     json::Json params {fmt::format(R"({{"name": "{}"}})", name.fullName()).c_str()};
-    auto response = api::catalog::cmds::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
+    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing or invalid /format parameter"})");
 
     // check response
@@ -102,9 +102,9 @@ TEST(Handlers, resourseGet_CatalogError)
     base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
                      failName.parts()[1],
                      failName.parts()[2]});
-    ASSERT_NO_THROW(api::catalog::cmds::resourceGet(catalog));
+    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"json\"}}", name.fullName()).c_str()};
-    auto response = api::catalog::cmds::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
+    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(
         R"({"status":"ERROR","error":"Content \"decoder/name/fail\" could not be obtained from store: error"})");
 
@@ -123,9 +123,9 @@ TEST(Handlers, resourseGet_InvalidFormat)
     base::Name name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
                      successName.parts()[1],
                      successName.parts()[2]});
-    ASSERT_NO_THROW(api::catalog::cmds::resourceGet(catalog));
+    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
     json::Json params {fmt::format("{{\"name\": \"{}\", \"format\": \"invalid\"}}", name.fullName()).c_str()};
-    auto response = api::catalog::cmds::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
+    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(R"({"status":"ERROR","error":"Missing or invalid /format parameter"})");
 
     // check response
@@ -140,9 +140,9 @@ TEST(Handlers, resourseGet_InvalidName)
 {
     auto config = getConfig();
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
-    ASSERT_NO_THROW(api::catalog::cmds::resourceGet(catalog));
+    ASSERT_NO_THROW(api::catalog::handlers::resourceGet(catalog));
     json::Json params {"{\"name\": \"invalid\", \"format\": \"json\"}"};
-    auto response = api::catalog::cmds::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
+    auto response = api::catalog::handlers::resourceGet(catalog)(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(R"({"status":"ERROR","error":"Invalid collection type \"invalid\""})");
 
     // check response
@@ -161,7 +161,7 @@ TEST(Handlers, resourcePost)
     base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePost(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
     json::Json params;
     params.setObject();
     params.setString(name.fullName(), "/type");
@@ -187,7 +187,7 @@ TEST(Handlers, resourcePost_Persist)
         auto config = getConfig();
         auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
-        ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePost(catalog));
+        ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
     }
     json::Json params;
     params.setObject();
@@ -212,7 +212,7 @@ TEST(Handlers, resourcePost_NotCollectionType)
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePost(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
     json::Json params;
     params.setObject();
     params.setString(successName.fullName(), "/type");
@@ -236,7 +236,7 @@ TEST(Handlers, resourcePost_MissingType)
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePost(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
     json::Json params;
     params.setObject();
     params.setString("json", "/format");
@@ -261,7 +261,7 @@ TEST(Handlers, resourcePost_MissingFormat)
     base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePost(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
     json::Json params;
     params.setObject();
     params.setString(name.fullName(), "/type");
@@ -286,7 +286,7 @@ TEST(Handlers, resourcePost_MissingContent)
     base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePost(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(catalog));
     json::Json params;
     params.setObject();
     params.setString(name.fullName(), "/type");
@@ -313,7 +313,7 @@ TEST(Handlers, resourcePut)
                      successName.parts()[2]});
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePut(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
     json::Json params;
     params.setObject();
     params.setString(name.fullName(), "/name");
@@ -341,7 +341,7 @@ TEST(Handlers, resourcePut_Persist)
         auto config = getConfig();
         auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
-        ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePut(catalog));
+        ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
     }
     json::Json params;
     params.setObject();
@@ -368,7 +368,7 @@ TEST(Handlers, resourcePut_Collection)
     base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePut(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
     json::Json params;
     params.setObject();
     params.setString(name.fullName(), "/name");
@@ -393,7 +393,7 @@ TEST(Handlers, resourcePut_MissingName)
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePut(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
     json::Json params;
     params.setObject();
     params.setString("json", "/format");
@@ -418,7 +418,7 @@ TEST(Handlers, resourcePut_MissingFormat)
     base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePut(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
     json::Json params;
     params.setObject();
     params.setString(name.fullName(), "/name");
@@ -443,7 +443,7 @@ TEST(Handlers, resourcePut_MissingContent)
     base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourcePut(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(catalog));
     json::Json params;
     params.setObject();
     params.setString(name.fullName(), "/name");
@@ -470,7 +470,7 @@ TEST(Handlers, resourceDelete)
                      successName.parts()[2]});
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourceDelete(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(catalog));
     json::Json params;
     params.setObject();
     params.setString(name.fullName(), "/name");
@@ -496,7 +496,7 @@ TEST(Handlers, resourceDelete_Persist)
         auto config = getConfig();
         auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
-        ASSERT_NO_THROW(cmd = api::catalog::cmds::resourceDelete(catalog));
+        ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(catalog));
     }
     json::Json params;
     params.setObject();
@@ -521,7 +521,7 @@ TEST(Handlers, resourceDelete_Collection)
     base::Name name(api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder));
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourceDelete(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(catalog));
     json::Json params;
     params.setObject();
     params.setString(name.fullName(), "/name");
@@ -543,7 +543,7 @@ TEST(Handlers, resourceDelete_MissingName)
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
 
     api::Handler cmd;
-    ASSERT_NO_THROW(cmd = api::catalog::cmds::resourceDelete(catalog));
+    ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(catalog));
     json::Json params;
     params.setObject();
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
@@ -564,7 +564,7 @@ TEST(Handlers, registerHandlers)
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
     auto apiReg = std::make_shared<api::Registry>();
 
-    ASSERT_NO_THROW(api::catalog::cmds::registerHandlers(catalog, apiReg));
+    ASSERT_NO_THROW(api::catalog::handlers::registerHandlers(catalog, apiReg));
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = apiReg->getHandler("catalog.resource/post"));
     ASSERT_NO_THROW(cmd = apiReg->getHandler("catalog.resource/get"));

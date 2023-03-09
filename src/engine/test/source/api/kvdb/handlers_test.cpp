@@ -1,11 +1,11 @@
-#include <api/kvdb/commands.hpp>
+#include <api/kvdb/handlers.hpp>
 
 #include <filesystem>
 #include <fstream>
 
 #include <gtest/gtest.h>
 
-using namespace api::kvdb::cmds;
+using namespace api::kvdb::handlers;
 
 constexpr auto DB_NAME = "TEST_DB";
 constexpr auto DB_NAME_2 = "TEST_DB_2";
