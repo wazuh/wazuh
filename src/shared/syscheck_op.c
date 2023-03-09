@@ -1251,7 +1251,6 @@ void expand_wildcard_registers(char* entry,char** paths) {
     }
     //Then check if there is a ?
     else if (strchr((*current_position)->path, '?')) {
-        mdebug1("Enter with ? only...");
         do {
             w_expand_by_wildcard(current_position, '?');
             current_position++;
@@ -1278,43 +1277,24 @@ void expand_wildcard_registers(char* entry,char** paths) {
     os_free(aux_vector);
 }
 
-char* get_subkey(char* key, char chrwildcard) {
+char* get_subkey(char* key) {
+    char* remaining_key = strdup(strchr(key, '\\') + 1);
+    char* subkey        = NULL;
+    char* aux_token;
+    os_calloc(OS_SIZE_128, sizeof(char), subkey);
 
-    char* rootkey = strchr(key, '\\') + 1;
-    char* wildcard = strchr(key, chrwildcard);
-    int   pathLen = wildcard - rootkey;
-    char* subkey = NULL;
-
-    if (!pathLen) {
-        return strdup("");
+    aux_token = strtok(remaining_key, "\\");
+    while (aux_token !=NULL && !(strchr(aux_token, '?') || strchr(aux_token, '*'))) {
+        strcpy(subkey, aux_token);
+        aux_token = strtok(NULL, "\\");
     }
-
-    os_calloc(pathLen + 1, sizeof(char), subkey);
-    memcpy(subkey, rootkey, pathLen);
-
-    if (subkey[pathLen - 1] == '\\') {
-        subkey[pathLen - 1] = '\0';
-    }
-
-    subkey[pathLen] = '\0';
-    if (chrwildcard == '?') {
-        if (strstr(subkey, "\\")) {
-            for (int letter = strlen(subkey) - 1; letter >= 0; letter--) {
-                if (subkey[letter] != '\\') {
-                    subkey[letter] = '\0';
-                } else {
-                    subkey[letter] = '\0';
-                    return subkey;
-                }
-            }
-        } else {
-            os_free(subkey);
-            return strdup("");
-        }
-    } else {
+    os_free(remaining_key);
+    if (strlen(subkey)) {
         return subkey;
     }
-    os_free(subkey);
+    else {
+        return strdup("");
+    }
 }
 
 int w_is_still_a_wildcard(reg_path_struct **array_struct){
@@ -1434,7 +1414,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
 
     char* str_root_key          = NULL;
     //Obtain the subkey. If it's empty, it's a NULL value.
-    char* subkey                = get_subkey((*array_struct)->path,wildcard_chr);
+    char* subkey                = get_subkey((*array_struct)->path);
         
     os_strdup(strtok(temp, "\\"),str_root_key);
     os_free(temp);

@@ -474,10 +474,9 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr);
  * @brief Extract the subkey from path (Windows)
  *
  * @param [in] key String path that contains the key and subkey.
- * @param [out] chrwildcard Delimiter of the wildcard.
  * @return Allocated subkey or NULL if there is not one.
  */ 
-char* get_subkey(char* key, char chrwildcard);
+char* get_subkey(char* key);
 
 /**
  * @brief Return all possible paths based in a entry  (Windows)
