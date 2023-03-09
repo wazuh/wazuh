@@ -8,18 +8,18 @@ class ReaderHandler final : public AbstractHandler<std::shared_ptr<MetricsContex
 {
 public:
     /**
-     * @brief Trigger for the normalization process on the metrics context.
+     * @brief Trigger for the reader process.
      *
-     * @param data
+     * @param data Context of metrics.
      * @return std::shared_ptr<MetricsContext>
      */
     virtual std::shared_ptr<MetricsContext> handleRequest(std::shared_ptr<MetricsContext> data);
 
 private:
     /**
-     * @brief
+     * @brief Create the reader instance.
      *
-     * @param data
+     * @param data Context of metrics.
      */
     void create(std::shared_ptr<MetricsContext> data);
 };

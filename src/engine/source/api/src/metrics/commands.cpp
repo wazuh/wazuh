@@ -57,7 +57,7 @@ api::CommandFn metricsGetCmd()
 
         return api::WazuhResponse {
             std::get<json::Json>(result),
-            fmt::format("Metrics successfully geted")};
+            fmt::format("Metric successfully obtained")};
     };
 }
 
@@ -84,7 +84,7 @@ api::CommandFn metricsListCmd()
 {
     return [](const json::Json& params) -> api::WazuhResponse
     {
-        auto result = Metrics::instance().getListInstruments();
+        auto result = Metrics::instance().getInstrumentsList();
         return api::WazuhResponse(result.str());
     };
 }

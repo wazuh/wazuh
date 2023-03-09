@@ -53,6 +53,7 @@ enum class SubType
 
 struct MetricsContext
 {
+    // TODO: add doxygen documentation
     bool enable;
     bool dataHubEnable{false};
     std::string outputFile;

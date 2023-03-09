@@ -40,98 +40,90 @@ public:
 
     /**
      * @brief Get dataHub.
+     *
      * @return std::shared_ptr<DataHub> the same handler that has been set as
      * next
      */
     std::shared_ptr<DataHub> getDataHub();
-    
+
     /**
-     * @brief Set the next handle on the chain
+     * @brief Initialize the metrics module.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param moduleName Specifies the name of module
+     * @param file Configuration file
      */
     void initMetrics(const std::string& moduleName, const std::filesystem::path& file);
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Set Scope Span.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
+     * @param spanName Specifies the name of Span.
      * next
      */
     void setScopeSpan(const std::string& spanName) const;
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Add Counter Value.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param counterName Specifies the name of counter.
+     * @param value The value to add.
      */
     void addCounterValue(std::string counterName, const double value) const;
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Add Counter Value.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param counterName Specifies the name of counter.
+     * @param value The value to add.
      */
     void addCounterValue(std::string counterName, const uint64_t value) const;
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Add Histogram Value.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param histogramName Specifies the name of histogram.
+     * @param value The value to add.
      */
     void addHistogramValue(std::string histogramName, const double value) const;
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Add Histogram Value.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param histogramName Specifies the name of histogram.
+     * @param value The value to add.
+     * @param labels The attributes to set.
      */
     void addHistogramValue(std::string histogramName, const uint64_t value, std::map<std::string, std::string> labels = {}) const;
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Add UpDown Counter Value.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param upDownCounterName Specifies the name of UpDown counter.
+     * @param value The value to add.
      */
     void addUpDownCounterValue(std::string upDownCounterName, const double value) const;
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Add UpDown Counter Value.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param upDownCounterName Specifies the name of UpDown counter.
+     * @param value The value to add.
      */
     void addUpDownCounterValue(std::string upDownCounterName, const int64_t value) const;
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Add Observable Gauge Value.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param observableGaugeName Specifies the name of Observable Gauge.
+     * @param callback The callback function.
      */
-    void addObservableGauge(std::string upDownCounterName, opentelemetry::v1::metrics::ObservableCallbackPtr callback) const;
+    void addObservableGauge(std::string observableGaugeName, opentelemetry::v1::metrics::ObservableCallbackPtr callback) const;
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Remove Observable Gauge callback.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param observableGaugeName Specifies the name of Observable Gauge.
+     * @param callback The callback function to remove.
      */
     void removeObservableGauge(std::string observableGaugeName, opentelemetry::v1::metrics::ObservableCallbackPtr callback) const;
 
@@ -145,102 +137,80 @@ public:
 
     /**
      * @brief Obtains information about the list of configured instruments.
+     *
      * @return name, state and type of the instrument.
      */
-    std::ostringstream getListInstruments();
+    std::ostringstream getInstrumentsList();
 
     /**
      * @brief Generate dummy metrics for testing.
      */
     void generateCounterToTesting();
+
 private:
     /**
-     * @brief Set the next handle on the chain
-     *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @brief Set Metrics Config.
      */
     void setMetricsConfig();
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Create the common chain.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param file Configuration file.
      */
     void createCommonChain(const std::filesystem::path& file);
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Set Instrument Config.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param context Context of metrics.
      */
     void setInstrumentConfig(const std::shared_ptr<MetricsContext> context);
 
     /**
-     * @brief Set the next handle on the chain
-     *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @brief Create the full chain.
      */
     void createFullChain();
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Load the json.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param file Configuration file.
      */
     nlohmann::json loadJson(const std::filesystem::path& file);
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Initialize the tracer.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param context Context of metrics.
      */
     void initTracer(const std::shared_ptr<MetricsContext> context);
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Initialize the counter.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param context Context of metrics.
      */
     void initCounter(const std::shared_ptr<MetricsContext> context);
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Initialize the histogram.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param context Context of metrics.
      */
     void initHistogram(const std::shared_ptr<MetricsContext> context);
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Initialize the UpDown counter.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param context Context of metrics.
      */
     void initUpDownCounter(const std::shared_ptr<MetricsContext> context);
 
     /**
-     * @brief Set the next handle on the chain
+     * @brief Initialize the Observable gauge.
      *
-     * @param handler handler that will be set as the next on the chain
-     * @return std::shared_ptr<Handler> the same handler that has been set as
-     * next
+     * @param context Context of metrics.
      */
     void initObservableGauge(const std::shared_ptr<MetricsContext> context);
 
@@ -272,7 +242,7 @@ private:
     std::unordered_map<std::string, opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument>> m_doubleObservableGauge;
     std::unordered_map<std::string, opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument>> m_int64ObservableGauge;
     opentelemetry::context::Context m_context;
-    std::unordered_map<std::string, bool> controller;
+    std::unordered_map<std::string, bool> m_instrumentState;
 };
 
 #endif // _METRICS_H

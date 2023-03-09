@@ -232,6 +232,7 @@ void runStart(ConfHandler confManager)
         }
 
         // Initialize Metrics Module
+        // TODO: Resolve fullpath accordingly.
         Metrics::instance().initMetrics("engine-metrics", "/var/ossec/engine/store/metrics/config/0");
 
         // Register Metrics commands
