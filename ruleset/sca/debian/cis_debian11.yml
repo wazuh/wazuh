@@ -559,7 +559,7 @@ checks:
     title: "Ensure nodev option set on /home partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /home filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /home."
-    remediation: "IF the /home partition exists, edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,relatime 0 0. Run the following command to remount /home with the configured options: # mount -o remount /home"
+    remediation: "IF the /home partition exists, edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,relatime 0 0. Run the following command to remount /home with the configured options: # mount -o remount /home."
     compliance:
       - cis: ["1.1.7.2"]
       - cis_csc_v8: ["3.3"]
@@ -583,7 +583,7 @@ checks:
     title: "Ensure nosuid option set on /home partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /home filesystem is only intended for user file storage, set this option to ensure that users cannot create setuid files in /home."
-    remediation: "IF the /home partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,relatime 0 0. Run the following command to remount /home with the configured options: # mount -o remount /home"
+    remediation: "IF the /home partition exists, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,relatime 0 0. Run the following command to remount /home with the configured options: # mount -o remount /home."
     compliance:
       - cis: ["1.1.7.3"]
       - cis_csc_v8: ["3.3"]
@@ -798,7 +798,7 @@ checks:
     title: "Ensure permissions on bootloader config are configured."
     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options."
     rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
-    remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub/grub.cfg # chmod u-wx,go-rwx /boot/grub/grub.cfg ."
+    remediation: "Run the following commands to set permissions on your grub configuration: # chown root:root /boot/grub/grub.cfg # chmod u-wx,go-rwx /boot/grub/grub.cfg."
     compliance:
       - cis: ["1.4.2"]
       - cis_csc_v8: ["3.3"]
@@ -850,7 +850,7 @@ checks:
     title: "Ensure prelink is not installed."
     description: "prelink is a program that modifies ELF shared libraries and ELF dynamically linked binaries in such a way that the time needed for the dynamic linker to perform relocations at startup significantly decreases."
     rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
-    remediation: "Run the following command to restore binaries to normal: # prelink -ua . Uninstall prelink using the appropriate package manager or manual installation: # apt purge prelink"
+    remediation: "Run the following command to restore binaries to normal: # prelink -ua . Uninstall prelink using the appropriate package manager or manual installation: # apt purge prelink."
     compliance:
       - cis: ["1.5.2"]
       - cis_csc_v8: ["3.14"]
@@ -939,7 +939,7 @@ checks:
     title: "Ensure AppArmor is enabled in the bootloader configuration."
     description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwritten by the bootloader boot parameters. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
     rationale: "AppArmor must be enabled at boot time in your bootloader configuration to ensure that the controls it provides are not overridden."
-    remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor" Run the following command to update the grub2 configuration: # update-grub'
+    remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor" Run the following command to update the grub2 configuration: # update-grub.'
     compliance:
       - cis: ["1.6.1.2"]
       - cis_csc_v8: ["3.3"]
@@ -985,7 +985,7 @@ checks:
     title: "Ensure all AppArmor Profiles are enforcing."
     description: "AppArmor profiles define what resources applications are able to access."
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
-    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted"
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     references:
       - AppArmor Documentation: http://wiki.apparmor.net/index.php/Documentation
       - Ubuntu AppArmor Documentation: https://help.ubuntu.com/community/AppArmor
@@ -1033,7 +1033,7 @@ checks:
     title: "Ensure local login warning banner is configured properly."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a ." command once they have logged in.'
-    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v , or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
+    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v , or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
     compliance:
       - cis: ["1.7.2"]
       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
@@ -1086,7 +1086,7 @@ checks:
     title: "Ensure permissions on /etc/issue are configured."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-    remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root $(readlink -e /etc/issue) # chmod u-x,go-wx $(readlink -e /etc/issue)"
+    remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root $(readlink -e /etc/issue) # chmod u-x,go-wx $(readlink -e /etc/issue)."
     default value: "Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
     compliance:
       - cis: ["1.7.5"]
@@ -1140,7 +1140,7 @@ checks:
     title: "Ensure GNOME Display Manager is removed."
     description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
     rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
-    remediation: "Run the following command to uninstall gdm3: # apt purge gdm3"
+    remediation: "Run the following command to uninstall gdm3: # apt purge gdm3."
     impact: "Removing the GNOME Display manager will remove the Graphical User Interface (GUI) from the system."
     compliance:
       - cis: ["1.8.1"]
@@ -1157,7 +1157,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' gdm3 -> r:unknown ok not-installed|dpkg-query: no packages found matching gdm3"
-  
+
   # 1.8.2 Ensure GDM login banner is configured (Automated) - Not implemented
   # 1.8.3 Ensure GDM disable-user-list option is enabled (Automated) - Not implemented
   # 1.8.4 Ensure GDM screen locks when the user is idle (Automated) - Not implemented
@@ -1166,7 +1166,6 @@ checks:
   # 1.8.7 Ensure GDM disabling automatic mounting of removable media is not overridden - Not implemented
   # 1.8.8 Ensure GDM autorun-never is enabled (Automated) - Not implemented
   # 1.8.9 Ensure GDM autorun-never is not overridden (Automated) - Not implemented
-  
   # 1.8.10 Ensure XDCMP is not enabled (Automated)
   - id: 29545
     title: "Ensure XDCMP is not enabled."
@@ -1186,11 +1185,10 @@ checks:
       - mitre_techniques: ["T1040", "T1056", "T1056.001", "T1557"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
-    condition: any
+    condition: none
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' gdm3 -> r:unknown ok not-installed"
-      - 'not f:/etc/gdm3/daemon.conf -> r:^\s*Enable\s*=\s*true'
-  
+      - 'f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
+
   # 1.9 Ensure updates, patches, and additional security software are installed (Automated)
   - id: 29546
     title: "Ensure updates, patches, and additional security software are installed."
@@ -1276,7 +1274,7 @@ checks:
     title: "Ensure systemd-timesyncd configured with authorized timeserver."
     description: "- NTP= > A space-separated list of NTP server host names or IP addresses. During runtime this list is combined with any per-interface NTP servers acquired from systemd-networkd.service(8). systemd-timesyncd will contact all configured system or per-interface servers in turn, until one responds. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. This setting defaults to an empty list.- FallbackNTP= > A space-separated list of NTP server host names or IP addresses to be used as the fallback NTP servers. Any per-interface NTP servers obtained from system-networkd.service(8) take precedence over this setting, as do any servers set via NTP= above. This setting is hence only relevant if no other NTP server information is known. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. If this option is not given, a compiled-in list of NTP servers is used."
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-    remediation: "Edit or create a file in /etc/systemd/timesyncd.conf.d ending in .conf and add the NTP= and/or FallbackNTP= lines to the [Time] section: Example:[Time] NTP=time.nist.gov # Uses the generic name for NIST's time servers - AND/OR - FallbackNTP=time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov # Space separated list of NIST time servers Run the following command to reload the systemd-timesyncd configuration: # systemctl try-reload-or-restart systemd-timesyncd OR If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd Default Value: #NTP= #FallbackNTP="
+    remediation: "Edit or create a file in /etc/systemd/timesyncd.conf.d ending in .conf and add the NTP= and/or FallbackNTP= lines to the [Time] section: Example:[Time] NTP=time.nist.gov # Uses the generic name for NIST's time servers - AND/OR - FallbackNTP=time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov # Space separated list of NIST time servers Run the following command to reload the systemd-timesyncd configuration: # systemctl try-reload-or-restart systemd-timesyncd OR If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd."
     references:
       - https://www.freedesktop.org/software/systemd/man/timesyncd.conf.html
       - https://tf.nist.gov/tf-cgi/servers.cgi
@@ -1329,8 +1327,7 @@ checks:
     title: "Ensure ntp access control is configured."
     description: "ntp Access Control Commands: restrict address [mask mask] [ippeerlimit int] [flag ...] The address argument expressed in dotted-quad form is the address of a host or network. Alternatively, the address argument can be a valid host DNS name. The mask argument expressed in dotted-quad form defaults to 255.255.255.255, meaning that the address is treated as the address of an individual host. A default entry (address 0.0.0.0, mask 0.0.0.0) is always included and is always the first entry in the list. Note: the text string default, with no mask option, may be used to indicate the default entry. The ippeerlimit directive limits the number of peer requests for each IP to int, where a value of -1 means'unlimited', the current default. A value of 0 means 'none'. There would usually be at most 1 peering request per IP, but if the remote peering requests are behind a proxy there could well be more than 1 per IP. In the current implementation, flag always restricts access, i.e., an entry with no flags indicates that free access to the server is to be given. The flags are not orthogonal, in that more restrictive flags will often make less restrictive ones redundant. The flags can generally be classed into two categories, those which restrict time service and those which restrict informational queries and attempts to do run-time reconfiguration of the server.One or more of the following flags may be specified > kod - If this flag is set when an access violation occurs, a kiss-o-death (KoD) packet is sent. KoD packets are rate limited to no more than one per second. If another KoD packet occurs within one second after the last one, the packet is dropped. > limited - Deny service if the packet spacing violates the lower limits specified in the discard command. A history of clients is kept using the monitoring capability of ntpd. Thus, monitoring is always active as long as there is a restriction entry with the limited flag. > lowpriotrap - Declare traps set by matching hosts to be low priority. The number of traps a server can maintain is limited (the current limit is 3). Traps are usually assigned on a first come, first served basis, with later trap requestors being denied service. This flag modifies the assignment algorithm by allowing low priority traps to be overridden by later requests for normal priority traps. > noepeer - Deny ephemeral peer requests, even if they come from an authenticated source. Note that the ability to use a symmetric key for authentication may be restricted to one or more IPs or subnets via the third field of the ntp.keys file. This restriction is not enabled by default, to maintain backward compatibility. Expect noepeer to become the default in ntp-4.4. > nomodify - Deny ntpq and ntpdc queries which attempt to modify the state of the server (i.e., run time reconfiguration). Queries which return information are permitted. > noquery - Deny ntpq and ntpdc queries. Time service is not affected. > nopeer - Deny unauthenticated packets which would result in mobilizing a new association. This includes broadcast and symmetric active packets when a configured association does not exist. It also includes pool associations, so if you want to use servers from a pool directive and also want to use nopeer by default you'll want a restrict source ... line as well that does not include the nopeer directive. > noserve - Deny all packets except ntpq and ntpdc queries. > notrap - Decline to provide mode 6 control message trap service to matching hosts. The trap service is a subsystem of the ntpq control message protocol which is intended for use by remote event logging programs. > notrust - Deny service unless the packet is cryptographically authenticated. > ntpport - This is actually a match algorithm modifier, rather than a restriction flag. Its presence causes the restriction entry to be matched only if the source port in the packet is the standard NTP UDP port (123). Both ntpport and non-ntpport may be specified. The ntpport is considered more specific and is sorted later in the list."
     rationale: "If ntp is in use on the system, proper configuration is vital to ensuring time synchronization is accurate."
-    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery ORIf another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp Default Value: restrict -4 default kod notrap nomodify nopeer noquery limited restrict -6 default kod notrap nomodify nopeer noquery limited"
-    default value: "restrict -4 default kod notrap nomodify nopeer noquery limited ;restrict -6 default kod notrap nomodify nopeer noquery limited"
+    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery ORIf another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp Default Value: restrict -4 default kod notrap nomodify nopeer noquery limited restrict -6 default kod notrap nomodify nopeer noquery limited."
     references:
       - http://www.ntp.org/
     compliance:
@@ -1403,7 +1400,7 @@ checks:
     title: "Ensure ntp is enabled and running."
     description: "ntp is a daemon for synchronizing the system clock across the network."
     rationale: "ntp needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-    remediation: "IF ntp is in use on the system, run the following commands: Run the following command to unmask ntp.service: # systemctl unmask ntp.service Run the following command to enable and start ntp.service: # systemctl --now enable ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp: # apt purge ntp"
+    remediation: "IF ntp is in use on the system, run the following commands: Run the following command to unmask ntp.service: # systemctl unmask ntp.service Run the following command to enable and start ntp.service: # systemctl --now enable ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp: # apt purge ntp."
     compliance:
       - cis: ["2.1.4.4"]
       - cis_csc_v8: ["8.4"]
@@ -1428,7 +1425,7 @@ checks:
     title: "Ensure X Window System is not installed."
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
-    remediation: "Remove the X Windows System packages: apt purge xserver-xorg*"
+    remediation: "Remove the X Windows System packages: apt purge xserver-xorg*."
     compliance:
       - cis: ["2.2.1"]
       - cis_csc_v8: ["4.8"]
@@ -1450,7 +1447,7 @@ checks:
     title: "Ensure Avahi Server is not installed."
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
-    remediation: "Run the following commands to remove avahi-daemon: # systemctl stop avahi-daaemon.service # systemctl stop avahi-daemon.socket # apt purge avahi-daemon"
+    remediation: "Run the following commands to remove avahi-daemon: # systemctl stop avahi-daaemon.service # systemctl stop avahi-daemon.socket # apt purge avahi-daemon."
     compliance:
       - cis: ["2.2.2"]
       - cis_csc_v8: ["4.8"]
@@ -1474,7 +1471,7 @@ checks:
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
     rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface."
     impact: "Removing CUPS will prevent printing from the system, a common task for workstation systems."
-    remediation: "Run one of the following commands to remove cups : # apt purge cups"
+    remediation: "Run one of the following commands to remove cups : # apt purge cups."
     references:
       -  http://www.cups.org.
     compliance:
@@ -1499,7 +1496,7 @@ checks:
     title: "Ensure DHCP Server is not installed."
     description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
     rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this package be removed to reduce the potential attack surface."
-    remediation: "Run the following command to remove isc-dhcp-server: # apt purge isc-dhcp-server"
+    remediation: "Run the following command to remove isc-dhcp-server: # apt purge isc-dhcp-server."
     references:
       - http://www.isc.org/software/dhcp.
     compliance:
@@ -1524,7 +1521,7 @@ checks:
     title: "Ensure LDAP server is not installed."
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be removed to reduce the potential attack surface."
-    remediation: "Run one of the following commands to remove slapd: # apt purge slapd"
+    remediation: "Run one of the following commands to remove slapd: # apt purge slapd."
     references:
       -  http://www.openldap.org.
     compliance:
@@ -1615,7 +1612,7 @@ checks:
     title: "Ensure HTTP server is not installed."
     description: "HTTP or web servers provide the ability to host web site content."
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the package be deleted to reduce the potential attack surface."
-    remediation: "Run the following command to remove apache: # apt purge apache2"
+    remediation: "Run the following command to remove apache: # apt purge apache2."
     compliance:
       - cis: ["2.2.9"]
       - cis_csc_v8: ["4.8"]
@@ -1753,7 +1750,7 @@ checks:
     title: "Ensure mail transfer agent is configured for local-only mode."
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
     rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Note: This recommendation is designed around the postfix mail server. Depending on your environment you may have an alternative MTA installed such as exim4. If this is the case consult the documentation for your installed MTA to configure the recommended state."
-    remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only .Run the following command to restart postfix: # systemctl restart postfix"
+    remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only .Run the following command to restart postfix: # systemctl restart postfix."
     compliance:
       - cis: ["2.2.15"]
       - cis_csc_v8: ["4.8"]
@@ -1827,7 +1824,7 @@ checks:
   - id: 29573
     title: "Ensure rsh client is not installed."
     description: "The rsh-client package contains the client commands for the rsh services."
-    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin ."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin."
     remediation: "Uninstall rsh: # apt purge rsh-client."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
     compliance:
@@ -1953,15 +1950,10 @@ checks:
   ############################################################
 
   # 3.1.1 Ensure system is checked to determine if IPv6 is enabled (Manual) - Not Implemented
-
   # 3.1.2 Ensure wireless interfaces are disabled (Automated) - Not Implemented
-
   # 3.1.3 Ensure DCCP is disabled (Automated) - Not Implemented
-
   # 3.1.4 Ensure SCTP is disabled (Automated) - Not Implemented
-
   # 3.1.5 Ensure RDS is disabled (Automated) - Not Implemented
-
   # 3.1.6 Ensure TIPC is disabled (Automated) - Not Implemented
 
   ############################################################
@@ -1969,25 +1961,15 @@ checks:
   ############################################################
 
   # 3.2.1 Ensure packet redirect sending is disabled (Automated) - Not Implemented
-
   # 3.2.2 Ensure IP forwarding is disabled (Automated) - Not Implemented
-
   # 3.3.1 Ensure source routed packets are not accepted (Automated) - Not Implemented
-
   # 3.3.2 Ensure ICMP redirects are not accepted (Automated) - Not Implemented
-
   # 3.3.3 Ensure secure ICMP redirects are not accepted (Automated) - Not Implemented
-
   # 3.3.4 Ensure suspicious packets are logged (Automated) - Not Implemented
-
   # 3.3.5 Ensure broadcast ICMP requests are ignored (Automated) - Not Implemented
-
   # 3.3.6 Ensure bogus ICMP responses are ignored (Automated) - Not Implemented
-
   # 3.3.7 Ensure Reverse Path Filtering is enabled (Automated) - Not Implemented
-
   # 3.3.8 Ensure TCP SYN Cookies is enabled (Automated) - Not Implemented
-
   # 3.3.9 Ensure IPv6 router advertisements are not accepted (Automated) - Not Implemented
 
   ############################################################
@@ -2026,7 +2008,7 @@ checks:
     title: "Ensure iptables-persistent is not installed with ufw."
     description: "The iptables-persistent is a boot-time loader for netfilter rules, iptables plugin."
     rationale: "Running both ufw and the services included in the iptables-persistent package may lead to conflict."
-    remediation: "Run the following command to remove the iptables-persistent package: # apt purge iptables-persistent"
+    remediation: "Run the following command to remove the iptables-persistent package: # apt purge iptables-persistent."
     compliance:
       - cis: ["3.5.1.2"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2046,10 +2028,10 @@ checks:
   # 3.5.1.3 Ensure ufw service is enabled (Automated)
   - id: 29580
     title: "Ensure ufw service is enabled."
-    description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Notes: When running ufw enable or starting ufw via its initscript, ufw will flush its chains. This is required so ufw can maintain a consistent state, but it may drop existing connections (eg ssh). ufw does support adding rules before enabling the firewall. Run the following command before running ufw enable. # ufw allow proto tcp from any to any port 22 .The rules will still be flushed, but the ssh port will be open after enabling the firewall. Please note that once ufw is 'enabled', ufw will not flush the chains when adding or removing rules (but will when modifying a rule or changing the default policy) By default, ufw will prompt when enabling the firewall while running under ssh. This can be disabled by using ufw --force enable."
+    description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Notes: - When running ufw enable or starting ufw via its initscript, ufw will flush its chains. This is required so ufw can maintain a consistent state, but it may drop existing connections (eg ssh). ufw does support adding rules before enabling the firewall. - Run the following command before running ufw enable. # ufw allow proto tcp from any to any port 22 . - The rules will still be flushed, but the ssh port will be open after enabling the firewall. Please note that once ufw is 'enabled', ufw will not flush the chains when adding or removing rules (but will when modifying a rule or changing the default policy) - By default, ufw will prompt when enabling the firewall while running under ssh. This can be disabled by using ufw --force enable."
     rationale: "The ufw service must be enabled and running in order for ufw to protect the system."
     impact: "Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service .Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable"
+    remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service .Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable."
     referencces:
       - http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html
     compliance:
@@ -2066,7 +2048,7 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - "c:systemctl is-enabled ufw.service -> r:enabled"
+      - "c:systemctl is-enabled ufw.service -> r:enabled|!No such file or directory"
       - "c:systemctl is-active ufw -> r:^active"
       - "c:ufw status -> r:active"
 
@@ -2075,7 +2057,7 @@ checks:
     title: "Ensure ufw loopback traffic is configured."
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6)."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    remediation: "Run the following commands to implement the loopback rules: # ufw allow in on lo # ufw allow out on lo # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1"
+    remediation: "Run the following commands to implement the loopback rules: # ufw allow in on lo # ufw allow out on lo # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1."
     compliance:
       - cis: ["3.5.1.4"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2096,10 +2078,9 @@ checks:
       - 'c:ufw status verbose -> r:Anywhere \(v6\) on lo\s*\t*ALLOW IN\s*\t*Anywhere \(v6\)'
       - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*\t*DENY IN\s*\t*::1'
       - 'c:ufw status verbose -> r:Anywhere\s*\t*ALLOW OUT\s*\t*Anywhere on lo'
-      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*\t*ALLOW OUT\s*\t*Anywhere \(v6\) on lo'
+      - "c:systemctl is-enabled ufw.service -> r:enabled|!No such file or directory"
 
   # 3.5.1.5 Ensure ufw outbound connections are configured (Manual) - Not Implemented
-
   # 3.5.1.6 Ensure ufw firewall rules exist for all open ports (Automated) - Not Implemented
 
   # 3.5.1.7 Ensure ufw default deny firewall policy (Automated)
@@ -2108,7 +2089,7 @@ checks:
     description: "A default deny policy on connections ensures that any unconfigured network usage will be rejected. Note: Any port or protocol without a explicit allow before the default deny will be blocked."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     impact: "Any port and protocol not explicitly allowed will be blocked. The following rules should be considered before applying the default deny. ufw allow git, ufw allow in http, ufw allow out http <- required for apt to connect to repository, ufw allow in https, ufw allow out https ,ufw allow out 53 ,ufw logging on."
-    remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed"
+    remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed."
     compliance:
       - cis: ["3.5.1.7"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2127,6 +2108,8 @@ checks:
       - 'c:ufw status verbose -> r:^Default && r:deny\W+(incoming)|reject\W+(incoming)'
       - 'c:ufw status verbose -> r:^Default && r:deny\W+(outgoing)|reject\W+(outgoing)'
       - 'c:ufw status verbose -> r:^Default && r:deny\W+(routed)|reject\W+(routed)'
+      - "c:systemctl is-enabled ufw.service -> r:enabled|!No such file or directory"
+
 
   ############################################################
   # 3.5.2 Configure nftables
@@ -2135,9 +2118,9 @@ checks:
   # 3.5.2.1 Ensure nftables is installed (Automated)
   - id: 29583
     title: "Ensure nftables is installed."
-    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Notes: nftables is available in Linux kernel 3.13 and newer .Only one firewall utility should be installed and configured .Changing firewall settings while connected over the network can result in being locked out of the system."
+    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Notes: - nftables is available in Linux kernel 3.13 and newer . - Only one firewall utility should be installed and configured . - Changing firewall settings while connected over the network can result in being locked out of the system."
     rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
-    remediation: "Run the following command to install nftables: # apt install nftables"
+    remediation: "Run the following command to install nftables: # apt install nftables."
     compliance:
       - cis: ["3.5.2.1"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2160,7 +2143,7 @@ checks:
     title: "Ensure ufw is uninstalled or disabled with nftables."
     description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
     rationale: "Running both the nftables service and ufw may lead to conflict and unexpected results."
-    remediation: "Run one of the following commands to either remove ufw or disable ufw .Run the following command to remove ufw: # apt purge ufw .Run the following command to disable ufw: # ufw disable"
+    remediation: "Run one of the following commands to either remove ufw or disable ufw .Run the following command to remove ufw: # apt purge ufw .Run the following command to disable ufw: # ufw disable."
     compliance:
       - cis: ["3.5.2.2"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2176,7 +2159,7 @@ checks:
     condition: any
     rules:
       - "c:dpkg-query -s ufw -> r:package 'ufw' is not installed and no information is available"
-      - "c:ufw status -> r:inactive"
+      - "c:ufw status -> r:inactive|'ufw' not found, but can be installed with:"
 
   # 3.5.2.3 Ensure iptables are flushed with nftables (Manual) - Not Implemented
 
@@ -2186,7 +2169,7 @@ checks:
     description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
     rationale: "nftables doesn't have any default tables. Without a table being build, nftables will not filter network traffic."
     impact: "Adding rules to a running nftables can cause loss of connectivity to the system."
-    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter"
+    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter."
     compliance:
       - cis: ["3.5.2.4"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2210,7 +2193,7 @@ checks:
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
     rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chains policy to drop."
-    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 } Example: # nft create chain inet filter input { type filter hook input priority 0 } # nft create chain inet filter forward { type filter hook forward priority 0 } # nft create chain inet filter output { type filter hook output priority 0 }"
+    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 } Example: # nft create chain inet filter input { type filter hook input priority 0 } # nft create chain inet filter forward { type filter hook forward priority 0 } # nft create chain inet filter output { type filter hook output priority 0 }."
     compliance:
       - cis: ["3.5.2.5"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2234,7 +2217,7 @@ checks:
     title: "Ensure nftables loopback traffic is configured."
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop"
+    remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop."
     compliance:
       - cis: ["3.5.2.6"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2262,7 +2245,6 @@ checks:
     rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
     remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\ } Example: # nft chain inet filter input { policy drop \\ } # nft chain inet filter forward { policy drop \\ } # nft chain inet filter output { policy drop \\ }."
-    default value: "accept"
     compliance:
       - cis: ["3.5.2.8"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2287,7 +2269,7 @@ checks:
     title: "Ensure nftables service is enabled."
     description: "The nftables service allows for the loading of nftables rulesets during boot, or starting on the nftables service."
     rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/nftables.conf file during boot or the starting of the nftables service."
-    remediation: "Run the following command to enable the nftables service: # systemctl enable nftables"
+    remediation: "Run the following command to enable the nftables service: # systemctl enable nftables."
     compliance:
       - cis: ["3.5.2.9"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2310,7 +2292,7 @@ checks:
     title: "Ensure nftables rules are permanent."
     description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames. The nftables service reads the /etc/nftables.conf file for a nftables file or files to include in the nftables ruleset. A nftables ruleset containing the input, forward, and output base chains allow network traffic to be filtered."
     rationale: "Changes made to nftables ruleset only affect the live system, you will also need to configure the nftables ruleset to apply on boot."
-    remediation: "Edit the /etc/nftables.conf file and un-comment or add a line with include <Absolute path to nftables rules file> for each nftables file you want included in the nftables ruleset on boot .Example: # vi /etc/nftables.conf .Add the line: include '/etc/nftables.rules'"
+    remediation: "Edit the /etc/nftables.conf file and un-comment or add a line with include <Absolute path to nftables rules file> for each nftables file you want included in the nftables ruleset on boot .Example: # vi /etc/nftables.conf .Add the line: include '/etc/nftables.rules'."
     compliance:
       - cis: ["3.5.2.10"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2341,7 +2323,7 @@ checks:
     title: "Ensure iptables packages are installed."
     description: "iptables is a utility program that allows a system administrator to configure the tables provided by the Linux kernel firewall, implemented as different Netfilter modules, and the chains and rules it stores. Different kernel modules and programs are used for different protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to Ethernet frames."
     rationale: "A method of configuring and maintaining firewall rules is necessary to configure a Host Based Firewall."
-    remediation: "Run the following command to install iptables and iptables-persistent # apt install iptables iptables-persistent"
+    remediation: "Run the following command to install iptables and iptables-persistent # apt install iptables iptables-persistent."
     compliance:
       - cis: ["3.5.3.1.1"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2364,7 +2346,7 @@ checks:
     title: "Ensure nftables is not installed with iptables."
     description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames and is the successor to iptables."
     rationale: "Running both iptables and nftables may lead to conflict."
-    remediation: "Run the following command to remove nftables: # apt purge nftables"
+    remediation: "Run the following command to remove nftables: # apt purge nftables."
     compliance:
       - cis: ["3.5.3.1.2"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2386,7 +2368,7 @@ checks:
     title: "Ensure ufw is uninstalled or disabled with iptables."
     description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use. Uses a command-line interface consisting of a small number of simple commands .Uses iptables for configuration."
     rationale: "Running iptables.persistent with ufw enabled may lead to conflict and unexpected results."
-    remediation: "Run one of the following commands to either remove ufw or stop and mask ufw Run the following command to remove ufw: # apt purge ufw OR Run the following commands to disable ufw: # ufw disable # systemctl stop ufw # systemctl mask ufw"
+    remediation: "Run one of the following commands to either remove ufw or stop and mask ufw Run the following command to remove ufw: # apt purge ufw OR Run the following commands to disable ufw: # ufw disable # systemctl stop ufw # systemctl mask ufw."
     compliance:
       - cis: ["3.5.3.1.3"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2414,7 +2396,7 @@ checks:
     title: "Ensure iptables default deny firewall policy."
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
-    remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP"
+    remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP."
     compliance:
       - cis: ["3.5.3.2.1"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2439,7 +2421,7 @@ checks:
     title: "Ensure iptables loopback traffic is configured."
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8). Notes: Changing firewall settings while connected over network can result in being locked out of the system .Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP"
+    remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP."
     compliance:
       - cis: ["3.5.3.2.2"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2472,7 +2454,7 @@ checks:
     title: "Ensure ip6tables default deny firewall policy."
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Note: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
-    remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP"
+    remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP."
     compliance:
       - cis: ["3.5.3.3.1"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2497,7 +2479,7 @@ checks:
     title: "Ensure ip6tables loopback traffic is configured."
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1). Note: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP"
+    remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP."
     compliance:
       - cis: ["3.5.3.3.2"]
       - cis_csc_v8: ["4.4", "4.5"]
