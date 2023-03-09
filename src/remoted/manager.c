@@ -1453,7 +1453,7 @@ STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_s
     char msg_err[OS_FLSIZE + 1] = "";
 
     cJSON *error_msg = cJSON_CreateObject();
-    cJSON_AddStringToObject(error_msg, "message", msg);
+    cJSON_AddStringToObject(error_msg, "message", strncmp(msg, HC_INVALID_VERSION, strlen(HC_INVALID_VERSION)) == 0 ? HC_INVALID_VERSION_RESPONSE : msg);
 
     error_msg_string = cJSON_PrintUnformatted(error_msg);
 

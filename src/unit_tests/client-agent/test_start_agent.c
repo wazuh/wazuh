@@ -391,12 +391,12 @@ static void test_agent_handshake_to_server_invalid_version(void **state) {
     will_return(__wrap_wnet_select, 1);
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
-    will_return(__wrap_ReadSecMSG, "#!-err {\"message\": \"Incompatible version\"}");
+    will_return(__wrap_ReadSecMSG, "#!-err {\"message\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
     expect_any_count(__wrap__minfo, formatted_msg, 1);
 
-    expect_string(__wrap__mwarn, formatted_msg ,"Couldn't connect to server '127.0.0.1': 'Incompatible version'");
+    expect_string(__wrap__mwarn, formatted_msg ,"Couldn't connect to server '127.0.0.1': 'Agent version must be lower or equal to manager version'");
 
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);
@@ -418,7 +418,7 @@ static void test_agent_handshake_to_server_error_getting_msg1(void **state) {
     will_return(__wrap_wnet_select, 1);
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
-    will_return(__wrap_ReadSecMSG, "#!-err \"message\": \"Incompatible version\"}");
+    will_return(__wrap_ReadSecMSG, "#!-err \"message\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
     expect_any_count(__wrap__minfo, formatted_msg, 1);
@@ -445,7 +445,7 @@ static void test_agent_handshake_to_server_error_getting_msg2(void **state) {
     will_return(__wrap_wnet_select, 1);
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
-    will_return(__wrap_ReadSecMSG, "#!-err {\"key\": \"Incompatible version\"}");
+    will_return(__wrap_ReadSecMSG, "#!-err {\"key\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
     expect_any_count(__wrap__minfo, formatted_msg, 1);

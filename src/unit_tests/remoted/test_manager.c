@@ -4592,7 +4592,7 @@ void test_save_controlmsg_agent_invalid_version(void **state)
     char r_msg[OS_SIZE_128] = {0};
     char s_msg[OS_FLSIZE + 1] = {0};
     strcpy(r_msg, "agent startup {\"version\":\"v4.6.0\"}");
-    snprintf(s_msg, OS_FLSIZE, "%s%s%s%s%s", CONTROL_HEADER, HC_ERROR, "{\"message\":\"", HC_INVALID_VERSION, "\"}");
+    snprintf(s_msg, OS_FLSIZE, "%s%s%s%s%s", CONTROL_HEADER, HC_ERROR, "{\"message\":\"", HC_INVALID_VERSION_RESPONSE, "\"}");
 
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
