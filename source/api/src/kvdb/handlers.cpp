@@ -1,4 +1,4 @@
-#include <api/kvdb/commands.hpp>
+#include <api/kvdb/handlers.hpp>
 
 #include <string>
 
@@ -11,7 +11,7 @@
 
 #include <api/adapter.hpp>
 
-namespace api::kvdb::cmds
+namespace api::kvdb::handlers
 {
 namespace eKVDB = ::com::wazuh::api::engine::kvdb;
 namespace eEngine = ::com::wazuh::api::engine;
@@ -310,4 +310,4 @@ void registerHandlers(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager, st
         throw std::runtime_error(fmt::format("KVDB API commands could not be registered: {}", e.what()));
     }
 }
-} // namespace api::kvdb::cmds
+} // namespace api::kvdb::handlers

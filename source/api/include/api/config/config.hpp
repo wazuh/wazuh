@@ -1,5 +1,5 @@
-#ifndef _API_CONFIG_CMDS_HPP
-#define _API_CONFIG_CMDS_HPP
+#ifndef _API_CONFIG_HANDLERS_HPP
+#define _API_CONFIG_HANDLERS_HPP
 
 #include <memory>
 #include <optional>
@@ -12,7 +12,7 @@
 #include <api/adapter.hpp>
 
 
-namespace api::config::cmds
+namespace api::config::handlers
 {
 template<typename ConfDriver>
 using ConfHandler = std::shared_ptr<conf::IConf<ConfDriver>>;
@@ -141,6 +141,6 @@ bool registerHandlers(std::shared_ptr<api::Registry> registry, ConfHandler<ConfD
            && registry->registerHandler("config.runtime/put", runtimePut(confHandler))
            && registry->registerHandler("config.runtime/save", runtimeSave(confHandler));
 }
-} // namespace api::config::cmds
+} // namespace api::config::handlers
 
-#endif // _API_CONFIG_CMDS_HPP
+#endif // _API_CONFIG_HANDLERS_HPP

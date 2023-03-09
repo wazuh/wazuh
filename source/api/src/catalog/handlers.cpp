@@ -1,5 +1,5 @@
 
-#include "api/catalog/commands.hpp"
+#include "api/catalog/handlers.hpp"
 
 #include <json/json.hpp>
 #include <eMessages/eMessage.h>
@@ -7,7 +7,7 @@
 
 #include <api/adapter.hpp>
 
-namespace api::catalog::cmds
+namespace api::catalog::handlers
 {
 
 namespace eCatalog = ::com::wazuh::api::engine::catalog;
@@ -313,4 +313,4 @@ void registerHandlers(std::shared_ptr<Catalog> catalog, std::shared_ptr<api::Reg
         throw std::runtime_error(fmt::format("An error occurred while registering the commands: {}", e.what()));
     }
 }
-} // namespace api::catalog::cmds
+} // namespace api::catalog::handlers

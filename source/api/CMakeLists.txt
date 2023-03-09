@@ -22,9 +22,9 @@ CPMAddPackage(
 add_library(api STATIC
     ${ENGINE_API_SOURCE_DIR}/registry.cpp
     ${ENGINE_API_SOURCE_DIR}/catalog/catalog.cpp
-    ${ENGINE_API_SOURCE_DIR}/catalog/commands.cpp
-    ${ENGINE_API_SOURCE_DIR}/kvdb/commands.cpp
-    ${ENGINE_API_SOURCE_DIR}/router/commands.cpp
+    ${ENGINE_API_SOURCE_DIR}/catalog/handlers.cpp
+    ${ENGINE_API_SOURCE_DIR}/kvdb/handlers.cpp
+    ${ENGINE_API_SOURCE_DIR}/router/handlers.cpp
 )
 
 target_include_directories(api
