@@ -1734,16 +1734,21 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
     config_file : bool
         Validate remote commands if True.
     """
+    # Well-formed XML documents should start with a '<' (excluding whitespaces)
+    # https://www.w3.org/TR/REC-xml/#dt-wellformed
+    if not content.lstrip().startswith('<'):
+            raise WazuhError(1113)
+
     # -- characters are not allowed in XML comments
     content = replace_in_comments(content, '--', '%wildcard%')
 
     # Create temporary file for parsing xml input
     try:
         # Beautify xml file and escape '&' character as it could come in some tag values unescaped
-        xml = parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
-        # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
+        xml = parseString(content.replace('&', '&amp;'))
+        # Remove first line (XML specification: <? xmlversion="1.0" ?>) and empty lines
         indent = '  '  # indent parameter for toprettyxml function
-        pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
+        pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[1:-1])) + '\n'
         # Revert xml.dom replacings
         # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
         pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
