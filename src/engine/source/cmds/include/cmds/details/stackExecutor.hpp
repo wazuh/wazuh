@@ -50,9 +50,7 @@ public:
             }
             catch (const std::exception& e)
             {
-                WAZUH_LOG_ERROR("Engine stack executor: An error occurred while trying to "
-                                "execute a command: {}",
-                                e.what());
+                LOG_ERROR("Engine stack executor: An error occurred while trying to execute a command: {}.", e.what());
             }
         }
     }

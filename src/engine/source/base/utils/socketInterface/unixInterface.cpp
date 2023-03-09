@@ -55,12 +55,11 @@ unixInterface::unixInterface(std::string_view path,
 {
     if (m_path.empty())
     {
-        throw std::invalid_argument("Engine Unix interface utils: Socket path is empty.");
+        throw std::invalid_argument("Engine Unix interface utils: Socket path is empty");
     }
     if (0 == m_maxMsgSize)
     {
-        throw std::invalid_argument("Engine Unix interface utils: Parameter "
-                                    "\"maxMsgSize\" cannot be set to zero.");
+        throw std::invalid_argument("Engine Unix interface utils: Parameter 'maxMsgSize' cannot be set to zero");
     }
 }
 // Public
@@ -73,7 +72,7 @@ void unixInterface::socketDisconnect()
 {
     if (0 < m_sock)
     {
-        WAZUH_LOG_DEBUG("Engine Unix interface utils: Closing \"{}\"...", m_path);
+        LOG_DEBUG("Engine Unix interface utils: Closing '{}'...", m_path);
         close(m_sock);
         m_sock = -1;
     }
@@ -89,14 +88,13 @@ void unixInterface::socketConnect()
     /* Check reconexion */
     if (0 < m_sock)
     {
-        WAZUH_LOG_DEBUG("Engine Unix interface utils: Socket \"{}\" is already opened, "
-                        "closing it before reconnecting...",
-                        m_path);
+        LOG_DEBUG("Engine Unix interface utils: Socket '{}' is already opened, closing it before reconnecting...",
+                  m_path);
         close(m_sock);
         m_sock = -1;
     }
 
-    WAZUH_LOG_DEBUG("Engine Unix interface utils: Connecting to \"{}\"...", m_path);
+    LOG_DEBUG("Engine Unix interface utils: Connecting to '{}'...", m_path);
 
     /* Config the socket address */
     struct sockaddr_un sAddr
@@ -111,21 +109,15 @@ void unixInterface::socketConnect()
     if (0 > m_sock)
     {
         throw std::runtime_error(fmt::format(
-            "Engine Unix interface utils: Cannot create the socket \"{}\": {} ({})",
-            m_path,
-            strerror(errno),
-            errno));
+            "Engine Unix interface utils: Cannot create the socket '{}': {} ({})", m_path, strerror(errno), errno));
     }
 
     /* Connect to the UNIX domain */
     if (connect(m_sock, reinterpret_cast<struct sockaddr*>(&sAddr), SUN_LEN(&sAddr)) < 0)
     {
         close(m_sock);
-        throw std::runtime_error(
-            fmt::format("Engine Unix interface utils: Cannot connect to \"{}\": {} ({})",
-                        m_path,
-                        strerror(errno),
-                        errno));
+        throw std::runtime_error(fmt::format(
+            "Engine Unix interface utils: Cannot connect to '{}': {} ({})", m_path, strerror(errno), errno));
     }
 
     /* Set socket buffer maximum size */
@@ -134,23 +126,22 @@ void unixInterface::socketConnect()
         close(m_sock);
         m_sock = -1;
 
-        throw std::runtime_error(fmt::format("Engine Unix interface utils: Cannot set "
-                                             "socket buffer size to \"{}\": {} ({})",
-                                             m_path,
-                                             strerror(errno),
-                                             errno));
+        throw std::runtime_error(
+            fmt::format("Engine Unix interface utils: Cannot set socket buffer size to '{}': {} ({})",
+                        m_path,
+                        strerror(errno),
+                        errno));
     }
 
     if (fcntl(m_sock, F_SETFD, FD_CLOEXEC) == -1)
     {
-        WAZUH_LOG_WARN("Engine Unix interface utils: Cannot set the \"close-on-exec\" "
-                       "flag on the socket \"{}\": {} ({})",
-                       m_path,
-                       strerror(errno),
-                       errno);
+        LOG_WARNING("Engine Unix interface utils: Cannot set the 'close-on-exec' flag on the socket '{}': {} ({}).",
+                    m_path,
+                    strerror(errno),
+                    errno);
     }
 
-    WAZUH_LOG_DEBUG("Engine Unix interface utils: Connected to \"{}\".", m_path);
+    LOG_DEBUG("Engine Unix interface utils: Connected to '{}'.", m_path);
 }
 
 } // namespace base::utils::socketInterface
