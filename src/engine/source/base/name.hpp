@@ -46,13 +46,10 @@ private:
         }
         if (MAX_PARTS < size)
         {
-            WAZUH_LOG_DEBUG(
-                "Engine base name: \"{}\" method: Name \"{}\".", __func__, fullName());
+            LOG_DEBUG("Engine base name: '{}' method: Name '{}'.", __func__, fullName());
 
-            throw std::runtime_error(fmt::format("Name size must have {} parts at most "
-                                                 "at most, but the one inserted has {}",
-                                                 MAX_PARTS,
-                                                 size));
+            throw std::runtime_error(fmt::format(
+                "Name size must have {} parts at most at most, but the one inserted has {}", MAX_PARTS, size));
         }
     }
 

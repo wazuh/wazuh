@@ -41,6 +41,7 @@ endif()
 ####################################################################################################
 # logging
 ####################################################################################################
+# TODO: spdlog includes fmt, but its headers cannot be included as, for example, "fmt/xxx.h" but "fmt/bundled/xxx.h"
 CPMAddPackage(
     NAME fmt
     GITHUB_REPOSITORY fmtlib/fmt
@@ -48,9 +49,9 @@ CPMAddPackage(
     )
 
 CPMAddPackage(
-    NAME fmtlog
-    GITHUB_REPOSITORY MengRao/fmtlog
-    GIT_TAG "v2.1.3"
+    NAME spdlog
+    GITHUB_REPOSITORY gabime/spdlog
+    GIT_TAG "v1.11.0"
     DOWNLOAD_ONLY YES
     )
 
@@ -111,7 +112,7 @@ target_link_libraries(base
 target_include_directories(base
     PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
-    ${fmtlog_SOURCE_DIR}
+    ${spdlog_SOURCE_DIR}/include
     ${rapidjson_SOURCE_DIR}/include
     ${ENGINE_SOURCE_DIR}/json
     )

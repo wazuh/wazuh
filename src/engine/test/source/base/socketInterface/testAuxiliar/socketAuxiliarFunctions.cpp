@@ -137,8 +137,7 @@ int testSocketConnect(std::string_view path, const int socketType)
     // Set close-on-exec
     if (fcntl(socketFD, F_SETFD, FD_CLOEXEC) == -1)
     {
-        WAZUH_LOG_WARN(
-            "Cannot set close-on-exec flag to socket: {} ({})", strerror(errno), errno);
+        LOG_WARNING("Cannot set close-on-exec flag to socket: {} ({}).", strerror(errno), errno);
     }
 
     return socketFD;
@@ -202,12 +201,12 @@ CommRetval testSendMsg(const int socketFD, const std::string& msg, const bool do
         }
         else if (EAGAIN == errno || EWOULDBLOCK == errno)
         {
-            WAZUH_LOG_WARN("wdb socket is full: {} ({})", strerror(errno), errno);
+            LOG_WARNING("wdb socket is full: {} ({}).", strerror(errno), errno);
         }
         else if (EPIPE == errno)
         {
             // Recoverable case
-            throw std::runtime_error("Socket is disconnected.");
+            throw std::runtime_error("Socket is disconnected");
         }
     }
 
@@ -227,7 +226,7 @@ inline std::vector<char> testStreamRcvMsg(const int socketFD)
         else if (0 == rcvBytes)
         {
             // Remote disconect recoverable case
-            throw std::runtime_error("recvMsg: socket disconnected."); // errno is not set
+            throw std::runtime_error("recvMsg: socket disconnected"); // errno is not set
         }
     };
 
@@ -237,7 +236,7 @@ inline std::vector<char> testStreamRcvMsg(const int socketFD)
 
     if (MSG_MAX_SIZE < msgSize)
     {
-        std::runtime_error("recvMsg: message size is too long.");
+        std::runtime_error("recvMsg: message size is too long");
     }
 
     std::vector<char> recvMsg;

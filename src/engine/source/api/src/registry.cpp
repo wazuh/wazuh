@@ -1,5 +1,6 @@
 #include "api/registry.hpp"
-#include "logging/logging.hpp"
+
+#include <logging/logging.hpp>
 
 namespace api
 {

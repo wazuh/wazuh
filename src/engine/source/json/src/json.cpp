@@ -11,8 +11,8 @@
 
 namespace
 {
-constexpr auto INVALID_POINTER_TYPE_MSG = "Invalid pointer path \"{}\"";
-constexpr auto PATH_NOT_FOUND_MSG = "Path \"{}\" not found";
+constexpr auto INVALID_POINTER_TYPE_MSG = "Invalid pointer path '{}'";
+constexpr auto PATH_NOT_FOUND_MSG = "Path '{}' not found";
 } // namespace
 
 namespace json
@@ -46,22 +46,16 @@ Json::Json(const char* json)
     rapidjson::ParseResult result = m_document.Parse(json);
     if (!result)
     {
-        WAZUH_LOG_DEBUG("Engine JSON: \"{}\" method: Parsing error at {}.",
-                        __func__,
-                        result.Offset());
-        throw std::runtime_error(fmt::format("JSON document could not be parsed: {}",
-                                             rapidjson::GetParseError_En(result.Code())));
+        LOG_DEBUG("Engine JSON: '{}' method: Parsing error at {}.", __func__, result.Offset());
+        throw std::runtime_error(
+            fmt::format("JSON document could not be parsed: {}", rapidjson::GetParseError_En(result.Code())));
     }
 
     auto error = checkDuplicateKeys();
     if (error)
     {
-        WAZUH_LOG_DEBUG(
-            "Engine JSON: \"{}\" method: JSON document has duplicated keys: {}.",
-            __func__,
-            error->message);
-        throw std::runtime_error(
-            fmt::format("JSON document has duplicated keys: {}", error->message));
+        LOG_DEBUG("Engine JSON: '{}' method: JSON document has duplicated keys: {}.", __func__, error->message);
+        throw std::runtime_error(fmt::format("JSON document has duplicated keys: {}", error->message));
     }
 }
 
@@ -187,7 +181,7 @@ void Json::set(std::string_view ptrPath, const Json& value)
     }
     else
     {
-        WAZUH_LOG_DEBUG("\"{}\" method: Invalid Pointer Path \"{}\".", __func__, ptrPath);
+        LOG_DEBUG("'{}' method: Invalid Pointer Path '{}'.", __func__, ptrPath);
         throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
     }
 }
@@ -271,9 +265,7 @@ std::optional<int64_t> Json::getInt64(std::string_view path) const
     }
     else
     {
-        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
+        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] Invalid json path: '{}'", path));
     }
 }
 
@@ -295,9 +287,7 @@ std::optional<float_t> Json::getFloat(std::string_view path) const
     }
     else
     {
-        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
+        throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] Invalid json path: '{}'", path));
     }
 }
 
@@ -484,8 +474,7 @@ size_t Json::size(std::string_view path) const
                 // TODO: create tests
                 return value->GetStringLength();
             }
-            throw std::runtime_error(
-                fmt::format("Size of field \"{}\" is not measurable.", path));
+            throw std::runtime_error(fmt::format("Size of field '{}' is not measurable.", path));
         }
 
         throw std::runtime_error(fmt::format(PATH_NOT_FOUND_MSG, path));
@@ -579,16 +568,12 @@ bool Json::isInt64(std::string_view path) const
         }
         else
         {
-            throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
+            throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] Cannot find path: '{}'", path));
         }
     }
     else
     {
-        throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
+        throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] Invalid json path: '{}'", path));
     }
 }
 
@@ -605,16 +590,12 @@ bool Json::isFloat(std::string_view path) const
         }
         else
         {
-            throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] "
-                                                 "Cannot find path: [{}]",
-                                                 path));
+            throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] Cannot find path: '{}'", path));
         }
     }
     else
     {
-        throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
+        throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] Invalid json path: '{}'", path));
     }
 }
 
@@ -785,9 +766,7 @@ void Json::setInt64(int64_t value, std::string_view path)
     }
     else
     {
-        throw std::runtime_error(fmt::format("[Json::setInt(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
+        throw std::runtime_error(fmt::format("[Json::setInt(basePointerPath)] Invalid json path: '{}'", path));
     }
 }
 
@@ -801,9 +780,7 @@ void Json::setFloat(float_t value, std::string_view path)
     }
     else
     {
-        throw std::runtime_error(fmt::format("[Json::setDouble(basePointerPath)] "
-                                             "Invalid json path: [{}]",
-                                             path));
+        throw std::runtime_error(fmt::format("[Json::setDouble(basePointerPath)] Invalid json path: '{}'", path));
     }
 }
 
@@ -870,8 +847,7 @@ void Json::appendString(std::string_view value, std::string_view path)
         const size_t s2 = static_cast<size_t>(s1);
         if (s2 != value.size())
         {
-            throw std::runtime_error(
-                fmt::format("String is too long ({}): \"{}\".", value.size(), value));
+            throw std::runtime_error(fmt::format("String is too long ({}): '{}'.", value.size(), value));
         }
         rapidjson::Value v(value.data(), s2, m_document.GetAllocator());
 
@@ -1103,11 +1079,10 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
             {
                 if (value[it->name.GetString()] != value[it->name.GetString()])
                 {
-                    throw std::runtime_error(fmt::format(
-                        "Unable to build json document because there is a duplicated key "
-                        "\"{}\", or a duplicated key inside object \"{}\".",
-                        it->name.GetString(),
-                        it->name.GetString()));
+                    throw std::runtime_error(fmt::format("Unable to build json document because there is a duplicated "
+                                                         "key '{}', or a duplicated key inside object '{}'.",
+                                                         it->name.GetString(),
+                                                         it->name.GetString()));
                 }
 
                 recurRef(it->value, recurRef);
