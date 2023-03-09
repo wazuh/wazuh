@@ -112,7 +112,7 @@ void Metrics::setMetricsConfig()
             (*particularContext)->outputFile = config.at("outputFile");
         }
 
-        controller.insert({(*particularContext)->name, (*particularContext)->enable});
+        m_instrumentState.insert({(*particularContext)->name, (*particularContext)->enable});
 
         switch ((*particularContext)->providerType)
         {
@@ -289,7 +289,7 @@ void Metrics::addCounterValue(std::string counterName, const double value) const
 {
     if (m_doubleCounter.find(counterName) != m_doubleCounter.end())
     {
-        if(controller.at(counterName))
+        if(m_instrumentState.at(counterName))
         {
             m_doubleCounter.at(counterName)->Add(value);
         }
@@ -304,7 +304,7 @@ void Metrics::addCounterValue(std::string counterName, const uint64_t value) con
 {
     if (m_uint64Counter.find(counterName) != m_uint64Counter.end())
     {
-        if(controller.at(counterName))
+        if(m_instrumentState.at(counterName))
         {
             m_uint64Counter.at(counterName)->Add(value);
         }
@@ -362,7 +362,7 @@ void Metrics::addHistogramValue(std::string histogramName, const double value) c
 {
     if (m_doubleHistogram.find(histogramName) != m_doubleHistogram.end())
     {
-        if(controller.at(histogramName))
+        if(m_instrumentState.at(histogramName))
         {
             std::map<std::string, std::string> labels;
             auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
@@ -379,7 +379,7 @@ void Metrics::addHistogramValue(std::string histogramName, const uint64_t value,
 {
     if (m_uint64Histogram.find(histogramName) != m_uint64Histogram.end())
     {
-        if(controller.at(histogramName))
+        if(m_instrumentState.at(histogramName))
         {
             auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
             m_uint64Histogram.at(histogramName)->Record(value, labelkv, m_context);
@@ -436,7 +436,7 @@ void Metrics::addUpDownCounterValue(std::string upDownCounterName, const double 
 {
     if (m_doubleUpDownCounter.find(upDownCounterName) != m_doubleUpDownCounter.end())
     {
-        if(controller.at(upDownCounterName))
+        if(m_instrumentState.at(upDownCounterName))
         {
             m_doubleUpDownCounter.at(upDownCounterName)->Add(value);
         }
@@ -451,7 +451,7 @@ void Metrics::addUpDownCounterValue(std::string upDownCounterName, const int64_t
 {
     if (m_int64UpDownCounter.find(upDownCounterName) != m_int64UpDownCounter.end())
     {
-        if(controller.at(upDownCounterName))
+        if(m_instrumentState.at(upDownCounterName))
         {
             m_int64UpDownCounter.at(upDownCounterName)->Add(value);
         }
@@ -507,14 +507,14 @@ void Metrics::addObservableGauge(std::string observableGaugeName, opentelemetry:
 {
     if (m_doubleObservableGauge.find(observableGaugeName) != m_doubleObservableGauge.end())
     {
-        if(controller.at(observableGaugeName))
+        if(m_instrumentState.at(observableGaugeName))
         {
             m_doubleObservableGauge.at(observableGaugeName)->AddCallback(callback, nullptr);
         }
     }
     else if (m_int64ObservableGauge.find(observableGaugeName) != m_int64ObservableGauge.end())
     {
-        if(controller.at(observableGaugeName))
+        if(m_instrumentState.at(observableGaugeName))
         {
             m_int64ObservableGauge.at(observableGaugeName)->AddCallback(callback, nullptr);
         }
@@ -529,14 +529,14 @@ void Metrics::removeObservableGauge(std::string observableGaugeName, opentelemet
 {
     if (m_doubleObservableGauge.find(observableGaugeName) != m_doubleObservableGauge.end())
     {
-        if(controller.at(observableGaugeName))
+        if(m_instrumentState.at(observableGaugeName))
         {
             m_doubleObservableGauge.at(observableGaugeName)->RemoveCallback(callback, nullptr);
         }
     }
     else if (m_int64ObservableGauge.find(observableGaugeName) != m_int64ObservableGauge.end())
     {
-        if(controller.at(observableGaugeName))
+        if(m_instrumentState.at(observableGaugeName))
         {
             m_int64ObservableGauge.at(observableGaugeName)->RemoveCallback(callback, nullptr);
         }
@@ -549,9 +549,9 @@ void Metrics::removeObservableGauge(std::string observableGaugeName, opentelemet
 
 void Metrics::setEnableInstrument(const std::string& instrumentName, bool state)
 {
-    if (controller.find(instrumentName) != controller.end())
+    if (m_instrumentState.find(instrumentName) != m_instrumentState.end())
     {
-        controller.at(instrumentName) = state;
+        m_instrumentState.at(instrumentName) = state;
     }
     else
     {
@@ -559,12 +559,12 @@ void Metrics::setEnableInstrument(const std::string& instrumentName, bool state)
     }
 }
 
-std::ostringstream Metrics::getListInstruments()
+std::ostringstream Metrics::getInstrumentsList()
 {
     std::ostringstream outputList;
 
     auto instrumentType = m_instrumentsTypes.begin();
-    for (const auto& control : controller)
+    for (const auto& control : m_instrumentState)
     {
         auto aux = control.second == true ? "enable" : "disable";
         outputList << "\t" << control.first << ", " << aux << ", " << *instrumentType << std::endl;

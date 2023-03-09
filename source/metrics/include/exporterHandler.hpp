@@ -8,18 +8,18 @@ class ExporterHandler final : public AbstractHandler<std::shared_ptr<MetricsCont
 {
 public:
     /**
-     * @brief Trigger for the normalization process on the metrics context.
+     * @brief Trigger for the exporter process.
      *
-     * @param data
+     * @param data Context of metrics.
      * @return std::shared_ptr<MetricsContext>
      */
     virtual std::shared_ptr<MetricsContext> handleRequest(std::shared_ptr<MetricsContext> data);
 
 private:
     /**
-     * @brief
+     * @brief Create the exporter instance.
      *
-     * @param data
+     * @param data Context of metrics.
      */
     void create(std::shared_ptr<MetricsContext> data);
 };

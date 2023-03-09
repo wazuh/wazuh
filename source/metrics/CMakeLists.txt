@@ -11,10 +11,9 @@ CPMAddPackage(
     GIT_TAG v1.8.2
     VERSION 1.8.2
     EXCLUDE_FROM_ALL YES
-#    DOWNLOAD_ONLY
     OPTIONS
         "BUILD_TESTING OFF"
-        "WITH_ZIPKIN ON"
+        "WITH_ZIPKIN ON" # TODO: Add build option and link zipkin to it. Define OT modules policy.
 )
 
 add_compile_definitions ( ONLY_C_LOCALE=1 )
@@ -44,6 +43,7 @@ PRIVATE base)
 
 target_include_directories(metrics PUBLIC
 ${ENGINE_METRICS_INCLUDE_DIR}
+# TODO: Add build option and link zipkin to it. Define OT modules policy.
 ${FETCHCONTENT_BASE_DIR}/opentelemetry-src/exporters/zipkin/include
 ${FETCHCONTENT_BASE_DIR}/opentelemetry-src/exporters/ostream/include
 )
