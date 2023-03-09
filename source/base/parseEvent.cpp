@@ -28,8 +28,7 @@ Event parseOssecEvent(const std::string& event)
 
     if (':' != event[1])
     {
-        throw std::runtime_error(fmt::format("Invalid event format, a colon was expected "
-                                             "to be right after the first character"));
+        throw std::runtime_error(fmt::format("Invalid event format, a colon was expected to be right after the first character"));
     }
 
     const int queue {event[0]};

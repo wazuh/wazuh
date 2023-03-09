@@ -34,7 +34,7 @@ void changeUVTreadPoolWorkerSize(int newSize)
         throw std::runtime_error("Could not set the new thread pool worker size.");
     }
 
-    WAZUH_LOG_DEBUG("Thread pool worker size set to {}", newSize);
+    LOG_DEBUG("Thread pool worker size set to {}", newSize);
 }
 } // namespace
 
@@ -67,31 +67,31 @@ EngineServer::~EngineServer()
 
 void EngineServer::start()
 {
-    WAZUH_LOG_INFO("Starting the server...");
+    LOG_INFO("Starting the server...");
     m_status = Status::RUNNING;
     m_loop->run<uvw::Loop::Mode::DEFAULT>();
-    WAZUH_LOG_INFO("Server stopped");
+    LOG_INFO("Server stopped");
 }
 
 void EngineServer::stop()
 {
-    WAZUH_LOG_INFO("Stopping the server");
+    LOG_INFO("Stopping the server");
     m_loop->walk([](auto& handle) { handle.close(); });
     m_loop->stop();
     this->m_loop->close();
-    WAZUH_LOG_INFO("Server closed");
+    LOG_INFO("Server closed");
 }
 
 void EngineServer::request_stop()
 {
-    WAZUH_LOG_DEBUG("Requesting stop");
+    LOG_DEBUG("Requesting stop");
     // Send the stop request
     m_stopHandle->send();
 }
 
 void EngineServer::addEndpoint(const std::string& name, std::shared_ptr<Endpoint> endpoint)
 {
-    WAZUH_LOG_DEBUG("Adding endpoint {}", name);
+    LOG_DEBUG("Adding endpoint {}", name);
     // first check if the endpoint already exists
     if (m_endpoints.find(name) != m_endpoints.end())
     {

@@ -86,14 +86,8 @@ static std::string getBacktrace()
 
 void wazuhAssertImpl(const char* expr, const char* file, const char* func, int line)
 {
-    WAZUH_LOG_ERROR("Engine base: ASSERT FAILED ({}): {}::{}::{}: {}",
-                    expr,
-                    file,
-                    func,
-                    line,
-                    getBacktrace());
+    LOG_ERROR("Engine base: ASSERT FAILED ({}): {}::{}::{}: {}", expr, file, func, line, getBacktrace());
 
-    logging::loggingTerm();
     // Only for unix
     raise(SIGTRAP);
     // CRASH
@@ -111,14 +105,8 @@ void wazuhAssertMsgImpl(
     va_start(args, fmt);
 
     const int len {vsnprintf(fmtMsg, largeEnough, fmt, args)};
-    WAZUH_LOG_ERROR("Engine base: ASSERT FAILED ({}): {}::{}::{}: {}: {}",
-                    expr,
-                    file,
-                    func,
-                    line,
-                    fmtMsg,
-                    getBacktrace());
-    logging::loggingTerm();
+    LOG_ERROR("Engine base: ASSERT FAILED ({}): {}::{}::{}: {}: {}", expr, file, func, line, fmtMsg, getBacktrace());
+
     // Only for unix
     raise(SIGTRAP);
     // CRASH
