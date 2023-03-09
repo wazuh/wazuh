@@ -1373,7 +1373,6 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey) {
                     NULL,
                     &ftLastWriteTime);
                 if (retCode == ERROR_SUCCESS) {
-                    mdebug1("Key %s",achKey);
                     os_strdup(achKey,*(key_list + i));
                 }
             }
