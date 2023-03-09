@@ -22,31 +22,31 @@ const base::Name successSchemaName({"schema", "name", "ok"});
 const base::Name failSchemaName({"schema", "name", "fail"});
 
 const api::catalog::Resource successResourceAssetJson {
-    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER),
+    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
                 successName.parts()[1],
                 successName.parts()[2]}),
     api::catalog::Resource::Format::json};
 
 const api::catalog::Resource successResourceAssetYml {
-    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER),
+    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
                 successName.parts()[1],
                 successName.parts()[2]}),
     api::catalog::Resource::Format::yaml};
 
 const api::catalog::Resource failResourceAsset {
-    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER),
+    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder),
                 failName.parts()[1],
                 failName.parts()[2]}),
     api::catalog::Resource::Format::json};
 
 const api::catalog::Resource successCollectionAssetJson {
     base::Name(
-        {api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER)}),
+        {api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder)}),
     api::catalog::Resource::Format::json};
 
 const api::catalog::Resource successCollectionAssetYml {
     base::Name(
-        {api::catalog::Resource::typeToStr(api::catalog::Resource::Type::DECODER)}),
+        {api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder)}),
     api::catalog::Resource::Format::yaml};
 
 class FakeStore : public store::IStore
