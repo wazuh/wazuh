@@ -65,16 +65,13 @@ SendRetval unixSecureStream::sendMsg(const std::string& msg)
         }
         else if (EAGAIN == errno || EWOULDBLOCK == errno)
         {
-            WAZUH_LOG_WARN("Engine Unix Stream socket utils: wdb socket is full: {} ({})",
-                           strerror(errno),
-                           errno);
+            LOG_WARNING("Engine Unix Stream socket utils: wdb socket is full: {} ({}).", strerror(errno), errno);
         }
         else if (EPIPE == errno)
         {
             // Recoverable case, socket is disconnected remotely.
             socketDisconnect(); // Force reconnect in next call.
-            throw RecoverableError(
-                "Engine Unix Stream socket utils: sendMsg(): Socket is disconnected.");
+            throw RecoverableError("Engine Unix Stream socket utils: sendMsg(): Socket is disconnected.");
         }
     }
 
@@ -88,10 +85,7 @@ std::vector<char> unixSecureStream::recvMsg()
     {
         if (0 > rcvBytes)
         {
-            const auto msg {
-                fmt::format("Engine Unix Stream socket utils: recvMsg(): {} ({})",
-                            strerror(errno),
-                            errno)};
+            const auto msg {fmt::format("Engine Unix Stream socket utils: recvMsg(): {} ({})", strerror(errno), errno)};
             socketDisconnect();
             if (ECONNRESET == errno)
             {
@@ -104,8 +98,8 @@ std::vector<char> unixSecureStream::recvMsg()
         {
             // Remote disconect recoverable case
             socketDisconnect();
-            throw RecoverableError("Engine Unix Stream socket utils: recvMsg(): Socket "
-                                   "disconnected."); // errno is not set
+            // errno is not set
+            throw RecoverableError("Engine Unix Stream socket utils: recvMsg(): Socket disconnected.");
         }
     };
 
@@ -116,9 +110,8 @@ std::vector<char> unixSecureStream::recvMsg()
     if (getMaxMsgSize() < msgSize)
     {
         socketDisconnect();
-        std::runtime_error(fmt::format(
-            "Engine Unix Stream socket utils: recvMsg(): Message size too long ({}).",
-            msgSize));
+        std::runtime_error(
+            fmt::format("Engine Unix Stream socket utils: recvMsg(): Message size too long ({}).", msgSize));
     }
 
     std::vector<char> recvMsg;

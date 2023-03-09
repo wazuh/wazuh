@@ -14,6 +14,7 @@
 #include <logging/logging.hpp>
 #include <name.hpp>
 #include <rxbk/rxFactory.hpp>
+#include <server/wazuhStreamProtocol.hpp>
 #include <store/drivers/fileDriver.hpp>
 
 #include "base/parseEvent.hpp"
@@ -22,7 +23,6 @@
 #include "defaultSettings.hpp"
 #include "register.hpp"
 #include "registry.hpp"
-#include "metrics/metricsManager.hpp"
 
 namespace
 {
@@ -40,19 +40,26 @@ namespace cmd::test
 {
 void run(const Options& options)
 {
-    // Init logging
+    // Logging init
+
     logging::LoggingConfig logConfig;
-    logConfig.header = "";
     switch (options.logLevel)
     {
-        case 0: logConfig.logLevel = logging::LogLevel::Debug; break;
-        case 1: logConfig.logLevel = logging::LogLevel::Info; break;
-        case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
-        case 3: logConfig.logLevel = logging::LogLevel::Error; break;
-        default: logging::LogLevel::Error;
+        case 0: logConfig.logLevel = "debug"; break;
+        case 1: logConfig.logLevel = "info"; break;
+        case 2: logConfig.logLevel = "warning"; break;
+        case 3: logConfig.logLevel = "error"; break;
+        default: logConfig.logLevel = "warning";
     }
+
     logging::loggingInit(logConfig);
-    g_exitHanlder.add([]() { logging::loggingTerm(); });
+
+    LOG_DEBUG("Logging configuration: filePath='{}', logLevel='{}', header='{}', flushInterval={}ms.",
+              logConfig.filePath,
+              logConfig.logLevel,
+              logConfig.headerFormat,
+              logConfig.flushInterval);
+    LOG_INFO("Logging initialized");
 
     auto metricsManager = std::make_shared<metricsManager::MetricsManager>();
 
@@ -65,17 +72,16 @@ void run(const Options& options)
     auto hlpParsers = fileStore->get(hlpConfigFileName);
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
-        WAZUH_LOG_ERROR("Engine \"test\" command: Configuration file \"{}\" could not be "
-                        "obtained: {}",
-                        hlpConfigFileName.fullName(),
-                        std::get<base::Error>(hlpParsers).message);
+        LOG_ERROR("Engine 'test' command: Configuration file '{}' could not be obtained: {}.",
+                  hlpConfigFileName.fullName(),
+                  std::get<base::Error>(hlpParsers).message);
 
         g_exitHanlder.execute();
         return;
     }
     auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
     hlp::registerParsers(logpar);
-    WAZUH_LOG_INFO("HLP initialized");
+    LOG_INFO("HLP initialized.");
 
     auto registry = std::make_shared<builder::internals::Registry>();
     size_t logparDebugLvl = options.debugLevel > 2 ? 1 : 0;
@@ -85,9 +91,8 @@ void run(const Options& options)
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while registering "
-                        "the builders: {}",
-                        utils::getExceptionStack(e));
+        LOG_ERROR("Engine 'test' command: An error occurred while registering the builders: {}.",
+                  utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
     }
@@ -99,20 +104,18 @@ void run(const Options& options)
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while creating the "
-                        "policy \"{}\": {}",
-                        options.policy,
-                        utils::getExceptionStack(e));
+        LOG_ERROR("Engine 'test' command: An error occurred while creating the environment '{}': {}.",
+                  options.environment,
+                  utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
     }
     auto envDefinition = fileStore->get({options.policy});
     if (std::holds_alternative<base::Error>(envDefinition))
     {
-        WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while getting the "
-                        "definition of the policy \"{}\": {}",
-                        options.policy,
-                        std::get<base::Error>(envDefinition).message);
+        LOG_ERROR("Engine 'test' command: An error occurred while getting the definition of the environment '{}': {}.",
+                  options.environment,
+                  std::get<base::Error>(envDefinition).message);
         g_exitHanlder.execute();
         return;
     }
@@ -150,10 +153,9 @@ void run(const Options& options)
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while building the "
-                        "policy \"{}\": {}",
-                        options.policy,
-                        utils::getExceptionStack(e));
+        LOG_ERROR("Engine 'test' command: An error occurred while building the environment '{}': {}.",
+                  options.environment,
+                  utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
     }
@@ -215,10 +217,9 @@ void run(const Options& options)
                 }
                 catch (const std::exception& e)
                 {
-                    WAZUH_LOG_WARN("Engine \"test\" command: Asset \"{}\" could not "
-                                   "found, skipping tracer: {}",
-                                   name,
-                                   utils::getExceptionStack(e));
+                    LOG_WARNING("Engine 'test' command: Asset '{}' could not found, skipping tracer: {}.",
+                                name,
+                                utils::getExceptionStack(e));
                 }
             }
         }
@@ -311,7 +312,7 @@ void run(const Options& options)
         }
         catch (const std::exception& e)
         {
-            WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while parsing a message: {}", e.what());
+            LOG_ERROR("Engine 'test' command: An error occurred while parsing a message: {}.", e.what());
         }
     }
 
