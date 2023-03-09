@@ -73,7 +73,7 @@ private:
     printInstrumentationInfoMetricData(const sdk::metrics::ScopeMetrics& info_metrics,
                                        const sdk::metrics::ResourceMetrics& data);
     void printPointData(json::Json& jsonObj, const opentelemetry::sdk::metrics::PointType& point_data);
-    void printPointAttributes(json::Json& jsonObj, 
+    void printPointAttributes(json::Json& jsonObj,
         const opentelemetry::sdk::metrics::PointAttributes& point_attributes);
     void
     printAttributes(const std::map<std::string, sdk::common::OwnedAttributeValue>& map,

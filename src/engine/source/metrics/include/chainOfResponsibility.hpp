@@ -77,16 +77,6 @@ public:
         }
         return data;
     }
-
-    /**
-     * @brief Get next step on the chain
-     *
-     * @return std::shared_ptr<AbstractHandler> next handler on the chain
-     */
-    std::shared_ptr<AbstractHandler> next() const
-    {
-        return m_next;
-    }
 };
 
 #endif // _CHAIN_OF_RESPONSIBILITY_HPP
