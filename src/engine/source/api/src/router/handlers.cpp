@@ -1,9 +1,9 @@
 #include <api/adapter.hpp>
-#include <api/router/commands.hpp>
+#include <api/router/handlers.hpp>
 
 #include <eMessages/router.pb.h>
 
-namespace api::router::cmds
+namespace api::router::handlers
 {
 // Using the engine protobuffer namespace
 namespace eRouter = ::com::wazuh::api::engine::router;
@@ -239,4 +239,4 @@ void registerHandlers(std::shared_ptr<::router::Router> router, std::shared_ptr<
     registry->registerHandler("router.queue/post", queuePost(router));
 }
 
-} // namespace api::router::cmds
+} // namespace api::router::handlers

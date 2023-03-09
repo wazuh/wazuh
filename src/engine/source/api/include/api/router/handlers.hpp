@@ -1,10 +1,10 @@
-#ifndef _API_ROUTER_COMMANDS_HPP
-#define _API_ROUTER_COMMANDS_HPP
+#ifndef _API_ROUTER_HANDLERS_HPP
+#define _API_ROUTER_HANDLERS_HPP
 
 #include <api/registry.hpp>
 #include <router/router.hpp>
 
-namespace api::router::cmds
+namespace api::router::handlers
 {
 
 api::Handler routeGet(std::shared_ptr<::router::Router> router);
@@ -24,4 +24,4 @@ void registerHandlers(std::shared_ptr<::router::Router> router, std::shared_ptr<
 
 }
 
-#endif // _API_ROUTER_COMMANDS_HPP
+#endif // _API_ROUTER_HANDLERS_HPP

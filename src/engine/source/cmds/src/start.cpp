@@ -11,10 +11,10 @@
 
 #include <api/api.hpp>
 #include <api/catalog/catalog.hpp>
-#include <api/catalog/commands.hpp>
+#include <api/catalog/handlers.hpp>
 #include <api/config/config.hpp>
-#include <api/kvdb/commands.hpp>
-#include <api/router/commands.hpp>
+#include <api/kvdb/handlers.hpp>
+#include <api/router/handlers.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -167,7 +167,7 @@ void runStart(ConfHandler confManager)
             });
 
         // Register KVDB commands
-        api::kvdb::cmds::registerHandlers(kvdb, server->getRegistry());
+        api::kvdb::handlers::registerHandlers(kvdb, server->getRegistry());
         WAZUH_LOG_DEBUG("KVDB API registered.")
 
         store = std::make_shared<store::FileDriver>(fileStorage);
@@ -205,7 +205,7 @@ void runStart(ConfHandler confManager)
         catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
         WAZUH_LOG_INFO("Catalog initialized.");
 
-        api::catalog::cmds::registerHandlers(catalog, server->getRegistry());
+        api::catalog::handlers::registerHandlers(catalog, server->getRegistry());
         WAZUH_LOG_DEBUG("Catalog API registered.")
 
         router = std::make_shared<router::Router>(builder, store, threads);
@@ -215,7 +215,7 @@ void runStart(ConfHandler confManager)
 
         // Register the API command
         //server->getRegistry()->registerHandler("router", router->apiCallbacks());
-        api::router::cmds::registerHandlers(router, server->getRegistry());
+        api::router::handlers::registerHandlers(router, server->getRegistry());
         WAZUH_LOG_DEBUG("Router API registered.")
 
         // If the router table is empty or the force flag is passed, load from the command line
@@ -230,7 +230,7 @@ void runStart(ConfHandler confManager)
         }
 
         // Register Configuration API commands
-        api::config::cmds::registerHandlers(server->getRegistry(), confManager);
+        api::config::handlers::registerHandlers(server->getRegistry(), confManager);
         WAZUH_LOG_DEBUG("Configuration manager API registered.");
     }
     catch (const std::exception& e)
