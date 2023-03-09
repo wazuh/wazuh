@@ -1,6 +1,9 @@
 import json
 import logging
 import os
+from typing import Dict, Union
+from dateutil.parser import parse, ParserError
+from datetime import datetime, timezone
 
 from sqlalchemy import create_engine, Column, Text, String, UniqueConstraint
 from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
@@ -205,11 +208,57 @@ def load_dates_json() -> dict:
                 # This adds compatibility with "last_dates_files" from previous releases as the format was different
                 for key in contents.keys():
                     for md5_hash in contents[key].keys():
-                        if not isinstance(contents[key][md5_hash], dict):
-                            contents[key][md5_hash] = {"min": contents[key][md5_hash], "max": contents[key][md5_hash]}
+                        contents[key][md5_hash] = get_min_max_values(contents[key][md5_hash])
         else:
             contents = last_dates_default_contents
         return contents
     except (json.JSONDecodeError, OSError) as e:
         logging.error(f"Error: The file of the last dates could not be read: '{e}.")
         raise e
+
+
+def get_min_max_values(content: Union[Dict[str, str], str]) -> Dict[str, str]:
+    if not isinstance(content, dict):
+        try:
+            parse(content, fuzzy=True)
+            return {"min": content, "max": content}
+        except ParserError:
+            new_value = get_default_min_max_values()
+            return {"min": new_value, "max": new_value}
+    else:
+        min_value = content["min"]
+        max_value = content["max"]
+
+        # Checks if min is a valid value
+        try:
+            parse(min_value, fuzzy=True)
+        except ParserError:
+            min_value = None
+
+        # Checks if max is a valid value
+        try:
+            parse(max_value, fuzzy=True)
+        except ParserError:
+            max_value = None
+
+        # If no error is raised
+        if min_value is not None and max_value is not None:
+            return content
+
+        # If min is an invalid value and max is a valid value
+        elif min_value is None and max_value is not None:
+            # Change min to be the same as max and update json
+            return {"min": max_value, "max": max_value}
+        # If min is a valid value and max is an invalid value
+        elif min_value is not None and max_value is None:
+            # Change max to be the same as min and update json
+            return {"min": min_value, "max": min_value}
+        # min and max are invalid values
+        else:
+            new_value = get_default_min_max_values()
+            return {"min": new_value, "max": new_value}
+
+
+def get_default_min_max_values():
+    return datetime.utcnow().replace(tzinfo=timezone.utc)\
+                .strftime('%Y-%m-%dT%H:%M:%S.%fZ')
