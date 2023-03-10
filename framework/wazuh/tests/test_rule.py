@@ -288,13 +288,13 @@ def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_ful
         True for updating existing files, False otherwise.
     """
     with patch('wazuh.rule.exists', return_value=overwrite):
-        result = rule.upload_rule_file(filename=file, content='test', overwrite=overwrite)
+        result = rule.upload_rule_file(filename=file, content='<test></test>', overwrite=overwrite)
 
         # Assert data match what was expected, type of the result and correct parameters in delete() method.
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         rule_path = os.path.join('etc', 'rules', file)
         assert result.affected_items[0] == rule_path, 'Expected item not found'
-        mock_xml.assert_called_once_with('test', rule_path)
+        mock_xml.assert_called_once_with('<test></test>', rule_path)
         if overwrite:
             mock_delete.assert_called_once_with(filename=file), 'delete_rule_file method not called with expected ' \
                                                                 'parameter'
@@ -310,7 +310,7 @@ def test_upload_file_ko(mock_remote_commands, mock_safe_move, mock_xml, mock_del
     """Test exceptions on upload function."""
     # Error when file exists and overwrite is not True
     with patch('wazuh.rule.exists'):
-        result = rule.upload_rule_file(filename='test_rules.xml', content='test', overwrite=False)
+        result = rule.upload_rule_file(filename='test_rules.xml', content='<test></test>', overwrite=False)
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1905, 'Error code not expected.'
 
@@ -321,7 +321,7 @@ def test_upload_file_ko(mock_remote_commands, mock_safe_move, mock_xml, mock_del
 
     # Error doing backup
     with patch('wazuh.rule.exists'):
-        result = rule.upload_rule_file(filename='test_rules.xml', content='test', overwrite=True)
+        result = rule.upload_rule_file(filename='test_rules.xml', content='<test></test>', overwrite=True)
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1019, 'Error code not expected.'
 

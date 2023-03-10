@@ -193,13 +193,13 @@ def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_ful
         True for updating existing files, False otherwise.
     """
     with patch('wazuh.decoder.exists', return_value=overwrite):
-        result = decoder.upload_decoder_file(filename=file, content='test', overwrite=overwrite)
+        result = decoder.upload_decoder_file(filename=file, content='<test></test>', overwrite=overwrite)
 
         # Assert data match what was expected, type of the result and correct parameters in delete() method.
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         decoder_path = os.path.join('etc', 'decoders', file)
         assert result.affected_items[0] == decoder_path, 'Expected item not found'
-        mock_xml.assert_called_once_with('test', decoder_path)
+        mock_xml.assert_called_once_with('<test></test>', decoder_path)
         if overwrite:
             mock_delete.assert_called_once_with(filename=file), 'delete_decoder_file method not called with expected ' \
                                                                 'parameter'
@@ -215,7 +215,7 @@ def test_upload_file_ko(mock_remote_commands, mock_safe_move, mock_xml, mock_del
     """Test exceptions on upload function."""
     # Error when file exists and overwrite is not True
     with patch('wazuh.decoder.exists'):
-        result = decoder.upload_decoder_file(filename='test_decoders.xml', content='test', overwrite=False)
+        result = decoder.upload_decoder_file(filename='test_decoders.xml', content='<test></test>', overwrite=False)
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1905, 'Error code not expected.'
 
@@ -226,7 +226,7 @@ def test_upload_file_ko(mock_remote_commands, mock_safe_move, mock_xml, mock_del
 
     # Error doing backup
     with patch('wazuh.decoder.exists'):
-        result = decoder.upload_decoder_file(filename='test_decoders.xml', content='test', overwrite=True)
+        result = decoder.upload_decoder_file(filename='test_decoders.xml', content='<test></test>', overwrite=True)
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1019, 'Error code not expected.'
 
