@@ -347,7 +347,7 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-      - mitre_techniques: ["TA0005", "T1499", "T1499.001"]
+      - mitre_techniques: ["T1499", "T1499.001"]
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
@@ -696,7 +696,7 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-      - mitre_techniques: ["T1548, T1548.001"]
+      - mitre_techniques: ["T1548", "T1548.001"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1038"]
     condition: all
@@ -720,7 +720,6 @@ checks:
       - cis_csc_v8: ["7.3"]
       - cis_csc_v7: ["3.4"]
       - nist_sp_800-53: ["SI-2"]
-      - iso_27001-2013: ["A.9.1.1"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
       - pci_dss_3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
@@ -764,7 +763,7 @@ checks:
     title: "Ensure filesystem integrity is regularly checked."
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
-    remediation: "If cron will be used to schedule and run aide check. Run the following command: # crontab -u root -e. Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check. OR if aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/sbin/aide --check [Install] WantedBy=multi-user.target. Create or edit the file /etc/systemd/system/aidecheck.timer: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target. Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer."
+    remediation: "If cron will be used to schedule and run aide check. Run the following command: # crontab -u root -e. Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check. OR if aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/sbin/aide --check [Install] WantedBy=multi-user.target. Create or edit the file /etc/systemd/system/aidecheck.timer and add the following lines: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target. Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer."
     references:
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service"
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer"
@@ -799,7 +798,7 @@ checks:
     description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
     impact: 'If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing "e" or access the GRUB 2 command line by pressing "c". If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem.'
-    remediation: "Create an encrypted password with grub2-setpassword: # grub2-setpassword Enter password: <password> Confirm password: <password>"
+    remediation: "Create an encrypted password with grub2-setpassword: # grub2-setpassword Enter password: <password> Confirm password: <password>."
     compliance:
       - cis: ["1.4.1"]
       - cis_csc_v8: ["3.3"]
@@ -895,7 +894,7 @@ checks:
     title: "Ensure SELinux is installed."
     description: "SELinux provides Mandatory Access Control."
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
-    remediation: "Run the following command to install SELinux : # dnf install libselinux."
+    remediation: "Run the following command to install SELinux: # dnf install libselinux."
     compliance:
       - cis: ["1.6.1.1"]
       - cis_csc_v8: ["3.3"]
@@ -1146,7 +1145,7 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-      - mitre_techniques: ["T1122", "T1122.002"]
+      - mitre_techniques: ["T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -1170,7 +1169,7 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-      - mitre_techniques: ["T1122", "T1122.002"]
+      - mitre_techniques: ["T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -1194,7 +1193,7 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-      - mitre_techniques: ["T1122", "T1122.002"]
+      - mitre_techniques: ["T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
     condition: all
@@ -1339,7 +1338,7 @@ checks:
     title: "Ensure chrony is configured."
     description: "chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server."
     rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
-    remediation: 'Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server> Add or edit the OPTIONS in /etc/sysconfig/chronyd to include ''-u chrony'': OPTIONS="-u chrony"'
+    remediation: 'Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server> Add or edit the OPTIONS in /etc/sysconfig/chronyd to include ''-u chrony'': OPTIONS="-u chrony".'
     compliance:
       - cis: ["2.1.2"]
       - cis_csc_v8: ["8.4"]
@@ -1689,7 +1688,7 @@ checks:
   - id: 28067
     title: "Ensure mail transfer agent is configured for local-only mode."
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
-    rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Notes: - This recommendation is designed around the postfix mail server. - Depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
+    rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Note: - This recommendation is designed around the postfix mail server. - Depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
     remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only. Run the following command to restart postfix: # systemctl restart postfix."
     compliance:
       - cis: ["2.2.15"]
@@ -1712,7 +1711,7 @@ checks:
     title: "Ensure nfs-utils is not installed or the nfs-server service is masked."
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
     rationale: "If the system does not require network shares, it is recommended that the nfs-utils package be removed to reduce the attack surface of the system."
-    impact: "Many of the libvirt packages used by Enterprise Linux virtualization are dependent on the nfs-utils package. If the nfs-utils package is required as a dependency, the nfsserver service should be disabled and masked to reduce the attack surface of the system."
+    impact: "Many of the libvirt packages used by Enterprise Linux virtualization are dependent on the nfs-utils package. If the nfs-utils package is required as a dependency, the nfs-server service should be disabled and masked to reduce the attack surface of the system."
     remediation: "Run the following command to remove nfs-utils: # dnf remove nfs-utils OR If the nfs-utils package is required as a dependency, run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server."
     compliance:
       - cis: ["2.2.16"]
@@ -1969,7 +1968,7 @@ checks:
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
     rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
     impact: "If configuring over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
-    remediation: 'If NFTables utility is in use on your system: Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; }.'
+    remediation: 'Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \; } Example: # nft create chain inet filter input { type filter hook input priority 0 \; } # nft create chain inet filter forward { type filter hook forward priority 0 \; } # nft create chain inet filter output { type filter hook output priority 0 \; }.'
     compliance:
       - cis: ["3.4.2.3"]
       - cis_csc_v8: ["4.4"]
@@ -1997,7 +1996,7 @@ checks:
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
     rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue traversing the network stack. It is easier to explicitly permit acceptable usage than to deny unacceptable usage. Note: Changing firewall settings while connected over the network can result in being locked out of the system."
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
-    remediation: 'Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; } # nft chain inet filter output { policy drop \; }.'
+    remediation: 'If NFTables utility is in use on your system: Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \; } Example: # nft chain inet filter input { policy drop \; } # nft chain inet filter forward { policy drop \; }.'
     compliance:
       - cis: ["3.4.2.7"]
       - cis_csc_v8: ["4.4"]
