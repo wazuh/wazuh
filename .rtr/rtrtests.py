@@ -487,7 +487,7 @@ def valgrind(params):
     else:
         logging.info('Valgrind: fails')
         # TODO: we force the return code to 0 to allow the tool to continue
-        final_result.returncode = 0
+        final_result = 0
 
     log(params.output, 'valgrind', final_stdout, final_stderr)
-    return bool(not final_result.returncode)
+    return bool(not final_result)
