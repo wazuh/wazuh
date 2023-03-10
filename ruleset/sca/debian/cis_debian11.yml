@@ -2513,7 +2513,7 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' auditd audispd-plugins -> r:install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' auditd audispd-plugins -> r:install ok installed"
 
   # 4.1.1.2 Ensure auditd service is enabled and active (Automated)
   - id: 29599
@@ -2728,9 +2728,9 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && && r:settimeofday && r:-k time-change|-F key=time-change'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:-k time-change|-F key=time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
-      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && && r:settimeofday && r:-k time-change|-F key=time-change"
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday && r:-k time-change|-F key=time-change"
       - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change"
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
@@ -2945,8 +2945,8 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
 
   # 4.1.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded (Automated)
   - id: 29616
@@ -3033,9 +3033,9 @@ checks:
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
-      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
       - "c:ls -l /usr/sbin/lsmod -> r:/bin/kmod"
       - "c:ls -l /usr/sbin/rmmod -> r:/bin/kmod"
       - "c:ls -l /usr/sbin/insmod -> r:/bin/kmod"
@@ -3046,9 +3046,9 @@ checks:
   # 4.1.3.20 Ensure the audit configuration is immutable (Automated)
   - id: 29620
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
-    remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- "-e 2 " >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
+    remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- "-e 2" >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
     compliance:
       - cis: ["4.1.3.20"]
       - cis_csc_v8: ["3.3", "8.5"]
@@ -3063,7 +3063,7 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$ -> r:^\s*\t*-e 2$'
+      - 'not d:/etc/audit/rules.d -> r:\.+.rules$ -> !r:\s*\t*-e 2$'
 
   # 4.1.3.21 Ensure the running and on disk configuration is the same (Manual)
   - id: 29621
@@ -3258,27 +3258,7 @@ checks:
     rules:
       - 'not c:sh -c "stat -c \"%n %a %G\" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules" -> r:^/sbin && !r:root'
 
-  # 4.1.4.11 Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated)
-  - id: 29630
-    title: "Ensure cryptographic mechanisms are used to protect the integrity of audit tools."
-    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
-    rationale: "Protecting the integrity of the tools used for auditing purposes is a critical step toward ensuring the integrity of audit information. Audit information includes all information (e.g., audit records, audit settings, and audit reports) needed to successfully audit information system activity. Attackers may replace the audit tools or inject code into the existing tools with the purpose of providing the capability to hide or erase system activity from the audit logs. Audit tools should be cryptographically signed in order to provide the capability to identify when the audit tools have been modified, manipulated, or replaced. An example is a checksum hash of the file or files."
-    remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide/aide.conf.d/ or to /etc/aide/aide.conf to protect the integrity of the audit tools: # Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512."
-    compliance:
-      - cis: ["4.1.4.11"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
-      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-      - soc_2: ["CC7.1", "CC8.1"]
-      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
-    condition: any
-    rules:
-      - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 &&  r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
-      - "f:/etc/aide/aide.conf -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 &&  r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512"
+  # 4.1.4.11 Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated) - Not Implemented
 
   ############################################################
   # 4.2 Configure Logging
@@ -3286,7 +3266,8 @@ checks:
 
   ############################################################
   # 4.2.1 Configure journald
-  ############################################################ 4.2.1.1 Ensure journald is configured to send logs to a remote log host
+  ############################################################
+  # 4.2.1.1 Ensure journald is configured to send logs to a remote log host
 
   # 4.2.1.1.1 Ensure systemd-journal-remote is installed (Automated)
   - id: 29631
@@ -3510,8 +3491,8 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: any
     rules:
-      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\module load="imtcp"|input type="imtcp" port="514"'
-      - 'f:/etc/rsyslog.conf -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\module load="imtcp"|input type="imtcp" port="514"'
+      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\s*\t*module load="imtcp"|input type="imtcp" port="514"'
+      - 'f:/etc/rsyslog.conf -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\s*\t*module load="imtcp"|input type="imtcp" port="514"'
 
   # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not Implemented
 
@@ -3769,7 +3750,7 @@ checks:
     title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: 'Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chmod u-x,go-wx {} \; # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chown root:root {} \;'
+    remediation: 'Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chmod u-x,go-wx {} \; # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chown root:root {} \;.'
     compliance:
       - cis: ["5.2.3"]
       - cis_csc_v8: ["3.3"]
@@ -3847,8 +3828,6 @@ checks:
     description: "The UsePAM directive enables the Pluggable Authentication Module (PAM) interface. If set to yes this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication directives in addition to PAM account and session module processing for all authentication types."
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.6"]
       - cis_csc_v8: ["4.1"]
@@ -3873,8 +3852,6 @@ checks:
     description: "The PermitRootLogin parameter specifies if the root user can log in using SSH. The default is prohibit-password."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root. This limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.7"]
       - cis_csc_v8: ["5.4"]
@@ -3898,8 +3875,6 @@ checks:
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.8"]
       - cis_csc_v8: ["4.1"]
@@ -3923,8 +3898,6 @@ checks:
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.9"]
       - cis_csc_v8: ["4.1"]
@@ -3948,8 +3921,6 @@ checks:
     description: "The PermitUserEnvironment option allows users to present environment options to the SSH daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has SSH executing trojan'd programs)."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.10"]
       - cis_csc_v8: ["4.1"]
@@ -3974,8 +3945,6 @@ checks:
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.11"]
       - cis_csc_v8: ["4.1"]
@@ -4027,7 +3996,6 @@ checks:
       - https://nvd.nist.gov/vuln/detail/CVE-2016-2183
       - https://www.openssh.com/txt/cbc.adv
       - https://nvd.nist.gov/vuln/detail/CVE-2008-5161
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.13"]
       - cis_csc_v8: ["3.10"]
@@ -4053,7 +4021,6 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs.Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256."
     references:
       - More information on SSH downgrade attacks can be found here: http://www.mitls.org/pages/attacks/SLOTH
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.14"]
       - cis_csc_v8: ["3.10"]
@@ -4076,7 +4043,7 @@ checks:
     title: "Ensure only strong Key Exchange algorithms are used."
     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received. Notes: - Kex algorithms have a higher preference the earlier they appear in the list. - Some organizations may have stricter requirements for approved Key exchange algorithms. - Ensure that Key exchange algorithms used are in compliance with site policy. - The only Key Exchange Algorithms currently FIPS 140-2 approved are: ecdh-sha2-nistp256, ecdh-sha2-nistp384, ecdh-sha2-nistp521, diffie-hellman-group-exchange-sha256, diffie-hellman-group16-sha512, diffie-hellman-group18-sha512, diffie-hellman-group14-sha256. - The Key Exchange algorithms supported by OpenSSH 8.2 are: curve25519-sha256, curve25519-sha256@libssh.org, diffie-hellman-group1-sha1, diffie-hellman-group14-sha1, diffie-hellman-group14-sha256, diffie-hellman-group16-sha512, diffie-hellman-group18-sha512, diffie-hellman-group-exchange-sha1, diffie-hellman-group-exchange-sha256, ecdh-sha2-nistp256, ecdh-sha2-nistp384, ecdh-sha2-nistp521, sntrup4591761x25519-sha512@tinyssh.org."
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
-    remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example:KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256."
+    remediation: "Edit the /etc/ssh/sshd_config file add/modify the KexAlgorithms line to contain a comma separated list of the site approved key exchange algorithms Example: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group14-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256."
     compliance:
       - cis: ["5.2.15"]
       - cis_csc_v8: ["3.10"]
@@ -4149,8 +4116,6 @@ checks:
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.18"]
       - cis_csc_v8: ["8.5"]
@@ -4174,8 +4139,6 @@ checks:
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxStartups 10:30:60."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.19"]
       - cis_csc_v8: ["4.1"]
@@ -4199,8 +4162,6 @@ checks:
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.20"]
       - mitre_techniques: ["T1499", "T1499.002"]
@@ -4216,8 +4177,6 @@ checks:
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds(1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.21"]
       - cis_csc_v8: ["4.1"]
@@ -4264,8 +4223,6 @@ checks:
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
     rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the users password is not entered within a configurable time limit. This limit is policy-specific."
     remediation: "First determine is LDAP functionality is required. If so, then install sudo-ldap, else install sudo. Example: # apt install sudo."
-    references:
-      - SUDO(8)
     compliance:
       - cis: ["5.3.1"]
       - cis_csc_v8: ["5.4"]
@@ -4289,9 +4246,6 @@ checks:
     rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
     remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH TO FILE> and add the following line: Defaults use_pty."
-    references:
-      - SUDO(8)
-      - VISUDO(8)
     compliance:
       - cis: ["5.3.2"]
       - cis_csc_v8: ["5.4"]
@@ -4314,10 +4268,7 @@ checks:
     description: "sudo can use a custom log file."
     rationale: "A sudo log file simplifies auditing of sudo commands."
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
-    remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile="/var/log/sudo.log."'
-    references:
-      - SUDO(8)
-      - VISUDO(8)
+    remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Example: Defaults logfile="/var/log/sudo.log".'
     compliance:
       - cis: ["5.3.3"]
       - cis_csc_v8: ["8.5"]
@@ -4833,7 +4784,6 @@ checks:
       - cis: ["6.1.8"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
