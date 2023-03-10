@@ -164,18 +164,18 @@ string getExpectedResult(string commandName,
 class opBuilderHelperCreateARTestSuite : public ::testing::Test
 {
 protected:
-    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
 
     void SetUp() override
     {
         // Disable error logs for these tests
-        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+        logging::getDefaultLogger()->set_level(spdlog::level::off);
     }
 
     void TearDown() override
     {
         // Restore original log level
-        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+        logging::getDefaultLogger()->set_level(logLevel);
     }
 };
 

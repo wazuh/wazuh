@@ -14,36 +14,22 @@ namespace logging
 
 constexpr char DEFAULT_LOG_PATH[] {"/dev/stderr"};
 constexpr char DEFAULT_LOG_HEADER[] {"%Y-%m-%d %T.%e %P:%t %l: %v"};
-constexpr char DEFAULT_LOG_LEVEL[] {"warning"}; ///< "trace", "debug", "info", "warning", "error", "critical", "off"
+constexpr spdlog::level::level_enum DEFAULT_LOG_LEVEL {spdlog::level::info}; ///< "trace", "debug", "info", "warning", "error", "critical", "off"
 constexpr uint32_t DEFAULT_LOG_THREADS {0};  ///< Quantity of dedicated threads, 0 means no dedicated threads
 constexpr uint32_t DEFAULT_LOG_THREADS_QUEUE_SIZE {8192}; ///< Size in bytes
 constexpr uint32_t DEFAULT_LOG_FLUSH_INTERVAL {1};        ///< Value in ms
-
-using SeverityLevel = spdlog::level::level_enum;
-
 struct LoggingConfig
 {
     const char* filePath {DEFAULT_LOG_PATH};
     // To know more about the format parameters, please see: https://github.com/gabime/spdlog/wiki/3.-Custom-formatting
     const char* headerFormat {DEFAULT_LOG_HEADER};
-    const char* logLevel {DEFAULT_LOG_LEVEL};
+    spdlog::level::level_enum logLevel {DEFAULT_LOG_LEVEL};
     const uint32_t flushInterval {DEFAULT_LOG_FLUSH_INTERVAL};     ///< Value in ms
     const uint32_t dedicatedThreads {DEFAULT_LOG_THREADS};         ///< 0 means no dedicated threads,
                                                                    ///< if one or more then logsQueueSize takes effect
     const uint32_t logsQueueSize {DEFAULT_LOG_THREADS_QUEUE_SIZE}; ///< Logs queue size to be processed by the dedicated
                                                                    ///< threads (has to be 1 or more)
 };
-
-/**
- * @brief Used to convert the name of the log level to its corresponding value.
- */
-const std::map<std::string, SeverityLevel> SEVERITY_LEVEL {{"trace", SeverityLevel::trace},
-                                                           {"debug", SeverityLevel::debug},
-                                                           {"info", SeverityLevel::info},
-                                                           {"warning", SeverityLevel::warn},
-                                                           {"error", SeverityLevel::err},
-                                                           {"critical", SeverityLevel::critical},
-                                                           {"off", SeverityLevel::off}};
 
 // TODO: This emulates a global variable to fasten the access to the "default" logger, it can be improved
 inline auto getDefaultLogger(void)
@@ -73,7 +59,7 @@ static inline void loggingInit(LoggingConfig& cfg)
         std::cerr << "Log initialization failed: " << ex.what() << std::endl;
     }
 
-    getDefaultLogger()->set_level(SEVERITY_LEVEL.find(cfg.logLevel)->second);
+    getDefaultLogger()->set_level(cfg.logLevel);
     getDefaultLogger()->flush_on(spdlog::level::err);
     getDefaultLogger()->set_pattern(cfg.headerFormat);
 }
