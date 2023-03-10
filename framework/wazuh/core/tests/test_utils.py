@@ -1721,9 +1721,8 @@ def test_validate_wazuh_xml_ko_2(effect, expected_exception):
     expected_exception
         Expected code when triggering the exception.
     """
-    with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
-        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-            utils.validate_wazuh_xml('{"body": "<ossec_config></ossec_config>}')
+    with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
+        utils.validate_wazuh_xml('{"body": "<ossec_config></ossec_config>}')
 
 
 @patch('wazuh.core.utils.full_copy')
