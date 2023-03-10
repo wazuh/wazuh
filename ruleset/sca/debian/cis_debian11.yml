@@ -2151,7 +2151,7 @@ checks:
     description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
     rationale: "nftables doesn't have any default tables. Without a table being build, nftables will not filter network traffic."
     impact: "Adding rules to a running nftables can cause loss of connectivity to the system."
-    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter."
+    remediation: "Run the following command to create a table in nftables: # nft create table inet <table name> Example: # nft create table inet filter."
     compliance:
       - cis: ["3.5.2.4"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2167,15 +2167,15 @@ checks:
       - mitre_mitigations: ["M1031", "M1037"]
     condition: all
     rules:
-      - 'c:nft list tables -> r:\w+'
+      - 'c:nft list tables -> r:^table\s'
 
   # 3.5.2.5 Ensure nftables base chains exist (Automated)
   - id: 29586
     title: "Ensure nftables base chains exist."
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
     rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
-    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chains policy to drop."
-    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 } Example: # nft create chain inet filter input { type filter hook input priority 0 } # nft create chain inet filter forward { type filter hook forward priority 0 } # nft create chain inet filter output { type filter hook output priority 0 }."
+    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
+    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; }. Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0 \\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }."
     compliance:
       - cis: ["3.5.2.5"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2199,7 +2199,7 @@ checks:
     title: "Ensure nftables loopback traffic is configured."
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop."
+    remediation: "Run the following commands to implement the loopback rules: # nft add rule inet filter input iif lo accept # nft create rule inet filter input ip saddr 127.0.0.0/8 counter drop. IF IPv6 is enabled on the system: Run the following command to implement the IPv6 loopback rule: # nft add rule inet filter input ip6 saddr ::1 counter drop."
     compliance:
       - cis: ["3.5.2.6"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2214,9 +2214,9 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
-      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
-      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:iif "lo" accept'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip saddr 127.0.0.0/8'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip6 saddr ::1'
 
   # 3.5.2.7 Ensure nftables outbound and established connections are configured (Manual) - Not Implemented"
 
@@ -2226,7 +2226,7 @@ checks:
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
     rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue transversing the network stack. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
-    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\ } Example: # nft chain inet filter input { policy drop \\ } # nft chain inet filter forward { policy drop \\ } # nft chain inet filter output { policy drop \\ }."
+    remediation: "Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\; }. Example: # nft chain inet filter input { policy drop \\; } # nft chain inet filter forward { policy drop \\; } # nft chain inet filter output { policy drop \\; }."
     compliance:
       - cis: ["3.5.2.8"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2269,28 +2269,7 @@ checks:
     rules:
       - "c:systemctl is-enabled nftables -> r:enabled"
 
-  # 3.5.2.10 Ensure nftables rules are permanent (Automated)
-  - id: 29590
-    title: "Ensure nftables rules are permanent."
-    description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames. The nftables service reads the /etc/nftables.conf file for a nftables file or files to include in the nftables ruleset. A nftables ruleset containing the input, forward, and output base chains allow network traffic to be filtered."
-    rationale: "Changes made to nftables ruleset only affect the live system, you will also need to configure the nftables ruleset to apply on boot."
-    remediation: "Edit the /etc/nftables.conf file and un-comment or add a line with include <Absolute path to nftables rules file> for each nftables file you want included in the nftables ruleset on boot .Example: # vi /etc/nftables.conf .Add the line: include '/etc/nftables.rules'."
-    compliance:
-      - cis: ["3.5.2.10"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.4", "1.3.1", "1.4"]
-      - pci_dss_4.0: ["1.2.1", "1.4.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - soc_2: ["CC6.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - mitre_techniques: ["T1562", "T1562.004"]
-      - mitre_tactics: ["TA0011"]
-      - mitre_mitigations: ["M1031"]
-    condition: all
-    rules:
-      - "f:/etc/nftables.conf -> r:include *"
+  # 3.5.2.10 Ensure nftables rules are permanent (Automated) - Not implemented
 
   ############################################################
   # 3.5.3 Configure iptables
@@ -2321,7 +2300,8 @@ checks:
       - mitre_mitigations: ["M1031", "M1037"]
     condition: all
     rules:
-      - "c:apt list iptables iptables-persistent -> r:installed,automatic"
+      - "c:apt list iptables -> r:installed,automatic"
+      - "c:apt list iptables-persistent -> r:installed,automatic"
 
   # 3.5.3.1.2 Ensure nftables is not installed with iptables (Automated)
   - id: 29592
@@ -2343,12 +2323,14 @@ checks:
       - mitre_tactics: ["TA0011"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables -> r:unknown ok not-installed"
+      - "c:apt list iptables -> r:installed,automatic"
+      - "c:apt list iptables-persistent -> r:installed,automatic"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables -> r:unknown ok not-installed|dpkg-query: no packages found matching nftables"
 
   # 3.5.3.1.3 Ensure ufw is uninstalled or disabled with iptables (Automated)
   - id: 29593
     title: "Ensure ufw is uninstalled or disabled with iptables."
-    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use. Uses a command-line interface consisting of a small number of simple commands .Uses iptables for configuration."
+    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use. - Uses a command-line interface consisting of a small number of simple commands. - Uses iptables for configuration."
     rationale: "Running iptables.persistent with ufw enabled may lead to conflict and unexpected results."
     remediation: "Run one of the following commands to either remove ufw or stop and mask ufw Run the following command to remove ufw: # apt purge ufw OR Run the following commands to disable ufw: # ufw disable # systemctl stop ufw # systemctl mask ufw."
     compliance:
@@ -2365,7 +2347,7 @@ checks:
       - mitre_tactics: ["TA0011"]
     condition: any
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ufw -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ufw -> r:unknown ok not-installed|dpkg-query: no packages found matching ufw"
       - "c:ufw status -> r:inactive"
       - "c:systemctl is-enabled ufw -> r:masked"
 
@@ -2376,7 +2358,7 @@ checks:
   # 3.5.3.2.1 Ensure iptables default deny firewall policy (Automated)
   - id: 29594
     title: "Ensure iptables default deny firewall policy."
-    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Notes: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Notes: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP."
     compliance:
@@ -2401,7 +2383,7 @@ checks:
   # 3.5.3.2.2 Ensure iptables loopback traffic is configured (Automated)
   - id: 29595
     title: "Ensure iptables loopback traffic is configured."
-    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8). Notes: Changing firewall settings while connected over network can result in being locked out of the system .Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8). Notes: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP."
     compliance:
@@ -2424,7 +2406,6 @@ checks:
       - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
   # 3.5.3.2.3 Ensure iptables outbound and established connections are configured (Manual) - Not Implemented
-
   # 3.5.3.2.4 Ensure iptables firewall rules exist for all open ports (Automated) - Not Implemented
 
   ############################################################
@@ -2434,7 +2415,7 @@ checks:
   # 3.5.3.3.1 Ensure ip6tables default deny firewall policy (Automated)
   - id: 29596
     title: "Ensure ip6tables default deny firewall policy."
-    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Note: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected. Note: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
     remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP."
     compliance:
@@ -2459,7 +2440,7 @@ checks:
   # 3.5.3.3.2 Ensure ip6tables loopback traffic is configured (Automated)
   - id: 29597
     title: "Ensure ip6tables loopback traffic is configured."
-    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1). Note: Changing firewall settings while connected over network can result in being locked out of the system. Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1). Note: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP."
     compliance:
@@ -2481,7 +2462,6 @@ checks:
       - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*::/0\.*::/0'
 
   # 3.5.3.3.3 Ensure ip6tables outbound and established connections are configured (Manual)
-
   # 3.5.3.3.4 Ensure ip6tables firewall rules exist for all open ports (Automated) - Not Implemented
 
   ############################################################
