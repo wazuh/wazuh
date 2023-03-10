@@ -4138,7 +4138,7 @@ checks:
 
   # 5.2.20 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 29672
-    title: "Ensure SSH MaxSessions is set to 10 or less (Automated)."
+    title: "Ensure SSH MaxSessions is set to 10 or less."
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxSessions 10."
@@ -4284,15 +4284,15 @@ checks:
       - iso_27001-2013: ["A.9.2.3"]
     condition: none
     rules:
-      - 'f:/etc/sudoers -> !r:^\s*\t*# && r:*NOPASSWD'
-      - 'd:/etc/sudoers.d -> r:* -> !r:^\s*\t*# && r:*NOPASSWD'
+      - 'f:/etc/sudoers -> !r:^\s*\t*# && r:NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:\.* -> !r:^\s*\t*# && r:NOPASSWD'
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally (Automated)
   - id: 29679
     title: "Ensure re-authentication for privilege escalation is not disabled globally."
     description: "The operating system must be configured so that users must re-authenticate for privilege escalation."
     rationale: "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user re-authenticate."
-    remediation: "Configure the operating system to require users to reauthenticate for privilege escalation.Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any occurrences of !authenticate tags in the file(s)."
+    remediation: "Configure the operating system to require users to reauthenticate for privilege escalation. Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any occurrences of !authenticate tags in the file(s)."
     compliance:
       - cis: ["5.3.5"]
       - cis_csc_v8: ["5.4"]
@@ -4305,7 +4305,7 @@ checks:
     condition: none
     rules:
       - 'f:/etc/sudoers -> !r:^\s*\t*# && r:*\!authenticate'
-      - 'd:/etc/sudoers.d -> r:* -> !r:^\s*\t*# && r:*\!authenticate'
+      - 'd:/etc/sudoers.d -> r:\.* -> !r:^\s*\t*# && r:*\!authenticate'
 
   # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated)
   - id: 29680
@@ -4324,10 +4324,10 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
       - iso_27001-2013: ["A.9.2.3"]
-    condition: none
+    condition: any
     rules:
       - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15.0 minutes'
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare < 16 && =15'
+      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare < 15'
 
   # 5.3.7 Ensure access to the su command is restricted (Automated)
   - id: 29681
@@ -4385,7 +4385,7 @@ checks:
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. - deny -> Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. - fail_interval -> The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out. - unlock_time -> The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     impact: "It is critical to test and validate any PAM changes before deploying. Any misconfiguration could cause the system to be inaccessible."
-    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth: Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file. # here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth # Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail # Added to enable faillock auth sufficient pam_faillock.so authsucc # Added to enable faillock # here is the fallback if no module succeeds auth requisite pam_deny.so # prime the stack with a positive return value if there is not one already; # this avoids us returning an error just because nothing sets a success code # since the modules above will each just jump around auth required pam_permit.so # and here are more per-package modules (the "Additional" block) auth optional pam_cap.so # end of pam-auth-update config Common account: Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. > account > required > pam_faillock.so. Fail lock configuration: Edit /etc/security/faillock.conf and configure it per your site policy. Example: deny = 4 > fail_interval = 900 > unlock time = 600.'
+    remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth: Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file. # here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth # Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail # Added to enable faillock auth sufficient pam_faillock.so authsucc # Added to enable faillock # here''s the fallback if no module succeeds auth requisite pam_deny.so # prime the stack with a positive return value if there isn''t one already; # this avoids us returning an error just because nothing sets a success code # since the modules above will each just jump around auth required pam_permit.so # and here are more per-package modules (the "Additional" block) auth optional pam_cap.so # end of pam-auth-update config Common account: Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. > account > required > pam_faillock.so. Fail lock configuration: Edit /etc/security/faillock.conf and configure it per your site policy. Example: deny = 4 > fail_interval = 900 > unlock time = 600.'
     compliance:
       - cis: ["5.4.2"]
       - cis_csc_v8: ["6.2"]
@@ -4546,14 +4546,14 @@ checks:
     rules:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
       - 'not c:useradd -D -> n:^INACTIVE=(-\d+) compare < 0'
-      - 'not c:sh -c "awk -F: ''(/^[^:]+:[^!*]/ && ($7~/(\\s*$|-1)/ || $7>30)){print $1 \" \" $7}'' /etc/shadow" -> r:^\w+'
+      - 'not f:/etc/shadow -> !r:^# && n:^\w+:\w+:\w+:\w+:\w+:\w+:(\d+): compare > 30'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not Implemented
   # 5.5.2 Ensure system accounts are secured (Automated) - Not Implemented
 
   # 5.5.3 Ensure default group for the root account is GID 0 (Automated)
   - id: 29690
-    title: "Ensure default group for the root account is GID 0 (Automated)."
+    title: "Ensure default group for the root account is GID 0."
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
     remediation: "Run the following command to set the root user default group to GID 0 : # usermod -g 0 root."
@@ -4588,7 +4588,7 @@ checks:
 
   # 6.1.1 Ensure permissions on /etc/passwd are configured (Automated)
   - id: 29691
-    title: "Ensure permissions on /etc/passwd are configured (Automated)."
+    title: "Ensure permissions on /etc/passwd are configured."
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
     rationale: "It is critical to ensure that the /etc/passwd file is protected from unauthorized write access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/passwd: # chmod u-x,go-wx /etc/passwd # chown root:root /etc/passwd."
@@ -4612,7 +4612,7 @@ checks:
 
   # 6.1.2 Ensure permissions on /etc/passwd- are configured (Automated)
   - id: 29692
-    title: "Ensure permissions on /etc/passwd- are configured (Automated)."
+    title: "Ensure permissions on /etc/passwd- are configured."
     description: "The /etc/passwd- file contains backup user account information."
     rationale: "It is critical to ensure that the /etc/passwd- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/passwd-: # chmod u-x,go-wx /etc/passwd- # chown root:root /etc/passwd-."
@@ -4636,7 +4636,7 @@ checks:
 
   # 6.1.3 Ensure permissions on /etc/group are configured (Automated)
   - id: 29693
-    title: "Ensure permissions on /etc/group are configured (Automated)."
+    title: "Ensure permissions on /etc/group are configured."
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
     rationale: "The /etc/group file needs to be protected from unauthorized changes by non-privileged users, but needs to be readable as this information is used with many non-privileged programs."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/group: # chmod u-x,go-wx /etc/group # chown root:root /etc/group."
@@ -4660,7 +4660,7 @@ checks:
 
   # 6.1.4 Ensure permissions on /etc/group- are configured (Automated)
   - id: 29694
-    title: "Ensure permissions on /etc/group- are configured (Automated)."
+    title: "Ensure permissions on /etc/group- are configured."
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
     rationale: "It is critical to ensure that the /etc/group- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/group-: # chmod u-x,go-wx /etc/group- # chown root:root /etc/group-."
@@ -4684,10 +4684,10 @@ checks:
 
   # 6.1.5 Ensure permissions on /etc/shadow are configured (Automated)
   - id: 29695
-    title: "Ensure permissions on /etc/shadow are configured (Automated)."
+    title: "Ensure permissions on /etc/shadow are configured."
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert the user accounts."
-    remediation: "Run one of the following commands to set ownership of /etc/shadow to root and group to either root or shadow: # chown root:shadow /etc/shadow -OR- # chown root:root /etc/shadow .Run the following command to remove excess permissions form /etc/shadow: # chmod u-x,g-wx,o-rwx /etc/shadow."
+    remediation: "Run one of the following commands to set ownership of /etc/shadow to root and group to either root or shadow: # chown root:shadow /etc/shadow -OR- # chown root:root /etc/shadow Run the following command to remove excess permissions form /etc/shadow: # chmod u-x,g-wx,o-rwx /etc/shadow."
     compliance:
       - cis: ["6.1.5"]
       - cis_csc_v8: ["3.3"]
@@ -4708,10 +4708,10 @@ checks:
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured (Automated)
   - id: 29696
-    title: "Ensure permissions on /etc/shadow- are configured (Automated)."
+    title: "Ensure permissions on /etc/shadow- are configured."
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/shadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
-    remediation: "Run one of the following commands to set ownership of /etc/shadow- to root and group to either root or shadow: # chown root:shadow /etc/shadow- -OR- # chown root:root /etc/shadow- .Run the following command to remove excess permissions form /etc/shadow-: # chmod u-x,g-wx,o-rwx /etc/shadow-."
+    remediation: "Run one of the following commands to set ownership of /etc/shadow- to root and group to either root or shadow: # chown root:shadow /etc/shadow- -OR- # chown root:root /etc/shadow- Run the following command to remove excess permissions form /etc/shadow-: # chmod u-x,g-wx,o-rwx /etc/shadow-."
     compliance:
       - cis: ["6.1.6"]
       - cis_csc_v8: ["3.3"]
@@ -4732,10 +4732,10 @@ checks:
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 29697
-    title: "Ensure permissions on /etc/gshadow are configured (Automated)."
+    title: "Ensure permissions on /etc/gshadow are configured."
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
-    remediation: "Run one of the following commands to set ownership of /etc/gshadow to root and group to either root or shadow: # chown root:shadow /etc/gshadow -OR- # chown root:root /etc/gshadow .Run the following command to remove excess permissions form /etc/gshadow: # chmod u-x,g-wx,o-rwx /etc/gshadow."
+    remediation: "Run one of the following commands to set ownership of /etc/gshadow to root and group to either root or shadow: # chown root:shadow /etc/gshadow -OR- # chown root:root /etc/gshadow Run the following command to remove excess permissions form /etc/gshadow: # chmod u-x,g-wx,o-rwx /etc/gshadow."
     compliance:
       - cis: ["6.1.7"]
       - cis_csc_v8: ["3.3"]
@@ -4756,7 +4756,7 @@ checks:
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 29698
-    title: "Ensure permissions on /etc/gshadow- are configured (Automated)."
+    title: "Ensure permissions on /etc/gshadow- are configured."
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
     rationale: "It is critical to ensure that the /etc/gshadow- file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: "Run one of the following commands to set ownership of /etc/gshadow- to root and group to either root or shadow: # chown root:shadow /etc/gshadow- -OR- # chown root:root /etc/gshadow- Run the following command to remove excess permissions form /etc/gshadow-: # chmod u-x,g-wx,o-rwx /etc/gshadow-."
@@ -4780,7 +4780,7 @@ checks:
 
   # 6.1.9 Ensure no world writable files exist (Automated)
   - id: 29699
-    title: "Ensure no world writable files exist (Automated)."
+    title: "Ensure no world writable files exist."
     description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
     rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
     remediation: "Removing write access for the 'other' category ( chmod o-w <filename> ) is advisable, but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file."
@@ -4804,7 +4804,7 @@ checks:
 
   # 6.1.10 Ensure no unowned files or directories exist (Automated)
   - id: 3200
-    title: "Ensure no unowned files or directories exist (Automated)."
+    title: "Ensure no unowned files or directories exist."
     description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
     remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
@@ -4827,7 +4827,7 @@ checks:
 
   # 6.1.11 Ensure no ungrouped files or directories exist (Automated)
   - id: 3201
-    title: "Ensure no ungrouped files or directories exist (Automated)."
+    title: "Ensure no ungrouped files or directories exist."
     description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
     rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended."
     remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
@@ -4857,7 +4857,7 @@ checks:
 
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords (Automated)
   - id: 3202
-    title: "Ensure accounts in /etc/passwd use shadowed passwords (Automated)."
+    title: "Ensure accounts in /etc/passwd use shadowed passwords."
     description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: - All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. - A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
     remediation: "Run the following command to set accounts to use shadowed passwords: # sed -e 's/^\\([a-zA-Z0-9_]*\\):[^:]*:/\\1:x:/' -i /etc/passwd Investigate to determine if the account is logged in and what it is being used for, to determine if it needs to be forced off."
@@ -4904,7 +4904,7 @@ checks:
 
   # 6.2.4 Ensure shadow group is empty (Automated)
   - id: 3204
-    title: "Ensure shadow group is empty (Automated)."
+    title: "Ensure shadow group is empty."
     description: "The shadow group allows system programs which require access the ability to read the /etc/shadow file. No users should be assigned to the shadow group."
     rationale: "Any users assigned to the shadow group would be granted read access to the /etc/shadow file. If attackers can gain read access to the /etc/shadow file, they can easily run a password cracking program against the hashed passwords to break them. Other security information that is stored in the /etc/shadow file (such as expiration) could also be useful to subvert additional user accounts."
     remediation: 'Run the following command to remove all users from the shadow group # sed -ri "s/(^shadow:[^:]*:[^:]*:)([^:]+$)/\1/" /etc/group Change the primary group of any users with shadow as their primary group. # usermod -g <primary group> <user>.'
@@ -4935,7 +4935,7 @@ checks:
 
   # 6.2.10 Ensure root is the only UID 0 account (Automated)
   - id: 3205
-    title: "Ensure root is the only UID 0 account (Automated)."
+    title: "Ensure root is the only UID 0 account."
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
