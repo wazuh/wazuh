@@ -6,7 +6,7 @@
 int main(int argc, char** argv)
 {
     logging::LoggingConfig logConfig;
-    logConfig.logLevel = logging::LogLevel::Off;
+    logConfig.logLevel = spdlog::level::off;
     logging::loggingInit(logConfig);
 
     ::testing::InitGoogleTest(&argc, argv);

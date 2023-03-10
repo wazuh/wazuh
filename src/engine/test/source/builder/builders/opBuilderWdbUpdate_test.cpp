@@ -122,12 +122,13 @@ TEST(opBuilderWdbUpdate, completeFunctioningWithBadResponse)
     });
 
     // Disable error logs for this test
-    const auto logLevel {fmtlog::getLogLevel()};
-    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+    const auto logLevel {logging::getDefaultLogger()->level()};
+    logging::getDefaultLogger()->set_level(spdlog::level::off);
 
     result::Result<Event> result1 {op(event1)};
 
-    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
+    // Restore log level
+    logging::getDefaultLogger()->set_level(logLevel);
 
     ASSERT_TRUE(result1);
     ASSERT_TRUE(result1.payload()->isBool("/wdb/result"));
@@ -223,12 +224,13 @@ TEST(opBuilderWdbUpdate, QueryResultCodeNotOkWithPayload)
     });
 
     // Disable error logs for this test
-    const auto logLevel {fmtlog::getLogLevel()};
-    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+    const auto logLevel {logging::getDefaultLogger()->level()};
+    logging::getDefaultLogger()->set_level(spdlog::level::off);
 
     result::Result<Event> result1 {op(event1)};
 
-    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
+    // Restore log level
+    logging::getDefaultLogger()->set_level(logLevel);
 
     ASSERT_TRUE(result1);
     ASSERT_TRUE(result1.payload()->isBool("/wdb/result"));
