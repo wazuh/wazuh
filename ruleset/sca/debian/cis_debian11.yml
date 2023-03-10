@@ -1969,11 +1969,9 @@ checks:
     title: "Ensure ufw is installed."
     description: "The Uncomplicated Firewall (ufw) is a frontend for iptables and is particularly well-suited for host-based firewalls. ufw provides a framework for managing netfilter, as well as a command-line interface for manipulating the firewall."
     rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. UFW is dependent on the iptables package."
-    remediation: "Run the following command to install Uncomplicated Firewall (UFW): apt install ufw."
+    remediation: "Run the following command to install Uncomplicated Firewall (UFW): # apt install ufw."
     compliance:
       - cis: ["3.5.1.1"]
-      - cis_csc_v8: ["4.4", "4.5"]
-      - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_4.0: ["1.2.1", "1.4.1"]
@@ -2007,15 +2005,16 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - "c:dpkg-query -s iptables-persistent -> r:package 'iptables-persistent' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ufw -> r:install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' iptables-persistent -> r:unknown ok not-installed|dpkg-query: no packages found matching iptables-persistent"
 
   # 3.5.1.3 Ensure ufw service is enabled (Automated)
   - id: 29580
     title: "Ensure ufw service is enabled."
-    description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Notes: - When running ufw enable or starting ufw via its initscript, ufw will flush its chains. This is required so ufw can maintain a consistent state, but it may drop existing connections (eg ssh). ufw does support adding rules before enabling the firewall. - Run the following command before running ufw enable. # ufw allow proto tcp from any to any port 22. - The rules will still be flushed, but the ssh port will be open after enabling the firewall. Please note that once ufw is 'enabled', ufw will not flush the chains when adding or removing rules (but will when modifying a rule or changing the default policy) - By default, ufw will prompt when enabling the firewall while running under ssh. This can be disabled by using ufw --force enable."
+    description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Notes: - When running ufw enable or starting ufw via its initscript, ufw will flush its chains. This is required so ufw can maintain a consistent state, but it may drop existing connections (eg ssh). ufw does support adding rules before enabling the firewall. - Run the following command before running ufw enable. # ufw allow proto tcp from any to any port 22. - The rules will still be flushed, but the ssh port will be open after enabling the firewall. Please note that once ufw is 'enabled', ufw will not flush the chains when adding or removing rules (but will when modifying a rule or changing the default policy). - By default, ufw will prompt when enabling the firewall while running under ssh. This can be disabled by using ufw --force enable."
     rationale: "The ufw service must be enabled and running in order for ufw to protect the system."
     impact: "Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service .Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable."
+    remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service. Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable."
     referencces:
       - http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html
     compliance:
@@ -2032,9 +2031,9 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - "c:systemctl is-enabled ufw.service -> r:enabled|!No such file or directory"
+      - "c:systemctl is-enabled ufw.service -> r:^enabled"
       - "c:systemctl is-active ufw -> r:^active"
-      - "c:ufw status -> r:active"
+      - 'c:ufw status -> r:\sactive'
 
   # 3.5.1.4 Ensure ufw loopback traffic is configured (Automated)
   - id: 29581
@@ -2062,7 +2061,8 @@ checks:
       - 'c:ufw status verbose -> r:Anywhere \(v6\) on lo\s*\t*ALLOW IN\s*\t*Anywhere \(v6\)'
       - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*\t*DENY IN\s*\t*::1'
       - 'c:ufw status verbose -> r:Anywhere\s*\t*ALLOW OUT\s*\t*Anywhere on lo'
-      - "c:systemctl is-enabled ufw.service -> r:enabled|!No such file or directory"
+      - 'c:ufw status verbose -> r:Anywhere (v6)\s*\t*ALLOW OUT\s*\t*Anywhere (v6) on lo'
+      - "c:systemctl is-enabled ufw.service -> r:^enabled"
 
   # 3.5.1.5 Ensure ufw outbound connections are configured (Manual) - Not Implemented
   # 3.5.1.6 Ensure ufw firewall rules exist for all open ports (Automated) - Not Implemented
@@ -2072,7 +2072,7 @@ checks:
     title: "Ensure ufw default deny firewall policy."
     description: "A default deny policy on connections ensures that any unconfigured network usage will be rejected. Note: Any port or protocol without a explicit allow before the default deny will be blocked."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
-    impact: "Any port and protocol not explicitly allowed will be blocked. The following rules should be considered before applying the default deny. ufw allow git, ufw allow in http, ufw allow out http <- required for apt to connect to repository, ufw allow in https, ufw allow out https ,ufw allow out 53 ,ufw logging on."
+    impact: "Any port and protocol not explicitly allowed will be blocked. The following rules should be considered before applying the default deny. ufw allow git, ufw allow in http, ufw allow out http <- required for apt to connect to repository, ufw allow in https, ufw allow out https, ufw allow out 53, ufw logging on."
     remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed."
     compliance:
       - cis: ["3.5.1.7"]
@@ -2089,10 +2089,9 @@ checks:
       - mitre_mitigations: ["M1031", "M1037"]
     condition: all
     rules:
-      - 'c:ufw status verbose -> r:^Default && r:deny\W+(incoming)|reject\W+(incoming)'
-      - 'c:ufw status verbose -> r:^Default && r:deny\W+(outgoing)|reject\W+(outgoing)'
-      - 'c:ufw status verbose -> r:^Default && r:deny\W+(routed)|reject\W+(routed)'
-      - "c:systemctl is-enabled ufw.service -> r:enabled|!No such file or directory"
+      - 'c:ufw status verbose -> r:^Default && r:deny\s+\(incoming\)|reject\s+\(incoming\)|disabled\s+\(incoming\) && r:deny\s+\(outgoing\)|reject\s+\(outgoing\)|disabled\s+\(outgoing\) && r:deny\s+\(routed\)|reject\s+\(routed\)|disabled\s+\(routed\)'
+      - "c:systemctl is-enabled ufw.service -> r:^enabled"
+      - 'c:ufw status -> r:\sactive'
 
   ############################################################
   # 3.5.2 Configure nftables
@@ -2119,14 +2118,14 @@ checks:
       - mitre_mitigations: ["M1031", "M1037"]
     condition: all
     rules:
-      - "c:dpkg-query -s nftables -> r:install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables -> r:install ok installed"
 
   # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated)
   - id: 29584
     title: "Ensure ufw is uninstalled or disabled with nftables."
     description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
     rationale: "Running both the nftables service and ufw may lead to conflict and unexpected results."
-    remediation: "Run one of the following commands to either remove ufw or disable ufw .Run the following command to remove ufw: # apt purge ufw .Run the following command to disable ufw: # ufw disable."
+    remediation: "Run one of the following commands to either remove ufw or disable ufw. Run the following command to remove ufw: # apt purge ufw. Run the following command to disable ufw: # ufw disable."
     compliance:
       - cis: ["3.5.2.2"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2141,8 +2140,8 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: any
     rules:
-      - "c:dpkg-query -s ufw -> r:package 'ufw' is not installed and no information is available"
-      - "c:ufw status -> r:inactive|'ufw' not found, but can be installed with:"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables -> r:install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ufw -> r:r:unknown ok not-installed|dpkg-query: no packages found matching ufw"
 
   # 3.5.2.3 Ensure iptables are flushed with nftables (Manual) - Not Implemented
 
