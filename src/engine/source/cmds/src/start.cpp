@@ -104,11 +104,11 @@ void runStart(ConfHandler confManager)
     logging::LoggingConfig logConfig;
     switch (logLevel)
     {
-        case 0: logConfig.logLevel = "debug"; break;
-        case 1: logConfig.logLevel = "info"; break;
-        case 2: logConfig.logLevel = "warning"; break;
-        case 3: logConfig.logLevel = "error"; break;
-        default: logConfig.logLevel = "warning";
+        case 0: logConfig.logLevel = spdlog::level::debug; break;
+        case 1: logConfig.logLevel = spdlog::level::info; break;
+        case 2: logConfig.logLevel = spdlog::level::warn; break;
+        case 3: logConfig.logLevel = spdlog::level::err; break;
+        default: logConfig.logLevel = spdlog::level::info;
     }
 
     if (!logOutput.empty())
@@ -120,7 +120,7 @@ void runStart(ConfHandler confManager)
 
     LOG_DEBUG("Logging configuration: filePath='{}', logLevel='{}', header='{}', flushInterval={}ms.",
               logConfig.filePath,
-              logConfig.logLevel,
+              spdlog::level::to_string_view(logConfig.logLevel),
               logConfig.headerFormat,
               logConfig.flushInterval);
     LOG_INFO("Logging initialized.");

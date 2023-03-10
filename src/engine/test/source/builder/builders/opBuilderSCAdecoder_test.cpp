@@ -40,12 +40,12 @@ protected:
     std::unordered_map<sca::field::Name, std::string> fieldSource {};
     std::unordered_map<sca::field::Name, std::string> fieldDest {};
 
-    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
 
     void SetUp() override
     {
         // Disable error logs for these tests
-        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+        logging::getDefaultLogger()->set_level(spdlog::level::off);
 
         wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
         cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(
@@ -65,97 +65,97 @@ protected:
     void TearDown() override
     {
         // Restore original log level
-        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+        logging::getDefaultLogger()->set_level(logLevel);
     }
 };
 
 class opBuilderSCAdecoderInit : public ::testing::Test
 {
 protected:
-    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
 
     void SetUp() override
     {
         // Disable error logs for these tests
-        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+        logging::getDefaultLogger()->set_level(spdlog::level::off);
     }
 
     void TearDown() override
     {
         // Restore original log level
-        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+        logging::getDefaultLogger()->set_level(logLevel);
     }
 };
 
 class checkTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
 
     void SetUp() override
     {
         // Disable error logs for these tests
-        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+        logging::getDefaultLogger()->set_level(spdlog::level::off);
     }
 
     void TearDown() override
     {
         // Restore original log level
-        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+        logging::getDefaultLogger()->set_level(logLevel);
     }
 };
 
 class summaryTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
 
     void SetUp() override
     {
         // Disable error logs for these tests
-        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+        logging::getDefaultLogger()->set_level(spdlog::level::off);
     }
 
     void TearDown() override
     {
         // Restore original log level
-        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+        logging::getDefaultLogger()->set_level(logLevel);
     }
 };
 
 class policiesTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
 
     void SetUp() override
     {
         // Disable error logs for these tests
-        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+        logging::getDefaultLogger()->set_level(spdlog::level::off);
     }
 
     void TearDown() override
     {
         // Restore original log level
-        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+        logging::getDefaultLogger()->set_level(logLevel);
     }
 };
 
 class dumpEndTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    const fmtlog::LogLevel logLevel {fmtlog::getLogLevel()};
+    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
 
     void SetUp() override
     {
         // Disable error logs for these tests
-        fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+        logging::getDefaultLogger()->set_level(spdlog::level::off);
     }
 
     void TearDown() override
     {
         // Restore original log level
-        fmtlog::setLogLevel(fmtlog::LogLevel(logLevel));
+        logging::getDefaultLogger()->set_level(logLevel);
     }
 };
 

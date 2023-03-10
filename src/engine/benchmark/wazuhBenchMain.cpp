@@ -6,7 +6,7 @@
 int main(int argc, char **argv)
 {
     logging::LoggingConfig logConfig;
-    logConfig.logLevel = "off";
+    logConfig.logLevel = spdlog::level::off;
     logging::loggingInit(logConfig);
 
     benchmark::Initialize(&argc, argv);
