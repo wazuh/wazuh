@@ -134,13 +134,14 @@ TEST(opBuilderWdbQuery, completeFunctioningWithtDBresponseNotOk)
         close(clientRemote);
     });
 
-    // Disable error logs for this test
-    const auto logLevel {fmtlog::getLogLevel()};
-    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+    // Disable warning logs for this test
+    const auto logLevel {logging::getDefaultLogger()->level()};
+    logging::getDefaultLogger()->set_level(spdlog::level::off);
 
     result::Result<Event> result {op(event)};
 
-    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
+    // Restore log level
+    logging::getDefaultLogger()->set_level(logLevel);
 
     ASSERT_FALSE(result);
     // TODO Should be null or inexistant??
