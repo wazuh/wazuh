@@ -44,13 +44,13 @@ checks:
   # 1.1.2 Configure /tmp
   ############################################################
 
-  # 1.1.2.1 Ensure /tmp is separate partition (Automated)
+  # 1.1.2.1 Ensure /tmp is a separate partition (Automated)
   - id: 29500
-    title: "Ensure /tmp is separate partition."
+    title: "Ensure /tmp is a separate partition."
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
     rationale: "Making /tmp its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
     impact: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. Running out of /tmp space is a problem regardless of what kind of filesystem lies under it, but in a configuration where /tmp is not a separate file system it will essentially have the whole disk available, as the default installation only creates a single / partition. On the other hand, a RAM-based /tmp (as with tmpfs) will almost certainly be much smaller, which can lead to applications filling up the filesystem much more easily. Another alternative is to create a dedicated partition for /tmp from a separate volume or disk. One of the downsides of a disk-based dedicated partition is that it will be slower than tmpfs which is RAM-based. /tmp utilizing tmpfs can be resized using the size={size} parameter in the relevant entry in /etc/fstab."
-    remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount. For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab or tmp.mount. Example of /etc/fstab configured tmpfs file system with specific mount options: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 Example of tmp.mount configured tmpfs file system with specific mount options: [Unit] Description=Temporary Directory /tmp ConditionPathIsSymbolicLink=!/tmp DefaultDependencies=no Conflicts=umount.targetBefore=local-fs.target umount.target After=swap.target [Mount] What=tmpfs Where=/tmp Type=tmpfs."
+    remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount. For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab or tmp.mount. Example of /etc/fstab configured tmpfs file system with specific mount options: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0. Example of tmp.mount configured tmpfs file system with specific mount options: [Unit] Description=Temporary Directory /tmp ConditionPathIsSymbolicLink=!/tmp DefaultDependencies=no Conflicts=umount.target Before=local-fs.target umount.target After=swap.target [Mount] What=tmpfs Where=/tmp Type=tmpfs."
     references:
       - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
       - https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html
@@ -77,7 +77,7 @@ checks:
   - id: 29501
     title: "Ensure nodev option set on /tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create a block or character special devices in /tmp."
+    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /tmp."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0. Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
     compliance:
       - cis: ["1.1.2.2"]
@@ -432,7 +432,7 @@ checks:
   - id: 29515
     title: "Ensure separate partition exists for /var/log/audit."
     description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
-    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follows."
+    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follows. - Protection from resource exhaustion: The default installation only creates a single / partition. Since the /var/log/audit directory contains the audit.log file which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/log/audit and cause auditd to trigger it's space_left_action as the disk is full. See man auditd.conf for details. - Fine grained control over the mount: Configuring /var/log/audit as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. - Protection of audit data: As /var/log/audit contains audit logs, care should be taken to ensure the security and integrity of the data and mount point."
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
@@ -611,7 +611,7 @@ checks:
     title: "Ensure nodev option set on /dev/shm partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm"
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm."
     compliance:
       - cis: ["1.1.8.1"]
       - cis_csc_v8: ["3.3"]
@@ -723,9 +723,9 @@ checks:
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
       - cmmc_v2.0: ["AC.L2-3.1.7"]
-      - hipaa: ["164.312(b)","164.312(c)(1)","164.312(c)(2)"]
-      - pci_dss_3.2.1: ["10.2.1","11.5"]
-      - pci_dss_4.0: ["10.2.1","10.2.1.1"]
+      - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
+      - pci_dss_3.2.1: ["10.2.1", "11.5"]
+      - pci_dss_4.0: ["10.2.1", "10.2.1.1"]
       - nist_sp_800-53: ["AC-6(9)"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.12.4.3"]
@@ -837,7 +837,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - "f:/etc/shadow -> r:^root:*:|^root:!:"
+      - 'f:/etc/shadow -> r:^root:\$\w'
 
   ############################################################
   # 1.5 Additional Process Hardening
@@ -856,9 +856,9 @@ checks:
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
       - cmmc_v2.0: ["AC.L2-3.1.7"]
-      - hipaa: ["164.312(b)","164.312(c)(1)","164.312(c)(2)"]
-      - pci_dss_3.2.1: ["10.2.1","11.5"]
-      - pci_dss_4.0: ["10.2.1","10.2.1.1"]
+      - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
+      - pci_dss_3.2.1: ["10.2.1", "11.5"]
+      - pci_dss_4.0: ["10.2.1", "10.2.1.1"]
       - nist_sp_800-53: ["AC-6(9)"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.12.4.3"]
@@ -958,6 +958,7 @@ checks:
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:apparmor=1'
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:security=apparmor'
+
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
   - id: 29536
     title: "Ensure all AppArmor Profiles are in enforce or complain mode."
@@ -1023,10 +1024,10 @@ checks:
       - cis: ["1.7.1"]
       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
-        condition: any
+    condition: any
     rules:
-      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Linux'
       - "not f:/etc/motd"
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.7.2 Ensure local login warning banner is configured properly (Automated)
   - id: 29539
@@ -1040,28 +1041,28 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
-      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Linux'
+      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.7.3 Ensure remote login warning banner is configured properly (Automated)
   - id: 29540
     title: "Ensure remote login warning banner is configured properly."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
-    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a ." command once they have logged in.'
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the "uname -a" command once they have logged in.'
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
     compliance:
       - cis: ["1.7.3"]
-      - mitre_techniques: ["T1018", "T1082",  "T1592", "T1592.004"]
+      - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
       - mitre_tactics: ["TA0007"]
     condition: none
     rules:
-      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Linux'
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured (Automated)
   - id: 29541
     title: "Ensure permissions on /etc/motd are configured."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-    remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd."
+    remediation: "Run the following commands to set permissions on /etc/motd: # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd."
     default value: "File doesn't exist"
     compliance:
       - cis: ["1.7.4"]
@@ -1079,15 +1080,15 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: any
     rules:
-     - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
-     - 'not f: etc/motd'   
+      - "not f:/etc/motd"
+      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
   # 1.7.5 Ensure permissions on /etc/issue are configured (Automated)
   - id: 29542
     title: "Ensure permissions on /etc/issue are configured."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root $(readlink -e /etc/issue) # chmod u-x,go-wx $(readlink -e /etc/issue)."
-    default value: "Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
     compliance:
       - cis: ["1.7.5"]
       - cis_csc_v8: ["3.3"]
@@ -1112,7 +1113,6 @@ checks:
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)."
-    default value: "Access: (0644/-rw-r--r--) Uid: ( 0/ root) Gid: ( 0/ root)"
     compliance:
       - cis: ["1.7.6"]
       - cis_csc_v8: ["3.3"]
@@ -1166,6 +1166,7 @@ checks:
   # 1.8.7 Ensure GDM disabling automatic mounting of removable media is not overridden - Not implemented
   # 1.8.8 Ensure GDM autorun-never is enabled (Automated) - Not implemented
   # 1.8.9 Ensure GDM autorun-never is not overridden (Automated) - Not implemented
+
   # 1.8.10 Ensure XDCMP is not enabled (Automated)
   - id: 29545
     title: "Ensure XDCMP is not enabled."
@@ -1185,9 +1186,10 @@ checks:
       - mitre_techniques: ["T1040", "T1056", "T1056.001", "T1557"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
-    condition: none
+    condition: any
     rules:
-      - 'f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
+      - "not f:/etc/gdm3/custom.conf"
+      - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
 
   # 1.9 Ensure updates, patches, and additional security software are installed (Automated)
   - id: 29546
@@ -1223,7 +1225,7 @@ checks:
   ############################################################
 
   # 2.1.2.1 Ensure chrony is configured with authorized timeserver (Manual) - Not Implemented
-  
+
   # 2.1.2.2 Ensure chrony is running as user _chrony (Automated)
   - id: 29548
     title: "Ensure chrony is running as user _chrony."
@@ -1242,14 +1244,15 @@ checks:
       - iso_27001-2013: ["A.12.4.4"]
     condition: all
     rules:
-      - 'c:sh -c "ps -ef |grep chronyd | grep -v grep " -> r:chronyd\s'
+      - 'c:sh -c "ps -ef | grep chronyd | grep -v grep " -> r:chronyd\s'
       - 'not c:sh -c "ps -ef |grep chronyd | grep -v grep " -> !r:^_chrony && r:chronyd\s'
+
   # 2.1.2.3 Ensure chrony is enabled and running (Automated)
   - id: 29549
     title: "Ensure chrony is enabled and running."
     description: "chrony is a daemon for synchronizing the system clock across the network."
     rationale: "chrony needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-    remediation: "IF chrony is in use on the system, run the following commands: Run the following command to unmask chrony.service: # systemctl unmask chrony.service .Run the following command to enable and start chrony.service: # systemctl --now enable chrony.service OR If another time synchronization service is in use on the system, run the following command to remove chrony: # apt purge chrony."
+    remediation: "IF chrony is in use on the system, run the following commands: Run the following command to unmask chrony.service: # systemctl unmask chrony.service. Run the following command to enable and start chrony.service: # systemctl --now enable chrony.service OR If another time synchronization service is in use on the system, run the following command to remove chrony: # apt purge chrony."
     compliance:
       - cis: ["2.1.2.3"]
       - cis_csc_v8: ["8.4"]
@@ -1272,9 +1275,9 @@ checks:
   # 2.1.3.1 Ensure systemd-timesyncd configured with authorized timeserver (Manual)
   - id: 29550
     title: "Ensure systemd-timesyncd configured with authorized timeserver."
-    description: "- NTP= > A space-separated list of NTP server host names or IP addresses. During runtime this list is combined with any per-interface NTP servers acquired from systemd-networkd.service(8). systemd-timesyncd will contact all configured system or per-interface servers in turn, until one responds. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. This setting defaults to an empty list.- FallbackNTP= > A space-separated list of NTP server host names or IP addresses to be used as the fallback NTP servers. Any per-interface NTP servers obtained from system-networkd.service(8) take precedence over this setting, as do any servers set via NTP= above. This setting is hence only relevant if no other NTP server information is known. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. If this option is not given, a compiled-in list of NTP servers is used."
+    description: "- NTP= > A space-separated list of NTP server host names or IP addresses. During runtime this list is combined with any per-interface NTP servers acquired from systemd-networkd.service(8). systemd-timesyncd will contact all configured system or per-interface servers in turn, until one responds. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. This setting defaults to an empty list. - FallbackNTP= > A space-separated list of NTP server host names or IP addresses to be used as the fallback NTP servers. Any per-interface NTP servers obtained from systemd-networkd.service(8) take precedence over this setting, as do any servers set via NTP= above. This setting is hence only relevant if no other NTP server information is known. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. If this option is not given, a compiled-in list of NTP servers is used."
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-    remediation: "Edit or create a file in /etc/systemd/timesyncd.conf.d ending in .conf and add the NTP= and/or FallbackNTP= lines to the [Time] section: Example:[Time] NTP=time.nist.gov # Uses the generic name for NIST's time servers - AND/OR - FallbackNTP=time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov # Space separated list of NIST time servers Run the following command to reload the systemd-timesyncd configuration: # systemctl try-reload-or-restart systemd-timesyncd OR If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd."
+    remediation: 'Edit or create a file in /etc/systemd/timesyncd.conf.d ending in .conf and add the NTP= and/or FallbackNTP= lines to the [Time] section: Example: [Time] NTP=time.nist.gov # Uses the generic name for NIST''s time servers -AND/OR- FallbackNTP=time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov # Space separated list of NIST time servers Note: Servers added to these line(s) should follow local site policy. NIST servers are for example. The timesyncd.conf.d directory may need to be created. Example script: The following example script will create the systemd-timesyncd drop-in configuration snippet: #!/usr/bin/env bash ntp_ts="time.nist.gov" ntp_fb="time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov" disfile="/etc/systemd/timesyncd.conf.d/50-timesyncd.conf" if ! find /etc/systemd -type f -name ''*.conf'' -exec grep -Ph ''^\h*NTP=\H+'' {} +; then [ ! -d /etc/systemd/timesyncd.conf.d ] && mkdir /etc/systemd/timesyncd.conf.d ! grep -Pqs ''^\h*\[Time\]'' "$disfile" && echo "[Time]" >> "$disfile" echo "NTP=$ntp_ts" >> "$disfile" fi if ! find /etc/systemd -type f -name ''*.conf'' -exec grep -Ph ''^\h*FallbackNTP=\H+'' {} +; then [ ! -d /etc/systemd/timesyncd.conf.d ] && mkdir /etc/systemd/timesyncd.conf.d ! grep -Pqs ''^\h*\[Time\]'' "$disfile" && echo "[Time]" >> "$disfile" echo "FallbackNTP=$ntp_fb" >> "$disfile" fi Run the following command to reload the systemd-timesyncd configuration: # systemctl try-reload-or-restart systemd-timesyncd OR If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd.'
     references:
       - https://www.freedesktop.org/software/systemd/man/timesyncd.conf.html
       - https://tf.nist.gov/tf-cgi/servers.cgi
@@ -1295,14 +1298,14 @@ checks:
     rules:
       - "d:/etc/systemd"
       - 'd:/etc/systemd -> r:\.+.conf$'
-      - 'd:/etc/systemd -> r:\.+.conf$ -> r:^\h*(NTP|FallbackNTP)=\H+'
+      - 'd:/etc/systemd -> r:\.+.conf$ -> r:^\s*\t*NTP=\w|^\s*\t*NTP=\w'
 
   # 2.1.3.2 Ensure systemd-timesyncd is enabled and running (Automated)
   - id: 29551
     title: "Ensure systemd-timesyncd is enabled and running."
     description: "systemd-timesyncd is a daemon that has been added for synchronizing the system clock across the network."
     rationale: "systemd-timesyncd needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-    remediation: "IF systemd-timesyncd is in use on the system, run the following commands: Run the following command to unmask systemd-timesyncd.service: # systemctl unmask systemd-timesyncd.service Run the following command to enable and start systemd-timesyncd.service: # systemctl --now enable systemd-timesyncd.service OR If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd.service."
+    remediation: "IF systemd-timesyncd is in use on the system, run the following commands: Run the following command to unmask systemd-timesyncd.service: # systemctl unmask systemd-timesyncd.service. Run the following command to enable and start systemd-timesyncd.service: # systemctl --now enable systemd-timesyncd.service OR If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd.service."
     compliance:
       - cis: ["2.1.3.2"]
       - cis_csc_v8: ["8.4"]
@@ -1313,7 +1316,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["CC4.1", "CC5.2"]
       - iso_27001-2013: ["A.12.4.4"]
-    condition: any
+    condition: all
     rules:
       - "c:systemctl is-enabled systemd-timesyncd.service -> r:^enabled"
       - "c:systemctl is-active systemd-timesyncd.service -> r:^active"
@@ -1325,7 +1328,7 @@ checks:
   # 2.1.4.1 Ensure ntp access control is configured (Automated)
   - id: 29552
     title: "Ensure ntp access control is configured."
-    description: "ntp Access Control Commands: restrict address [mask mask] [ippeerlimit int] [flag ...] The address argument expressed in dotted-quad form is the address of a host or network. Alternatively, the address argument can be a valid host DNS name. The mask argument expressed in dotted-quad form defaults to 255.255.255.255, meaning that the address is treated as the address of an individual host. A default entry (address 0.0.0.0, mask 0.0.0.0) is always included and is always the first entry in the list. Note: the text string default, with no mask option, may be used to indicate the default entry. The ippeerlimit directive limits the number of peer requests for each IP to int, where a value of -1 means'unlimited', the current default. A value of 0 means 'none'. There would usually be at most 1 peering request per IP, but if the remote peering requests are behind a proxy there could well be more than 1 per IP. In the current implementation, flag always restricts access, i.e., an entry with no flags indicates that free access to the server is to be given. The flags are not orthogonal, in that more restrictive flags will often make less restrictive ones redundant. The flags can generally be classed into two categories, those which restrict time service and those which restrict informational queries and attempts to do run-time reconfiguration of the server.One or more of the following flags may be specified > kod - If this flag is set when an access violation occurs, a kiss-o-death (KoD) packet is sent. KoD packets are rate limited to no more than one per second. If another KoD packet occurs within one second after the last one, the packet is dropped. > limited - Deny service if the packet spacing violates the lower limits specified in the discard command. A history of clients is kept using the monitoring capability of ntpd. Thus, monitoring is always active as long as there is a restriction entry with the limited flag. > lowpriotrap - Declare traps set by matching hosts to be low priority. The number of traps a server can maintain is limited (the current limit is 3). Traps are usually assigned on a first come, first served basis, with later trap requestors being denied service. This flag modifies the assignment algorithm by allowing low priority traps to be overridden by later requests for normal priority traps. > noepeer - Deny ephemeral peer requests, even if they come from an authenticated source. Note that the ability to use a symmetric key for authentication may be restricted to one or more IPs or subnets via the third field of the ntp.keys file. This restriction is not enabled by default, to maintain backward compatibility. Expect noepeer to become the default in ntp-4.4. > nomodify - Deny ntpq and ntpdc queries which attempt to modify the state of the server (i.e., run time reconfiguration). Queries which return information are permitted. > noquery - Deny ntpq and ntpdc queries. Time service is not affected. > nopeer - Deny unauthenticated packets which would result in mobilizing a new association. This includes broadcast and symmetric active packets when a configured association does not exist. It also includes pool associations, so if you want to use servers from a pool directive and also want to use nopeer by default you'll want a restrict source ... line as well that does not include the nopeer directive. > noserve - Deny all packets except ntpq and ntpdc queries. > notrap - Decline to provide mode 6 control message trap service to matching hosts. The trap service is a subsystem of the ntpq control message protocol which is intended for use by remote event logging programs. > notrust - Deny service unless the packet is cryptographically authenticated. > ntpport - This is actually a match algorithm modifier, rather than a restriction flag. Its presence causes the restriction entry to be matched only if the source port in the packet is the standard NTP UDP port (123). Both ntpport and non-ntpport may be specified. The ntpport is considered more specific and is sorted later in the list."
+    description: 'ntp Access Control Commands: restrict address [mask mask] [ippeerlimit int] [flag ...]. The address argument expressed in dotted-quad form is the address of a host or network. Alternatively, the address argument can be a valid host DNS name. The mask argument expressed in dotted-quad form defaults to 255.255.255.255, meaning that the address is treated as the address of an individual host. A default entry (address 0.0.0.0, mask 0.0.0.0) is always included and is always the first entry in the list. Note: the text string default, with no mask option, may be used to indicate the default entry. The ippeerlimit directive limits the number of peer requests for each IP to int, where a value of -1 means "unlimited", the current default. A value of 0 means "none". There would usually be at most 1 peering request per IP, but if the remote peering requests are behind a proxy there could well be more than 1 per IP. In the current implementation, flag always restricts access, i.e., an entry with no flags indicates that free access to the server is to be given. The flags are not orthogonal, in that more restrictive flags will often make less restrictive ones redundant. The flags can generally be classed into two categories, those which restrict time service and those which restrict informational queries and attempts to do run-time reconfiguration of the server. One or more of the following flags may be specified: - kod - If this flag is set when an access violation occurs, a kiss-of-death (KoD) packet is sent. KoD packets are rate limited to no more than one per second. If another KoD packet occurs within one second after the last one, the packet is dropped. - limited - Deny service if the packet spacing violates the lower limits specified in the discard command. A history of clients is kept using the monitoring capability of ntpd. Thus, monitoring is always active as long as there is a restriction entry with the limited flag. - lowpriotrap - Declare traps set by matching hosts to be low priority. The number of traps a server can maintain is limited (the current limit is 3). Traps are usually assigned on a first come, first served basis, with later trap requestors being denied service. This flag modifies the assignment algorithm by allowing low priority traps to be overridden by later requests for normal priority traps. - noepeer - Deny ephemeral peer requests, even if they come from an authenticated source. Note that the ability to use a symmetric key for authentication may be restricted to one or more IPs or subnets via the third field of the ntp.keys file. This restriction is not enabled by default, to maintain backward compatibility. Expect noepeer to become the default in ntp-4.4. - nomodify - Deny ntpq and ntpdc queries which attempt to modify the state of the server (i.e., run time reconfiguration). Queries which return information are permitted. - noquery - Deny ntpq and ntpdc queries. Time service is not affected. - nopeer - Deny unauthenticated packets which would result in mobilizing a new association. This includes broadcast and symmetric active packets when a configured association does not exist. It also includes pool associations, so if you want to use servers from a pool directive and also want to use nopeer by default, you''ll want a restrict source ... line as well that does not include the nopeer directive. - noserve - Deny all packets except ntpq and ntpdc queries. - notrap - Decline to provide mode 6 control message trap service to matching hosts. The trap service is a subsystem of the ntpq control message protocol which is intended for use by remote event logging programs. - notrust - Deny service unless the packet is cryptographically authenticated. - ntpport - This is actually a match algorithm modifier, rather than a restriction flag. Its presence causes the restriction entry to be matched only if the source port in the packet is the standard NTP UDP port (123). Both ntpport and non-ntpport may be specified. The ntpport is considered more specific and is sorted later in the list.'
     rationale: "If ntp is in use on the system, proper configuration is vital to ensuring time synchronization is accurate."
     remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery ORIf another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp Default Value: restrict -4 default kod notrap nomodify nopeer noquery limited restrict -6 default kod notrap nomodify nopeer noquery limited."
     references:
@@ -1340,17 +1343,17 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["CC4.1", "CC5.2"]
       - iso_27001-2013: ["A.12.4.4"]
-    condition: any
+    condition: all
     rules:
-      - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
-      - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
+      - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
+      - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
 
   # 2.1.4.2 Ensure ntp is configured with authorized timeserver (Manual)
   - id: 29553
     title: "Ensure ntp is configured with authorized timeserver."
-    description: "The various modes are determined by the command keyword and the type of the required IP address. Addresses are classed by type as (s) a remote server or peer (IPv4 class A, B and C), (b) the broadcast address of a local interface, (m) a multicast address (IPv4 class D), or (r) a reference clock address (127.127.x.x). Note: That only those options applicable to each command are listed below. Use of options not listed may not be caught as an error, but may result in some weird and even destructive behavior. If the Basic Socket Interface Extensions for IPv6 (RFC-2553) is detected, support for the IPv6 address family is generated in addition to the default support of the IPv4 address family. In a few cases, including the reslist billboard generated by ntpq or ntpdc, IPv6 addresses are automatically generated. IPv6 addresses can be identified by the presence of colons : in the address field. IPv6 addresses can be used almost everywhere where IPv4 addresses can be used, with the exception of reference clock addresses, which are always IPv4. Note: In contexts where a host name is expected, a -4 qualifier preceding the host name forces DNS resolution to the IPv4 namespace, while a -6 qualifier forces DNS resolution to the IPv6 namespace. See IPv6 references for the equivalent classes for that address family. (1)pool - For type s addresses, this command mobilizes a persistent client mode association with a number of remote servers. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. (2)server - For type s and r addresses, this command mobilizes a persistent client mode association with the specified remote server or local radio clock. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. This command should not be used for type b or m addresses."
+    description: 'The various modes are determined by the command keyword and the type of the required IP address. Addresses are classed by type as (s) a remote server or peer (IPv4 class A, B and C), (b) the broadcast address of a local interface, (m) a multicast address (IPv4 class D), or (r) a reference clock address (127.127.x.x). Note: That only those options applicable to each command are listed below. Use of options not listed may not be caught as an error, but may result in some weird and even destructive behavior. If the Basic Socket Interface Extensions for IPv6 (RFC-2553) is detected, support for the IPv6 address family is generated in addition to the default support of the IPv4 address family. In a few cases, including the reslist billboard generated by ntpq or ntpdc, IPv6 addresses are automatically generated. IPv6 addresses can be identified by the presence of colons ":" in the address field. IPv6 addresses can be used almost everywhere where IPv4 addresses can be used, with the exception of reference clock addresses, which are always IPv4. Note: In contexts where a host name is expected, a -4 qualifier preceding the host name forces DNS resolution to the IPv4 namespace, while a -6 qualifier forces DNS resolution to the IPv6 namespace. See IPv6 references for the equivalent classes for that address family. - pool - For type s addresses, this command mobilizes a persistent client mode association with a number of remote servers. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. - server - For type s and r addresses, this command mobilizes a persistent client mode association with the specified remote server or local radio clock. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. This command should not be used for type b or m addresses.'
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-    remediation: "Edit /etc/ntp.conf and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool mode: pool time.nist.gov iburst server mode: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run the following command to load the updated time sources into ntp running config: # systemctl restart ntp OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp."
+    remediation: "Edit /etc/ntp.conf and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool mode: pool time.nist.gov iburst. server mode: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run the following command to load the updated time sources into ntp running config: # systemctl restart ntp OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp."
     references:
       - http://www.ntp.org/
       - https://tf.nist.gov/tf-cgi/servers.cgi
@@ -1375,10 +1378,9 @@ checks:
   # 2.1.4.3 Ensure ntp is running as user ntp (Automated)
   - id: 29554
     title: "Ensure ntp is running as user ntp."
-    description: "The ntp package is installed with a dedicated user account ntp. This account is granted the access required by the ntpd daemon Note: > If chrony or systemd-timesyncd are used, ntp should be removed and this section skipped > This recommendation only applies if ntp is in use on the system > Only one time synchronization method should be in use on the system."
+    description: "The ntp package is installed with a dedicated user account ntp. This account is granted the access required by the ntpd daemon. Note: - If chrony or systemd-timesyncd are used, ntp should be removed and this section skipped. - This recommendation only applies if ntp is in use on the system. - Only one time synchronization method should be in use on the system."
     rationale: "The ntpd daemon should run with only the required privlidge."
-    remediation: "Add or edit the following line in /etc/init.d/ntp: RUNASUSER=ntp .Run the following command to restart ntp.servocee: # systemctl restart ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge."
-    default value: "user ntp"
+    remediation: "Add or edit the following line in /etc/init.d/ntp: RUNASUSER=ntp. Run the following command to restart ntp.servocee: # systemctl restart ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp."
     references:
       - http://www.ntp.org/
     compliance:
@@ -1394,6 +1396,8 @@ checks:
     condition: all
     rules:
       - "f:/etc/init.d/ntp -> r:RUNASUSER=ntp"
+      - 'c:sh -c "ps -ef | grep ntpd | grep -v grep " -> r:ntpd\s'
+      - 'not c:sh -c "ps -ef |grep ntpd | grep -v grep " -> !r:^ntp && r:ntpd\s'
 
   # 2.1.4.4 Ensure ntp is enabled and running (Automated)
   - id: 29555
@@ -1425,6 +1429,7 @@ checks:
     title: "Ensure X Window System is not installed."
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
+    impact: 'Many Linux systems run applications which require a Java runtime. Some Linux Java packages have a dependency on specific X Windows xorg-x11-fonts. One workaround to avoid this dependency is to use the "headless" Java packages for your specific Java runtime, if provided by your distribution.'
     remediation: "Remove the X Windows System packages: apt purge xserver-xorg*."
     compliance:
       - cis: ["2.2.1"]
@@ -1440,7 +1445,7 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' xserver-xorg -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' xserver-xorg -> r:unknown ok not-installed|dpkg-query: no packages found matching xserver-xorg"
 
   # 2.2.2 Ensure Avahi Server is not installed (Automated)
   - id: 29557
@@ -1457,13 +1462,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' avahi-daemon -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' avahi-daemon -> r:unknown ok not-installed|dpkg-query: no packages found matching avahi-daemon"
 
   # 2.2.3 Ensure CUPS is not installed (Automated)
   - id: 29558
@@ -1471,9 +1475,9 @@ checks:
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
     rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface."
     impact: "Removing CUPS will prevent printing from the system, a common task for workstation systems."
-    remediation: "Run one of the following commands to remove cups : # apt purge cups."
+    remediation: "Run one of the following commands to remove cups: # apt purge cups."
     references:
-      -  http://www.cups.org.
+      - http://www.cups.org
     compliance:
       - cis: ["2.2.3"]
       - cis_csc_v8: ["4.8"]
@@ -1483,13 +1487,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' cups -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' cups -> r:unknown ok not-installed|dpkg-query: no packages found matching cups"
 
   # 2.2.4 Ensure DHCP Server is not installed (Automated)
   - id: 29559
@@ -1498,7 +1501,7 @@ checks:
     rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove isc-dhcp-server: # apt purge isc-dhcp-server."
     references:
-      - http://www.isc.org/software/dhcp.
+      - http://www.isc.org/software/dhcp
     compliance:
       - cis: ["2.2.4"]
       - cis_csc_v8: ["4.8"]
@@ -1508,13 +1511,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' isc-dhcp-server -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' isc-dhcp-server -> r:unknown ok not-installed|dpkg-query: no packages found matching isc-dhcp-server"
 
   # 2.2.5 Ensure LDAP server is not installed (Automated)
   - id: 29560
@@ -1523,7 +1525,7 @@ checks:
     rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be removed to reduce the potential attack surface."
     remediation: "Run one of the following commands to remove slapd: # apt purge slapd."
     references:
-      -  http://www.openldap.org.
+      - http://www.openldap.org
     compliance:
       - cis: ["2.2.5"]
       - cis_csc_v8: ["4.8"]
@@ -1533,13 +1535,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' slapd -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' slapd -> r:unknown ok not-installed|dpkg-query: no packages found matching slapd"
 
   # 2.2.6 Ensure NFS is not installed (Automated)
   - id: 29561
@@ -1556,10 +1557,9 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nfs-kernel-server -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nfs-kernel-server -> r:unknown ok not-installed|dpkg-query: no packages found matching nfs-kernel-server"
 
   # 2.2.7 Ensure DNS Server is not installed (Automated)
   - id: 29562
@@ -1576,13 +1576,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' bind9 -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' bind9 -> r:unknown ok not-installed|dpkg-query: no packages found matching bind9"
 
   # 2.2.8 Ensure FTP Server is not installed (Automated)
   - id: 29563
@@ -1599,13 +1598,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' vsftpd -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' vsftpd -> r:unknown ok not-installed|dpkg-query: no packages found matching vsftpd"
 
   # 2.2.9 Ensure HTTP server is not installed (Automated)
   - id: 29564
@@ -1622,13 +1620,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' apache2 -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' apache2 -> r:unknown ok not-installed|dpkg-query: no packages found matching apache2"
 
   # 2.2.10 Ensure IMAP and POP3 server are not installed(Automated)
   - id: 29565
@@ -1645,14 +1642,13 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-imapd -> r:install ok installed"
-      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-pop3d -> r:install ok installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-imapd -> r:install ok installed|dpkg-query: no packages found matching dovecot-imapd"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-pop3d -> r:install ok installed|dpkg-query: no packages found matching dovecot-pop3d"
 
   # 2.2.11 Ensure Samba is not installed (Automated)
   - id: 29566
@@ -1669,12 +1665,11 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1005", "T1039", "T1083", "T1135", "T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:unknown ok not-installed|dpkg-query: no packages found matching samba"
 
   # 2.2.12 Ensure HTTP Proxy Server is not installed (Automated)
   - id: 29567
@@ -1691,13 +1686,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' squid -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' squid -> r:unknown ok not-installed|dpkg-query: no packages found matching squid"
 
   # 2.2.13 Ensure SNMP Server is not installed (Automated)
   - id: 29568
@@ -1714,13 +1708,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmp -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmp -> r:unknown ok not-installed|dpkg-query: no packages found matching snmp"
 
   # 2.2.14 Ensure NIS Server is not installed (Automated)
   - id: 29569
@@ -1737,20 +1730,19 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:unknown ok not-installed|dpkg-query: no packages found matching nis"
 
   # 2.2.15 Ensure mail transfer agent is configured for local-only mode (Automated)
   - id: 29570
     title: "Ensure mail transfer agent is configured for local-only mode."
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
     rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Note: This recommendation is designed around the postfix mail server. Depending on your environment you may have an alternative MTA installed such as exim4. If this is the case consult the documentation for your installed MTA to configure the recommended state."
-    remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only .Run the following command to restart postfix: # systemctl restart postfix."
+    remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only. Run the following command to restart postfix: # systemctl restart postfix."
     compliance:
       - cis: ["2.2.15"]
       - cis_csc_v8: ["4.8"]
@@ -1760,13 +1752,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1018", "T1210"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: none
     rules:
-      - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
+      - 'c:ss -lntu -> r:\.*:25 && r:\.*LISTEN && !r:127.0.0.1:25|[::1]:25'
 
   # 2.2.16 Ensure rsync service is either not installed or masked (Automated)
   - id: 29571
@@ -1783,13 +1774,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1105", "T1203", "T1210", "T1543", "T1543.002", "T1570", ]
+      - mitre_techniques: ["T1105", "T1203", "T1210", "T1543", "T1543.002", "T1570"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: any
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsync -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsync -> r:unknown ok not-installed|dpkg-query: no packages found matching rsync"
       - "c:systemctl is-active rsync -> r:^inactive"
       - "c:systemctl is-enabled rsync -> r:^masked"
 
@@ -1812,21 +1802,20 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
-      - nist_sp_800-53: ["CM-11"]
       - mitre_techniques: ["T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:unknown ok not-installed|dpkg-query: no packages found matching nis"
 
   # 2.3.2 Ensure rsh client is not installed (Automated)
   - id: 29573
     title: "Ensure rsh client is not installed."
     description: "The rsh-client package contains the client commands for the rsh services."
-    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin."
-    remediation: "Uninstall rsh: # apt purge rsh-client."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh, rcp and rlogin."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
+    remediation: "Uninstall rsh: # apt purge rsh-client."
     compliance:
       - cis: ["2.3.2"]
       - cis_csc_v8: ["4.8"]
@@ -1836,13 +1825,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1040", "T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsh-client -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsh-client -> r:unknown ok not-installed|dpkg-query: no packages found matching rsh-client"
 
   # 2.3.3 Ensure talk client is not installed (Automated)
   - id: 29574
@@ -1860,13 +1848,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1203",  "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
     rules:
-      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> r:install ok installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' talk -> r:install ok installed|dpkg-query: no packages found matching talk"
 
   # 2.3.4 Ensure telnet client is not installed (Automated)
   - id: 29575
@@ -1884,19 +1871,19 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040",  "T1203", "T1543", "T1543.002"]
+      - mitre_techniques: ["T1040", "T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' telnet -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' telnet -> r:unknown ok not-installed|dpkg-query: no packages found matching telnet"
 
   # 2.3.5 Ensure LDAP client is not installed (Automated)
   - id: 29576
     title: "Ensure LDAP client is not installed."
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
+    impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
     remediation: "Uninstall ldap-utils: # apt purge ldap-utils."
     compliance:
       - cis: ["2.3.5"]
@@ -1907,20 +1894,18 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
-      - mitre_techniques: ["T1040",  "T1203",  "T1543", "T1543.002"]
+      - mitre_techniques: ["T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ldap-utils -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ldap-utils -> r:unknown ok not-installed|dpkg-query: no packages found matching ldap-utils"
 
   # 2.3.6 Ensure RPC is not installed (Automated)
   - id: 29577
     title: "Ensure RPC is not installed."
     description: "Remote Procedure Call (RPC) is a method for creating low level client server applications across different system architectures. It requires an RPC compliant client listening on a network port. The supporting package is rpcbind."
     rationale: "If RPC is not required, it is recommended that this services be removed to reduce the remote attack surface."
-    impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
     remediation: "Run the following command to remove rpcbind: # apt purge rpcbind."
     compliance:
       - cis: ["2.3.6"]
@@ -1931,13 +1916,12 @@ checks:
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3"]
-      - nist_sp_800-53: ["SI-4"]
       - mitre_techniques: ["T1203", "T1543", "T1543.002"]
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rpcbind -> r:unknown ok not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rpcbind -> r:unknown ok not-installed|dpkg-query: no packages found matching rpcbind"
 
   # 2.4 Ensure nonessential services are removed or masked (Manual) - Not Implemented
 
@@ -2028,7 +2012,7 @@ checks:
   # 3.5.1.3 Ensure ufw service is enabled (Automated)
   - id: 29580
     title: "Ensure ufw service is enabled."
-    description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Notes: - When running ufw enable or starting ufw via its initscript, ufw will flush its chains. This is required so ufw can maintain a consistent state, but it may drop existing connections (eg ssh). ufw does support adding rules before enabling the firewall. - Run the following command before running ufw enable. # ufw allow proto tcp from any to any port 22 . - The rules will still be flushed, but the ssh port will be open after enabling the firewall. Please note that once ufw is 'enabled', ufw will not flush the chains when adding or removing rules (but will when modifying a rule or changing the default policy) - By default, ufw will prompt when enabling the firewall while running under ssh. This can be disabled by using ufw --force enable."
+    description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Notes: - When running ufw enable or starting ufw via its initscript, ufw will flush its chains. This is required so ufw can maintain a consistent state, but it may drop existing connections (eg ssh). ufw does support adding rules before enabling the firewall. - Run the following command before running ufw enable. # ufw allow proto tcp from any to any port 22. - The rules will still be flushed, but the ssh port will be open after enabling the firewall. Please note that once ufw is 'enabled', ufw will not flush the chains when adding or removing rules (but will when modifying a rule or changing the default policy) - By default, ufw will prompt when enabling the firewall while running under ssh. This can be disabled by using ufw --force enable."
     rationale: "The ufw service must be enabled and running in order for ufw to protect the system."
     impact: "Changing firewall settings while connected over network can result in being locked out of the system."
     remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service .Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable."
@@ -2110,7 +2094,6 @@ checks:
       - 'c:ufw status verbose -> r:^Default && r:deny\W+(routed)|reject\W+(routed)'
       - "c:systemctl is-enabled ufw.service -> r:enabled|!No such file or directory"
 
-
   ############################################################
   # 3.5.2 Configure nftables
   ############################################################
@@ -2118,7 +2101,7 @@ checks:
   # 3.5.2.1 Ensure nftables is installed (Automated)
   - id: 29583
     title: "Ensure nftables is installed."
-    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Notes: - nftables is available in Linux kernel 3.13 and newer . - Only one firewall utility should be installed and configured . - Changing firewall settings while connected over the network can result in being locked out of the system."
+    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Notes: - nftables is available in Linux kernel 3.13 and newer. - Only one firewall utility should be installed and configured. - Changing firewall settings while connected over the network can result in being locked out of the system."
     rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
     remediation: "Run the following command to install nftables: # apt install nftables."
     compliance:
@@ -2697,8 +2680,8 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
-      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
-      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope"
 
   # 4.1.3.2 Ensure actions as another user are always logged (Automated)
   - id: 29606
@@ -2722,7 +2705,7 @@ checks:
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid && r:-F auid!=unset && r:-F auid!=1 && r:-F auid!=4294967295 && r:-C uid!=euid && r:-S execve && r:-k user_emulation|-F key=user_emulation'
-      - 'c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid && r:-F auid!=unset && r:-F auid!=1 && r:-F auid!=4294967295 && r:-C uid!=euid && r:-S execve && r:-k user_emulation|-F key=user_emulation'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-C euid!=uid && r:-F auid!=unset && r:-F auid!=1 && r:-F auid!=4294967295 && r:-C uid!=euid && r:-S execve && r:-k user_emulation|-F key=user_emulation"
 
   # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not Implemented
 
@@ -2748,8 +2731,8 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && && r:settimeofday && r:-k time-change|-F key=time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && && r:settimeofday && r:-k time-change|-F key=time-change'
-      - 'c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && && r:settimeofday && r:-k time-change|-F key=time-change"
+      - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change"
 
   # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 29608
@@ -2777,11 +2760,11 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|-F key=system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|-F key=system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|-F key=system-locale'
-      - 'c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S sethostname,setdomainname && r:-k system-locale|-F key=system-locale'
-      - 'c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|-F key=system-locale'
-      - 'c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|-F key=system-locale'
-      - 'c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|-F key=system-locale'
-      - 'c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|-F key=system-locale'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S sethostname,setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/network && r:-p wa && r:-k system-locale|-F key=system-locale"
 
   # 4.1.3.6 Ensure use of privileged commands are collected (Automated) - Not Implemented
   # 4.1.3.7 Ensure unsuccessful file access attempts are collected (Automated) - Not Implemented
@@ -2812,11 +2795,11 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity'
-      - 'c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity'
-      - 'c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity'
-      - 'c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity'
-      - 'c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity'
-      - 'c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity'
+      - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity"
+      - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity"
 
   # 4.1.3.9 Ensure discretionary access control permission modification events are collected (Automated) - Not Implemented
 
@@ -2867,9 +2850,9 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session'
-      - 'c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session'
-      - 'c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session'
-      - 'c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session'
+      - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session"
+      - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session"
 
   # 4.1.3.12 Ensure login and logout events are collected (Automated)
   - id: 29612
@@ -2893,8 +2876,8 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins'
-      - 'c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
-      - 'c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins'
+      - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins"
+      - "c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins"
 
   # 4.1.3.13 Ensure file deletion events by users are collected (Automated)
   - id: 29613
@@ -2913,7 +2896,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
       - iso_27001-2013: ["A.12.4.1"]
       - mitre_techniques: ["T1562", "T1562.006"]
-      - mitre_tactics: ["TA0005"]      
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|-F key=delete'
@@ -2942,7 +2925,7 @@ checks:
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
-      - 'c:auditctl -l -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy'
+      - "c:auditctl -l -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy"
       - 'c:auditctl -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
 
   # 4.1.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded (Automated)
@@ -3296,7 +3279,7 @@ checks:
     condition: any
     rules:
       - 'd:/etc/aide/aide.conf.d -> r:\.+.conf$ -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 &&  r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 &&  r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
+      - "f:/etc/aide/aide.conf -> r:/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 &&  r:/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 && r:/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512"
 
   ############################################################
   # 4.2 Configure Logging
@@ -3340,15 +3323,15 @@ checks:
     remediation: "Run the following command to disable systemd-journal-remote.socket: # systemctl --now disable systemd-journal-remote.socket."
     compliance:
       - cis: ["4.2.1.1.4"]
-      - cis_csc_v8: ["4.8","8.2"]
-      - cis_csc_v7: ["6.2","6.3","9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7","CM.L2-3.4.8","SC.L2-3.13.6","AU.L2-3.3.1"]
+      - cis_csc_v8: ["4.8", "8.2"]
+      - cis_csc_v7: ["6.2", "6.3", "9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["1.1.6","1.2.1","2.2.2","2.2.5","10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2","1.2.5","2.2.4","6.4.1"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "10.2", "10.3"]
+      - pci_dss_4.0: ["5.3.4", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "1.2.5", "2.2.4", "6.4.1"]
       - nist_sp_800-53: ["AU-7"]
-      - soc_2: ["CC6.3","CC6.6"]
-      - iso_27001-2013: ["A.13.1.3","A.12.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+      - iso_27001-2013: ["A.13.1.3", "A.12.4.1"]
       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1029"]
@@ -3493,7 +3476,7 @@ checks:
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2", "AU.L2-3.3.1"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)", "164.312(b)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3", "10.2", "10.3", "5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
-      - pci_dss_4.0: ["5.3.4","6.4.1","6.4.2","10.2.1","10.2.1.1","10.2.1.2","10.2.1.3","10.2.1.4","10.2.1.5","10.2.1.6","10.2.1.7","10.2.2","1.3.1","7.1"]
+      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6", "AU-7"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5", "A.12.4.1"]
@@ -3805,7 +3788,7 @@ checks:
     condition: none
     rules:
       - 'c:sh -c "find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat {} \;" -> r:Access:\s*\( && !r:-rw-r--r--'
-    
+
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 29656
     title: "Ensure SSH access is limited."
@@ -4228,8 +4211,6 @@ checks:
       - 'c:sshd -T -> n:^\s*maxsessions\s+(\d+) compare <= 10'
       - 'not f:/etc/ssh/sshd_config -> ^\s*MaxSessions\s+(1[1-9]|[2-9][0-9]|[1-9][0-9][0-9]+)'
 
-
-
   # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 29673
     title: "Ensure SSH LoginGraceTime is set to one minute or less."
@@ -4255,8 +4236,6 @@ checks:
     rules:
       - 'c:sshd -T -> n:logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
       - 'not f:/etc/ssh/sshd_config -> \s*LoginGraceTime\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+|[^1]m)'
-
-
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 29674
@@ -4309,7 +4288,7 @@ checks:
     title: "Ensure sudo commands use pty."
     description: "sudo can be configured to run only from a pseudo terminal (pseudo-pty)."
     rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
-    impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."    
+    impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
     remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH TO FILE> and add the following line: Defaults use_pty."
     references:
       - SUDO(8)
@@ -4497,8 +4476,6 @@ checks:
       - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*\(default=die\)\s*t*pam_faillock.so\s*authfail'
       - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*sufficient\s*\t*pam_faillock.so\s*authsucc'
       - 'f:/etc/pam.d/common-account -> !r:^\s*\t*# && r:account\s*\t*required\s*\t*pam_faillock.so'
-
-
 
   # 5.4.3 Ensure password reuse is limited (Automated)
   - id: 29684
@@ -4693,7 +4670,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4717,7 +4694,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4741,7 +4718,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4765,7 +4742,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4789,7 +4766,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4813,7 +4790,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4837,7 +4814,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4862,7 +4839,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3","MP-2"]
+      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -5049,4 +5026,3 @@ checks:
   # 6.2.15 Ensure no local interactive user has .forward files (Automated) - Not Implemented
   # 6.2.16 Ensure no local interactive user has .rhosts files (Automated) - Not Implemented
   # 6.2.17 Ensure local interactive user dot files are not group or world writable (Automated) - Not Implemented
-
