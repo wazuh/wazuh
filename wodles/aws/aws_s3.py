@@ -792,10 +792,12 @@ class AWSBucket(WazuhIntegration):
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
                     else self.marker_custom_date(aws_region, aws_account_id, self.default_date)
 
+        prefix = self.get_full_prefix(aws_account_id, aws_region) or (filter_marker if not self.only_logs_after else '')
+
         filter_args = {
             'Bucket': self.bucket,
             'MaxKeys': 1000,
-            'Prefix': self.get_full_prefix(aws_account_id, aws_region)
+            'Prefix': prefix
         }
 
         # if nextContinuationToken is not used for processing logs in a bucket
@@ -1012,7 +1014,11 @@ class AWSBucket(WazuhIntegration):
 
             while True:
                 if 'Contents' not in bucket_files:
-                    debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
+                    base_message = '+++ No logs to process in bucket:'
+                    if aws_account_id is not None and aws_region is not None:
+                        debug(f"{base_message} {aws_account_id}/{aws_region}", 1)
+                    else:
+                        debug(f"{base_message} {self.bucket}", 1)
                     return
 
                 for bucket_file in bucket_files['Contents']:
