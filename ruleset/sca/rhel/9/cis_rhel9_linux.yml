@@ -714,7 +714,7 @@ checks:
     title: "Ensure gpgcheck is globally activated."
     description: "The gpgcheck option, found in the main section of the /etc/dnf/dnf.conf and individual /etc/yum.repos.d/* files, determines if an RPM package's signature is checked prior to its installation."
     rationale: "It is important to ensure that an RPM's package signature is always checked prior to installation to ensure that the software is obtained from a trusted source."
-    remediation: 'Edit /etc/dnf/dnf.conf and set gpgcheck=1 in the [main] section. Example: # sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' /etc/dnf/dnf.conf. Edit any failing files in /etc/yum.repos.d/* and set all instances starting with gpgcheck to 1. Example: # find /etc/yum.repos.d/ -name "*.repo" -exec echo "Checking:" {} \; -exec sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' {} \;'
+    remediation: 'Edit /etc/dnf/dnf.conf and set gpgcheck=1 in the [main] section. Example: # sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' /etc/dnf/dnf.conf. Edit any failing files in /etc/yum.repos.d/* and set all instances starting with gpgcheck to 1. Example: # find /etc/yum.repos.d/ -name "*.repo" -exec echo "Checking:" {} \; -exec sed -i ''s/^gpgcheck\s*=\s*.*/gpgcheck=1/'' {} \;.'
     compliance:
       - cis: ["1.2.2"]
       - cis_csc_v8: ["7.3"]
@@ -919,7 +919,7 @@ checks:
     description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
     rationale: "SELinux must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
     impact: "Files created while SELinux is disabled are not labeled at all. This behavior causes problems when changing to enforcing mode because files are labeled incorrectly or are not labeled at all. To prevent incorrectly labeled and unlabeled files from causing problems, file systems are automatically relabeled when changing from the disabled state to permissive or enforcing mode. This can be a long running process that should be accounted for as it may extend downtime during initial re-boot."
-    remediation: 'Run the following command to remove the selinux=0 and enforcing=0 parameters: grubby --update-kernel ALL --remove-args "selinux=0 enforcing=0" Run the following command to remove the selinux=0 and enforcing=0 parameters if they were created by the deprecated grub2-mkconfig command: # grep -Prsq -- ''\h*([^#\n\r]+\h+)?kernelopts=([^#\n\r]+\h+)?(selinux|enforcing)=0\b'' /boot/grub2 /boot/efi && grub2-mkconfig -o "$(grep -Prl -- ''\h*([^#\n\r]+\h+)?kernelopts=([^#\n\r]+\h+)?(selinux|enforcing)=0\b'' /boot/grub2 /boot/efi)'
+    remediation: 'Run the following command to remove the selinux=0 and enforcing=0 parameters: grubby --update-kernel ALL --remove-args "selinux=0 enforcing=0" Run the following command to remove the selinux=0 and enforcing=0 parameters if they were created by the deprecated grub2-mkconfig command: # grep -Prsq -- ''\h*([^#\n\r]+\h+)?kernelopts=([^#\n\r]+\h+)?(selinux|enforcing)=0\b'' /boot/grub2 /boot/efi && grub2-mkconfig -o "$(grep -Prl -- ''\h*([^#\n\r]+\h+)?kernelopts=([^#\n\r]+\h+)?(selinux|enforcing)=0\b'' /boot/grub2 /boot/efi).'
     compliance:
       - cis: ["1.6.1.2"]
       - cis_csc_v8: ["3.3"]
@@ -2068,7 +2068,27 @@ checks:
     rules:
       - "c:grubby --info=ALL -> r:audit=1"
 
-  # 4.1.1.3 Ensure audit_backlog_limit is sufficient (Automated) - Not implemented
+  # 4.1.1.3 Ensure audit_backlog_limit is sufficient (Automated)
+  - id: 280800
+    title: "Ensure audit_backlog_limit is sufficient."
+    description: "The backlog limit has a default setting of 64."
+    rationale: "During boot if audit=1, then the backlog will hold 64 records. If more that 64 records are created during boot, auditd records will be lost and potential malicious activity could go undetected."
+    remediation: "Run the following command to add audit_backlog_limit=<BACKLOG SIZE> to GRUB_CMDLINE_LINUX: # grubby --update-kernel ALL --args 'audit_backlog_limit=<BACKLOG SIZE>' Example: # grubby --update-kernel ALL --args 'audit_backlog_limit=8192'."
+    compliance:
+      - cis: ["4.1.1.3"]
+      - cis_csc_v8: ["8.2"]
+      - cis_csc_v7: ["6.2"]
+      - nist_sp_800-53: ["AU-2", "AU-12", "SI-5"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.2", "10.3"]
+      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - mitre_techniques: ["T1562", "T1562.001"]
+      - mitre_tactics: ["TA0005"]
+    condition: all
+    rules:
+      - 'c:grubby --info=ALL -> n:^args=\.*\saudit_backlog_limit=(\d+) compare >= 8192'
 
   # 4.1.1.4 Ensure auditd service is enabled (Automated)
   - id: 28081
@@ -2170,12 +2190,12 @@ checks:
     title: "Ensure changes to system administration scope (sudoers) is collected."
     description: 'Monitor scope changes for system administrators. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers, or files in /etc/sudoers.d, will be written to when the file(s) or related attributes have changed. The audit records will be tagged with the identifier "scope".'
     rationale: "Changes in the /etc/sudoers and /etc/sudoers.d files can indicate that an unauthorized change has been made to the scope of system administrator activity."
-    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor scope changes for system administrators. Example: # printf " -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d -p wa -k scope " >> /etc/audit/rules.d/50-scope.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi '
+    remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor scope changes for system administrators. Example: # printf " -w /etc/sudoers -p wa -k scope -w /etc/sudoers.d -p wa -k scope " >> /etc/audit/rules.d/50-scope.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
     compliance:
       - cis: ["4.1.3.1"]
       - cis_csc_v8: ["8.5"]
       - cis_csc_v7: ["4.8"]
-      - nist_sp_800-53: ["AU-2", "AU-8", "AU-12", "SI-5"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - iso_27001-2013: ["A.12.4.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
@@ -2186,8 +2206,8 @@ checks:
       - mitre_mitigations: ["M1047"]
     condition: all
     rules:
-      - d:/etc/audit/rules.d/ -> r:\.* -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
-      - d:/etc/audit/rules.d/ -> r:\.* -> r:-w /etc/sudoers.d -p wa -k scope|-w /etc/sudoers.d -p wa key=scope
+      - d:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
+      - d:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers.d -p wa -k scope|-w /etc/sudoers.d -p wa key=scope
       - c:auditctl -l -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
       - c:auditctl -l -> r:-w /etc/sudoers.d -p wa -k scope|-w /etc/sudoers.d -p wa key=scope
 
@@ -2213,9 +2233,9 @@ checks:
   # 4.1.3.20 Ensure the audit configuration is immutable (Automated)
   - id: 28085
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
-    remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- "-e 2" >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi'
+    remediation: 'Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- "-e 2" >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
     compliance:
       - cis: ["4.1.3.20"]
       - cis_csc_v8: ["3.3", "8.5"]
@@ -2234,7 +2254,26 @@ checks:
       - "f:/etc/audit/audit.rules -> r:^-e 2"
       - 'd:/etc/audit/rules.d -> r:\.*.rules -> r:^-e 2'
 
-  # 4.1.3.21 Ensure the running and on disk configuration is the same (Manual) - Not implemented
+  # 4.1.3.21 Ensure the running and on disk configuration is the same (Manual)
+  - id: 28085
+    title: "Ensure the running and on disk configuration is the same."
+    description: "The Audit system have both on disk and running configuration. It is possible for these configuration settings to differ. Note: Due to the limitations of augenrules and auditctl, it is not absolutely guaranteed that loading the rule sets via augenrules --load will result in all rules being loaded or even that the user will be informed if there was a problem loading the rules."
+    rationale: "Configuration differences between what is currently running and what is on disk could cause unexpected problems or may give a false impression of compliance requirements."
+    remediation: 'If the rules are not aligned across all three () areas, run the following command to merge and load all rules: # augenrules --load Check if reboot is required. if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then echo "Reboot required to load rules"; fi.'
+    compliance:
+      - cis: ["4.1.3.21"]
+      - cis_csc_v8: ["8.5"]
+      - cis_csc_v7: ["6.3"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - soc_2: ["CC5.2", "CC7.2"]
+    condition: all
+    rules:
+      - "c:augenrules --check -> r:No change$"
+
   # 4.1.4 Configure auditd file access
   # 4.1.4.1 Ensure audit log files are mode 0640 or less permissive (Automated) - Not implemented
   # 4.1.4.2 Ensure only authorized users own audit log files (Automated) - Not implemented
@@ -2352,7 +2391,7 @@ checks:
     title: "Ensure rsyslog is configured to send logs to a remote log host."
     description: "RSyslog supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog'
+    remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog.'
     compliance:
       - cis: ["4.2.1.6"]
       - cis_csc_v8: ["8.2"]
@@ -2378,7 +2417,7 @@ checks:
     title: "Ensure rsyslog is not configured to receive logs from a remote client."
     description: "RSyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
-    remediation: 'Should there be any active log server configuration found in the auditing section, modify those files and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. New format: module(load="imtcp") input(type="imtcp" port="514") -OR- Old format: $ModLoad imtcp $InputTCPServerRun - Restart the service: # systemctl restart rsyslog'
+    remediation: 'Should there be any active log server configuration found in the auditing section, modify those files and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. New format: module(load="imtcp") input(type="imtcp" port="514") -OR- Old format: $ModLoad imtcp $InputTCPServerRun - Restart the service: # systemctl restart rsyslog.'
     compliance:
       - cis: ["4.2.1.7"]
       - cis_csc_v8: ["4.8", "8.2"]
