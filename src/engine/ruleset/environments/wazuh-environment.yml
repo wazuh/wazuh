@@ -1,21 +1,22 @@
 name: environment/wazuh/0
 
 decoders:
-  # First level decoders by queue
-  - decoder/queue-syscollector/0
-  - decoder/queue-sca/0
-  - decoder/queue-fim/0
-  - decoder/queue-syslog/0
-  - decoder/queue-dbsync/0
-  - decoder/queue-localfile/0
-  - decoder/queue-rootcheck/0
-  - decoder/queue-ciscat/0
-  - decoder/queue-upgrade/0
+  # First level decoders (internal)
+  - decoder/internal-ossec-message/0
+  - decoder/internal-localfile/0
+  - decoder/internal-rsyslog/0
+  - decoder/internal-hostinfo/0
+  - decoder/internal-dbsync/0
+  - decoder/internal-syscheck/0
+  - decoder/internal-rootcheck/0
+  - decoder/internal-syscollector/0
+  - decoder/internal-ciscat/0
+  - decoder/internal-windows/0
+  - decoder/internal-sca/0
+  - decoder/internal-secure/0
+  - decoder/internal-upgrade/0
 
-  # General format decoders
-  - decoder/json/0
-
-  # Internal decoders
+  # Wazuh agent decoders (internal)
   - decoder/dbsync/0
   - decoder/fim/0
   - decoder/fim-event/0
@@ -41,15 +42,12 @@ decoders:
   - decoder/syscollector-program/0
   - decoder/syscollector-program-del/0
   - decoder/syscollector-program-save/0
-
-  # Upgrade confirmation
-  - decoder/upgrade/0
-
-  # Enrich events with host info
-  - decoder/agent-event-enrichment/0
   - decoder/dbsync-host-data/0
   - decoder/kvdb-agent-update/0
   - decoder/syscollector-dbsync-host-data/0
+
+  # Upgrade confirmation
+  - decoder/upgrade/0
 
   # Service decoders
   - decoder/syslog/0

@@ -23,7 +23,7 @@ def run(args, resource_handler: rs.ResourceHandler):
     # Apply changes to Engine instance
     print(f'Overriding wazuh-template.json in {indexer_path}...')
     resource_handler.save_file(
-        indexer_path, 'wazuh-template', jproperties, rs.Format.JSON)
+        indexer_path, 'wazuh-template', jmappings, rs.Format.JSON)
     print(f'Updating logpar configuration...')
     # Update logpar_types in the catalog
     resource_handler.update_catalog_file(

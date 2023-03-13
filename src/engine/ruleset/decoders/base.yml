@@ -1,0 +1,14 @@
+name: decoder/base/0
+# module: wazuh
+
+metadata:
+  title: Base decoder.
+
+sources:
+  - decoder/internal-localfile/0
+  - decoder/internal-rsyslog/0
+  - decoder/internal-windows/0
+
+normalize:
+  - map:
+      - wazuh.decoders: +a_append/base

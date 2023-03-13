@@ -47,16 +47,19 @@ Vagrant.configure("2") do |config|
 
         echo "--- Downlading the engine from github ---"
         apt-get update
-        mkdir engine && cd engine
-        git clone --branch 11334-dev-new-wazuh-engine  https://github.com/wazuh/wazuh.git
-        cd wazuh
-        cd src/engine && mkdir build
+        su vagrant -c "mkdir engine"
+        cd engine
+        su vagrant -c "git clone --branch 11334-dev-new-wazuh-engine  https://github.com/wazuh/wazuh.git"
+        # Make symbolic link to the engine folder
+        su vagrant -c "cd && ln -s engine/wazuh/src/engine/ project"
+        cd wazuh/src/engine
+        su vagrant -c "mkdir build"
         ENGINE_SRC_DIR=$(pwd)
 
         echo "--- Building the engine from its source code ---"
         ulimit -s unlimited
-        cmake -S . -B build/
-        cmake --build build/ --config Debug --target main -j $(nproc)
+        su vagrant -c "cmake -S . -B build/"
+        su vagrant -c "cmake --build build/ --config Debug --target main -j $(nproc)"
 
         #check if main was built, if not throw error
         if [ ! -f ./build/main ]; then
@@ -166,7 +169,7 @@ Vagrant.configure("2") do |config|
         chown -R $CS_USER:$CS_USER $CS_HOME/
 
         # Install engine-schema python script
-        pip3 install $ENGINE_SRC_DIR/test/scripts/engine-suite
+        pip3 install --system $ENGINE_SRC_DIR/test/scripts/engine-suite
         if ! engine-schema -h; then
             echo "Error installing engine-schema"
         fi
