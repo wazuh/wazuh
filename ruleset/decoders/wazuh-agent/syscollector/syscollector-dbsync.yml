@@ -1,0 +1,56 @@
+name: decoder/syscollector-dbsync/0
+
+metadata:
+    module: wazuh-agent/syscollector/syscollector-dbsync
+    title: Syscollector Decoder event for dbsync 
+    description: >
+        Third stage filter of syscollector event decoder with type "dbsync_"
+        and operation not equal to INSERTED, if succes will query to wdb
+        -> only for wazuh managers with version 4.4 and above.
+    compatibility: >
+        This decoder has been tested on Wazuh version 4.4.
+    author:
+        name: Wazuh, Inc.
+        url: https://wazuh.com
+        date: 2022/11/08
+    references:
+        - https://documentation.wazuh.com/current/user-manual/capabilities/syscollector.html#using-syscollector-information-to-trigger-alerts
+        - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
+        - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#syscollector-tables
+        - https://github.com/wazuh/wazuh/issues #TODO
+
+sources:
+  - decoder/syscollector-dbsync-base/0
+
+# processes INSERTED
+# DEBUG: Delta sent: {"data":{"argvs":null,"checksum":"71ece4e42dd41b4b06df00e3f5c4fab33aacc1c5","cmd":null,"egroup":"root","euser":"root","fgroup":"root","name":"kworker/1:2-eve","nice":0,"nlwp":1,"pgrp":0,"pid":"4188","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","scan_time":"2023/03/10 03:27:12","session":0,"sgroup":"root","share":0,"size":0,"start_time":1678418235,"state":"R","stime":14,"suser":"root","tgid":4188,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"}
+# processes DELETED
+# DEBUG: Delta sent: {"data":{"argvs":null,"checksum":"71ece4e42dd41b4b06df00e3f5c4fab33aacc1c5","cmd":null,"egroup":"root","euser":"root","fgroup":"root","name":"kworker/1:2-eve","nice":0,"nlwp":1,"pgrp":0,"pid":"4188","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","scan_time":"2023/03/10 03:37:16","session":0,"sgroup":"root","share":0,"size":0,"start_time":1678418235,"state":"R","stime":14,"suser":"root","tgid":4188,"tty":0,"utime":0,"vm_size":0},"operation":"DELETED","type":"dbsync_processes"}
+# dbsync osinfo MODIFIED
+# Delta sent: {"data":{"architecture":"x86_64","checksum":"1678418832385321534","hostname":"vm-centos8","os_major":"8","os_minor":"3","os_name":"Centos Linux","os_patch":"2011","os_platform":"centos","os_version":"8.3.2011","release":"4.18.0-240.1.1.el8_3.x86_64","scan_time":"2023/03/10 03:27:12","sysname":"Linux","version":"#1 SMP Thu Nov 19 17:20:08 UTC 2020"},"operation":"MODIFIED","type":"dbsync_osinfo"}
+# hwinfo MODIFIED
+# Delta sent: {"data":{"board_serial":"0","checksum":"f7605acc23c70cbb76290a45d956dbab27f5eebc","cpu_cores":2,"cpu_mhz":2371.0,"cpu_name":"AMD Ryzen 5 4500U with Radeon Graphics","ram_free":1691948,"ram_total":2024444,"ram_usage":17,"scan_time":"2023/03/10 03:37:16"},"operation":"MODIFIED","type":"dbsync_hwinfo"}
+# dbsync network_iface MODIFIED
+# Delta sent: {"data":{"adapter":null,"checksum":"052a00a969cb2d54a97890b20ea9af156b74d42d","item_id":"d4aa8b01955e438235d586585492f3f5edceec1b","mac":"52:54:00:27:8b:50","mtu":1500,"name":"eth0","rx_bytes":510595,"rx_dropped":0,"rx_errors":0,"rx_packets":4522,"scan_time":"2023/03/10 03:27:12","state":"up","tx_bytes":616053,"tx_dropped":0,"tx_errors":0,"tx_packets":4186,"type":"ethernet"},"operation":"MODIFIED","type":"dbsync_network_iface"}
+
+# dbsync network_address
+# dbsync network_protocol
+# dbsync packages
+# dbsync ports
+# dbsync hotfixes
+
+
+normalize:
+  - map:
+      - ~json.type: +s_replace/dbsync_/ #this modifies the original event watch out
+      - ~query: +s_concat/agent /$agent.id/ dbsync /$~json.type/ /$~json.operation/ /$~json.data
+      - ~query_response: +wdb_query/$~query
+
+  - check:
+      - ~query_response: +s_ne/
+    map:
+      - ~event_outcome: failed
+      # - ~query: +ef_delete
+      # - ~query_response: +ef_delete
+      # - ~query_response_values: +ef_delete
+      # - ~json.data: +ef_delete
