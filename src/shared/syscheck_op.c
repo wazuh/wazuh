@@ -1285,8 +1285,9 @@ char* get_subkey(char* key) {
 
     aux_token = strtok(remaining_key, "\\");
     while (aux_token !=NULL && !(strchr(aux_token, '?') || strchr(aux_token, '*'))) {
-        strcpy(subkey, aux_token);
+        strcat(subkey, aux_token);
         aux_token = strtok(NULL, "\\");
+        strcat(subkey, "\\");
     }
     int path_len = strlen(subkey) - 1;
     os_free(remaining_key);
