@@ -37,5 +37,4 @@ target_include_directories(api
     ${ENGINE_API_SOURCE_DIR}/router
 )
 
-# TODO Move protobuf to a separate library with the messages
 target_link_libraries(api base json builder::ivalidator store::istore yaml-cpp fmt kvdb router eMessages)
