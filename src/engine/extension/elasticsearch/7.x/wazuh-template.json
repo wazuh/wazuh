@@ -7528,11 +7528,143 @@
                     }
                 }
             },
-            "wazuh": {
+            "fortinet": {
                 "type": "object",
                 "properties": {
-                    "queue": {
-                        "type": "long"
+                    "firewall": {
+                        "type": "object",
+                        "properties": {
+                            "severity": {
+                                "type": "keyword"
+                            }
+                        }
+                    }
+                }
+            },
+            "rsa": {
+                "type": "object",
+                "properties": {
+                    "db_index": {
+                        "type": "keyword"
+                    },
+                    "email": {
+                        "type": "object",
+                        "properties": {
+                            "email_dst": {
+                                "type": "keyword"
+                            },
+                            "email_src": {
+                                "type": "keyword"
+                            },
+                            "subject": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "investigations": {
+                        "type": "object",
+                        "properties": {
+                            "ec_outcome": {
+                                "type": "keyword"
+                            },
+                            "event_vcat": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "misc": {
+                        "type": "object",
+                        "properties": {
+                            "checksum": {
+                                "type": "keyword"
+                            },
+                            "client": {
+                                "type": "keyword"
+                            },
+                            "event_source": {
+                                "type": "keyword"
+                            },
+                            "event_state": {
+                                "type": "keyword"
+                            },
+                            "fcatnum": {
+                                "type": "keyword"
+                            },
+                            "filter": {
+                                "type": "keyword"
+                            },
+                            "hardware_id": {
+                                "type": "keyword"
+                            },
+                            "msgIdPart1": {
+                                "type": "keyword"
+                            },
+                            "msgIdPart2": {
+                                "type": "keyword"
+                            },
+                            "OS": {
+                                "type": "keyword"
+                            },
+                            "reference_id1": {
+                                "type": "keyword"
+                            },
+                            "reference_id": {
+                                "type": "keyword"
+                            },
+                            "sig_id": {
+                                "type": "keyword"
+                            },
+                            "virusname": {
+                                "type": "keyword"
+                            },
+                            "vsys": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "network": {
+                        "type": "object",
+                        "properties": {
+                            "domain": {
+                                "type": "keyword"
+                            },
+                            "interface": {
+                                "type": "keyword"
+                            },
+                            "sinterface": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "threat": {
+                        "type": "object",
+                        "properties": {
+                            "threat_desc": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "time": {
+                        "type": "object",
+                        "properties": {
+                            "duration_time": {
+                                "type": "long"
+                            },
+                            "timezone": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "web": {
+                        "type": "object",
+                        "properties": {
+                            "reputation_num": {
+                                "type": "long"
+                            },
+                            "web_ref_domain": {
+                                "type": "keyword"
+                            }
+                        }
                     }
                 }
             },
@@ -7665,6 +7797,14 @@
                                 "type": "keyword"
                             }
                         }
+                    }
+                }
+            },
+            "wazuh": {
+                "type": "object",
+                "properties": {
+                    "queue": {
+                        "type": "long"
                     }
                 }
             },
