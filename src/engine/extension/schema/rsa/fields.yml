@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 rsa.counters.dclass_c1:
   description: >
     This is a generic counter key that should be used with the label dclass.c1.str only.
@@ -192,4 +193,149 @@ rsa.network.sinterface:
 rsa.web.web_cookie:
   description: >-
     The value of the web cookie associated with the event.
+=======
+rsa.db_index:
+  description: >
+    The database index of the event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.email.email_dst:
+  description: >
+    The destination email address for an email event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.email.email_src:
+  description: >
+    The source email address for an email event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.email.subject:
+  description: >
+    The subject of an email event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.investigations.ec_outcome:
+  description: >
+    The outcome of an investigation as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.investigations.event_vcat:
+  description: >
+    The event category of an investigation as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.checksum:
+  description: >
+    The checksum of a file or packet as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.client:
+  description: >
+    The client reporting the event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.event_source:
+  description: >
+    The source of the event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.event_state:
+  description: >
+    The state of the event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.fcatnum:
+  description: >
+    The event category number as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.filter:
+  description: >
+    The filter used to find events as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.hardware_id:
+  description: >
+    The hardware ID of the reporting device as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.msgIdPart1:
+  description: >
+    The first part of the message ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.msgIdPart2:
+  description: >
+    The second part of the message ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.OS:
+  description: >
+    The operating system of the reporting device as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.reference_id1:
+  description: >
+    The first reference ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.reference_id:
+  description: >
+    The reference ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.sig_id:
+  description: >
+    The signature ID as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.virusname:
+  description: >
+    The name of the virus reported by RSA Security Analytics.
+  type: keyword
+
+rsa.misc.vsys:
+  description: >
+    The virtual system name as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.network.domain:
+  description: >
+    The domain of the network event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.network.interface:
+  description: >
+    The interface of the network event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.network.sinterface:
+  description: >
+    The source interface of the network event as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.threat.threat_desc:
+  description: >
+    The description of the threat as reported by RSA Security Analytics.
+  type: keyword
+
+rsa.time.duration_time:
+  description: >
+    The duration of an event, in seconds.
+  type: long
+
+rsa.time.timezone:
+  description: >
+    The time zone associated with an event.
+  type: keyword
+
+rsa.web.reputation_num:
+  description: >
+    The reputation number associated with a web event.
+  type: long
+
+rsa.web.web_ref_domain:
+  description: >
+    The referenced domain associated with a web event.
+>>>>>>> 9f4fcc0d95 (Adding rsa fields to schema)
   type: keyword
