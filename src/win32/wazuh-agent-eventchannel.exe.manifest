@@ -1,0 +1,6 @@
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+ <description>Wazuh Agent Eventchannel</description>
+ <file name="wsock32.dll" loadFrom="%windir%\System32\wsock32.dll"></file>
+ <file name="wevtapi.dll" loadFrom="%windir%\System32\wevtapi.dll"></file>
+ <file name="msasn1.dll" loadFrom="%windir%\System32\msasn1.dll"></file>
+</assembly>

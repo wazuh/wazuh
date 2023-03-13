@@ -2379,6 +2379,41 @@ test-rules:
 #### windows #######
 ####################
 
+# For security reasons, all executables must have a manifest.
+
+win32/ui_resource.o: win32/ui/win32ui.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/auth_resource.o: win32/agent-auth.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/wazuh_agent_resource.o: win32/wazuh-agent.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/manage_agents_resource.o: win32/manage_agents.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/restart_wazuh_resource.o: win32/restart-wazuh.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/route_null_resource.o: win32/route-null.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/netsh_resource.o: win32/netsh.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/wazuh_agent_eventchannel_resource.o: win32/wazuh-agent-eventchannel.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/setup_windows_resource.o: win32/setup_windows_resource.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/setup_syscheck_resource.o: win32/setup_syscheck_resource.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/setup_iis_resource.o: win32/setup_iis_resource.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
 win32/icon.o: win32/icofile.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
@@ -2397,29 +2432,27 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+# Executables
+
+win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/manage_agents.exe: win32/win_service_rk.o ${addagent_o}
+win32/manage_agents.exe: win32/manage_agents_resource.o win32/win_service_rk.o ${addagent_o}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
+win32/setup-windows.exe: win32/setup_windows_resource.o win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-syscheck.exe: win32/setup-syscheck.o win32/setup-shared.o
+win32/setup-syscheck.exe: win32/setup_syscheck_resource.o win32/setup-syscheck.o win32/setup-shared.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-syscheck\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-iis.exe: win32/setup-iis.o
+win32/setup-iis.exe: win32/setup_iis_resource.o win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/ui_resource.o: win32/ui/win32ui.rc
-	${OSSEC_WINDRES} -i $< -o $@
 
-win32/auth_resource.o: win32/agent-auth.rc
-	${OSSEC_WINDRES} -i $< -o $@
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
@@ -2427,14 +2460,16 @@ win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
-win32/restart-wazuh.exe: active-response/active_responses.o ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/restart-wazuh.o
+win32/restart-wazuh.exe: win32/restart_wazuh_resource.o active-response/active_responses.o ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/restart-wazuh.o
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -s -o $@
 
-win32/route-null.exe: active-response/active_responses.o ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/route-null.o
+win32/route-null.exe: win32/route_null_resource.o active-response/active_responses.o active-response/route-null.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -s -o $@
 
-win32/netsh.exe: active-response/active_responses.o ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/netsh.o
+win32/netsh.exe: win32/netsh_resource.o active-response/active_responses.o active-response/netsh.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -s -o $@
+
+
 
 ####################
 #### Clean #########
@@ -2611,6 +2646,7 @@ clean-windows:
 	rm -f win32/icon.o win32/resource.o
 	rm -f ${WINDOWS_BINS}
 	rm -f win32/wazuh-agent-*.exe
+	rm -f win32/*.o
 	rm -f win32/VERSION
 	rm -f win32/REVISION
 	rm -f win32/libstdc++-6.dll

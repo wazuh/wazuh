@@ -7,4 +7,5 @@
      </requestedPrivileges>
    </security>
  </trustInfo>
+ <file name="wsock32.dll" loadFrom="%windir%\System32\wsock32.dll"></file>
 </assembly>

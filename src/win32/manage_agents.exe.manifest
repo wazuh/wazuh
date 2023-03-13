@@ -1,0 +1,4 @@
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+ <description>Manage Agents</description>
+ <file name="wsock32.dll" loadFrom="%windir%\System32\wsock32.dll"></file>
+</assembly>
