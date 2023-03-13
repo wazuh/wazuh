@@ -18,7 +18,7 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 sources:
-  - decoder/queue-syscollector/0
+  - decoder/internal-syscollector/0
 
 check:
   - wazuh.origin: +string_equal/syscollector
