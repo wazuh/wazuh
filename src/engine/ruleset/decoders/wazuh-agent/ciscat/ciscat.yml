@@ -17,7 +17,7 @@ metadata:
         - https://documentation.wazuh.com/current/user-manual/capabilities/policy-monitoring/ciscat/ciscat.html
 
 sources:
-  - decoder/queue-ciscat/0
+  - decoder/internal-ciscat/0
 
 check:
   - event.original: +starts_with/{

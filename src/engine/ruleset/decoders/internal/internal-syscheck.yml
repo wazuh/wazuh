@@ -1,0 +1,26 @@
+name: decoder/internal-syscheck/0
+# module: wazuh
+
+metadata:
+  title: Syscheck queue decoder.
+  description: >
+    Process events that have the Syscheck queue in the standard OSSEC message format.
+  compatibility: Any service being tagged with the queue 56.
+  versions:
+    - Wazuh 4.*
+  author:
+    name: Wazuh, Inc.
+    date: 07/03/2023
+  references:
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html
+
+sources:
+  - decoder/internal-ossec-message/0
+
+check:
+  - wazuh.queue: 56
+
+normalize:
+  - map:
+      - wazuh.source: syscheck
+      - wazuh.decoders: +a_append/internal-syscheck

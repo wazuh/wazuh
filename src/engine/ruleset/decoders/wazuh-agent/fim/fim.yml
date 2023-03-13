@@ -20,7 +20,7 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 sources:
-  - decoder/queue-fim/0
+  - decoder/internal-syscheck/0
 
 check:
   - event.original: +starts_with/{
