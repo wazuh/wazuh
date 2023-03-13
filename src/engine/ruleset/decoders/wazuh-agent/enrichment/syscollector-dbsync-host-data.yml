@@ -14,12 +14,7 @@ metadata:
     - https://github.com/wazuh/wazuh/issues/15500
 
 sources:
-  - decoder/syscollector-dbsync-network-address-inserted/0
-  - decoder/syscollector-dbsync-network-address/0
-  - decoder/syscollector-dbsync-network-iface-inserted/0
-  - decoder/syscollector-dbsync-network-iface/0
-  - decoder/syscollector-dbsync-osinfo-inserted/0
-  - decoder/syscollector-dbsync-osinfo/0
+  - decoder/syscollector-dbsync/0
 
 check:
   - ~do_update_kvdb: +t_is_true
