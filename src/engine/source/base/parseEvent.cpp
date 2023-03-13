@@ -113,9 +113,9 @@ Event parseOssecEvent(const std::string& event)
         }
         catch (std::runtime_error& e)
         {
-            throw fmt::format(
-                "An error occurred while parsing the \"location\" field of the event: {}",
-                e.what());
+            const auto msg =
+                fmt::format(R"(An error occurred while parsing the "location" field of the event: {})", e.what());
+            throw  std::runtime_error(msg);
         }
 
         msgStartIndex = endIdx + 1;
@@ -153,9 +153,9 @@ Event parseOssecEvent(const std::string& event)
             }
             catch (std::runtime_error& e)
             {
-                throw fmt::format("An error occurred while parsing  the \"location\" "
-                                  "field of  the event: {}",
-                                  e.what());
+                const auto msg =
+                    fmt::format(R"(An error occurred while parsing the "location" field of the event: {})", e.what());
+                throw  std::runtime_error(msg);
             }
 
             msgStartIndex = LAST_COLON_INDEX + 1;
@@ -171,9 +171,9 @@ Event parseOssecEvent(const std::string& event)
             }
             catch (std::runtime_error& e)
             {
-                throw fmt::format("An error occurred while parsing the \"location\" "
-                                  "field of the event: {}",
-                                  e.what());
+                const auto msg =
+                    fmt::format(R"(An error occurred while parsing the "location" field of the event: {})", e.what());
+                throw std::runtime_error(msg);
             }
             msgStartIndex = secondColonIdx + 1;
         }
@@ -186,9 +186,8 @@ Event parseOssecEvent(const std::string& event)
     }
     catch (std::runtime_error& e)
     {
-        throw fmt::format("An error occurred while parsing the \"location\" field of  "
-                          "the event: {}",
-                          e.what());
+        const auto msg =
+            fmt::format(R"(An error occurred while parsing the "message" field of the event: {})", e.what());
     }
 
     // TODO Create event here
