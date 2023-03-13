@@ -17,7 +17,7 @@ metadata:
         - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/rootcheck.html
 
 sources:
-  - decoder/queue-rootcheck/0
+  - decoder/internal-rootcheck/0
 
 normalize:
   - map:

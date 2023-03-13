@@ -1,0 +1,27 @@
+name: decoder/internal-dbsync/0
+# module: wazuh
+
+metadata:
+  title: DBSync queue decoder
+  description: >
+    Process events that have the DBSync queue in the standard OSSEC message format.
+    Handles implementation details of Wazuh, not intended for end users.
+  compatibility: Any service being tagged with the queue 53.
+  versions:
+    - Wazuh 4.*
+  author:
+    name: Wazuh, Inc.
+    date: 07/03/2023
+  references:
+    - https://github.com/wazuh/wazuh/issues/13521
+
+sources:
+  - decoder/internal-ossec-message/0
+
+check:
+  - wazuh.queue: 53
+
+normalize:
+  - map:
+      - wazuh.source: dbsync
+      - wazuh.decoders: +a_append/internal-dbsync
