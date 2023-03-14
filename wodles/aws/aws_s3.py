@@ -1046,7 +1046,6 @@ class AWSBucket(WazuhIntegration):
                 new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
                 bucket_files = self.client.list_objects_v2(**new_s3_args)
 
-
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
                 debug('Error: The "iter_files_in_bucket" request was denied due to request throttling. If the problem '
@@ -1221,7 +1220,6 @@ class AWSConfigBucket(AWSLogsBucket):
         self._leading_zero_regex = re.compile(r'/(0)(?P<num>\d)')
         self._extract_date_regex = re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
 
-
     def _format_created_date(self, date: str) -> str:
         """
         Return a date with the format used by the created_date field of the database.
@@ -1306,7 +1304,6 @@ class AWSConfigBucket(AWSLogsBucket):
         """
         return self._remove_padding_zeros_from_marker(AWSBucket.marker_custom_date(self, aws_region, aws_account_id,
                                                                                    date))
-
 
     def reformat_msg(self, event):
         AWSBucket.reformat_msg(self, event)
@@ -1544,7 +1541,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             'log_key': downloaded_file})
         return cursor.fetchone()[0] > 0
 
-
     def iter_regions_and_accounts(self, account_id, regions):
         if not account_id:
             # No accounts provided, so find which exist in s3 bucket
@@ -1601,7 +1597,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
                + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
-
 
     def mark_complete(self, aws_account_id, aws_region, log_file, flow_log_id):
         if self.reparse:
