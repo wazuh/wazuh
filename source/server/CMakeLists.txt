@@ -41,7 +41,7 @@ add_library(server STATIC
 )
 
 #TODO do this better
-target_link_libraries(server base uv_a api)
+target_link_libraries(server base uv_a api metrics)
 
 target_include_directories(server
     PUBLIC
