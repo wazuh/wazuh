@@ -13,6 +13,7 @@ USERID=$(id -u $USERNAME)
 GROUPID=$(id -g $USERNAME)
 VERBOSE=''
 BUILD_DOCKER="yes"
+THREADS=""
 
 build() {
 
@@ -35,9 +36,10 @@ Help() {
     echo "i     RTR input file. By default, it uses 'rtr_inputs/rtr_cicd.json'."
     echo "v     Verbose. Enables debug mode for RTR."
     echo "b     Build docker. By default, it builds the docker image. Set to 'no' to skip the build."
+    echo "t     Threads. Sets the number of threads for all the steps, overwriting the value of the json configuration files."
     echo
     echo "      Example: ./rtr.sh -i ./rtr_inputs/rtr_ut.json"
-    echo "      Example: ./rtr.sh -o /tmp/rtr -s /home/user/wazuh/src/engine -i ./rtr_inputs/rtr_ut.json -v -b no"
+    echo "      Example: ./rtr.sh -o /tmp/rtr -s /home/user/wazuh/src/engine -i ./rtr_inputs/rtr_ut.json -v -b no -t 8"
 }
 
 run() {
@@ -47,7 +49,7 @@ run() {
         STEP_DESC=$(echo $step | jq -r '.description')
         STEP_PARAMS=$(echo $step | jq -r '.parameters | join(" ")')
         echo "->Step: $STEP_DESC"
-        docker run --rm -v $SRC_DIR:/source -v $OUTPUT_DIR:/output -v $RTR_DIR:/rtr $CONTAINER_NAME /rtr/rtr.py $VERBOSE -u $USERID -g $GROUPID -o /output -s /source $STEP_PARAMS
+        docker run --rm -v $SRC_DIR:/source -v $OUTPUT_DIR:/output -v $RTR_DIR:/rtr $CONTAINER_NAME /rtr/rtr.py $VERBOSE -u $USERID -g $GROUPID -o /output -s /source $STEP_PARAMS $THREADS
         docker_exit_code=$?
         if [ $docker_exit_code -ne 0 ]; then
             echo "Execution fail, RTR step: $STEP_DESC."
@@ -56,7 +58,7 @@ run() {
     done
 }
 
-while getopts ":ho:s:i::vb:" option
+while getopts ":ho:s:i::vb:t:" option
 do
     case "${option}" in
         h) # display Help
@@ -72,6 +74,8 @@ do
             VERBOSE='-v';;
         b) # build docker
             BUILD_DOCKER=${OPTARG};;
+        t) # threads
+            THREADS="--threads "${OPTARG};;
         :) # missing argument
             echo "Error: Missing argument for option '$OPTARG'."
             Help
