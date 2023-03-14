@@ -11,6 +11,7 @@
 #define _BASE_ENDPOINT_H
 
 #include <string>
+#include "metrics.hpp"
 
 #include <blockingconcurrentqueue.h>
 
