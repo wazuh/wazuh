@@ -11,7 +11,6 @@ import json
 import os
 import sys
 from unittest.mock import patch
-from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy import create_engine
