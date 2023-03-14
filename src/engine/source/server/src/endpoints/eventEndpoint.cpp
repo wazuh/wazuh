@@ -230,6 +230,7 @@ EventEndpoint::EventEndpoint(
                 {
                     // Right now we process 1 event for ~0.1ms, we sleep by a factor
                     // of 5 because we are saturating the queue and we don't want to.
+                    Metrics::instance().addCounterValue("QueuedEvents", 1UL);
                     std::this_thread::sleep_for(std::chrono::microseconds(500));
                 }
             }
@@ -249,6 +250,7 @@ EventEndpoint::EventEndpoint(
                 }
                 if (attempts >= maxAttempts)
                 {
+                    Metrics::instance().addCounterValue("DiskInsertedEvents", 1UL);
                     dumpFileHandler->write(strRequest);
                 }
             }
