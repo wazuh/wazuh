@@ -1,4 +1,16 @@
-[
+[   
+    {
+        "name": "RegisterServerCounter",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "quantity",
+        "description": "This counter is increments each time a record occurs on the server"
+    },
     {
         "name": "MetricsTestCounter",
         "dataHubEnable" : true,
