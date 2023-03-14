@@ -705,6 +705,7 @@ def test_agent_add_ko(mock_maganer_status):
 
 @pytest.mark.parametrize("name, ip, id, key, force", [
     ('test_agent', '172.19.0.100', None, None, None),
+    ('test_agent', 'any', '001', None, None),
     ('test_agent', '172.19.0.100', '002', 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2O'
                                           'TE5MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz',
      {"enabled": True, "disconnected_time": {"enabled": True, "value": "1h"}})
@@ -732,8 +733,10 @@ def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key, force):
     mock_wazuh_socket.return_value.receive.assert_called_once()
     mock_wazuh_socket.return_value.close.assert_called_once()
     socket_msg = {"function": "add", "arguments": {"name": name, "ip": ip}}
-    if id and key:
-        socket_msg["arguments"].update({"id": id, "key": key})
+    if id:
+        socket_msg["arguments"].update({"id": id})
+    if key:
+        socket_msg["arguments"].update({"key": key})
     if force:
         socket_msg["arguments"].update({"force": {"key_mismatch": True, **force}})
 
