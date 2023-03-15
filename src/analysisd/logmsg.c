@@ -10,7 +10,7 @@
 
 #include "logmsg.h"
 
-void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func, 
+void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func,
                                 const char * file, char * msg, ...) {
 
     va_list args;
@@ -74,14 +74,14 @@ char * os_analysisd_string_log_msg(os_analysisd_log_msg_t * log_msg) {
     return str;
 }
 
-void os_analysisd_free_log_msg(os_analysisd_log_msg_t ** log_msg) {
+void os_analysisd_free_log_msg(os_analysisd_log_msg_t * log_msg) {
 
-    if (!*log_msg) {
+    if (!log_msg) {
         return;
     }
 
-    os_free((*log_msg)->file);
-    os_free((*log_msg)->func);
-    os_free((*log_msg)->msg);
-    os_free(*log_msg);
+    os_free(log_msg->file);
+    os_free(log_msg->func);
+    os_free(log_msg->msg);
+    os_free(log_msg);
 }

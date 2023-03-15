@@ -496,11 +496,11 @@ char *__wrap_Eventinfo_to_jsonstr(const Eventinfo *lf, bool force_full_log){
     return mock_type(char *);
 }
 
-void __wrap_os_analysisd_free_log_msg(os_analysisd_log_msg_t ** log_msg) {
-    os_free((*log_msg)->file);
-    os_free((*log_msg)->func);
-    os_free((*log_msg)->msg);
-    os_free(*log_msg);
+void __wrap_os_analysisd_free_log_msg(os_analysisd_log_msg_t * log_msg) {
+    os_free(log_msg->file);
+    os_free(log_msg->func);
+    os_free(log_msg->msg);
+    os_free(log_msg);
     return;
 }
 
@@ -2938,6 +2938,12 @@ void test_w_logtest_process_request_error_check_input(void ** state) {
 
     will_return(__wrap_cJSON_PrintUnformatted, "{json response}");
 
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+    will_return(__wrap_pthread_mutex_destroy, 0);
+
     retval = w_logtest_process_request(input_raw_json, &connection);
 
     assert_string_equal(retval, "{json response}");
@@ -3033,6 +3039,12 @@ void test_w_logtest_process_request_type_remove_session_ok(void ** state) {
     expect_string(__wrap_cJSON_AddItemToObject, string, "data");
 
     will_return(__wrap_cJSON_PrintUnformatted, "{json response}");
+
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+    will_return(__wrap_pthread_mutex_destroy, 0);
 
     retval = w_logtest_process_request(input_raw_json, &connection);
 
@@ -3193,6 +3205,12 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
     expect_string(__wrap_cJSON_AddItemToObject, string, "data");
 
     will_return(__wrap_cJSON_PrintUnformatted, "{json response}");
+
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+    will_return(__wrap_pthread_mutex_destroy, 0);
 
     retval = w_logtest_process_request(input_raw_json, &connection);
 
@@ -4722,6 +4740,12 @@ void test_w_logtest_clients_handler_ok(void ** state)
     expect_string(__wrap_cJSON_AddItemToObject, string, "data");
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("{json response}"));
+
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+    will_return(__wrap_pthread_mutex_destroy, 0);
 
     will_return(__wrap_OS_SendSecureTCP, 0);
 
