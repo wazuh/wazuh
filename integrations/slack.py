@@ -1,4 +1,4 @@
-# Copyright (C) 2023, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -34,7 +34,6 @@ except Exception as e:
 
 # Global vars
 debug_enabled   = False
-debug_console   = True
 pwd             = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert      = {}
 json_options    = {}
@@ -74,58 +73,58 @@ def main(args: list[str]):
         if bad_arguments:
             debug("# Exiting: Bad arguments. Inputted: %s" % args)
             sys.exit(ERR_BAD_ARGUMENTS)
-        
+
         # Core function
         process_args(args)
 
     except Exception as e:
         debug(str(e))
-        raise 
-    
+        raise
+
 def process_args(args: list[str]) -> None:
-    """ 
-        This is the core function, creates a message with all valid fields 
+    """
+        This is the core function, creates a message with all valid fields
         and overwrite or add with the optional fields
-        
+
         Parameters
         ----------
         args : list[str]
             The argument list from main call
     """
     debug("# Starting")
-    
+
     # Read args
-    alert_file_location:str     = args[ALERT_INDEX]
-    webhook:str                 = args[WEBHOOK_INDEX]
-    options_file_location:str   = ''
-    
+    alert_file_location: str     = args[ALERT_INDEX]
+    webhook: str                 = args[WEBHOOK_INDEX]
+    options_file_location: str   = ''
+
     # Look for options file location
-    for idx in range(4,len(args)):
+    for idx in range(4, len(args)):
         if(args[idx][-7:] == "options"):
             options_file_location = args[idx]
             break
 
     debug("# Options file location")
     debug(options_file_location)
-    
+
     # Load options. Parse JSON object.
-    json_options = get_json_options(options_file_location)
-        
+    json_options = get_json_file(options_file_location)
+
     debug("# Processing options")
     debug(json_options)
-    
-    debug("# Alert file location")
-    debug(alert_file_location)  
 
-    # Load alert. Parse JSON object.            
-    json_alert = get_json_alert(alert_file_location)
+    debug("# Alert file location")
+    debug(alert_file_location)
+
+    # Load alert. Parse JSON object.
+    json_alert = get_json_file(alert_file_location)
 
     debug("# Processing alert")
     debug(json_alert)
 
     debug("# Generating message")
     msg: any = generate_msg(json_alert, json_options)
-    
+
     if not len(msg):
         debug("# ERR - Empty message")
         raise Exception
@@ -135,10 +134,10 @@ def process_args(args: list[str]) -> None:
     send_msg(msg, webhook)
 
 def debug(msg: str) -> None:
-    """ 
+    """
         Log the message in the log file with the timestamp, if debug flag
         is enabled
-        
+
         Parameters
         ----------
         msg : str
@@ -149,13 +148,10 @@ def debug(msg: str) -> None:
         print(msg)
         with open(LOG_FILE, "a") as f:
             f.write(msg)
-    if debug_console:
-        msg = "{0}: {1}\n".format(now, msg)
-        print(msg)
 
 
 def generate_msg(alert: any, options: any) -> any:
-    """ 
+    """
         Generate the JSON object with the message to be send
 
         Parameters
@@ -178,7 +174,7 @@ def generate_msg(alert: any, options: any) -> any:
         color = "warning"
     else:
         color = "danger"
-        
+
     msg             = {}
     msg['color']    = color
     msg['pretext']  = "WAZUH Alert"
@@ -215,7 +211,7 @@ def generate_msg(alert: any, options: any) -> any:
     return json.dumps(attach)
 
 def send_msg(msg: str, url: str) -> None:
-    """ 
+    """
         Send the message to the API
 
         Parameters
@@ -225,25 +221,24 @@ def send_msg(msg: str, url: str) -> None:
         url: str
             URL of the API.
     """
-    debug("# In send msg")
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-    res = requests.post(url, data=msg, headers=headers)
-    debug("# After send msg: %s" % res)
-    
-def get_json_alert(alert_file_location: str) -> any:
-    """ 
+    res     = requests.post(url, data=msg, headers=headers)
+    debug("# Response received: %s" % res)
+
+def get_json_file(file_location: str) -> any:
+    """
         Read the JSON object from alert file
 
         Parameters
         ----------
-        alert_file_location : str
+        file_location : str
             Path to file alert location.
-            
+
         Returns
         -------
         {}: any
             The JSON object read it.
-        
+
         Raises
         ------
         FileNotFoundError
@@ -252,41 +247,10 @@ def get_json_alert(alert_file_location: str) -> any:
             If no valid JSON file are used
     """
     try:
-        with open(alert_file_location) as alert_file:
+        with open(file_location) as alert_file:
             return json.load(alert_file)
     except FileNotFoundError:
-        debug("# Alert file %s doesn't exist" % alert_file_location)
-        sys.exit(ERR_FILE_NOT_FOUND)
-    except json.decoder.JSONDecodeError as e:
-        debug("Failed getting json_alert %s" % e)
-        sys.exit(ERR_INVALID_JSON)
-        
-def get_json_options(options_file_location: str) -> any:
-    """ 
-        Read the JSON object from options file
-
-        Parameters
-        ----------
-        options_file_location : str
-            Path to file options location.
-            
-        Returns
-        -------
-        {}: any
-            The JSON object read it.
-        
-        Raises
-        ------
-        FileNotFoundError
-            If no optional file is not present.
-        JSONDecodeError
-            If no valid JSON file are used
-    """
-    try:
-        with open(options_file_location) as options_file:
-            return json.load(options_file)
-    except FileNotFoundError:
-        debug("# Option file %s doesn't exist" % options_file_location)
+        debug("# JSON file %s doesn't exist" % file_location)
         sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
         debug("Failed getting json_alert %s" % e)
