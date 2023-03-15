@@ -788,7 +788,7 @@ class AWSBucket(WazuhIntegration):
                     'bucket_path': self.bucket_path,
                     'aws_region': aws_region,
                     'prefix': f'{self.prefix}%',
-                    'aws_account_id': aws_account_id
+                    'aws_account_id': aws_account_id or self.aws_account_id
                 })
             try:
                 filter_marker = query_last_key.fetchone()[0]
@@ -2196,7 +2196,7 @@ class AWSCustomBucket(AWSBucket):
         return cursor.fetchone()[0] > 0
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
-        AWSBucket.mark_complete(self, self.aws_account_id, aws_region, log_file)
+        AWSBucket.mark_complete(self, aws_account_id or self.aws_account_id, aws_region, log_file)
 
     def db_count_custom(self, aws_account_id=None):
         """Counts the number of rows in DB for a region
