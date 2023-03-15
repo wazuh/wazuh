@@ -16,8 +16,6 @@ decoders:
 
   # Internal decoders
   - decoder/dbsync/0
-  - decoder/f5-afm/0
-  - decoder/f5-apm/0
   - decoder/fim/0
   - decoder/fim-event/0
   - decoder/fim-scan/0
@@ -82,6 +80,10 @@ decoders:
   - decoder/nginx-access-base/0
   - decoder/nginx-access/0
   - decoder/nginx-error/0
+
+  # F5 decoders
+  - decoder/f5-afm/0
+  - decoder/f5-apm/0
 
   # TODO uncomment when the fields are added to the schema
   # AWS decoder
