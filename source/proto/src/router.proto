@@ -16,7 +16,7 @@ message Entry
 /***************************************************
  * Get a route from the router
  *
- * command: router.route/get (<resource>/<accion>)
+ * command: router.route/get (<resource>/<action>)
  **************************************************/
 message RouteGet_Request
 {
@@ -33,7 +33,7 @@ message RouteGet_Response
 /***************************************************
  * Post a route to the router (Add route)
  *
- * command: router.route/post (<resource>/<accion>)
+ * command: router.route/post (<resource>/<action>)
  **************************************************/
 message RoutePost_Request
 {
@@ -46,7 +46,7 @@ message RoutePost_Request
  *
  * Actually, it only supports the update of the priority (Name and priority are required)
  *
- * command: router.route/patch (<resource>/<accion>)
+ * command: router.route/patch (<resource>/<action>)
  **************************************************/
 message RoutePatch_Request
 {
@@ -59,7 +59,7 @@ message RoutePatch_Request
  *
  * If the route exists, it returns OK and delete the route
  * If the route not exists, it returns OK, because the route is not present after the operation
- * command: router.route/delete (<resource>/<accion>)
+ * command: router.route/delete (<resource>/<action>)
  **************************************************/
 message RouteDelete_Request
 {
@@ -70,7 +70,7 @@ message RouteDelete_Request
 
 /***************************************************
  * Get the table of routes from the router
- * command: router.table/get (<resource>/<accion>)
+ * command: router.table/get (<resource>/<action>)
  **************************************************/
 message TableGet_Request
 {
@@ -89,7 +89,7 @@ message TableGet_Response
  *
  * Send a Standard OSSEC event -> "<Queue>:<Location>:<Message>"
  * Standard OSSEC event
- * command: router.queue/post (<resource>/<accion>)
+ * command: router.queue/post (<resource>/<action>)
  **************************************************/
 message QueuePost_Request
 {

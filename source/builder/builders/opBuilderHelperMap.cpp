@@ -208,7 +208,10 @@ base::Expression opBuilderHelperIntTransformation(const std::string& targetField
                 catch (const std::exception& e)
                 {
                     throw std::runtime_error(
-                        fmt::format("\"{}\" function: Could not convert parameter \"{}\" to int: {}", name, param.m_value, e.what()));
+                        fmt::format("\"{}\" function: Could not convert parameter \"{}\" to int: {}",
+                                    name,
+                                    param.m_value,
+                                    e.what()));
                 }
                 if (IntOperator::DIV == op && 0 == rValue)
                 {
@@ -447,11 +450,10 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
     const char trimType = parameters[0].m_value == "begin"  ? 's'
                           : parameters[0].m_value == "end"  ? 'e'
                           : parameters[0].m_value == "both" ? 'b'
-                                                               : '\0';
+                                                            : '\0';
     if ('\0' == trimType)
     {
-        throw std::runtime_error(
-            fmt::format("\"{}\" function: Invalid trim type \"{}\"", name, parameters[0].m_value));
+        throw std::runtime_error(fmt::format("\"{}\" function: Invalid trim type \"{}\"", name, parameters[0].m_value));
     }
 
     // get trim char
@@ -641,8 +643,7 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
             }
 
             // accumulated concation without trailing indexes
-            const std::string composedValueString {
-                base::utils::string::join(stringArray, separator)};
+            const std::string composedValueString {base::utils::string::join(stringArray, separator)};
 
             event->setString(composedValueString, targetField);
             return base::result::makeSuccess(event, successTrace);
@@ -1098,8 +1099,7 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
-    const std::string failureTrace2 {
-        fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
+    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
 
     // Return result
     return base::Term<base::EngineOp>::create(
@@ -1116,8 +1116,7 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
                                                  (!event->exists(fieldReference)) ? failureTrace1 : failureTrace2);
             }
 
-            const auto splitted =
-                base::utils::string::split(resolvedReference.value(), separator);
+            const auto splitted = base::utils::string::split(resolvedReference.value(), separator);
 
             for (const auto& value : splitted)
             {
@@ -1314,18 +1313,15 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition)
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
-    const std::string failureTrace2 {
-        fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
+    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: ", name)
                                      + "The string \"{}\" is not a valid IP address"};
 
     // Return result
     return base::Term<base::EngineOp>::create(
         name,
-        [=,
-         targetField = std::move(targetField),
-         name = std::move(name),
-         ipStrPath = std::move(parameters[0].m_value)](base::Event event) -> base::result::Result<base::Event>
+        [=, targetField = std::move(targetField), name = std::move(name), ipStrPath = std::move(parameters[0].m_value)](
+            base::Event event) -> base::result::Result<base::Event>
         {
             const auto strIP = event->getString(ipStrPath);
 
@@ -1407,8 +1403,7 @@ base::Expression opBuilderHelperHashSHA1(const std::any& definition)
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
-    const std::string failureTrace2 {
-        fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
+    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, parameters[0].m_value)};
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Couldn't create HASH from string", name)};
 
     // Return Term
