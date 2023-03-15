@@ -335,41 +335,49 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
 
                             args.test_config = False
                             wazuh_clusterd.args = args
-                            with patch('wazuh.core.cluster.cluster.clean_up') as clean_up_mock:
-                                with patch('scripts.wazuh_clusterd.clean_pid_files') as clean_pid_files_mock:
-                                    with patch.object(wazuh_clusterd.pyDaemonModule, 'pyDaemon') as pyDaemon_mock:
-                                        with patch.object(wazuh_clusterd.pyDaemonModule,
-                                                          'create_pid') as create_pid_mock:
-                                            with patch.object(wazuh_clusterd.pyDaemonModule, 'delete_child_pids'):
-                                                with patch.object(wazuh_clusterd.pyDaemonModule,
-                                                                  'delete_pid') as delete_pid_mock:
-                                                    wazuh_clusterd.main()
-                                                    main_logger_mock.assert_any_call(
-                                                        "Unhandled exception: name 'cluster_items' is not defined")
-                                                    clean_up_mock.assert_called_once()
-                                                    clean_pid_files_mock.assert_called_once_with('wazuh-clusterd')
-                                                    pyDaemon_mock.assert_called_once()
-                                                    setuid_mock.assert_called_once_with('uid_test')
-                                                    setgid_mock.assert_called_once_with('gid_test')
-                                                    getpid_mock.assert_called()
-                                                    create_pid_mock.assert_called_once_with('wazuh-clusterd', 543)
-                                                    delete_pid_mock.assert_called_once_with('wazuh-clusterd', 543)
 
-                                                    args.foreground = True
-                                                    wazuh_clusterd.main()
-                                                    print_mock.assert_called_once_with(
-                                                        'Starting cluster in foreground (pid: 543)')
+                            with patch('wazuh.core.cluster.utils.get_cluster_items', side_effect=IndexError):
+                                with pytest.raises(SystemExit):
+                                    wazuh_clusterd.main()
+                                main_logger_mock.assert_called_once()
+                                exit_mock.assert_called_once_with(1)
+                                main_logger_mock.reset_mock()
+                                exit_mock.reset_mock()
 
-                                                    wazuh_clusterd.cluster_items = {}
-                                                    with patch('scripts.wazuh_clusterd.master_main',
-                                                               side_effect=KeyboardInterrupt('TESTING')):
+                            with patch('wazuh.core.cluster.utils.get_cluster_items', return_value={'files': {}}):
+                                with patch('wazuh.core.cluster.cluster.clean_up') as clean_up_mock:
+                                    with patch('scripts.wazuh_clusterd.clean_pid_files') as clean_pid_files_mock:
+                                        with patch.object(wazuh_clusterd.pyDaemonModule, 'pyDaemon') as pyDaemon_mock:
+                                            with patch.object(wazuh_clusterd.pyDaemonModule,
+                                                              'create_pid') as create_pid_mock:
+                                                with patch.object(wazuh_clusterd.pyDaemonModule, 'delete_child_pids'):
+                                                    with patch.object(wazuh_clusterd.pyDaemonModule,
+                                                                      'delete_pid') as delete_pid_mock:
                                                         wazuh_clusterd.main()
-                                                        main_logger_info_mock.assert_any_call(
-                                                            'SIGINT received. Bye!')
+                                                        clean_up_mock.assert_called_once()
+                                                        clean_pid_files_mock.assert_called_once_with('wazuh-clusterd')
+                                                        pyDaemon_mock.assert_called_once()
+                                                        setuid_mock.assert_called_once_with('uid_test')
+                                                        setgid_mock.assert_called_once_with('gid_test')
+                                                        getpid_mock.assert_called()
+                                                        create_pid_mock.assert_called_once_with('wazuh-clusterd', 543)
+                                                        delete_pid_mock.assert_called_once_with('wazuh-clusterd', 543)
 
-                                                    with patch('scripts.wazuh_clusterd.master_main',
-                                                               side_effect=MemoryError('TESTING')):
+                                                        args.foreground = True
                                                         wazuh_clusterd.main()
-                                                        main_logger_mock.assert_any_call(
-                                                            "Directory '/tmp' needs read, write & execution "
-                                                            "permission for 'wazuh' user")
+                                                        print_mock.assert_called_once_with(
+                                                            'Starting cluster in foreground (pid: 543)')
+
+                                                        wazuh_clusterd.cluster_items = {}
+                                                        with patch('scripts.wazuh_clusterd.master_main',
+                                                                   side_effect=KeyboardInterrupt('TESTING')):
+                                                            wazuh_clusterd.main()
+                                                            main_logger_info_mock.assert_any_call(
+                                                                'SIGINT received. Bye!')
+
+                                                        with patch('scripts.wazuh_clusterd.master_main',
+                                                                   side_effect=MemoryError('TESTING')):
+                                                            wazuh_clusterd.main()
+                                                            main_logger_mock.assert_any_call(
+                                                                "Directory '/tmp' needs read, write & execution "
+                                                                "permission for 'wazuh' user")

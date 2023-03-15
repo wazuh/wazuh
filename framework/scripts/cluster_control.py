@@ -212,7 +212,7 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
 def usage():
     """Show the usage of the parameters."""
     msg = """
-    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]][-a | -l | -i [HEALTH]]
+    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]][-a | -l | -i [HEALTH] | -rc]
     Usage:
     \t-l                                    # List all nodes present in a cluster
     \t-l -fn <node_name>                    # List certain nodes that belong to the cluster
@@ -222,6 +222,7 @@ def usage():
     \t-a -fn <node_name> <agent_status>     # List agents reporting to certain node and with certain status
     \t-i                                    # Check cluster health
     \t-i -fn <node_name>                    # Check certain node's health
+    \t-rc                                   # Show active internal configuration
 
 
     Params:
@@ -232,6 +233,7 @@ def usage():
     \t-fs, --filter-agent-status
     \t-a, --list-agents
     \t-i, --health
+    \t-rc, --read-config
 
     """.format(path.basename(sys.argv[0]))
     print(msg)
@@ -248,7 +250,7 @@ def main():
     exclusive.add_argument('-l', '--list-nodes', action='store_const', const='list_nodes', help='List nodes')
     exclusive.add_argument('-i', '--health', action='store', nargs='?', const='health', help='Show cluster health')
     exclusive.add_argument('-u', '--usage', action='store_true', help='Show usage')
-    exclusive.add_argument('-c', '--cluster-conf', action='store_true', help=argparse.SUPPRESS)
+    exclusive.add_argument('-rc', '--read-config', action='store_true', help='Show active internal configuration')
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
@@ -267,7 +269,7 @@ def main():
             sys.exit(1)
         elif args.list_agents:
             my_function, my_args = print_agents, (args.filter_status, args.filter_node,)
-        elif args.cluster_conf:
+        elif args.read_config:
             my_function, my_args = print_cluster_json_conf, ()
         elif args.list_nodes:
             my_function, my_args = print_nodes, (args.filter_node,)

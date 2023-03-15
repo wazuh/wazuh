@@ -199,7 +199,7 @@ def test_usage(basename_mock, print_mock):
     cluster_control.usage()
 
     msg = """
-    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]][-a | -l | -i [HEALTH]]
+    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]][-a | -l | -i [HEALTH] | -rc]
     Usage:
     \t-l                                    # List all nodes present in a cluster
     \t-l -fn <node_name>                    # List certain nodes that belong to the cluster
@@ -209,6 +209,7 @@ def test_usage(basename_mock, print_mock):
     \t-a -fn <node_name> <agent_status>     # List agents reporting to certain node and with certain status
     \t-i                                    # Check cluster health
     \t-i -fn <node_name>                    # Check certain node's health
+    \t-rc                                   # Show active internal configuration
 
 
     Params:
@@ -219,6 +220,7 @@ def test_usage(basename_mock, print_mock):
     \t-fs, --filter-agent-status
     \t-a, --list-agents
     \t-i, --health
+    \t-rc, --read-config
 
     """.format(basename_mock.return_value)
     print_mock.assert_called_once_with(msg)
@@ -249,7 +251,7 @@ def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, p
             self.usage = False
             self.debug = False
             self.filter_node = False
-            self.cluster_conf = False
+            self.read_config = False
 
     class ExclusiveMock:
         """Auxiliary class."""
@@ -309,19 +311,24 @@ def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, p
             {'flag': '-fs', 'name': '--filter-agent-status', 'action': None, 'nargs': '*', 'const': None, 'type': str,
              'dest': 'filter_status', 'help': 'Filter by agent status'}]
 
-        assert exclusive_mock.exclusive == [{'action': 'store_const', 'const': 'list_agents', 'dest': None,
-                                             'flag': '-a', 'help': 'List agents', 'name': '--list-agents',
-                                             'nargs': None, 'type': None},
-                                            {'action': 'store_const', 'const': 'list_nodes', 'dest': None, 'flag': '-l',
-                                             'help': 'List nodes', 'name': '--list-nodes', 'nargs': None, 'type': None},
-                                            {'action': 'store', 'const': 'health', 'dest': None, 'flag': '-i',
-                                             'help': 'Show cluster ' 'health', 'name': '--health', 'nargs': '?',
-                                             'type': None},
-                                            {'action': 'store_true', 'const': None, 'dest': None, 'flag': '-u',
-                                             'help': 'Show usage', 'name': '--usage', 'nargs': None, 'type': None},
-                                            {'action': 'store_true', 'const': None, 'dest': None, 'flag': '-c',
-                                             'help': '==SUPPRESS==', 'name': '--cluster-conf', 'nargs': None,
-                                             'type': None}]
+        assert exclusive_mock.exclusive == [
+            {
+                'action': 'store_const', 'const': 'list_agents', 'dest': None, 'flag': '-a', 'help': 'List agents',
+                'name': '--list-agents', 'nargs': None, 'type': None
+            }, {
+                'action': 'store_const', 'const': 'list_nodes', 'dest': None, 'flag': '-l', 'help': 'List nodes',
+                'name': '--list-nodes', 'nargs': None, 'type': None
+            }, {
+                'action': 'store', 'const': 'health', 'dest': None, 'flag': '-i', 'help': 'Show cluster health',
+                'name': '--health', 'nargs': '?', 'type': None
+            }, {
+                'action': 'store_true', 'const': None, 'dest': None, 'flag': '-u', 'help': 'Show usage',
+                'name': '--usage', 'nargs': None, 'type': None
+            }, {
+                'action': 'store_true', 'const': None, 'dest': None, 'flag': '-rc',
+                'help': 'Show active internal configuration', 'name': '--read-config', 'nargs': None, 'type': None
+            }
+        ]
 
         # Test the fifth condition
         get_cluster_status_mock.return_value['enabled'] = 'yes'

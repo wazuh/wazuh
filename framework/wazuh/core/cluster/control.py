@@ -203,7 +203,7 @@ async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
     Returns
     -------
     dict
-        Dictionary with results
+        Dictionary with results.
     """
     return await get_cluster_data(lc, 'get_hash')
 
@@ -219,6 +219,6 @@ async def get_cluster_json_conf(lc: local_client.LocalClient) -> dict:
     Returns
     -------
     dict
-        Dictionary with results
+        Dictionary with results.
     """
     return await get_cluster_data(lc, 'get_cl_conf')

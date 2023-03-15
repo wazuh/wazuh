@@ -11,6 +11,8 @@ import os
 import signal
 import sys
 
+import wazuh.core.cluster.utils as cluster_utils
+from wazuh.core import pyDaemonModule, common, configuration
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
 
@@ -214,6 +216,13 @@ def main():
     if args.test_config:
         sys.exit(0)
 
+    try:
+        cluster_items = cluster_utils.get_cluster_items()
+        main_logger.info(f'Active configuration: {cluster_items}')
+    except Exception as e:
+        main_logger.error(e)
+        sys.exit(1)
+
     # Clean cluster files from previous executions
     wazuh.core.cluster.cluster.clean_up()
 
@@ -250,10 +259,6 @@ def main():
 
 
 if __name__ == '__main__':
-    import wazuh.core.cluster.utils as cluster_utils
-    from wazuh.core import pyDaemonModule, common, configuration
-
-    cluster_items = cluster_utils.get_cluster_items()
     original_sig_handler = signal.signal(signal.SIGTERM, exit_handler)
 
     args = get_script_arguments().parse_args()
