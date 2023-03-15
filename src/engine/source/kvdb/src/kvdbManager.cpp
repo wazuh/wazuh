@@ -60,6 +60,13 @@ KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
     if (KVDB::CreationStatus::OkInitialized == result
         || KVDB::CreationStatus::OkCreated == result)
     {
+        if (KVDB::CreationStatus::OkCreated == result)
+        {
+            Metrics::instance().addCounterValue("KvdbDatabaseCounter", 1UL);
+        }
+
+        Metrics::instance().addCounterValue("KvdbDatabaseUseCounter", 1UL);
+
         m_dbs[name] = kvdb;
         return kvdb;
     }
