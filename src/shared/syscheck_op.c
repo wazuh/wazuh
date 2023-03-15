@@ -1259,9 +1259,9 @@ void expand_wildcard_registers(char* entry,char** paths) {
     // ----- End expansion path section -----
 
     current_position = aux_vector;
-    while(*current_position != NULL){
-        if(!(*current_position)->has_wildcard && (*current_position)->checked){
-            *paths = strdup((*current_position)->path);
+    while(*current_position != NULL) {
+        if(!(*current_position)->has_wildcard && (*current_position)->checked) {
+            os_strdup((*current_position)->path,*paths);
             os_free((*current_position)->path);
             os_free(*current_position);
             paths++;
@@ -1278,11 +1278,14 @@ void expand_wildcard_registers(char* entry,char** paths) {
 }
 
 char* get_subkey(char* key) {
-    char* remaining_key = strdup(strchr(key, '\\') + 1);
+    char* remaining_key = NULL;
     char* subkey        = NULL;
-    char* aux_token;
+
+    os_strdup(strchr(key, '\\') + 1,remaining_key);
     os_calloc(OS_SIZE_128, sizeof(char), subkey);
 
+    char* aux_token;
+    
     aux_token = strtok(remaining_key, "\\");
     while (aux_token !=NULL && !(strchr(aux_token, '?') || strchr(aux_token, '*'))) {
         strcat(subkey, aux_token);
@@ -1302,7 +1305,7 @@ char* get_subkey(char* key) {
     }
 }
 
-int w_is_still_a_wildcard(reg_path_struct **array_struct){
+int w_is_still_a_wildcard(reg_path_struct **array_struct) {
     while(*array_struct) {
         if((*array_struct)->has_wildcard && !(*array_struct)->checked) {
             return 1;

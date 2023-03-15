@@ -78,9 +78,8 @@ extern const char *SYSCHECK_EVENT_STRINGS[];
 #define check_wildcard(x)                       strchr(x,'*') || strchr(x,'?')
 
 /* Fields for paths */
-typedef struct __path_strct{
+typedef struct __path_strct {
     char* path;
-
     int has_wildcard;
     int checked;
 } reg_path_struct;
