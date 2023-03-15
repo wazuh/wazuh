@@ -1,7 +1,7 @@
 /*
- * Wazuh Module for Security Configuration Assessment
+ * Wazuh Module for Microsoft Graph
  * Copyright (C) 2015, Wazuh Inc.
- * March 15th, 2023.
+ * March, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
