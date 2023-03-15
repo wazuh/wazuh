@@ -8,6 +8,7 @@ import argparse
 import logging
 import sys
 import os
+import platform
 
 from rtrtests import (cppcheck, clangformat, build, unittests, docs, clangtidy, coverage, clean, valgrind)
 
@@ -160,7 +161,7 @@ def init_logger(args):
     # Debug level if requested
     if args.verbose:
         logger_level = 'DEBUG'
-        logger_fmt = '%(asctime)-15s %(module)s[%(levelname)s] %(message)s'
+        logger_fmt = '%(asctime)-15s %(module)s-%(funcName)s ({}) [%(levelname)s] %(message)s'
 
     # Handle quiet request
     if args.quiet:
@@ -168,7 +169,10 @@ def init_logger(args):
         logger_fmt = ''
 
     # Set logging configs
-    logging.basicConfig(format=logger_fmt, level=logger_level)
+    if args.verbose:
+        logging.basicConfig(format=logger_fmt.format(platform.node()), level=logger_level)
+    else:
+        logging.basicConfig(format=logger_fmt, level=logger_level)
 
 
 if __name__ == "__main__":
