@@ -149,3 +149,17 @@ class ResourceHandler:
         if not content:
             raise Exception(f'Failed to read plain text {full_name}')
         return content
+
+    def create_dir(self, path_str: str):
+        path = Path(path_str)
+        path.mkdir(parents=True, exist_ok=False)
+
+    def create_file(self, path_str: str, content: str = ""):
+        path = Path(path_str)
+        path.write_text(content)
+
+    def walk_dir(self, path_str: str, function):
+        path = Path(path_str)
+        if path.exists():
+            for file in path.iterdir():
+                function(file)

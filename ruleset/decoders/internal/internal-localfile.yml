@@ -48,7 +48,7 @@ normalize:
     logpar:
       - wazuh.message: <~json/json>
     map:
-      - event.original: +ef_rename/$~json.log
+      - event.original: +ef_rename/$~json.event.original
       - event.module: +ef_rename/$~json.event.module
       - event.dataset: +ef_rename/$~json.event.dataset
 
