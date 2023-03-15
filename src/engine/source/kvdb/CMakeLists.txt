@@ -30,7 +30,7 @@ add_library(kvdb STATIC
     ${ENGINE_KVDB_SOURCE_DIR}/kvdb.cpp
 )
 
-target_link_libraries(kvdb PRIVATE rocksdb base)
+target_link_libraries(kvdb PRIVATE rocksdb base, metrics)
 
 target_include_directories(kvdb PUBLIC
     ${ENGINE_KVDB_INCLUDE_DIR}
