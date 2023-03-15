@@ -17,7 +17,7 @@ message Entry
 /***************************************************
  * Get an entry from a DB
  *
- * command: kvdb.db/get (<resource>/<accion>)
+ * command: kvdb.db/get (<resource>/<action>)
  **************************************************/
 message dbGet_Request
 {
@@ -35,7 +35,7 @@ message dbGet_Response
 /***************************************************
  * Delete an entry from a DB
  *
- * command: kvdb.db/delete (<resource>/<accion>)
+ * command: kvdb.db/delete (<resource>/<action>)
  **************************************************/
 message dbDelete_Request
 {
@@ -49,7 +49,7 @@ message dbDelete_Request
 /***************************************************
  * Insert a new entry in a DB
  *
- * command: kvdb.db/put (<resource>/<accion>)
+ * command: kvdb.db/put (<resource>/<action>)
  **************************************************/
 message dbPut_Request
 {
@@ -63,7 +63,7 @@ message dbPut_Request
 /***************************************************
  * List all DBs
  *
- * command: kvdb.manager/get (<resource>/<accion>)
+ * command: kvdb.manager/get (<resource>/<action>)
  **************************************************/
 message managerGet_Request
 {
@@ -81,7 +81,7 @@ message managerGet_Response
 /***************************************************
  * Create a new DB
  *
- * command: kvdb.manager/post (<resource>/<accion>)
+ * command: kvdb.manager/post (<resource>/<action>)
  **************************************************/
 message managerPost_Request
 {
@@ -93,7 +93,7 @@ message managerPost_Request
 /***************************************************
  * Delete a DB
  *
- * command: kvdb.manager/delete (<resource>/<accion>)
+ * command: kvdb.manager/delete (<resource>/<action>)
  **************************************************/
 message managerDelete_Request
 {
@@ -105,7 +105,7 @@ message managerDelete_Request
 /***************************************************
  * Get all entries from a DB
  *
- * command: kvdb.manager/dump (<resource>/<accion>)
+ * command: kvdb.manager/dump (<resource>/<action>)
  **************************************************/
 message managerDump_Request
 {
