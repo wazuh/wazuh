@@ -175,7 +175,6 @@ normalize:
       - service.type: fortinet
       - tags: +a_append/$event.dataset
       - tags: +a_append/forwarded
-      - ~kvMap: +ef_delete
 
   # Finally maps the network protocol numbers to strings
   - check: +i_eq/network.protocol/0
@@ -201,3 +200,5 @@ normalize:
   - check: +i_eq/network.protocol/21
     map:
       - network.protocol: prm
+  - map:
+    - ~kvMap: +ef_delete
