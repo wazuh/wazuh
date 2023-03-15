@@ -163,6 +163,22 @@ async def print_health(config, more, filter_node):
             msg2 += f"                Permission to synchronize agent-info: " \
                     f"{node_info['status']['sync_agent_info_free']}.\n"
 
+            # Agent groups
+            total = calculate_seconds(node_info['status']['last_sync_agentgroup']['date_start'],
+                                      node_info['status']['last_sync_agentgroup']['date_end'])
+            msg2 += "            Agents-groups:\n"
+            msg2 += f"                Last synchronization: {total} " \
+                    f"({node_info['status']['last_sync_agentgroup']['date_start']} - " \
+                    f"{node_info['status']['last_sync_agentgroup']['date_end']}).\n"
+
+            # Agent groups full
+            total = calculate_seconds(node_info['status']['last_sync_full_agentgroup']['date_start'],
+                                      node_info['status']['last_sync_full_agentgroup']['date_end'])
+            msg2 += "            Agents-groups full:\n"
+            msg2 += f"                Last synchronization: {total} " \
+                    f"({node_info['status']['last_sync_full_agentgroup']['date_start']} - " \
+                    f"{node_info['status']['last_sync_full_agentgroup']['date_end']}).\n"
+
     print(msg1)
     more and print(msg2)
 
