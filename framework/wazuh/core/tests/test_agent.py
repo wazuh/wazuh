@@ -706,6 +706,8 @@ def test_agent_add_ko(mock_maganer_status):
 @pytest.mark.parametrize("name, ip, id, key, force", [
     ('test_agent', '172.19.0.100', None, None, None),
     ('test_agent', 'any', '001', None, None),
+    ('test_agent', 'any', None, 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2OTE5MjBkODN'
+                                'jNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz', None),
     ('test_agent', '172.19.0.100', '002', 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2O'
                                           'TE5MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz',
      {"enabled": True, "disconnected_time": {"enabled": True, "value": "1h"}})
