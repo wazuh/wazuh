@@ -1,0 +1,13 @@
+{
+    "steps": [
+        "rtr_clangformat.json",
+        "rtr_cppcheck.json",
+        "rtr_docs.json",
+        "rtr_asan.json",
+        "rtr_tsan.json",
+        "rtr_ubsan.json",
+        "rtr_valgrind.json",
+        "rtr_coverage.json",
+        "rtr_clangtidy.json"
+    ]
+}
