@@ -61,7 +61,7 @@ public:
      * @return false If the command was not registered (already exists, the command is
      * empty or the callback is null)
      */
-    bool registerHandler(const std::string& command, const Handler callback);
+    bool registerHandler(const std::string& command, const Handler& callback);
 
     /**
      * @brief Get the callback function for a command

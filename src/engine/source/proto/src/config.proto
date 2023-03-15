@@ -8,7 +8,7 @@ package com.wazuh.api.engine.config;
  * Get the runtime configuration of the manager
  *
  * The argument name is optional. If it is not provided, the whole configuration is returned.
- * command: config.runtime/get (<resource>/<accion>)
+ * command: config.runtime/get (<resource>/<action>)
  **************************************************/
 message RuntimeGet_Request
 {
@@ -25,7 +25,7 @@ message RuntimeGet_Response
 /***************************************************
  * Update the runtime configuration of the manager
  *
- * command: config.runtime/put (<resource>/<accion>)
+ * command: config.runtime/put (<resource>/<action>)
  **************************************************/
 message RuntimePut_Request
 {
@@ -38,7 +38,7 @@ message RuntimePut_Request
  * Save the runtime configuration of the manager to disk
  *
  * The argument path is optional. If it is not provided, the configuration is saved to the default path.
- * command: config.runtime/save (<resource>/<accion>)
+ * command: config.runtime/save (<resource>/<action>)
  *********************************************************/
 message RuntimeSave_Request
 {
