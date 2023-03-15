@@ -36,7 +36,7 @@ enum ResourceType
 /***************************************************
  * Post a resource in the catalog
  *
- * command: catalog.resource/post (<resource>/<accion>)
+ * command: catalog.resource/post (<resource>/<action>)
  **************************************************/
 message ResourcePost_Request
 {
@@ -50,7 +50,7 @@ message ResourcePost_Request
 /***************************************************
  * Get a resource from the catalog
  *
- * command: catalog.resource/get (<resource>/<accion>)
+ * command: catalog.resource/get (<resource>/<action>)
  **************************************************/
 message ResourceGet_Request
 {
@@ -68,7 +68,7 @@ message ResourceGet_Response
 /***************************************************
  * Put a resource in the catalog
  *
- * command: catalog.resource/put (<resource>/<accion>)
+ * command: catalog.resource/put (<resource>/<action>)
  **************************************************/
 message ResourcePut_Request
 {
@@ -82,7 +82,7 @@ message ResourcePut_Request
 /***************************************************
  * Delete a resource from the catalog
  *
- * command: catalog.resource/delete (<resource>/<accion>)
+ * command: catalog.resource/delete (<resource>/<action>)
  **************************************************/
 message ResourceDelete_Request
 {
@@ -94,7 +94,7 @@ message ResourceDelete_Request
 /***************************************************
  * Validate a resource from the catalog
  *
- * command: catalog.resource/validate (<resource>/<accion>)
+ * command: catalog.resource/validate (<resource>/<action>)
  **************************************************/
 message ResourceValidate_Request
 {
