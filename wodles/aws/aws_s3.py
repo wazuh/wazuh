@@ -564,7 +564,7 @@ class AWSBucket(WazuhIntegration):
         self.bucket_path = self.bucket + '/' + self.prefix
         self.aws_organization_id = aws_organization_id
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
-        self.prefix_regex = re.compile("^\d{12}$")
+        self.prefix_regex = re.compile(r'^\d{12}$')
         self.check_prefix = False
         self.date_format = "%Y/%m/%d"
         self.db_date_format = "%Y%m%d"
