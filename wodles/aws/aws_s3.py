@@ -31,11 +31,19 @@ import socket
 import sqlite3
 import sys
 
+
 try:
     import boto3
 except ImportError:
     print('ERROR: boto3 module is required.')
     sys.exit(4)
+
+try:
+    import pyarrow
+except ImportError:
+    print('ERROR: pyarrow module is required.')
+    sys.exit(4)
+
 import botocore
 import json
 import csv
@@ -3544,6 +3552,8 @@ def get_script_arguments():
                        action='store')
     group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
                        action='store')
+    group.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS queue',
+                       action='store')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -3700,6 +3710,8 @@ def main(argv):
                                        iam_role_duration=options.iam_role_duration
                                        )
                 service.get_alerts()
+        elif options.queue:
+            pass
 
     except Exception as err:
         debug("+++ Error: {}".format(err), 2)
