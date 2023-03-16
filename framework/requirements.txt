@@ -23,7 +23,7 @@ connexion==2.14.2
 cryptography==41.0.4
 Cython==0.29.21
 defusedxml==0.6.0
-docker==4.2.0
+docker==6.0.0
 docker-pycreds==0.4.0
 docutils==0.15.2
 ecdsa==0.16.1
@@ -66,6 +66,7 @@ pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
 pyparsing==2.4.7
+pytest-asyncio==0.20.3
 python-dateutil==2.8.1
 python-jose==3.1.0
 python-json-logger==2.0.2
@@ -81,7 +82,7 @@ tabulate==0.8.9
 typing-extensions==3.10.0.2
 typing-inspect==0.7.1
 urllib3==1.26.5
-uvloop==0.16.0
+uvloop==0.17.0
 websocket-client==0.57.0
 Werkzeug==2.2.3
 xmltodict==0.12.0
