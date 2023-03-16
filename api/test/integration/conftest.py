@@ -15,11 +15,12 @@ from py.xml import html
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(current_path, 'env')
+common_file = os.path.join(current_path, 'common.yaml')
 test_logs_path = os.path.join(current_path, '_test_results', 'logs')
 docker_log_path = os.path.join(test_logs_path, 'docker.log')
 results = dict()
 
-with open('common.yaml', 'r') as stream:
+with open(common_file, 'r') as stream:
     common = yaml.safe_load(stream)['variables']
 login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['login_endpoint']}"
 basic_auth = f"{common['user']}:{common['pass']}".encode()
@@ -67,6 +68,7 @@ def get_token_login_api():
         raise Exception(f"Error obtaining login token: {response.json()}")
 
 
+@pytest.hookimpl(optionalhook=True)
 def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     """Disable HTTPS verification warnings."""
     urllib3.disable_warnings()
@@ -440,12 +442,14 @@ class HTMLStyle(html):
         style = html.Style(color='#0094ce')
 
 
+@pytest.hookimpl(optionalhook=True)
 def pytest_html_results_table_header(cells):
     cells.insert(2, html.th('Stages'))
     # Remove links
     cells.pop()
 
 
+@pytest.hookimpl(optionalhook=True)
 def pytest_html_results_table_row(report, cells):
     try:
         # Replace the original full name for the test case name
@@ -501,6 +505,7 @@ def pytest_runtest_makereport(item, call):
         report.sections.append(('Environment section', environment_status))
 
 
+@pytest.hookimpl(optionalhook=True)
 def pytest_html_results_summary(prefix, summary, postfix):
     postfix.extend([HTMLStyle.table(
         html.thead(
