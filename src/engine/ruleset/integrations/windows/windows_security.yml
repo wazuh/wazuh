@@ -64,7 +64,7 @@ normalize:
 
     - winlog.logon.id: $~windows.Event.EventData.SubjectLogonId
 
-    - winlog.event_data.PrivilegeList: +s_to_array/$~windows.Event.EventData.PrivilegeList/ /
+    - winlog.event_data.PrivilegeList: '+s_to_array/$~windows.Event.EventData.PrivilegeList/ '
 
     - user.target.name: $~windows.Event.EventData.OldTargetUserName
     - user.changes.name: $~windows.Event.EventData.NewTargetUserName
@@ -171,7 +171,7 @@ normalize:
    map:
         - user.target.name: $~windows.Event.EventData.TargetUserName
  
- - check: +s_ne/~windows.Event.EventData.TargetUserName/-/ AND +a_contains/~temp.id_target_user_array/$event.code
+ - check: +s_ne/~windows.Event.EventData.TargetUserName/- AND +a_contains/~temp.id_target_user_array/$event.code
    map:
         - related.user: +a_append/$~windows.Event.EventData.TargetUserName 
     
@@ -188,18 +188,18 @@ normalize:
         - ~temp.id_memberName_array: +a_contains/event.code
    map:
         - ~temp.split_memberName: +s_to_array/$~windows.Event.EventData.MemberName/,
-        - ~temp.split_memberName.0: +s_replace/CN=// 
+        - ~temp.split_memberName.0: '+s_replace/CN=/'
         - member.name: $~temp.split_memberName.0
         - related.user: +a_append/$~temp.split_memberName.0
         - group.id: $~windows.Event.EventData.TargetUserSid
         - group.id: $~windows.Event.EventData.TargetSid 
         - group.name: $~windows.Event.EventData.TargetUserName
-        - ~windows.Event.EventData.TargetDomainName: +s_replace/DC=//
+        - ~windows.Event.EventData.TargetDomainName: '+s_replace/DC=/'
         - event.goup.domain: $~windows.Event.EventData.TargetDomainName
         - user.target.group.id: $group.id
         - user.target.group.name: $group.name
         - user.target.group.domain: $group.domain
-        - ~temp.split_memberName.3: +s_replace/DC=// 
+        - ~temp.split_memberName.3: '+s_replace/DC=/'
         - user.target.domain: $~temp.split_memberName.3
 
  # Copy Target User to Computer Object
@@ -238,14 +238,14 @@ normalize:
      - user.effective.id: $~windows.Event.EventData.TargetUserSid
  
 
- - check: +s_ne/$~windows.Event.EventData.TargetUserName/-/ AND  (event.code==4648 OR event.code==4688)
+ - check: +s_ne/$~windows.Event.EventData.TargetUserName/- AND  (event.code==4648 OR event.code==4688)
    map:     
      - ~temp.name_part: +s_to_array/$~windows.Event.EventData.TargetUserName/@
      - user.effective.name: $temp.~name_part.0
      - related.user: +a_append/$event.user.effective.name
 
 
- - check: +s_ne/$~windows.Event.EventData.TargetDomainName/-/ AND  (event.code==4648 OR event.code==4688)
+ - check: +s_ne/$~windows.Event.EventData.TargetDomainName/- AND  (event.code==4648 OR event.code==4688)
    map:     
      - user.effective.domain: $~windows.Event.EventData.TargetDomainName
 
@@ -269,7 +269,8 @@ normalize:
    map:
      - process.pid: +s_hex_to_num/$~windows.Event.EventData.ProcessId
      - process.executable: $~windows.Event.EventData.ProcessName
-     - process.name: +r_ext/$~windows.Event.EventData.ProcessName/^.*\\(.*[\\.].*)$ 
+     - ~temp.file_data: +parse_file/$~windows.Event.EventData.ProcessName 
+     - process.name: $~temp.file_data.name
      - source.ip: $~windows.Event.EventData.IpAddress
      - source.port: $~windows.Event.EventData.IpPort
      - source.domain: $~windows.Event.EventData.WorkstationName
@@ -279,13 +280,15 @@ normalize:
 # Process Event 4688
  - check: event.code==4688 
    map:
-     - process.args: +s_to_array/$~windows.Event.EventData.CommandLine/ /
+     - process.args: '+s_to_array/$~windows.Event.EventData.CommandLine/ '
      - process.pid: +s_hex_to_num/$~windows.Event.EventData.NewProcessId
      - process.executable: $~windows.Event.EventData.NewProcessName
-     - process.name: +r_ext/$~windows.Event.EventData.NewProcessName/^.*\\(.*[\\.].*)$  
+     - ~temp.file_data: +parse_file/$~windows.Event.EventData.NewProcessName 
+     - process.name: $~temp.file_data.name
      - process.parent.pid: +s_hex_to_num/$~windows.Event.EventData.ProcessId
      - process.parent.executable:  $~windows.Event.EventData.ParentProcessName
-     - process.parent.name: +r_ext/$~windows.Event.EventData.ParentProcessName/^.*\\(.*[\\.].*)$ 
+     - ~temp.file_data: +parse_file/$~windows.Event.EventData.ParentProcessName 
+     - process.parent.name: $~temp.file_data.name
      - process.command_line: $~windows.Event.EventData.CommandLine
 
  - check: event.code==4624 OR event.code==4648
