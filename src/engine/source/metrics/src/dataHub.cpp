@@ -1,8 +1,11 @@
-#include "dataHub.hpp"
+#include <metrics/dataHub.hpp>
 #include <thread>
 #include <mutex>
 #include <iostream>
 #include <fmt/format.h>
+
+namespace metrics_manager
+{
 
 json::Json DataHub::getResource(const std::string& scope)
 {
@@ -64,3 +67,5 @@ std::variant<std::string, base::Error> DataHub::getCmd(const std::string& instru
 
     return base::Error {fmt::format("Instrument '{}' does not exist or wasn't loaded.", instrumentName)};
 }
+
+} // namespace metrics_manager

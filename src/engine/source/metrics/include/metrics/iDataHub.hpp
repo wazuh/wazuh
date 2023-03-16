@@ -1,10 +1,13 @@
-#ifndef _DATA_HUB_INTERFACE_H
-#define _DATA_HUB_INTERFACE_H
+#ifndef _I_DATA_HUB_H
+#define _I_DATA_HUB_H
 
 #include <json/json.hpp>
 #include <string>
 
-class DataHubInterface
+namespace metrics_manager
+{
+
+class IDataHub
 {
 public:
     /// @brief updates the data of the referenced object
@@ -13,4 +16,6 @@ public:
     virtual void setResource(const std::string& scope, json::Json object) = 0;
 };
 
-#endif // _DATA_HUB_INTERFACE_H
+} // namespace metrics_manager
+
+#endif // _I_DATA_HUB_H
