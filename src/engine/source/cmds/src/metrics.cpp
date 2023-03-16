@@ -7,7 +7,8 @@
 #include <cmds/apiclnt/client.hpp>
 
 #include <json/json.hpp>
-#include <metrics/include/metrics.hpp>
+#include <logging/logging.hpp>
+#include <metrics/metricsManager.hpp>
 
 
 namespace

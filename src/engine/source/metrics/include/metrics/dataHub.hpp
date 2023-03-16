@@ -1,13 +1,16 @@
 #ifndef _DATA_HUB_H
 #define _DATA_HUB_H
 
-#include <dataHubInterface.hpp>
+#include <metrics/iDataHub.hpp>
 #include <json/json.hpp>
 #include <map>
 #include <mutex>
 #include <variant>
 
-class DataHub : public DataHubInterface
+namespace metrics_manager
+{
+
+class DataHub : public IDataHub
 {
 public:
     /// @brief get a copy of the resource data in json object
@@ -35,5 +38,6 @@ private:
     std::map<std::string, json::Json> m_resources;
     std::mutex m_mutex;
 };
+} // namespace metrics_manager
 
 #endif // _DATA_HUB_H

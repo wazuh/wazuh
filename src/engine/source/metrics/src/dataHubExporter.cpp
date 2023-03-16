@@ -1,4 +1,4 @@
-#include "dataHubExporter.hpp"
+#include <metrics/dataHubExporter.hpp>
 
 #include <rapidjson/document.h>
 #include <algorithm>
@@ -52,8 +52,10 @@ namespace exporter
 namespace metrics
 {
 
+using namespace metrics_manager;
+
 DataHubExporter::DataHubExporter(
-    std::shared_ptr<DataHubInterface> dataHub,
+    std::shared_ptr<metrics_manager::IDataHub> dataHub,
     sdk::metrics::AggregationTemporality aggregation_temporality) noexcept
     : m_dataHub(dataHub), aggregation_temporality_(aggregation_temporality)
 {}
