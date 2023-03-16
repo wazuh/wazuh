@@ -387,7 +387,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # SyncFiles instance used to zip and send integrity files to worker.
         self.integrity = c_common.SyncFiles(cmd=b'syn_m_c', logger=self.task_loggers['Integrity sync'], manager=self)
         # Initialize agent-groups sending task.
-        self.agent_group_task = asyncio.ensure_future(self.send_agent_groups_information())
+        self.agent_group_task = asyncio.ensure_future(self.send_agent_groups_information(), loop=asyncio.new_event_loop())
 
         return cmd, payload
 
