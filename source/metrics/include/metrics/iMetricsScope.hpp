@@ -7,6 +7,7 @@ namespace metrics_manager
 class IMetricsScope 
 {
 public:
+//    virtual shared_ptr<Counter> getCounter(const std::string& name) = 0;
 };
 
 } // namespace metrics_manager
