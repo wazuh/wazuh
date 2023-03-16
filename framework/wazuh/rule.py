@@ -307,8 +307,7 @@ def get_requirement(requirement: str = None, offset: int = 0, limit: int = commo
     return result
 
 
-def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool = True) -> \
-        Union[str, AffectedItemsWazuhResult]:
+def get_rule_file(filename: str = None, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of specified file.
 
     Parameters
@@ -317,8 +316,6 @@ def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool
         Name of the rule file. Default `None`
     raw : bool, optional
         Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format)
-    default_ruleset : bool
-        Whether to search for the rule in the default ruleset path or not. Default `True`
 
     Returns
     -------
@@ -328,12 +325,11 @@ def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',
                                       all_msg='Selected rule was returned')
     files = get_rules_files(filename=filename).affected_items
-    rules_path = common.RULES_PATH if default_ruleset else common.USER_RULES_PATH
-    exc_path = join(rules_path.replace(common.WAZUH_PATH, 'WAZUH_HOME'), filename)
 
-    if len(files) > 0 and any([file for file in files if file['relative_dirname'] in rules_path]):
+    if len(files) > 0:
+        rules_path = files[0]['relative_dirname']
         try:
-            full_path = join(rules_path, filename)
+            full_path = join(common.WAZUH_PATH, rules_path, filename)
             with open(full_path) as f:
                 content = f.read()
             if raw:
@@ -344,13 +340,14 @@ def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool
                 result.total_affected_items = 1
         except ExpatError as e:
             result.add_failed_item(id_=filename,
-                                   error=WazuhError(1413, extra_message=f"{exc_path}: {str(e)}"))
+                                   error=WazuhError(1413, extra_message=f"{join('WAZUH_HOME', rules_path, filename)}:"
+                                                                        f" {str(e)}"))
         except OSError:
             result.add_failed_item(id_=filename,
-                                   error=WazuhError(1414, extra_message=exc_path))
+                                   error=WazuhError(1414, extra_message=join('WAZUH_HOME', rules_path, filename)))
 
     else:
-        result.add_failed_item(id_=filename, error=WazuhError(1415, extra_message=exc_path))
+        result.add_failed_item(id_=filename, error=WazuhError(1415))
 
     return result
 
