@@ -90,9 +90,9 @@ normalize:
     map:
       # TODO: It is not yet possible to include escaped characters in auxiliary arguments.
       # When this functionality is implemented, add it to the decoder
-      - aux_slash: '/'
+      - ~aux_slash: '/'
       - rsa.time.date: +s_concat/$~log.year/$aux_slash/$~log.mounth/$aux_slash/$~log.day
-      - aux_slash: +ef_delete
+      - ~aux_slash: +ef_delete
   - check:
       - ~log.note: +ef_exists
     logpar:
