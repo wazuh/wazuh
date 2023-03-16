@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/^device\=[[:alpha:]]*? date\=.*? time\=.*? timezone\=[[:alpha:]]*? device_name\=[[:alpha:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Firewall Rule"
+  - event.original: +r_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Firewall"
 
 parse:
   logpar:
