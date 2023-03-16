@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 rsa.counters.dclass_c1:
   description: >
     This is a generic counter key that should be used with the label dclass.c1.str only.
@@ -193,7 +192,8 @@ rsa.network.sinterface:
 rsa.web.web_cookie:
   description: >-
     The value of the web cookie associated with the event.
-=======
+  type: keyword
+
 rsa.db_index:
   description: >
     The database index of the event as reported by RSA Security Analytics.
@@ -227,11 +227,6 @@ rsa.investigations.event_vcat:
 rsa.misc.checksum:
   description: >
     The checksum of a file or packet as reported by RSA Security Analytics.
-  type: keyword
-
-rsa.misc.client:
-  description: >
-    The client reporting the event as reported by RSA Security Analytics.
   type: keyword
 
 rsa.misc.event_source:
@@ -294,11 +289,6 @@ rsa.misc.virusname:
     The name of the virus reported by RSA Security Analytics.
   type: keyword
 
-rsa.misc.vsys:
-  description: >
-    The virtual system name as reported by RSA Security Analytics.
-  type: keyword
-
 rsa.network.domain:
   description: >
     The domain of the network event as reported by RSA Security Analytics.
@@ -307,11 +297,6 @@ rsa.network.domain:
 rsa.network.interface:
   description: >
     The interface of the network event as reported by RSA Security Analytics.
-  type: keyword
-
-rsa.network.sinterface:
-  description: >
-    The source interface of the network event as reported by RSA Security Analytics.
   type: keyword
 
 rsa.threat.threat_desc:
@@ -337,5 +322,4 @@ rsa.web.reputation_num:
 rsa.web.web_ref_domain:
   description: >
     The referenced domain associated with a web event.
->>>>>>> 9f4fcc0d95 (Adding rsa fields to schema)
   type: keyword
