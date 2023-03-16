@@ -1,6 +1,54 @@
-[   
+[
     {
-        "name": "RegisterServerCounter",
+        "name": "BytesPerSeconds",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "quantity",
+        "description": "This counter is incremented with each call to the command list from metrics."
+    },
+    {
+        "name": "SizeBytesRecive",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "quantity",
+        "description": "This counter is increments every time bytes are recive"
+    }, 
+    {
+        "name": "SizeBytesSent",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "quantity",
+        "description": "This counter is increments every time bytes are sent"
+    },
+    {
+        "name": "DiskInsertedEvents",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "quantity",
+        "description": "This counter is increments each time a record occurs on the server"
+    },
+    {
+        "name": "QueuedEvents",
         "dataHubEnable" : true,
         "enable": true,
         "signalType": "meter",
@@ -51,7 +99,7 @@
     },
     {
         "name": "UpDownCountExample",
-        "dataHubEnable" : false,
+        "dataHubEnable" : true,
         "enable": true,
         "signalType": "meter",
         "instrumentType" : "upDownCounter",
