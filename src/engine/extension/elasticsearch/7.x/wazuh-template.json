@@ -8113,6 +8113,9 @@
                             },
                             "ec_theme": {
                                 "type": "keyword"
+                            },
+                            "event_cat_name": {
+                                "type": "keyword"
                             }
                         }
                     },
@@ -8166,6 +8169,33 @@
                             },
                             "version": {
                                 "type": "keyword"
+                            },
+                            "comments": {
+                                "type": "keyword"
+                            },
+                            "content_type": {
+                                "type": "keyword"
+                            },
+                            "group": {
+                                "type": "keyword"
+                            },
+                            "group_object": {
+                                "type": "keyword"
+                            },
+                            "node": {
+                                "type": "keyword"
+                            },
+                            "obj_type": {
+                                "type": "keyword"
+                            },
+                            "policy_id": {
+                                "type": "keyword"
+                            },
+                            "rule": {
+                                "type": "keyword"
+                            },
+                            "vsys": {
+                                "type": "keyword"
                             }
                         }
                     },
@@ -8179,6 +8209,15 @@
                                 "type": "keyword"
                             },
                             "vlan": {
+                                "type": "keyword"
+                            },
+                            "dinterface": {
+                                "type": "keyword"
+                            },
+                            "host_dst": {
+                                "type": "keyword"
+                            },
+                            "sinterface": {
                                 "type": "keyword"
                             }
                         }
@@ -8198,6 +8237,274 @@
                         "type": "object",
                         "properties": {
                             "fqdn": {
+                                "type": "keyword"
+                            },
+                            "web_cookie": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "identity": {
+                        "type": "object",
+                        "properties": {
+                            "logon_type": {
+                                "type": "keyword"
+                            }
+                        }
+                    }
+                }
+            },
+            "filename": {
+                "type": "keyword"
+            },
+            "fileset": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "keyword"
+                    }
+                }
+            },
+            "fullreqtime": {
+                "type": "keyword"
+            },
+            "input": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "keyword"
+                    }
+                }
+            },
+            "reputation": {
+                "type": "keyword"
+            },
+            "sophos": {
+                "type": "object",
+                "properties": {
+                    "xg": {
+                        "type": "object",
+                        "properties": {
+                            "ap": {
+                                "type": "keyword"
+                            },
+                            "app_is_cloud": {
+                                "type": "boolean"
+                            },
+                            "appfilter_policy_id": {
+                                "type": "keyword"
+                            },
+                            "application_risk": {
+                                "type": "keyword"
+                            },
+                            "appresolvedby": {
+                                "type": "keyword"
+                            },
+                            "auth_client": {
+                                "type": "keyword"
+                            },
+                            "auth_mechanism": {
+                                "type": "keyword"
+                            },
+                            "av_policy_name": {
+                                "type": "keyword"
+                            },
+                            "backup_mode": {
+                                "type": "keyword"
+                            },
+                            "category": {
+                                "type": "keyword"
+                            },
+                            "category_type": {
+                                "type": "keyword"
+                            },
+                            "collisions": {
+                                "type": "float"
+                            },
+                            "configuration": {
+                                "type": "keyword"
+                            },
+                            "con_id": {
+                                "type": "keyword"
+                            },
+                            "connectionname": {
+                                "type": "keyword"
+                            },
+                            "connectiontype": {
+                                "type": "keyword"
+                            },
+                            "connevent": {
+                                "type": "keyword"
+                            },
+                            "connid": {
+                                "type": "keyword"
+                            },
+                            "cookie": {
+                                "type": "keyword"
+                            },
+                            "device": {
+                                "type": "keyword"
+                            },
+                            "device_name": {
+                                "type": "keyword"
+                            },
+                            "dst_country_code": {
+                                "type": "keyword"
+                            },
+                            "dst_zone_type": {
+                                "type": "keyword"
+                            },
+                            "email_subject": {
+                                "type": "keyword"
+                            },
+                            "eventtype": {
+                                "type": "keyword"
+                            },
+                            "ether_type": {
+                                "type": "keyword"
+                            },
+                            "exceptions": {
+                                "type": "keyword"
+                            },
+                            "extra": {
+                                "type": "keyword"
+                            },
+                            "free": {
+                                "type": "long"
+                            },
+                            "fw_rule_id": {
+                                "type": "keyword"
+                            },
+                            "hb_health": {
+                                "type": "keyword"
+                            },
+                            "host": {
+                                "type": "keyword"
+                            },
+                            "iap": {
+                                "type": "keyword"
+                            },
+                            "ips_policy_id": {
+                                "type": "keyword"
+                            },
+                            "log_component": {
+                                "type": "keyword"
+                            },
+                            "log_id": {
+                                "type": "keyword"
+                            },
+                            "log_subtype": {
+                                "type": "keyword"
+                            },
+                            "log_type": {
+                                "type": "keyword"
+                            },
+                            "mailid": {
+                                "type": "keyword"
+                            },
+                            "mailsize": {
+                                "type": "long"
+                            },
+                            "platform": {
+                                "type": "keyword"
+                            },
+                            "priority": {
+                                "type": "keyword"
+                            },
+                            "quarantine_reason": {
+                                "type": "keyword"
+                            },
+                            "querystring": {
+                                "type": "keyword"
+                            },
+                            "receiveddrops": {
+                                "type": "long"
+                            },
+                            "receivederrors": {
+                                "type": "long"
+                            },
+                            "receivedkbits": {
+                                "type": "long"
+                            },
+                            "remotenetwork": {
+                                "type": "keyword"
+                            },
+                            "reports": {
+                                "type": "keyword"
+                            },
+                            "rule_priority": {
+                                "type": "keyword"
+                            },
+                            "server": {
+                                "type": "keyword"
+                            },
+                            "signature": {
+                                "type": "keyword"
+                            },
+                            "source": {
+                                "type": "ip"
+                            },
+                            "spamaction": {
+                                "type": "keyword"
+                            },
+                            "ssid": {
+                                "type": "keyword"
+                            },
+                            "system_cpu": {
+                                "type": "float"
+                            },
+                            "src_country_code": {
+                                "type": "keyword"
+                            },
+                            "src_zone_type": {
+                                "type": "keyword"
+                            },
+                            "subject": {
+                                "type": "keyword"
+                            },
+                            "status": {
+                                "type": "keyword"
+                            },
+                            "status_code": {
+                                "type": "keyword"
+                            },
+                            "target": {
+                                "type": "ip"
+                            },
+                            "temp": {
+                                "type": "keyword"
+                            },
+                            "threatname": {
+                                "type": "keyword"
+                            },
+                            "total_memory": {
+                                "type": "long"
+                            },
+                            "transmitteddrop": {
+                                "type": "long"
+                            },
+                            "transmittederrors": {
+                                "type": "long"
+                            },
+                            "transmittedkbits": {
+                                "type": "long"
+                            },
+                            "unit": {
+                                "type": "keyword"
+                            },
+                            "used": {
+                                "type": "long"
+                            },
+                            "user_name": {
+                                "type": "keyword"
+                            },
+                            "user_cpu": {
+                                "type": "float"
+                            },
+                            "virus": {
+                                "type": "keyword"
+                            },
+                            "xss": {
                                 "type": "keyword"
                             }
                         }
