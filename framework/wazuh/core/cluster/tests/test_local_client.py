@@ -108,7 +108,7 @@ def test_localclienthandler_process_error_from_peer(mock_set):
 
 def test_localclienthandler_connection_lost():
     """Check that the set_result method of the on_con_lost object is called once with the defined parameters."""
-    lc = LocalClientHandler(loop=None, on_con_lost=asyncio.Future(), name="Unittest",
+    lc = LocalClientHandler(loop=None, on_con_lost=asyncio.Future(loop=loop), name="Unittest",
                             logger=None, fernet_key=None, manager=None, cluster_items=None)
     with patch.object(lc.on_con_lost, "set_result") as mock_set_result:
         lc.connection_lost(Exception())
