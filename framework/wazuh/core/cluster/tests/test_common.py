@@ -258,7 +258,6 @@ def test_rst_set_up_coro_ko(wazuh_common_mock, logger_mock):
         cluster_common.ReceiveStringTask(wazuh_common_mock, logger_mock, b"task")
 
 
-@pytest.mark.asyncio
 @patch("asyncio.create_task")
 @patch("wazuh.core.cluster.common.ReceiveStringTask.set_up_coro")
 def test_rst_done_callback(setup_coro_mock, create_task_mock):
