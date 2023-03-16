@@ -788,7 +788,7 @@ class AWSBucket(WazuhIntegration):
                     'bucket_path': self.bucket_path,
                     'aws_region': aws_region,
                     'prefix': f'{self.prefix}%',
-                    'aws_account_id': aws_account_id or self.aws_account_id
+                    'aws_account_id': aws_account_id
                 })
             try:
                 filter_marker = query_last_key.fetchone()[0]
@@ -797,12 +797,10 @@ class AWSBucket(WazuhIntegration):
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
                     else self.marker_custom_date(aws_region, aws_account_id, self.default_date)
 
-        prefix = self.get_full_prefix(aws_account_id, aws_region) or (filter_marker if not self.only_logs_after else '')
-
         filter_args = {
             'Bucket': self.bucket,
             'MaxKeys': 1000,
-            'Prefix': prefix
+            'Prefix': self.get_full_prefix(aws_account_id, aws_region)
         }
 
         # if nextContinuationToken is not used for processing logs in a bucket
@@ -1011,7 +1009,18 @@ class AWSBucket(WazuhIntegration):
 
                 self.send_event(event_msg)
 
+    @staticmethod
+    def _print_not_logs_to_prcess_message(bucket, aws_account_id, aws_region):
+        base_message = '+++ No logs to process in bucket:'
+        if aws_account_id is not None and aws_region is not None:
+            debug(f"{base_message} {aws_account_id}/{aws_region}", 1)
+        else:
+            debug(f"{base_message} {bucket}", 1)
+
     def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
+        if aws_account_id is None:
+            aws_account_id = self.aws_account_id
+
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
             if self.reparse:
@@ -1019,14 +1028,13 @@ class AWSBucket(WazuhIntegration):
 
             while True:
                 if 'Contents' not in bucket_files:
-                    base_message = '+++ No logs to process in bucket:'
-                    if aws_account_id is not None and aws_region is not None:
-                        debug(f"{base_message} {aws_account_id}/{aws_region}", 1)
-                    else:
-                        debug(f"{base_message} {self.bucket}", 1)
+                    self._print_not_logs_to_prcess_message(self.bucket, aws_account_id, aws_region)
                     return
 
+                processed_logs = 0
+
                 for bucket_file in bucket_files['Contents']:
+
                     if not bucket_file['Key']:
                         continue
 
@@ -1058,6 +1066,12 @@ class AWSBucket(WazuhIntegration):
                         debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
+                    processed_logs += 1
+
+                # This is a workaround in order to work with custom buckets that don't have
+                # base prefix to serach the logs
+                if processed_logs == 0:
+                    self._print_not_logs_to_prcess_message(self.bucket, aws_account_id, aws_region)
 
                 if bucket_files['IsTruncated']:
                     new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
