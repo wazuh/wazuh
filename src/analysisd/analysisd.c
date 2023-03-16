@@ -577,7 +577,7 @@ int main_analysisd(int argc, char **argv)
                             merror("%s", msg);
                         }
                         os_free(msg);
-                        os_analysisd_free_log_msg(&data_msg);
+                        os_analysisd_free_log_msg(data_msg);
                         OSList_DeleteCurrentlyNode(list_msg);
                         node_log_msg = OSList_GetFirstNode(list_msg);
                     }
@@ -603,7 +603,7 @@ int main_analysisd(int argc, char **argv)
                     error_exit = 1;
                 }
                 os_free(msg);
-                os_analysisd_free_log_msg(&data_msg);
+                os_analysisd_free_log_msg(data_msg);
                 OSList_DeleteCurrentlyNode(list_msg);
                 node_log_msg = OSList_GetFirstNode(list_msg);
             }
@@ -645,7 +645,7 @@ int main_analysisd(int argc, char **argv)
                             merror("%s", msg);
                         }
                         os_free(msg);
-                        os_analysisd_free_log_msg(&data_msg);
+                        os_analysisd_free_log_msg(data_msg);
                         OSList_DeleteCurrentlyNode(list_msg);
                         node_log_msg = OSList_GetFirstNode(list_msg);
                     }
@@ -677,6 +677,8 @@ int main_analysisd(int argc, char **argv)
                 char * msg;
                 OSList * list_msg = OSList_Create();
                 OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+                OSList_SetFreeDataPointer(list_msg, (void (*)(void *))os_analysisd_free_log_msg);
+
                 OSListNode * node_log_msg;
                 int error_exit = 0;
 
@@ -704,7 +706,7 @@ int main_analysisd(int argc, char **argv)
                             merror("%s", msg);
                         }
                         os_free(msg);
-                        os_analysisd_free_log_msg(&data_msg);
+                        os_analysisd_free_log_msg(data_msg);
                         OSList_DeleteCurrentlyNode(list_msg);
                         node_log_msg = OSList_GetFirstNode(list_msg);
                     }
@@ -715,7 +717,7 @@ int main_analysisd(int argc, char **argv)
 
                     rulesfiles++;
                 }
-                os_free(list_msg);
+                OSList_Destroy(list_msg);
             }
 
             /* Find all rules that require list lookups and attache the the

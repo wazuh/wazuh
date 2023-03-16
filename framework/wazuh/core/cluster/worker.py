@@ -432,7 +432,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
                                            data_retriever=wdb_conn.run_wdb_command,
                                            get_data_command='global sync-agent-groups-get ',
-                                           get_payload={"condition": "sync_status", "get_global_hash": True})
+                                           get_payload={"get_global_hash": True})
 
         local_agent_groups = await sync_object.retrieve_information()
         if not local_agent_groups:

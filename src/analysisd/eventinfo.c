@@ -228,7 +228,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, __attribute__((unused)) EventList *
         }
 
         /* Check if the number of matches worked */
-        if (frequency_count <= 10) {
+        if (frequency_count <= 10 && (my_lf->last_events == NULL || my_lf->last_events[frequency_count] == NULL)) {
             add_lastevt(my_lf->last_events, frequency_count, lf->full_log);
         }
 
@@ -411,7 +411,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, __attribute__((unused)) EventList
 
 
         /* Check if the number of matches worked */
-        if (frequency_count <= 10) {
+        if (frequency_count <= 10 && (my_lf->last_events == NULL || my_lf->last_events[frequency_count] == NULL)) {
             add_lastevt(my_lf->last_events, frequency_count, lf->full_log);
         }
 
@@ -593,7 +593,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, EventList *last_events, RuleInfo 
 
         /* Check if the number of matches worked */
         if (frequency_count < rule->frequency) {
-            if (frequency_count <= 10) {
+            if (frequency_count <= 10 && (my_lf->last_events == NULL || my_lf->last_events[frequency_count] == NULL)) {
                 add_lastevt(my_lf->last_events, frequency_count, lf->full_log);
             }
 

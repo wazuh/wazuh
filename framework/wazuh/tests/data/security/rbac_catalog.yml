@@ -137,7 +137,6 @@ get_rbac_actions:
           - PUT /agents/{agent_id}/group/{group_id}
           - DELETE /agents/group
           - PUT /agents/group
-          - DELETE /groups
       group:modify_assignments:
         description: Change the agents assigned to the group
         resources:
@@ -154,7 +153,6 @@ get_rbac_actions:
           - PUT /agents/{agent_id}/group/{group_id}
           - DELETE /agents/group
           - PUT /agents/group
-          - DELETE /groups
       agent:reconnect:
         description: Force reconnect agents
         resources:

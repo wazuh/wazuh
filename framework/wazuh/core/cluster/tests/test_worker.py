@@ -33,7 +33,7 @@ logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
                  'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "timeout_agent_groups": 0,
                                           "sync_agent_info": 5, "sync_agent_groups": 5,
-                                          "agent_groups_mismatch_limit": 10},
+                                          "agent_groups_mismatch_limit": 5},
                                "communication": {"timeout_receiving_file": 1, "timeout_cluster_request": 20}},
                  "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
 configuration = {'node_name': 'master', 'nodes': ['master'], 'port': 1111, "name": "wazuh", "node_type": "master"}
@@ -711,7 +711,7 @@ async def test_worker_check_agent_groups_checksums(send_request_mock):
         # Check that when the checksums are different the counter is incremented
         await worker_handler.check_agent_groups_checksums(data=data, logger=logger)
         assert worker_handler.agent_groups_mismatch_counter == 1
-        assert 'Checksum comparison failed (1/10).' in logger._debug
+        assert 'Checksum comparison failed (1/5).' in logger._debug
         assert len(logger._info) == 0
 
         # Check that when the counter exceeds the maximum limit, the number of attempts is not printed in the logger
