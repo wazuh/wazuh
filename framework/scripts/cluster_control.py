@@ -170,6 +170,8 @@ async def print_health(config, more, filter_node):
             msg2 += f"                Last synchronization: {total} " \
                     f"({node_info['status']['last_sync_agentgroup']['date_start']} - " \
                     f"{node_info['status']['last_sync_agentgroup']['date_end']}).\n"
+            msg2 += f"                Number of synchronized chunks: " \
+                    f"{node_info['status']['last_sync_agentgroup']['n_synced_chunks']}.\n"
 
             # Agent groups full
             total = calculate_seconds(node_info['status']['last_sync_full_agentgroup']['date_start'],
@@ -178,7 +180,8 @@ async def print_health(config, more, filter_node):
             msg2 += f"                Last synchronization: {total} " \
                     f"({node_info['status']['last_sync_full_agentgroup']['date_start']} - " \
                     f"{node_info['status']['last_sync_full_agentgroup']['date_end']}).\n"
-
+            msg2 += f"                Number of synchronized chunks: " \
+                    f"{node_info['status']['last_sync_full_agentgroup']['n_synced_chunks']}.\n"
     print(msg1)
     more and print(msg2)
 

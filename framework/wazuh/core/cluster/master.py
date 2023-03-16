@@ -194,9 +194,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_agent_info_status = {'date_start_master': default_date, 'date_end_master': default_date,
                                        'n_synced_chunks': 0}
         self.send_agent_groups_status = {'date_start': default_date,
-                                         'date_end': default_date}
+                                         'date_end': default_date,
+                                         'n_synced_chunks': 0}
         self.send_full_agent_groups_status = {'date_start': default_date,
-                                              'date_end': default_date}
+                                              'date_end': default_date,
+                                              'n_synced_chunks': 0}
 
         # Variables which will be filled when the worker sends the hello request.
         self.version = ""
@@ -661,6 +663,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Updates Agent groups full status
         self.send_full_agent_groups_status['date_start'] = start_time.strftime(DECIMALS_DATE_FORMAT)
         self.send_full_agent_groups_status['date_end'] = end_time.strftime(DECIMALS_DATE_FORMAT)
+        self.send_agent_groups_status['n_synced_chunks'] = len(local_agent_groups_information)
 
     async def send_agent_groups_information(self):
         """Function in charge of sending the group information to the worker node.
@@ -681,6 +684,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     logger.info('Starting.')
                     self.send_agent_groups_status['date_start'] = get_utc_now().strftime(DECIMALS_DATE_FORMAT)
                     await sync_object.sync(start_time=self.send_agent_groups_status['date_start'], chunks=info)
+                    self.send_agent_groups_status['n_synced_chunks'] = len(info)
                     self.send_agent_groups_status['date_end'] = get_utc_now().strftime(DECIMALS_DATE_FORMAT)
                 except Exception as e:
                     logger.error(f'Error sending agent-groups information to {self.name}: {e}')
