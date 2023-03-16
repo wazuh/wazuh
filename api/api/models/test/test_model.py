@@ -26,7 +26,8 @@ models_path = dirname(dirname(abspath(__file__)))
 
 class TestModel(bm.Body):
     """Test class for custom Model. Body inherits from Model and has all the attributes required for testing."""
-
+    __test__ = False
+    
     def __init__(self, *args):
 
         self.swagger_types = {f"arg_{i + 1}": type(arg) for i, arg in enumerate(args)}
