@@ -11,5 +11,6 @@
 #define NETCOUNTER_WRAPPERS_H
 
 void __wrap_rem_setCounter(int fd, size_t counter);
+size_t __wrap_rem_getCounter(int fd);
 
 #endif

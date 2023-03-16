@@ -204,7 +204,7 @@ def test_get_cluster_items():
                                'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
                      'intervals': {'worker': {'sync_integrity': 9, 'sync_agent_info': 10, 'sync_agent_groups': 30,
                                               'keep_alive': 60, 'connection_retry': 10, 'timeout_agent_groups': 40,
-                                              'max_failed_keepalive_attempts': 2, "agent_groups_mismatch_limit": 10},
+                                              'max_failed_keepalive_attempts': 2, "agent_groups_mismatch_limit": 5},
                                    'master': {'timeout_extra_valid': 40, 'recalculate_integrity': 8,
                                               'check_worker_lastkeepalive': 60,
                                               'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2,

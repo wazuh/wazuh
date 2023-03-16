@@ -1,13 +1,66 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.5.0]
+
+### Manager
+
+#### Added
+
+- Added support for Amazon Linux 2022 in Vulnerability Detector. [#13034](https://github.com/wazuh/wazuh/issue/13034)
+- wazuh-authd can now generate X509 certificates. [#13559](https://github.com/wazuh/wazuh/pull/13559)
+
+#### Changed
+
+- wazuh-remoted now checks the size of the files to avoid malformed merged.mg. [#14659](https://github.com/wazuh/wazuh/pull/14659)
+- Added a limit option for the Rsync dispatch queue size. [#14024](https://github.com/wazuh/wazuh/pull/14024)
+- Added a limit option for the Rsync thread pool. [#14026](https://github.com/wazuh/wazuh/pull/14026)
+- wazuh-authd now shows a warning when deprecated forcing options are present in the configuration. [#14549](https://github.com/wazuh/wazuh/pull/14549)
+- The agent now notifies the manager when Active Reponse fails to run `netsh`. [#14804](https://github.com/wazuh/wazuh/pull/14804)
+
+#### Fixed
+
+- Fixed wazuh-remoted not updating total bytes sent in UDP. [#13979](https://github.com/wazuh/wazuh/pull/13979)
+- Fixed translation of packages with a missing version in CPE Helper for Vulnerability Detector. [#14356](https://github.com/wazuh/wazuh/pull/14356)
+- Fixed undefined behavior issues in Vulnerability Detector unit tests. [#14174](https://github.com/wazuh/wazuh/pull/14174)
+- Fixed permission error when producing FIM alerts. [#14019](https://github.com/wazuh/wazuh/pull/14019)
+- Fixed memory leaks wazuh-authd. [#15164](https://github.com/wazuh/wazuh/pull/15164)
+
+### Agent
+
+#### Added
+
+- Added Audit policy change detection in FIM for Windows. [#14763](https://github.com/wazuh/wazuh/pull/14763)
+
+#### Changed
+
+- FIM option fim_check_ignore now applies to files and directories. [#13264](https://github.com/wazuh/wazuh/pull/13264)
+- Unit tests have been added to the shared JSON handling library. [#14784](https://github.com/wazuh/wazuh/pull/14784)
+- Unit tests have been added to the shared SQLite handling library. [#14476](https://github.com/wazuh/wazuh/pull/14476)
+
+#### Fixed
+
+- Fixed the architecture of the dependency URL for macOS. [#13534](https://github.com/wazuh/wazuh/pull/13534)
+- Fixed a path length limitation that prevented FIM from reporting changes on Windows. [#13588](https://github.com/wazuh/wazuh/pull/13588)
+
+#### Removed
+
+- Unused option `local_ip` for agent configuration has been deleted. [#13878](https://github.com/wazuh/wazuh/pull/13878)
+
+### Ruleset
+
+#### Changed
+
+- The SSHD decoder has been improved to catch disconnection events. [#14138](https://github.com/wazuh/wazuh/pull/14138)
+
+
 ## [v4.4.0]
 
 ### Manager
 
 #### Added
 
-- Added new unit tests for cluster python module and increased coverage to 99%. ([#9995](https://github.com/wazuh/wazuh/pull/9995))
+- Added new unit tests for cluster Python module and increased coverage to 99%. ([#9995](https://github.com/wazuh/wazuh/pull/9995))
 - Added file size limitation on cluster integrity sync. ([#11190](https://github.com/wazuh/wazuh/pull/11190))
 - Added unittests for CLIs script files. ([#13424](https://github.com/wazuh/wazuh/pull/13424))
 - Added support for SUSE in Vulnerability Detector. ([#9962](https://github.com/wazuh/wazuh/pull/9962))
@@ -54,7 +107,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug in the manager that did not send shared folders correctly to agents belonging to multiple groups. ([#12516](https://github.com/wazuh/wazuh/pull/12516))
 - Fixed the Active Response decoders to support back the top entries for source IP in reports. ([#12834](https://github.com/wazuh/wazuh/pull/12834))
 - Fixed the feed update interval option of Vulnerability Detector for the JSON Red Hat feed. ([#13338](https://github.com/wazuh/wazuh/pull/13338))
-- Fixed several code flaws in the python framework. ([#12127](https://github.com/wazuh/wazuh/pull/12127))
+- Fixed several code flaws in the Python framework. ([#12127](https://github.com/wazuh/wazuh/pull/12127))
   - Fixed code flaw regarding the use of XML package. ([#10635](https://github.com/wazuh/wazuh/pull/10635))
   - Fixed code flaw regarding permissions at group directories. ([#10636](https://github.com/wazuh/wazuh/pull/10636))
   - Fixed code flaw regarding temporary directory names. ([#10544](https://github.com/wazuh/wazuh/pull/10544))
@@ -73,6 +126,8 @@ All notable changes to this project will be documented in this file.
 - Fixed a bug masking as Timeout any error that might occur while waiting to receive files in the cluster. ([#14922](https://github.com/wazuh/wazuh/pull/14922))
 - Fixed a read buffer overflow in wazuh-authd when parsing requests. ([#15876](https://github.com/wazuh/wazuh/pull/15876))
 - Applied workaround for bpo-46309 used in cluster to wazuh-db communication.([#16012](https://github.com/wazuh/wazuh/pull/16012))
+- Let the database module synchronize the agent groups data before assignments. ([#16233](https://github.com/wazuh/wazuh/pull/16233))
+- Fixed memory leaks in wazuh-analysisd when parsing and matching rules. ([#16321](https://github.com/wazuh/wazuh/pull/16321))
 
 #### Removed
 
@@ -166,7 +221,7 @@ All notable changes to this project will be documented in this file.
 
 - Added new API integration tests for a Wazuh environment without a cluster configuration. ([#10620](https://github.com/wazuh/wazuh/pull/10620))
 - Added wazuh-modulesd tags to `GET /manager/logs` and `GET /cluster/{node_id}/logs` endpoints. ([#11731](https://github.com/wazuh/wazuh/pull/11731))
-- Added python decorator to soft deprecate API endpoints adding deprecation headers to their responses. ([#12438](https://github.com/wazuh/wazuh/pull/12438))
+- Added Python decorator to soft deprecate API endpoints adding deprecation headers to their responses. ([#12438](https://github.com/wazuh/wazuh/pull/12438))
 - Added new exception to inform that /proc directory is not found or permissions to see its status are not granted. ([#12486](https://github.com/wazuh/wazuh/pull/12486))
 - Added new field and filter to `GET /agents` response to retrieve agent groups configuration synchronization status. ([#12362](https://github.com/wazuh/wazuh/pull/12483))
 - Added agent groups configuration synchronization status to `GET /agents/summary/status` endpoint. ([12498](https://github.com/wazuh/wazuh/pull/12498))
@@ -199,6 +254,7 @@ All notable changes to this project will be documented in this file.
 - Improved exception handling when trying to connect to Wazuh sockets. ([#15334](https://github.com/wazuh/wazuh/pull/15334))
 - Modified _group_names and _group_names_or_all regexes to avoid invalid group names. ([#15671](https://github.com/wazuh/wazuh/pull/15671))
 - Changed `GET /sca/{agent_id}/checks/{policy_id}` endpoint filters and response to remove `status` field. ([#15747](https://github.com/wazuh/wazuh/pull/15747))
+- Removed RBAC group assignments' related permissions from `DELETE /groups` to improve performance and changed response structure. ([#16231](https://github.com/wazuh/wazuh/pull/16231))
 
 #### Fixed
 
@@ -271,8 +327,13 @@ All notable changes to this project will be documented in this file.
 
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 - The pthread's rwlock has been replaced with a FIFO-queueing read-write lock. ([#14839](https://github.com/wazuh/wazuh/pull/14839))
-- Updated python dependency certifi to 2022.12.7. ([#15809](https://github.com/wazuh/wazuh/pull/15809))
-- Updated python dependency future to 0.18.3. ([#15896](https://github.com/wazuh/wazuh/pull/15896))
+- Updated Python dependency certifi to 2022.12.7. ([#15809](https://github.com/wazuh/wazuh/pull/15809))
+- Updated Python dependency future to 0.18.3. ([#15896](https://github.com/wazuh/wazuh/pull/15896))
+- Updated Werkzeug to 2.2.3. ([#16317](https://github.com/wazuh/wazuh/pull/16317))
+- Updated Flask to 2.0.0. ([#16317](https://github.com/wazuh/wazuh/pull/16317))
+- Updated itsdangerous to 2.0.0. ([#16317](https://github.com/wazuh/wazuh/pull/16317))
+- Updated Jinja2 to 3.0.0. ([#16317](https://github.com/wazuh/wazuh/pull/16317))
+- Updated MarkupSafe to 2.1.2. ([#16317](https://github.com/wazuh/wazuh/pull/16317))
 
 #### Fixed
 
