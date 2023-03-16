@@ -165,7 +165,6 @@ extern int timeout;
 extern int interval;
 extern int remote_conf;
 extern int min_eps;
-extern limits_t *agentd_limits;
 
 
 /* Global variables. Only modified during startup. */

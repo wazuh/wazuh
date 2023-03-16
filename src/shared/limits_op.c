@@ -9,7 +9,7 @@
 */
 
 #include "shared.h"
-#include "limits.h"
+#include "limits_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -101,11 +101,11 @@ bool limit_reached(limits_t *limits, unsigned int *value) {
     return false;
 }
 
-void free_limits(limits_t *limits) {
-    if (limits->enabled) {
-        os_free(limits->circ_buf);
+void free_limits(limits_t **limits) {
+    if ((*limits)->enabled) {
+        os_free((*limits)->circ_buf);
     }
-    os_free(limits);
+    os_free((*limits));
 }
 
 STATIC void generate_eps_credits(limits_t *limits) {

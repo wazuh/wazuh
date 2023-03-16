@@ -273,6 +273,16 @@ else()
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 endif()
 
+list(APPEND shared_tests_names "test_limits")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,syscom_dispatch \
+                                -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
+                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "-Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
+endif()
+
 list(APPEND shared_tests_names "test_url")
 list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
                                 -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt \

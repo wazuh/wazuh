@@ -11,12 +11,11 @@
 
 #include <pthread.h>
 #include "shared.h"
-#include "agentd.h"
-
 #ifdef WIN32
 #include <winsock2.h>
 #include <windows.h>
 #endif
+#include "agentd.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -44,6 +43,7 @@ static char ** buffer;
 static pthread_mutex_t mutex_lock;
 static pthread_cond_t cond_no_empty;
 static time_t start, end;
+limits_t *agentd_limits;
 
 /* Create agent buffer */
 void buffer_init(){
@@ -126,6 +126,9 @@ int buffer_append(const char *msg){
 }
 
 void *update_limits_thread() {
+    /* Initialize EPS limits */
+    agentd_limits = init_limits(agt->events_persec, agt->eps_timeframe);
+
     while (1) {
         sleep(1);
         update_limits(agentd_limits);

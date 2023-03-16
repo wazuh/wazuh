@@ -60,8 +60,8 @@ bool limit_reached(limits_t *limits, unsigned int *value);
 /**
  * @brief Initialize a limits_t struct with the given eps and timeframe settings.
  *
- * @param limits Pointer to the limits_t struct to freed.
+ * @param limits Pointer to the limits_t pointer struct to freed.
  */
-void free_limits(limits_t *limits);
+void free_limits(limits_t **limits);
 
 #endif /* LIMITS_OP_H */

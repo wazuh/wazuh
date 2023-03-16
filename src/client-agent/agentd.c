@@ -13,8 +13,6 @@
 #include "os_net/os_net.h"
 #include "limits_op.h"
 
-limits_t *agentd_limits;
-
 /* Start the agent daemon */
 void AgentdStart(int uid, int gid, const char *user, const char *group)
 {
@@ -112,9 +110,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     if (agt->buffer){
 
         buffer_init();
-
-        /* Initialize EPS limits */
-        agentd_limits = init_limits(agt->events_persec, agt->eps_timeframe);
 
         w_create_thread(update_limits_thread, (void *)NULL);
         w_create_thread(dispatch_buffer, (void *)NULL);
