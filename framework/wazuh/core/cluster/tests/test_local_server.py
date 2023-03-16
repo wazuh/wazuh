@@ -145,8 +145,8 @@ def test_LocalServerHandler_get_send_file_response():
     async def func_mock():
         pass
 
-    future = asyncio.Future()
-    task = asyncio.Task(func_mock())
+    future = asyncio.Future(loop=loop)
+    task = asyncio.Task(func_mock(), loop=loop)
     with patch.object(task, "add_done_callback") as add_done_callback_mock:
         with patch("wazuh.core.cluster.local_server.asyncio.create_task",
                    return_value=task) as create_task_mock:
@@ -169,7 +169,7 @@ def test_LocalServerHandler_send_res_callback():
     def exception_mock():
         return "testing"
 
-    future = asyncio.Future()
+    future = asyncio.Future(loop=loop)
     with patch.object(future, "cancelled", cancelled_mock):
         with patch.object(future, "exception", exception_mock):
             logger = logging.getLogger("connection_made")
@@ -348,7 +348,7 @@ def test_LocalServerHandlerMaster_send_file_request():
     with pytest.raises(WazuhClusterError, match=".* 3022 .*"):
         lshm.send_file_request(path="/tmp", node_name="no exists")
 
-    task = asyncio.Task(func_mock())
+    task = asyncio.Task(func_mock(), loop=loop)
     with patch.object(task, "add_done_callback") as add_done_callback_mock:
         with patch("wazuh.core.cluster.local_server.asyncio.create_task",
                    return_value=task) as create_task_mock:
