@@ -307,7 +307,7 @@ normalize:
     - ~tmp.type: utm
     - ~tmp.ipaddr: +ef_exists
     map:
-      - ~tmp.ipaddr: +s_replace/ //
+      - ~tmp.ipaddr: +s_replace/ /
       - ~tmp.ipaddr_array: +s_to_array/$~tmp.ipaddr/,
       - dns.resolved_ip: $~tmp.ipaddr_array
   - check:
