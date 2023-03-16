@@ -1063,7 +1063,6 @@ checks:
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/motd: # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd."
-    default value: "File doesn't exist"
     compliance:
       - cis: ["1.7.4"]
       - cis_csc_v8: ["3.3"]
@@ -2804,7 +2803,7 @@ checks:
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
-      - nist_sp_800-53 Rev. 5: ["CM-6"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
       - iso_27001-2013: ["A.12.4.1"]
       - mitre_techniques: ["T1562", "T1562.006"]
@@ -2830,7 +2829,7 @@ checks:
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
-      - nist_sp_800-53 Rev. 5: ["AU-3(1)", "AU-3"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
       - iso_27001-2013: ["A.9.4.2"]
       - mitre_techniques: ["T1562", "T1562.006"]
@@ -2857,7 +2856,7 @@ checks:
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
-      - nist_sp_800-53 rev. 5: ["AU-3", "AU-3(1)"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
       - iso_27001-2013: ["A.9.4.2", "A.8.1.3"]
       - mitre_techniques: ["T1562", "T1562.006"]
@@ -3050,7 +3049,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1", "9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "AU-3", "AU-3(1)", "MP-2"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7", "AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
       - mitre_techniques: ["T1562", "T1562.001"]
       - mitre_tactics: ["TA0005"]
@@ -3286,7 +3285,29 @@ checks:
       - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' systemd-journal-remote -> r:install ok installed"
 
   # 4.2.1.1.2 Ensure systemd-journal-remote is configured (Manual) - Not Implemented
-  # 4.2.1.1.3 Ensure systemd-journal-remote is enabled (Manual) - Not Implemented
+
+  # 4.2.1.1.3 Ensure systemd-journal-remote is enabled (Manual)
+  - id: 29633
+    title: "Ensure systemd-journal-remote is enabled."
+    description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
+    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
+    remediation: "Run the following command to enable systemd-journal-remote: # systemctl --now enable systemd-journal-upload.service."
+    compliance:
+      - cis: ["4.2.1.1.3"]
+      - cis_csc_v8: ["8.2"]
+      - cis_csc_v7: ["6.2", "6.3"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.2", "10.3"]
+      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - nist_sp_800-53: ["AU-7"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
+    condition: all
+    rules:
+      - 'c:systemctl is-enabled systemd-journal-upload.service -> r:^\s*\t*enabled$'
 
   # 4.2.1.1.4 Ensure journald is not configured to recieve logs from a remote client (Automated)
   - id: 29632
@@ -3381,7 +3402,30 @@ checks:
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*Storage=persistent'
 
-  # 4.2.1.5 Ensure journald is not configured to send logs to rsyslog (Manual) - Not Implemented
+  # 4.2.1.5 Ensure journald is not configured to send logs to rsyslog (Manual)
+  - id: 29638
+    title: "Ensure journald is not configured to send logs to rsyslog."
+    description: "Data from journald should be kept in the confines of the service and not forwarded on to other services."
+    rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms."
+    remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journald."
+    compliance:
+      - cis: ["4.2.1.5"]
+      - cis_csc_v8: ["8.2", "8.9"]
+      - cis_csc_v7: ["6.2", "6.3", "6.5"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
+      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3"]
+      - nist_sp_800-53: ["AU-7", "AU-6(3)"]
+      - soc_2: ["PL1.4"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
+    condition: all
+    rules:
+      - 'not f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
+
   # 4.2.1.6 Ensure journald log rotation is configured per site policy (Manual) - Not Implemented
   # 4.2.1.7 Ensure journald default file permissions configured (Manual) - Not Implemented
 
@@ -3433,7 +3477,26 @@ checks:
     rules:
       - "c:systemctl is-enabled rsyslog -> r:enabled"
 
-  # 4.2.2.3 Ensure journald is configured to send logs to rsyslog (Manual) - Not Implemented
+  # 4.2.2.3 Ensure journald is configured to send logs to rsyslog (Manual)
+  - id: 29642
+    title: "Ensure journald is configured to send logs to rsyslog."
+    description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the RSyslog service provides a consistent means of log collection and export."
+    rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing."
+    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog."
+    compliance:
+      - cis: ["4.2.2.3"]
+      - cis_csc_v8: ["8.2", "8.9"]
+      - cis_csc_v7: ["6.2", "6.3", "6.5"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - pci_dss_3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
+      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3"]
+      - nist_sp_800-53: ["AU-7", "AU-6(3)"]
+      - soc_2: ["PL1.4"]
+      - iso_27001-2013: ["A.12.4.1"]
+    condition: all
+    rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 4.2.2.4 Ensure rsyslog default file permissions are configured (Automated)
   - id: 29643
@@ -3484,8 +3547,8 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: any
     rules:
-      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\s*\t*module load="imtcp"|input type="imtcp" port="514"'
-      - 'f:/etc/rsyslog.conf -> r:^\$ModLoad imtcp|^\$InputTCPServerRun|^\s*\t*module load="imtcp"|input type="imtcp" port="514"'
+      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\s*\t*\$ModLoad imtcp|\s*\t*^\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*\$ModLoad imtcp|^\s*\t*\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
 
   # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not Implemented
 
@@ -3511,7 +3574,7 @@ checks:
     condition: all
     rules:
       - "c:systemctl is-enabled cron -> r:enabled"
-      - "c:systemctl status cron -> r:active"
+      - 'c:systemctl status cron -> r:Active: active \(running\)'
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured (Automated)
   - id: 29646
@@ -3535,7 +3598,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/crontab -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/crontab -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 29647
@@ -3559,7 +3622,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.hourly -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.hourly -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 29648
@@ -3607,7 +3670,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.weekly -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.weekly -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 29650
@@ -3631,7 +3694,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.monthly -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.monthly -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 29651
@@ -3655,7 +3718,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.d -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.d -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 29652
@@ -3681,7 +3744,7 @@ checks:
     rules:
       - "f:/etc/cron.allow"
       - "not f:/etc/cron.deny"
-      - 'c:stat -L /etc/cron.allow -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.allow -> r:Access:\s*\(0\d\d0/-\w\w\w\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 29653
@@ -3707,7 +3770,7 @@ checks:
     rules:
       - "f:/etc/at.allow"
       - "not f:/etc/at.deny"
-      - 'c:stat -L /etc/at.allow -> r:Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/at.allow -> r:Access:\s*\(0\d\d0/-\w\w\w\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   ############################################################
   # 5.2 Configure SSH Server
@@ -3734,7 +3797,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.2.2 Ensure permissions on SSH private host key files are configured (Automated) - Not Implemented
 
@@ -3760,7 +3823,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: none
     rules:
-      - 'c:sh -c "find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec stat {} \;" -> r:Access:\s*\( && !r:-rw-r--r--'
+      - 'c:sh -c "find /etc/ssh -xdev -type f -name \"ssh_host_*_key.pub\" -exec stat {} \\;" -> r:Access:\s*\( && !r:-rw-r--r--'
 
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 29656
@@ -3768,8 +3831,6 @@ checks:
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.4"]
       - cis_csc_v8: ["3.3"]
@@ -3811,9 +3872,9 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
-      - 'not f:/etc/ssh/sshd_config -> !r:^\s*LogLevel\s+INFO|^\s*LogLevel\s+VERBOSE'
+      - 'c:sshd -T -> r:^\s*\t*LogLevel\s+INFO|^\s*\t*LogLevel\s+VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*LogLevel\s+INFO|^\s*\t*LogLevel\s+VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*LogLevel\s+ && !r:INFO|VERBOSE'
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 29658
@@ -3836,8 +3897,8 @@ checks:
       - mitre_mitigations: ["M1035"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*usepam\s+yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*usepam\s+no'
+      - 'c:sshd -T -> r:^\s*\t*usepam\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*usepam\s+no'
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
   - id: 29659
@@ -3859,8 +3920,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*PermitRootLogin\s+no'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*PermitRootLogin\s+no'
+      - 'c:sshd -T -> r:^\s*\t*PermitRootLogin\s+no'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*\t*PermitRootLogin\s+no'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 29660
@@ -3882,8 +3943,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*HostbasedAuthentication\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*HostbasedAuthentication\s+yes'
+      - 'c:sshd -T -> r:^\s*\t*HostbasedAuthentication\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*HostbasedAuthentication\s+yes'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 29661
@@ -3905,8 +3966,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*PermitEmptyPasswords\s+no'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*PermitEmptyPasswords\s+no'
+      - 'c:sshd -T -> r:^\s*\t*PermitEmptyPasswords\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*PermitEmptyPasswords\s+yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 29662
@@ -3929,8 +3990,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*PermitUserEnvironment\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*PermitUserEnvironment\s+yes'
+      - 'c:sshd -T -> r:^\s*\t*PermitUserEnvironment\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*PermitUserEnvironment\s+yes'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 29663
@@ -3953,8 +4014,8 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*IgnoreRhosts\s+yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*IgnoreRhosts\s+no'
+      - 'c:sshd -T -> r:^\s*\t*IgnoreRhosts\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*IgnoreRhosts\s+no'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 29664
@@ -4004,7 +4065,7 @@ checks:
       - mitre_mitigations: ["M1041"]
     condition: none
     rules:
-      - "c:sshd -T -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
+      - "c:sshd -T -> r:^ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc"
 
   # 5.2.14 Ensure only strong MAC algorithms are used (Automated)
   - id: 29666
@@ -4029,7 +4090,7 @@ checks:
       - mitre_mitigations: ["M1041"]
     condition: none
     rules:
-      - "c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "c:sshd -T -> r:^MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used (Automated)
   - id: 29667
@@ -4052,7 +4113,7 @@ checks:
       - mitre_mitigations: ["M1041"]
     condition: none
     rules:
-      - "c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
+      - "c:sshd -T -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
   # 5.2.16 Ensure SSH AllowTcpForwarding is disabled (Automated)
   - id: 29668
@@ -4078,8 +4139,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*AllowTcpForwarding\s+yes'
+      - 'c:sshd -T -> r:^\s*\t*AllowTcpForwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*AllowTcpForwarding\s+yes'
 
   # 5.2.17 Ensure SSH warning banner is configured (Automated)
   - id: 29669
@@ -4101,7 +4162,8 @@ checks:
       - mitre_mitigations: ["M1035"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*banner\s*\t*/etc/issue.net'
+      - 'c:sshd -T -> r:^\s*\t*banner\s*\t*/'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*\t*banner\s*\t*/'
 
   # 5.2.18 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
   - id: 29670
@@ -4123,8 +4185,9 @@ checks:
       - mitre_mitigations: ["M1036"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
-      - 'not f:/etc/ssh/sshd_config -> ^\s*maxauthtries\s+([5-9]|[1-9][0-9]+)'
+      - 'c:sshd -T -> n:^\s*\t*MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxAuthTries\s*\t*(\d+) compare > 4'
 
   # 5.2.19 Ensure SSH MaxStartups is configured (Automated)
   - id: 29671
@@ -4146,8 +4209,15 @@ checks:
       - mitre_tactics: ["TA0040"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*maxstartups\s+10:30:60'
-      - 'not f:/etc/ssh/sshd_config -> ^\s*maxstartups\s+(((1[1-9]|[1-9][0-9][0-9]+):([0-9]+):([0-9]+))|(([0-9]+):(3[1-9]|[4-9][0-9]|[1-9][0-9][0-9]+):([0-9]+))|(([0-9]+):([0-9]+):(6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+)))'
+      - 'c:sshd -T -> n:^\s*\t*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'c:sshd -T -> n:^\s*\t*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'c:sshd -T -> n:^\s*\t*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+(\d+):\d+:\d+ compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+\d+:(\d+):\d+ compare > 30'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+\d+:\d+:(\d+) compare > 60'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
 
   # 5.2.20 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 29672
@@ -4161,8 +4231,9 @@ checks:
       - mitre_tactics: ["TA0040"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*maxsessions\s+(\d+) compare <= 10'
-      - 'not f:/etc/ssh/sshd_config -> ^\s*MaxSessions\s+(1[1-9]|[2-9][0-9]|[1-9][0-9][0-9]+)'
+      - 'c:sshd -T -> n:^\s*\t*maxsessions\s+(\d+) compare <= 10'
+      - 'f:/etc/ssh/sshd_config ->  n:^\s*\t*maxsessions\s+(\d+) compare <= 10'
+      - 'not f:/etc/ssh/sshd_config ->  n:^\s*\t*maxsessions\s+(\d+) compare > 10'
 
   # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 29673
@@ -4185,8 +4256,8 @@ checks:
       - mitre_mitigations: ["M1036"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
-      - 'not f:/etc/ssh/sshd_config -> \s*LoginGraceTime\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+|[^1]m)'
+      - 'c:sshd -T -> n:^\s*\t*logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 29674
@@ -4203,8 +4274,10 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare > 0'
-      - 'c:sshd -T -> n:clientalivecountmax\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:^\s*\t*clientaliveinterval\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:^\s*\t*clientalivecountmax\s*\t*(\d+) compare > 0'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*clientaliveinterval\s*\t*(\d+) compare > 0'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*clientalivecountmax\s*\t*(\d+) compare > 0'
 
   ############################################################
   # 5.3 Configure privilege escalation
@@ -4613,7 +4686,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4637,7 +4710,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4661,7 +4734,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4685,7 +4758,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4709,7 +4782,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4733,7 +4806,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4757,7 +4830,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
@@ -4781,7 +4854,7 @@ checks:
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53 rev. 5: ["AC-3", "MP-2"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
       - iso_27001-2013: ["A.9.1.1"]
       - mitre_techniques: ["T1003, T1003.008, T1222, T1222.002"]
