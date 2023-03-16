@@ -14,6 +14,8 @@ from wazuh.core.exception import WazuhError, WazuhPermissionError, WazuhResource
 
 
 class TestClass:
+    __test__ = False
+    
     def __init__(self, origin=None):
         self.swagger_types = {
             'api_response': 'test_api_response',
