@@ -118,3 +118,78 @@ rsa.web.fqdn:
   description: >
     Fully Qualified Domain Names.
   type: keyword
+
+rsa.identity.logon_type:
+  description: >-
+    The type of logon event that occurred.
+  type: keyword
+
+rsa.investigations.event_cat_name:
+  description: >-
+    The name of the category of the event being investigated.
+  type: keyword
+
+rsa.misc.comments:
+  description: >-
+    Additional information or notes about the event being logged.
+  type: keyword
+
+rsa.misc.content_type:
+  description: >-
+    The type of content being analyzed, such as "email" or "web".
+  type: keyword
+
+rsa.misc.group:
+  description: >-
+    The name of the group associated with the event.
+  type: keyword
+
+rsa.misc.group_object:
+  description: >-
+    The object representing the group associated with the event.
+  type: keyword
+
+rsa.misc.node:
+  description: >-
+    The name of the node on which the event was detected.
+  type: keyword
+
+rsa.misc.obj_type:
+  description: >-
+    The type of object associated with the event.
+  type: keyword
+
+rsa.misc.policy_id:
+  description: >-
+    The identifier of the policy associated with the event.
+  type: keyword
+
+rsa.misc.rule:
+  description: >-
+    The name of the rule that triggered the event.
+  type: keyword
+
+rsa.misc.vsys:
+  description: >-
+    The name of the virtual system associated with the event.
+  type: keyword
+
+rsa.network.dinterface:
+  description: >-
+    The name of the destination interface for the network traffic associated with the event.
+  type: keyword
+
+rsa.network.host_dst:
+  description: >-
+    The name of the destination host for the network traffic associated with the event.
+  type: keyword
+
+rsa.network.sinterface:
+  description: >-
+    The name of the source interface for the network traffic associated with the event.
+  type: keyword
+
+rsa.web.web_cookie:
+  description: >-
+    The value of the web cookie associated with the event.
+  type: keyword
