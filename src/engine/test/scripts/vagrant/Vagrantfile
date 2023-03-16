@@ -69,9 +69,9 @@ Vagrant.configure("2") do |config|
         echo "--- Setting up Wazuh in $ip ---"
         WAZUH_INSTALL=/home/vagrant/wazuh-install
         mkdir -p  $WAZUH_INSTALL && cd $WAZUH_INSTALL
-        #Download the Wazuh installation assistant.
-        curl -sO https://packages.wazuh.com/4.3/wazuh-install.sh
-        curl -sO https://packages.wazuh.com/4.3/config.yml
+        #Download the Wazuh installation assistant: TODO: Check 4.4 when Release available
+        curl -sO https://packages.wazuh.com/4.4/wazuh-install.sh
+        curl -sO https://packages.wazuh.com/4.4/config.yml
         sed -E -i "s/ ip: <indexer-node-ip>/ ip: $ip/gm" config.yml
         sed -E -i "s/ ip: <wazuh-manager-ip>/ ip: $ip/gm" config.yml
         sed -E -i "s/ ip: <dashboard-node-ip>/ ip: $ip/gm" config.yml

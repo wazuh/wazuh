@@ -7678,7 +7678,45 @@
                 "properties": {
                     "queue": {
                         "type": "long"
+                    },
+                    "syscollector": {
+                        "type": "object",
+                        "properties": {
+                            "hardware": {
+                                "type": "object"
+                            },
+                            "hotfix": {
+                                "type": "object"
+                            },
+                            "netinfo": {
+                                "type": "object",
+                                "properties": {
+                                    "addr": {
+                                        "type": "object"
+                                    },
+                                    "iface": {
+                                        "type": "object"
+                                    },
+                                    "proto": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "os": {
+                                "type": "object"
+                            },
+                            "port": {
+                                "type": "object"
+                            },
+                            "process": {
+                                "type": "object"
+                            },
+                            "program": {
+                                "type": "object"
+                            }
+                        }
                     }
+
                 }
             },
             "aws": {
