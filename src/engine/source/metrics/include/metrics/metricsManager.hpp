@@ -7,6 +7,7 @@
 #include <utils/baseMacros.hpp>
 #include <metrics/iMetricsManager.hpp>
 
+#include <metrics/dataHub.hpp>
 
 namespace metrics_manager
 {
@@ -16,14 +17,26 @@ class MetricsScope;
 class MetricsManager : public IMetricsManager
 {
 public:
-
-    WAZUH_DISABLE_COPY_ASSIGN(MetricsManager);
     MetricsManager();
 
+    /// @copydoc IMetricsManager::getMetricsScope
     std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name) override;
+    
+    /// @copydoc IMetricsManager::getScopeNames
+    std::vector<std::string> getScopeNames() override;
+
+    /// @copydoc IMetricsManager::start
+    void start() override;
+
+    /// @copydoc IMetricsManager::isRunning
+    bool isRunning() override;
 
 private:
+
+    /// @brief Instrumentation scopes across the application.
     std::unordered_map<std::string, std::shared_ptr<MetricsScope>> m_mapScopes;
+
+    bool m_statusRunning;
 };
 
 } // namespace metrics_manager
