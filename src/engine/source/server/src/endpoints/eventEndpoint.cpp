@@ -10,6 +10,7 @@
 #include "eventEndpoint.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
@@ -212,7 +213,18 @@ EventEndpoint::EventEndpoint(
     m_handle->on<DatagramSocketEvent>(
         [this, dumpFileHandler, isFloodedFileEnabled](const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
         {
+            auto startTime = std::chrono::high_resolution_clock::now();
+
             auto strRequest = std::string {eventSocket.data.get(), eventSocket.length};
+
+            auto endTime = std::chrono::high_resolution_clock::now();
+
+            // Size in bytes received
+            Metrics::instance().addCounterValue("SizeBytesRecive", static_cast<uint64_t>(eventSocket.length));
+
+            // Size in bytes per second received 
+            Metrics::instance().addCounterValue("BytesPerSeconds", 2.2);
+
             base::Event event;
             try
             {
@@ -230,7 +242,6 @@ EventEndpoint::EventEndpoint(
                 {
                     // Right now we process 1 event for ~0.1ms, we sleep by a factor
                     // of 5 because we are saturating the queue and we don't want to.
-                    Metrics::instance().addCounterValue("QueuedEvents", 1UL);
                     std::this_thread::sleep_for(std::chrono::microseconds(500));
                 }
             }
@@ -242,6 +253,11 @@ EventEndpoint::EventEndpoint(
                 {
                     if (m_eventQueue->try_enqueue(event))
                     {
+                        // Number of events inserted in queue
+                        Metrics::instance().addCounterValue("QueuedEvents", 1UL);
+
+                        // Size in bytes sent
+                        Metrics::instance().addCounterValue("SizeBytesSent", static_cast<uint64_t>(event->size()));
                         break;
                     }
                     // TODO: Benchmarks to find the best value.... (0.1ms)
@@ -250,7 +266,9 @@ EventEndpoint::EventEndpoint(
                 }
                 if (attempts >= maxAttempts)
                 {
-                    Metrics::instance().addCounterValue("DiskInsertedEvents", 1UL);
+                    // Number of events that have been written to disk because queue is full
+                    Metrics::instance().addCounterValue("EventsInsertedDisk", 1UL);
+
                     dumpFileHandler->write(strRequest);
                 }
             }
@@ -286,6 +304,9 @@ void EventEndpoint::configure(void)
 
 void EventEndpoint::run(void)
 {
+    // Size in bytes per second received 
+    //Metrics::instance().addObservableGauge("SizeBytesRecive", );
+
     m_loop->run<Loop::Mode::DEFAULT>();
 }
 
