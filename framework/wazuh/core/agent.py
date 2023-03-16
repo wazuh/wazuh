@@ -860,7 +860,8 @@ class Agent:
 
     @staticmethod
     def get_agents_overview(offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: str = None,
-                            select: str = None, filters: dict = None, q: str = "") -> dict:
+                            select: set = None, filters: dict = None, q: str = "", count: bool = True,
+                            get_data: bool = True) -> dict:
         """Gets a list of available agents with basic attributes.
 
         Parameters
@@ -873,12 +874,16 @@ class Agent:
             Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         search : str
             Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
-        select : str
-            Select fields to return.
+        select : set
+            Select fields to return. Format: {"fields":["field1","field2"]}.
         filters : dict
             Defines required field filters.
         q : str
             Defines query to filter in DB.
+        count : bool
+            Whether to compute totalItems.
+        get_data : bool
+            Whether to return data.
 
         Returns
         -------
@@ -888,7 +893,7 @@ class Agent:
         pfilters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=filters.pop('id'),
                                     filters=filters) if filters and 'id' in filters else {'filters': filters}
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query=q, **pfilters)
+                                      query=q, count=count, get_data=get_data, **pfilters)
         data = db_query.run()
 
         return data
@@ -896,7 +901,7 @@ class Agent:
     @staticmethod
     def add_group_to_agent(group_id: str, agent_id: str, replace: bool = False, replace_list: list = None) -> str:
         """Add an existing group to an agent.
-        
+
         Parameters
         ----------
         group_id: str
@@ -1067,7 +1072,7 @@ class Agent:
     @staticmethod
     def unset_single_group_agent(agent_id: str, group_id: str, force: bool = False) -> str:
         """Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
-        
+
         Parameters
         ----------
         agent_id : str
