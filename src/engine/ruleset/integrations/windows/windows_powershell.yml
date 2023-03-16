@@ -55,9 +55,10 @@ normalize:
   
   # Add file information.
    - file.path: $~windows.Event.EventData.ScriptName
-   - file.name: +r_ext/$file.path/^.*\\(.*[\\.].*)$
-   - file.directory: +r_ext/$file.path/^(.*\\).*[\\.].*$
-   - file.extension: +r_ext/$file.path/^.*\\.*[\\.](.*)$
+   - ~temp.file_data: +parse_file/$file.path
+   - file.directory: $~temp.file_data.path
+   - file.extension: $~temp.file_data.ext
+   - file.name: $~temp.file_data.name
 
  - check: event.code==400
    map:

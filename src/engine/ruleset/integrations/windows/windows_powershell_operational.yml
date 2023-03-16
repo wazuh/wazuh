@@ -58,9 +58,10 @@ normalize:
    - powershell.file.script_block_text: $~windows.Event.EventData.ScriptBlockText
    - file.path: $~windows.Event.EventData.Path
    - file.path: $~windows.Event.EventData.ScriptName
-   - file.name: +r_ext/$file.path/^.*\\(.*[\\.].*)$
-   - file.directory: +r_ext/$file.path/^(.*\\).*[\\.].*$
-   - file.extension: +r_ext/$file.path/^.*\\.*[\\.](.*)$
+   - ~temp.file_data: +parse_file/$file.path
+   - file.directory: $~temp.file_data.path
+   - file.extension: $~temp.file_data.ext
+   - file.name: $~temp.file_data.name
 
 
  - check: event.code==4105

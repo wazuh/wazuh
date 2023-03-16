@@ -53,13 +53,14 @@ normalize:
     - process.parent.pid: $~windows.Event.EventData.ParentProcessId
     - process.parent.executable: $~windows.Event.EventData.ParentImage
     - process.parent.command_line: $~windows.Event.EventData.ParentCommandLine
-        
-    - process.name: +r_ext/$process.executable/^.*\\(.*[\\.].*)$
-    - process.parent.name: +r_ext/$process.parent.executable/^.*\\(.*[\\.].*)$
+    - ~temp.file_data: +parse_file/$process.executable
+    - process.name: $~temp.file_data.name
+    - ~temp.file_data: +parse_file/$process.parent.executable
+    - process.parent.name: $~temp.file_data.name
     #- process.args: +r_ext/$process.command_line/("[^"]+"|[^\s"]+) # ideally with a regex to array
-    - process.args: +s_to_array/$process.command_line/ /
+    - process.args: '+s_to_array/$process.command_line/ '
     # - process.args_count
-    - process.parent.args: +s_to_array/$process.parent.command_line/ /
+    - process.parent.args: '+s_to_array/$process.parent.command_line/ '
     #- process.parent.args_count
 
     
@@ -71,9 +72,10 @@ normalize:
     - file.code_signature.subject_name: $~windows.Event.EventData.Signature
     - file.code_signature.status: $~windows.Event.EventData.SignatureStatus
     - file.code_signature.signed: $~windows.Event.EventData.Signed
-    - file.directory: +r_ext/$file.path/^(.*\\).*[\\.].*$
-    - file.extension: +r_ext/$file.path/^.*\\.*[\\.](.*)$
-    - file.name: +r_ext/$file.path/^.*\\(.*[\\.].*)$
+    - ~temp.file_data: +parse_file/$file.path
+    - file.directory: $~temp.file_data.path
+    - file.extension: $~temp.file_data.ext
+    - file.name: $~temp.file_data.name
 
   ## Network, Destination, and Source fields
     - network.transport: $~windows.Event.EventData.Protocol
@@ -176,23 +178,23 @@ normalize:
     - registry.hive: $~temp.registry.array.0
     - ~temp.registry.array.0: +ef_delete
     - registry.key: +s_from_array/$~temp.registry.array/\\
-    - registry.value: +r_ext/$registry.path/^.*\\(.*)$
+    - registry.value: +r_ext/$registry.path/^.*\\\\(.*)$
     # This could be better than what is done in line 181:
     # - ~temp.is_binary_data: +r_match/~windows.Event.EventData.Details/^Binary Data/
     
- - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/QWORD/
+ - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/QWORD
    map:  
     - registry.data.type: SZ_QWORD
     - registry.data.strings: +r_ext/$~windows.Event.EventData.Details/^QWORD\s*\((0x[0-9A-F]+-0x[0-9A-F]+)\)
 
- - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/DWORD/
+ - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/DWORD
    map:  
     - registry.data.type: SZ_DWORD
     - ~temp.value: +r_ext/$~windows.Event.EventData.Details/DWORD \((0x[0-9A-F]{8})\)
     - registry.data.strings: +s_hex_to_num/$~temp.value
 
  - check: 
-    - ~windows.Event.EventData.Details: +s_starts/Binary Data/
+    - ~windows.Event.EventData.Details: +s_starts/Binary Data
    map:
     - ~temp.is_binary_data: True
 
