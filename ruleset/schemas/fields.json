@@ -11674,6 +11674,12 @@
                 "string"
             ]
         },
+        "rsa.investigations.event_cat_name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the category of the event being investigated.",
+            "type": [
+                "string"
+            ]
+        },
         "rsa.misc.action": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key is used to capture the action performed in the given session.\n",
             "type": [
@@ -11770,6 +11776,60 @@
                 "string"
             ]
         },
+        "rsa.misc.comments": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAdditional information or notes about the event being logged.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.content_type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of content being analyzed, such as \"email\" or \"web\".",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.group": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the group associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.group_object": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe object representing the group associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.node": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the node on which the event was detected.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.obj_type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of object associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.policy_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier of the policy associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.rule": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the rule that triggered the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.vsys": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the virtual system associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
         "rsa.network.alias_host": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key should be used when the source or destination context of a hostname is not clear.Also it captures the Device Hostname. Any Hostname that isnt ad.computer.\n",
             "type": [
@@ -11788,6 +11848,24 @@
                 "string"
             ]
         },
+        "rsa.network.dinterface": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the destination interface for the network traffic associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.network.host_dst": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the destination host for the network traffic associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.network.sinterface": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the source interface for the network traffic associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
         "rsa.time.event_time": {
             "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThis key is used to capture the time mentioned in a raw session that represents the actual time an event occured in a standard normalized form.\n",
             "type": [
@@ -11802,6 +11880,520 @@
         },
         "rsa.web.fqdn": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFully Qualified Domain Names.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.web.web_cookie": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe value of the web cookie associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.identity.logon_type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of logon event that occurred.",
+            "type": [
+                "string"
+            ]
+        },
+        "filename": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the file being analyzed.",
+            "type": [
+                "string"
+            ]
+        },
+        "fileset.name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the fileset this data belongs to.",
+            "type": [
+                "string"
+            ]
+        },
+        "fullreqtime": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDate and time of the request in ISO8601 format.",
+            "type": [
+                "string"
+            ]
+        },
+        "input.type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of input from which this data was obtained.",
+            "type": [
+                "string"
+            ]
+        },
+        "reputation": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA value indicating the reputation of an object or entity, such as an IP address or domain.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.ap": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe access point name associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.app_is_cloud": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nA value indicating whether the application is cloud-based.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.appfilter_policy_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier of the application filtering policy associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.application_risk": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe risk score associated with the application.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.appresolvedby": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe method by which the application was resolved, such as \"lookup\" or \"cache\".",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.auth_client": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the authentication client associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.auth_mechanism": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe authentication mechanism used in Sophos XG Firewall, such as \"LDAP\", \"RADIUS\", \"AD\", etc.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.av_policy_name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the antivirus policy associated with an event.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.backup_mode": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe backup mode of the device.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.category": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe category of the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.category_type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of category of the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.collisions": {
+            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nThe number of collisions that occurred.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.configuration": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe configuration of the device.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.con_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe ID of the connection.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.connectionname": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the connection.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.connectiontype": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of connection.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.connevent": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe connection event.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.connid": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe ID of the connection.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.cookie": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe cookie value.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.device": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe device type.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.device_name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the device.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.dst_country_code": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe country code of the destination.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.dst_zone_type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe destination zone type.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.email_subject": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe subject of the email.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.eventtype": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of event.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.ether_type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe Ethernet type.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.exceptions": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe exceptions that occurred.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.extra": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAdditional information about the event, if available.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.free": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe amount of free space.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.fw_rule_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe ID of the firewall rule.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.hb_health": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe health of the heartbeat.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.host": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe hostname.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.iap": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe IAP ID.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.ips_policy_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe ID of the IPS policy associated with an event in Sophos XG Firewall.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.log_component": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nRegistry component.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.log_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nRecord ID.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.log_subtype": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nRecord subtype.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.log_type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nRecord type.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.mailid": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nEmail ID.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.mailsize": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nEmail size.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.platform": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\noperating system platform.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.priority": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAlert priority.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.quarantine_reason": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nQuarantine reason.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.querystring": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nHTTP query string.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.receiveddrops": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nNumber of received packets that were dropped because the queue was full.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.receivederrors": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nNumber of packets received that had errors and were dropped.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.receivedkbits": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nTotal number of kilobits received.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.remotenetwork": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nRemote network.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.reports": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nReport ID.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.rule_priority": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFirewall rule priority.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.server": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nServer.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.signature": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nSignature of the threat.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.source": {
+            "description": "Module: ecs\nIndexerType: ip\nArray: False\n\nSource IP address.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.spamaction": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAction taken in relation to spam.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.ssid": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nWireless access point ID.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.system_cpu": {
+            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nSystem CPU usage percentage.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.src_country_code": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCountry of origin code.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.src_zone_type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nSource zone type.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.subject": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nEmail subject.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.status": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAlert status.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.status_code": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAlert status code.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.target": {
+            "description": "Module: ecs\nIndexerType: ip\nArray: False\n\nDestination IP address.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.temp": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe value of this field varies based on the event. Please refer to the documentation for more information.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.threatname": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the threat that was detected.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.total_memory": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe total memory used by the device.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.transmitteddrop": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe number of packets that were dropped during transmission.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.transmittederrors": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe number of errors that occurred during transmission.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.transmittedkbits": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe number of kilobits that were transmitted.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.unit": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe unit of measurement for some metrics, such as the number of packets.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.used": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe amount of memory currently in use by the device.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.user_name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the user associated with the event.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.user_cpu": {
+            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nThe percentage of CPU usage by the user.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "sophos.xg.virus": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the virus that was detected.",
+            "type": [
+                "string"
+            ]
+        },
+        "sophos.xg.xss": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of cross-site scripting (XSS) attack that was detected.",
             "type": [
                 "string"
             ]
