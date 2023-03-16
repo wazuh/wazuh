@@ -142,7 +142,7 @@ w_err_t w_auth_parse_data(const char* buf,
 
         if (compare_wazuh_versions(__ossec_version, version, false) < 0) {
             merror("Incompatible version for new agent from: %s", ip);
-            snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION);
+            snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION_RESPONSE);
             return OS_INVALID;
         }
 
