@@ -400,7 +400,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.agent_groups = c_common.SyncWazuhdb(manager=self, logger=self.task_loggers['Agent-groups send'],
                                                  cmd=b'syn_g_m_w', data_retriever=wdb_conn.run_wdb_command,
                                                  set_data_command='global set-agent-groups',
-                                                 set_payload={'mode': 'override', 'sync_status': 'synced'})
+                                                 set_payload={'mode': 'override', 'sync_status': 'synced'},
+                                                 loop=asyncio.new_event_loop())
 
         return cmd, payload
 
