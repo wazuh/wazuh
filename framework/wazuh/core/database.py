@@ -5,7 +5,7 @@
 import sqlite3
 import sys
 import time
-from distutils.version import LooseVersion
+from packaging.version import parse
 from os.path import isfile
 
 from wazuh.core import common
@@ -16,7 +16,7 @@ if sys.version_info[0] == 3:
     unicode = str
 
 # Check SQL compatibility: >= 3.7.0.0
-if LooseVersion(sqlite3.sqlite_version) < LooseVersion('3.7.0.0'):
+if parse(sqlite3.sqlite_version) < parse('3.7.0.0'):
     msg = str(sqlite3.sqlite_version)
     msg += "\nTry to export the internal SQLite library:"
     msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/lib".format(common.WAZUH_PATH)
