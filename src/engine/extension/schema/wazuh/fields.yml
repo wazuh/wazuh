@@ -1,3 +1,39 @@
 wazuh.queue:
   description: 'A char indicating the Wazuh protocol queue of the eventes ingested'
   type: long
+
+wazuh.syscollector.hardware:
+  description: 'Object that contains the hardware fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.hotfix:
+  description: 'Object that contains the hotfix fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.netinfo.addr:
+  description: 'Object that contains the address fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.netinfo.iface:
+  description: 'Object that contains the network interface fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.netinfo.proto:
+  description: 'Object that contains the network protocol fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.os:
+  description: 'Object that contains the os fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.port:
+  description: 'Object that contains the port fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.process:
+  description: 'Object that contains the process fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.program:
+  description: 'Object that contains the program fields from a syscollector event'
+  type: object
