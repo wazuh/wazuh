@@ -27,7 +27,7 @@
 #include <rxbk/rxFactory.hpp>
 #include <server/engineServer.hpp>
 #include <store/drivers/fileDriver.hpp>
-#include <metrics/include/metrics.hpp>
+#include <metrics/metricsManager.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
 #include "defaultSettings.hpp"
@@ -147,6 +147,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<router::Router> router;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdb_manager::KVDBManager> kvdb;
+    std::shared_ptr<metrics_manager::MetricsManager> metrics;
 
     try
     {

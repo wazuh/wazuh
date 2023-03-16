@@ -10,7 +10,7 @@
 #include <json/json.hpp>
 #include <string>
 
-#include <dataHubInterface.hpp>
+#include <metrics/iDataHub.hpp>
 
 OPENTELEMETRY_BEGIN_NAMESPACE
 namespace exporter
@@ -29,8 +29,9 @@ public:
      * the export() function will send metrics data into. The default ostream is set to
      * stdout
      */
-    explicit DataHubExporter(std::shared_ptr<DataHubInterface> dataHub,
-                          sdk::metrics::AggregationTemporality aggregation_temporality) noexcept;
+    explicit DataHubExporter(std::shared_ptr<metrics_manager::IDataHub> dataHub,
+                          sdk::metrics::AggregationTemporality aggregation_temporality =
+                              sdk::metrics::AggregationTemporality::kCumulative) noexcept;
 
     /**
      * Export
@@ -62,7 +63,7 @@ public:
                       (std::chrono::microseconds::max)()) noexcept override;
 
 private:
-    std::shared_ptr<DataHubInterface> m_dataHub;
+    std::shared_ptr<metrics_manager::IDataHub> m_dataHub;
 
     bool is_shutdown_ = false;
     mutable opentelemetry::common::SpinLockMutex lock_;
