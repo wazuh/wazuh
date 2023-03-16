@@ -10781,184 +10781,6 @@
                 }
             }
         },
-        "rsa.db_index": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe database index of the event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.email.email_dst": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe destination email address for an email event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.email.email_src": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe source email address for an email event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.email.subject": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe subject of an email event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.investigations.ec_outcome": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe outcome of an investigation as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.investigations.event_vcat": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe event category of an investigation as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.checksum": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe checksum of a file or packet as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.client": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe client reporting the event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.event_source": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe source of the event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.event_state": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe state of the event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.fcatnum": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe event category number as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.filter": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe filter used to find events as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.hardware_id": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe hardware ID of the reporting device as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.msgIdPart1": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe first part of the message ID as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.msgIdPart2": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe second part of the message ID as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.OS": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe operating system of the reporting device as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.reference_id1": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe first reference ID as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.reference_id": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe reference ID as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.sig_id": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe signature ID as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.virusname": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the virus reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.misc.vsys": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe virtual system name as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.network.domain": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe domain of the network event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.network.interface": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe interface of the network event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.network.sinterface": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe source interface of the network event as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.threat.threat_desc": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe description of the threat as reported by RSA Security Analytics.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.time.duration_time": {
-            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe duration of an event, in seconds.\n",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "rsa.time.timezone": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe time zone associated with an event.\n",
-            "type": [
-                "string"
-            ]
-        },
-        "rsa.web.reputation_num": {
-            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe reputation number associated with a web event.\n",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "rsa.web.web_ref_domain": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe referenced domain associated with a web event.\n",
-            "type": [
-                "string"
-            ]
-        },
         "auditd.log.new_auid": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFor login events this is the new audit ID. The audit ID can be used to trace future events to the user even if their identity changes (like becoming root).\n",
             "type": [
@@ -11851,6 +11673,12 @@
                 "string"
             ]
         },
+        "rsa.internal.msg": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA message associated with the event.\n",
+            "type": [
+                "string"
+            ]
+        },
         "rsa.investigations.ec_activity": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis key captures the particular event activity (Ex:Logoff).\n",
             "type": [
@@ -11870,7 +11698,19 @@
             ]
         },
         "rsa.investigations.event_cat_name": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the category of the event being investigated.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the category of the event being investigated.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.investigations.ec_outcome": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe outcome of an investigation as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.investigations.event_vcat": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe event category of an investigation as reported by RSA Security Analytics.\n",
             "type": [
                 "string"
             ]
@@ -11972,55 +11812,139 @@
             ]
         },
         "rsa.misc.comments": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAdditional information or notes about the event being logged.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAdditional information or notes about the event being logged.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.misc.content_type": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of content being analyzed, such as \"email\" or \"web\".",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of content being analyzed, such as \"email\" or \"web\".\n",
             "type": [
                 "string"
             ]
         },
         "rsa.misc.group": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the group associated with the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the group associated with the event.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.misc.group_object": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe object representing the group associated with the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe object representing the group associated with the event.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.misc.node": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the node on which the event was detected.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the node on which the event was detected.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.misc.obj_type": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of object associated with the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of object associated with the event.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.misc.policy_id": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier of the policy associated with the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier of the policy associated with the event.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.misc.rule": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the rule that triggered the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the rule that triggered the event.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.misc.vsys": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the virtual system associated with the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the virtual system associated with the event.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.checksum": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe checksum of a file or packet as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.event_source": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe source of the event as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.event_state": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe state of the event as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.fcatnum": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe event category number as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.filter": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe filter used to find events as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.hardware_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe hardware ID of the reporting device as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.msgIdPart1": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe first part of the message ID as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.msgIdPart2": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe second part of the message ID as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.OS": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe operating system of the reporting device as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.reference_id1": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe first reference ID as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.reference_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe reference ID as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.sig_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe signature ID as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.virusname": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the virus reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.misc.serial_number": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA serial number associated with the event.\n",
             "type": [
                 "string"
             ]
@@ -12044,19 +11968,31 @@
             ]
         },
         "rsa.network.dinterface": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the destination interface for the network traffic associated with the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the destination interface for the network traffic associated with the event.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.network.host_dst": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the destination host for the network traffic associated with the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the destination host for the network traffic associated with the event.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.network.sinterface": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the source interface for the network traffic associated with the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the source interface for the network traffic associated with the event.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.network.domain": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe domain of the network event as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.network.interface": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe interface of the network event as reported by RSA Security Analytics.\n",
             "type": [
                 "string"
             ]
@@ -12073,6 +12009,26 @@
                 "string"
             ]
         },
+        "rsa.time.duration_time": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe duration of an event, in seconds.\n",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "rsa.time.timezone": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe time zone associated with an event.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.time.date": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe date and time when the event occurred.\n",
+            "type": [
+                "string"
+            ]
+        },
         "rsa.web.fqdn": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFully Qualified Domain Names.\n",
             "type": [
@@ -12080,13 +12036,63 @@
             ]
         },
         "rsa.web.web_cookie": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe value of the web cookie associated with the event.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe value of the web cookie associated with the event.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.web.reputation_num": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe reputation number associated with a web event.\n",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "rsa.web.web_ref_domain": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe referenced domain associated with a web event.\n",
             "type": [
                 "string"
             ]
         },
         "rsa.identity.logon_type": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of logon event that occurred.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of logon event that occurred.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.identity.user_sid_dst": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe Security Identifier (SID) of the user account on the destination system.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.db_index": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe database index of the event as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.email.email_dst": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe destination email address for an email event as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.email.email_src": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe source email address for an email event as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.email.subject": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe subject of an email event as reported by RSA Security Analytics.\n",
+            "type": [
+                "string"
+            ]
+        },
+        "rsa.threat.threat_desc": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe description of the threat as reported by RSA Security Analytics.\n",
             "type": [
                 "string"
             ]
