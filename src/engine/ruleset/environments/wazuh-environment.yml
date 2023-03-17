@@ -70,6 +70,7 @@ decoders:
   - decoder/syscollector-program/0
   - decoder/syscollector-program-del/0
   - decoder/syscollector-program-save/0
+
   # Enrich events with host info
   - decoder/agent-event-enrichment/0
   - decoder/dbsync-host-data/0
@@ -78,40 +79,6 @@ decoders:
 
   # Service decoders
   - decoder/syslog/0
-  - decoder/sonicwall-firewall/0
-  # TODO uncomment when the fields are added to the schema
-  # - decoder/sonicwall-firewall-generated/0
-  - decoder/redis/0
-
-  # Postgresql decoders
-  - decoder/postgresql-csv/0
-  - decoder/postgresql-csv-msg-parse/0
-
-  # NGINX decoder
-  - decoder/nginx-access-base/0
-  - decoder/nginx-access/0
-  - decoder/nginx-error/0
-
-  # F5 decoders
-  - decoder/f5-afm/0
-  - decoder/f5-apm/0
-
-  # TODO uncomment when the fields are added to the schema
-  # AWS decoder
-  - decoder/aws/0
-  - decoder/aws-s3/0
-  - decoder/aws-cloudtrail/0
-  - decoder/aws-elb/0
-
-  # Auditd
-  - decoder/auditd/0
-  - decoder/auditd-kv/0
-
-  # Fortinet
-  - decoder/fortinet-client-endpoint/0
-  - decoder/fortinet-firewall/0
-  - decoder/fortinet-fortimail/0
-  - decoder/fortinet-fortimanager/0
 
 outputs:
   - output/file-output/0
