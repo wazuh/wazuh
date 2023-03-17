@@ -15,7 +15,10 @@
 #include <iosfwd>
 #include <map>
 
+// due to avoid procfs building errors in Solaris with GCC 9.4
+#define _STRUCTURED_PROC 1
 #include <procfs.h>
+
 #include <limits.h>
 #include <grp.h>
 #include <pwd.h>

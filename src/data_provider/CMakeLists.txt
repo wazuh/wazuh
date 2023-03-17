@@ -116,6 +116,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
       "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 9.4.0)
+    # due to avoid procfs building errors in Solaris with GCC 9.4
+    set(CMAKE_CXX_FLAGS "-U_FILE_OFFSET_BITS")
+  endif()   
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/UtilsWrapperUnix.cpp"
       "${CMAKE_SOURCE_DIR}/src/*Solaris.cpp"
