@@ -1533,9 +1533,9 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
                     //Increment pointers.
                     first_empty++;
                     query_keys++;
-                    }
                 }
             }
+        }
     }
 
     //Release memory after leaves function. Common variables
