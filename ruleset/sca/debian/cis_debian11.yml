@@ -693,7 +693,7 @@ checks:
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
       - mitre_techniques: ["T1068", "T1203", "T1211", "T1212"]
-    condition: any
+    condition: all
     rules:
       - "c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs.service: No such file or directory"
       - "c:systemctl is-enabled autofs -> r:disabled"
@@ -2683,10 +2683,10 @@ checks:
       - mitre_mitigations: ["M1047"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
 
   # 4.1.3.3 Ensure events that modify the sudo log file are collected (Automated) - Not Implemented
 
