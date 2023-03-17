@@ -17,6 +17,7 @@
 #   7 - Unexpected error querying/working with objects in S3
 #   8 - Failed to decompress file
 #   9 - Failed to parse file
+#   10 - pyarrow module missing
 #   11 - Unable to connect to Wazuh
 #   12 - Invalid type of bucket
 #   13 - Unexpected error sending message to Wazuh
@@ -24,13 +25,14 @@
 #   15 - Invalid endpoint URL
 #   16 - Throttling error
 #   17 - Invalid key format
+#   18 - Invalid prefix
+#   19 - Unable to find SQS
 
 import argparse
 import signal
 import socket
 import sqlite3
 import sys
-
 
 try:
     import boto3
@@ -39,10 +41,10 @@ except ImportError:
     sys.exit(4)
 
 try:
-    import pyarrow
+    import pyarrow.parquet as pq
 except ImportError:
-    print('ERROR: pyarrow module is required.')
-    sys.exit(4)
+    print('ERROR: awswrangler module is required.')
+    sys.exit(10)
 
 import botocore
 import json
@@ -57,7 +59,7 @@ import operator
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
-from time import mktime
+from time import mktime, sleep
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import utils
@@ -77,6 +79,7 @@ DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {rel
 
 # Enable/disable debug mode
 debug_level = 0
+
 
 ################################################################################
 # Classes
@@ -179,16 +182,14 @@ class WazuhIntegration:
                                       service_endpoint=service_endpoint,
                                       iam_role_duration=iam_role_duration
                                       )
-
-
-        # db_name is an instance variable of subclass
-        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
-        self.db_connector = sqlite3.connect(self.db_path)
-        self.db_cursor = self.db_connector.cursor()
+        if service_name != 'sqs':
+            # db_name is an instance variable of subclass
+            self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
+            self.db_connector = sqlite3.connect(self.db_path)
+            self.db_cursor = self.db_connector.cursor()
+            self.check_metadata_version()
         if bucket:
             self.bucket = bucket
-        self.old_version = None  # for DB migration if it is necessary
-        self.check_metadata_version()
         self.discard_field = discard_field
         self.discard_regex = re.compile(fr'{discard_regex}')
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
@@ -1902,7 +1903,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
-               + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
+            + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
 
     def build_s3_filter_args(self, aws_account_id, aws_region, date, flow_log_id, iterating=False):
         filter_marker = ''
@@ -3466,6 +3467,71 @@ class AWSCloudWatchLogs(AWSService):
                                                                     aws_log_stream=log_stream))
 
 
+class AWSSQSQueue(WazuhIntegration):
+    def __init__(self, name: str, access_key: str = None, secret_key: str = None, aws_profile: str = None,
+                 remove_from_queue: bool = False, notification_number: int = 10, **kwargs):
+        self.sqs_queue = name
+        WazuhIntegration.__init__(self, access_key=access_key,
+                                  secret_key=secret_key,
+                                  aws_profile=aws_profile, service_name='sqs', **kwargs)
+        self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
+        self.account_id = self.sts_client.get_caller_identity().get('Account')
+        self.sqs_url = self.get_sqs_url()
+        debug(f'The SQS queue is: {self.sqs_url}', 2)
+        # PoC code
+        # if kwargs["purge"]:
+        #     self.purge()
+
+    def get_sqs_url(self):
+        try:
+            return self.client.get_queue_url(QueueName=self.sqs_queue, QueueOwnerAWSAccountId=self.account_id)['QueueUrl']
+        except botocore.errorfactory.QueueDoesNotExist:
+            print('ERROR: Queue does not exist, verify the given name')
+            sys.exit(19)
+
+    def delete_message(self, message_handle):
+        self.client.delete_message(QueueUrl=self.sqs_queue, ReceiptHandle=message_handle)
+
+    def delete_messages(self, message_handles):
+        for message_handle in message_handles:
+            self.delete_message(message_handle)
+
+    def __fetch_message(self):
+        try:
+            debug(f'Retrieving messages from: {self.sqs_queue}', 2)
+            msg = self.client.receive_message(QueueUrl=self.sqs_queue, AttributeNames=['All'],
+                                              MaxNumberOfMessages=10)
+            return msg
+        except Exception as e:
+            print("ERROR: Error receiving message from SQS: {}".format(e))
+            sys.exit(4)
+
+    def get_messages(self):
+        messages = []
+        sqs_message = self.__fetch_message()
+        sqs_messages = sqs_message.get('Messages', [])
+        for mesg in sqs_messages:
+            body = mesg['Body']
+            msg_handle = mesg["ReceiptHandle"]
+            message = json.loads(body)
+            parquet_path = message["detail"]["object"]["key"]
+            bucket_path = message["detail"]["bucket"]["name"]
+            path = "s3://" + bucket_path + "/" + parquet_path
+            messages.append({"parquet_location": path, "handle": msg_handle})
+        return messages
+
+    def sync_events(self):
+        messages = self.get_messages()
+        # WazuhIntegration()
+        self.delete_messages(messages)
+
+    def purge(self):  # Check if necessary
+        debug('Purging SQS queue, please wait a minute..:', 1)
+        self.client.purge_queue(QueueUrl=self.sqs_queue)
+        sleep(60)  # The message deletion process takes up to 60 seconds.
+        debug('SQS queue purged succesfully', 2)
+
+
 ################################################################################
 # Functions
 ################################################################################
@@ -3554,6 +3620,10 @@ def get_script_arguments():
                        action='store')
     group.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS queue',
                        action='store')
+    group.add_argument('-qr', '--remove_from_queue', dest='remove_from_queue',
+                       help='Remove processed notifications from SQS queue', action='store_true')
+    group.add_argument('-qn', '--queue_notifications', dest='sqs_notification_number',
+                       help='Specify the number of notifications to fetch per call', action='store', required=False)
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -3711,7 +3781,11 @@ def main(argv):
                                        )
                 service.get_alerts()
         elif options.queue:
-            pass
+            asl_queue = AWSSQSQueue(access_key=options.access_key, secret_key=options.secret_key,
+                                    aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
+                                    name=options.queue, remove_from_queue=options.remove_from_queue,
+                                    notification_number=options.sqs_notification_number)
+            # asl_queue.sync_events()
 
     except Exception as err:
         debug("+++ Error: {}".format(err), 2)
