@@ -966,6 +966,20 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_update_connection_status_time(diff);
             }
+        } else if (strcmp(query, "update-status-code") == 0) {
+            w_inc_global_agent_update_status_code();
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for update-status-code.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                gettimeofday(&begin, 0);
+                result = wdb_parse_global_update_status_code(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_update_status_code_time(diff);
+            }
         } else if (strcmp(query, "delete-agent") == 0) {
             w_inc_global_agent_delete_agent();
             if (!next) {
@@ -5346,6 +5360,7 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
     cJSON *j_id = NULL;
     cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
+    cJSON *j_status_code = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -5357,14 +5372,16 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
+        j_status_code = cJSON_GetObjectItem(agent_data, "status_code");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status)) {
+        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status) && cJSON_IsNumber(j_status_code)) {
             // Getting each field
             int id = j_id->valueint;
             char *connection_status = j_connection_status->valuestring;
             char *sync_status = j_sync_status->valuestring;
+            int status_code = j_status_code->valueint;
 
-            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status, sync_status)) {
+            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status, sync_status, status_code)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
@@ -5372,6 +5389,56 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
             }
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent connection status.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+            cJSON_Delete(agent_data);
+            return OS_INVALID;
+        }
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output) {
+    cJSON *agent_data = NULL;
+    const char *error = NULL;
+    cJSON *j_id = NULL;
+    cJSON *j_status_code = NULL;
+    cJSON *j_version = NULL;
+    cJSON *j_sync_status = NULL;
+
+    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!agent_data) {
+        mdebug1("Global DB Invalid JSON syntax when updating agent status code.");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_status_code = cJSON_GetObjectItem(agent_data, "status_code");
+        j_version = cJSON_GetObjectItem(agent_data, "version");
+        j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
+
+        if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_status_code) && (j_version == NULL || cJSON_IsString(j_version)) && cJSON_IsString(j_sync_status)) {
+            // Getting each field
+            int id = j_id->valueint;
+            int status_code = j_status_code->valueint;
+            char *version = NULL;
+            if (j_version != NULL) {
+                version = j_version->valuestring;
+            }
+            char *sync_status = j_sync_status->valuestring;
+
+            if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code, version, sync_status)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(agent_data);
+                return OS_INVALID;
+            }
+        } else {
+            mdebug1("Global DB Invalid JSON data when updating agent status code.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
             cJSON_Delete(agent_data);
             return OS_INVALID;

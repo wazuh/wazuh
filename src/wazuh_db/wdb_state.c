@@ -538,6 +538,18 @@ void w_inc_global_agent_update_connection_status_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
+void w_inc_global_agent_update_status_code() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.global_breakdown.agent.update_status_code_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_global_agent_update_status_code_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.global_breakdown.agent.update_status_code_time, &time, &wdb_state.queries_breakdown.global_breakdown.agent.update_status_code_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
 void w_inc_global_agent_reset_agents_connection() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.global_breakdown.agent.reset_agents_connection_queries++;
@@ -1099,6 +1111,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_tables_agent, "update-agent-data", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_data_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "update-agent-name", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_name_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "update-connection-status", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_connection_status_queries);
+    cJSON_AddNumberToObject(_global_tables_agent, "update-status-code", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_status_code_queries);
     cJSON_AddNumberToObject(_global_tables_agent, "update-keepalive", wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_keepalive_queries);
 
     cJSON *_global_tables_belongs = cJSON_CreateObject();
@@ -1288,6 +1301,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_global_tables_agent_t, "update-agent-data", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_data_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "update-agent-name", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_agent_name_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "update-connection-status", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_connection_status_time));
+    cJSON_AddNumberToObject(_global_tables_agent_t, "update-status-code", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_status_code_time));
     cJSON_AddNumberToObject(_global_tables_agent_t, "update-keepalive", timeval_to_milis(wdb_state_cpy.queries_breakdown.global_breakdown.agent.update_keepalive_time));
 
     cJSON *_global_tables_belongs_t = cJSON_CreateObject();
@@ -1407,6 +1421,7 @@ STATIC uint64_t get_global_time(wdb_state_t *state){
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_agent_name_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_keepalive_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_connection_status_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.update_status_code_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.reset_agents_connection_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.delete_agent_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.global_breakdown.agent.select_agent_name_time, &task_time);

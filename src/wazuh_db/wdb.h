@@ -51,6 +51,15 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
+/// Enumeration of agents disconected status reasons.
+typedef enum agent_status_code_t {
+        INVALID_VERSION = 1,    ///< Invalid agent version
+        ERR_VERSION_RECV,       ///< Error retrieving version
+        HC_SHUTDOWN_RECV,       ///< Shutdown message received
+        NO_KEEPALIVE,           ///< Disconnected because no keepalive received
+        RESET_BY_MANAGER,       ///< Connection reset by manager
+} agent_status_code_t;
+
 #define VULN_CVES_STATUS_VALID              "VALID"
 #define VULN_CVES_STATUS_PENDING            "PENDING"
 #define VULN_CVES_STATUS_OBSOLETE           "OBSOLETE"
@@ -225,6 +234,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_LABELS_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE,
     WDB_STMT_GLOBAL_DELETE_AGENT,
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_FIND_AGENT,
@@ -422,6 +432,7 @@ extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
 extern char *schema_global_upgrade_v4_sql;
+extern char *schema_global_upgrade_v5_sql;
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -454,6 +465,7 @@ typedef struct agent_info_data {
     char *connection_status;
     char *sync_status;
     char *group_config_status;
+    agent_status_code_t status_code;
 } agent_info_data;
 
 typedef enum {
@@ -1192,6 +1204,17 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
 int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * output);
 
 /**
+ * @brief Function to parse the update agent connection status.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the agent data in JSON format.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output);
+
+/**
  * @brief Function to parse the agent delete from agent table request.
  *
  * @param [in] wdb The global struct database.
@@ -1813,7 +1836,18 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
  * @param [in] sync_status The value of sync_status.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status);
+int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status, int status_code);
+
+/**
+ * @brief Function to update an agent status code and the synchronization status.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID.
+ * @param [in] status_code The status code to be set.
+ * @param [in] version The agent version to be set.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.

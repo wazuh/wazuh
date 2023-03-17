@@ -72,6 +72,7 @@ typedef struct _enrollment_ctx {
     bool enabled;                       /**< enables / disables auto enrollment */
     bool allow_localhost;               /**< true by default. If this flag is false, using agent_name "localhost" will not be allowed */
     time_t delay_after_enrollment;      /**< 20 by default, number of seconds to wait for enrollment */
+    char *agent_version;                /**< will hold the __ossec_version value*/
 } w_enrollment_ctx;
 
 /**
