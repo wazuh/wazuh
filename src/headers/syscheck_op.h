@@ -465,7 +465,7 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey);
  *
  * @param [in] array_struct Array of all possible paths.
  * @param [out] array_struct Array of paths with tag checked in 1 and has_wildcard in 0.
- */ 
+ */
 void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr);
 
 
@@ -474,7 +474,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr);
  *
  * @param [in] key String path that contains the key and subkey.
  * @return Allocated subkey or NULL if there is not one.
- */ 
+ */
 char* get_subkey(char* key);
 
 /**
@@ -482,7 +482,7 @@ char* get_subkey(char* key);
  *
  * @param [in] entry Raw entry read from config file.
  * @param [out] paths Array of paths expanded with tag checked in 1 and has_wildcard in 0.
- */ 
+ */
 void expand_wildcard_registers(char* entry,char** paths);
 
 #endif

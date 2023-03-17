@@ -1285,7 +1285,7 @@ char* get_subkey(char* key) {
     os_calloc(OS_SIZE_128, sizeof(char), subkey);
 
     char* aux_token;
-    
+
     aux_token = strtok(remaining_key, "\\");
     while (aux_token !=NULL && !(strchr(aux_token, '?') || strchr(aux_token, '*'))) {
         strcat(subkey, aux_token);
@@ -1334,19 +1334,19 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey) {
 
         DWORD i, retCode;
 
-        // Get the class name and the value count. 
+        // Get the class name and the value count.
         RegQueryInfoKey(
-            keyhandle,               // key handle 
-            achClass,                // buffer for class name 
-            &cchClassName,           // size of class string 
-            NULL,                    // reserved 
-            &cSubKeys,               // number of subkeys 
-            &cbMaxSubKey,            // longest subkey size 
-            &cchMaxClass,            // longest class string 
-            &cValues,                // number of values for this key 
-            &cchMaxValue,            // longest value name 
-            &cbMaxValueData,         // longest value data 
-            &cbSecurityDescriptor,   // security descriptor 
+            keyhandle,               // key handle
+            achClass,                // buffer for class name
+            &cchClassName,           // size of class string
+            NULL,                    // reserved
+            &cSubKeys,               // number of subkeys
+            &cbMaxSubKey,            // longest subkey size
+            &cchMaxClass,            // longest class string
+            &cValues,                // number of values for this key
+            &cchMaxValue,            // longest value name
+            &cbMaxValueData,         // longest value data
+            &cbSecurityDescriptor,   // security descriptor
             &ftLastWriteTime);       // last write time
 
         if (cSubKeys) {
@@ -1361,13 +1361,13 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey) {
                     NULL,
                     &ftLastWriteTime);
                 if (retCode == ERROR_SUCCESS) {
-                    os_strdup(achKey,*(key_list + i));
+                    os_strdup(achKey, *(key_list + i));
                 }
             }
             *(key_list + i) = NULL;
         }
 
-    } 
+    }
     RegCloseKey(keyhandle);
     return key_list;
 }
@@ -1423,12 +1423,12 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
     char* str_root_key          = NULL;
     //Obtain the subkey. If it's empty, it's a NULL value.
     char* subkey                = get_subkey((*array_struct)->path);
-        
+
     os_strdup(strtok(temp, "\\"),str_root_key);
     os_free(temp);
 
     HKEY root_key               = w_switch_root_key(str_root_key);
-    
+
     // ----- End setup variables section -----
 
     (*array_struct)->checked    = 1; //Mark path as checked.
@@ -1479,7 +1479,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
                         new_struct->path            = full_path;
                         new_struct->has_wildcard    = (check_wildcard(full_path)) && !(check_wildcard(*query_keys)) ? 1 : 0;
                         new_struct->checked         = 1 & !new_struct->has_wildcard;
-                        array_struct[first_empty]   = new_struct; 
+                        array_struct[first_empty]   = new_struct;
 
                         //Increment pointers.
                         first_empty++;
@@ -1524,11 +1524,11 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
                     if(full_path[path_length - 1] == '\\') {
                         full_path[path_length - 1] = '\0';
                     }
-                    
+
                     new_struct->path            = full_path;
                     new_struct->has_wildcard    = (check_wildcard(full_path)) && !(check_wildcard(*query_keys)) ? 1 : 0;
                     new_struct->checked         = 1 & !new_struct->has_wildcard;
-                    array_struct[first_empty]   = new_struct; 
+                    array_struct[first_empty]   = new_struct;
 
                     //Increment pointers.
                     first_empty++;

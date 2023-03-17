@@ -637,8 +637,8 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                 paths_wildcard++;
             }
             paths_wildcard = start_vector;
-		    w_FreeArray(paths_wildcard);
-		    os_free(paths_wildcard);
+            w_FreeArray(paths_wildcard);
+            os_free(paths_wildcard);
             mdebug1(FIM_WILDCARDS_REGISTERS_FINALIZE);
         } else {
             /* Add new entry */
