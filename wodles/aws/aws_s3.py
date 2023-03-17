@@ -3468,8 +3468,28 @@ class AWSCloudWatchLogs(AWSService):
 
 
 class AWSSQSQueue(WazuhIntegration):
+    """
+    Class for getting AWS SQS Queue notifications.
+
+    Attributes
+    ----------
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    aws_profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role.
+    region : str
+        Region where the logs are located.
+    remove_from_queue: bool
+        If notifications should be deleted after being read.
+    notification_number: int
+        Number of notifications to fetch from the queue.
+    """
     def __init__(self, name: str, access_key: str = None, secret_key: str = None, aws_profile: str = None,
-                 remove_from_queue: bool = False, notification_number: int = 10, **kwargs):
+                 remove_from_queue: bool = True, notification_number: int = 10, **kwargs):
         self.sqs_queue = name
         WazuhIntegration.__init__(self, access_key=access_key,
                                   secret_key=secret_key,
