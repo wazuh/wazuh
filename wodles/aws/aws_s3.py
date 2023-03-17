@@ -2563,13 +2563,18 @@ class AWSServerAccess(AWSCustomBucket):
         return False
 
     def iter_files_in_bucket(self, aws_account_id: str = None, aws_region: str = None):
+        if aws_account_id is None:
+            aws_account_id = self.aws_account_id
+
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region,
                                                                                    custom_delimiter='-'))
             while True:
                 if 'Contents' not in bucket_files:
-                    debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
+                    self._print_not_logs_to_prcess_message(self.bucket, aws_account_id, aws_region)
                     return
+
+                processed_logs = 0
 
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
@@ -2611,6 +2616,9 @@ class AWSServerAccess(AWSCustomBucket):
                         debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
+
+                if processed_logs == 0:
+                    self._print_not_logs_to_prcess_message(self.bucket, aws_account_id, aws_region)
 
                 if bucket_files['IsTruncated']:
                     new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
