@@ -225,16 +225,21 @@ endif
 		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 else
 ifeq (${uname_S},Darwin)
-		DEFINES+=-DDarwin
-		DEFINES+=-DHIGHFIRST
-		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
-		AR_LDFLAGS+=-pthread
-		AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
-		SHARED=dylib
-		OSSEC_LIBS+=-framework Security
-		PRECOMPILED_OS:=darwin
+	DEFINES+=-DDarwin
+	DEFINES+=-DHIGHFIRST
+	OSSEC_CFLAGS+=-pthread
+	OSSEC_LDFLAGS+=-pthread
+	OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
+	AR_LDFLAGS+=-pthread
+	AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
+	SHARED=dylib
+	OSSEC_LIBS+=-framework Security
+	PRECOMPILED_OS:=darwin
+ifeq (${uname_M},arm64)
+	OSSEC_LDFLAGS+=-isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
+	CC="clang"
+	CXX="clang"
+endif
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
@@ -920,7 +925,11 @@ ifeq (${TARGET},winagent)
 	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ./Configure $(OPENSSL_FLAGS) mingw && ${MAKE} build_libs
 else
 ifeq (${uname_S},Darwin)
+ifeq (${uname_M},arm64)
+	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-arm64-cc && ${MAKE} build_libs
+else
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
+endif	
 else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
