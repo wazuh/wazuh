@@ -62,7 +62,11 @@ void buffer_init();
 int buffer_append(const char *msg);
 
 /* Thread to limits eps of message sended from the buffer */
+#ifdef WIN32
+DWORD WINAPI update_limits_thread(LPVOID arg);
+#else
 void *update_limits_thread();
+#endif
 
 /* Thread to dispatch messages from the buffer */
 #ifdef WIN32

@@ -80,7 +80,7 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
                 return (OS_INVALID);
             }
             logr->events_persec = atoi(node[i]->content);
-            if (logr->events_persec <= 0 || logr->events_persec > 100000) {
+            if (logr->events_persec < 0 || logr->events_persec > 100000) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }

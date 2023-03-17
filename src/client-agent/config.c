@@ -70,7 +70,7 @@ int ClientConf(const char *cfgfile)
     }
 #endif
 
-    if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
+    if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps && agt->events_persec > 0) {
         mwarn("Client buffer throughput too low: set to %d eps", min_eps);
         agt->events_persec = min_eps;
     }

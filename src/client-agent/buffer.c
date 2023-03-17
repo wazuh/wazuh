@@ -125,7 +125,11 @@ int buffer_append(const char *msg){
     }
 }
 
+#ifdef WIN32
+DWORD WINAPI update_limits_thread(__attribute__((unused)) LPVOID arg) {
+#else
 void *update_limits_thread() {
+#endif
     /* Initialize EPS limits */
     agentd_limits = init_limits(agt->events_persec, agt->eps_timeframe);
 
@@ -134,7 +138,11 @@ void *update_limits_thread() {
         update_limits(agentd_limits);
     }
 
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 /* Send messages from buffer to the server */
