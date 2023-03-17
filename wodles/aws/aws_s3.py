@@ -3483,6 +3483,8 @@ class AWSSQSQueue(WazuhIntegration):
         IAM Role.
     region : str
         Region where the logs are located.
+    name: str
+        Name of the SQS Queue.
     remove_from_queue: bool
         If notifications should be deleted after being read.
     notification_number: int
