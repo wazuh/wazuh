@@ -1,5 +1,7 @@
 name: decoder/queue-windows/0
 
+sources: 
+  - decoder/agent-event-enrichment/0
 
 metadata:
   description: Partial parent decoder for Windows events
