@@ -87,6 +87,10 @@ THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to req
                                      " check the following link to learn how to use the Retry configuration to avoid it: " \
                                      f"'{RETRY_CONFIGURATION_URL}'"
 
+ALL_REGIONS = [
+    'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2',
+    'ap-south-1', 'eu-central-1', 'eu-west-1'
+]
 
 ################################################################################
 # Classes
@@ -2804,6 +2808,11 @@ class AWSService(WazuhIntegration):
 
         return {'integration': 'aws', 'aws': msg}
 
+    @staticmethod
+    def check_region(region: str) -> None:
+        if region not in ALL_REGIONS:
+            raise ValueError(f"Invalid region '{region}'")
+
 
 class AWSInspector(AWSService):
     """
@@ -3657,11 +3666,15 @@ def main(argv):
                     options.regions.append(aws_config.get(aws_profile, "region"))
                 else:
                     debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
-                    options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
-                                       'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2', 'ap-south-1',
-                                       'eu-central-1', 'eu-west-1']
+                    options.regions = ALL_REGIONS
 
             for region in options.regions:
+                try:
+                    service_type.check_region(region)
+                except ValueError:
+                    print(f"+++ WARNING: The region '{region}' is not a valid one.", 1)
+                    continue
+
                 debug('+++ Getting alerts from "{}" region.'.format(region), 1)
                 service = service_type(reparse=options.reparse,
                                        access_key=options.access_key,
