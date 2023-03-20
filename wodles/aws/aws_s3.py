@@ -3468,6 +3468,22 @@ class AWSCloudWatchLogs(AWSService):
 
 
 class AWSSLSubscriberBucket(WazuhIntegration):
+    """
+    Class for processing AWS Security Lake events from S3.
+
+    Attributes
+    ----------
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    aws_profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role.
+    region : str
+        Region where the logs are located.
+    """
     def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None, **kwargs):
         WazuhIntegration.__init__(self, access_key=access_key,
                                   secret_key=secret_key,
@@ -3481,7 +3497,7 @@ class AWSSLSubscriberBucket(WazuhIntegration):
         for i in pfile.iter_batches():
             for j in i.to_pylist():
                 events.append(json.dumps(j))
-        debug(f'Found {len(events)} in file {parquet}', 2)
+        debug(f'Found {len(events)} events in file {parquet}', 2)
         return events
 
     def process_files(self, messages):
@@ -3489,9 +3505,9 @@ class AWSSLSubscriberBucket(WazuhIntegration):
         for msg in messages:
             events_in_file = self.obtain_information_from_parquet(bucket=msg['bucket_path'], parquet=msg['parquet_path'])
             for event in events_in_file:
-                self.send_msg(event)
+                self.send_msg(event, dump_json=False)
             total_events = total_events + len(events_in_file)
-        debug(f'{total_events} sent to AnalysisD', 2)
+        debug(f'{total_events} events sent to AnalysisD', 2)
 
 
 class AWSSQSQueue(WazuhIntegration):
