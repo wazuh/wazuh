@@ -3552,8 +3552,8 @@ class AWSSQSQueue(WazuhIntegration):
             message = json.loads(body)
             parquet_path = message["detail"]["object"]["key"]
             bucket_path = message["detail"]["bucket"]["name"]
-            path = "s3://" + bucket_path + "/" + parquet_path  # TODO: change the use of string concatenation to something as path.join
-            messages.append({"parquet_location": path, "handle": msg_handle})
+            # path = "s3://" + bucket_path + "/" + parquet_path
+            messages.append({"parquet_path": parquet_path, "bucket_path": bucket_path , "handle": msg_handle})
         return messages
 
     def sync_events(self):
