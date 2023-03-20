@@ -211,19 +211,15 @@ EventEndpoint::EventEndpoint(
     }
 
     m_handle->on<DatagramSocketEvent>(
-        [this, dumpFileHandler, isFloodedFileEnabled](const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
+        [this, dumpFileHandler, isFloodedFileEnabled, &startTime, zeroTime, &endTime](const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
         {
-            auto startTime = std::chrono::high_resolution_clock::now();
+            std::string strRequest = std::string {eventSocket.data.get(), eventSocket.length};
 
-            auto strRequest = std::string {eventSocket.data.get(), eventSocket.length};
-
-            auto endTime = std::chrono::high_resolution_clock::now();
+            // Size in bytes per second received
+            Metrics::instance().addCounterValue("BytesPerSecondsReceived", static_cast<uint64_t>(eventSocket.length));
 
             // Size in bytes received
             Metrics::instance().addCounterValue("SizeBytesRecive", static_cast<uint64_t>(eventSocket.length));
-
-            // Size in bytes per second received 
-            Metrics::instance().addCounterValue("BytesPerSeconds", 2.2);
 
             base::Event event;
             try
@@ -305,8 +301,6 @@ void EventEndpoint::configure(void)
 void EventEndpoint::run(void)
 {
     // Size in bytes per second received 
-    //Metrics::instance().addObservableGauge("SizeBytesRecive", );
-
     m_loop->run<Loop::Mode::DEFAULT>();
 }
 
