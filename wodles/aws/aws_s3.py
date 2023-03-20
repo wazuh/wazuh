@@ -43,7 +43,7 @@ except ImportError:
 try:
     import pyarrow.parquet as pq
 except ImportError:
-    print('ERROR: awswrangler module is required.')
+    print('ERROR: pyarrow module is required.')
     sys.exit(10)
 
 import botocore
@@ -182,7 +182,7 @@ class WazuhIntegration:
                                       service_endpoint=service_endpoint,
                                       iam_role_duration=iam_role_duration
                                       )
-        if service_name != 'sqs':
+        if hasattr(self, 'db_name'):  # If db_name is present, the subclass is not part of the SecLake process
             # db_name is an instance variable of subclass
             self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
             self.db_connector = sqlite3.connect(self.db_path)
@@ -3467,14 +3467,31 @@ class AWSCloudWatchLogs(AWSService):
                                                                     aws_log_stream=log_stream))
 
 
-class AWSASLBucketHandler(WazuhIntegration):
+class AWSSLSubscriberBucket(WazuhIntegration):
     def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None, **kwargs):
         WazuhIntegration.__init__(self, access_key=access_key,
                                   secret_key=secret_key,
                                   aws_profile=aws_profile, service_name='s3', **kwargs)
 
+    def obtain_information_from_parquet(self, bucket, parquet):
+        debug(f'Processing file {parquet} in {bucket}', 2)
+        events = []
+        raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket, Key=parquet)['Body'].read())
+        pfile = pq.ParquetFile(raw_parquet)
+        for i in pfile.iter_batches():
+            for j in i.to_pylist():
+                events.append(json.dumps(j))
+        debug(f'Found {len(events)} in file {parquet}', 2)
+        return events
+
     def process_files(self, messages):
-        pass
+        total_events = 0
+        for msg in messages:
+            events_in_file = self.obtain_information_from_parquet(bucket=msg['bucket_path'], parquet=msg['parquet_path'])
+            for event in events_in_file:
+                self.send_msg(event)
+            total_events = total_events + len(events_in_file)
+        debug(f'{total_events} sent to AnalysisD', 2)
 
 
 class AWSSQSQueue(WazuhIntegration):
@@ -3512,6 +3529,8 @@ class AWSSQSQueue(WazuhIntegration):
         self.sqs_url = self._get_sqs_url()
         self.notification_number = notification_number
         self.remove_from_queue = remove_from_queue
+        self.profile = aws_profile
+        self.iam_role_arn = kwargs['iam_role_arn']
         # PoC code
         # if kwargs["purge"]:
         #     self.purge()
@@ -3553,12 +3572,11 @@ class AWSSQSQueue(WazuhIntegration):
             parquet_path = message["detail"]["object"]["key"]
             bucket_path = message["detail"]["bucket"]["name"]
             # path = "s3://" + bucket_path + "/" + parquet_path
-            messages.append({"parquet_path": parquet_path, "bucket_path": bucket_path , "handle": msg_handle})
+            messages.append({"parquet_path": parquet_path, "bucket_path": bucket_path, "handle": msg_handle})
         return messages
 
     def sync_events(self):
-        asl_bucket_handler = AWSASLBucketHandler(access_key=access_key,secret_key=self.secret_key,
-                                  aws_profile=self.aws_profile)
+        asl_bucket_handler = AWSSLSubscriberBucket(aws_profile=self.profile, iam_role_arn=self.iam_role_arn)
         messages = self.get_messages()
         asl_bucket_handler.process_files(messages)
         # WazuhIntegration()
@@ -3661,10 +3679,11 @@ def get_script_arguments():
                        action='store')
     group.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS queue',
                        action='store')
-    group.add_argument('-qr', '--remove_from_queue', dest='remove_from_queue',
-                       help='Remove processed notifications from SQS queue', action='store_true')
-    group.add_argument('-qn', '--queue_notifications', dest='sqs_notification_number',
-                       help='Specify the number of notifications to fetch per call', action='store', required=False)
+    parser.add_argument('-qr', '--remove_from_queue', dest='remove_from_queue',
+                        help='Remove processed notifications from SQS queue', action='store_true')
+    parser.add_argument('-qn', '--queue_notifications', dest='sqs_notification_number',
+                        help='Specify the number of notifications to fetch per call', action='store', default=10,
+                        required=False)
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -3825,8 +3844,8 @@ def main(argv):
             asl_queue = AWSSQSQueue(access_key=options.access_key, secret_key=options.secret_key,
                                     aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
                                     name=options.queue, remove_from_queue=options.remove_from_queue,
-                                    notification_number=options.sqs_notification_number)
-            # asl_queue.sync_events()
+                                    notification_number=int(options.sqs_notification_number))
+            asl_queue.sync_events()
 
     except Exception as err:
         debug("+++ Error: {}".format(err), 2)
