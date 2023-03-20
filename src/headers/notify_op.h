@@ -47,7 +47,7 @@ static inline int wnotify_get(const wnotify_t * notify, int index, wevent_t * ev
 
 #include <sys/poll.h>
 #include <sys/pollset.h>
-#include <sys/fcntl.h>
+//#include <sys/fcntl.h>
 
 
 typedef struct wnotify_t {

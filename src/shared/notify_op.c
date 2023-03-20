@@ -58,14 +58,14 @@ int wnotify_wait(wnotify_t * notify, int timeout) {
 
 wnotify_t * wnotify_init(int size) {
     wnotify_t * notify;
-    pollset_t ps;
+    pollset_t fd;
 
-    if (ps = pollset_create(size), ps < 0) {
+    if (fd = pollset_create(size), fd < 0) {
         return NULL;
     }
 
     os_calloc(1, sizeof(wnotify_t), notify);
-    notify->ps = ps;
+    notify->fd = fd;
     notify->size = size;
     os_calloc(size, sizeof(struct pollfd), notify->events);
 
@@ -75,26 +75,26 @@ wnotify_t * wnotify_init(int size) {
 int wnotify_add(wnotify_t * notify, int fd, const woperation_t op) {
 
     const int operation = (op & WO_READ ? POLLIN : 0) | (op & WO_WRITE ? POLLOUT : 0);
-    struct poll_ctl request = {.cmd = PS_ADD, .events = operation , .fd = fd}
-    return pollset_ctl(notify->ps, &request, notify->size);
+    struct poll_ctl request = {.cmd = PS_ADD, .events = operation , .fd = fd};
+    return pollset_ctl(notify->fd, &request, notify->size);
 }
 
 int wnotify_modify(wnotify_t * notify, int fd, const woperation_t op) {
 
     const int operation = (op & WO_READ ? POLLIN : 0) | (op & WO_WRITE ? POLLOUT : 0);
-    struct poll_ctl request = {.cmd = PS_MOD, .events = operation , .fd = fd}
-    return pollset_ctl(notify->ps, &request, notify->size);
+    struct poll_ctl request = {.cmd = PS_MOD, .events = operation , .fd = fd};
+    return pollset_ctl(notify->fd, &request, notify->size);
 }
 
 int wnotify_delete(wnotify_t * notify, int fd, const woperation_t op) {
 
     const int operation = (op & WO_READ ? POLLIN : 0) | (op & WO_WRITE ? POLLOUT : 0);
-    struct poll_ctl request = {.cmd = PS_DELETE, .events = operation , .fd = fd}
-    return pollset_ctl(notify->ps, &request, notify->size);
+    struct poll_ctl request = {.cmd = PS_DELETE, .events = operation , .fd = fd};
+    return pollset_ctl(notify->fd, &request, notify->size);
 }
 
 int wnotify_wait(wnotify_t * notify, int timeout) {
-    return pollset_poll(notify->ps, notify->events, notify->size, timeout);
+    return pollset_poll(notify->fd, notify->events, notify->size, timeout);
 }
 
 #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
