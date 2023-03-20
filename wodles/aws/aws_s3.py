@@ -3490,6 +3490,7 @@ class AWSSQSQueue(WazuhIntegration):
     notification_number: int
         Number of notifications to fetch from the queue.
     """
+
     def __init__(self, name: str, access_key: str = None, secret_key: str = None, aws_profile: str = None,
                  remove_from_queue: bool = True, notification_number: int = 10, **kwargs):
         self.sqs_queue = name
@@ -3498,15 +3499,19 @@ class AWSSQSQueue(WazuhIntegration):
                                   aws_profile=aws_profile, service_name='sqs', **kwargs)
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
-        self.sqs_url = self.get_sqs_url()
-        debug(f'The SQS queue is: {self.sqs_url}', 2)
+        self.sqs_url = self._get_sqs_url()
+        self.notification_number = notification_number
+        self.remove_from_queue = remove_from_queue
         # PoC code
         # if kwargs["purge"]:
         #     self.purge()
 
-    def get_sqs_url(self):
+    def _get_sqs_url(self) -> str:
         try:
-            return self.client.get_queue_url(QueueName=self.sqs_queue, QueueOwnerAWSAccountId=self.account_id)['QueueUrl']
+            url = self.client.get_queue_url(QueueName=self.sqs_queue, QueueOwnerAWSAccountId=self.account_id)[
+                'QueueUrl']
+            debug(f'The SQS queue is: {url}', 2)
+            return url
         except botocore.errorfactory.QueueDoesNotExist:
             print('ERROR: Queue does not exist, verify the given name')
             sys.exit(19)
@@ -3518,19 +3523,18 @@ class AWSSQSQueue(WazuhIntegration):
         for message_handle in message_handles:
             self.delete_message(message_handle)
 
-    def __fetch_message(self):
+    def fetch_message(self):
         try:
             debug(f'Retrieving messages from: {self.sqs_queue}', 2)
-            msg = self.client.receive_message(QueueUrl=self.sqs_queue, AttributeNames=['All'],
-                                              MaxNumberOfMessages=10)
-            return msg
+            return self.client.receive_message(QueueUrl=self.sqs_queue, AttributeNames=['All'],
+                                               MaxNumberOfMessages=self.notification_number)
         except Exception as e:
             print("ERROR: Error receiving message from SQS: {}".format(e))
             sys.exit(4)
 
     def get_messages(self):
         messages = []
-        sqs_message = self.__fetch_message()
+        sqs_message = self.fetch_message()
         sqs_messages = sqs_message.get('Messages', [])
         for mesg in sqs_messages:
             body = mesg['Body']
@@ -3538,14 +3542,16 @@ class AWSSQSQueue(WazuhIntegration):
             message = json.loads(body)
             parquet_path = message["detail"]["object"]["key"]
             bucket_path = message["detail"]["bucket"]["name"]
-            path = "s3://" + bucket_path + "/" + parquet_path
+            path = "s3://" + bucket_path + "/" + parquet_path  # TODO: change the use of string concatenation to something as path.join
             messages.append({"parquet_location": path, "handle": msg_handle})
         return messages
 
     def sync_events(self):
         messages = self.get_messages()
         # WazuhIntegration()
-        self.delete_messages(messages)
+        if self.remove_from_queue:
+            debug('Removing messages from SQS queue', 2)
+            self.delete_messages(messages)
 
     def purge(self):  # Check if necessary
         debug('Purging SQS queue, please wait a minute..:', 1)
