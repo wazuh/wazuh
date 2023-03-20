@@ -2614,7 +2614,7 @@ checks:
     title: "Ensure journald is configured to compress large log files."
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
-    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes Restart the service: # systemctl restart systemd-journal-upload."
+    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes Restart the service: # systemctl restart systemd-journald.service."
     compliance:
       - cis: ["4.2.2.3"]
       - cis_csc_v8: ["8.2", "8.3"]
@@ -2638,7 +2638,7 @@ checks:
     title: "Ensure journald is configured to write logfiles to persistent disk."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss due to a reboot."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
-    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent Restart the service: # systemctl restart systemd-journal-upload."
+    remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent Restart the service: # systemctl restart systemd-journald.service."
     compliance:
       - cis: ["4.2.2.4"]
       - cis_csc_v8: ["8.2"]
@@ -3074,7 +3074,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:\s*ignorerhosts\s*yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\signorerhosts\s+no\b'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*ignorerhosts\s+no'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 28115
@@ -3215,9 +3215,9 @@ checks:
       - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
       - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
       - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
 
   # 5.2.18 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 28120
@@ -3308,7 +3308,7 @@ checks:
     description: "sudo can be configured to run only from a pseudo terminal (pseudo-pty)."
     rationale: "Attackers can run a malicious program using sudo which would fork a background process that remains even when the main program has finished executing."
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
-    remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH TO FILE> and add the following line: Defaults use_pty."
+    remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH_TO_FILE> and add the following line: Defaults use_pty."
     compliance:
       - cis: ["5.3.2"]
       - cis_csc_v8: ["5.4"]
@@ -3342,7 +3342,7 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - iso_27001-2013: ["A.12.4.1"]
       - mitre_techniques: ["T1562", "T1562.006"]
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1026"]
@@ -3469,7 +3469,7 @@ checks:
     title: "Ensure password creation requirements are configured."
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. - try_first_pass - retrieve the password from a previous stacked PAM module. If not available, then prompt the user for a password. - retry=3 - Allow 3 tries before sending back a failure. - minlen=14 - password must be 14 characters or more. Either of the following can be used to enforce complex passwords: - minclass=4 - provide at least four classes of characters for the new password. OR - dcredit=-1 - provide at least one digit. - ucredit=-1 - provide at least one uppercase character. - ocredit=-1 - provide at least one special character. - lcredit=-1 - provide at least one lowercase character. - The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
-    remediation: "Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1. Run the following script to update the system-auth and password-auth files: #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+.*enforce_for_r oot\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 enforce_for_root/' \"$file\" fi if grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=([4- 9]|[1-9][0-9]+)\\b.*$' \"$file\"; then sed -ri '/pwquality/s/retry=\\S+/retry=3/' \"$file\" elif ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 retry=3/' \"$file\" fi done authselect apply-changes."
+    remediation: "Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy: minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy: minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1. Run the following script to update the system-auth and password-auth files: #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+.*enforce_for_r oot\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 enforce_for_root/' \"$file\" fi if grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=([4-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then sed -ri '/pwquality/s/retry=\\S+/retry=3/' \"$file\" elif ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 retry=3/' \"$file\" fi done authselect apply-changes."
     compliance:
       - cis: ["5.5.1"]
       - cis_csc_v8: ["5.2"]
@@ -3511,15 +3511,15 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - "f:/etc/security/faillock.conf -> n:deny = (d+) compare <= 5"
-      - "f:/etc/security/faillock.conf -> n:unlock_time = (d+) compare = 0 || n:unlock_time = (d+) compare >= 900"
+      - 'f:/etc/security/faillock.conf -> n:deny\s*=\s*(d+) compare <= 5'
+      - 'not f:/etc/security/faillock.conf -> n:unlock_time\s*=\s*(d+) compare > 0 && n:unlock_time\s*=\s*(d+) compare < 900'
 
   # 5.5.3 Ensure password reuse is limited (Automated)
   - id: 28133
     title: "Ensure password reuse is limited."
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords. remember=<5> - Number of old passwords to remember."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note: These change only apply to accounts configured on the local system."
-    remediation: "Set remembered password history to conform to site policy. Run the following script to add or modify the pam_pwhistory.so and pam_unix.so lines to include the remember option: #!/usr/bin/env bash { file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/system-auth\" if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\r]+\\h+)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\r]+\\h+)?remember=\\d+\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so\\s+([^#\\n\\r]+\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file elif grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\r]+\\h+)?.*$' \"$file\"; then sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so/ s/$/ remember=5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/i password required pam_pwhistory.so remember=5 use_authtok' $file fi fi if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h+)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h +)?remember=\\d+\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+([^#\\n\\r] +\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/ s/$/ remember=5/' $file fi fi authselect apply-changes }."
+    remediation: "Set remembered password history to conform to site policy. Run the following script to add or modify the pam_pwhistory.so and pam_unix.so lines to include the remember option: #!/usr/bin/env bash { file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/system-auth\" if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\r]+\\h+)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\r]+\\h+)?remember=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so\\s+([^#\\n\\r]+\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file elif grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\r]+\\h+)?.*$' \"$file\"; then sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so/ s/$/ remember=5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/i password required pam_pwhistory.so remember=5 use_authtok' $file fi fi if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h+)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h +)?remember=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+([^#\\n\\r] +\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/ s/$/ remember=5/' $file fi fi authselect apply-changes }."
     compliance:
       - cis: ["5.5.3"]
       - cis_csc_v8: ["5.2"]
@@ -3529,7 +3529,7 @@ checks:
       - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
-      - mitre_techniques: ["T1078,T1078.001,T1078.002,T1078.003,T1078.004,T1110,T1110.004"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
     condition: all
     rules:
       - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+requisite\.+pam_pwhistory\.so\.+ && n:remember=(\d+) compare >= 5'
@@ -3557,7 +3557,7 @@ checks:
       - mitre_mitigations: ["M1041"]
     condition: all
     rules:
-      - 'f:/etc/libuser.conf -> r:^\s*crypt_style = sha512'
+      - 'f:/etc/libuser.conf -> r:^\s*crypt_style\s*=\s*sha512|^\s*crypt_style\s*=\s*yescript'
       - 'f:/etc/login.defs -> r:^\s*ENCRYPT_METHOD SHA512'
       - 'f:/etc/pam.d/password-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so'
       - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so'
@@ -3588,7 +3588,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:(\S*):\S*:\S*:\S*:\S* compare <= 365'
+      - 'not f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:(\S*):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.6.1.2 Ensure minimum days between password changes is configured (Automated)
   - id: 28136
@@ -3658,7 +3658,7 @@ checks:
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*\t*(\d+) compare <= 30'
       - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:\S*:(\S*):\S*:\S* compare <= 30'
-      - 'not f:/etc/shadowd -> r:^\w+:\S*:\S*:S*:\S*:S*::\S*:\S*'
+      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:S*:\S*:S*::\S*:\S*'
 
   # 5.6.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
   # 5.6.2 Ensure system accounts are secured (Automated) - Not implemented
@@ -3700,6 +3700,7 @@ checks:
       - cis: ["5.6.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
+      - iso_27001-2013: ["A.9.1.1"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
@@ -3837,7 +3838,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow -> r:0/root 0/root && r:0'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow -> r:\s*0 0/root 0/root'
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured (Automated)
   - id: 28146
@@ -3861,7 +3862,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- -> r:0/root 0/root && r:0'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- ->  r:\s*0 0/root 0/root'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 28147
@@ -3885,7 +3886,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow -> r:0/root 0/root && r:0'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow ->  r:\s*0 0/root 0/root'
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 28148
@@ -3908,7 +3909,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- -> r:0/root 0/root && r:0'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- ->  r:\s*0 0/root 0/root'
 
   # 6.1.9 Ensure no world writable files exist (Automated) - Not implemented
   # 6.1.10 Ensure no unowned files or directories exist (Automated) - Not implemented, requires manual operation.
@@ -3963,7 +3964,7 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> r:^\s*root && n:^\w+:\S*:(\S*):\S*:\S*:\S*:\S* compare = 0'
+      - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\S*):\S*:\S*:\S*:\S* compare == 0'
 
   # 6.2.10 Ensure local interactive users home directories exist - Not implemented, requires manual operation.
   # 6.2.11 Ensure local interactive users own their home directories - Not implemented, requires manual operation.
