@@ -996,7 +996,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Initialize EPS limits */
     analysisd_limits = init_limits(Config.eps.maximum, Config.eps.timeframe);
     if (!analysisd_limits->enabled && !Config.eps.maximum_found && analysisd_limits->timeframe > 0) {
-            mwarn("The eps maximum value is missing in the configuration block.");
+        mwarn("The EPS maximum value is missing in the configuration block.");
     }
 
     /* Create message handler thread */

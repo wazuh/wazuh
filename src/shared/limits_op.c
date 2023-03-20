@@ -77,7 +77,7 @@ void update_limits(limits_t *limits) {
 }
 
 void get_eps_credit(limits_t *limits) {
-    if (limits->enabled) {
+    if (limits && limits->enabled) {
         sem_wait(&limits->credits_eps_semaphore);
         increase_event_counter(limits);
     }
