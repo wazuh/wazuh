@@ -1,15 +1,13 @@
 add_executable(server_tests
-    protocolHandler_test.cpp
+    engineServer_test.cpp
+    UnixDatagram_test.cpp
+    #protocolHandler_test.cpp
 )
 
 target_include_directories(server_tests
     PRIVATE
-    ${ENGINE_SOURCE_DIR}/server/
-    ${TEST_SOURCE_DIR}/server/
-    ${ENGINE_SOURCE_DIR}/json
-    ${rapidjson_SOURCE_DIR}/include
-    ${RxCpp_SOURCE_DIR}/Rx/v2/src
+    ${uvw_SOURCE_DIR}/src/
 )
 
-target_link_libraries(server_tests gtest engine_test_main server)
+target_link_libraries(server_tests gtest engine_test_main server uv_a)
 gtest_discover_tests(server_tests)

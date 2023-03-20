@@ -44,13 +44,7 @@ public:
      * @brief Start endpoint.
      *
      */
-    virtual void run(void) = 0;
-
-    /**
-     * @brief Configure the endpoint.
-     *
-     */
-    virtual void configure(void) = 0;
+    virtual void bind(void) = 0;
 
     /**
      * @brief Close and liberate all resources used by endpoint.
@@ -58,12 +52,6 @@ public:
      */
     virtual void close(void) = 0;
 
-    /**
-     * @brief Get the Path object.
-     *
-     * @return const std::string&
-     */
-    const std::string& getPath() const { return m_path; }
 };
 
 } // namespace engineserver::endpoints

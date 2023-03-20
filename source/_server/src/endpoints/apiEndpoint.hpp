@@ -22,7 +22,6 @@ namespace engineserver::endpoints
 
 /**
  * @brief Implements tcp server endpoint using uvw library.
- *
  */
 class APIEndpoint : public BaseEndpoint
 {
