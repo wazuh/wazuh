@@ -9,8 +9,7 @@
 #include <thread>
 #include <unordered_map>
 
-#include <blockingconcurrentqueue.h>
-
+#include <queue/concurrentQueue.hpp>
 #include <baseTypes.hpp>
 #include <store/istore.hpp>
 
@@ -43,7 +42,7 @@ class Router
 {
 
 private:
-    using concurrentQueue = moodycamel::BlockingConcurrentQueue<base::Event>;
+    using concurrentQueue = base::queue::ConcurrentQueue<base::Event>; ///< Alias for the queue type
 
     /* Status */
     /**

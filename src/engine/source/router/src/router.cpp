@@ -287,11 +287,8 @@ std::optional<base::Error> Router::enqueueEvent(base::Event event)
     {
         return base::Error {"The router queue is not initialized"};
     }
-    if (m_queue->try_enqueue(std::move(event)))
-    {
-        return std::nullopt;
-    }
-    return base::Error {"The router queue is in high load"};
+    m_queue->push(std::move(event));
+    return std::nullopt;
 }
 
 std::optional<base::Error> Router::enqueueOssecEvent(std::string_view event)
@@ -339,7 +336,7 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                 while (m_isRunning.load())
                 {
                     base::Event event {};
-                    if (queue->wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
+                    if (queue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
                         // Events consumed from the queue
                         eventsConsumedQueue->addValue(1UL);

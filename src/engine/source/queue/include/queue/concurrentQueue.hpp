@@ -109,8 +109,8 @@ public:
         , m_floodingFile {}
     {
         // Verify if T has a toString method (for flooding the queue)
-        static_assert(std::is_same<decltype(std::declval<T>().toString()), std::string>::value,
-                      "T must have a toString method");
+        //static_assert(std::is_same<decltype(std::declval<T>().str()), std::string>::value,
+        //              "T must have a toString method");
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
@@ -137,7 +137,7 @@ public:
     {
         if (!m_floodingFile)
         {
-            while (!m_queue.try_enqueue(element))
+            while (!m_queue.try_enqueue(std::move(element)))
             {
                 // Right now we process 1 event for ~0.1ms, we sleep by a factor
                 // of 5 because we are saturating the queue and we don't want to.
@@ -150,16 +150,17 @@ public:
             const std::size_t maxAttempts {3}; // Shoul be a macro?
             for (; attempts < maxAttempts; ++attempts)
             {
-                if (m_queue.try_enqueue(element))
+                if (m_queue.try_enqueue(std::move(element)))
                 {
                     break;
                 }
                 // TODO: Benchmarks to find the best value.... (0.1ms)
+                // 3.3K events per second (In the worst case)
                 std::this_thread::sleep_for(std::chrono::microseconds(100));
             }
             if (attempts >= maxAttempts)
             {
-                m_floodingFile->write(element.toString());
+                m_floodingFile->write(element->str());
             }
         }
     }

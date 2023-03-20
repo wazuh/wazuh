@@ -14,6 +14,5 @@ add_library(queue STATIC
 target_include_directories(queue
   PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  PRIVATE
   ${CameronQueue_SOURCE_DIR}
 )

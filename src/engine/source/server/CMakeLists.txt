@@ -41,12 +41,11 @@ add_library(server STATIC
 )
 
 #TODO do this better
-target_link_libraries(server base uv_a api metrics)
+target_link_libraries(server base uv_a api queue metrics)
 
 target_include_directories(server
     PUBLIC
     ${ENGINE_SERVER_INCLUDE_DIR}
-    ${CameronQueue_SOURCE_DIR}
     PRIVATE
     ${ENGINE_SOURCE_DIR}/json
     ${uvw_SOURCE_DIR}/src/
