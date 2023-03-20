@@ -57,7 +57,14 @@ void ExporterHandler::create(std::shared_ptr<MetricsContext> data)
             if (data->dataHubEnable)
             {
                 auto dataHub = Metrics::instance().getDataHub();
-                data->metricExporter = std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter>(new opentelemetry::exporter::metrics::DataHubExporter(dataHub));
+                if (data->aggregationTemporalityTypes == AggregationTemporalityTypes::Delta)
+                {
+                    data->metricExporter = std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter>(new opentelemetry::exporter::metrics::DataHubExporter(dataHub, opentelemetry::v1::sdk::metrics::AggregationTemporality::kDelta));
+                }
+                else
+                {
+                    data->metricExporter = std::unique_ptr<opentelemetry::sdk::metrics::PushMetricExporter>(new opentelemetry::exporter::metrics::DataHubExporter(dataHub, opentelemetry::v1::sdk::metrics::AggregationTemporality::kCumulative));
+                }
             }
             else if (!data->outputFile.empty())
             {

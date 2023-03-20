@@ -17,6 +17,12 @@ std::unordered_map<std::string, ProviderTypes> const PROVIDER_TYPES =
     {"tracer", ProviderTypes::Tracer}
 };
 
+std::unordered_map<std::string, AggregationTemporalityTypes> const AGGREGATION_TEMPORALITY_TYPES =
+{
+    {"cumulative", AggregationTemporalityTypes::Cumulative},
+    {"delta", AggregationTemporalityTypes::Delta}
+};
+
 std::unordered_map<std::string, InstrumentTypes> const INSTRUMENT_TYPES =
 {
     {"counter", InstrumentTypes::Counter},
@@ -127,6 +133,14 @@ void Metrics::setMetricsConfig()
             }
             case ProviderTypes::Meter:
             {
+                if (config.contains("aggregationTemporality"))
+                {
+                    (*particularContext)->aggregationTemporalityTypes = AGGREGATION_TEMPORALITY_TYPES.at(config.at("aggregationTemporality"));
+                }
+                else
+                {
+                    (*particularContext)->aggregationTemporalityTypes = AggregationTemporalityTypes::Cumulative;
+                }
                 m_instrumentsTypes.push_front(config.at("instrumentType"));
                 (*particularContext)->instrumentType = INSTRUMENT_TYPES.at(config.at("instrumentType"));
                 (*particularContext)->subType = SUB_TYPES.at(config.at("subType"));
