@@ -54,6 +54,49 @@ int wnotify_wait(wnotify_t * notify, int timeout) {
     return epoll_wait(notify->fd, notify->events, notify->size, timeout);
 }
 
+#elif defined(AIX)
+
+wnotify_t * wnotify_init(int size) {
+    wnotify_t * notify;
+    pollset_t ps;
+
+    if (ps = pollset_create(size), ps < 0) {
+        return NULL;
+    }
+
+    os_calloc(1, sizeof(wnotify_t), notify);
+    notify->ps = ps;
+    notify->size = size;
+    os_calloc(size, sizeof(struct pollfd), notify->events);
+
+    return notify;
+}
+
+int wnotify_add(wnotify_t * notify, int fd, const woperation_t op) {
+
+    const int operation = (op & WO_READ ? POLLIN : 0) | (op & WO_WRITE ? POLLOUT : 0);
+    struct poll_ctl request = {.cmd = PS_ADD, .events = operation , .fd = fd}
+    return pollset_ctl(notify->ps, &request, notify->size);
+}
+
+int wnotify_modify(wnotify_t * notify, int fd, const woperation_t op) {
+
+    const int operation = (op & WO_READ ? POLLIN : 0) | (op & WO_WRITE ? POLLOUT : 0);
+    struct poll_ctl request = {.cmd = PS_MOD, .events = operation , .fd = fd}
+    return pollset_ctl(notify->ps, &request, notify->size);
+}
+
+int wnotify_delete(wnotify_t * notify, int fd, const woperation_t op) {
+
+    const int operation = (op & WO_READ ? POLLIN : 0) | (op & WO_WRITE ? POLLOUT : 0);
+    struct poll_ctl request = {.cmd = PS_DELETE, .events = operation , .fd = fd}
+    return pollset_ctl(notify->ps, &request, notify->size);
+}
+
+int wnotify_wait(wnotify_t * notify, int timeout) {
+    return pollset_poll(notify->ps, notify->events, notify->size, timeout);
+}
+
 #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 
 wnotify_t * wnotify_init(int size) {
@@ -101,7 +144,7 @@ int wnotify_wait(wnotify_t * notify, int timeout) {
 
 #endif /* __linux__ */
 
-#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(AIX)
 
 void wnotify_close(wnotify_t * notify) {
     if (notify) {

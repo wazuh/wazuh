@@ -43,6 +43,29 @@ static inline int wnotify_get(const wnotify_t * notify, int index, wevent_t * ev
     return notify->events[index].data.fd;
 }
 
+#elif defined(AIX)
+
+#include <sys/poll.h>
+#include <sys/pollset.h>
+#include <sys/fcntl.h>
+
+
+typedef struct wnotify_t {
+    pollset_t fd;
+    int size;
+    struct pollfd * events;
+} wnotify_t;
+
+
+static inline int wnotify_get(const wnotify_t * notify, int index, wevent_t * event) {
+    if (event != NULL) {
+        const uint32_t events = notify->events[index].events;
+        *event = (wevent_t)((events & POLLIN ? WE_READ : WE_UNKNOWN) | (events & POLLOUT ? WE_WRITE : WE_UNKNOWN));
+    }
+
+    return notify->events[index].fd;
+}
+
 #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 
 #include <sys/types.h>
@@ -66,7 +89,7 @@ static inline int wnotify_get(const wnotify_t * notify, int index, wevent_t * ev
 
 #endif /* __linux__ */
 
-#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(AIX)
 
 wnotify_t * wnotify_init(int size);
 int wnotify_add(wnotify_t * notify, int fd, const woperation_t op);
