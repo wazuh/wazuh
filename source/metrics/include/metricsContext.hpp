@@ -34,6 +34,12 @@ enum class ProviderTypes
     Tracer
 };
 
+enum class AggregationTemporalityTypes
+{
+    Delta,
+    Cumulative
+};
+
 enum class InstrumentTypes
 {
     Counter,
@@ -56,6 +62,7 @@ struct MetricsContext
     // TODO: add doxygen documentation
     bool enable;
     bool dataHubEnable{false};
+    AggregationTemporalityTypes aggregationTemporalityTypes;
     std::string outputFile;
     std::string name;
     std::string unit;
