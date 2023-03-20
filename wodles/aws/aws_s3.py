@@ -3467,6 +3467,16 @@ class AWSCloudWatchLogs(AWSService):
                                                                     aws_log_stream=log_stream))
 
 
+class AWSASLBucketHandler(WazuhIntegration):
+    def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None, **kwargs):
+        WazuhIntegration.__init__(self, access_key=access_key,
+                                  secret_key=secret_key,
+                                  aws_profile=aws_profile, service_name='s3', **kwargs)
+
+    def process_files(self, messages):
+        pass
+
+
 class AWSSQSQueue(WazuhIntegration):
     """
     Class for getting AWS SQS Queue notifications.
@@ -3547,7 +3557,10 @@ class AWSSQSQueue(WazuhIntegration):
         return messages
 
     def sync_events(self):
+        asl_bucket_handler = AWSASLBucketHandler(access_key=access_key,secret_key=self.secret_key,
+                                  aws_profile=self.aws_profile)
         messages = self.get_messages()
+        asl_bucket_handler.process_files(messages)
         # WazuhIntegration()
         if self.remove_from_queue:
             debug('Removing messages from SQS queue', 2)
