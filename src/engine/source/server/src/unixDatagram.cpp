@@ -1,4 +1,4 @@
-#include <server/engineServer.hpp>
+#include <server/unixDatagram.hpp>
 
 #include <cstring>      // Unix  socket datagram bind
 #include <fcntl.h>      // Unix socket datagram bind
@@ -6,54 +6,9 @@
 #include <sys/un.h>     // Unix socket datagram bind
 #include <unistd.h>     // Unix socket datagram bind
 
-#include <exception>
-
 #include <logging/logging.hpp>
 #include <uvw.hpp>
-#include <uvw/async.hpp>
-namespace engineserver
-{
 
-class EngineServer::Impl
-{
-public:
-    std::shared_ptr<uvw::AsyncHandle> m_stopHandle;
-    std::shared_ptr<uvw::Loop> m_loop;
-};
-
-EngineServer::EngineServer()
-    : pimpl(std::make_unique<Impl>())
-{
-
-    pimpl->m_loop = uvw::Loop::getDefault();
-    pimpl->m_stopHandle = pimpl->m_loop->resource<uvw::AsyncHandle>();
-    pimpl->m_stopHandle->on<uvw::AsyncEvent>([this](const uvw::AsyncEvent&, uvw::AsyncHandle&) { this->stop(); });
-}
-
-EngineServer::~EngineServer() = default;
-
-void EngineServer::start()
-{
-    pimpl->m_loop->run();
-}
-
-void EngineServer::stop()
-{
-    // Get the default loop
-    auto loop = pimpl->m_loop;
-
-    // Closes all the handles
-    loop->walk([](auto& handle) { handle.close(); });
-    loop->stop();
-}
-
-void EngineServer::request_stop()
-{
-    // Send the stop request
-    pimpl->m_stopHandle->send();
-}
-
-/*************************************************** DATAGRAM SOCKET **************************************************/
 namespace
 {
 
@@ -65,7 +20,7 @@ constexpr unsigned int MAX_MSG_SIZE {65536 + 512}; ///< Maximum message size (TO
  * @return Returns either the file descriptor value
  * @throw std::runtime_error if the path is too long or the socket cannot be created or bound.
  */
-inline int bindUnixDatagramSocket(const std::string& path)
+inline int bindUnixDatagramSocket(const std::string& path, int& bufferSize)
 {
     sockaddr_un n_us;
 
@@ -106,20 +61,19 @@ inline int bindUnixDatagramSocket(const std::string& path)
         throw std::runtime_error(std::move(msg));
     }
 
-    int len;
-    socklen_t optlen {sizeof(len)};
 
     // Get current maximum size
-    if (-1 == getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<void*>(&len), &optlen))
+    socklen_t optlen {sizeof(bufferSize)};
+    if (-1 == getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<void*>(&bufferSize), &optlen))
     {
-        len = 0;
+        bufferSize = 0;
     }
 
     // Set maximum message size
-    if (MAX_MSG_SIZE > len)
+    if (MAX_MSG_SIZE > bufferSize)
     {
-        len = MAX_MSG_SIZE;
-        if (setsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const void*>(&len), optlen) < 0)
+        bufferSize = MAX_MSG_SIZE;
+        if (setsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const void*>(&bufferSize), optlen) < 0)
         {
             auto msg = fmt::format(
                 "Cannot set maximum message size of the socket '{}': {} ({})", path, strerror(errno), errno);
@@ -138,44 +92,89 @@ inline int bindUnixDatagramSocket(const std::string& path)
 }
 } // namespace
 
-void EngineServer::addEndpoint_UnixDatagram_woResponse(const std::string& address,
-                                                       std::function<void(std::string&&)> callback) // packet proccessor
+namespace engineserver::endpoint
 {
-    // Get the default loop
-    auto loop = pimpl->m_loop;
+UnixDatagram::UnixDatagram(const std::string& address, std::function<void(std::string&&)> callback)
+    : Endpoint(address)
+    , m_callback(callback)
+    , m_handle(nullptr)
+{
+}
 
-    // Create a new handle (Same as uv_udp_init for UDP handles)
-    auto handle = loop->resource<uvw::UDPHandle>();
+UnixDatagram::~UnixDatagram() = default;
+
+
+void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
+{
+    if (isBound())
+    {
+        throw std::runtime_error("Endpoint already bound");
+    }
+
+    m_loop = loop;
+    m_handle = m_loop->resource<uvw::UDPHandle>();
 
     // Listen for incoming data
-    handle->on<uvw::UDPDataEvent>(
-        [callback](const uvw::UDPDataEvent& event, uvw::UDPHandle& handle)
+    m_handle->on<uvw::UDPDataEvent>(
+        [this](const uvw::UDPDataEvent& event, uvw::UDPHandle& handle)
         {
             // Get the data
             auto data = std::string {event.data.get(), event.length};
             // Call the callback
-            callback(std::move(data));
+            m_callback(std::move(data));
         });
 
     // Listen for errors
-    handle->on<uvw::ErrorEvent>(
-        [address](const uvw::ErrorEvent& event, uvw::UDPHandle& handle)
+    m_handle->on<uvw::ErrorEvent>(
+        [this](const uvw::ErrorEvent& event, uvw::UDPHandle& handle)
         {
             // Log the error
             WAZUH_LOG_WARN("Engine event endpoints: Event error on datagram socket "
                            "({}): code=[{}]; name=[{}]; message=[{}].",
-                           address,
+                           m_address,
                            event.code(),
                            event.name(),
                            event.what());
         });
 
     // Bind the socket
-    auto socketFd = bindUnixDatagramSocket(address);
-    handle->open(socketFd);
-    handle->recv();
-    // Clean the socket file on exit (TODO)
+    auto socketFd = bindUnixDatagramSocket(m_address, m_bufferSize);
+    m_handle->open(socketFd);
 }
-/************************************************ END DATAGRAM SOCKET *************************************************/
 
-} // namespace server
+void UnixDatagram::close()
+{
+    if (isBound())
+    {
+        m_handle->close();
+        m_handle = nullptr;
+        m_loop = nullptr;
+        m_running = false;
+    }
+}
+
+bool UnixDatagram::pause()
+{
+    if (isBound() && m_running)
+    {
+        m_handle->stop();
+        m_running = false;
+        return true;
+    }
+    return false;
+}
+
+bool UnixDatagram::resume()
+{
+    if (isBound() && !m_running)
+    {
+        m_handle->recv();
+        m_running = true;
+        return true;
+    }
+    return false;
+}
+
+
+
+} // namespace engineserver::endpoint
