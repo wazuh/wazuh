@@ -30,8 +30,7 @@ public:
      * stdout
      */
     explicit DataHubExporter(std::shared_ptr<DataHubInterface> dataHub,
-                          sdk::metrics::AggregationTemporality aggregation_temporality =
-                              sdk::metrics::AggregationTemporality::kCumulative) noexcept;
+                          sdk::metrics::AggregationTemporality aggregation_temporality) noexcept;
 
     /**
      * Export
