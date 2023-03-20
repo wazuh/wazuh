@@ -19,7 +19,7 @@ public:
     {
     }
 
-    std::string toString() const { return "Dummy: " + std::to_string(value); }
+    std::string str() const { return "Dummy: " + std::to_string(value); }
 };
 
 TEST(FloodingFileTest, CanOpenAndWriteToFile)
@@ -48,26 +48,26 @@ TEST(FloodingFileTest, CannotOpenFile)
 
 TEST(ConcurrentQueueTest, CanConstruct)
 {
-    ConcurrentQueue<Dummy> cq(2);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2);
     ASSERT_TRUE(cq.empty());
     ASSERT_EQ(cq.size(), 0);
 }
 
 TEST(ConcurrentQueueTest, errorConstructor)
 {
-    ASSERT_THROW(ConcurrentQueue<Dummy> cq(1, "/nonexistent_dir/nonexistent_file.txt"), std::runtime_error);
+    ASSERT_THROW(ConcurrentQueue<std::shared_ptr<Dummy>> cq(1, "/nonexistent_dir/nonexistent_file.txt"), std::runtime_error);
 }
 
 TEST(ConcurrentQueueTest, CanPushAndPop)
 {
-    ConcurrentQueue<Dummy> cq(2);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2);
     ASSERT_TRUE(cq.empty());
-    cq.push(Dummy(1));
+    cq.push(std::make_shared<Dummy>(1));
     ASSERT_FALSE(cq.empty());
     ASSERT_EQ(cq.size(), 1);
-    Dummy d(0);
+    auto d = std::make_shared<Dummy>(0);
     ASSERT_TRUE(cq.waitPop(d));
-    ASSERT_EQ(d.value, 1);
+    ASSERT_EQ(d->value, 1);
     ASSERT_TRUE(cq.empty());
     ASSERT_EQ(cq.size(), 0);
 }
@@ -77,11 +77,11 @@ TEST(ConcurrentQueueTest, FloodsWhenFull)
     std::string flood_file = "floodfile.txt";
     // 32 is the size of one block in the queue, for 1 producer and 1 consumer thread
     // the queue has 1 block, so it will flood after 32 pushes
-    ConcurrentQueue<Dummy> cq(32, flood_file);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(32, flood_file);
 
     for (int i = 0; i < 35; i++)
     {
-        cq.push(Dummy(i));
+        cq.push(std::make_shared<Dummy>(i));
     }
 
     ASSERT_FALSE(cq.empty());
@@ -102,8 +102,8 @@ TEST(ConcurrentQueueTest, FloodsWhenFull)
 
 TEST(ConcurrentQueueTest, Timeout)
 {
-    ConcurrentQueue<Dummy> cq(2);
-    Dummy d(0);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2);
+    auto d = std::make_shared<Dummy> (0);
     ASSERT_FALSE(cq.waitPop(d, 0));
-    ASSERT_EQ(d.value, 0);
+    ASSERT_EQ(d->value, 0);
 }

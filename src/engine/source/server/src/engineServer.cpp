@@ -16,12 +16,11 @@
 #include <vector>
 
 #include <logging/logging.hpp>
+#include <queue/concurrentQueue.hpp>
 
 #include "endpoints/apiEndpoint.hpp"
 #include "endpoints/eventEndpoint.hpp"
 #include <metrics/metricsManager.hpp>
-
-using moodycamel::BlockingConcurrentQueue;
 
 using namespace engineserver::endpoints;
 
@@ -48,16 +47,25 @@ EngineServer::EngineServer(const std::string& apiEndpointPath,
         apiEndpoint->configure();
         m_endpoints.emplace(EndpointType::API, std::move(apiEndpoint));
 
-        auto eventQueue = std::make_shared<BlockingConcurrentQueue<base::Event>>(bufferSize);
-        auto eventEndpoint = std::make_shared<EventEndpoint>(eventEndpointPath, eventQueue, m_spMetricsScope, m_spMetricsScopeDelta, pathFloodedFile);
+        auto eventQueue =
+            std::make_shared<base::queue::ConcurrentQueue<base::Event>>(bufferSize, pathFloodedFile.value_or(""));
+        if (pathFloodedFile.has_value())
+        {
+            WAZUH_LOG_INFO("Engine server: Event queue flooded file '{}' ready", pathFloodedFile.value());
+        }
+        else
+        {
+            WAZUH_LOG_INFO("Engine server: Event queue flooded file: is disabled");
+        }
+
+        auto eventEndpoint =
+            std::make_shared<EventEndpoint>(eventEndpointPath, eventQueue, m_spMetricsScope, m_spMetricsScopeDelta);
         eventEndpoint->configure();
         m_endpoints.emplace(EndpointType::EVENT, std::move(eventEndpoint));
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR(
-            "Engine server: An exception ocurred while building the server: {}",
-            e.what());
+        WAZUH_LOG_ERROR("Engine server: An exception ocurred while building the server: {}", e.what());
         throw;
     }
 }
@@ -84,7 +92,7 @@ void EngineServer::close(void)
     }
 }
 
-std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> EngineServer::getEventQueue() const
+std::shared_ptr<base::queue::ConcurrentQueue<base::Event>> EngineServer::getEventQueue() const
 {
     if (m_endpoints.find(EndpointType::EVENT) != m_endpoints.end())
     {

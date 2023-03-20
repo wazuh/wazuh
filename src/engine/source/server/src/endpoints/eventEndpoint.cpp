@@ -29,13 +29,12 @@
 using uvw::ErrorEvent;
 using uvw::Loop;
 
-
 namespace engineserver::endpoints
 {
 
 namespace
 {
-constexpr int BIND_SOCK_ERROR {-1}; ///< Error code for bindUnixDatagramSocket function
+constexpr int BIND_SOCK_ERROR {-1};                ///< Error code for bindUnixDatagramSocket function
 constexpr unsigned int MAX_MSG_SIZE {65536 + 512}; ///< Maximum message size (TODO: I think this should be 65507)
 
 /**
@@ -48,7 +47,7 @@ struct floodingFile
     // append and don't create if not exists
     const std::ios::openmode FLAGS = std::ios::out | std::ios::app | std::ios::ate; ///< Flags for the flooding file
     std::ofstream m_file; ///< File stream for the flooding file
-    std::string m_error; ///< Error message if the file is not good
+    std::string m_error;  ///< Error message if the file is not good
 
     /**
      * @brief Construct a new flooding File object
@@ -93,8 +92,6 @@ struct floodingFile
         }
         return false;
     }
-
-
 };
 
 } // namespace
@@ -170,12 +167,10 @@ static inline int bindUnixDatagramSocket(const char* path)
     return (socketFd);
 }
 
-EventEndpoint::EventEndpoint(
-    const std::string& path,
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> eventQueue,
-    std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
-    std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
-    std::optional<std::string> pathFloodedFile)
+EventEndpoint::EventEndpoint(const std::string& path,
+                             std::shared_ptr<concurrentQueue> eventQueue,
+                             std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
+                             std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta)
     : BaseEndpoint {path}
     , m_eventQueue {eventQueue}
     , m_loop {Loop::getDefault()}
@@ -187,9 +182,9 @@ EventEndpoint::EventEndpoint(
     auto eventsReceivedPerSecond = m_spMetricsScopeDelta->getCounterUInteger("EventsReceivedPerSecond");
     auto eventsReceived = m_spMetricsScope->getCounterUInteger("EventsReceived");
     auto bytesReceived = m_spMetricsScope->getCounterUInteger("BytesReceived");
-    auto queuedEvents = m_spMetricsScope->getCounterUInteger("QueuedEvents");
-    auto dumpedEvents = m_spMetricsScope->getCounterUInteger("DumpedEvents");
-    auto usedQueue = m_spMetricsScope->getGaugeDouble("UsedQueue", 0);
+    // auto queuedEvents = m_spMetricsScope->getCounterUInteger("QueuedEvents");
+    // auto dumpedEvents = m_spMetricsScope->getCounterUInteger("DumpedEvents");
+    // auto usedQueue = m_spMetricsScope->getGaugeDouble("UsedQueue", 0);
 
     m_handle->on<ErrorEvent>(
         [this](const ErrorEvent& event, DatagramSocketHandle& datagramSocketHandle)
@@ -202,30 +197,8 @@ EventEndpoint::EventEndpoint(
                             event.what());
         });
 
-    std::shared_ptr<floodingFile> dumpFileHandler {nullptr};
-    const auto isFloodedFileEnabled {pathFloodedFile.has_value()};
-
-    if (isFloodedFileEnabled)
-    {
-        dumpFileHandler = std::make_shared<floodingFile>(*pathFloodedFile);
-        if (auto err = dumpFileHandler->getError())
-        {
-            throw std::runtime_error(fmt::format("Engine event endpoints: Error opening flooding file '{}': {}",
-                                                 *pathFloodedFile,
-                                                 *err));
-        }
-        else
-        {
-            WAZUH_LOG_DEBUG("Engine event endpoints: Flooding file '{}' are ready.", *pathFloodedFile);
-        }
-    } else {
-        WAZUH_LOG_INFO("Engine event endpoints: Flooding file is not enabled.");
-    }
-
     m_handle->on<DatagramSocketEvent>(
-        [this, eventsReceived, bytesReceived, queuedEvents, dumpedEvents,
-        bytesReceivedPerSecond, eventsReceivedPerSecond, dumpFileHandler, isFloodedFileEnabled, usedQueue]
-        (const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
+        [=, this](const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
         {
             auto strRequest = std::string {eventSocket.data.get(), eventSocket.length};
 
@@ -241,8 +214,8 @@ EventEndpoint::EventEndpoint(
             // Total bytes received
             bytesReceived->addValue(static_cast<uint64_t>(eventSocket.length));
 
-            //Used Queue
-            usedQueue->setValue(m_eventQueue->size_approx());
+            // // Used Queue
+            // usedQueue->setValue(m_eventQueue->size_approx());
 
             base::Event event;
             try
@@ -255,40 +228,7 @@ EventEndpoint::EventEndpoint(
                 return;
             }
 
-            if (!isFloodedFileEnabled)
-            {
-                while (!m_eventQueue->try_enqueue(event))
-                {
-                    // Right now we process 1 event for ~0.1ms, we sleep by a factor
-                    // of 5 because we are saturating the queue and we don't want to.
-                    std::this_thread::sleep_for(std::chrono::microseconds(500));
-                }
-            }
-            else
-            {
-                std::size_t attempts {0};
-                const std::size_t maxAttempts {3}; // Shoul be a macro?
-                for (; attempts < maxAttempts; ++attempts)
-                {
-                    if (m_eventQueue->try_enqueue(event))
-                    {
-                        // Number of events inserted in queue
-                        queuedEvents->addValue(1UL);
-
-                        break;
-                    }
-                    // TODO: Benchmarks to find the best value.... (0.1ms)
-                    std::this_thread::sleep_for(std::chrono::microseconds(100));
-
-                }
-                if (attempts >= maxAttempts)
-                {
-                    // Number of events that have been written to disk because queue is full
-                    dumpedEvents->addValue(1UL);
-
-                    dumpFileHandler->write(strRequest);
-                }
-            }
+            m_eventQueue->push(std::move(event));
         });
 
     m_socketFd = bindUnixDatagramSocket(m_path.c_str());
@@ -350,8 +290,7 @@ EventEndpoint::~EventEndpoint(void)
     close();
 }
 
-std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>>
-EventEndpoint::getEventQueue(void) const
+std::shared_ptr<base::queue::ConcurrentQueue<base::Event>> EventEndpoint::getEventQueue(void) const
 {
     return m_eventQueue;
 }
