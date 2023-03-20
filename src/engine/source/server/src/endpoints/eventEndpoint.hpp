@@ -29,7 +29,7 @@ class EventEndpoint : public BaseEndpoint
 protected:
     using DatagramSocketEvent = uvw::UDPDataEvent;
     using DatagramSocketHandle = uvw::UDPHandle;
-    using concurrentQueue = moodycamel::BlockingConcurrentQueue<base::Event>;
+    using concurrentQueue = base::queue::ConcurrentQueue<base::Event>;
 
 private:
     int m_socketFd;
@@ -48,8 +48,7 @@ public:
     explicit EventEndpoint(const std::string& path,
                            std::shared_ptr<concurrentQueue> eventQueue,
                            std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
-                           std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
-                           std::optional<std::string> pathFloodedFile = std::nullopt);
+                           std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta);
 
     ~EventEndpoint();
 

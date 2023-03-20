@@ -12,7 +12,7 @@
 
 #include <string>
 
-#include <blockingconcurrentqueue.h>
+#include <queue/concurrentQueue.hpp>
 
 /**
  * @brief Contains all endpoint related functionality.
