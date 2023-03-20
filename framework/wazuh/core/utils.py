@@ -794,7 +794,7 @@ def check_disabled_limits_in_conf(data):
     def check_section(section_name):
         if re.findall(pattern=r'<global>.*<limits>.*<{0}>.*</{0}>.*</limits>.*</global>'.format(section_name),
                       string=data, flags=re.MULTILINE | re.DOTALL | re.IGNORECASE):
-            raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
+            raise WazuhError(1127, extra_message=f"global > limits > {section_name}")
 
     blocked_configurations = configuration.api_conf['upload_configuration']
     for disabled_limit in [conf for conf, allowed in blocked_configurations['limits'].items() if not allowed['allow']]:
