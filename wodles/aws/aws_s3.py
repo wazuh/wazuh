@@ -3594,11 +3594,13 @@ class AWSSQSQueue(WazuhIntegration):
     def sync_events(self):
         asl_bucket_handler = AWSSLSubscriberBucket(aws_profile=self.profile, iam_role_arn=self.iam_role_arn)
         messages = self.get_messages()
-        asl_bucket_handler.process_files(messages)
-        # WazuhIntegration()
-        if self.remove_from_queue:
-            debug('Removing messages from SQS queue', 2)
-            self.delete_messages(messages)
+        while(messages != []):
+            asl_bucket_handler.process_files(messages)
+            # WazuhIntegration()
+            if self.remove_from_queue:
+                debug('Removing messages from SQS queue', 2)
+                self.delete_messages(messages)
+            messages = self.get_messages()
 
     def purge(self):  # Check if necessary
         debug('Purging SQS queue, please wait a minute..:', 1)
