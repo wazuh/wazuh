@@ -2616,6 +2616,7 @@ class AWSServerAccess(AWSCustomBucket):
                         debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
+                    processed_logs += 1
 
                 if processed_logs == 0:
                     self._print_not_logs_to_prcess_message(self.bucket, aws_account_id, aws_region)
