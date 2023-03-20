@@ -67,6 +67,10 @@ void buffer_init(){
 
 /* Send messages to buffer. */
 int buffer_append(const char *msg){
+    char flood_msg[OS_MAXSTR];
+    char full_msg[OS_MAXSTR];
+    char warn_msg[OS_MAXSTR];
+    char warn_str[OS_SIZE_2048];
 
     w_mutex_lock(&mutex_lock);
 
@@ -102,6 +106,28 @@ int buffer_append(const char *msg){
 
         case FLOOD:
             break;
+    }
+
+    if (buff.warn){
+        buff.warn = 0;
+        mwarn(WARN_BUFFER, warn_level);
+        snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
+        snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", warn_str);
+        send_msg(warn_msg, -1);
+    }
+
+    if (buff.full){
+        buff.full = 0;
+        mwarn(FULL_BUFFER);
+        snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FULL_BUFFER);
+        send_msg(full_msg, -1);
+    }
+
+    if (buff.flood){
+        buff.flood = 0;
+        mwarn(FLOODED_BUFFER);
+        snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FLOOD_BUFFER);
+        send_msg(flood_msg, -1);
     }
 
     w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
@@ -151,14 +177,10 @@ DWORD WINAPI dispatch_buffer(__attribute__((unused)) LPVOID arg) {
 #else
 void *dispatch_buffer(__attribute__((unused)) void * arg){
 #endif
-    char flood_msg[OS_MAXSTR];
-    char full_msg[OS_MAXSTR];
-    char warn_msg[OS_MAXSTR];
     char normal_msg[OS_MAXSTR];
 
-    char warn_str[OS_SIZE_2048];
-
     while(1){
+        // Maximum events per second limits
         get_eps_credit(agentd_limits);
 
         w_mutex_lock(&mutex_lock);
@@ -204,33 +226,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         forward(j, agt->buflength + 1);
         w_mutex_unlock(&mutex_lock);
 
-        if (buff.warn){
-
-            buff.warn = 0;
-            mwarn(WARN_BUFFER, warn_level);
-            snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
-            snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", warn_str);
-            send_msg(warn_msg, -1);
-        }
-
-        if (buff.full){
-
-            buff.full = 0;
-            mwarn(FULL_BUFFER);
-            snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FULL_BUFFER);
-            send_msg(full_msg, -1);
-        }
-
-        if (buff.flood){
-
-            buff.flood = 0;
-            mwarn(FLOODED_BUFFER);
-            snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FLOOD_BUFFER);
-            send_msg(flood_msg, -1);
-        }
-
         if (buff.normal){
-
             buff.normal = 0;
             minfo(NORMAL_BUFFER, normal_level);
             snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_NORMAL_BUFFER);
@@ -240,7 +236,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         os_wait();
         send_msg(msg_output, -1);
         free(msg_output);
-
     }
 }
 
