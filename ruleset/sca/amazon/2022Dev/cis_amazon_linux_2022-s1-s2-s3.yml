@@ -33,110 +33,120 @@ checks:
   # 1.1 Filesystem Configuration
   ############################################################
 
-  # 1.1.1.1 Ensure mounting of cramfs filesystems is disabled.
+  # 1.1.1.1 Ensure mounting of cramfs filesystems is disabled. (Automated)
   - id: 31000
     title: "Ensure mounting of cramfs filesystems is disabled."
     description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the server. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create a file /etc/modprobe.d/ directory ending in .conf with a line that reads install cramfs /bin/false and a line that reads blacklist cramfs. Example: # printf 'install cramfs /bin/false blacklist cramfs' >> /etc/modprobe.d/cramfs.conf. Run the following command to unload the cramfs module: # modprobe -r cramfs."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf with a line that reads install cramfs /bin/false and a line the reads blacklist cramfs. Example: # printf "install cramfs /bin/false blacklist cramfs " >> /etc/modprobe.d/cramfs.conf Run the following command to unload the cramfs module: # modprobe -r cramfs.'
     compliance:
       - cis: ["1.1.1.1"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - nist_sp_800-53: ["CM-7"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
     condition: all
     rules:
       - "c:modprobe -n -v cramfs -> r:install /bin/false|Module cramfs not found"
       - "not c:lsmod -> r:cramfs"
       - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*cramfs'
 
-  # 1.1.1.2 Ensure mounting of squashfs filesystems is disabled.
+  # 1.1.1.2 Ensure mounting of squashfs filesystems is disabled. (Automated)
   - id: 31001
     title: "Ensure mounting of squashfs filesystems is disabled."
     description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A squashfs image can be used without having to first decompress the image."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    impact: "As Snap packages utilizes squashfs as a compressed filesystem, disabling squashfs will cause Snap packages to fail. Snap application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software's end-user. Snaps themselves have no dependency on any external store ('App store'), can be obtained from any source and can be therefore used for upstream software deployment."
-    remediation: "Edit or create a file /etc/modprobe.d/ directory ending in .conf with the lines that reads install squashfs /bin/false and blacklist squashfs. Example: # printf 'install squashfs /bin/false blacklist squashfs' >> /etc/modprobe.d/squashfs.conf. Run the following command to unload the squashfs module: # modprobe -r squashfs."
+    impact: 'As Snap packages utilizes squashfs as a compressed filesystem, disabling squashfs will cause Snap packages to fail. Snap application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software''s end-user. Snaps themselves have no dependency on any external store ("App store"), can be obtained from any source and can be therefore used for upstream software deployment.'
+    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf with the lines that reads install squashfs /bin/false and blacklist squashfs. Example: # printf "install squashfs /bin/false blacklist squashfs " >> /etc/modprobe.d/squashfs.conf Run the following command to unload the squashfs module: # modprobe -r squashfs.'
     compliance:
       - cis: ["1.1.1.2"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["SI-4"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
     condition: all
     rules:
       - "c:modprobe -n -v squashfs -> r:install /bin/false|Module squashfs not found"
       - "not c:lsmod -> r:squashfs"
       - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*squashfs'
 
-  # 1.1.1.3 Ensure mounting of udf filesystems is disabled.
+  # 1.1.1.3 Ensure mounting of udf filesystems is disabled. (Automated)
   - id: 31002
     title: "Ensure mounting of udf filesystems is disabled."
     description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
     impact: "Microsoft Azure requires the usage of udf. udf should not be disabled on systems run on Microsoft Azure."
-    remediation: "Edit or create a file /etc/modprobe.d/ directory ending in .conf with the lines that reads install udf /bin/false and blacklist udf. Example: # printf 'install udf /bin/false blacklist udf' >> /etc/modprobe.d/udf.conf. Run the following command to unload the udf module: # modprobe -r udf."
+    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf with a line that reads install udf /bin/false. Example: # printf "install udf /bin/false blacklist udf " >> /etc/modprobe.d/udf.conf Run the following command to unload the udf module: # modprobe -r udf.'
     compliance:
       - cis: ["1.1.1.3"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
+      - nist_sp_800-53: ["SI-4"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
     condition: all
     rules:
       - "c:modprobe -n -v udf -> r:install /bin/false|Module udf not found"
       - "not c:lsmod -> r:udf"
       - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*udf'
 
-  # 1.1.2.1 Ensure /tmp is a separate partition.
+  # 1.1.2.1 Ensure /tmp is a separate partition. (Automated)
   - id: 31003
     title: "Ensure /tmp is a separate partition."
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
-    rationale: "Making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
+    rationale: "Making /tmp its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
     impact: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. Running out of /tmp space is a problem regardless of what kind of filesystem lies under it, but in a configuration where /tmp is not a separate file system it will essentially have the whole disk available, as the default installation only creates a single / partition. On the other hand, a RAM-based /tmp (as with tmpfs) will almost certainly be much smaller, which can lead to applications filling up the filesystem much more easily. Another alternative is to create a dedicated partition for /tmp from a separate volume or disk. One of the downsides of a disk-based dedicated partition is that it will be slower than tmpfs which is RAM-based. /tmp utilizing tmpfs can be resized using the size={size} parameter in the relevant entry in /etc/fstab."
-    remediation: "First ensure that systemd is correctly configured to ensure that /tmp mount for your environment will be mounted at boot time. # systemctl unmask tmp.mount. For specific configuration requirements of the /tmp mount for your environment, modify /etc/stab. Example using tmpfs with specific mount options: # tmpfs /tmp / tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0. Example using a volume or disk with specific mount options, The source location of the volumne or disk will vary depending on your environment: # <device> /tmp <fstype> defaults,nodev,nosuid,noexec 0 0."
+    remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 Example of using a volume or disk with specific mount options. The source location of the volume or disk will vary depending on your environment. <device> /tmp <fstype> defaults,nodev,nosuid,noexec 0 0."
+    references:
+      - "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/"
+      - "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
     compliance:
       - cis: ["1.1.2.1"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - nist_sp_800-53: ["CM-7"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    references:
-      - https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/
-      - https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html
-    condition: any
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
+    condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:\s*/tmp\s'
       - "c:systemctl is-enabled tmp.mount -> r:static|generated"
 
-  # 1.1.2.2 Ensure nodev option set on /tmp partition.
+  # 1.1.2.2 Ensure nodev option set on /tmp partition. (Automated)
   - id: 31004
     title: "Ensure nodev option set on /tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: # <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0. Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
+    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /tmp."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
     compliance:
       - cis: ["1.1.2.2"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - nist_sp_800-53: ["CM-7"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - nist_sp_800-53: ["CM-7"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    references:
-      - See the fstab(5) manual page for more information.
+      - mitre_techniques: ["T1015", "T1133", "T1200", "T1076", "T1051"]
     condition: all
     rules:
       - "c:findmnt --kernel /tmp -> r:nodev"
