@@ -1010,7 +1010,7 @@ class AWSBucket(WazuhIntegration):
                 self.send_event(event_msg)
 
     @staticmethod
-    def _print_not_logs_to_prcess_message(bucket, aws_account_id, aws_region):
+    def _print_no_logs_to_process_message(bucket, aws_account_id, aws_region):
         base_message = '+++ No logs to process in bucket:'
         if aws_account_id is not None and aws_region is not None:
             debug(f"{base_message} {aws_account_id}/{aws_region}", 1)
@@ -1069,7 +1069,7 @@ class AWSBucket(WazuhIntegration):
                     processed_logs += 1
 
                 # This is a workaround in order to work with custom buckets that don't have
-                # base prefix to serach the logs
+                # base prefix to search the logs
                 if processed_logs == 0:
                     self._print_not_logs_to_prcess_message(self.bucket, aws_account_id, aws_region)
 
