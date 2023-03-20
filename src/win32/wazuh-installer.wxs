@@ -608,7 +608,6 @@
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
-            <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
             <ComponentRef Id="LIBGCC_S_DW2_1.DLL" />
             <ComponentRef Id="LIBSTDCPP_6.DLL" />
             <ComponentRef Id="MANAGE_AGENTS.EXE" />

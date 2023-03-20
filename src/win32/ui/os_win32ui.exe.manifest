@@ -1,9 +1,4 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
- <assemblyIdentity
-   processorArchitecture="x86"
-   version="1.5"
-   type="win32"
-   name="os_win32ui.exe"/>
  <description>OSSEC win32 Agent UI</description>
  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
    <security>
@@ -13,4 +8,6 @@
    </security>
  </trustInfo>
  <file name="wsock32.dll" loadFrom="%windir%\System32\wsock32.dll"></file>
+ <file name="comctl32.dll" loadFrom="%windir%\System32\comctl32.dll"></file>
+ <file name="TextShaping.dll" loadFrom="%windir%\System32\TextShaping.dll"></file>
 </assembly>

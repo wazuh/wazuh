@@ -300,9 +300,9 @@ endif # Linux
 else
 		SHARED=dll
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
-		OSSEC_CFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -pthread
-		OSSEC_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -pthread
-		AR_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -pthread
+		OSSEC_CFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread
+		OSSEC_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread
+		AR_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread
 		PRECOMPILED_OS:=windows
 endif # winagent
 
@@ -330,9 +330,11 @@ endif
 
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	OSSEC_CFLAGS+=-g
+	AR_LDFLAGS+=-g
 else
 	OSSEC_CFLAGS+=-DNDEBUG
 	OFLAGS+=-O2
+	AR_LDFLAGS+=-s
 endif #DEBUG
 
 OSSEC_CFLAGS+=${OFLAGS}
@@ -1328,7 +1330,6 @@ ifeq (${TARGET}, winagent)
 WAZUHEXT_DLL = libwazuhext.$(SHARED)
 WAZUHEXT_LIB = libwazuhext.lib
 WAZUHEXT_LIB_DEF = libwazuhext.def
-WAZUHEXT_EXCLUDED_SYMBOLS = _fileno
 # libwazuhshared
 WAZUH_DLL = libwazuhshared.$(SHARED)
 WAZUH_LIB = libwazuhshared.lib
@@ -1712,14 +1713,12 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
-$(WAZUHEXT_LIB): $(WAZUHEXT_LIB_DEF)
-	$(DLLTOOL) --input-def $< --output-delaylib $@
+$(WAZUHEXT_LIB): $(WAZUHEXT_DLL)
+	$(DLLTOOL) --input-def $(WAZUHEXT_LIB_DEF) --output-delaylib $@
 
-$(WAZUHEXT_DLL): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+$(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
 
-$(WAZUHEXT_LIB_DEF): $(WAZUHEXT_DLL)
-	$(DLLTOOL) $< -z $@ --export-all-symbols --exclude-symbols $(WAZUHEXT_EXCLUDED_SYMBOLS)
 
 else
 ifeq (${uname_S},SunOS)
@@ -1937,13 +1936,11 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 else
 ifeq (${TARGET}, winagent)
 $(WAZUH_DLL): $(WAZUHEXT_DLL) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUH_DEF) ${OSSEC_LIBS}
 
-$(WAZUH_LIB): $(WAZUH_DEF)
-	$(DLLTOOL) --input-def $< --output-delaylib $@
+$(WAZUH_LIB): $(WAZUH_DLL)
+	$(DLLTOOL) --input-def $(WAZUH_DEF) --output-delaylib $@
 
-$(WAZUH_DEF): $(WAZUH_DLL)
-	$(DLLTOOL) $< -z $@ --export-all-symbols
 
 else
 ifeq (${uname_S},SunOS)
@@ -2452,22 +2449,22 @@ win32/setup-syscheck.exe: win32/setup_syscheck_resource.o win32/setup-syscheck.o
 win32/setup-iis.exe: win32/setup_iis_resource.o win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-
+# This executable has the "mwindows" flag so libwazuhext.dll will be used instead of libwazuh.lib
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o} libwazuh.a libwazuhext.dll ${OSSEC_LIBS} -mwindows -o $@
 
-win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
+win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
 win32/restart-wazuh.exe: win32/restart_wazuh_resource.o active-response/active_responses.o ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/restart-wazuh.o
-	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -s -o $@
+	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -o $@
 
 win32/route-null.exe: win32/route_null_resource.o active-response/active_responses.o active-response/route-null.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
-	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -s -o $@
+	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -o $@
 
 win32/netsh.exe: win32/netsh_resource.o active-response/active_responses.o active-response/netsh.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
-	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -s -o $@
+	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -o $@
 
 
 
@@ -2572,6 +2569,9 @@ clean-internals: clean-unit-tests
 	rm -rf libwazuhext
 	rm -rf libstdc++.so.6
 	rm -rf libgcc_s.so.1
+	rm -f libwazuh.a
+	rm -f shared/*.o
+
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
@@ -2621,12 +2621,9 @@ clean-framework:
 
 clean-windows:
 	rm -f libwazuh.a
-	rm -f libwazuhshared.dll
-	rm -f libwazuhshared.def
-	rm -f libwazuhshared.lib
-	rm -f libwazuhext.dll
-	rm -f libwazuhext.def
-	rm -f libwazuhext.lib
+	rm -f libwazuhshared.*
+	rm -f libwazuhext.*
+
 	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
