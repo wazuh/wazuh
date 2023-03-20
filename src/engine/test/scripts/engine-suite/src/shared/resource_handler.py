@@ -158,8 +158,14 @@ class ResourceHandler:
         path = Path(path_str)
         path.write_text(content)
 
-    def walk_dir(self, path_str: str, function):
+    def walk_dir(self, path_str: str, function, recursive: bool = False):
         path = Path(path_str)
         if path.exists():
-            for file in path.iterdir():
-                function(file)
+            if recursive:
+                for entry in path.rglob('*'):
+                    if entry.is_file():
+                        function(entry)
+            else:
+                for entry in path.iterdir():
+                    if entry.is_file():
+                        function(entry)
