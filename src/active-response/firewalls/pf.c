@@ -245,8 +245,8 @@ static int write_cmd_to_file(const char *path, const char *cmd) {
         if (fp != NULL) {
             fprintf(fp, "%s\n", cmd);
             retVal = 1;
+            fclose(fp);
         }
-        fclose(fp);
     }
     return retVal;
 }

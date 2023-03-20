@@ -1458,7 +1458,9 @@ STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_s
     error_msg_string = cJSON_PrintUnformatted(error_msg);
 
     snprintf(msg_err, OS_FLSIZE, "%s%s%s", CONTROL_HEADER, HC_ERROR, error_msg_string);
-    send_msg(agent_id, msg_err, -1);
+    if (send_msg(agent_id, msg_err, -1) >= 0) {
+        rem_inc_send_ack(agent_id);
+    }
 
     mdebug2("Unable to connect agent: '%s': '%s'", agent_id, msg);
 

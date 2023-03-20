@@ -4619,6 +4619,8 @@ void test_save_controlmsg_agent_invalid_version(void **state)
     expect_string(__wrap_send_msg, agent_id, "001");
     expect_string(__wrap_send_msg, msg, s_msg);
 
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
     free_keyentry(&key);
@@ -4652,6 +4654,8 @@ void test_save_controlmsg_get_agent_version_fail(void **state)
 
     expect_string(__wrap_send_msg, agent_id, "001");
     expect_string(__wrap_send_msg, msg, s_msg);
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
