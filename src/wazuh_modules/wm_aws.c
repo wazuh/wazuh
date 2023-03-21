@@ -291,7 +291,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->iam_role_duration) cJSON_AddStringToObject(security_lake, "iam_role_duration",iter->iam_role_duration);
             if (iter->regions) cJSON_AddStringToObject(security_lake,"regions",iter->regions);
             if (iter->sts_endpoint) cJSON_AddStringToObject(security_lake,"sts_endpoint",iter->sts_endpoint);
-            if (iter->delete_from_queue) cJSON_AddStringToObject(security_lake,"delete_from_queue",iter->delete_from_queue);
+            if (iter->dont_remove_from_queue) cJSON_AddStringToObject(security_lake,"dont_remove_from_queue",iter->dont_remove_from_queue);
             cJSON_AddItemToArray(arr_sec_lakes,security_lake);
         }
         if (cJSON_GetArraySize(arr_sec_lakes) > 0) {
@@ -755,6 +755,11 @@ void wm_aws_run_security_lake_subscriber(wm_aws *aws_config, wm_aws_security_lak
         wm_strcat(&command, "--sts_endpoint", ' ');
         wm_strcat(&command, exec_security_lake->sts_endpoint, ' ');
     }
+    if (exec_security_lake->sts_endpoint) {
+        wm_strcat(&command, "--dont_remove_from_queue", ' ');
+        wm_strcat(&command, exec_security_lake->dont_remove_from_queue, ' ');
+    }
+
 
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');
