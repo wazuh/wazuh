@@ -483,12 +483,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         // for security lake subscriber
         } else if (!strcmp(nodes[i]->element, XML_SECURITY_LAKE)) {
 
-            mtdebug2(WM_AWS_LOGTAG, "Found a security lake tag tag");
+            mtdebug2(WM_AWS_LOGTAG, "Found a security lake tag");
 
-            if (!nodes[i]->attributes) {
-                mterror(WM_AWS_LOGTAG, "Undefined type for service.");
-                return OS_INVALID;
-            }
             // Create security lake node
             if (cur_service) {
                 os_calloc(1, sizeof(wm_aws_security_lake), cur_security_lake->next);
@@ -498,26 +494,10 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 // First security lake subscriber
                 os_calloc(1, sizeof(wm_aws_security_lake), cur_security_lake);
                 aws_config->security_lakes = cur_security_lake;
-                mtdebug2(WM_AWS_LOGTAG, "Creating first service structure");
+                mtdebug2(WM_AWS_LOGTAG, "Creating first security lake structure");
             }
 
-            // TODO: REVIEW type is an attribute of the service tag
-            if (!strcmp(*nodes[i]->attributes, XML_SERVICE_TYPE)) {
-                if (!nodes[i]->values) {
-                    mterror(WM_AWS_LOGTAG, "Empty service type. Valid ones are '%s' or '%s'", INSPECTOR_SERVICE_TYPE, CLOUDWATCHLOGS_SERVICE_TYPE);
-                    return OS_INVALID;
-                } else if (!strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE) || !strcmp(*nodes[i]->values, CLOUDWATCHLOGS_SERVICE_TYPE)) {
-                    os_strdup(*nodes[i]->values, cur_service->type);
-                } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, INSPECTOR_SERVICE_TYPE, CLOUDWATCHLOGS_SERVICE_TYPE);
-                    return OS_INVALID;
-                }
-            } else {
-                mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SERVICE_TYPE);
-                return OS_INVALID;
-            }
-
-            // Expand service Child Nodes
+            // Expand security lake Child Nodes
 
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
                 continue;
