@@ -3528,14 +3528,14 @@ class AWSSQSQueue(WazuhIntegration):
         Region where the logs are located.
     name: str
         Name of the SQS Queue.
-    remove_from_queue: bool
-        If notifications should be deleted after being read.
+    dont_remove_from_queue: bool
+        If notifications should not be deleted after being read.
     notification_number: int
         Number of notifications to fetch from the queue.
     """
 
     def __init__(self, name: str, access_key: str = None, secret_key: str = None, aws_profile: str = None,
-                 remove_from_queue: bool = True, **kwargs):
+                 dont_remove_from_queue: bool = False, **kwargs):
         self.sqs_queue = name
         WazuhIntegration.__init__(self, access_key=access_key,
                                   secret_key=secret_key,
@@ -3543,7 +3543,8 @@ class AWSSQSQueue(WazuhIntegration):
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
-        self.remove_from_queue = remove_from_queue
+        self.dont_remove_from_queue = dont_remove_from_queue
+        #self.configure_queue_long_polling()
         self.profile = aws_profile
         self.iam_role_arn = kwargs['iam_role_arn']
         # PoC code
@@ -3554,24 +3555,41 @@ class AWSSQSQueue(WazuhIntegration):
         try:
             url = self.client.get_queue_url(QueueName=self.sqs_queue, QueueOwnerAWSAccountId=self.account_id)[
                 'QueueUrl']
-            debug(f'The SQS queue is: {url}', 2)
+            debug(f'The SQS queue is: {url}', 3)
             return url
         except botocore.errorfactory.QueueDoesNotExist:
             print('ERROR: Queue does not exist, verify the given name')
             sys.exit(19)
 
+
+    def configure_queue_long_polling(self):
+        """
+        Configure queue to for long polling.
+        """
+        try:
+            debug(f'Enabling long polling on {self.sqs_url}.', 1)
+            self.client.set_queue_attributes(
+                QueueUrl=self.sqs_url,
+                Attributes={'ReceiveMessageWaitTimeSeconds': 20})
+        except Exception as e:
+            debug(f'Could not configure long polling on - {self.sqs_url}.', 3)
+            sys.exit(4)
+
+    
+
     def delete_message(self, message_handle):
         self.client.delete_message(QueueUrl=self.sqs_queue, ReceiptHandle=message_handle)
 
-    def delete_messages(self, message_handles):
-        for message_handle in message_handles:
-            self.delete_message(message_handle)
+    def delete_messages(self, messages):
+        for message in messages:
+            self.delete_message(message["handle"])
 
     def fetch_message(self):
         try:
             debug(f'Retrieving messages from: {self.sqs_queue}', 2)
             return self.client.receive_message(QueueUrl=self.sqs_queue, AttributeNames=['All'],
-                                               MaxNumberOfMessages=10)
+                                               MaxNumberOfMessages=10, MessageAttributeNames=['All'],
+                                               WaitTimeSeconds=20)
         except Exception as e:
             print("ERROR: Error receiving message from SQS: {}".format(e))
             sys.exit(4)
@@ -3595,8 +3613,7 @@ class AWSSQSQueue(WazuhIntegration):
         messages = self.get_messages()
         while(messages != []):
             asl_bucket_handler.process_files(messages)
-            # WazuhIntegration()
-            if self.remove_from_queue:
+            if not self.dont_remove_from_queue:
                 debug('Removing messages from SQS queue', 2)
                 self.delete_messages(messages)
             messages = self.get_messages()
@@ -3696,8 +3713,8 @@ def get_script_arguments():
                        action='store')
     group.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS queue',
                        action='store')
-    parser.add_argument('-qr', '--remove_from_queue', dest='remove_from_queue',
-                        help='Remove processed notifications from SQS queue', action='store_true')
+    parser.add_argument('-qd', '--dont_remove_from_queue', dest='dont_remove_from_queue',
+                        help='Dont remove processed notifications from SQS queue', action='store_true')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -3857,7 +3874,7 @@ def main(argv):
         elif options.queue:
             asl_queue = AWSSQSQueue(access_key=options.access_key, secret_key=options.secret_key,
                                     aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
-                                    name=options.queue, remove_from_queue=options.remove_from_queue)
+                                    name=options.queue, dont_remove_from_queue=options.dont_remove_from_queue)
             asl_queue.sync_events()
 
     except Exception as err:
