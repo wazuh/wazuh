@@ -7,6 +7,8 @@ metadata:
         Third stage filter of syscollector event decoder with type "dbsync_"
         if succes will query to wdb and map on "wazuh.syscollector..."
         -> only for wazuh managers with version 4.4 and above.
+    versions:
+      - "4.4.0"
     compatibility: >
         This decoder has been tested on Wazuh version 4.4.
     author:
@@ -59,48 +61,48 @@ normalize:
   - map:
       - ~json.type: +s_replace/dbsync_/
       - ~tmp.query: +s_concat/agent /$agent.id/ dbsync /$~json.type/ /$~json.operation/ /$~json.data
-      - ~tmp.query_response: +wdb_query/$~tmp.query
+      - ~tmp.query_response: +wdb_update/$~tmp.query
       - ~json.data.checksum: +ef_delete
 
   - check:
-      - ~tmp.query_response: +s_ne/
+      - ~tmp.query_response: +t_is_false
     map:
       - ~do_update_kvdb: false
 
     # Mapping result fields to wazuh.syscollector
-  - check: +s_eq/~tmp.query_response/ AND +s_eq/~json.type/processes
+  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/processes
     map:
       - wazuh.syscollector.process: $~json.data
 
-  - check: +s_eq/~tmp.query_response/ AND +s_eq/~json.type/ports
+  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/ports
     map:
       - wazuh.syscollector.port: $~json.data
 
-  - check: +s_eq/~tmp.query_response/ AND +s_eq/~json.type/hotfixes
+  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/hotfixes
     map:
       - wazuh.syscollector.hotfix: $~json.data
 
-  - check: +s_eq/~tmp.query_response/ AND +s_eq/~json.type/hwinfo
+  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/hwinfo
     map:
       - wazuh.syscollector.hardware: $~json.data
 
-  - check: +s_eq/~tmp.query_response/ AND +s_eq/~json.type/network_address
+  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/network_address
     map:
       - wazuh.syscollector.netinfo.addr: $~json.data
 
-  - check: +s_eq/~tmp.query_response/ AND +s_eq/~json.type/network_protocol
+  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/network_protocol
     map:
       - wazuh.syscollector.netinfo.proto: $~json.data
 
-  - check: +s_eq/~tmp.query_response/ AND +s_eq/~json.type/network_iface
+  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/network_iface
     map:
       - wazuh.syscollector.netinfo.iface: $~json.data
 
-  - check: +s_eq/~tmp.query_response/ AND +s_eq/~json.type/osinfo
+  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/osinfo
     map:
       - wazuh.syscollector.os: $~json.data
 
-  - check: +s_eq/~tmp.query_response/ AND +s_eq/~json.type/packages
+  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/packages
     map:
       - wazuh.syscollector.program: $~json.data
 
