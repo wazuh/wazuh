@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperStringLessThanEqual, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"value1"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringLessThanEqual(tuple));
@@ -30,7 +30,7 @@ TEST(opBuilderHelperStringLessThanEqual, Builds)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"value1"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2"})");
@@ -46,7 +46,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_false)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"value2"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1"})");
@@ -62,7 +62,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_true)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"value1"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1"})");
@@ -78,7 +78,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_true)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2",
@@ -95,7 +95,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_ref_false)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1",
@@ -112,7 +112,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_ref_true)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1",
@@ -129,7 +129,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_ref_true)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"value1"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -154,7 +154,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_false)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"value2"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -179,7 +179,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_multilevel_true)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"value1"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -204,7 +204,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_true)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -229,7 +229,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_ref_fal
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_multilevel_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -254,7 +254,7 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_multilevel_ref_true)
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less_or_equal"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({

@@ -29,8 +29,8 @@ using std::string;
 using std::vector;
 
 const string targetField {"/result"};
-const string arCreateHFName {"ar_create"};
-const string arSendHFName {"ar_send"};
+const string arCreateHFName {"active_response_create"};
+const string arSendHFName {"active_response_send"};
 
 auto commandName {"dummy-command-name"};
 auto location {"ALL"};

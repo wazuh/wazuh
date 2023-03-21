@@ -12,7 +12,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperIPVersionFromIPStr, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_ip_version"},
+                                 std::string {"ip_version"},
                                  std::vector<std::string> {"$test"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperIPVersionFromIPStr(tuple));
@@ -21,7 +21,7 @@ TEST(opBuilderHelperIPVersionFromIPStr, Builds)
 TEST(opBuilderHelperIPVersionFromIPStr, Builds_bad_type_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_ip_version"},
+                                 std::string {"ip_version"},
                                  std::vector<std::string> {"test"});
 
     ASSERT_THROW(bld::opBuilderHelperIPVersionFromIPStr(tuple), std::runtime_error);
@@ -30,7 +30,7 @@ TEST(opBuilderHelperIPVersionFromIPStr, Builds_bad_type_parameters)
 TEST(opBuilderHelperIPVersionFromIPStr, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_ip_version"},
+                                 std::string {"ip_version"},
                                  std::vector<std::string> {"$TEST", "$test"});
 
     ASSERT_THROW(bld::opBuilderHelperIPVersionFromIPStr(tuple), std::runtime_error);
@@ -39,7 +39,7 @@ TEST(opBuilderHelperIPVersionFromIPStr, Builds_bad_parameters)
 TEST(opBuilderHelperIPVersionFromIPStr, ipv4_OK)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_ip_version"},
+                                 std::string {"ip_version"},
                                  std::vector<std::string> {"$srcIP"});
     auto op =
         bld::opBuilderHelperIPVersionFromIPStr(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -63,7 +63,7 @@ TEST(opBuilderHelperIPVersionFromIPStr, ipv4_OK)
 TEST(opBuilderHelperIPVersionFromIPStr, ipv4_NOT_OK)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_ip_version"},
+                                 std::string {"ip_version"},
                                  std::vector<std::string> {"$srcIP"});
 
     auto event1 = std::make_shared<json::Json>(R"({"srcIP": "192.168.0.257"})");
@@ -81,7 +81,7 @@ TEST(opBuilderHelperIPVersionFromIPStr, ipv4_NOT_OK)
 TEST(opBuilderHelperIPVersionFromIPStr, ipv6_OK)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_ip_version"},
+                                 std::string {"ip_version"},
                                  std::vector<std::string> {"$srcIP"});
     auto op =
         bld::opBuilderHelperIPVersionFromIPStr(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -113,7 +113,7 @@ TEST(opBuilderHelperIPVersionFromIPStr, ipv6_OK)
 TEST(opBuilderHelperIPVersionFromIPStr, ipv6_NOT_OK)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_ip_version"},
+                                 std::string {"ip_version"},
                                  std::vector<std::string> {"$srcIP"});
 
     auto event1 = std::make_shared<json::Json>(R"({"srcIP": "::G"})");
@@ -131,7 +131,7 @@ TEST(opBuilderHelperIPVersionFromIPStr, ipv6_NOT_OK)
 TEST(opBuilderHelperIPVersionFromIPStr, invalid_field)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_ip_version"},
+                                 std::string {"ip_version"},
                                  std::vector<std::string> {"$srcIP"});
     auto op =
         bld::opBuilderHelperIPVersionFromIPStr(tuple)->getPtr<Term<EngineOp>>()->getFn();
