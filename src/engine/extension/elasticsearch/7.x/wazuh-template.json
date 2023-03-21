@@ -8623,6 +8623,14 @@
                         }
                     }
                 }
+            },
+            "wazuh": {
+                "type": "object",
+                "properties": {
+                    "queue": {
+                        "type": "long"
+                    }
+                }
             }
         }
     },

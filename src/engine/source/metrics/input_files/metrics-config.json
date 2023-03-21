@@ -74,63 +74,75 @@
         "description": "some description"
     },
     {
-        "name": "KvdbCounter",
+        "name": "Kvdb.DatabaseCounter",
         "dataHubEnable" : true,
         "enable": true,
         "signalType": "meter",
         "instrumentType" : "counter",
         "subType": "uint64",
-        "exportIntervalMillis": 100,
-        "exportTimeoutMillis": 50,
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500,
         "unit": "unit",
         "description": "KVDB databases counter"
     },
     {
-        "name": "KvdbDatabaseCounter",
-        "dataHubEnable" : true,
-        "enable": true,
-        "signalType": "meter",
-        "instrumentType" : "counter",
-        "subType": "uint64",
-        "exportIntervalMillis": 100,
-        "exportTimeoutMillis": 50,
-        "unit": "unit",
-        "description": "KVDB databases counter"
-    },
-    {
-        "name": "KvdbWritesCounter",
-        "dataHubEnable" : true,
-        "enable": true,
-        "signalType": "meter",
-        "instrumentType" : "counter",
-        "subType": "uint64",
-        "exportIntervalMillis": 100,
-        "exportTimeoutMillis": 50,
-        "unit": "unit",
-        "description": "KVDB database writes counter"
-    },
-    {
-        "name": "KvdbReadsCounter",
-        "dataHubEnable" : true,
-        "enable": true,
-        "signalType": "meter",
-        "instrumentType" : "counter",
-        "subType": "uint64",
-        "exportIntervalMillis": 100,
-        "exportTimeoutMillis": 50,
-        "unit": "unit",
-        "description": "KVDB database reads counter"
-    },
-    {
-        "name": "KvdbDatabaseUseCounter",
+        "name": "Kvdb.DatabaseInUseCounter",
         "dataHubEnable" : true,
         "enable": true,
         "signalType": "meter",
         "instrumentType" : "upDownCounter",
         "subType": "int64",
-        "exportIntervalMillis": 100,
-        "exportTimeoutMillis": 50,
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500,
         "unit": "unit",
-        "description": "KVDB database use counter"
+        "description": "KVDB database in use counter"
+    },
+    {
+        "name": "Kvdb.WritesCounter",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500,
+        "unit": "unit",
+        "description": "KVDB database writes counter"
+    },
+    {
+        "name": "Kvdb.ReadsCounter",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500,
+        "unit": "unit",
+        "description": "KVDB database reads counter"
+    },
+    {
+        "name": "Kvdb.DeletesCounter",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500,
+        "unit": "unit",
+        "description": "KVDB database deletes counter"
+    },
+    {
+        "name": "Kvdb.AccessTimeDBHistogram",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "histogram",
+        "subType": "uint64",
+        "exportIntervalMillis": 10000,
+        "exportTimeoutMillis": 500,
+        "unit": "unit",
+        "description": "Access time: measures the time it takes for the database to process a request and send the response (histogram)."
     }
 ]
