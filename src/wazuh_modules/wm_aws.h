@@ -73,7 +73,7 @@ typedef struct wm_aws_security_lake {
     char *iam_role_duration;               // IAM role session duration
     char *regions;                         // CSV of regions to parse
     char *sts_endpoint;                    // URL for the VPC endpoint to use to obtain the STS token
-    unsigned int delete_from_queue:1;      // Remove notifications from SQS Queue
+    unsigned int dont_remove_from_queue:1;      // Remove notifications from SQS Queue
     struct wm_aws_security_lake *next;     // Pointer to next
 } wm_aws_security_lake;
 
