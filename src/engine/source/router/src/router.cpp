@@ -332,7 +332,6 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                     if (queue->wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
                         std::shared_lock lock {m_mutexRoutes};
-                        Metrics::instance().addCounterValue("SizeBytesRecive", static_cast<uint64_t>(event->size()));
                         for (auto& route : m_priorityRoute)
                         {
                             if (route.second[i].accept(event))

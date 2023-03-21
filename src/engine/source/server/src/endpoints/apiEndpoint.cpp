@@ -144,12 +144,21 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
     client->on<CloseEvent>(
         [](const CloseEvent& event, PipeHandle& client)
         {
+            // Connected Sockets
+            Metrics::instance().addUpDownCounterValue("Server.ConnectedSockets", -1L);
+
             WAZUH_LOG_INFO("Engine API endpoint: Connection closed of client ({}).",
                            client.peer());
         });
 
     handle.accept(*client);
     WAZUH_LOG_INFO("Engine API endpoint: Client accepted: {}", client->peer());
+
+    // Connected Sockets
+    Metrics::instance().addUpDownCounterValue("Server.ConnectedSockets", 1L);
+
+    // Total Connections
+    Metrics::instance().addCounterValue("Server.TotalConnections", 1UL);
 
     timer->start(TimerHandle::Time {CONNECTION_TIMEOUT_MSEC},
                  TimerHandle::Time {CONNECTION_TIMEOUT_MSEC});

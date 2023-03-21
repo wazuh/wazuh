@@ -51,7 +51,7 @@ std::unordered_map<std::string, ProcessorsTypes> const PROCESSOR_TYPES =
     {"batch", ProcessorsTypes::Batch}
 };
 
-Metrics::Metrics() 
+Metrics::Metrics() : m_instrumentState{{std::make_pair(std::make_pair("default", false), "default")}}
 {
     m_dataHub = std::make_shared<DataHub>();
 }
@@ -104,6 +104,7 @@ void Metrics::createCommonChain(const std::filesystem::path& file)
 void Metrics::setMetricsConfig()
 {
     auto particularContext = m_upContext.begin();
+    m_instrumentState.clear();
 
     for (auto& config : m_contextFile)
     {
@@ -118,13 +119,11 @@ void Metrics::setMetricsConfig()
             (*particularContext)->outputFile = config.at("outputFile");
         }
 
-        m_instrumentState.insert({(*particularContext)->name, (*particularContext)->enable});
-
         switch ((*particularContext)->providerType)
         {
             case ProviderTypes::Tracer:
             {
-                m_instrumentsTypes.push_front("trace");
+                m_instrumentState.insert({{(*particularContext)->name, (*particularContext)->enable}, "trace"});
                 (*particularContext)->exporterType = EXPORTER_TYPES.at(config.at("exporterType"));
                 (*particularContext)->processorType = PROCESSOR_TYPES.at(config.at("processorType"));
 
@@ -141,7 +140,7 @@ void Metrics::setMetricsConfig()
                 {
                     (*particularContext)->aggregationTemporalityTypes = AggregationTemporalityTypes::Cumulative;
                 }
-                m_instrumentsTypes.push_front(config.at("instrumentType"));
+                m_instrumentState.insert({{(*particularContext)->name, (*particularContext)->enable}, config.at("instrumentType")});
                 (*particularContext)->instrumentType = INSTRUMENT_TYPES.at(config.at("instrumentType"));
                 (*particularContext)->subType = SUB_TYPES.at(config.at("subType"));
                 (*particularContext)->export_interval_millis = static_cast<std::chrono::milliseconds>(config.at("exportIntervalMillis"));
@@ -301,11 +300,15 @@ void Metrics::initCounter(const std::shared_ptr<MetricsContext> context)
 
 void Metrics::addCounterValue(std::string counterName, const double value) const
 {
-    if (m_doubleCounter.find(counterName) != m_doubleCounter.end())
+    auto it = m_doubleCounter.find(counterName);
+    if (it != m_doubleCounter.end())
     {
-        if(m_instrumentState.at(counterName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            m_doubleCounter.at(counterName)->Add(value);
+            if (key.first == counterName)
+            {
+                it->second->Add(value);
+            }
         }
     }
     else
@@ -316,11 +319,15 @@ void Metrics::addCounterValue(std::string counterName, const double value) const
 
 void Metrics::addCounterValue(std::string counterName, const uint64_t value) const
 {
-    if (m_uint64Counter.find(counterName) != m_uint64Counter.end())
+    auto it = m_uint64Counter.find(counterName);
+    if (it != m_uint64Counter.end())
     {
-        if(m_instrumentState.at(counterName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            m_uint64Counter.at(counterName)->Add(value);
+            if (key.first == counterName)
+            {
+                it->second->Add(value);
+            }
         }
     }
     else
@@ -374,13 +381,17 @@ void Metrics::initHistogram(const std::shared_ptr<MetricsContext> context)
 
 void Metrics::addHistogramValue(std::string histogramName, const double value) const
 {
-    if (m_doubleHistogram.find(histogramName) != m_doubleHistogram.end())
+    auto it = m_doubleHistogram.find(histogramName);
+    if (it != m_doubleHistogram.end())
     {
-        if(m_instrumentState.at(histogramName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            std::map<std::string, std::string> labels;
-            auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
-            m_doubleHistogram.at(histogramName)->Record(value, labelkv, m_context);
+            if (key.first == histogramName)
+            {
+                std::map<std::string, std::string> labels;
+                auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
+                it->second->Record(value, labelkv, m_context);
+            }
         }
     }
     else
@@ -391,12 +402,16 @@ void Metrics::addHistogramValue(std::string histogramName, const double value) c
 
 void Metrics::addHistogramValue(std::string histogramName, const uint64_t value, std::map<std::string, std::string> labels) const
 {
-    if (m_uint64Histogram.find(histogramName) != m_uint64Histogram.end())
+    auto it = m_uint64Histogram.find(histogramName);
+    if (it != m_uint64Histogram.end())
     {
-        if(m_instrumentState.at(histogramName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
-            m_uint64Histogram.at(histogramName)->Record(value, labelkv, m_context);
+            if (key.first == histogramName)
+            {
+                auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
+                it->second->Record(value, labelkv, m_context);
+            }
         }
     }
     else
@@ -448,11 +463,15 @@ void Metrics::initUpDownCounter(const std::shared_ptr<MetricsContext> context)
 
 void Metrics::addUpDownCounterValue(std::string upDownCounterName, const double value) const
 {
-    if (m_doubleUpDownCounter.find(upDownCounterName) != m_doubleUpDownCounter.end())
+    auto it = m_doubleUpDownCounter.find(upDownCounterName);
+    if (it != m_doubleUpDownCounter.end())
     {
-        if(m_instrumentState.at(upDownCounterName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            m_doubleUpDownCounter.at(upDownCounterName)->Add(value);
+            if (key.first == upDownCounterName)
+            {
+                it->second->Add(value);
+            }
         }
     }
     else
@@ -463,11 +482,15 @@ void Metrics::addUpDownCounterValue(std::string upDownCounterName, const double 
 
 void Metrics::addUpDownCounterValue(std::string upDownCounterName, const int64_t value) const
 {
-    if (m_int64UpDownCounter.find(upDownCounterName) != m_int64UpDownCounter.end())
+    auto it = m_int64UpDownCounter.find(upDownCounterName);
+    if (it != m_int64UpDownCounter.end())
     {
-        if(m_instrumentState.at(upDownCounterName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            m_int64UpDownCounter.at(upDownCounterName)->Add(value);
+            if (key.first == upDownCounterName)
+            {
+                it->second->Add(value);
+            }
         }
     }
     else
@@ -519,18 +542,26 @@ void Metrics::initObservableGauge(const std::shared_ptr<MetricsContext> context)
 
 void Metrics::addObservableGauge(std::string observableGaugeName, opentelemetry::v1::metrics::ObservableCallbackPtr callback) const
 {
-    if (m_doubleObservableGauge.find(observableGaugeName) != m_doubleObservableGauge.end())
+    auto itDouble = m_doubleObservableGauge.find(observableGaugeName);
+    auto itInt = m_int64ObservableGauge.find(observableGaugeName);
+    if (itDouble != m_doubleObservableGauge.end())
     {
-        if(m_instrumentState.at(observableGaugeName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            m_doubleObservableGauge.at(observableGaugeName)->AddCallback(callback, nullptr);
+            if (key.first == observableGaugeName)
+            {
+                itDouble->second->AddCallback(callback, nullptr);
+            }
         }
     }
-    else if (m_int64ObservableGauge.find(observableGaugeName) != m_int64ObservableGauge.end())
+    else if (itInt != m_int64ObservableGauge.end())
     {
-        if(m_instrumentState.at(observableGaugeName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            m_int64ObservableGauge.at(observableGaugeName)->AddCallback(callback, nullptr);
+            if (key.first == observableGaugeName)
+            {
+                itInt->second->AddCallback(callback, nullptr);
+            }
         }
     }
     else
@@ -541,18 +572,26 @@ void Metrics::addObservableGauge(std::string observableGaugeName, opentelemetry:
 
 void Metrics::removeObservableGauge(std::string observableGaugeName, opentelemetry::v1::metrics::ObservableCallbackPtr callback) const
 {
-    if (m_doubleObservableGauge.find(observableGaugeName) != m_doubleObservableGauge.end())
+    auto itDouble = m_doubleObservableGauge.find(observableGaugeName);
+    auto itInt = m_int64ObservableGauge.find(observableGaugeName);
+    if (itDouble != m_doubleObservableGauge.end())
     {
-        if(m_instrumentState.at(observableGaugeName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            m_doubleObservableGauge.at(observableGaugeName)->RemoveCallback(callback, nullptr);
+            if (key.first == observableGaugeName)
+            {
+                itDouble->second->RemoveCallback(callback, nullptr);
+            }
         }
     }
-    else if (m_int64ObservableGauge.find(observableGaugeName) != m_int64ObservableGauge.end())
+    else if (itInt != m_int64ObservableGauge.end())
     {
-        if(m_instrumentState.at(observableGaugeName))
+        for (auto& [key, val] : m_instrumentState)
         {
-            m_int64ObservableGauge.at(observableGaugeName)->RemoveCallback(callback, nullptr);
+            if (key.first == observableGaugeName)
+            {
+                itInt->second->RemoveCallback(callback, nullptr);
+            }
         }
     }
     else
@@ -563,26 +602,28 @@ void Metrics::removeObservableGauge(std::string observableGaugeName, opentelemet
 
 void Metrics::setEnableInstrument(const std::string& instrumentName, bool state)
 {
-    if (m_instrumentState.find(instrumentName) != m_instrumentState.end())
+    for (auto& [key, val] : m_instrumentState)
     {
-        m_instrumentState.at(instrumentName) = state;
+        if (key.first == instrumentName)
+        {
+            auto newKey = std::make_pair(key.first, state);
+            m_instrumentState[newKey] = val;
+            m_instrumentState.erase(key);
+            return;
+        }
     }
-    else
-    {
-        throw std::runtime_error {"The Instrument " + instrumentName + " has not been created."};
-    }
+
+    throw std::runtime_error {"The Instrument " + instrumentName + " has not been created."};
 }
 
 std::ostringstream Metrics::getInstrumentsList()
 {
     std::ostringstream outputList;
 
-    auto instrumentType = m_instrumentsTypes.begin();
-    for (const auto& control : m_instrumentState)
+    for (auto& [key, val] : m_instrumentState)
     {
-        auto aux = control.second == true ? "enable" : "disable";
-        outputList << "\t" << control.first << ", " << aux << ", " << *instrumentType << std::endl;
-        std::advance(instrumentType, 1);
+        auto aux = key.second == true ? "enable" : "disable";
+        outputList << "\t" << key.first << ", " << aux << ", " << val << std::endl;
     }
 
     return outputList;
