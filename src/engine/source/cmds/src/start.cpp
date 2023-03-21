@@ -146,6 +146,10 @@ void runStart(ConfHandler confManager)
     {
         const auto bufferSize {static_cast<size_t>(queueSize)};
 
+        // Initialize Metrics Module
+        // TODO: Resolve fullpath accordingly.
+        Metrics::instance().initMetrics("engine-metrics", "/var/ossec/engine/store/metrics/config/0");
+
         // TODO Add the option to configure the flooded file
         // TODO Change the default buffer size to a multiple of 1024
         server =
@@ -223,10 +227,6 @@ void runStart(ConfHandler confManager)
             router->clear();
             router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
         }
-
-        // Initialize Metrics Module
-        // TODO: Resolve fullpath accordingly.
-        Metrics::instance().initMetrics("engine-metrics", "/var/ossec/engine/store/metrics/config/0");
 
         // Register Metrics commands
         api::metrics::cmds::registerAllCmds(server->getRegistry());

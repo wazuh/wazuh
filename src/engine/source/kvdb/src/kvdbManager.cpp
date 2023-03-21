@@ -14,6 +14,8 @@
 #include <utils/baseMacros.hpp>
 #include <utils/stringUtils.hpp>
 
+#include <metrics.hpp>
+
 namespace kvdb_manager
 {
 
@@ -60,12 +62,8 @@ KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
     if (KVDB::CreationStatus::OkInitialized == result
         || KVDB::CreationStatus::OkCreated == result)
     {
-        if (KVDB::CreationStatus::OkCreated == result)
-        {
-            Metrics::instance().addCounterValue("KvdbDatabaseCounter", 1UL);
-        }
-
-        Metrics::instance().addCounterValue("KvdbDatabaseUseCounter", 1UL);
+        Metrics::instance().addCounterValue("Kvdb.DatabaseCounter", 1UL);
+        Metrics::instance().addUpDownCounterValue("Kvdb.DatabaseInUseCounter", 1L);
 
         m_dbs[name] = kvdb;
         return kvdb;
@@ -82,6 +80,7 @@ void KVDBManager::unloadDB(const std::string& name)
     if (isLoaded)
     {
         m_dbs.erase(name);
+        Metrics::instance().addUpDownCounterValue("Kvdb.DatabaseInUseCounter", -1L);
     }
 }
 
@@ -108,6 +107,9 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
                                 db->getName());
                 return nullptr;
             }
+
+            // TODO: add metric to count reopen DB
+            // Metrics::instance().addCounterValue("Kvdb.DatabaseCounter", 1UL);
         }
 
         // return handle
@@ -330,7 +332,6 @@ std::optional<base::Error> KVDBManager::deleteKey(const std::string& name,
         return std::get<base::Error>(handle);
     }
     auto& kvdb = std::get<KVDBHandle>(handle);
-
     return kvdb->deleteKey(key);
 }
 
@@ -377,6 +378,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
         if (handler.use_count() == MAX_USE_COUNT)
         {
             m_dbs.erase(name);
+            Metrics::instance().addCounterValue("Kvdb.DatabaseInUseCounter", -1UL);
         }
         else
         {

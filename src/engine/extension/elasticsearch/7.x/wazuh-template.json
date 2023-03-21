@@ -7528,14 +7528,6 @@
                     }
                 }
             },
-            "wazuh": {
-                "type": "object",
-                "properties": {
-                    "queue": {
-                        "type": "long"
-                    }
-                }
-            },
             "auditd": {
                 "type": "object",
                 "properties": {
@@ -7555,6 +7547,14 @@
                                 "type": "keyword"
                             }
                         }
+                    }
+                }
+            },
+            "wazuh": {
+                "type": "object",
+                "properties": {
+                    "queue": {
+                        "type": "long"
                     }
                 }
             }

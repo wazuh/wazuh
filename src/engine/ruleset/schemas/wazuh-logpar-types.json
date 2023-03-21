@@ -1049,11 +1049,11 @@
         "vulnerability.score.temporal": "float",
         "vulnerability.score.version": "keyword",
         "vulnerability.severity": "keyword",
-        "wazuh.queue": "long",
         "auditd.log.new_auid": "keyword",
         "auditd.log.old_auid": "keyword",
         "auditd.log.new_ses": "keyword",
         "auditd.log.old_ses": "keyword",
+        "wazuh.queue": "long",
         "url": "url",
         "user_agent": "useragent"
     }

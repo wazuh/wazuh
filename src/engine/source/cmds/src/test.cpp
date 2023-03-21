@@ -24,6 +24,8 @@
 #include "registry.hpp"
 #include "server/wazuhStreamProtocol.hpp"
 
+#include "metrics.hpp"
+
 namespace
 {
 std::atomic<bool> gs_doRun = true;
@@ -40,6 +42,7 @@ namespace cmd::test
 {
 void run(const Options& options)
 {
+    Metrics::instance().initMetrics("engine-metrics", "/var/ossec/engine/store/metrics/config/0");
     // Init logging
     logging::LoggingConfig logConfig;
     logConfig.header = "";

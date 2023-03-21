@@ -15,6 +15,8 @@
 
 #include <iostream>
 
+#include <metrics.hpp>
+
 static const struct Option
 {
     rocksdb::ReadOptions read;
@@ -671,17 +673,27 @@ bool KVDB::write(const std::string& key,
                  const std::string& value,
                  const std::string& columnName)
 {
+    Metrics::instance().addCounterValue("Kvdb.WritesCounter", 1UL);
     return mImpl->write(key, value, columnName);
 }
 
 std::variant<std::string, base::Error> KVDB::read(const std::string& key,
                                       const std::string& columnName)
 {
-    return mImpl->read(key, columnName);
+    Metrics::instance().addCounterValue("Kvdb.ReadsCounter", 1UL);
+
+    auto startTime = 100;
+    auto response = mImpl->read(key, columnName);
+    auto endTime = 200;
+    double result = endTime - startTime;
+    Metrics::instance().addHistogramValue("Kvdb.AccessTimeDBHistogram", result);
+
+    return response;
 }
 
 std::optional<base::Error> KVDB::deleteKey(const std::string& key, const std::string& columnName)
 {
+    Metrics::instance().addCounterValue("Kvdb.DeletesCounter", 1UL);
     return mImpl->deleteKey(key, columnName);
 }
 
