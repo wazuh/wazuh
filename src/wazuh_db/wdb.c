@@ -12,6 +12,7 @@
 #include "wdb.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuhdb_op.h"
+#include "wdb_state.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -620,19 +621,56 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
     return result;
 }
 
+int doRollback(rollback_data_t *rollback_data) {
+    int result = OS_INVALID;
+    struct timeval begin;
+    struct timeval end;
+    struct timeval diff;
+
+    if (rollback_data != NULL && rollback_data->wdb != NULL) {
+        w_inc_global_rollback();
+        gettimeofday(&begin, 0);
+        if (wdb_rollback2(rollback_data->wdb) < 0) {
+            mdebug1("Global DB Cannot rollback transaction");
+            snprintf(rollback_data->output, OS_MAXSTR + 1, "err Cannot rollback transaction");
+        } else {
+            snprintf(rollback_data->output, OS_MAXSTR + 1, "ok");
+            result = OS_SUCCESS;
+        }
+
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_global_rollback_time(diff);
+    }
+    return result;
+}
+
 /* Execute statement with availability waiting */
-int wdb_step(sqlite3_stmt *stmt) {
+int wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQueryModifyDB) {
     int result;
     int attempts;
+    char output[OS_MAXSTR + 1];
 
-    for (attempts = 0; (result = sqlite3_step(stmt)) == SQLITE_BUSY; attempts++) {
-        if (attempts == MAX_ATTEMPTS) {
-            mdebug1("Maximum attempts exceeded for sqlite3_step()");
+    for (attempts = 0; (result = sqlite3_step(stmt)) == SQLITE_BUSY
+        && max_attemps > 0; attempts++) {
+
+        if (attempts == max_attemps) {
+            merror(VU_MAX_ACC_EXC);
             return -1;
         }
     }
 
+    if (result != SQLITE_DONE && theQueryModifyDB) {
+        rollback_data_t rollback_data = { .wdb = wdb, .output = output };
+        result = doRollback(&rollback_data);
+    }
+
     return result;
+}
+
+/* Execute statement with availability waiting */
+int wdb_step(sqlite3_stmt *stmt){
+    return wdb_step1(stmt, NULL, 0, false);
 }
 
 /* Begin transaction */
@@ -1903,8 +1941,6 @@ int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wd
     wdb->transaction = state;
     if (1 == state) {
         wdb->transaction_begin_time = time(NULL);
-    } else {
-        /* do nothing */
     }
 
     return 0;

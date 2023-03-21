@@ -512,7 +512,14 @@ struct kv_list {
     const struct kv_list *next;
 };
 
-/** @brief pointer to function for any transaction*/
+typedef struct rollback_data_t {
+    char * output;
+    wdb_t * wdb;
+} rollback_data_t;
+
+/**
+ * @brief pointer to function for any transaction
+ */
 typedef int (*wdb_ptr_any_txn_t)(sqlite3 *);
 
 /**
@@ -718,7 +725,15 @@ int wdb_fim_clean_old_entries(wdb_t * wdb);
 /* Prepare SQL query with availability waiting */
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
 
-/* Execute statement with availability waiting */
+/**
+ * @brief Execute statement with availability waiting
+ * @param stmt stmt The SQL statement to be executed.
+ * @param max_attemps maximun number of attemps to query the DB
+ * @param theQueryModifyDB true for INSERT|DELETE|UPDATE|CREATE or false other cases
+ * @return SQLITE errors
+ */
+int wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQueryModifyDB);
+
 int wdb_step(sqlite3_stmt *stmt);
 
 /* Begin transaction */
@@ -729,6 +744,7 @@ int wdb_begin2(wdb_t * wdb);
 int wdb_commit(sqlite3 *db);
 int wdb_commit2(wdb_t * wdb);
 
+/* Roolback transaction */
 int wdb_rollback(sqlite3 *db);
 int wdb_rollback2(wdb_t * wdb);
 
@@ -2584,4 +2600,12 @@ int wdb_any_transaction(sqlite3 *db, const char* sql_transaction);
  * @return 0 when succeed, !=0 otherwise.
 */
 int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
+
+/**
+ * @brief make rollback
+ * @param rollback_data data needed for rollback
+ * @return 0 when succeed, !=0 otherwise.
+*/
+int doRollback(rollback_data_t *rollback_data);
+
 #endif

@@ -1351,18 +1351,9 @@ int wdb_parse(char * input, char * output, int peer) {
             timersub(&end, &begin, &diff);
             w_inc_global_get_fragmentation_time(diff);
         } else if (strcmp(query, "rollback") == 0) {
-            w_inc_global_rollback();
-            gettimeofday(&begin, 0);
-            if (wdb_rollback2(wdb) < 0) {
-                mdebug1("Global DB Cannot rollback transaction");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot rollback transaction");
-                result = OS_INVALID;
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
-            gettimeofday(&end, 0);
-            timersub(&end, &begin, &diff);
-            w_inc_global_rollback_time(diff);
+            rollback_data_t rollback_data = {.wdb = wdb, .output = output};
+            result = doRollback(&rollback_data);
+
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
