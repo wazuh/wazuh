@@ -20,7 +20,7 @@ const std::vector<std::string> arguments {};
 
 TEST(opBuilderHelperTypeCheck, BuildIsNumber)
 {
-    const std::string helperFunctionName {"t_is_num"};
+    const std::string helperFunctionName {"is_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -29,7 +29,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsNumber)
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotNumber)
 {
-    const std::string helperFunctionName {"t_is_not_num"};
+    const std::string helperFunctionName {"is_not_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -38,7 +38,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotNumber)
 
 TEST(opBuilderHelperTypeCheck, BuildIsString)
 {
-    const std::string helperFunctionName {"t_is_string"};
+    const std::string helperFunctionName {"is_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -47,7 +47,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsString)
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotString)
 {
-    const std::string helperFunctionName {"t_is_not_string"};
+    const std::string helperFunctionName {"is_not_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -56,7 +56,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotString)
 
 TEST(opBuilderHelperTypeCheck, BuildIsBool)
 {
-    const std::string helperFunctionName {"t_is_bool"};
+    const std::string helperFunctionName {"is_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -65,7 +65,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsBool)
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotBool)
 {
-    const std::string helperFunctionName {"t_is_not_bool"};
+    const std::string helperFunctionName {"is_not_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -74,7 +74,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotBool)
 
 TEST(opBuilderHelperTypeCheck, BuildIsArray)
 {
-    const std::string helperFunctionName {"t_is_array"};
+    const std::string helperFunctionName {"is_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -83,7 +83,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsArray)
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotArray)
 {
-    const std::string helperFunctionName {"t_is_not_array"};
+    const std::string helperFunctionName {"is_not_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -92,7 +92,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotArray)
 
 TEST(opBuilderHelperTypeCheck, BuildIsObject)
 {
-    const std::string helperFunctionName {"t_is_object"};
+    const std::string helperFunctionName {"is_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -101,7 +101,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsObject)
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotObject)
 {
-    const std::string helperFunctionName {"t_is_not_object"};
+    const std::string helperFunctionName {"is_not_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -110,7 +110,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotObject)
 
 TEST(opBuilderHelperTypeCheck, BuildIsNull)
 {
-    const std::string helperFunctionName {"t_is_null"};
+    const std::string helperFunctionName {"is_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -119,7 +119,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsNull)
 
 TEST(opBuilderHelperTypeCheck, BuildIsNotNull)
 {
-    const std::string helperFunctionName {"t_is_not_null"};
+    const std::string helperFunctionName {"is_not_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -128,7 +128,7 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotNull)
 
 TEST(opBuilderHelperTypeCheck, BuildIsTrue)
 {
-    const std::string helperFunctionName {"t_is_true"};
+    const std::string helperFunctionName {"is_true"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -148,7 +148,7 @@ TEST(opBuilderHelperTypeCheck, IsFalseIsFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckString)
 {
-    const std::string helperFunctionName {"t_is_num"};
+    const std::string helperFunctionName {"is_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -163,7 +163,7 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckString)
 {
-    const std::string helperFunctionName {"t_is_not_num"};
+    const std::string helperFunctionName {"is_not_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -178,7 +178,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckString)
 {
-    const std::string helperFunctionName {"t_is_string"};
+    const std::string helperFunctionName {"is_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -193,7 +193,7 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckString)
 {
-    const std::string helperFunctionName {"t_is_not_string"};
+    const std::string helperFunctionName {"is_not_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -208,7 +208,7 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckString)
 {
-    const std::string helperFunctionName {"t_is_bool"};
+    const std::string helperFunctionName {"is_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -223,7 +223,7 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckString)
 {
-    const std::string helperFunctionName {"t_is_not_bool"};
+    const std::string helperFunctionName {"is_not_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -238,7 +238,7 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckString)
 {
-    const std::string helperFunctionName {"t_is_array"};
+    const std::string helperFunctionName {"is_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -253,7 +253,7 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckString)
 {
-    const std::string helperFunctionName {"t_is_not_array"};
+    const std::string helperFunctionName {"is_not_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -268,7 +268,7 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckString)
 {
-    const std::string helperFunctionName {"t_is_object"};
+    const std::string helperFunctionName {"is_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -283,7 +283,7 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckString)
 {
-    const std::string helperFunctionName {"t_is_not_object"};
+    const std::string helperFunctionName {"is_not_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -298,7 +298,7 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckString)
 {
-    const std::string helperFunctionName {"t_is_null"};
+    const std::string helperFunctionName {"is_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -313,7 +313,7 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckString)
 {
-    const std::string helperFunctionName {"t_is_not_null"};
+    const std::string helperFunctionName {"is_not_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -328,7 +328,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckString)
 {
-    const std::string helperFunctionName {"t_is_true"};
+    const std::string helperFunctionName {"is_true"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -343,7 +343,7 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckString)
 {
-    const std::string helperFunctionName {"t_is_false"};
+    const std::string helperFunctionName {"is_false"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -360,7 +360,7 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckString)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_num"};
+    const std::string helperFunctionName {"is_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -375,7 +375,7 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_not_num"};
+    const std::string helperFunctionName {"is_not_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -390,7 +390,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_string"};
+    const std::string helperFunctionName {"is_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -405,7 +405,7 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_not_string"};
+    const std::string helperFunctionName {"is_not_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -420,7 +420,7 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_bool"};
+    const std::string helperFunctionName {"is_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -435,7 +435,7 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_not_bool"};
+    const std::string helperFunctionName {"is_not_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -450,7 +450,7 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_array"};
+    const std::string helperFunctionName {"is_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -465,7 +465,7 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_not_array"};
+    const std::string helperFunctionName {"is_not_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -480,7 +480,7 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_object"};
+    const std::string helperFunctionName {"is_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -495,7 +495,7 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_not_object"};
+    const std::string helperFunctionName {"is_not_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -510,7 +510,7 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_null"};
+    const std::string helperFunctionName {"is_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -525,7 +525,7 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_not_null"};
+    const std::string helperFunctionName {"is_not_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -540,7 +540,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_true"};
+    const std::string helperFunctionName {"is_true"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -555,7 +555,7 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckNumber)
 {
-    const std::string helperFunctionName {"t_is_false"};
+    const std::string helperFunctionName {"is_false"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -572,7 +572,7 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckNumber)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_num"};
+    const std::string helperFunctionName {"is_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -587,7 +587,7 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_not_num"};
+    const std::string helperFunctionName {"is_not_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -602,7 +602,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_string"};
+    const std::string helperFunctionName {"is_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -617,7 +617,7 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_not_string"};
+    const std::string helperFunctionName {"is_not_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -632,7 +632,7 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_bool"};
+    const std::string helperFunctionName {"is_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -647,7 +647,7 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_not_bool"};
+    const std::string helperFunctionName {"is_not_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -662,7 +662,7 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_array"};
+    const std::string helperFunctionName {"is_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -677,7 +677,7 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_not_array"};
+    const std::string helperFunctionName {"is_not_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -692,7 +692,7 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_object"};
+    const std::string helperFunctionName {"is_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -707,7 +707,7 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_not_object"};
+    const std::string helperFunctionName {"is_not_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -722,7 +722,7 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_null"};
+    const std::string helperFunctionName {"is_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -737,7 +737,7 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_not_null"};
+    const std::string helperFunctionName {"is_not_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -752,7 +752,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_true"};
+    const std::string helperFunctionName {"is_true"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -767,7 +767,7 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolTrue)
 {
-    const std::string helperFunctionName {"t_is_false"};
+    const std::string helperFunctionName {"is_false"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -784,7 +784,7 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolTrue)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_num"};
+    const std::string helperFunctionName {"is_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -799,7 +799,7 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_not_num"};
+    const std::string helperFunctionName {"is_not_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -814,7 +814,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_string"};
+    const std::string helperFunctionName {"is_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -829,7 +829,7 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_not_string"};
+    const std::string helperFunctionName {"is_not_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -844,7 +844,7 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_bool"};
+    const std::string helperFunctionName {"is_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -859,7 +859,7 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_not_bool"};
+    const std::string helperFunctionName {"is_not_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -874,7 +874,7 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_array"};
+    const std::string helperFunctionName {"is_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -889,7 +889,7 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_not_array"};
+    const std::string helperFunctionName {"is_not_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -904,7 +904,7 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_object"};
+    const std::string helperFunctionName {"is_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -919,7 +919,7 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_not_object"};
+    const std::string helperFunctionName {"is_not_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -934,7 +934,7 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_null"};
+    const std::string helperFunctionName {"is_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -949,7 +949,7 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_not_null"};
+    const std::string helperFunctionName {"is_not_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -964,7 +964,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_true"};
+    const std::string helperFunctionName {"is_true"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -979,7 +979,7 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolFalse)
 {
-    const std::string helperFunctionName {"t_is_false"};
+    const std::string helperFunctionName {"is_false"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -996,7 +996,7 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolFalse)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckArray)
 {
-    const std::string helperFunctionName {"t_is_num"};
+    const std::string helperFunctionName {"is_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1012,7 +1012,7 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckArray)
 {
-    const std::string helperFunctionName {"t_is_not_num"};
+    const std::string helperFunctionName {"is_not_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1028,7 +1028,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckArray)
 {
-    const std::string helperFunctionName {"t_is_string"};
+    const std::string helperFunctionName {"is_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1044,7 +1044,7 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckArray)
 {
-    const std::string helperFunctionName {"t_is_not_string"};
+    const std::string helperFunctionName {"is_not_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1060,7 +1060,7 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckArray)
 {
-    const std::string helperFunctionName {"t_is_bool"};
+    const std::string helperFunctionName {"is_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1076,7 +1076,7 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckArray)
 {
-    const std::string helperFunctionName {"t_is_not_bool"};
+    const std::string helperFunctionName {"is_not_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1092,7 +1092,7 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckArray)
 {
-    const std::string helperFunctionName {"t_is_array"};
+    const std::string helperFunctionName {"is_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1108,7 +1108,7 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckArray)
 {
-    const std::string helperFunctionName {"t_is_not_array"};
+    const std::string helperFunctionName {"is_not_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1124,7 +1124,7 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckArray)
 {
-    const std::string helperFunctionName {"t_is_object"};
+    const std::string helperFunctionName {"is_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1140,7 +1140,7 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckArray)
 {
-    const std::string helperFunctionName {"t_is_not_object"};
+    const std::string helperFunctionName {"is_not_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1156,7 +1156,7 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckArray)
 {
-    const std::string helperFunctionName {"t_is_null"};
+    const std::string helperFunctionName {"is_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1172,7 +1172,7 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckArray)
 {
-    const std::string helperFunctionName {"t_is_not_null"};
+    const std::string helperFunctionName {"is_not_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1188,7 +1188,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckArray)
 {
-    const std::string helperFunctionName {"t_is_true"};
+    const std::string helperFunctionName {"is_true"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1204,7 +1204,7 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckArray)
 {
-    const std::string helperFunctionName {"t_is_false"};
+    const std::string helperFunctionName {"is_false"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1222,7 +1222,7 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckArray)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckObject)
 {
-    const std::string helperFunctionName {"t_is_num"};
+    const std::string helperFunctionName {"is_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1238,7 +1238,7 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckObject)
 {
-    const std::string helperFunctionName {"t_is_not_num"};
+    const std::string helperFunctionName {"is_not_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1254,7 +1254,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckObject)
 {
-    const std::string helperFunctionName {"t_is_string"};
+    const std::string helperFunctionName {"is_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1270,7 +1270,7 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckObject)
 {
-    const std::string helperFunctionName {"t_is_not_string"};
+    const std::string helperFunctionName {"is_not_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1286,7 +1286,7 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckObject)
 {
-    const std::string helperFunctionName {"t_is_bool"};
+    const std::string helperFunctionName {"is_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1302,7 +1302,7 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckObject)
 {
-    const std::string helperFunctionName {"t_is_not_bool"};
+    const std::string helperFunctionName {"is_not_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1318,7 +1318,7 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckObject)
 {
-    const std::string helperFunctionName {"t_is_array"};
+    const std::string helperFunctionName {"is_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1334,7 +1334,7 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckObject)
 {
-    const std::string helperFunctionName {"t_is_not_array"};
+    const std::string helperFunctionName {"is_not_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1350,7 +1350,7 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckObject)
 {
-    const std::string helperFunctionName {"t_is_object"};
+    const std::string helperFunctionName {"is_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1366,7 +1366,7 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckObject)
 {
-    const std::string helperFunctionName {"t_is_not_object"};
+    const std::string helperFunctionName {"is_not_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1382,7 +1382,7 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckObject)
 {
-    const std::string helperFunctionName {"t_is_null"};
+    const std::string helperFunctionName {"is_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1398,7 +1398,7 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckObject)
 {
-    const std::string helperFunctionName {"t_is_not_null"};
+    const std::string helperFunctionName {"is_not_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1414,7 +1414,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckObject)
 {
-    const std::string helperFunctionName {"t_is_true"};
+    const std::string helperFunctionName {"is_true"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1430,7 +1430,7 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckObject)
 {
-    const std::string helperFunctionName {"t_is_false"};
+    const std::string helperFunctionName {"is_false"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1448,7 +1448,7 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckObject)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckNull)
 {
-    const std::string helperFunctionName {"t_is_num"};
+    const std::string helperFunctionName {"is_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1463,7 +1463,7 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNull)
 {
-    const std::string helperFunctionName {"t_is_not_num"};
+    const std::string helperFunctionName {"is_not_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1478,7 +1478,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckNull)
 {
-    const std::string helperFunctionName {"t_is_string"};
+    const std::string helperFunctionName {"is_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1493,7 +1493,7 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckNull)
 {
-    const std::string helperFunctionName {"t_is_not_string"};
+    const std::string helperFunctionName {"is_not_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1508,7 +1508,7 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckNull)
 {
-    const std::string helperFunctionName {"t_is_bool"};
+    const std::string helperFunctionName {"is_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1523,7 +1523,7 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNull)
 {
-    const std::string helperFunctionName {"t_is_not_bool"};
+    const std::string helperFunctionName {"is_not_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1538,7 +1538,7 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckNull)
 {
-    const std::string helperFunctionName {"t_is_array"};
+    const std::string helperFunctionName {"is_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1553,7 +1553,7 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNull)
 {
-    const std::string helperFunctionName {"t_is_not_array"};
+    const std::string helperFunctionName {"is_not_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1568,7 +1568,7 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckNull)
 {
-    const std::string helperFunctionName {"t_is_object"};
+    const std::string helperFunctionName {"is_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1583,7 +1583,7 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNull)
 {
-    const std::string helperFunctionName {"t_is_not_object"};
+    const std::string helperFunctionName {"is_not_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1598,7 +1598,7 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckNull)
 {
-    const std::string helperFunctionName {"t_is_null"};
+    const std::string helperFunctionName {"is_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1613,7 +1613,7 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckNull)
 {
-    const std::string helperFunctionName {"t_is_not_null"};
+    const std::string helperFunctionName {"is_not_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1628,7 +1628,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckNull)
 {
-    const std::string helperFunctionName {"t_is_true"};
+    const std::string helperFunctionName {"is_true"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1643,7 +1643,7 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckNull)
 {
-    const std::string helperFunctionName {"t_is_false"};
+    const std::string helperFunctionName {"is_false"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1660,7 +1660,7 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckNull)
 
 TEST(opBuilderHelperTypeCheck, IsNumberCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_num"};
+    const std::string helperFunctionName {"is_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1675,7 +1675,7 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_not_num"};
+    const std::string helperFunctionName {"is_not_number"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1690,7 +1690,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsStringCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_string"};
+    const std::string helperFunctionName {"is_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1705,7 +1705,7 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotStringCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_not_string"};
+    const std::string helperFunctionName {"is_not_string"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1720,7 +1720,7 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsBoolCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_bool"};
+    const std::string helperFunctionName {"is_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1735,7 +1735,7 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_not_bool"};
+    const std::string helperFunctionName {"is_not_boolean"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1750,7 +1750,7 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsArrayCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_array"};
+    const std::string helperFunctionName {"is_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1765,7 +1765,7 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_not_array"};
+    const std::string helperFunctionName {"is_not_array"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1780,7 +1780,7 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsObjectCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_object"};
+    const std::string helperFunctionName {"is_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1795,7 +1795,7 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_not_object"};
+    const std::string helperFunctionName {"is_not_object"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1810,7 +1810,7 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNullCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_null"};
+    const std::string helperFunctionName {"is_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1825,7 +1825,7 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsNotNullCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_not_null"};
+    const std::string helperFunctionName {"is_not_null"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1840,7 +1840,7 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsTrueCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_true"};
+    const std::string helperFunctionName {"is_true"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
@@ -1855,7 +1855,7 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckNonexistentField)
 
 TEST(opBuilderHelperTypeCheck, IsFalseCheckNonexistentField)
 {
-    const std::string helperFunctionName {"t_is_false"};
+    const std::string helperFunctionName {"is_false"};
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 

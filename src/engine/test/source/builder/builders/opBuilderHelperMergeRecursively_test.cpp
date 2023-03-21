@@ -15,7 +15,7 @@ using std::vector;
 
 #define GTEST_COUT std::cout << "[          ] [ INFO ] "
 
-string helperFunctionName {"ef_merge_r"};
+string helperFunctionName {"merge_recursive"};
 string sourceField {"fieldFrom"};
 string sourceFieldRef {string("$") + sourceField};
 string targetField {"/fieldTo"};

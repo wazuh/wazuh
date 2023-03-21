@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperRegexNotMatch, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"r_not_match"},
+                                 std::string {"regex_not_match"},
                                  std::vector<std::string> {"regex_test$ 123$"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperRegexNotMatch(tuple));
@@ -30,7 +30,7 @@ TEST(opBuilderHelperRegexNotMatch, Builds)
 TEST(opBuilderHelperRegexNotMatch, Exec_match_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"r_not_match"},
+                                 std::string {"regex_not_match"},
                                  std::vector<std::string> {"^regex_test"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "regex_test 123"})");
@@ -45,7 +45,7 @@ TEST(opBuilderHelperRegexNotMatch, Exec_match_false)
 TEST(opBuilderHelperRegexNotMatch, Exec_match_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"r_not_match"},
+                                 std::string {"regex_not_match"},
                                  std::vector<std::string> {"regex_test$"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "regex_test 123"})");
@@ -60,7 +60,7 @@ TEST(opBuilderHelperRegexNotMatch, Exec_match_true)
 TEST(opBuilderHelperRegexNotMatch, Exec_match_multilevel_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"r_not_match"},
+                                 std::string {"regex_not_match"},
                                  std::vector<std::string> {"^regex_test"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -84,7 +84,7 @@ TEST(opBuilderHelperRegexNotMatch, Exec_match_multilevel_false)
 TEST(opBuilderHelperRegexNotMatch, Exec_match_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"r_not_match"},
+                                 std::string {"regex_not_match"},
                                  std::vector<std::string> {"regex_test$"});
 
     auto event1 = std::make_shared<json::Json>(R"({

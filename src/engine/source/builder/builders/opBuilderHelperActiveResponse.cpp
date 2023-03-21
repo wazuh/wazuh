@@ -45,7 +45,7 @@ inline bool isStringNumber(const std::string value)
 
 } // namespace ar
 
-// ar_message: +ar_create/<command-name>/<location>/<timeout>/<extra-args>
+// ar_message: +active_response_create/<command-name>/<location>/<timeout>/<extra-args>
 base::Expression opBuilderHelperCreateAR(const std::any& definition)
 {
     // Extract parameters from definition
@@ -299,7 +299,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
         });
 }
 
-// field: +ar_send/ar_message
+// field: +active_response_send/ar_message
 base::Expression opBuilderHelperSendAR(const std::any& definition)
 {
     // Extract parameters from any

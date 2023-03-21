@@ -74,7 +74,7 @@ TEST_F(AssetTest, JsonNoName)
         "normalize": [
             {
                 "map": [
-                    {"decoded.names": "+a_append/decoder1"}
+                    {"decoded.names": "+array_append/decoder1"}
                 ]
             }
         ]
@@ -89,7 +89,7 @@ TEST_F(AssetTest, JsonNoName)
         "normalize": [
             {
                 "map": [
-                    {"decoded.names": "+a_append/decoder1"}
+                    {"decoded.names": "+array_append/decoder1"}
                 ]
             }
         ]
@@ -109,7 +109,7 @@ TEST_F(AssetTest, BuildDecoder)
         "normalize": [
             {
                 "map": [
-                    {"decoded.names": "+a_append/decoder1"}
+                    {"decoded.names": "+array_append/decoder1"}
                 ]
             }
         ]

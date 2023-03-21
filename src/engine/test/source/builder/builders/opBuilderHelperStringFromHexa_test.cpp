@@ -9,7 +9,7 @@
 using namespace base;
 using namespace builder::internals::builders;
 
-const std::string helperFunctionName {"s_from_hexa"};
+const std::string helperFunctionName {"decode_base16"};
 
 const std::string targetField {"/output"};
 

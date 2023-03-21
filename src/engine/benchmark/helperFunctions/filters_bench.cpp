@@ -30,7 +30,8 @@
 
 static void opBuilderHelperIntEqual_success(benchmark::State& state)
 {
-    auto tuple = std::make_tuple(std::string {"/wazuh/queue"}, std::string {"i_eq"}, std::vector<std::string> {"10"});
+    auto tuple =
+        std::make_tuple(std::string {"/wazuh/queue"}, std::string {"int_equal"}, std::vector<std::string> {"10"});
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"hostname0","registeredIP":"any"},
@@ -54,7 +55,8 @@ BENCHMARK(opBuilderHelperIntEqual_success)->Threads(1)->Threads(2)->Threads(4)->
 // opBuilderHelperIntEqual
 static void opBuilderHelperIntEqual_fail(benchmark::State& state)
 {
-    auto tuple = std::make_tuple(std::string {"/wazuh/queue"}, std::string {"i_eq"}, std::vector<std::string> {"11"});
+    auto tuple =
+        std::make_tuple(std::string {"/wazuh/queue"}, std::string {"int_equal"}, std::vector<std::string> {"11"});
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"hostname0","registeredIP":"any"},
@@ -82,7 +84,7 @@ BENCHMARK(opBuilderHelperIntEqual_fail)->Threads(1)->Threads(2)->Threads(4)->Use
 static void opBuilderHelperStringStarts_success(benchmark::State& state)
 {
     auto tuple = std::make_tuple(
-        std::string {"/agent/name"}, std::string {"s_starts"}, std::vector<std::string> {"specificHost"});
+        std::string {"/agent/name"}, std::string {"starts_with"}, std::vector<std::string> {"specificHost"});
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"specificHost_001",
@@ -105,8 +107,8 @@ BENCHMARK(opBuilderHelperStringStarts_success)->Threads(1)->Threads(2)->Threads(
 
 static void opBuilderHelperStringStarts_fail(benchmark::State& state)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/agent/name"}, std::string {"s_starts"}, std::vector<std::string> {"otherHost"});
+    auto tuple = std::make_tuple(
+        std::string {"/agent/name"}, std::string {"starts_with"}, std::vector<std::string> {"otherHost"});
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"specificHost_001",

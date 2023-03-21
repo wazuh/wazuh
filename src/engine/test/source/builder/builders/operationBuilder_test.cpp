@@ -58,10 +58,10 @@ Json operations {R"([
 auto operationArray {operations.getArray().value()};
 
 Json helperFunctionsCases {R"([
-    {"target": "+a_append/argument"},
-    {"nested.target": "+a_append/argument"},
-    {"referenceArg": "+a_append/argument/$target"},
-    {"nestedreferenceArg": "+a_append/argument/$nested.target"}
+    {"target": "+array_append/argument"},
+    {"nested.target": "+array_append/argument"},
+    {"referenceArg": "+array_append/argument/$target"},
+    {"nestedreferenceArg": "+array_append/argument/$nested.target"}
 ])"};
 
 auto helperFunctionArray {helperFunctionsCases.getArray().value()};
@@ -428,7 +428,7 @@ TEST(OperationConditionBuilderTest, BuildsWithHelper)
     auto registry = std::make_shared<Registry>();
 
     ASSERT_NO_THROW(registerBuilders(registry));
-    ASSERT_NO_THROW(registry->getBuilder("helper.a_append"));
+    ASSERT_NO_THROW(registry->getBuilder("helper.array_append"));
 
     for (auto operationDef : helperFunctionArray)
     {
@@ -673,7 +673,7 @@ TEST(OperationMapBuilderTest, BuildsWithHelper)
     auto registry = std::make_shared<Registry>();
 
     ASSERT_NO_THROW(registerBuilders(registry));
-    ASSERT_NO_THROW(registry->getBuilder("helper.a_append"));
+    ASSERT_NO_THROW(registry->getBuilder("helper.array_append"));
 
     for (auto helperFunctionDef : helperFunctionArray)
     {

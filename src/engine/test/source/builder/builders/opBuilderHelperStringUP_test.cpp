@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperStringUP, Builds)
 {
     auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"s_up"}, std::vector<std::string> {"test"});
+        std::string {"/field"}, std::string {"upcase"}, std::vector<std::string> {"test"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringUP(tuple));
 }
@@ -29,7 +29,7 @@ TEST(opBuilderHelperStringUP, Builds)
 TEST(opBuilderHelperStringUP, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_up"},
+                                 std::string {"upcase"},
                                  std::vector<std::string> {"TEST", "test"});
 
     ASSERT_THROW(bld::opBuilderHelperStringUP(tuple), std::runtime_error);
@@ -38,7 +38,7 @@ TEST(opBuilderHelperStringUP, Builds_bad_parameters)
 TEST(opBuilderHelperStringUP, Exec_string_UP_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_up"},
+                                 std::string {"upcase"},
                                  std::vector<std::string> {"test"});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
@@ -53,7 +53,7 @@ TEST(opBuilderHelperStringUP, Exec_string_UP_field_not_exist)
 TEST(opBuilderHelperStringUP, Exec_string_UP_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_up"},
+                                 std::string {"upcase"},
                                  std::vector<std::string> {"test"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
@@ -70,7 +70,7 @@ TEST(opBuilderHelperStringUP, Exec_string_UP_success)
 TEST(opBuilderHelperStringUP, Exec_string_UP_ref_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_up"},
+                                 std::string {"upcase"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -86,7 +86,7 @@ TEST(opBuilderHelperStringUP, Exec_string_UP_ref_field_not_exist)
 TEST(opBuilderHelperStringUP, Exec_string_UP_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_up"},
+                                 std::string {"upcase"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -104,7 +104,7 @@ TEST(opBuilderHelperStringUP, Exec_string_UP_ref_success)
 TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_up"},
+                                 std::string {"upcase"},
                                  std::vector<std::string> {"test"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -128,7 +128,7 @@ TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_field_not_exist)
 TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_up"},
+                                 std::string {"upcase"},
                                  std::vector<std::string> {"test"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -154,7 +154,7 @@ TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_success)
 TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_ref_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_up"},
+                                 std::string {"upcase"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -170,7 +170,7 @@ TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_ref_field_not_exist)
 TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_up"},
+                                 std::string {"upcase"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
