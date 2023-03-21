@@ -16,6 +16,16 @@
 
 #define WM_MS_GRAPH_SCRIPT_PATH "wodles/ms-graph/ms-graph-logs"
 
+#define WM_MS_GRAPH_DEFAULT_ENABLED true
+#define WM_MS_GRAPH_DEFAULT_ONLY_FUTURE_EVENTS true
+#define WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE 1048576L
+#define WM_MS_GRAPH_DEFAULT_RUN_ON_START true
+#define WM_MS_GRAPH_DEFAULT_VERSION "v1.0"
+
+#define WM_MS_GRAPH_API_URL "https://graph.microsoft.com/%s/%s/%s?$filter=createdDateTime+gt+%s"
+#define WM_MS_GRAPH_ACCESS_TOKEN_URL "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+#define WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD "scope=https://graph.microsoft.com/.default&grant_type=client_credentials&client_id=%s&client_secret=%s"
+
 typedef struct wm_ms_graph_state_t {
 	timet_t next_time;
 } wm_ms_graph_state_t;
@@ -34,6 +44,8 @@ typedef struct wm_ms_graph_resource {
 
 typedef struct wm_ms_graph {
 	bool enabled;
+	bool only_future_events;
+	ssize_t curl_max_size;
 	bool run_on_start;
 	char* version;
 	sched_scan_config scan_config;
