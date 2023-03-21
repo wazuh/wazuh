@@ -86,10 +86,10 @@ normalize:
 
       - related.hash: $~json.aws.previousDigestSignature
 
-      - related.user: +a_append/$~json.aws.requestParameters.userName
-      - related.user: +a_append/$~json.aws.cloudtrail.flattened.request_parameters.userName
-      - related.user: +a_append/$~json.aws.requestParameters.newUserName
-      - related.user: +a_append/$~json.aws.cloudtrail.flattened.request_parameters.newUserName
+      - related.user: +array_append/$~json.aws.requestParameters.userName
+      - related.user: +array_append/$~json.aws.cloudtrail.flattened.request_parameters.userName
+      - related.user: +array_append/$~json.aws.requestParameters.newUserName
+      - related.user: +array_append/$~json.aws.cloudtrail.flattened.request_parameters.newUserName
 
       - source.address: $~json.aws.sourceIPAddress #TODO: does it add any value to parse it with ip?
       - source.ip: $~json.aws.sourceIPAddress
@@ -105,7 +105,7 @@ normalize:
 
   - check:
       # TODO: need a HF to check a string length, used by flattened should be less than 32766
-      - aws.cloudtrail.request_parameters: +ef_exists
+      - aws.cloudtrail.request_parameters: +exists
     map:
       - aws.cloudtrail.flattened.request_parameters: $~json.aws.requestParameters
       - aws.cloudtrail.flattened.response_elements: $~json.aws.responseElements
@@ -130,14 +130,14 @@ normalize:
     map:
       - aws.cloudtrail.console_login.mfa_used: false
 
-  - check: +ef_exists/aws.cloudtrail.error_code OR +ef_exists/aws.cloudtrail.error_message
+  - check: +exists/aws.cloudtrail.error_code OR +exists/aws.cloudtrail.error_message
     map:
       - event.outcome: failure
 
   - check:
       - ~json.aws.responseElements.ConsoleLogin: ConsoleLogin
     map:
-      - event.outcome: +s_lo/aws.cloudtrail.flattened.response_elements.ConsoleLogin
+      - event.outcome: +downcase/aws.cloudtrail.flattened.response_elements.ConsoleLogin
 
   - map:
-      - ~json: +ef_delete
+      - ~json: +delete

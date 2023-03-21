@@ -23,19 +23,19 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.type: +s_starts/scan
-  - ~json.data.timestamp: +t_is_num
+  - ~json.type: +starts_with/scan
+  - ~json.data.timestamp: +is_number
 
 normalize:
   - check:
-      - ~json.type: +s_eq/scan_start
+      - ~json.type: +string_equal/scan_start
     map:
       # TODO: adapt concat to first try to convert value from double if possible, otherwise convert it to int
-      - ~query: +s_concat/agent /$agent.id/ syscheck scan_info_update start_scan /$~json.data.timestamp
+      - ~query: +concat/agent /$agent.id/ syscheck scan_info_update start_scan /$~json.data.timestamp
       - ~query_result: +wdb_query/$~query
 
   - check:
-      - ~json.type: +s_eq/scan_end
+      - ~json.type: +string_equal/scan_end
     map:
-      - ~query: +s_concat/agent /$agent.id/ syscheck scan_info_update end_scan /$~json.data.timestamp
+      - ~query: +concat/agent /$agent.id/ syscheck scan_info_update end_scan /$~json.data.timestamp
       - ~query_result: +wdb_query/$~query

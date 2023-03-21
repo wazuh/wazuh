@@ -32,20 +32,20 @@ parse:
 
 normalize:
   -  map:
-      - ~request_fields: "+s_to_array/$~request/ "
+      - ~request_fields: "+split/$~request/ "
       - http.request.method: $~request_fields.0
       - url.original: $~request_fields.1
       - ~http_slash: 'HTTP/'
-      - ~request_fields.2: +s_replace/$~http_slash/
+      - ~request_fields.2: +replace/$~http_slash/
       - http.version: $~request_fields.2
-      - related.user: +a_append/$user.name
-      - ~http_slash: +ef_delete
+      - related.user: +array_append/$user.name
+      - ~http_slash: +delete
 
   - check:
-      - http.response.status_code: +i_lt/400
+      - http.response.status_code: +int_less/400
     map:
       - event.outcome: success
   - check:
-      - http.response.status_code: +i_ge/400
+      - http.response.status_code: +int_greater_or_equal/400
     map:
       - event.outcome: failure

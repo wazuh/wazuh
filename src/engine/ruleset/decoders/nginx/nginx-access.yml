@@ -17,7 +17,7 @@ sources:
   - decoder/nginx-access-base/0
 
 check:
-  - ~destination_address: +ef_exists
+  - ~destination_address: +exists
 
 parse:
   logpar:
@@ -84,19 +84,19 @@ normalize:
   - map:
       - destination.domain: $~destination_domain
       - url.domain: $~domain
-      - nginx.access.remote_ip_list: +a_append/$~domain1/$~domain2/$~domain3
-      - nginx.access.remote_ip_list: +a_append/$~ip1/$~ip2/$~ip3
-      - related.ip: +a_append/$destination.ip
-      - related.ip: +a_append/$source.ip
+      - nginx.access.remote_ip_list: +array_append/$~domain1/$~domain2/$~domain3
+      - nginx.access.remote_ip_list: +array_append/$~ip1/$~ip2/$~ip3
+      - related.ip: +array_append/$destination.ip
+      - related.ip: +array_append/$source.ip
       - event.kind: event
-      - event.category: +a_append/web
-      - event.type: +a_append/access
+      - event.category: +array_append/web
+      - event.type: +array_append/access
       - ~ip1_private: false
-      - ~ip1_version: +s_ip_version/$~ip1
+      - ~ip1_version: +ip_version/$~ip1
       - ~ip2_private: false
-      - ~ip2_version: +s_ip_version/$~ip2
+      - ~ip2_version: +ip_version/$~ip2
       - ~ip3_private: false
-      - ~ip3_version: +s_ip_version/$~ip3
+      - ~ip3_version: +ip_version/$~ip3
 
   # source.address will get assigne firs IPv4 not private:
   # IP1
@@ -104,71 +104,71 @@ normalize:
   # if first byte 192 && seccondByte 168 -> private
   # if first byte 172 && seccondByte [16;31] -> private
   # if first byte is 127 -> private
-  - check: +ip_cidr/~ip1/10.0.0.0/8 OR +ip_cidr/~ip1/192.168.0.0/16 OR +ip_cidr/~ip1/172.16.0.0/13 OR +ip_cidr/~ip1/172.24.0.0/14 OR +ip_cidr/~ip1/172.28.0.0/15 OR +ip_cidr/~ip1/172.30.0.0/16 OR +ip_cidr/~ip1/172.31.0.0/32 OR +ip_cidr/~ip1/127.0.0.0/8
+  - check: +ip_cidr_match/~ip1/10.0.0.0/8 OR +ip_cidr_match/~ip1/192.168.0.0/16 OR +ip_cidr_match/~ip1/172.16.0.0/13 OR +ip_cidr_match/~ip1/172.24.0.0/14 OR +ip_cidr_match/~ip1/172.28.0.0/15 OR +ip_cidr_match/~ip1/172.30.0.0/16 OR +ip_cidr_match/~ip1/172.31.0.0/32 OR +ip_cidr_match/~ip1/127.0.0.0/8
     map:
       - ~ip1_private: true
   - check:
-      - ~ip1_version: +s_ne/IPv4
+      - ~ip1_version: +string_not_equal/IPv4
     map:
       - ~ip1_private: false
   - check:
-      - ~ip1_private: +t_is_false
+      - ~ip1_private: +is_false
     map:
       - source.address: $~ip1
 
   # IP2
-  - check: +ip_cidr/~ip2/10.0.0.0/8 OR +ip_cidr/~ip2/192.168.0.0/16 OR +ip_cidr/~ip2/172.16.0.0/13 OR +ip_cidr/~ip2/172.24.0.0/14 OR +ip_cidr/~ip2/172.28.0.0/15 OR +ip_cidr/~ip2/172.30.0.0/16 OR +ip_cidr/~ip2/172.31.0.0/32 OR +ip_cidr/~ip2/127.0.0.0/8
+  - check: +ip_cidr_match/~ip2/10.0.0.0/8 OR +ip_cidr_match/~ip2/192.168.0.0/16 OR +ip_cidr_match/~ip2/172.16.0.0/13 OR +ip_cidr_match/~ip2/172.24.0.0/14 OR +ip_cidr_match/~ip2/172.28.0.0/15 OR +ip_cidr_match/~ip2/172.30.0.0/16 OR +ip_cidr_match/~ip2/172.31.0.0/32 OR +ip_cidr_match/~ip2/127.0.0.0/8
     map:
       - ~ip2_private: true
   - check:
-      - ~ip2_private: +s_ne/IPv4
+      - ~ip2_private: +string_not_equal/IPv4
     map:
       - ~ip2_private: false
   - check:
-      - source.address: +ef_not_exists
-      - ~ip2_private: +t_is_false
+      - source.address: +not_exists
+      - ~ip2_private: +is_false
     map:
       - source.address: $~ip2
 
   # IP3
-  - check: +ip_cidr/~ip3/10.0.0.0/8 OR +ip_cidr/~ip3/192.168.0.0/16 OR +ip_cidr/~ip3/172.16.0.0/13 OR +ip_cidr/~ip3/172.24.0.0/14 OR +ip_cidr/~ip3/172.28.0.0/15 OR +ip_cidr/~ip3/172.30.0.0/16 OR +ip_cidr/~ip3/172.31.0.0/32 OR +ip_cidr/~ip3/127.0.0.0/8
+  - check: +ip_cidr_match/~ip3/10.0.0.0/8 OR +ip_cidr_match/~ip3/192.168.0.0/16 OR +ip_cidr_match/~ip3/172.16.0.0/13 OR +ip_cidr_match/~ip3/172.24.0.0/14 OR +ip_cidr_match/~ip3/172.28.0.0/15 OR +ip_cidr_match/~ip3/172.30.0.0/16 OR +ip_cidr_match/~ip3/172.31.0.0/32 OR +ip_cidr_match/~ip3/127.0.0.0/8
     map:
       - ~ip3_private: true
   - check:
-      - ~ip3_version: +s_ne/IPv4
+      - ~ip3_version: +string_not_equal/IPv4
     map:
       - ~ip3_private: false
   - check:
-      - source.address: +ef_not_exists
-      - ~ip3_private: +t_is_false
+      - source.address: +not_exists
+      - ~ip3_private: +is_false
     map:
       - source.address: $~ip3
 
   # if all of them are private > append first of the list
   - check:
-      - source.address: +ef_not_exists
-      - ~ip1_private: +t_is_true
-      - ~ip2_private: +t_is_true
-      - ~ip3_private: +t_is_true
+      - source.address: +not_exists
+      - ~ip1_private: +is_true
+      - ~ip2_private: +is_true
+      - ~ip3_private: +is_true
     map:
       - source.address: $~ip1
 
   - check:
-      - source.address: +ef_not_exists
+      - source.address: +not_exists
     map:
       - source.address: $~source_address
 
   - map:
-      - ~source_address: +ef_delete
-      - ~ip1: +ef_delete
-      - ~ip2: +ef_delete
-      - ~ip3: +ef_delete
-      - ~ip1_version: +ef_delete
-      - ~ip2_version: +ef_delete
-      - ~ip3_version: +ef_delete
-      - ~ip1_private: +ef_delete
-      - ~ip2_private: +ef_delete
-      - ~ip3_private: +ef_delete
-      - ~destination_domain: +ef_delete
-      - ~domain1: +ef_delete
-      - ~domain2: +ef_delete
+      - ~source_address: +delete
+      - ~ip1: +delete
+      - ~ip2: +delete
+      - ~ip3: +delete
+      - ~ip1_version: +delete
+      - ~ip2_version: +delete
+      - ~ip3_version: +delete
+      - ~ip1_private: +delete
+      - ~ip2_private: +delete
+      - ~ip3_private: +delete
+      - ~destination_domain: +delete
+      - ~domain1: +delete
+      - ~domain2: +delete

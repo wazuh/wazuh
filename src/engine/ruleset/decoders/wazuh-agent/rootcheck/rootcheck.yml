@@ -21,11 +21,11 @@ sources:
 
 normalize:
   - map:
-      - ~time: +sys_epoch
-      - ~query: +s_concat/agent /$agent.id/ rootcheck save /$~time/ /$event.original
+      - ~time: +system_epoch
+      - ~query: +concat/agent /$agent.id/ rootcheck save /$~time/ /$event.original
       - ~result: +wdb_query/$~query
-      - wazuh.rootcheck.file: +r_ext/$event.original/(?:f|F)ile '(.*?)'
-      - ~title: "+r_ext/$event.original/(.*?)(?:(?: {)|$)"
+      - wazuh.rootcheck.file: +regex_extract/$event.original/(?:f|F)ile '(.*?)'
+      - ~title: "+regex_extract/$event.original/(.*?)(?:(?: {)|$)"
 
   - check:
       - ~result: "2"
@@ -38,24 +38,24 @@ normalize:
       - wazuh.rootcheck.update: true
 
   - check:
-      - wazuh.rootcheck.file: +ef_not_exists
+      - wazuh.rootcheck.file: +not_exists
     map:
-      - wazuh.rootcheck.file: "+r_ext/$event.original/File: (.*?)(?:(?:\\. )|(?:\\.$))"
+      - wazuh.rootcheck.file: "+regex_extract/$event.original/File: (.*?)(?:(?:\\. )|(?:\\.$))"
 
   - map:
-      - ~title: "+r_ext/$~title/System Audit: (.*? - .*)"
+      - ~title: "+regex_extract/$~title/System Audit: (.*? - .*)"
 
   - map:
-      - ~title: "+r_ext/$~title/^(.*\\.) "
+      - ~title: "+regex_extract/$~title/^(.*\\.) "
 
   - check:
-      - ~title: "+r_match/(?:f|F)ile "
+      - ~title: "+regex_match/(?:f|F)ile "
     map:
-      - ~pre_file: "+r_ext/$~title/(.*?(?:f|F)ile) "
-      - ~pos_file: "+r_ext/$~title/(?:f|F)ile '(?:.*?)'(.*)"
-      - ~title: +s_concat/$~pre_file/$~pos_file
+      - ~pre_file: "+regex_extract/$~title/(.*?(?:f|F)ile) "
+      - ~pos_file: "+regex_extract/$~title/(?:f|F)ile '(?:.*?)'(.*)"
+      - ~title: +concat/$~pre_file/$~pos_file
 
   - check:
-      - ~title: "+r_match/.+"
+      - ~title: "+regex_match/.+"
     map:
-      - wazuh.rootcheck.title: +ef_rename/$~title
+      - wazuh.rootcheck.title: +rename/$~title

@@ -23,90 +23,90 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.program: +ef_exists
+  - ~json.program: +exists
 
 normalize:
   - check:
-      - ~json.timestamp: +ef_not_exists
+      - ~json.timestamp: +not_exists
     map:
       - ~json.timestamp: "NULL"
 
   - check:
-      - ~json.program.format: +ef_not_exists
+      - ~json.program.format: +not_exists
     map:
       - ~json.program.format: "NULL"
 
   - check:
-      - ~json.program.name: +ef_not_exists
+      - ~json.program.name: +not_exists
     map:
       - ~json.program.name: "NULL"
 
   - check:
-      - ~json.program.priority: +ef_not_exists
+      - ~json.program.priority: +not_exists
     map:
       - ~json.program.priority: "NULL"
 
   - check:
-      - ~json.program.group: +ef_not_exists
+      - ~json.program.group: +not_exists
     map:
       - ~json.program.group: "NULL"
 
   - check:
-      - ~json.program.size: +ef_not_exists
+      - ~json.program.size: +not_exists
     map:
       - ~json.program.size: "NULL"
 
   - check:
-      - ~json.program.vendor: +ef_not_exists
+      - ~json.program.vendor: +not_exists
     map:
       - ~json.program.vendor: "NULL"
 
   - check:
-      - ~json.program.install_time: +ef_not_exists
+      - ~json.program.install_time: +not_exists
     map:
       - ~json.program.install_time: "NULL"
 
   - check:
-      - ~json.program.version: +ef_not_exists
+      - ~json.program.version: +not_exists
     map:
       - ~json.program.version: "NULL"
 
   - check:
-      - ~json.program.architecture: +ef_not_exists
+      - ~json.program.architecture: +not_exists
     map:
       - ~json.program.architecture: "NULL"
 
   - check:
-      - ~json.program.multi-arch: +ef_not_exists
+      - ~json.program.multi-arch: +not_exists
     map:
       - ~json.program.multi-arch: "NULL"
 
   - check:
-      - ~json.program.source: +ef_not_exists
+      - ~json.program.source: +not_exists
     map:
       - ~json.program.source: "NULL"
 
   - check:
-      - ~json.program.description: +ef_not_exists
+      - ~json.program.description: +not_exists
     map:
       - ~json.program.description: "NULL"
 
   - check:
-      - ~json.program.location: +ef_not_exists
+      - ~json.program.location: +not_exists
     map:
       - ~json.program.location: "NULL"
 
     #Obtain hexDigest with name version and arch
   - check:
-      - ~json.program.name: +ef_exists
-      - ~json.program.version: +ef_exists
-      - ~json.program.architecture: +ef_exists
+      - ~json.program.name: +exists
+      - ~json.program.version: +exists
+      - ~json.program.architecture: +exists
     map:
-      - ~concat_words: +s_concat/$~json.program.name/$~json.program.version/$~json.program.architecture
-      - ~hexDigest: +h_sha1/$~concat_words
+      - ~concat_words: +concat/$~json.program.name/$~json.program.version/$~json.program.architecture
+      - ~hexDigest: +sha1/$~concat_words
 
   - check:
-      - ~hexDigest: +t_is_string
+      - ~hexDigest: +is_string
     map:
-      - ~query: +s_concat/agent /$agent.id/ package save /$~json.ID/|/$~json.timestamp/|/$~json.program.format/|/$~json.program.name/|/$~json.program.priority/|/$~json.program.group/|/$~json.program.size/|/$~json.program.vendor/|/$~json.program.install_time/|/$~json.program.version/|/$~json.program.architecture/|/$~json.program.multi-arch/|/$~json.program.source/|/$~json.program.description/|/$~json.program.location/|/$~hexDigest
+      - ~query: +concat/agent /$agent.id/ package save /$~json.ID/|/$~json.timestamp/|/$~json.program.format/|/$~json.program.name/|/$~json.program.priority/|/$~json.program.group/|/$~json.program.size/|/$~json.program.vendor/|/$~json.program.install_time/|/$~json.program.version/|/$~json.program.architecture/|/$~json.program.multi-arch/|/$~json.program.source/|/$~json.program.description/|/$~json.program.location/|/$~hexDigest
       - ~package_save_result: +wdb_update/$~query
