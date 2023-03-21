@@ -24,8 +24,8 @@ parse:
 
 normalize:
   - map:
-    - ~tmp.kv: +s_concat/$~tmp.kv1/ /$~tmp.kv2
-    - ~tmp.kvMap: +parse_kv/$~tmp.kv/=/ /'/'
+    - ~tmp.kv: +concat/$~tmp.kv1/ /$~tmp.kv2
+    - ~tmp.kvMap: +parse_key_value/$~tmp.kv/=/ /'/'
     - destination.geo.country_name: $~tmp.kvMap.dst_geo
     - destination.nat.ip: $~tmp.kvMap.translated_dest_ip
     - destination.nat.port: $~tmp.kvMap.translated_dest_port
@@ -42,17 +42,17 @@ normalize:
     - observer.type: Firewall
     - observer.vendor: F5
     - observer.version: $~tmp.kvMap.device_version
-    - related.hosts: +a_append/$~tmp.kvMap.hostname
-    - related.ip: +a_append/$~tmp.kvMap.bigip_mgmt_ip
-    - related.ip: +a_append/$~tmp.kvMap.source_ip
-    - related.ip: +a_append/$~tmp.kvMap.translated_dest_ip
-    - related.ip: +a_append/$~tmp.kvMap.translated_source_ip
-    - related.user: +a_append/$~tmp.kvMap.source_user
+    - related.hosts: +array_append/$~tmp.kvMap.hostname
+    - related.ip: +array_append/$~tmp.kvMap.bigip_mgmt_ip
+    - related.ip: +array_append/$~tmp.kvMap.source_ip
+    - related.ip: +array_append/$~tmp.kvMap.translated_dest_ip
+    - related.ip: +array_append/$~tmp.kvMap.translated_source_ip
+    - related.user: +array_append/$~tmp.kvMap.source_user
     - rsa.internal.messageid: BIGIP_AFM
     - rsa.investigations.ec_activity: Disable
     - rsa.investigations.ec_subject: NetworkComm
     - rsa.investigations.ec_theme: Communication
-    - rsa.misc.action: +a_append/$~tmp.kvMap.action
+    - rsa.misc.action: +array_append/$~tmp.kvMap.action
     - rsa.misc.context: $~tmp.kvMap.context_name
     - rsa.misc.event_type: $~tmp.kvMap.errdefs_msg_name
     - rsa.misc.obj_name: $~tmp.rsa_obj_name
@@ -60,7 +60,7 @@ normalize:
     - rsa.misc.rule_name: $~tmp.kvMap.acl_rule_name
     - rsa.misc.severity: $~tmp.kvMap.severity
     - rsa.misc.version: $~tmp.kvMap.device_version
-    - rsa.network.alias_host: +a_append/$~tmp.kvMap.hostname
+    - rsa.network.alias_host: +array_append/$~tmp.kvMap.hostname
     - rsa.network.vlan: $~tmp.kvMap.vlan
     - rsa.time.event_time_str: $@timestamp
     - rule.name: $~tmp.kvMap.acl_rule_name
@@ -72,4 +72,4 @@ normalize:
     - source.port: $~tmp.kvMap.source_port
     - tags: [f5.bigipafm, forwarded]
     - user.name: $~tmp.kvMap.source_user
-    - ~tmp: +ef_delete
+    - ~tmp: +delete

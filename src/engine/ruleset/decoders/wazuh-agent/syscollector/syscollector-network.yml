@@ -23,89 +23,89 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.iface: +ef_exists
+  - ~json.iface: +exists
 
 normalize:
   - check:
-      - ~json.ID: +ef_not_exists
+      - ~json.ID: +not_exists
     map:
       - ~json.ID: "NULL"
 
   - check:
-      - ~json.timestamp: +ef_not_exists
+      - ~json.timestamp: +not_exists
     map:
       - ~json.timestamp: "NULL"
 
   - check:
-      - ~json.iface.name: +ef_not_exists
+      - ~json.iface.name: +not_exists
     map:
       - ~json.iface.name: "NULL"
 
   - check:
-      - ~json.iface.adapter: +ef_not_exists
+      - ~json.iface.adapter: +not_exists
     map:
       - ~json.iface.adapter: "NULL"
 
   - check:
-      - ~json.iface.type: +ef_not_exists
+      - ~json.iface.type: +not_exists
     map:
       - ~json.iface.type: "NULL"
 
   - check:
-      - ~json.iface.state: +ef_not_exists
+      - ~json.iface.state: +not_exists
     map:
       - ~json.iface.state: "NULL"
 
   - check:
-      - ~json.iface.MTU: +ef_not_exists
+      - ~json.iface.MTU: +not_exists
     map:
       - ~json.iface.MTU: "NULL"
 
   - check:
-      - ~json.iface.MAC: +ef_not_exists
+      - ~json.iface.MAC: +not_exists
     map:
       - ~json.iface.MAC: "NULL"
 
   - check:
-      - ~json.iface.tx_packets: +ef_not_exists
+      - ~json.iface.tx_packets: +not_exists
     map:
       - ~json.iface.tx_packets: "NULL"
 
   - check:
-      - ~json.iface.rx_packets: +ef_not_exists
+      - ~json.iface.rx_packets: +not_exists
     map:
       - ~json.iface.rx_packets: "NULL"
 
   - check:
-      - ~json.iface.tx_bytes: +ef_not_exists
+      - ~json.iface.tx_bytes: +not_exists
     map:
       - ~json.iface.tx_bytes: "NULL"
 
   - check:
-      - ~json.iface.rx_bytes: +ef_not_exists
+      - ~json.iface.rx_bytes: +not_exists
     map:
       - ~json.iface.rx_bytes: "NULL"
 
   - check:
-      - ~json.iface.tx_errors: +ef_not_exists
+      - ~json.iface.tx_errors: +not_exists
     map:
       - ~json.iface.tx_errors: "NULL"
 
   - check:
-      - ~json.iface.rx_errors: +ef_not_exists
+      - ~json.iface.rx_errors: +not_exists
     map:
       - ~json.iface.rx_errors: "NULL"
 
   - check:
-      - ~json.iface.tx_dropped: +ef_not_exists
+      - ~json.iface.tx_dropped: +not_exists
     map:
       - ~json.iface.tx_dropped: "NULL"
 
   - check:
-      - ~json.iface.rx_dropped: +ef_not_exists
+      - ~json.iface.rx_dropped: +not_exists
     map:
       - ~json.iface.rx_dropped: "NULL"
 
   - map:
-      - ~query: +s_concat/agent /$agent.id/ netinfo save /$~json.ID/|/$~json.timestamp/|/$~json.iface.name/|/$~json.iface.adapter/|/$~json.iface.type/|/$~json.iface.state/|/$~json.iface.MTU/|/$~json.iface.MAC/|/$~json.iface.tx_packets/|/$~json.iface.rx_packets/|/$~json.iface.tx_bytes/|/$~json.iface.rx_bytes/|/$~json.iface.tx_errors/|/$~json.iface.rx_errors/|/$~json.iface.tx_dropped/|/$~json.iface.rx_dropped
+      - ~query: +concat/agent /$agent.id/ netinfo save /$~json.ID/|/$~json.timestamp/|/$~json.iface.name/|/$~json.iface.adapter/|/$~json.iface.type/|/$~json.iface.state/|/$~json.iface.MTU/|/$~json.iface.MAC/|/$~json.iface.tx_packets/|/$~json.iface.rx_packets/|/$~json.iface.tx_bytes/|/$~json.iface.rx_bytes/|/$~json.iface.tx_errors/|/$~json.iface.rx_errors/|/$~json.iface.tx_dropped/|/$~json.iface.rx_dropped
       - ~query_response: +wdb_update/$~query

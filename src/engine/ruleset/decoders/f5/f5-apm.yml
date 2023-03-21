@@ -54,7 +54,7 @@ normalize:
     logpar:
       - ~content: <~/ignore/:><~>:<~/ignore/ ><~tmp.rsa_misc_result> <~/literal/(Client side:><~/ignore/ >vip=<~url/uri> profile=<network.protocol> pool=<~> client_ip=<source.ip>\)
     map:
-      - url: +ef_rename/$~url
+      - url: +rename/$~url
       - rsa.misc.result: $~tmp.rsa_misc_result
 
   # original : December 2019/12/14 07:24:31 olupta medium oremagn[2121]: 01490106: :itseddo: uptatev: AD module: authentication with 'oditem' failed in allow: Preauthentication failed, principal name: inimaven. failure olor
@@ -81,7 +81,7 @@ normalize:
       - rsa.misc.result: $~tmp.rsa_misc_result
       - rsa.web.fqdn: $~tmp.rsa_web_fqdn
       - rsa.db.index: $~tmp.rsa_db_index
-      - related.hosts: +a_append/$rsa.web.fqdn
+      - related.hosts: +array_append/$rsa.web.fqdn
 
   # original : December 2016/12/08 17:06:33 aincidu very-high uaeab[5960]: 01490008: :licabo: enimadmi: Connectivity resource utaliqu assigned
   # content  : :licabo: enimadmi: Connectivity resource utaliqu assigned
@@ -136,7 +136,7 @@ normalize:
     logpar:
       - ~content: $DEF_SESSION:<~>ending <~tmp.rsa.misc.action>
     map:
-      - rsa.misc.action: +a_append/$~tmp.rsa.misc.action
+      - rsa.misc.action: +array_append/$~tmp.rsa.misc.action
 
   # original : July 2019/07/24 08:58:48 Dui medium nostrude[7057]: 01490007: :ione: ecillum: Session variable 'maccu' set to ame
   # content  : :ione: ecillum: Session variable 'maccu' set to ame
@@ -155,7 +155,7 @@ normalize:
     logpar:
       - ~content: $DEF_SESSION:<~>(?sAMAccountName=<user.name>)
     map:
-      - user.name: +r_ext/$user.name/(.+)\)
+      - user.name: +regex_extract/$user.name/(.+)\)
 
   # original : April 2018/04/22 23:36:32 exe high illum[2625]: 01490101: :emi: reprehen: Access profile: tvol configuration has been applied. Newly active generation count is: 5959
   # content  :  :emi: reprehen: Access profile: tvol configuration has been applied. Newly active generation count is: 5959
@@ -202,7 +202,7 @@ normalize:
     map:
       - rsa.network.network_service: $~tmp.rsa.network.network_service
       - rsa.db.index: $~tmp.rsa.db.index
-      - related.ip: +a_append/$source.ip
+      - related.ip: +array_append/$source.ip
 
   # original : January 2018/01/27 05:21:06 itessequ low fdeFinib[2580]: 01490128: :sumd: sectetur: Webtop edquian assigned
   # content  : :sumd: sectetur: Webtop edquian assigned
@@ -219,13 +219,13 @@ normalize:
       - ~content: :<~>:<~/ignore/ ><~>:<~>:<~tmp.rsa.misc.logsession_id>:<~/ignore/ >New session from client IP <source.ip> \(<~tmp.geodata>\) at <~> <destination.ip> <~>\(Reputation=<~tmp.rsa.misc.category>\)
     map:
       - ~tmp.slash: /
-      - ~tmp.geodata: +s_replace/$~tmp.slash/*
-      - ~tmp.geokv: +parse_kv/$~tmp.geodata/=/*/'/'
+      - ~tmp.geodata: +replace/$~tmp.slash/*
+      - ~tmp.geokv: +parse_key_value/$~tmp.geodata/=/*/'/'
       - destination.geo.city_name: $~tmp.geokv.C
       - destination.geo.country_name: $~tmp.geokv.CC
       - destination.geo.region_name: $~tmp.geokv.ST
-      - related.ip: +a_append/$source.ip
-      - related.ip: +a_append/$destination.ip
+      - related.ip: +array_append/$source.ip
+      - related.ip: +array_append/$destination.ip
       - rsa.misc.category: $~tmp.rsa.misc.category
 
   # original : February 2016/02/12 13:12:33 billoi medium orev[6153]: 01490504: :tatemU: deF: sist1803.mail.local can not be resolved.
@@ -236,7 +236,7 @@ normalize:
     map:
       - rsa.internal.event_desc: $~tmp.rsa.internal.event_desc
       - rsa.web.fqdn: $~tmp.rsa.web.fqdn
-      - related.hosts: +a_append/$rsa.web.fqdn
+      - related.hosts: +array_append/$rsa.web.fqdn
 
   # original : May 2016/05/22 14:30:33 metcon low emeumfug[6823]: 01490505: :emporinc: untutlab: tem
   # content  : :emporinc: untutlab: tem
@@ -273,7 +273,7 @@ normalize:
       - ~content: $DEF_SESSION:<~/ignore/ ><~tmp.rsa.misc.result>
     map:
       - rsa.misc.result: $~tmp.rsa.misc.result
-      - rsa.misc.action: +a_append/$~tmp.rsa.misc.action
+      - rsa.misc.action: +array_append/$~tmp.rsa.misc.action
 
   # original : November 2016/11/24 10:03:59 quaea very-high mvel[1188]: 01490520: :porinc: tetur: xce
   # content  : :porinc: tetur: xce
@@ -309,8 +309,8 @@ normalize:
     logpar:
       - ~content: $DEF_SESSION:<~/ignore/ >Assigned PPP Dynamic IPv4:<~/ignore/ ><source.nat.ip> Tunnel Type:<~/ignore/ ><~tmp.rsa.misc.group> <~> Resource:<~/ignore/ ><rule.name> Client IP:<~/ignore/ ><source.ip> <~>
     map:
-      - related.ip: +a_append/$source.nat.ip
-      - related.ip: +a_append/$source.ip
+      - related.ip: +array_append/$source.nat.ip
+      - related.ip: +array_append/$source.ip
 
   # original : September 2016/09/13 22:51:07 fugiatnu high tobea[2364]: 014d0001: :tateve: ctx: itinvol, SERVER : eavolup
   # content  : :tateve: ctx: itinvol, SERVER : eavolup
@@ -348,7 +348,7 @@ normalize:
   # original : April 2019/04/29 14:43:23 Nequepo high CROND[2977]: (emac) CMD (cancel)
   - check: event.code==crond OR event.code==CROND
     map:
-      - rsa.misc.action: +a_append/$~tmp.user_command
+      - rsa.misc.action: +array_append/$~tmp.user_command
       - rsa.db.index: $~tmp.rsa.db.index
       - user.name: $~tmp.user_name
 
@@ -388,5 +388,5 @@ normalize:
       - rsa.time.event_time: $@timestamp
       - service.type: f5
       - tags: [f5.bigipapm, forwarded]
-      - ~content: +ef_delete
-      - ~tmp: +ef_delete
+      - ~content: +delete
+      - ~tmp: +delete

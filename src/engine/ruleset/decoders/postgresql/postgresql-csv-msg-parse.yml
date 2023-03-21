@@ -20,7 +20,7 @@ sources:
   - decoder/postgresql-csv/0
 
 check:
-  - ~csv.message: +ef_exists
+  - ~csv.message: +exists
 
 parse:
   logpar:
@@ -30,8 +30,8 @@ parse:
 
 normalize:
   - map:
-      - postgresql.log.query_step: '+r_ext/$~tmp.query_step/^(parse|bind|statement|fastpath function call|execute|execute fetch from)'
-      - postgresql.log.query_name: '+r_ext/$~tmp.query_step/^(?:parse|bind|statement|fastpath function call|execute|execute fetch from) (.*)'
+      - postgresql.log.query_step: '+regex_extract/$~tmp.query_step/^(parse|bind|statement|fastpath function call|execute|execute fetch from)'
+      - postgresql.log.query_name: '+regex_extract/$~tmp.query_step/^(?:parse|bind|statement|fastpath function call|execute|execute fetch from) (.*)'
 
-      - postgresql.log.client_addr: '+r_ext/$~csv.connection_from/^([^:]*):'
-      - postgresql.log.client_port: '+r_ext/$~csv.connection_from/^(?:[^:]*):(\d+)'
+      - postgresql.log.client_addr: '+regex_extract/$~csv.connection_from/^([^:]*):'
+      - postgresql.log.client_port: '+regex_extract/$~csv.connection_from/^(?:[^:]*):(\d+)'

@@ -21,8 +21,8 @@ sources:
   - decoder/queue-syscollector/0
 
 check:
-  - wazuh.origin: +s_eq/syscollector
-  - event.original: +s_starts/{
+  - wazuh.origin: +string_equal/syscollector
+  - event.original: +starts_with/{
 
 parse:
   logpar:

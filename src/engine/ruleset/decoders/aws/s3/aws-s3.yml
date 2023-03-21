@@ -36,12 +36,12 @@ parse:
 
 normalize:
   - check:
-      - ~json.aws.error_code: +ef_exists
+      - ~json.aws.error_code: +exists
     map:
       - event.outcome: failure
 
   - check:
-      - ~json.aws.error_code: +ef_not_exists
+      - ~json.aws.error_code: +not_exists
     map:
       - event.outcome: success
 
@@ -77,19 +77,19 @@ normalize:
       - cloud.provider: aws
 
       - event.action: $~json.aws.operation
-      - event.category: +a_append/web
+      - event.category: +array_append/web
       - event.code: $~json.aws.error_code
       - event.duration: $~json.aws.total_time # ms - ECS transforms this field to nanoseconds
       - event.id: $~json.aws.request_id
       - event.kind: event
-      - event.type: +a_append/access
+      - event.type: +array_append/access
 
       - http.request.referrer: $~json.aws.referer
       - http.response.body.bytes: $~json.aws.bytes_sent
       - http.response.status_code: $~json.aws.http_status
 
-      - related.ip: +a_append/$~json.aws.remote_ip
-      - related.user: +a_append/$~json.aws.bucket_owner
+      - related.ip: +array_append/$~json.aws.remote_ip
+      - related.user: +array_append/$~json.aws.bucket_owner
 
       - timestamp: $~json.aws.time
 
@@ -102,4 +102,4 @@ normalize:
     - ~json.aws.tls_version: <tls.version_protocol>v<tls.version>
 
   - map:
-      - ~json: +ef_delete
+      - ~json: +delete

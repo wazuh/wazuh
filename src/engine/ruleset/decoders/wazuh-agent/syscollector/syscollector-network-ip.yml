@@ -23,63 +23,63 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~query_response: +t_is_true
+  - ~query_response: +is_true
 
 normalize:
   - check:
-      - ~json.iface.IPv6: +ef_exists
-      - ~json.iface.IPv6.gateway: +ef_not_exists
+      - ~json.iface.IPv6: +exists
+      - ~json.iface.IPv6.gateway: +not_exists
     map:
       - ~json.iface.IPv6.gateway: "NULL"
 
   - check:
-      - ~json.iface.IPv6: +ef_exists
-      - ~json.iface.IPv6.DHCP: +ef_not_exists
+      - ~json.iface.IPv6: +exists
+      - ~json.iface.IPv6.DHCP: +not_exists
     map:
       - ~json.iface.IPv6.DHCP: "NULL"
 
   - check:
-      - ~json.iface.IPv6: +ef_exists
-      - ~json.iface.IPv6.metric: +ef_not_exists
+      - ~json.iface.IPv6: +exists
+      - ~json.iface.IPv6.metric: +not_exists
     map:
       - ~json.iface.IPv6.metric: "NULL"
 
   - check:
-      - ~json.iface.IPv6: +ef_exists
+      - ~json.iface.IPv6: +exists
   - map:
-      - ~queryIPv6: +s_concat/agent /$agent.id/ netproto save /$~json.ID/|/$~json.iface.name/|1|/$~json.iface.IPv6.gateway/|/$~json.iface.IPv6.DHCP/|/$~json.iface.IPv6.metric
+      - ~queryIPv6: +concat/agent /$agent.id/ netproto save /$~json.ID/|/$~json.iface.name/|1|/$~json.iface.IPv6.gateway/|/$~json.iface.IPv6.DHCP/|/$~json.iface.IPv6.metric
       - ~netproto_ipv6_save_result: +wdb_update/$~queryIPv6
 
   - check:
-      - ~netproto_ipv6_save_result: +t_is_true
+      - ~netproto_ipv6_save_result: +is_true
     map:
       - ~result_sysc_ni_save_ipv6: +sysc_ni_save_ipv6/$agent.id/$~json.ID/$~json.iface.name/$~json.iface.IPv6
 
   - check:
-      - ~json.iface.IPv4: +ef_exists
-      - ~json.iface.IPv4.gateway: +ef_not_exists
+      - ~json.iface.IPv4: +exists
+      - ~json.iface.IPv4.gateway: +not_exists
     map:
       - ~json.iface.IPv4.gateway: "NULL"
 
   - check:
-      - ~json.iface.IPv4: +ef_exists
-      - ~json.iface.IPv4.DHCP: +ef_not_exists
+      - ~json.iface.IPv4: +exists
+      - ~json.iface.IPv4.DHCP: +not_exists
     map:
       - ~json.iface.IPv4.DHCP: "NULL"
 
   - check:
-      - ~json.iface.IPv4: +ef_exists
-      - ~json.iface.IPv4.metric: +ef_not_exists
+      - ~json.iface.IPv4: +exists
+      - ~json.iface.IPv4.metric: +not_exists
     map:
       - ~json.iface.IPv4.metric: "NULL"
 
   - check:
-      - ~json.iface.IPv4: +ef_exists
+      - ~json.iface.IPv4: +exists
   - map:
-      - ~queryIPv4: +s_concat/agent /$agent.id/ netproto save /$~json.ID/|/$~json.iface.name/|0|/$~json.iface.IPv4.gateway/|/$~json.iface.IPv4.DHCP/|/$~json.iface.IPv4.metric
+      - ~queryIPv4: +concat/agent /$agent.id/ netproto save /$~json.ID/|/$~json.iface.name/|0|/$~json.iface.IPv4.gateway/|/$~json.iface.IPv4.DHCP/|/$~json.iface.IPv4.metric
       - ~netproto_ipv4_save_result: +wdb_update/$~queryIPv4
 
   - check:
-      - ~netproto_ipv4_save_result: +t_is_true
+      - ~netproto_ipv4_save_result: +is_true
     map:
       - ~result_sysc_ni_save_ipv4: +sysc_ni_save_ipv4/$agent.id/$~json.ID/$~json.iface.name/$~json.iface.IPv4

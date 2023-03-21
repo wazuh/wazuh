@@ -17,11 +17,11 @@ sources:
   - decoder/dbsync/0
 
 check:
-  - ~json.type: +s_eq/state
+  - ~json.type: +string_equal/state
 
 normalize:
   - check:
-      - ~json.component: +r_match/osinfo$
+      - ~json.component: +regex_match/osinfo$
     map:
       - ~do_update_kvdb: true
       - host.architecture: $~json.data.attributes.architecture
@@ -31,29 +31,29 @@ normalize:
       - host.os.name: $~json.data.attributes.os_name
       - host.os.platform: $~json.data.attributes.os_platform
       # TODO: check if sysname is one of the accepted values
-      - host.os.type: +s_lo/$~json.data.attributes.sysname
+      - host.os.type: +downcase/$~json.data.attributes.sysname
       - host.os.version: $~json.data.attributes.os_version
   - check:
-      - $~json.data.attributes.os_display_version: +ef_exists
+      - $~json.data.attributes.os_display_version: +exists
     map:
       - host.os.type: windows
 
-  - check: +ef_exists/host.mac AND +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.name
+  - check: +exists/host.mac AND +exists/~json.data.attributes.mac AND +exists/~json.data.attributes.name
     map:
       - ~do_update_kvdb: true
-      - ~mac_aux: +a_append/$~json.data.attributes.mac
-      - host.mac: +ef_merge/$~mac_aux
-  - check: +ef_not_exists/host.mac AND +ef_exists/~json.data.attributes.mac AND +ef_exists/~json.data.attributes.name
+      - ~mac_aux: +array_append/$~json.data.attributes.mac
+      - host.mac: +merge/$~mac_aux
+  - check: +not_exists/host.mac AND +exists/~json.data.attributes.mac AND +exists/~json.data.attributes.name
     map:
       - ~do_update_kvdb: true
-      - host.mac: +a_append/$~json.data.attributes.mac
+      - host.mac: +array_append/$~json.data.attributes.mac
 
-  - check: +ef_exists/host.ip AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
+  - check: +exists/host.ip AND +exists/~json.data.attributes.address AND +exists/~json.data.attributes.iface
     map:
       - ~do_update_kvdb: true
-      - ~address_aux: +a_append/$~json.data.attributes.address
-      - host.ip: +ef_merge/$~address_aux
-  - check: +ef_not_exists/host.ip AND +ef_exists/~json.data.attributes.address AND +ef_exists/~json.data.attributes.iface
+      - ~address_aux: +array_append/$~json.data.attributes.address
+      - host.ip: +merge/$~address_aux
+  - check: +not_exists/host.ip AND +exists/~json.data.attributes.address AND +exists/~json.data.attributes.iface
     map:
       - ~do_update_kvdb: true
-      - host.ip: +a_append/$~json.data.attributes.address
+      - host.ip: +array_append/$~json.data.attributes.address

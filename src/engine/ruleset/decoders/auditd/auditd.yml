@@ -23,7 +23,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/^(?:node=.*)?type=\w+ msg=audit
+  - event.original: +regex_match/^(?:node=.*)?type=\w+ msg=audit
 
 parse:
   logpar:
@@ -51,14 +51,14 @@ parse:
 
 normalize:
   - check:
-      - ~log.msg: +ef_exists
-      - ~log.sub_msg: +ef_exists
+      - ~log.msg: +exists
+      - ~log.sub_msg: +exists
     map:
-      - ~kv_msg: +s_concat/$~log.msg/ /$~log.sub_msg
+      - ~kv_msg: +concat/$~log.msg/ /$~log.sub_msg
 
   - check:
-      - ~log.sub_msg: +ef_not_exists
-      - ~log.msg: +ef_exists
+      - ~log.sub_msg: +not_exists
+      - ~log.msg: +exists
     map:
       - ~kv_msg: $~log.msg
 

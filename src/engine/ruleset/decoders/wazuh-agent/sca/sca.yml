@@ -21,7 +21,7 @@ sources:
   - decoder/queue-sca/0
 
 check:
-  - event.original: +s_starts/{
+  - event.original: +starts_with/{
 
 parse:
   logpar:
@@ -29,6 +29,6 @@ parse:
 
 normalize:
   - check:
-      - ~json.type: +ef_exists
+      - ~json.type: +exists
     map:
       - ~decode_result: +sca_decoder/$~json/$agent.id

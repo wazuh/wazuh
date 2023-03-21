@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-- event.original: +r_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="System Health"
+- event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="System Health"
 
 parse:
   logpar:
@@ -31,7 +31,7 @@ parse:
 # TODO: All sophos named fields are not currently in the schema.
 normalize:
   - map:
-      - ~tmp.payload_message: +s_replace/=""/=" "
+      - ~tmp.payload_message: +replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
   - map:
@@ -72,7 +72,7 @@ normalize:
       - event.timezone: $~tmp.timezone
       - fileset.name: xg
       - input.type": log
-      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
       - log.level: $~tmp.priority
       - observer.product: XG
       - observer.serial_number: $~tmp.device_id
@@ -105,4 +105,4 @@ normalize:
       - sophos.xg.user_cpu: $~tmp.user
       - service.type: sophos
       - tags: [forwarded, preserve_original_even, sophos-xg]
-      - ~tmp: +ef_delete
+      - ~tmp: +delete

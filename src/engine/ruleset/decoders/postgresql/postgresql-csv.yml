@@ -37,7 +37,7 @@ parse:
 
 normalize:
   - map:
-      - event.category: +a_append/database
+      - event.category: +array_append/database
       - event.dataset: postgresql.log
       - event.kind: event
       - event.module: postgresql
@@ -46,22 +46,22 @@ normalize:
       - postgresql.log.timestamp: $~timestamp
       - service.type: postgresql
 
-      - log.level: +ef_rename/$~csv.log_level
-      - postgresql.internal_query: +ef_rename/$~csv.internal_query
-      - postgresql.log.application_name: +ef_rename/$~csv.log_application_name
-      - postgresql.log.backend_type: +ef_rename/$~csv.log_backend_type
-      - postgresql.log.command_tag: +ef_rename/$~csv.log_command_tag
-      - postgresql.log.context: +ef_rename/$~csv.log_context
-      - postgresql.log.database: +ef_rename/$~csv.log_database
-      - postgresql.log.detail: +ef_rename/$~csv.log_detail
-      - postgresql.log.hint: +ef_rename/$~csv.log_hint
-      - postgresql.log.location: +ef_rename/$~csv.log_location
-      - postgresql.log.query: +ef_rename/$~csv.log_query
-      - postgresql.log.session_id: +ef_rename/$~csv.log_session_id
-      - postgresql.log.session_line_num: +ef_rename/$~csv.session_line_num # TODO: this must be a long
-      - postgresql.log.session_start_time: +ef_rename/$~csv.log_session_start_time
-      - postgresql.log.sql_state_code: +ef_rename/$~csv.log_sql_state_code
-      - postgresql.log.transaction_id: +ef_rename/$~csv.log_transaction_id
-      - postgresql.log.virtual_transaction_id: +ef_rename/$~csv.log_virtual_transaction_id
-      - process.pid: +ef_rename/$~csv.process_pid
-      - user.name: +ef_rename/$~csv.user_name
+      - log.level: +rename/$~csv.log_level
+      - postgresql.internal_query: +rename/$~csv.internal_query
+      - postgresql.log.application_name: +rename/$~csv.log_application_name
+      - postgresql.log.backend_type: +rename/$~csv.log_backend_type
+      - postgresql.log.command_tag: +rename/$~csv.log_command_tag
+      - postgresql.log.context: +rename/$~csv.log_context
+      - postgresql.log.database: +rename/$~csv.log_database
+      - postgresql.log.detail: +rename/$~csv.log_detail
+      - postgresql.log.hint: +rename/$~csv.log_hint
+      - postgresql.log.location: +rename/$~csv.log_location
+      - postgresql.log.query: +rename/$~csv.log_query
+      - postgresql.log.session_id: +rename/$~csv.log_session_id
+      - postgresql.log.session_line_num: +rename/$~csv.session_line_num # TODO: this must be a long
+      - postgresql.log.session_start_time: +rename/$~csv.log_session_start_time
+      - postgresql.log.sql_state_code: +rename/$~csv.log_sql_state_code
+      - postgresql.log.transaction_id: +rename/$~csv.log_transaction_id
+      - postgresql.log.virtual_transaction_id: +rename/$~csv.log_virtual_transaction_id
+      - process.pid: +rename/$~csv.process_pid
+      - user.name: +rename/$~csv.user_name

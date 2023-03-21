@@ -20,7 +20,7 @@ sources:
   - decoder/queue-ciscat/0
 
 check:
-  - event.original: +s_starts/{
+  - event.original: +starts_with/{
 
 parse:
   logpar:
@@ -31,64 +31,64 @@ parse:
 normalize:
   - check:
       - wazuh.origin: "wodle_cis-cat"
-      - ~json.cis: +ef_exists
-      - ~json.type: +s_eq/scan_info
+      - ~json.cis: +exists
+      - ~json.type: +string_equal/scan_info
 
   - check:
-      - ~json.scan_id: +ef_not_exists
+      - ~json.scan_id: +not_exists
     map:
       - ~json.scan_id: "NULL"
 
   - check:
-      - ~json.cis.timestamp: +ef_not_exists
+      - ~json.cis.timestamp: +not_exists
     map:
       - ~json.cis.timestamp: "NULL"
 
   - check:
-      - ~json.cis.benchmark: +ef_not_exists
+      - ~json.cis.benchmark: +not_exists
     map:
       - ~json.cis.benchmark: "NULL"
 
   - check:
-      - ~json.cis.profile: +ef_not_exists
+      - ~json.cis.profile: +not_exists
     map:
       - ~json.cis.profile: "NULL"
 
   - check:
-      - ~json.cis.pass: +ef_not_exists
+      - ~json.cis.pass: +not_exists
     map:
       - ~json.cis.pass: "NULL"
 
   - check:
-      - ~json.cis.fail: +ef_not_exists
+      - ~json.cis.fail: +not_exists
     map:
       - ~json.cis.fail: "NULL"
 
   - check:
-      - ~json.cis.error: +ef_not_exists
+      - ~json.cis.error: +not_exists
     map:
       - ~json.cis.error: "NULL"
 
   - check:
-      - ~json.cis.notchecked: +ef_not_exists
+      - ~json.cis.notchecked: +not_exists
     map:
       - ~json.cis.notchecked: "NULL"
 
   - check:
-      - ~json.cis.unknown: +ef_not_exists
+      - ~json.cis.unknown: +not_exists
     map:
       - ~json.cis.unknown: "NULL"
 
   - check:
-      - ~json.cis.score: +ef_exists
+      - ~json.cis.score: +exists
     map:
-      - ~json.cis.score: +s_trim/end/%
+      - ~json.cis.score: +trim/end/%
 
   - check:
-      - ~json.cis.score: +ef_not_exists
+      - ~json.cis.score: +not_exists
     map:
       - ~json.cis.score: "NULL"
 
   - map:
-      - _query: +s_concat/agent /$agent.id/ ciscat save /$~json.scan_id/|/$~json.cis.timestamp/|/$~json.cis.benchmark/|/$~json.cis.profile/|/$~json.cis.pass/|/$~json.cis.fail/|/$~json.cis.error/|/$~json.cis.notchecked/|/$~json.cis.unknown/|/$~json.cis.score
+      - _query: +concat/agent /$agent.id/ ciscat save /$~json.scan_id/|/$~json.cis.timestamp/|/$~json.cis.benchmark/|/$~json.cis.profile/|/$~json.cis.pass/|/$~json.cis.fail/|/$~json.cis.error/|/$~json.cis.notchecked/|/$~json.cis.unknown/|/$~json.cis.score
       - _query_response: +wdb_update/$_query
