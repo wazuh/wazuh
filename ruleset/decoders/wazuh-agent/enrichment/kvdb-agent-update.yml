@@ -18,7 +18,7 @@ sources:
   - decoder/syscollector-dbsync-host-data/0
 
 check:
-  - ~do_update_kvdb: +t_is_true
+  - ~do_update_kvdb: +is_true
 
 normalize:
   - map:

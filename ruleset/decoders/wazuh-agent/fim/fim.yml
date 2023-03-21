@@ -23,7 +23,7 @@ sources:
   - decoder/queue-fim/0
 
 check:
-  - event.original: +s_starts/{
+  - event.original: +starts_with/{
 
 parse:
   logpar:

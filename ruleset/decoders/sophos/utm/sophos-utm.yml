@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/^\d{4}:\d{1,2}:\d{1,2}-\d{2}:\d{2}:\d{2}\s\S+.*?:\s
+  - event.original: +regex_match/^\d{4}:\d{1,2}:\d{1,2}-\d{2}:\d{2}:\d{2}\s\S+.*?:\s
 
 parse:
   logpar:
@@ -79,15 +79,15 @@ normalize:
       - observer.egress.interface.name: $~tmp.outitf
       - observer.ingress.interface.name: $~tmp.initf
       - observer.version: $~tmp.version
-      - related.hosts: +a_append/$~tmp.host
-      - related.ip: +a_append/$~tmp.server/$~tmp.srcip
-      - related.user: +a_append/$~tmp.profile/$~tmp.account/user
+      - related.hosts: +array_append/$~tmp.host
+      - related.ip: +array_append/$~tmp.server/$~tmp.srcip
+      - related.user: +array_append/$~tmp.profile/$~tmp.account/user
       - reputation: $~tmp.reputation
       - rsa.db.index: $~tmp.extra
       - rsa.identity.logon_type: $~tmp.facility
       - rsa.internal.event_desc: $~tmp.name
       - rsa.investigations.event_cat_name: Other.Default
-      - rsa.misc.action: +a_append/$~tmp.function/method
+      - rsa.misc.action: +array_append/$~tmp.function/method
       - rsa.misc.comments: $~tmp.reason
       - rsa.misc.content_type: $~tmp.content_type
       - rsa.misc.context: $~tmp.info
@@ -112,7 +112,7 @@ normalize:
       - source.mac: $~tmp.srcmac
       - source.port: $~tmp.srcport
       - url.domain: $~tmp.url.domain
-      - url.extension: +r_ext/$~tmp.url.original/(\w+)\?
+      - url.extension: +regex_extract/$~tmp.url.original/(\w+)\?
       - url.fragment: $~tmp.url.fragment
       - url.original: $~tmp.url.original
       - url.path: $~tmp.url.path
@@ -126,16 +126,16 @@ normalize:
         event.code==pop3proxy OR event.code==xl2tpd
     map:
       - process.pid: $~tmp.process_pid
-      - related.host: +a_append/$host.hostname
-      - rsa.network.alias_host: +a_append/$host.hostname
+      - related.host: +array_append/$host.hostname
+      - rsa.network.alias_host: +array_append/$host.hostname
       - rsa.time.event_time: $@timestamp
-      - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
+      - rsa.internal.event_desc: +regex_extract/$~tmp.message/] ([^\]]+)$
 
   - check:
       - event.code: reverseproxy
     map:
       - process.pid: $~tmp.process_pid
-      - rsa.network.alias_host: +a_append/$host.hostname
+      - rsa.network.alias_host: +array_append/$host.hostname
       - rsa.time.event_time: $@timestamp
       - rsa.misc.event_log: $~tmp.eventlog
       - rsa.misc.severity: $~tmp.severity
@@ -145,27 +145,27 @@ normalize:
     map:
       - process.pid: $~tmp.process_pid
       - rsa.time.event_time: $@timestamp
-      - ~tmp.message: +r_ext/$message/] ([^\]]+)$
-      - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
+      - ~tmp.message: +regex_extract/$message/] ([^\]]+)$
+      - rsa.internal.event_desc: +regex_extract/$~tmp.message/] ([^\]]+)$
 
   - check:
       - event.code: afcd
     map:
       - rsa.time.event_time: $@timestamp
-      - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
+      - rsa.internal.event_desc: +regex_extract/$~tmp.message/] ([^\]]+)$
 
   - check:
       - event.code: sshd
     map:
       - rsa.time.event_time: $@timestamp
-      - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
-      - rsa.network.alias_host: +a_append/$host.hostname
+      - rsa.internal.event_desc: +regex_extract/$~tmp.message/] ([^\]]+)$
+      - rsa.network.alias_host: +array_append/$host.hostname
 
   - check:
       - event.code: confd-sync
     map:
       - process.pid: $~tmp.process_pid
-      - rsa.internal.event_desc: +r_ext/$~tmp.message/] ([^\]]+)$
+      - rsa.internal.event_desc: +regex_extract/$~tmp.message/] ([^\]]+)$
       - rsa.misc.severity: $~tmp.severity
       - rsa.time.event_time: $@timestamp
 
@@ -180,5 +180,5 @@ normalize:
       - observer.vendor: Sophos
       - rsa.internal.messageid: $~tmp.event.code
       - service.type: sophos
-      - tags: +a_append/forwarded/sophos.utm
-      - ~tmp: +ef_delete
+      - tags: +array_append/forwarded/sophos.utm
+      - ~tmp: +delete

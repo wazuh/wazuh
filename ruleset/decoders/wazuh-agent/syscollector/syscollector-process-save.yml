@@ -23,159 +23,159 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.process: +ef_exists
+  - ~json.process: +exists
 
 normalize:
   - check:
-      - ~json.timestamp: +ef_not_exists
+      - ~json.timestamp: +not_exists
     map:
       - ~json.timestamp: "NULL"
 
   - check:
-      - ~json.process.pid: +ef_not_exists
+      - ~json.process.pid: +not_exists
     map:
       - ~json.process.pid: "NULL"
 
   - check:
-      - ~json.process.name: +ef_not_exists
+      - ~json.process.name: +not_exists
     map:
       - ~json.process.name: "NULL"
 
   - check:
-    - ~json.process.state: +ef_not_exists
+    - ~json.process.state: +not_exists
     map:
       - ~json.process.state: "NULL"
 
   - check:
-      - ~json.process.ppid: +ef_not_exists
+      - ~json.process.ppid: +not_exists
     map:
       - ~json.process.ppid: "NULL"
 
   - check:
-      - ~json.process.utime: +ef_not_exists
+      - ~json.process.utime: +not_exists
     map:
       - ~json.process.utime: "NULL"
 
   - check:
-      - ~json.process.stime: +ef_not_exists
+      - ~json.process.stime: +not_exists
     map:
       - ~json.process.stime: "NULL"
 
   - check:
-      - ~json.process.cmd: +ef_not_exists
+      - ~json.process.cmd: +not_exists
     map:
       - ~json.process.cmd: "NULL"
 
   - check:
-      - ~json.process.argvs: +ef_exists
+      - ~json.process.argvs: +exists
     map:
-      - ~argvs_csv_str: +s_from_array/$~json.process.argvs/,
+      - ~argvs_csv_str: +join/$~json.process.argvs/,
 
   - check:
-      - ~json.process.argvs: +ef_not_exists
+      - ~json.process.argvs: +not_exists
     map:
       - ~argvs_csv_str: "NULL"
 
   - check:
-      - ~json.process.euser: +ef_not_exists
+      - ~json.process.euser: +not_exists
     map:
       - ~json.process.euser: "NULL"
 
   - check:
-      - ~json.process.ruser: +ef_not_exists
+      - ~json.process.ruser: +not_exists
     map:
       - ~json.process.ruser: "NULL"
 
   - check:
-      - ~json.process.suser: +ef_not_exists
+      - ~json.process.suser: +not_exists
     map:
       - ~json.process.suser: "NULL"
 
   - check:
-      - ~json.process.egroup: +ef_not_exists
+      - ~json.process.egroup: +not_exists
     map:
       - ~json.process.egroup: "NULL"
 
   - check:
-      - ~json.process.rgroup: +ef_not_exists
+      - ~json.process.rgroup: +not_exists
     map:
       - ~json.process.rgroup: "NULL"
 
   - check:
-      - ~json.process.sgroup: +ef_not_exists
+      - ~json.process.sgroup: +not_exists
     map:
       - ~json.process.sgroup: "NULL"
 
   - check:
-      - ~json.process.fgroup: +ef_not_exists
+      - ~json.process.fgroup: +not_exists
     map:
       - ~json.process.fgroup: "NULL"
 
   - check:
-      - ~json.process.priority: +ef_not_exists
+      - ~json.process.priority: +not_exists
     map:
       - ~json.process.priority: "NULL"
 
   - check:
-      - ~json.process.nice: +ef_not_exists
+      - ~json.process.nice: +not_exists
     map:
       - ~json.process.nice: "NULL"
 
   - check:
-      - ~json.process.size: +ef_not_exists
+      - ~json.process.size: +not_exists
     map:
       - ~json.process.size: "NULL"
 
   - check:
-      - ~json.process.vm_size: +ef_not_exists
+      - ~json.process.vm_size: +not_exists
     map:
       - ~json.process.vm_size: "NULL"
 
   - check:
-      - ~json.process.resident: +ef_not_exists
+      - ~json.process.resident: +not_exists
     map:
       - ~json.process.resident: "NULL"
 
   - check:
-      - ~json.process.share: +ef_not_exists
+      - ~json.process.share: +not_exists
     map:
       - ~json.process.share: "NULL"
 
   - check:
-      - ~json.process.start_time: +ef_not_exists
+      - ~json.process.start_time: +not_exists
     map:
       - ~json.process.start_time: "NULL"
 
   - check:
-      - ~json.process.pgrp: +ef_not_exists
+      - ~json.process.pgrp: +not_exists
     map:
       - ~json.process.pgrp: "NULL"
 
   - check:
-      - ~json.process.session: +ef_not_exists
+      - ~json.process.session: +not_exists
     map:
       - ~json.process.session: "NULL"
 
   - check:
-      - ~json.process.nlwp: +ef_not_exists
+      - ~json.process.nlwp: +not_exists
     map:
       - ~json.process.nlwp: "NULL"
 
   - check:
-      - ~json.process.tgid: +ef_not_exists
+      - ~json.process.tgid: +not_exists
     map:
       - ~json.process.tgid: "NULL"
 
   - check:
-      - ~json.process.tty: +ef_not_exists
+      - ~json.process.tty: +not_exists
     map:
       - ~json.process.tty: "NULL"
 
   - check:
-      - ~json.process.processor: +ef_not_exists
+      - ~json.process.processor: +not_exists
     map:
       - ~json.process.processor: "NULL"
 
   - map:
-      - ~query: +s_concat/agent /$agent.id/ process save /$~json.ID/|/$~json.timestamp/|/$~json.process.pid/|/$~json.process.name/|/$~json.process.state/|/$~json.process.ppid/|/$~json.process.utime/|/$~json.process.stime/|/$~json.process.cmd/|/$~argvs_csv_str/|/$~json.process.euser/|/$~json.process.ruser/|/$~json.process.suser/|/$~json.process.egroup/|/$~json.process.rgroup/|/$~json.process.sgroup/|/$~json.process.fgroup/|/$~json.process.priority/|/$~json.process.nice/|/$~json.process.size/|/$~json.process.vm_size/|/$~json.process.resident/|/$~json.process.share/|/$~json.process.start_time/|/$~json.process.pgrp/|/$~json.process.session/|/$~json.process.nlwp/|/$~json.process.tgid/|/$~json.process.tty/|/$~json.process.processor
+      - ~query: +concat/agent /$agent.id/ process save /$~json.ID/|/$~json.timestamp/|/$~json.process.pid/|/$~json.process.name/|/$~json.process.state/|/$~json.process.ppid/|/$~json.process.utime/|/$~json.process.stime/|/$~json.process.cmd/|/$~argvs_csv_str/|/$~json.process.euser/|/$~json.process.ruser/|/$~json.process.suser/|/$~json.process.egroup/|/$~json.process.rgroup/|/$~json.process.sgroup/|/$~json.process.fgroup/|/$~json.process.priority/|/$~json.process.nice/|/$~json.process.size/|/$~json.process.vm_size/|/$~json.process.resident/|/$~json.process.share/|/$~json.process.start_time/|/$~json.process.pgrp/|/$~json.process.session/|/$~json.process.nlwp/|/$~json.process.tgid/|/$~json.process.tty/|/$~json.process.processor
       - ~process_save_result: +wdb_update/$~query

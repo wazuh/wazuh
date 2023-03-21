@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-- event.original: +r_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="WAF"
+- event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="WAF"
 
 parse:
   logpar:
@@ -31,14 +31,14 @@ parse:
 # TODO: All sophos named fields are not currently in the schema.
 normalize:
   - map:
-      - ~tmp.payload_message: +s_replace/=""/=" "
+      - ~tmp.payload_message: +replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
   - map:
       - event.action: denied
       - event.code: $~tmp.log_id
       - event.dataset: sophos.xg
-      - event.duration: +s_concat/$~tmp.responsetime/000
+      - event.duration: +concat/$~tmp.responsetime/000
       - event.kind: alert
       - event.module: sophos
   - check:
@@ -99,7 +99,7 @@ normalize:
       - sophos.xg.server: $~tmp.server
       - sophos.xg.xss: $~tmp.XSS
   - check:
-      - ~tmp.localip: +ef_exists
+      - ~tmp.localip: +exists
     logpar:
       - ~tmp.localip: <~tmp.fill>.<~tmp.fill>.<~tmp.source.as.number>.<~tmp.fill>
     map:
@@ -108,7 +108,7 @@ normalize:
       - source.bytes: $~tmp.bytesrcv
       - source.ip: $~tmp.sourceip
       - tags: [forwarded, preserve_original_even, sophos-xg]
-      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
       - url.full: $~tmp.url
       - user_agent.original: $~tmp.useragent
-      - ~tmp: +ef_delete
+      - ~tmp: +delete

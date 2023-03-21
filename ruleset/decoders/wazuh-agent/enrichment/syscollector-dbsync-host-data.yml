@@ -17,9 +17,9 @@ sources:
   - decoder/syscollector-dbsync/0
 
 check:
-  - ~do_update_kvdb: +t_is_true
+  - ~do_update_kvdb: +is_true
   # TODO: Delete operation are not yet implemented
-  - ~json.operation: +s_ne/DELETED
+  - ~json.operation: +string_not_equal/DELETED
 
 normalize:
   - map:
@@ -30,26 +30,26 @@ normalize:
       - host.os.name: $~json.data.os_name
       - host.os.platform: $~json.data.os_platform
       # TODO: check if sysname is one of the accepted values
-      - host.os.type: +s_lo/$~json.data.sysname
+      - host.os.type: +downcase/$~json.data.sysname
       - host.os.version: $~json.data.os_version
   - check:
-      - $~json.data.os_display_version: +ef_exists
+      - $~json.data.os_display_version: +exists
     map:
       - host.os.type: windows
 
-  - check: +ef_exists/host.mac AND +ef_exists/~json.data.mac AND +ef_exists/~json.data.name
+  - check: +exists/host.mac AND +exists/~json.data.mac AND +exists/~json.data.name
     map:
-      - ~mac_aux: +a_append/$~json.data.mac
-      - host.mac: +ef_merge/$~mac_aux
-  - check: +ef_not_exists/host.mac AND +ef_exists/~json.data.mac AND +ef_exists/~json.data.name
+      - ~mac_aux: +array_append/$~json.data.mac
+      - host.mac: +merge/$~mac_aux
+  - check: +not_exists/host.mac AND +exists/~json.data.mac AND +exists/~json.data.name
     map:
-      - host.mac: +a_append/$~json.data.mac
+      - host.mac: +array_append/$~json.data.mac
 
-  - check: +ef_exists/host.ip AND +ef_exists/~json.data.address AND +ef_exists/~json.data.iface
+  - check: +exists/host.ip AND +exists/~json.data.address AND +exists/~json.data.iface
     map:
-      - ~address_aux: +a_append/$~json.data.address
-      - host.ip: +ef_merge/$~address_aux
-  - check: +ef_not_exists/host.ip AND +ef_exists/~json.data.address AND +ef_exists/~json.data.iface
+      - ~address_aux: +array_append/$~json.data.address
+      - host.ip: +merge/$~address_aux
+  - check: +not_exists/host.ip AND +exists/~json.data.address AND +exists/~json.data.iface
     map:
-      - host.ip: +a_append/$~json.data.address
+      - host.ip: +array_append/$~json.data.address
 

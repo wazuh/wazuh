@@ -35,8 +35,8 @@ normalize:
   - map:
       - event.kind: event
       - event.module: redis
-      - event.type: +a_append/info
-      - event.category: +a_append/database
+      - event.type: +array_append/info
+      - event.category: +array_append/database
       - event.dataset: redis.log
       - fileset.name: log
       - input.type: log
@@ -74,4 +74,4 @@ normalize:
     map:
       - redis.log.role: sentinel
   - map:
-      - ~log: +ef_delete
+      - ~log: +delete

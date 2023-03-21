@@ -23,19 +23,19 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.ID: +ef_exists
-  - ~json.type: +s_starts/hotfix
+  - ~json.ID: +exists
+  - ~json.type: +starts_with/hotfix
 
 normalize:
   - check:
-      - ~json.hotfix: +ef_exists
+      - ~json.hotfix: +exists
     map:
-      - ~query: +s_concat/agent /$agent.id/ hotfix save /$~json.ID/|/$~json.timestamp/|/$~json.hotfix
+      - ~query: +concat/agent /$agent.id/ hotfix save /$~json.ID/|/$~json.timestamp/|/$~json.hotfix
       - ~query_response: +wdb_update/$~query
 
   - check:
-      - ~json.hotfix: +ef_not_exists
-      - ~json.type: +s_eq/hotfix_end
+      - ~json.hotfix: +not_exists
+      - ~json.type: +string_equal/hotfix_end
     map:
-      - ~query: +s_concat/agent /$agent.id/ hotfix del /$~json.ID
+      - ~query: +concat/agent /$agent.id/ hotfix del /$~json.ID
       - ~query_response: +wdb_update/$~query

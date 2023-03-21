@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
+  - event.original: +regex_match/id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
 
 parse:
   logpar:
@@ -73,28 +73,28 @@ normalize:
       - rsa.network.dinterface: $observer.egress.interface.name
       - rsa.network.sinterface: $observer.ingress.interface.name
       - rsa.db.index: $~rsa.db.index
-      - tags: +a_append/forwarded/sonicwall.firewall
+      - tags: +array_append/forwarded/sonicwall.firewall
       - rsa.identity.user_sid_dst: $~rsa.identity.user_sid_dst
-      - related.hosts: +a_append/$host.name
-      - related.hosts: +a_append/$source.address
-      - related.hosts: +a_append/$destination.address
+      - related.hosts: +array_append/$host.name
+      - related.hosts: +array_append/$source.address
+      - related.hosts: +array_append/$destination.address
       - rsa.network.host_dst: $destination.address
-      - related.ip: +a_append/$source.ip
-      - related.ip: +a_append/$destination.ip
-      - related.ip: +a_append/$source.nat.ip
-      - related.ip: +a_append/$destination.nat.ip
+      - related.ip: +array_append/$source.ip
+      - related.ip: +array_append/$destination.ip
+      - related.ip: +array_append/$source.nat.ip
+      - related.ip: +array_append/$destination.nat.ip
   - check:
-      - ~log.start_message: +ef_not_exists
+      - ~log.start_message: +not_exists
     logpar:
       - rsa.time.event_time: <~log.year>-<~log.mounth>-<~log.day>T<~>
     map:
       # TODO: It is not yet possible to include escaped characters in auxiliary arguments.
       # When this functionality is implemented, add it to the decoder
       - ~aux_slash: '/'
-      - rsa.time.date: +s_concat/$~log.year/$aux_slash/$~log.mounth/$aux_slash/$~log.day
-      - ~aux_slash: +ef_delete
+      - rsa.time.date: +concat/$~log.year/$~aux_slash/$~log.mounth/$~aux_slash/$~log.day
+      - ~aux_slash: +delete
   - check:
-      - ~log.note: +ef_exists
+      - ~log.note: +exists
     logpar:
       - ~log.note: <~log.note.header> <~log.note.protocol.header>:<~log.note.protocol.payload>
     map:
@@ -104,53 +104,53 @@ normalize:
       # it is equal to some of the allowed values (cancel, deny, allow, accept or block).
       # If it doesn't match any of those values and also fw_action doesn't exist, then event.action doesn't get mapped.
   - check:
-      - ~log.fw_action: +ef_exists
+      - ~log.fw_action: +exists
     map:
       - event.action: $~log.fw_action
       - rsa.internal.event_desc: $~log.msg_action
   - check:
-      - ~log.fw_action: +ef_not_exists
+      - ~log.fw_action: +not_exists
       - ~log.msg_action: accept
     map:
       - event.action: $~log.msg_action
   - check:
-      - ~log.fw_action: +ef_not_exists
+      - ~log.fw_action: +not_exists
       - ~log.msg_action: allow
     map:
       - event.action: $~log.msg_action
   - check:
-      - ~log.fw_action: +ef_not_exists
+      - ~log.fw_action: +not_exists
       - ~log.msg_action: block
     map:
       - event.action: $~log.msg_action
   - check:
-      - ~log.fw_action: +ef_not_exists
+      - ~log.fw_action: +not_exists
       - ~log.msg_action: cancel
     map:
       - event.action: $~log.msg_action
   - check:
-      - ~log.fw_action: +ef_not_exists
+      - ~log.fw_action: +not_exists
       - ~log.msg_action: deny
     map:
       - event.action: $~log.msg_action
   - check: >-
-        +ef_not_exists/~log.fw_action AND ~log.msg_action!=accept AND
+        +not_exists/~log.fw_action AND ~log.msg_action!=accept AND
         ~log.msg_action!=allow AND ~log.msg_action!=block AND
         ~log.msg_action!=cancel AND ~log.msg_action!=deny
     map:
-      - event.action: +ef_delete
+      - event.action: +delete
   - check:
-      - event.action: +ef_not_exists
+      - event.action: +not_exists
     map:
       - rsa.internal.msg: $~log.msg_action
   - check:
-      - source.mac: +ef_exists
+      - source.mac: +exists
     map:
-      - related.ip: +a_append/$host.ip
+      - related.ip: +array_append/$host.ip
       - rsa.misc.category: $~rsa.misc.category
       - rsa.misc.serial_number: $~rsa.misc.serial_number
       - rsa.misc.severity: $log.level
   - map:
-      - rsa.misc.action: +a_append/$event.action
-      - ~rsa: +ef_delete
-      - ~log: +ef_delete
+      - rsa.misc.action: +array_append/$event.action
+      - ~rsa: +delete
+      - ~log: +delete

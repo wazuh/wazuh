@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-- event.original: +r_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Wireless Protection"
+- event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Wireless Protection"
 
 parse:
   logpar:
@@ -28,7 +28,7 @@ parse:
 # TODO: All sophos named fields are not currently in the schema.
 normalize:
   - map:
-      - ~tmp.payload_message: +s_replace/=""/=" "
+      - ~tmp.payload_message: +replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
   - map:
@@ -70,7 +70,7 @@ normalize:
       - fileset.name: xg
       - host.name: firewall.localgroup.local
       - input.type: log
-      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
       - log.level: $~tmp.log_subtype
       - observer.product: XG
       - observer.serial_number: $~tmp.device_id
@@ -86,4 +86,4 @@ normalize:
       - sophos.xg.ssid: $~tmp.ssid
       - related.host: [$host.name]
       - tags: [forwarded, preserve_original_even, sophos-xg]
-      - ~tmp: +ef_delete
+      - ~tmp: +delete

@@ -23,10 +23,10 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.port: +ef_not_exists
-  - ~json.type: +s_eq/port_end
+  - ~json.port: +not_exists
+  - ~json.type: +string_equal/port_end
 
 normalize:
   - map:
-     - ~query: +s_concat/agent /$agent.id/ port del /$~json.ID
+     - ~query: +concat/agent /$agent.id/ port del /$~json.ID
      - ~port_del_result: +wdb_update/$~query

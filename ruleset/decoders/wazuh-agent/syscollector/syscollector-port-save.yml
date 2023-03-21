@@ -23,69 +23,69 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.port: +ef_exists
+  - ~json.port: +exists
 
 normalize:
   - check:
-      - ~json.timestamp: +ef_not_exists
+      - ~json.timestamp: +not_exists
     map:
       - ~json.timestamp: "NULL"
 
   - check:
-      - ~json.port.protocol: +ef_not_exists
+      - ~json.port.protocol: +not_exists
     map:
       - ~json.port.protocol: "NULL"
 
   - check:
-      - ~json.port.local_ip: +ef_not_exists
+      - ~json.port.local_ip: +not_exists
     map:
       - ~json.port.local_ip: "NULL"
 
   - check:
-      - ~json.port.local_port: +ef_not_exists
+      - ~json.port.local_port: +not_exists
     map:
       - ~json.port.local_port: "NULL"
 
   - check:
-      - ~json.port.remote_ip: +ef_not_exists
+      - ~json.port.remote_ip: +not_exists
     map:
       - ~json.port.remote_ip: "NULL"
 
   - check:
-      - ~json.port.remote_port: +ef_not_exists
+      - ~json.port.remote_port: +not_exists
     map:
       - ~json.port.remote_port: "NULL"
 
   - check:
-      - ~json.port.tx_queue: +ef_not_exists
+      - ~json.port.tx_queue: +not_exists
     map:
       - ~json.port.tx_queue: "NULL"
 
   - check:
-      - ~json.port.rx_queue: +ef_not_exists
+      - ~json.port.rx_queue: +not_exists
     map:
       - ~json.port.rx_queue: "NULL"
 
   - check:
-      - ~json.port.inode: +ef_not_exists
+      - ~json.port.inode: +not_exists
     map:
       - ~json.port.inode: "NULL"
 
   - check:
-      - ~json.port.state: +ef_not_exists
+      - ~json.port.state: +not_exists
     map:
       - ~json.port.state: "NULL"
 
   - check:
-      - ~json.port.PID: +ef_not_exists
+      - ~json.port.PID: +not_exists
     map:
       - ~json.port.PID: "NULL"
 
   - check:
-      - ~json.port.process: +ef_not_exists
+      - ~json.port.process: +not_exists
     map:
       - ~json.port.process: "NULL"
 
   - map:
-      - ~query: +s_concat/agent /$agent.id/ port save /$~json.ID/|/$~json.timestamp/|/$~json.port.protocol/|/$~json.port.local_ip/|/$~json.port.local_port/|/$~json.port.remote_ip/|/$~json.port.remote_port/|/$~json.port.tx_queue/|/$~json.port.rx_queue/|/$~json.port.inode/|/$~json.port.state/|/$~json.port.PID/|/$~json.port.process
+      - ~query: +concat/agent /$agent.id/ port save /$~json.ID/|/$~json.timestamp/|/$~json.port.protocol/|/$~json.port.local_ip/|/$~json.port.local_port/|/$~json.port.remote_ip/|/$~json.port.remote_port/|/$~json.port.tx_queue/|/$~json.port.rx_queue/|/$~json.port.inode/|/$~json.port.state/|/$~json.port.PID/|/$~json.port.process
       - ~port_save_result: +wdb_update/$~query

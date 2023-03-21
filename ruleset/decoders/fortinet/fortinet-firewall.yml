@@ -17,8 +17,8 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/(?i)logid=
-  - event.original: +r_not_match/(?i)logver=
+  - event.original: +regex_match/(?i)logid=
+  - event.original: +regex_not_match/(?i)logver=
 
 parse:
   logpar:
@@ -97,7 +97,7 @@ normalize:
     - event.code: $~tmp.logid
     # due to type value limitations, multiplying by a large number can cause an overflow on the result
     - event.duration: $~tmp.duration
-    - event.duration: +i_calc/mul/100000000
+    - event.duration: +int_calculate/mul/100000000
     - event.reference: $~tmp.ref
     - event.reason: $~tmp.reason
     - event.action: $~tmp.action
@@ -145,56 +145,56 @@ normalize:
     - related.hosts: [$~tmp.qname]
     # TODO: it does't work: the hf can't parse the special char /.
     # We cannot use a temporary variable to store the special character since the second argument to hf expects a character.
-    - ~tmp.agent_array: +s_to_array/$~tmp.agent/\/
+    - ~tmp.agent_array: +split/$~tmp.agent/\/
     - user_agent.name: $~tmp.agent_array.1
     - user_agent.original: $~tmp.agent
     - user_agent.version: $~tmp.agent_array.2
-    - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000
-    - ~tmp.subtype: +s_lo/$~tmp.subtype
+    - ~tmp.timestamp: +concat/$~tmp.date/T/$~tmp.time/.000
+    - ~tmp.subtype: +downcase/$~tmp.subtype
     - ~tmp.addrgrp: $~tmp.addr
     - ~tmp.na: N/A
 
   # Check-mapping for all fortinet-firewall types: event, traffic & utm
   - check:
-    - ~tmp.tz: +ef_exists
+    - ~tmp.tz: +exists
     map:
-      - ~tmp.timestamp: +s_concat/$~tmp.date/T/$~tmp.time/.000/$~tmp.tz
+      - ~tmp.timestamp: +concat/$~tmp.date/T/$~tmp.time/.000/$~tmp.tz
   - check:
-    - ~tmp.appcat: +ef_exists
-    - ~tmp.catdesc: +ef_not_exists
+    - ~tmp.appcat: +exists
+    - ~tmp.catdesc: +not_exists
     map:
       - rule.category: $~tmp.appcat
   - check:
-    - ~tmp.appcat: +ef_not_exists
-    - ~tmp.catdesc: +ef_exists
+    - ~tmp.appcat: +not_exists
+    - ~tmp.catdesc: +exists
     map:
       - rule.category: $~tmp.catdesc
   - check:
-    - ~tmp.policytype: +ef_not_exists
-    - ~tmp.profile: +ef_exists
+    - ~tmp.policytype: +not_exists
+    - ~tmp.profile: +exists
     map:
       - rule.ruleset: $~tmp.profile
   - check:
-    - ~tmp.policytype: +ef_not_exists
-    - ~tmp.profile: +ef_not_exists
-    - ~tmp.applist: +ef_exists
+    - ~tmp.policytype: +not_exists
+    - ~tmp.profile: +not_exists
+    - ~tmp.applist: +exists
     map:
       - rule.ruleset: $~tmp.applist
   - check:
     # TODO: a temporary variable must be used in order to validate the
-    # inequality of "N/A", it does't work: - ~tmp.user: +s_ne/N\/A
-    - ~tmp.user: +s_ne/$~tmp.na
+    # inequality of "N/A", it does't work: - ~tmp.user: +string_not_equal/N\/A
+    - ~tmp.user: +string_not_equal/$~tmp.na
     map:
       - source.user.name: $~tmp.user
       - related.user: [$source.user.name]
   - check:
-    - ~tmp.remip: +ef_exists
-    - ~tmp.dstip: +ef_not_exists
+    - ~tmp.remip: +exists
+    - ~tmp.dstip: +not_exists
     map:
       - destination.ip: $~tmp.remip
   - check:
-    - ~tmp.locip: +ef_exists
-    - ~tmp.srcip: +ef_not_exists
+    - ~tmp.locip: +exists
+    - ~tmp.srcip: +not_exists
     map:
       - source.ip: $~tmp.locip
   - map:
@@ -204,26 +204,26 @@ normalize:
     map:
       - event.outcome: failure
   - check:
-    - source.ip: +ef_exists
+    - source.ip: +exists
     map:
-      - ~tmp.ip: +s_ip_version/$source.ip
+      - ~tmp.ip: +ip_version/$source.ip
   - check:
-    - destination.ip: +ef_exists
-    - source.ip: +ef_not_exists
+    - destination.ip: +exists
+    - source.ip: +not_exists
     map:
-      - ~tmp.ip: +s_ip_version/$destination.ip
+      - ~tmp.ip: +ip_version/$destination.ip
   - map:
-    - network.type: +s_lo/$~tmp.ip
+    - network.type: +downcase/$~tmp.ip
 
   # Check-mapping for firewall-event
   - check:
     - ~tmp.subtype: user
-    - event.action: +r_match/(?i)logon
+    - event.action: +regex_match/(?i)logon
     map:
       - event.type: [start, user]
   - check:
     - ~tmp.subtype: user
-    - event.action: +r_match/(?i)logoff
+    - event.action: +regex_match/(?i)logoff
     map:
       - event.type: [end, user]
   - map:
@@ -233,7 +233,7 @@ normalize:
     map:
       - event.category: [host]
       - event.type: [info]
-      - event.outcome: +ef_delete
+      - event.outcome: +delete
 
   # Check-mapping for firewall-traffic
   - check:
@@ -241,7 +241,7 @@ normalize:
     map:
       - event.category: [network]
       - event.type: [connection]
-  - check: +s_eq/~tmp.type/traffic OR +s_eq/~tmp.type/utm
+  - check: +string_equal/~tmp.type/traffic OR +string_equal/~tmp.type/utm
     map:
       - event.category: [network]
   - check:
@@ -249,101 +249,101 @@ normalize:
     map:
       - event.type: [connection]
   - check: >-
-        +s_eq/~tmp.type/traffic AND (+s_eq/event.action/block OR +s_eq/event.action/blocked OR
-        +s_eq/event.action/deny OR +s_eq/event.action/close OR
-        +s_eq/event.action/server-rst OR +s_eq/~tmp.utmaction/block)
+        +string_equal/~tmp.type/traffic AND (+string_equal/event.action/block OR +string_equal/event.action/blocked OR
+        +string_equal/event.action/deny OR +string_equal/event.action/close OR
+        +string_equal/event.action/server-rst OR +string_equal/~tmp.utmaction/block)
     map:
-      - event.type: +a_append/denied
+      - event.type: +array_append/denied
   - check: >-
-        +s_eq/~tmp.type/traffic AND +ef_not_exists/~tmp.utmaction AND
-        (+s_eq/event.action/dns OR +s_eq/event.action/accept OR +s_eq/event.action/ip-conn)
+        +string_equal/~tmp.type/traffic AND +not_exists/~tmp.utmaction AND
+        (+string_equal/event.action/dns OR +string_equal/event.action/accept OR +string_equal/event.action/ip-conn)
     map:
-      - event.type: +a_append/allowed
+      - event.type: +array_append/allowed
   - check:
     - ~tmp.type: traffic
     - event.action: allow
     map:
-      - event.type: +a_append/allowed
+      - event.type: +array_append/allowed
   - check:
     - ~tmp.type: traffic
-    - event.action: +s_eq/start
+    - event.action: +string_equal/start
     map:
-      - event.type: +a_append/start
+      - event.type: +array_append/start
   - check:
     - ~tmp.type: traffic
-    - event.action: +s_ne/start
+    - event.action: +string_not_equal/start
     map:
-      - event.type: +a_append/end
+      - event.type: +array_append/end
   - check:
     - ~tmp.type: traffic
-    - event.action: +s_ne/deny
-    - network.application: +ef_exists
+    - event.action: +string_not_equal/deny
+    - network.application: +exists
     map:
-      - event.type: +a_append/protocol
+      - event.type: +array_append/protocol
   - check:
     - ~tmp.type: traffic
-    - network.packets: +ef_not_exists
-    - source.packets: +ef_exists
+    - network.packets: +not_exists
+    - source.packets: +exists
     map:
     - network.packets: $source.packets
-  - check: +s_eq/~tmp.type/traffic AND +ef_exists/destination.ip
+  - check: +string_equal/~tmp.type/traffic AND +exists/destination.ip
     map:
-      - related.ip: +a_append/$destination.ip
+      - related.ip: +array_append/$destination.ip
 
   # Check-mapping for firewall-utm
   - check: >-
-        +s_eq/~tmp.type/utm AND (+s_eq/event.action/block OR
-        +s_eq/event.action/blocked OR +s_eq/event.action/deny OR
-        +s_eq/event.action/close OR +s_eq/event.action/server-rst OR
-        +s_eq/event.action/dropped)
+        +string_equal/~tmp.type/utm AND (+string_equal/event.action/block OR
+        +string_equal/event.action/blocked OR +string_equal/event.action/deny OR
+        +string_equal/event.action/close OR +string_equal/event.action/server-rst OR
+        +string_equal/event.action/dropped)
     map:
-      - event.type: +a_append/denied
+      - event.type: +array_append/denied
   - check: >-
-        +s_eq/~tmp.type/utm AND (+s_eq/event.action/pass OR
-        +s_eq/event.action/passthrough OR +s_eq/event.action/exempt)
+        +string_equal/~tmp.type/utm AND (+string_equal/event.action/pass OR
+        +string_equal/event.action/passthrough OR +string_equal/event.action/exempt)
     map:
-      - event.type: +a_append/allowed
+      - event.type: +array_append/allowed
   - check:
     - ~tmp.type: utm
-    - ~tmp.ipaddr: +ef_exists
+    - ~tmp.ipaddr: +exists
     map:
-      - ~tmp.ipaddr: +s_replace/ /
-      - ~tmp.ipaddr_array: +s_to_array/$~tmp.ipaddr/,
+      - ~tmp.ipaddr: +replace/ /
+      - ~tmp.ipaddr_array: +split/$~tmp.ipaddr/,
       - dns.resolved_ip: $~tmp.ipaddr_array
   - check:
     - ~tmp.type: utm
-    - ~tmp.ipaddr: +ef_not_exists
-    - destination.ip: +ef_exists
+    - ~tmp.ipaddr: +not_exists
+    - destination.ip: +exists
     map:
       - dns.resolved_ip: [$destination.ip]
-  - check: +s_eq/~tmp.type/utm AND +ef_exists/destination.ip AND +ef_not_exists/~tmp.ipaddr
+  - check: +string_equal/~tmp.type/utm AND +exists/destination.ip AND +not_exists/~tmp.ipaddr
     map:
-      - related.ip: +a_append/$destination.ip
-  - check: +s_eq/~tmp.type/utm AND +ef_exists/~tmp.ipaddr
+      - related.ip: +array_append/$destination.ip
+  - check: +string_equal/~tmp.type/utm AND +exists/~tmp.ipaddr
     map:
-      - related.ip: +ef_merge/$~tmp.ipaddr_array
+      - related.ip: +merge/$~tmp.ipaddr_array
   - check:
     - ~tmp.type: utm
     - ~tmp.subtype: dns
     map:
-      - event.type: +a_append/info
+      - event.type: +array_append/info
   - check:
     - ~tmp.type: utm
     - ~tmp.subtype: ips
     map:
-      - event.category: +a_append/intrusion_detection
+      - event.category: +array_append/intrusion_detection
   - check: >-
-        +s_eq/~tmp.type/utm AND +ef_not_exists/~tmp.attack AND
-        (+r_match/~tmp.subtype/ips OR +r_match/~tmp.subtype/virus)
+        +string_equal/~tmp.type/utm AND +not_exists/~tmp.attack AND
+        (+regex_match/~tmp.subtype/ips OR +regex_match/~tmp.subtype/virus)
     map:
       - event.kind: alert
   - check:
-      - ~tmp.crlevel: +ef_exists
+      - ~tmp.crlevel: +exists
     map:
       - fortinet.firewall.severity: $~tmp.crlevel
   - check:
-      - ~tmp.crlevel: +ef_not_exists
-      - ~tmp.severity: +ef_exists
+      - ~tmp.crlevel: +not_exists
+      - ~tmp.severity: +exists
     map:
       - fortinet.firewall.severity: $~tmp.severity
 
@@ -372,68 +372,68 @@ normalize:
       - \@timestamp: $~tmp.timestamp
       - event.start: $~tmp.timestamp
       - fileset.name: firewall
-      - ~tmp.date: +ef_delete
-      - ~tmp.time: +ef_delete
-      - ~tmp.logid: +ef_delete
-      - ~tmp.eventtime: +ef_delete
-      - ~tmp.policyid: +ef_delete
-      - ~tmp.srcip: +ef_delete
-      - ~tmp.srcport: +ef_delete
-      - ~tmp.srcintf: +ef_delete
-      - ~tmp.dstip: +ef_delete
-      - ~tmp.dstport: +ef_delete
-      - ~tmp.dstintf: +ef_delete
-      - ~tmp.proto: +ef_delete
-      - ~tmp.service: +ef_delete
-      - ~tmp.hostname: +ef_delete
-      - ~tmp.action: +ef_delete
-      - ~tmp.url: +ef_delete
-      - ~tmp.sentbyte: +ef_delete
-      - ~tmp.rcvdbyte: +ef_delete
-      - ~tmp.direction: +ef_delete
-      - ~tmp.msg: +ef_delete
-      - ~tmp.catdesc: +ef_delete
-      - ~tmp.timestamp: +ef_delete
-      - ~tmp.na: +ef_delete
-      - ~tmp.devname: +ef_delete
-      - ~tmp.devid: +ef_delete
-      - ~tmp.tz: +ef_delete
-      - ~tmp.logdesc: +ef_delete
-      - ~tmp.user: +ef_delete
-      - ~tmp.remip: +ef_delete
-      - ~tmp.locip: +ef_delete
-      - ~tmp.remport: +ef_delete
-      - ~tmp.locport: +ef_delete
-      - ~tmp.group: +ef_delete
-      - ~tmp.xauthuser: +ef_delete
-      - ~tmp.xauthgroup: +ef_delete
-      - ~tmp.assignip: +ef_delete
-      - ~tmp.reason: +ef_delete
-      - ~tmp.addr: +ef_delete
-      - ~tmp.sentpkt: +ef_delete
-      - ~tmp.appcat: +ef_delete
-      - ~tmp.transip: +ef_delete
-      - ~tmp.duration: +ef_delete
-      - ~tmp.rcvdpkt: +ef_delete
-      - ~tmp.scertcname: +ef_delete
-      - ~tmp.xid: +ef_delete
-      - ~tmp.qname: +ef_delete
-      - ~tmp.qtype: +ef_delete
-      - ~tmp.qclass: +ef_delete
-      - ~tmp.ipaddr: +ef_delete
-      - ~tmp.dtype: +ef_delete
-      - ~tmp.ref: +ef_delete
-      - ~tmp.agent: +ef_delete
-      - ~tmp.agent_array: +ef_delete
-      - fortinet.firewall: +ef_rename/$~tmp
+      - ~tmp.date: +delete
+      - ~tmp.time: +delete
+      - ~tmp.logid: +delete
+      - ~tmp.eventtime: +delete
+      - ~tmp.policyid: +delete
+      - ~tmp.srcip: +delete
+      - ~tmp.srcport: +delete
+      - ~tmp.srcintf: +delete
+      - ~tmp.dstip: +delete
+      - ~tmp.dstport: +delete
+      - ~tmp.dstintf: +delete
+      - ~tmp.proto: +delete
+      - ~tmp.service: +delete
+      - ~tmp.hostname: +delete
+      - ~tmp.action: +delete
+      - ~tmp.url: +delete
+      - ~tmp.sentbyte: +delete
+      - ~tmp.rcvdbyte: +delete
+      - ~tmp.direction: +delete
+      - ~tmp.msg: +delete
+      - ~tmp.catdesc: +delete
+      - ~tmp.timestamp: +delete
+      - ~tmp.na: +delete
+      - ~tmp.devname: +delete
+      - ~tmp.devid: +delete
+      - ~tmp.tz: +delete
+      - ~tmp.logdesc: +delete
+      - ~tmp.user: +delete
+      - ~tmp.remip: +delete
+      - ~tmp.locip: +delete
+      - ~tmp.remport: +delete
+      - ~tmp.locport: +delete
+      - ~tmp.group: +delete
+      - ~tmp.xauthuser: +delete
+      - ~tmp.xauthgroup: +delete
+      - ~tmp.assignip: +delete
+      - ~tmp.reason: +delete
+      - ~tmp.addr: +delete
+      - ~tmp.sentpkt: +delete
+      - ~tmp.appcat: +delete
+      - ~tmp.transip: +delete
+      - ~tmp.duration: +delete
+      - ~tmp.rcvdpkt: +delete
+      - ~tmp.scertcname: +delete
+      - ~tmp.xid: +delete
+      - ~tmp.qname: +delete
+      - ~tmp.qtype: +delete
+      - ~tmp.qclass: +delete
+      - ~tmp.ipaddr: +delete
+      - ~tmp.dtype: +delete
+      - ~tmp.ref: +delete
+      - ~tmp.agent: +delete
+      - ~tmp.agent_array: +delete
+      - fortinet.firewall: +rename/$~tmp
 
   # Clean variables
   - map:
-    - ~tmp: +ef_delete
+    - ~tmp: +delete
   #
   # TODO: Failed to assign the fields 'network.community id' because value not found in event
   #
-  #- check: (+s_eq/~tmp.type/traffic) OR (+s_eq/~tmp.type/utm)
+  #- check: (+string_equal/~tmp.type/traffic) OR (+string_equal/~tmp.type/utm)
   #  map:
   #    - network.community_id: "1:8bNES6YDdszaPi28xM3VcSwJdbg="
   #    - network.transport: udp/tcp

@@ -26,5 +26,5 @@ normalize:
       - event.module: nginx
       - service.type: nginx
       - event.kind: event
-      - event.category: +a_append/web
-      - event.type: +a_append/error
+      - event.category: +array_append/web
+      - event.type: +array_append/error

@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/(?i)logver=
+  - event.original: +regex_match/(?i)logver=
 
 parse:
   logpar:
@@ -30,7 +30,7 @@ normalize:
 
   # generic_fortinetmgr (has signature_id)
   - check:
-      - ~kvMap.signature_id: +ef_exists
+      - ~kvMap.signature_id: +exists
     map:
       - destination.bytes: $~kvMap.rcvdbyte
       - destination.ip: $~kvMap.dst
@@ -41,23 +41,23 @@ normalize:
       - http.request.referrer: $~kvMap.http_refer
       - log.level: $~kvMap.pri
       - network.bytes: $~kvMap.sentbyte
-      - network.bytes: +i_calc/sum/$~kvMap.rcvdbyte
+      - network.bytes: +int_calculate/sum/$~kvMap.rcvdbyte
       - observer.egress.interface.name: $~kvMap.dstintf
       - observer.ingress.interface.name: $~kvMap.srcintf
       - observer.serial_number: $~kvMap.device_id
       - observer.version: $~kvMap.osversion
-      - related.hosts: +a_append/$~kvMap.devname
-      - related.hosts: +a_append/$~kvMap.hostname
-      - related.hosts: +a_append/$~kvMap.http_host
-      - related.ip: +a_append/$~kvMap.dst
-      - related.ip: +a_append/$~kvMap.src
-      - related.user: +a_append/$~kvMap.user_name
+      - related.hosts: +array_append/$~kvMap.devname
+      - related.hosts: +array_append/$~kvMap.hostname
+      - related.hosts: +array_append/$~kvMap.http_host
+      - related.ip: +array_append/$~kvMap.dst
+      - related.ip: +array_append/$~kvMap.src
+      - related.user: +array_append/$~kvMap.user_name
       - rsa.internal.event_desc: $~kvMap.msg
       - rsa.internal.messageid: generic_fortinetmgr
       - rsa.investigations.event_vcat: $~kvMap.eventtype
       - rsa.misc.OS: $~kvMap.osname
-      - rsa.misc.action: +a_append/$~kvMap.action
-      - rsa.misc.action: +a_append/$~kvMap.http_method
+      - rsa.misc.action: +array_append/$~kvMap.action
+      - rsa.misc.action: +array_append/$~kvMap.http_method
       - rsa.misc.client: $~kvMap.http_agent
       - rsa.misc.context: $~kvMap.trandisp
       - rsa.misc.hardware_id: $~kvMap.device_id
@@ -69,7 +69,7 @@ normalize:
       - rsa.misc.sig_id: $~kvMap.signature_id
       - rsa.misc.version: $~kvMap.osversion
       - rsa.misc.vsys: $~kvMap.vd
-      - rsa.network.alias_host: +a_append/$~kvMap.hostname
+      - rsa.network.alias_host: +array_append/$~kvMap.hostname
       - rsa.network.interface: $~kvMap.dstintf
       - rsa.network.network_service: $~kvMap.service
       - rsa.network.sinterface: $~kvMap.srcintf
@@ -88,8 +88,8 @@ normalize:
 
   # generic_fortinetmgr_1 (hasn't signature_id and has vd)
   - check:
-      - ~kvMap.signature_id: +ef_not_exists
-      - ~kvMap.vd: +ef_exists
+      - ~kvMap.signature_id: +not_exists
+      - ~kvMap.vd: +exists
     map:
       - destination.bytes: $~kvMap.rcvdbyte
       - destination.geo.country_name: $~kvMap.dstcountry
@@ -100,17 +100,17 @@ normalize:
       - event.code: $~kvMap.logid
       - log.level: $~kvMap.level
       - network.bytes: $~kvMap.sentbyte
-      - network.bytes: +i_calc/sum/$~kvMap.rcvdbyte
+      - network.bytes: +int_calculate/sum/$~kvMap.rcvdbyte
       - network.direction: $~kvMap.direction
       - observer.egress.interface.name: $~kvMap.dstintf
       - observer.ingress.interface.name: $~kvMap.srcintf
       - observer.serial_number: $~kvMap.devid
-      - related.hosts: +a_append/$~kvMap.devname
-      - related.ip: +a_append/$~kvMap.dstip
-      - related.ip: +a_append/$~kvMap.srcip
-      - related.ip: +a_append/$~kvMap.tranip
+      - related.hosts: +array_append/$~kvMap.devname
+      - related.ip: +array_append/$~kvMap.dstip
+      - related.ip: +array_append/$~kvMap.srcip
+      - related.ip: +array_append/$~kvMap.tranip
       - rsa.internal.messageid: generic_fortinetmgr_1
-      - rsa.misc.action: +a_append/$~kvMap.action
+      - rsa.misc.action: +array_append/$~kvMap.action
       - rsa.misc.context: $~kvMap.trandisp
       - rsa.misc.fcatnum: $~kvMap.cat
       - rsa.misc.filter: $~kvMap.catdesc
@@ -133,19 +133,19 @@ normalize:
 
   # event_fortinetmgr  (hasn't signature_id and hasn't vd)
   - check:
-      - ~kvMap.signature_id: +ef_not_exists
-      - ~kvMap.vd: +ef_not_exists
+      - ~kvMap.signature_id: +not_exists
+      - ~kvMap.vd: +not_exists
     map:
       - event.code: $~kvMap.log_id
       - log.level: $~kvMap.pri
       - observer.serial_number: $~kvMap.device_id
-      - related.hosts: +a_append/$~kvMap.adom
-      - related.hosts: +a_append/$~kvMap.devname
-      - related.user: +a_append/$~kvMap.user
+      - related.hosts: +array_append/$~kvMap.adom
+      - related.hosts: +array_append/$~kvMap.devname
+      - related.user: +array_append/$~kvMap.user
       - rsa.db_index: $~kvMap.msg
       - rsa.internal.event_desc: $~kvMap.desc
       - rsa.internal.messageid: event_fortinetmgr
-      - rsa.misc.action: +a_append/$~kvMap.action
+      - rsa.misc.action: +array_append/$~kvMap.action
       - rsa.misc.hardware_id: $~kvMap.device_id
       - rsa.misc.log_session_id: $~kvMap.session_id
       - rsa.misc.reference_id: $~kvMap.log_id
@@ -156,8 +156,8 @@ normalize:
   # Checks if a valid fortinet log was found
   - check: rsa.internal.messageid==generic_fortinetmgr OR rsa.internal.messageid==generic_fortinetmgr_1 OR rsa.internal.messageid==event_fortinetmgr
     map:
-      - \@timestamp: +s_concat/$~kvMap.date/T/$~kvMap.time/.000Z
-      - event.action: +s_lo/$~kvMap.action
+      - \@timestamp: +concat/$~kvMap.date/T/$~kvMap.time/.000Z
+      - event.action: +downcase/$~kvMap.action
       - event.dataset: fortinet.fortimanager
       - event.module: fortinet
       - fileset.name: fortimanager
@@ -173,32 +173,32 @@ normalize:
       - rsa.misc.severity: $~kvMap.pri
       - rsa.time.event_time: $\@timestamp
       - service.type: fortinet
-      - tags: +a_append/$event.dataset
-      - tags: +a_append/forwarded
+      - tags: +array_append/$event.dataset
+      - tags: +array_append/forwarded
 
   # Finally maps the network protocol numbers to strings
-  - check: +i_eq/network.protocol/0
+  - check: +int_equal/network.protocol/0
     map:
       - network.protocol: hoport
 
-  - check: +i_eq/network.protocol/1
+  - check: +int_equal/network.protocol/1
     map:
       - network.protocol: icmp
 
-  - check: +i_eq/network.protocol/3
+  - check: +int_equal/network.protocol/3
     map:
       - network.protocol: ggp
 
-  - check: +i_eq/network.protocol/6
+  - check: +int_equal/network.protocol/6
     map:
       - network.protocol: tcp
 
-  - check: +i_eq/network.protocol/17
+  - check: +int_equal/network.protocol/17
     map:
       - network.protocol: udp
 
-  - check: +i_eq/network.protocol/21
+  - check: +int_equal/network.protocol/21
     map:
       - network.protocol: prm
   - map:
-    - ~kvMap: +ef_delete
+    - ~kvMap: +delete

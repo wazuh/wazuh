@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Anti-Virus"
+  - event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Anti-Virus"
 
 parse:
   logpar:
@@ -27,7 +27,7 @@ parse:
 # TODO: All sophos named fields are not currently in the schema.
 normalize:
   - map:
-      - ~tmp.payload_message: +s_replace/=""/=" "
+      - ~tmp.payload_message: +replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
   - map:
@@ -35,7 +35,7 @@ normalize:
       - destination.ip: $~tmp.dst_ip
       - destination.port: $~tmp.dst_port
       - destination.user.email: $~tmp.to_email_address
-      - event.action: +s_lo/$~tmp.log_subtype
+      - event.action: +downcase/$~tmp.log_subtype
       - event.code: $~tmp.log_id
       - event.dataset: sophos.xg
       - event.id: $~tmp.eventid
@@ -79,7 +79,7 @@ normalize:
       - observer.serial_number: $~tmp.device_id
       - observer.type: firewall
       - observer.vendor: Sophos
-      - network.transport: +s_lo/$~tmp.protocol
+      - network.transport: +downcase/$~tmp.protocol
       - service.type: sophos
       - sophos.xg.av_policy_name: $~tmp.av_policy_name
       - sophos.xg.device: $~tmp.device
@@ -102,5 +102,5 @@ normalize:
       - source.port: $~tmp.src_port
       - source.user.email: $~tmp.from_email_address
       - tags: [forwarded, preserve_original_event, sophos-xg]
-      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
-      - ~tmp: +ef_delete
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
+      - ~tmp: +delete

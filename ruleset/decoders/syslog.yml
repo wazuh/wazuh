@@ -37,5 +37,5 @@ parse:
 normalize:
   - map:
       - event.kind: event
-      - related.hosts: +a_append/$host.hostname
+      - related.hosts: +array_append/$host.hostname
       - process.name: $~TAG

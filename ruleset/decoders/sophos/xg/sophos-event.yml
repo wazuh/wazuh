@@ -17,7 +17,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Event"
+  - event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Event"
 
 parse:
   logpar:
@@ -28,16 +28,16 @@ parse:
 # TODO: All sophos named fields are not currently in the schema.
 normalize:
   - map:
-      - ~tmp.payload_message: +s_replace/=""/=" "
+      - ~tmp.payload_message: +replace/=""/=" "
     logpar:
       - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
   - map:
       - destination.ip: $~tmp.localinterfaceip
-      - event.action: +s_lo/$~tmp.log_subtype
+      - event.action: +downcase/$~tmp.log_subtype
       - event.code: $~tmp.log_id
       - event.dataset: sophos.xg
       - event.duration: $~tmp.duration
-      - event.end: +s_concat/$~tmp.date/T/$~tmp.time
+      - event.end: +concat/$~tmp.date/T/$~tmp.time
       - event.kind: event
       - event.module: sophos
       - event.outcome: success
@@ -70,12 +70,12 @@ normalize:
     map:
       - event.severity: 6
   - map:
-      - event.start: +s_concat/$~tmp.date/T/$~tmp.time
+      - event.start: +concat/$~tmp.date/T/$~tmp.time
       - event.timezone: $~tmp.timezone
       - fileset.name: xg
       - input.type: log
       - log.level: $~tmp.priority
-      - message: +s_lo/$~tmp.protocol
+      - message: +downcase/$~tmp.protocol
       - observer.product: XG
       - observer.serial_number: $~tmp.device_id
       - observer.type: firewall
@@ -101,7 +101,7 @@ normalize:
       - source.ip: $~tmp.src_ip
       - source.user.name: $~tmp.user_name
       - tags: [forwarded, preserve_original_event, sophos-xg]
-      - \@timestamp: +s_concat/$~tmp.date/T/$~tmp.time
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
       - related.ip: [$~tmp.destination.ip, $source.ip]
-      - ~tmp: +ef_delete
+      - ~tmp: +delete
 

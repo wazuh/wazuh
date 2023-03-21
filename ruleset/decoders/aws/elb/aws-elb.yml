@@ -134,9 +134,9 @@ normalize:
       - cloud.provider: aws
       - service.type: aws
       - trace.id: $aws.elb.trace_id
-      - aws.elb.action_executed: +s_to_array/$~tmp.actions_executed/,
-      - aws.elb.target_port: "+s_to_array/$~tmp.target_port/ "
-      - aws.elb.target_status_code: "+s_to_array/$~tmp.target_status_code/ "
+      - aws.elb.action_executed: +split/$~tmp.actions_executed/,
+      - aws.elb.target_port: "+split/$~tmp.target_port/ "
+      - aws.elb.target_status_code: "+split/$~tmp.target_status_code/ "
       - event.end: $@timestamp
       - tls.cipher: $aws.elb.ssl_cipher
       - url: $~url_original
@@ -144,26 +144,26 @@ normalize:
       # TODO: process ssl_protocol once parse is avaliable on normalize
 
   - check:
-      - http: +ef_exists
+      - http: +exists
     map:
       - aws.elb.protocol: http
-      - event.category: +a_append/web
+      - event.category: +array_append/web
 
   - check:
-      - http.response.status_code: +i_lt/400
+      - http.response.status_code: +int_less/400
     map:
       - event.outcome: success
 
   - check:
-      - http.response.status_code: +i_ge/400
+      - http.response.status_code: +int_greater_or_equal/400
     map:
       - event.outcome: failure
 
   - check:
-      - http: +ef_not_exists
+      - http: +not_exists
     map:
       - aws.elb.protocol: tcp
-      - event.category: +a_append/network
+      - event.category: +array_append/network
 
   - logpar:
     - ~tmp.http_v2_optional: >-
@@ -175,6 +175,6 @@ normalize:
     - aws.elb.ssl_protocol: <tls.version>v<tls.version_protocol>
 
   - map:
-      - ~tmp: +ef_delete
-      - ~url_original: +ef_delete
-      - ~ssl_named_group: +ef_delete
+      - ~tmp: +delete
+      - ~url_original: +delete
+      - ~ssl_named_group: +delete
