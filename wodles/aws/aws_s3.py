@@ -3535,7 +3535,7 @@ class AWSSQSQueue(WazuhIntegration):
     """
 
     def __init__(self, name: str, access_key: str = None, secret_key: str = None, aws_profile: str = None,
-                 remove_from_queue: bool = True, notification_number: int = 10, **kwargs):
+                 remove_from_queue: bool = True, **kwargs):
         self.sqs_queue = name
         WazuhIntegration.__init__(self, access_key=access_key,
                                   secret_key=secret_key,
@@ -3543,7 +3543,6 @@ class AWSSQSQueue(WazuhIntegration):
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
-        self.notification_number = notification_number
         self.remove_from_queue = remove_from_queue
         self.profile = aws_profile
         self.iam_role_arn = kwargs['iam_role_arn']
@@ -3572,7 +3571,7 @@ class AWSSQSQueue(WazuhIntegration):
         try:
             debug(f'Retrieving messages from: {self.sqs_queue}', 2)
             return self.client.receive_message(QueueUrl=self.sqs_queue, AttributeNames=['All'],
-                                               MaxNumberOfMessages=self.notification_number)
+                                               MaxNumberOfMessages=10)
         except Exception as e:
             print("ERROR: Error receiving message from SQS: {}".format(e))
             sys.exit(4)
@@ -3699,9 +3698,6 @@ def get_script_arguments():
                        action='store')
     parser.add_argument('-qr', '--remove_from_queue', dest='remove_from_queue',
                         help='Remove processed notifications from SQS queue', action='store_true')
-    parser.add_argument('-qn', '--queue_notifications', dest='sqs_notification_number',
-                        help='Specify the number of notifications to fetch per call', action='store', default=10,
-                        required=False)
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -3861,8 +3857,7 @@ def main(argv):
         elif options.queue:
             asl_queue = AWSSQSQueue(access_key=options.access_key, secret_key=options.secret_key,
                                     aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
-                                    name=options.queue, remove_from_queue=options.remove_from_queue,
-                                    notification_number=int(options.sqs_notification_number))
+                                    name=options.queue, remove_from_queue=options.remove_from_queue)
             asl_queue.sync_events()
 
     except Exception as err:
