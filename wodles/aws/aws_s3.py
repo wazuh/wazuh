@@ -3542,7 +3542,7 @@ class AWSSQSQueue(WazuhIntegration):
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
         self.dont_remove_from_queue = dont_remove_from_queue
-        #self.configure_queue_long_polling()
+        self.configure_queue_long_polling()
         self.profile = aws_profile
         self.iam_role_arn = kwargs['iam_role_arn']
         # PoC code
@@ -3568,9 +3568,9 @@ class AWSSQSQueue(WazuhIntegration):
             debug(f'Enabling long polling on {self.sqs_url}.', 1)
             self.client.set_queue_attributes(
                 QueueUrl=self.sqs_url,
-                Attributes={'ReceiveMessageWaitTimeSeconds': 20})
+                Attributes={'ReceiveMessageWaitTimeSeconds': '20'})
         except Exception as e:
-            debug(f'Could not configure long polling on - {self.sqs_url}.', 3)
+            debug(f'Could not configure long polling on - {self.sqs_url}.', 1)
             sys.exit(4)
 
     
