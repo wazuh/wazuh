@@ -17,6 +17,12 @@
 #include <fmt/format.h>
 #include <error.hpp>
 
+struct PairHasher {
+    std::size_t operator()(const std::pair<std::string, bool>& p) const {
+        return std::hash<std::string>()(p.first) ^ std::hash<bool>()(p.second);
+    }
+};
+
 class Metrics final
 {
 public:
@@ -224,7 +230,6 @@ protected:
 
 private:
     std::shared_ptr<DataHub> m_dataHub;
-    std::list<std::string> m_instrumentsTypes;
     std::string m_moduleName;
     std::vector<std::shared_ptr<MetricsContext>> m_upContext;
     std::vector<std::shared_ptr<ExporterHandler>> m_upExporter;
@@ -242,7 +247,7 @@ private:
     std::unordered_map<std::string, opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument>> m_doubleObservableGauge;
     std::unordered_map<std::string, opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument>> m_int64ObservableGauge;
     opentelemetry::context::Context m_context;
-    std::unordered_map<std::string, bool> m_instrumentState;
+    std::unordered_map<std::pair<std::string, bool>, std::string, PairHasher> m_instrumentState;
 };
 
 #endif // _METRICS_H

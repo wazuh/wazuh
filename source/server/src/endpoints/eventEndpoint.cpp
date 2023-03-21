@@ -211,15 +211,21 @@ EventEndpoint::EventEndpoint(
     }
 
     m_handle->on<DatagramSocketEvent>(
-        [this, dumpFileHandler, isFloodedFileEnabled, &startTime, zeroTime, &endTime](const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
+        [this, dumpFileHandler, isFloodedFileEnabled](const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
         {
-            std::string strRequest = std::string {eventSocket.data.get(), eventSocket.length};
+            auto strRequest = std::string {eventSocket.data.get(), eventSocket.length};
 
-            // Size in bytes per second received
-            Metrics::instance().addCounterValue("BytesPerSecondsReceived", static_cast<uint64_t>(eventSocket.length));
+            // Received bytes per seconds
+            Metrics::instance().addCounterValue("Server.ReceivedBytesPerSeconds", static_cast<uint64_t>(eventSocket.length));
 
-            // Size in bytes received
-            Metrics::instance().addCounterValue("SizeBytesRecive", static_cast<uint64_t>(eventSocket.length));
+            // Received events per seconds
+            Metrics::instance().addCounterValue("Server.ReceivedEventsPerSeconds", 1UL);
+
+            // Total events received
+            Metrics::instance().addCounterValue("Server.TotalEventsReceived", 1UL);
+
+            // Total bytes received
+            Metrics::instance().addCounterValue("Server.TotalBytesReceived", static_cast<uint64_t>(eventSocket.length));
 
             base::Event event;
             try
@@ -250,10 +256,8 @@ EventEndpoint::EventEndpoint(
                     if (m_eventQueue->try_enqueue(event))
                     {
                         // Number of events inserted in queue
-                        Metrics::instance().addCounterValue("QueuedEvents", 1UL);
+                        Metrics::instance().addCounterValue("Server.QueuedEvents", 1UL);
 
-                        // Size in bytes sent
-                        Metrics::instance().addCounterValue("SizeBytesSent", static_cast<uint64_t>(event->size()));
                         break;
                     }
                     // TODO: Benchmarks to find the best value.... (0.1ms)
@@ -263,7 +267,7 @@ EventEndpoint::EventEndpoint(
                 if (attempts >= maxAttempts)
                 {
                     // Number of events that have been written to disk because queue is full
-                    Metrics::instance().addCounterValue("EventsInsertedDisk", 1UL);
+                    Metrics::instance().addCounterValue("Server.EventsInsertedDisk", 1UL);
 
                     dumpFileHandler->write(strRequest);
                 }
