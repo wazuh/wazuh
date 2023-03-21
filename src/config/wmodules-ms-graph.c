@@ -14,6 +14,8 @@
 #include "wazuh_modules/wmodules.h"
 
 static const char* XML_ENABLED = "enabled";
+static const char* XML_ONLY_FUTURE_EVENTS = "only_future_events";
+static const char* XML_CURL_MAX_SIZE = "curl_max_size";
 static const char* XML_RUN_ON_START = "run_on_start";
 
 static const char* XML_VERSION = "version";
@@ -32,6 +34,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	wm_ms_graph* ms_graph;
 	wm_ms_graph_auth* auth_config;
 	wm_ms_graph_resource** resources;
+
 
 
 	return 0;
