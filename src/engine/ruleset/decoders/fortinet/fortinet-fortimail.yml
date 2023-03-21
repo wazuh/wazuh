@@ -16,7 +16,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +r_match/^date=\d+-\d+-\d+ time=\d+:\d+:\d+ device_id=\S+ log_id=\S+ log_part=\S+
+  - event.original: +regex_match/^date=\d+-\d+-\d+ time=\d+:\d+:\d+ device_id=\S+ log_id=\S+ log_part=\S+
 
 definitions:
   DEF_PARSER_HEADER: date=<~log.date> time=<~log.time> device_id=<observer.serial_number> log_id=<event.code> log_part=<~log.rsa.misc.reference_id1>
@@ -138,7 +138,7 @@ normalize:
     - rsa.web.fqdn: $~log.rsa.web.fqdn
 
   - check:
-      - rsa.internal.event_desc: +ef_exists
+      - rsa.internal.event_desc: +exists
     logpar:
       - rsa.internal.event_desc: >-
           <~> to \<\<<~log.rsa.email.email_dst>>; reason:<~log.rsa.misc.result>; <~>
@@ -151,20 +151,20 @@ normalize:
     map:
       - rsa.misc.result: $~log.rsa.misc.result
       - rsa.email.email_dst: $~log.rsa.email.email_dst
-      - rsa.internal.event_desc: +ef_delete
+      - rsa.internal.event_desc: +delete
 
   - map:
-      - related.hosts: +a_append/$rsa.web.fqdn
-      - related.hosts: +a_append/$host.hostname
-      - related.hosts: +a_append/$server.domain
-      - related.ip: +a_append/$destination.ip
-      - related.ip: +a_append/$source.ip
-      - related.user: +a_append/$user.name
+      - related.hosts: +array_append/$rsa.web.fqdn
+      - related.hosts: +array_append/$host.hostname
+      - related.hosts: +array_append/$server.domain
+      - related.ip: +array_append/$destination.ip
+      - related.ip: +array_append/$source.ip
+      - related.user: +array_append/$user.name
       - rsa.misc.event_state: $~log.rsa.misc.event_state
       - rsa.misc.hardware_id: $observer.serial_number
       - rsa.network.network_service: $~log.rsa.network.network_service
       - service.type: fortinet
-      - tags: +a_append/fortinet.fortimail/forwarded
-      - /@timestamp: +s_concat/$~log.date/T/$~log.time/.000Z
+      - tags: +array_append/fortinet.fortimail/forwarded
+      - /@timestamp: +concat/$~log.date/T/$~log.time/.000Z
       - rsa.time.event_time: $/@timestamp
-      - ~log: +ef_delete
+      - ~log: +delete

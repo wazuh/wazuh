@@ -23,95 +23,95 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.inventory: +ef_exists
-  - ~json.type: +s_eq/OS
+  - ~json.inventory: +exists
+  - ~json.type: +string_equal/OS
 
 normalize:
   - check:
-      - ~json.ID: +ef_not_exists
+      - ~json.ID: +not_exists
     map:
       - ~json.ID: "NULL"
 
   - check:
-      - ~json.timestamp: +ef_not_exists
+      - ~json.timestamp: +not_exists
     map:
       - ~json.timestamp: "NULL"
 
   - check:
-      - ~json.inventory.hostname: +ef_not_exists
+      - ~json.inventory.hostname: +not_exists
     map:
       - ~json.inventory.hostname: "NULL"
 
   - check:
-      - ~json.inventory.architecture: +ef_not_exists
+      - ~json.inventory.architecture: +not_exists
     map:
       - ~json.inventory.architecture: "NULL"
 
   - check:
-      - ~json.inventory.os_name: +ef_not_exists
+      - ~json.inventory.os_name: +not_exists
     map:
       - ~json.inventory.os_name: "NULL"
 
   - check:
-      - ~json.inventory.os_version: +ef_not_exists
+      - ~json.inventory.os_version: +not_exists
     map:
       - ~json.inventory.os_version: "NULL"
 
   - check:
-      - ~json.inventory.os_codename: +ef_not_exists
+      - ~json.inventory.os_codename: +not_exists
     map:
       - ~json.inventory.os_codename: "NULL"
 
   - check:
-      - ~json.inventory.os_major: +ef_not_exists
+      - ~json.inventory.os_major: +not_exists
     map:
       - ~json.inventory.os_major: "NULL"
 
   - check:
-      - ~json.inventory.os_minor: +ef_not_exists
+      - ~json.inventory.os_minor: +not_exists
     map:
       - ~json.inventory.os_minor: "NULL"
 
   - check:
-      - ~json.inventory.os_build: +ef_not_exists
+      - ~json.inventory.os_build: +not_exists
     map:
       - ~json.inventory.os_build: "NULL"
 
   - check:
-      - ~json.inventory.os_platform: +ef_not_exists
+      - ~json.inventory.os_platform: +not_exists
     map:
       - ~json.inventory.os_platform: "NULL"
 
   - check:
-      - ~json.inventory.sysname: +ef_not_exists
+      - ~json.inventory.sysname: +not_exists
     map:
       - ~json.inventory.sysname: "NULL"
 
   - check:
-      - ~json.inventory.release: +ef_not_exists
+      - ~json.inventory.release: +not_exists
     map:
       - ~json.inventory.release: "NULL"
 
   - check:
-      - ~json.inventory.version: +ef_not_exists
+      - ~json.inventory.version: +not_exists
     map:
       - ~json.inventory.version: "NULL"
 
   - check:
-      - ~json.inventory.os_release: +ef_not_exists
+      - ~json.inventory.os_release: +not_exists
     map:
       - ~json.inventory.os_release: "NULL"
 
   - check:
-      - ~json.inventory.os_patch: +ef_not_exists
+      - ~json.inventory.os_patch: +not_exists
     map:
       - ~json.inventory.os_patch: "NULL"
 
   - check:
-      - ~json.inventory.os_display_version: +ef_not_exists
+      - ~json.inventory.os_display_version: +not_exists
     map:
       - ~json.inventory.os_display_version: "NULL"
 
   - map:
-      - ~query: +s_concat/agent /$agent.id/ osinfo set /$~json.ID/|/$~json.timestamp/|/$~json.inventory.hostname/|/$~json.inventory.architecture/|/$~json.inventory.os_name/|/$~json.inventory.os_version/|/$~json.inventory.os_codename/|/$~json.inventory.os_major/|/$~json.inventory.os_minor/|/$~json.inventory.os_build/|/$~json.inventory.os_platform/|/$~json.inventory.sysname/|/$~json.inventory.release/|/$~json.inventory.version/|/$~json.inventory.os_release/|/$~json.inventory.os_patch/|/$~json.inventory.os_display_version
+      - ~query: +concat/agent /$agent.id/ osinfo set /$~json.ID/|/$~json.timestamp/|/$~json.inventory.hostname/|/$~json.inventory.architecture/|/$~json.inventory.os_name/|/$~json.inventory.os_version/|/$~json.inventory.os_codename/|/$~json.inventory.os_major/|/$~json.inventory.os_minor/|/$~json.inventory.os_build/|/$~json.inventory.os_platform/|/$~json.inventory.sysname/|/$~json.inventory.release/|/$~json.inventory.version/|/$~json.inventory.os_release/|/$~json.inventory.os_patch/|/$~json.inventory.os_display_version
       - ~hardware_save_result: +wdb_update/$~query

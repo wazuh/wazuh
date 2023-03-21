@@ -22,5 +22,5 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.type: +s_starts/program
-  - ~json.ID: +ef_exists
+  - ~json.type: +starts_with/program
+  - ~json.ID: +exists

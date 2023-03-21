@@ -23,40 +23,40 @@ metadata:
         - https://github.com/wazuh/wazuh/issues/13521
 
 check:
-  - ~json.type: +s_eq/event
-  - ~json.data.path: +t_is_string
-  - ~json.data.type: +t_is_string
+  - ~json.type: +string_equal/event
+  - ~json.data.path: +is_string
+  - ~json.data.type: +is_string
 
 normalize:
   - map:
       - ~do_save2: false
 
   - check:
-      - ~json.data.type: +s_eq/added
+      - ~json.data.type: +string_equal/added
     map:
       - ~do_save2: true
   - check:
-      - ~json.data.type: +s_eq/modified
+      - ~json.data.type: +string_equal/modified
     map:
       - ~do_save2: true
 
   - check:
-      - ~do_save2: +t_is_true
+      - ~do_save2: +is_true
     map:
-      - ~json.data.audit: +ef_delete
-      - ~json.data.content_changes: +ef_delete
-      - ~json.data.changed_attributes: +ef_delete
-      - ~json.data.hard_links: +ef_delete
-      - ~json.data.mode: +ef_delete
-      - ~json.data.old_attributes: +ef_delete
-      - ~json.data.type: +ef_delete
-      - ~json.data.tags: +ef_delete
-      - ~query: +s_concat/agent /$agent.id/ syscheck save2 /$~json.data
+      - ~json.data.audit: +delete
+      - ~json.data.content_changes: +delete
+      - ~json.data.changed_attributes: +delete
+      - ~json.data.hard_links: +delete
+      - ~json.data.mode: +delete
+      - ~json.data.old_attributes: +delete
+      - ~json.data.type: +delete
+      - ~json.data.tags: +delete
+      - ~query: +concat/agent /$agent.id/ syscheck save2 /$~json.data
       - ~query_result: +wdb_query/$~query
 
   - check:
-      - ~do_save2: +t_is_false
-      - ~json.data.type: +s_eq/deleted
+      - ~do_save2: +is_false
+      - ~json.data.type: +string_equal/deleted
     map:
-      - ~query: +s_concat/agent /$agent.id/ syscheck delete /$~json.data.path
+      - ~query: +concat/agent /$agent.id/ syscheck delete /$~json.data.path
       - ~query_result: +wdb_query/$~query

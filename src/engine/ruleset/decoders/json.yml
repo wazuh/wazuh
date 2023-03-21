@@ -18,7 +18,7 @@ sources:
   - decoder/queue-localfile/0
 
 check:
-  - event.original: +s_starts/{
+  - event.original: +starts_with/{
 
 parse:
   logpar:

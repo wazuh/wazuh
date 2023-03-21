@@ -15,7 +15,7 @@ metadata:
 
 normalize:
   - check:
-      - agent.id: +ef_exists
+      - agent.id: +exists
   - map:
       - host.id: $agent.id
       - host: +kvdb_get/agents_host_data/$agent.id

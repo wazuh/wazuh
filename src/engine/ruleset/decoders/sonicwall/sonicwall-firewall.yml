@@ -19,7 +19,7 @@ sources:
 # Since the event is first parsed by the syslog, event.original is
 # not used here but the message field where the syslog saved the rest of the event information.
 check:
-  - message: +r_match/^id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
+  - message: +regex_match/^id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
 
 parse:
   logpar:
@@ -45,10 +45,10 @@ normalize:
       - rsa.internal.messageid: $~tmp.m
       - rsa.time.event_time: $event.start
       - service.type: sonicwall
-      - tags: +a_append/forwarded/sonicwall.firewall
+      - tags: +array_append/forwarded/sonicwall.firewall
       - \@timestamp: $event.start
   - check:
-      - ~tmp.src: +ef_exists
+      - ~tmp.src: +exists
     logpar:
       - ~tmp.src: <~tmp.src.ip/ip>:<~tmp.src.port/long>:<~tmp.src.interface.name>
     map:
@@ -56,16 +56,16 @@ normalize:
       - rsa.network.sinterface: $~tmp.src.interface.name
       - source.ip: $~tmp.src.ip
       - source.port: $~tmp.src.port
-      - related.ip: +a_append/$~tmp.src.ip
+      - related.ip: +array_append/$~tmp.src.ip
   - check:
       - ~tmp.msg: Connection Opened
     map:
       - rsa.internal.event_desc: $~tmp.msg
       - rsa.internal.msg: $~tmp.msg
-      - event.action: +ef_delete
+      - event.action: +delete
   - check:
-      - event.action: +ef_exists
+      - event.action: +exists
     map:
-      - rsa.misc.action: +a_append/$~tmp.msg
+      - rsa.misc.action: +array_append/$~tmp.msg
   - map:
-      - ~tmp: +ef_delete
+      - ~tmp: +delete
