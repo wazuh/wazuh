@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperStringConcat, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"Concat", "test"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringConcat(tuple));
@@ -30,7 +30,7 @@ TEST(opBuilderHelperStringConcat, Builds)
 TEST(opBuilderHelperStringConcat, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"test"});
 
     ASSERT_THROW(bld::opBuilderHelperStringConcat(tuple), std::runtime_error);
@@ -39,7 +39,7 @@ TEST(opBuilderHelperStringConcat, Builds_bad_parameters)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"concat", "test"});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
@@ -54,7 +54,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_field_not_exist)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"concat", "test"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
@@ -71,7 +71,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_success)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_large_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"This", "is", "a", "test"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
@@ -89,7 +89,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_field_not_exist)
 {
     auto tuple =
         std::make_tuple(std::string {"/field2check"},
-                        std::string {"s_concat"},
+                        std::string {"concat"},
                         std::vector<std::string> {"$otherfield", "$otherfield2"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -107,7 +107,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_not_string_or_int)
 {
     auto tuple =
         std::make_tuple(std::string {"/field2check"},
-                        std::string {"s_concat"},
+                        std::string {"concat"},
                         std::vector<std::string> {"$otherfield", "$otherfield2"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -125,7 +125,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_success)
 {
     auto tuple =
         std::make_tuple(std::string {"/field2check"},
-                        std::string {"s_concat"},
+                        std::string {"concat"},
                         std::vector<std::string> {"$otherfield", "$otherfield2"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -145,7 +145,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_success_int)
 {
     auto tuple =
         std::make_tuple(std::string {"/field2check"},
-                        std::string {"s_concat"},
+                        std::string {"concat"},
                         std::vector<std::string> {"$otherfield", "$otherfield2"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -165,7 +165,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_large_success)
 {
     auto tuple = std::make_tuple(
         std::string {"/field2check"},
-        std::string {"s_concat"},
+        std::string {"concat"},
         std::vector<std::string> {
             "$otherfield", "$otherfield2", "$otherfield3", "$otherfield4"});
 
@@ -188,7 +188,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_large_success_int)
 {
     auto tuple = std::make_tuple(
         std::string {"/field2check"},
-        std::string {"s_concat"},
+        std::string {"concat"},
         std::vector<std::string> {
             "$otherfield", "$otherfield2", "$otherfield3", "$otherfield4"});
 
@@ -210,7 +210,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_large_success_int)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_ref_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"$otherfield", "test"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
@@ -225,7 +225,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_ref_field_not_exist)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_not_string_or_int)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"test", "$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -242,7 +242,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_not_string_or_int)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"concat", "$otherfield2"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -261,7 +261,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_success)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"10", "$otherfield2"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -281,7 +281,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_large_success)
 {
     auto tuple = std::make_tuple(
         std::string {"/field2check"},
-        std::string {"s_concat"},
+        std::string {"concat"},
         std::vector<std::string> {"This", "$otherfield2", "a", "$otherfield4"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -303,7 +303,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_large_success_int)
 {
     auto tuple = std::make_tuple(
         std::string {"/field2check"},
-        std::string {"s_concat"},
+        std::string {"concat"},
         std::vector<std::string> {"This", "$otherfield2", "10", "$otherfield4"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -324,7 +324,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_large_success_int)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"concat", "test"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -351,7 +351,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_not_exist)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"concat", "test"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -386,7 +386,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_success)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"10", "20"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -421,7 +421,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_success_in
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"$parentObjt_1/field2check",
                                                            "$parentObjt_2/fieldcheck"});
 
@@ -447,7 +447,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_field_not_ex
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"$parentObjt_1.field2check",
                                                            "$parentObjt_3.field2check"});
 
@@ -483,7 +483,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_success)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"$parentObjt_1.field2check",
                                                            "$parentObjt_3.field2check"});
 
@@ -519,7 +519,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_success_int)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_large_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"$parentObjt_1.field2check",
                                                            "$parentObjt_2.field2check",
                                                            "$parentObjt_4.field2check",
@@ -557,7 +557,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_large_succes
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_large_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"$parentObjt_1.field2check",
                                                            "$parentObjt_2.field2check",
                                                            "$parentObjt_4.field2check",
@@ -596,7 +596,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_field_not_ex
 {
     auto tuple =
         std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                        std::string {"s_concat"},
+                        std::string {"concat"},
                         std::vector<std::string> {"concat", "$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -623,7 +623,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_field_not_ex
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_field_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"$parentObjt_1.field2check",
                                                            "$parentObjt_3.field2check"});
 
@@ -659,7 +659,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_field_succes
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"concat",
                                                            "$parentObjt_2.fieldcheck"});
 
@@ -686,7 +686,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_field_no
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"concat",
                                                            "$parentObjt_3.field2check"});
 
@@ -722,7 +722,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_success)
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"10",
                                                            "$parentObjt_3.field2check"});
 
@@ -758,7 +758,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_success_
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_large_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"This",
                                                            "$parentObjt_2.field2check",
                                                            "a",
@@ -796,7 +796,7 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_large_su
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_large_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
-                                 std::string {"s_concat"},
+                                 std::string {"concat"},
                                  std::vector<std::string> {"This",
                                                            "$parentObjt_2.field2check",
                                                            "10",

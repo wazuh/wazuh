@@ -2,10 +2,10 @@
     "name": "filter/e_wazuh_queue/0",
     "check": [
         {
-            "wazuh.queue": "+ef_exists"
+            "wazuh.queue": "+exists"
         },
         {
-            "wazuh.no_queue": "+ef_exists"
+            "wazuh.no_queue": "+exists"
         }
     ]
 }

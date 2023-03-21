@@ -19,7 +19,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperStringStarts, Build)
 {
     auto tuple = std::make_tuple(std::string {"/sourceField"},
-                                 std::string {"s_starts"},
+                                 std::string {"starts_with"},
                                  std::vector<std::string> {"test_value"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringStarts(tuple));
@@ -29,7 +29,7 @@ TEST(opBuilderHelperStringStarts, Build)
 TEST(opBuilderHelperStringStarts, BuildManyParametersError)
 {
     auto tuple = std::make_tuple(std::string {"/sourceField"},
-                                 std::string {"s_starts"},
+                                 std::string {"starts_with"},
                                  std::vector<std::string> {"test_value", "test_value2"});
 
     ASSERT_THROW(bld::opBuilderHelperStringStarts(tuple), std::runtime_error);
@@ -39,7 +39,7 @@ TEST(opBuilderHelperStringStarts, BuildManyParametersError)
 TEST(opBuilderHelperStringStarts, RawString)
 {
     auto tuple = std::make_tuple(std::string {"/sourceField"},
-                                 std::string {"s_starts"},
+                                 std::string {"starts_with"},
                                  std::vector<std::string> {"test_value"});
 
     auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -105,7 +105,7 @@ TEST(opBuilderHelperStringStarts, NotStrings)
 {
 
     auto tuple = std::make_tuple(std::string {"/sourceField"},
-                                 std::string {"s_starts"},
+                                 std::string {"starts_with"},
                                  std::vector<std::string> {"test_value"});
 
     auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -142,7 +142,7 @@ TEST(opBuilderHelperStringStarts, NotStrings)
 TEST(opBuilderHelperStringStarts, EmptyString)
 {
     auto tuple = std::make_tuple(std::string {"/sourceField"},
-                                 std::string {"s_starts"},
+                                 std::string {"starts_with"},
                                  std::vector<std::string> {"test_value"});
 
     auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -161,7 +161,7 @@ TEST(opBuilderHelperStringStarts, EmptyStartString)
 {
 
     auto tuple = std::make_tuple(std::string {"/sourceField"},
-                                 std::string {"s_starts"},
+                                 std::string {"starts_with"},
                                  std::vector<std::string> {"$testField"});
 
     auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -181,7 +181,7 @@ TEST(opBuilderHelperStringStarts, ReferencedString)
 {
 
     auto tuple = std::make_tuple(std::string {"/sourceField"},
-                                 std::string {"s_starts"},
+                                 std::string {"starts_with"},
                                  std::vector<std::string> {"$ref_key"});
 
     auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -238,7 +238,7 @@ TEST(opBuilderHelperStringStarts, NestedReferencedStrings)
     auto tuple = std::make_tuple(
         std::string {"/rootKey1/sourceField"}, // TODO check if this is the expected
                                                // argument with '/'
-        std::string {"s_starts"},
+        std::string {"starts_with"},
         std::vector<std::string> {"$rootKey2.ref_key"});
 
     auto op = bld::opBuilderHelperStringStarts(tuple)->getPtr<Term<EngineOp>>()->getFn();

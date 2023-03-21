@@ -3,7 +3,7 @@
     "metadata": {
         "description": "Queue 45/50"
     },
-    "check": "+ef_exists/wazuh.queue AND (+i_eq/wazuh.queue/51 OR +i_eq/wazuh.queue/52)",
+    "check": "+exists/wazuh.queue AND (+int_equal/wazuh.queue/51 OR +int_equal/wazuh.queue/52)",
     "normalize": [
         {
             "map": [

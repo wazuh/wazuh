@@ -15,7 +15,7 @@
 using namespace base;
 using namespace builder::internals::builders;
 
-const std::string helperFunctionName {"s_replace"};
+const std::string helperFunctionName {"replace"};
 
 const std::string targetField {"/field"};
 

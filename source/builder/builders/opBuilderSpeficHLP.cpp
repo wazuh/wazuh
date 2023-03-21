@@ -316,7 +316,7 @@ base::Expression opBuilderSpecificHLPDSVParse(const std::any& definition)
     return opBuilderSpecificHLPTypeParse(definition, HLPParserType::DSV);
 }
 
-// +parse_kv/[$ref|value]
+// +parse_key_value/[$ref|value]
 base::Expression opBuilderSpecificHLPKeyValueParse(const std::any& definition)
 {
     return opBuilderSpecificHLPTypeParse(definition, HLPParserType::KV);

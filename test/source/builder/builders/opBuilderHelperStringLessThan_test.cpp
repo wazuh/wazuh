@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperStringLessThan, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less"},
                                  std::vector<std::string> {"value1"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringLessThan(tuple));
@@ -30,7 +30,7 @@ TEST(opBuilderHelperStringLessThan, Builds)
 TEST(opBuilderHelperStringLessThan, Exec_less_than_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less"},
                                  std::vector<std::string> {"value1"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2"})");
@@ -46,7 +46,7 @@ TEST(opBuilderHelperStringLessThan, Exec_less_than_false)
 TEST(opBuilderHelperStringLessThan, Exec_less_than_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less"},
                                  std::vector<std::string> {"value2"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1"})");
@@ -62,7 +62,7 @@ TEST(opBuilderHelperStringLessThan, Exec_less_than_true)
 TEST(opBuilderHelperStringLessThan, Exec_less_than_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2",
@@ -79,7 +79,7 @@ TEST(opBuilderHelperStringLessThan, Exec_less_than_ref_false)
 TEST(opBuilderHelperStringLessThan, Exec_less_than_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1",
@@ -96,7 +96,7 @@ TEST(opBuilderHelperStringLessThan, Exec_less_than_ref_true)
 TEST(opBuilderHelperStringLessThan, Exec_less_than_multilevel_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less"},
                                  std::vector<std::string> {"value1"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -121,7 +121,7 @@ TEST(opBuilderHelperStringLessThan, Exec_less_than_multilevel_false)
 TEST(opBuilderHelperStringLessThan, Exec_less_than_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less"},
                                  std::vector<std::string> {"value2"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -146,7 +146,7 @@ TEST(opBuilderHelperStringLessThan, Exec_less_than_multilevel_true)
 TEST(opBuilderHelperStringLessThan, Exec_less_than_multilevel_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -171,7 +171,7 @@ TEST(opBuilderHelperStringLessThan, Exec_less_than_multilevel_ref_false)
 TEST(opBuilderHelperStringLessThan, Exec_less_than_multilevel_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_lt"},
+                                 std::string {"string_less"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({

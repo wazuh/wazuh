@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperJsonDeleteField, Builds)
 {
     auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"ef_delete"}, std::vector<std::string> {});
+        std::string {"/field"}, std::string {"delete"}, std::vector<std::string> {});
 
     ASSERT_NO_THROW(bld::opBuilderHelperDeleteField(tuple));
 }
@@ -29,7 +29,7 @@ TEST(opBuilderHelperJsonDeleteField, Builds)
 TEST(opBuilderHelperJsonDeleteField, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"ef_delete"},
+                                 std::string {"delete"},
                                  std::vector<std::string> {"test", "test"});
 
     ASSERT_THROW(bld::opBuilderHelperDeleteField(tuple), std::runtime_error);
@@ -38,7 +38,7 @@ TEST(opBuilderHelperJsonDeleteField, Builds_bad_parameters)
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"ef_delete"},
+                                 std::string {"delete"},
                                  std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
@@ -53,7 +53,7 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_field_not_exist)
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"ef_delete"},
+                                 std::string {"delete"},
                                  std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
@@ -70,7 +70,7 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_success)
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"ef_delete"},
+                                 std::string {"delete"},
                                  std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -94,7 +94,7 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_field_not
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"ef_delete"},
+                                 std::string {"delete"},
                                  std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -121,7 +121,7 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_success)
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_repeat_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"ef_delete"},
+                                 std::string {"delete"},
                                  std::vector<std::string> {});
 
     auto event1 =

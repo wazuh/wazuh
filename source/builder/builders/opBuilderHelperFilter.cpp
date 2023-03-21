@@ -344,42 +344,42 @@ base::Expression opBuilderComparison(const std::any& definition, Operator op, Ty
 //*               Int Cmp filters                 *
 //*************************************************
 
-// field: +i_eq/int|$ref/
+// field: +int_equal/int|$ref/
 base::Expression opBuilderHelperIntEqual(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::EQ, Type::INT)};
     return expression;
 }
 
-// field: +i_ne/int|$ref/
+// field: +int_not_equal/int|$ref/
 base::Expression opBuilderHelperIntNotEqual(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::NE, Type::INT)};
     return expression;
 }
 
-// field: +i_lt/int|$ref/
+// field: +int_less/int|$ref/
 base::Expression opBuilderHelperIntLessThan(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::LT, Type::INT)};
     return expression;
 }
 
-// field: +i_le/int|$ref/
+// field: +int_less_or_equal/int|$ref/
 base::Expression opBuilderHelperIntLessThanEqual(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::LE, Type::INT)};
     return expression;
 }
 
-// field: +i_gt/int|$ref/
+// field: +int_greater/int|$ref/
 base::Expression opBuilderHelperIntGreaterThan(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::GT, Type::INT)};
     return expression;
 }
 
-// field: +i_ge/int|$ref/
+// field: +int_greater_or_equal/int|$ref/
 base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::GE, Type::INT)};
@@ -390,56 +390,56 @@ base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition)
 //*           String Cmp filters                  *
 //*************************************************
 
-// field: +s_eq/value|$ref
+// field: +string_equal/value|$ref
 base::Expression opBuilderHelperStringEqual(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::EQ, Type::STRING)};
     return expression;
 }
 
-// field: +s_ne/value|$ref
+// field: +string_not_equal/value|$ref
 base::Expression opBuilderHelperStringNotEqual(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::NE, Type::STRING)};
     return expression;
 }
 
-// field: +s_gt/value|$ref
+// field: +string_greater/value|$ref
 base::Expression opBuilderHelperStringGreaterThan(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::GT, Type::STRING)};
     return expression;
 }
 
-// field: +s_ge/value|$ref
+// field: +string_greater_or_equal/value|$ref
 base::Expression opBuilderHelperStringGreaterThanEqual(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::GE, Type::STRING)};
     return expression;
 }
 
-// field: +s_lt/value|$ref
+// field: +string_less/value|$ref
 base::Expression opBuilderHelperStringLessThan(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::LT, Type::STRING)};
     return expression;
 }
 
-// field: +s_le/value|$ref
+// field: +string_less_or_equal/value|$ref
 base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::LE, Type::STRING)};
     return expression;
 }
 
-// field: +s_starts/value|$ref
+// field: +starts_with/value|$ref
 base::Expression opBuilderHelperStringStarts(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::ST, Type::STRING)};
     return expression;
 }
 
-// field: +s_contains/value|$ref
+// field: +contains/value|$ref
 base::Expression opBuilderHelperStringContains(const std::any& definition)
 {
     auto expression {opBuilderComparison(definition, Operator::CN, Type::STRING)};
@@ -450,7 +450,7 @@ base::Expression opBuilderHelperStringContains(const std::any& definition)
 //*               Regex filters                   *
 //*************************************************
 
-// field: +r_match/regexp
+// field: +regex_match/regexp
 base::Expression opBuilderHelperRegexMatch(const std::any& definition)
 {
     // Extract parameters from any
@@ -501,7 +501,7 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
         });
 }
 
-// field: +r_not_match/regexp
+// field: +regex_not_match/regexp
 base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 {
     // TODO: Regex parameter fails at operationBuilderSplit
@@ -557,8 +557,8 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 // //*               IP filters                     *
 // //*************************************************
 
-// field: +ip_cidr/192.168.0.0/16
-// field: +ip_cidr/192.168.0.0/255.255.0.0
+// field: +ip_cidr_match/192.168.0.0/16
+// field: +ip_cidr_match/192.168.0.0/255.255.0.0
 base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 {
     // Extract parameters from any
@@ -651,7 +651,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 //*               Existance filters               *
 //*************************************************
 
-// field: +ef_exists
+// field: +exists
 base::Expression opBuilderHelperExists(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -680,7 +680,7 @@ base::Expression opBuilderHelperExists(const std::any& definition)
         });
 }
 
-// field: +ef_not_exists
+// field: +not_exists
 base::Expression opBuilderHelperNotExists(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -713,7 +713,7 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
 //*               Array filters                   *
 //*************************************************
 
-// field: +a_contains/value1/value2/...valueN
+// field: +array_contains/value1/value2/...valueN
 base::Expression opBuilderHelperContainsString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -790,7 +790,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
 //*                Type filters                   *
 //*************************************************
 
-// field: +t_is_num
+// field: +is_number
 base::Expression opBuilderHelperIsNumber(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -833,7 +833,7 @@ base::Expression opBuilderHelperIsNumber(const std::any& definition)
         });
 }
 
-// field: +t_is_not_num
+// field: +is_not_number
 base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -875,7 +875,7 @@ base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
         });
 }
 
-// field: +t_is_string
+// field: +is_string
 base::Expression opBuilderHelperIsString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -918,7 +918,7 @@ base::Expression opBuilderHelperIsString(const std::any& definition)
         });
 }
 
-// field: +t_is_not_string
+// field: +is_not_string
 base::Expression opBuilderHelperIsNotString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -961,7 +961,7 @@ base::Expression opBuilderHelperIsNotString(const std::any& definition)
         });
 }
 
-// field: +t_is_bool
+// field: +is_boolean
 base::Expression opBuilderHelperIsBool(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1005,7 +1005,7 @@ base::Expression opBuilderHelperIsBool(const std::any& definition)
         });
 }
 
-// field: +t_is_not_bool
+// field: +is_not_boolean
 base::Expression opBuilderHelperIsNotBool(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1048,7 +1048,7 @@ base::Expression opBuilderHelperIsNotBool(const std::any& definition)
         });
 }
 
-// field: +t_is_array
+// field: +is_array
 base::Expression opBuilderHelperIsArray(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1092,7 +1092,7 @@ base::Expression opBuilderHelperIsArray(const std::any& definition)
         });
 }
 
-// field: +t_is_not_array
+// field: +is_not_array
 base::Expression opBuilderHelperIsNotArray(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1135,7 +1135,7 @@ base::Expression opBuilderHelperIsNotArray(const std::any& definition)
         });
 }
 
-// field: +t_is_object
+// field: +is_object
 base::Expression opBuilderHelperIsObject(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1179,7 +1179,7 @@ base::Expression opBuilderHelperIsObject(const std::any& definition)
         });
 }
 
-// field: +t_is_not_object
+// field: +is_not_object
 base::Expression opBuilderHelperIsNotObject(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1222,7 +1222,7 @@ base::Expression opBuilderHelperIsNotObject(const std::any& definition)
         });
 }
 
-// field: +t_is_null
+// field: +is_null
 base::Expression opBuilderHelperIsNull(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1265,7 +1265,7 @@ base::Expression opBuilderHelperIsNull(const std::any& definition)
         });
 }
 
-// field: +t_is_not_null
+// field: +is_not_null
 base::Expression opBuilderHelperIsNotNull(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1308,7 +1308,7 @@ base::Expression opBuilderHelperIsNotNull(const std::any& definition)
         });
 }
 
-// field: +t_is_true
+// field: +is_true
 base::Expression opBuilderHelperIsTrue(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1351,7 +1351,7 @@ base::Expression opBuilderHelperIsTrue(const std::any& definition)
         });
 }
 
-// field: +t_is_false
+// field: +is_false
 base::Expression opBuilderHelperIsFalse(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);

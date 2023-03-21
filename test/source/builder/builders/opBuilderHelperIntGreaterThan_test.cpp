@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperIntGreaterThan, Builds)
 {
     auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"i_gt"}, std::vector<std::string> {"10"});
+        std::string {"/field"}, std::string {"int_greater"}, std::vector<std::string> {"10"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperIntGreaterThan(tuple));
 }
@@ -29,7 +29,7 @@ TEST(opBuilderHelperIntGreaterThan, Builds)
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"i_gt"},
+                                 std::string {"int_greater"},
                                  std::vector<std::string> {"12"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
@@ -45,7 +45,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"i_gt"},
+                                 std::string {"int_greater"},
                                  std::vector<std::string> {"9"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
@@ -61,7 +61,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"i_gt"},
+                                 std::string {"int_greater"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -78,7 +78,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"i_gt"},
+                                 std::string {"int_greater"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 12,
@@ -95,7 +95,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_true)
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"i_gt"},
+                                 std::string {"int_greater"},
                                  std::vector<std::string> {"12"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -120,7 +120,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_false)
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"i_gt"},
+                                 std::string {"int_greater"},
                                  std::vector<std::string> {"10"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -145,7 +145,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_true)
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"i_gt"},
+                                 std::string {"int_greater"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -170,7 +170,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_ref_false)
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"i_gt"},
+                                 std::string {"int_greater"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({

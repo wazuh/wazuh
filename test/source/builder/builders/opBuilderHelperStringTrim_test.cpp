@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperStringTrim, Builds)
 {
     auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"s_trim"}, std::vector<std::string> {"begin", "t"});
+        std::string {"/field"}, std::string {"trim"}, std::vector<std::string> {"begin", "t"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringTrim(tuple));
 }
@@ -29,7 +29,7 @@ TEST(opBuilderHelperStringTrim, Builds)
 TEST(opBuilderHelperStringTrim, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_trim"},
+                                 std::string {"trim"},
                                  std::vector<std::string> {"begin"});
 
     ASSERT_THROW(bld::opBuilderHelperStringTrim(tuple), std::runtime_error);
@@ -38,7 +38,7 @@ TEST(opBuilderHelperStringTrim, Builds_bad_parameters)
 TEST(opBuilderHelperStringTrim, Exec_string_trim_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_trim"},
+                                 std::string {"trim"},
                                  std::vector<std::string> {"begin", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "--test"})");
@@ -53,7 +53,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_field_not_exist)
 TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_trim"},
+                                 std::string {"trim"},
                                  std::vector<std::string> {"begin", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "--test"})");
@@ -70,7 +70,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_success)
 TEST(opBuilderHelperStringTrim, Exec_string_trim_end_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_trim"},
+                                 std::string {"trim"},
                                  std::vector<std::string> {"end", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "test--"})");
@@ -87,7 +87,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_end_success)
 TEST(opBuilderHelperStringTrim, Exec_string_trim_both_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_trim"},
+                                 std::string {"trim"},
                                  std::vector<std::string> {"both", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "--test--"})");
@@ -104,7 +104,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_both_success)
 TEST(opBuilderHelperStringTrim, Exec_string_trim_multilevel_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_trim"},
+                                 std::string {"trim"},
                                  std::vector<std::string> {"begin", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -128,7 +128,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_multilevel_field_not_exist)
 TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_multilevel_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_trim"},
+                                 std::string {"trim"},
                                  std::vector<std::string> {"begin", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -154,7 +154,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_multilevel_success)
 TEST(opBuilderHelperStringTrim, Exec_string_trim_end_multilevel_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_trim"},
+                                 std::string {"trim"},
                                  std::vector<std::string> {"end", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -180,7 +180,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_end_multilevel_success)
 TEST(opBuilderHelperStringTrim, Exec_string_trim_both_multilevel_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"s_trim"},
+                                 std::string {"trim"},
                                  std::vector<std::string> {"both", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({

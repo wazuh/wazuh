@@ -177,7 +177,7 @@ base::Expression opBuilderHelperStringTransformation(const std::any& definition,
  * `op` definition and the `value` or the `refValue`
  *
  * @param definition The transformation definition. i.e :
- * +i_calc/[+|-|*|/]/<val1|$ref1>/<.../valN|$refN>/
+ * +int_calculate/[+|-|*|/]/<val1|$ref1>/<.../valN|$refN>/
  * @param op The operator to use:
  * - `SUM`: Sum
  * - `SUB`: Subtract
@@ -416,21 +416,21 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 //*           String tranform                     *
 //*************************************************
 
-// field: +s_up/value|$ref
+// field: +upcase/value|$ref
 base::Expression opBuilderHelperStringUP(const std::any& definition)
 {
     auto expression {opBuilderHelperStringTransformation(definition, StringOperator::UP)};
     return expression;
 }
 
-// field: +s_lo/value|$ref
+// field: +downcase/value|$ref
 base::Expression opBuilderHelperStringLO(const std::any& definition)
 {
     auto expression {opBuilderHelperStringTransformation(definition, StringOperator::LO)};
     return expression;
 }
 
-// field: +s_trim/[begin | end | both]/char
+// field: +trim/[begin | end | both]/char
 base::Expression opBuilderHelperStringTrim(const std::any& definition)
 {
 
@@ -512,7 +512,7 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
         });
 }
 
-// field: +s_concat/string1|$ref1/string2|$ref2
+// field: +concat/string1|$ref1/string2|$ref2
 base::Expression opBuilderHelperStringConcat(const std::any& definition)
 {
 
@@ -588,7 +588,7 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
         });
 }
 
-// field: +s_from_array/$<array_reference1>/<separator>
+// field: +join/$<array_reference1>/<separator>
 base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 {
     const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -650,7 +650,7 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
         });
 }
 
-// field: +s_from_hexa/$<hex_reference>
+// field: +decode_base16/$<hex_reference>
 base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
 {
     const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -724,7 +724,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
         });
 }
 
-// field: +s_hex_to_num/$ref
+// field: +hex_to_number/$ref
 base::Expression opBuilderHelperHexToNumber(const std::any& definition)
 {
     const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -773,7 +773,7 @@ base::Expression opBuilderHelperHexToNumber(const std::any& definition)
         });
 }
 
-// field: +s_replace/substring/new_substring
+// field: +replace/substring/new_substring
 base::Expression opBuilderHelperStringReplace(const std::any& definition)
 {
     // Extract parameters from any
@@ -886,7 +886,7 @@ base::Expression opBuilderHelperStringReplace(const std::any& definition)
 //*           Int tranform                        *
 //*************************************************
 
-// field: +i_calc/[+|-|*|/]/<val1|$ref1>/.../<valN|$refN>
+// field: +int_calculate/[+|-|*|/]/<val1|$ref1>/.../<valN|$refN>
 base::Expression opBuilderHelperIntCalc(const std::any& definition)
 {
     // Extract parameters from any
@@ -910,7 +910,7 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition)
 //*           Regex tranform                      *
 //*************************************************
 
-// field: +r_ext/_field/regexp/
+// field: +regex_extract/_field/regexp/
 base::Expression opBuilderHelperRegexExtract(const std::any& definition)
 {
     // Extract parameters from any
@@ -970,7 +970,7 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
 //*           Array tranform                      *
 //*************************************************
 
-// field: +a_append/$field|literal...
+// field: +array_append/$field|literal...
 base::Expression opBuilderHelperAppend(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1026,7 +1026,7 @@ base::Expression opBuilderHelperAppend(const std::any& definition)
         });
 }
 
-// field: +ef_merge_r/$field
+// field: +merge_recursive/$field
 base::Expression opBuilderHelperMergeRecursively(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1079,7 +1079,7 @@ base::Expression opBuilderHelperMergeRecursively(const std::any& definition)
         });
 }
 
-// field: +s_to_array/$field/[,| | ...]
+// field: +split/$field/[,| | ...]
 base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1183,7 +1183,7 @@ base::Expression opBuilderHelperMerge(const std::any& definition)
 //*             JSON tranform                     *
 //*************************************************
 
-// field: +ef_delete
+// field: +delete
 base::Expression opBuilderHelperDeleteField(const std::any& definition)
 {
     // Extract parameters from any
@@ -1228,7 +1228,7 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
         });
 }
 
-// field: +ef_rename/$sourceField
+// field: +rename/$sourceField
 base::Expression opBuilderHelperRenameField(const std::any& definition)
 {
     // Extract parameters from any
@@ -1351,7 +1351,7 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition)
 //*              Time tranform                    *
 //*************************************************
 
-// field: + sys_epoch
+// field: + system_epoch
 base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -1389,7 +1389,7 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition)
 //*              Checksum and hash                *
 //*************************************************
 
-// field: +h_sha1/<string1>|<string_reference1>
+// field: +sha1/<string1>|<string_reference1>
 base::Expression opBuilderHelperHashSHA1(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);

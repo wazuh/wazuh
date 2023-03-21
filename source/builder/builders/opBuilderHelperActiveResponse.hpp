@@ -35,15 +35,15 @@ constexpr const char* SUPPORTED_VERSION {"1"};
 /**
  * @brief Helper Function that allows to send a message through the AR queue
  *
- * @param definition The transformation definition. i.e : `<field>: +ar_send/<str>|$<ref>`
- * @return base::Expression The lifter with the `ar_send` transformation.
+ * @param definition The transformation definition. i.e : `<field>: +active_response_send/<str>|$<ref>`
+ * @return base::Expression The lifter with the `active_response_send` transformation.
  */
 base::Expression opBuilderHelperSendAR(const std::any& definition);
 
 /**
  * @brief Helper Function for creating the base event that will be sent through
- * Active Response socket with ar_send
- * ar_message: +ar_create/<command-name>/<location>/<timeout>/<extra-args>
+ * Active Response socket with active_response_send
+ * ar_message: +active_response_create/<command-name>/<location>/<timeout>/<extra-args>
  *  - <command-name> (mandatory) It can be set directly or through a reference.
  *  - <location>     (mandatory) Accepted values are: "LOCAL", "ALL" or a specific agent
  * id. Such values can be passed directly or through a reference.
