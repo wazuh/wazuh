@@ -1,0 +1,50 @@
+---
+name: decoder/test/0
+
+metadata:
+  module: test
+  title: Test logs decoder
+  description: Decoder for test
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+
+sources:
+  - decoder/queue-localfile/0
+
+parse:
+  logpar:
+    # 27 Dec 2018 11:19:18.874 1 1 Synchronization with replica 10.114.208.18:6023 succeeded_nof
+    - event.original: <@timestamp/%d %b %Y %T>?<@timestamp/%d %b %T> <~tmp.reads> <~tmp.writes> <message>
+
+normalize:
+  - check:
+      - ~tmp.reads: "1"
+    map:
+      - ~tmp.value_key: +kvdb_get/test_db/key_nof
+  - check:
+      - ~tmp.writes: "1"
+    map:
+      - ~tmp.set_value: +kvdb_set/test_db/key_nof/value_nof
+  - check:
+      - ~tmp.reads: "2"
+    map:
+      - ~tmp.value_key: +kvdb_get/test_db/key_nof
+      - ~tmp.value_key: +kvdb_get/test_db/key_nof
+  - check:
+      - ~tmp.writes: "2"
+    map:
+      - ~tmp.set_value: +kvdb_set/test_db/key_nof/value_nof
+      - ~tmp.set_value: +kvdb_set/test_db/key_nof/value_nof
+  - check:
+      - ~tmp.reads: "3"
+    map:
+      - ~tmp.value_key: +kvdb_get/test_db/key_nof
+      - ~tmp.value_key: +kvdb_get/test_db/key_nof
+      - ~tmp.value_key: +kvdb_get/test_db/key_nof
+  - check:
+      - ~tmp.writes: "3"
+    map:
+      - ~tmp.set_value: +kvdb_set/test_db/key_nof/value_nof
+      - ~tmp.set_value: +kvdb_set/test_db/key_nof/value_nof
+      - ~tmp.set_value: +kvdb_set/test_db/key_nof/value_nof

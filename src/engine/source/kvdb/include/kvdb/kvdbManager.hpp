@@ -12,8 +12,6 @@
 #include <json/json.hpp>
 #include <kvdb/kvdb.hpp>
 
-#include "metrics.hpp"
-
 namespace kvdb_manager
 {
 
