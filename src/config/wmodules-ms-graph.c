@@ -35,9 +35,26 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	wm_ms_graph_auth* auth_config;
 	wm_ms_graph_resource** resources;
 
+	if (!nodes) {
+		//TODO: Implement context in wm_ms_graph.c
+		mwarn('Empty configuration found in module "%s."', WM_MS_GRAPH_CONTEXT.name);
+		return OS_INVALID;
+	}
 
+	// Init module
+	os_malloc(sizeof(wm_ms_graph), ms_graph);
+	ms_graph.enabled = WM_MS_GRAPH_DEFAULT_ENABLED;
+	ms_graph.only_future_events = WM_MS_GRAPH_DEFAULT_ONLY_FUTURE_EVENTS;
+	ms_graph.curl_max_size = WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE;
+	ms_graph.run_on_start = WM_MS_GRAPH_DEFAULT_RUN_ON_START;
+	ms_graph.version = WM_MS_GRAPH_DEFAULT_VERSION;
+	sched_scan_init(&(ms_graph->scan_config));
+	ms_graph->scan_config.interval = WM_DEF_INTERVAL;
+	module->context = &WM_MS_GRAPH_CONTEXT;
+	module->tag = strndup(module->context->name, 8); // "ms-graph"
+	module->data = ms_graph;
 
-	return 0;
+	return OS_SUCCESS;
 }
 
 #endif // WIN32 || defined __linux__ || defined __MACH__
