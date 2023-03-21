@@ -3530,8 +3530,6 @@ class AWSSQSQueue(WazuhIntegration):
         Name of the SQS Queue.
     dont_remove_from_queue: bool
         If notifications should not be deleted after being read.
-    notification_number: int
-        Number of notifications to fetch from the queue.
     """
 
     def __init__(self, name: str, access_key: str = None, secret_key: str = None, aws_profile: str = None,

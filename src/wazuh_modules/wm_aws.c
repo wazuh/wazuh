@@ -730,7 +730,7 @@ void wm_aws_run_security_lake_subscriber(wm_aws *aws_config, wm_aws_security_lak
     wm_strcat(&command, script, '\0');
     os_free(script);
 
-    // security lake
+    // security lake subscriber
     wm_strcat(&command, "--queue", ' ');
     wm_strcat(&command, exec_security_lake->sqs_queue_name, ' ');
 
@@ -772,6 +772,9 @@ void wm_aws_run_security_lake_subscriber(wm_aws *aws_config, wm_aws_security_lak
         }
     }
 
+    if (aws_config->skip_on_error) {
+        wm_strcat(&command, "--skip_on_error", ' ');
+    }
     if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_READ, &aws_config->state, sizeof(aws_config->state)) < 0) {
         memset(&aws_config->state, 0, sizeof(aws_config->state));
     }
