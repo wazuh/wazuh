@@ -14,10 +14,13 @@
 static const char *XML_DISABLED = "disabled";
 static const char *XML_BUCKET = "bucket";
 static const char *XML_SERVICE = "service";
+static const char *XML_SECURITY_LAKE = "security_lake";
+static const char *XML_SECURITY_LAKE_QUEUE = "sqs_queue_name";
 static const char *XML_ACCESS_KEY = "access_key";
 static const char *XML_SECRET_KEY = "secret_key";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_REMOVE_FORM_BUCKET = "remove_from_bucket";
+static const char *XML_DONT_REMOVE_FROM_QUEUE = "dont_remove_from_queue";
 static const char *XML_SKIP_ON_ERROR = "skip_on_error";
 static const char *XML_AWS_PROFILE = "aws_profile";
 static const char *XML_IAM_ROLE_ARN = "iam_role_arn";
@@ -68,6 +71,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     wm_aws *aws_config;
     wm_aws_bucket *cur_bucket = NULL;
     wm_aws_service *cur_service = NULL;
+    wm_aws_security_lake *cur_security_lake = NULL;
 
     if (!nodes) {
         mwarn("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
@@ -476,6 +480,110 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
+        // for security lake subscriber
+        } else if (!strcmp(nodes[i]->element, XML_SECURITY_LAKE)) {
+
+            mtdebug2(WM_AWS_LOGTAG, "Found a security lake tag tag");
+
+            if (!nodes[i]->attributes) {
+                mterror(WM_AWS_LOGTAG, "Undefined type for service.");
+                return OS_INVALID;
+            }
+            // Create security lake node
+            if (cur_service) {
+                os_calloc(1, sizeof(wm_aws_security_lake), cur_security_lake->next);
+                cur_security_lake = cur_security_lake->next;
+                mtdebug2(WM_AWS_LOGTAG, "Creating another security lake structure");
+            } else {
+                // First security lake subscriber
+                os_calloc(1, sizeof(wm_aws_security_lake), cur_security_lake);
+                aws_config->security_lakes = cur_security_lake;
+                mtdebug2(WM_AWS_LOGTAG, "Creating first service structure");
+            }
+
+            // TODO: REVIEW type is an attribute of the service tag
+            if (!strcmp(*nodes[i]->attributes, XML_SERVICE_TYPE)) {
+                if (!nodes[i]->values) {
+                    mterror(WM_AWS_LOGTAG, "Empty service type. Valid ones are '%s' or '%s'", INSPECTOR_SERVICE_TYPE, CLOUDWATCHLOGS_SERVICE_TYPE);
+                    return OS_INVALID;
+                } else if (!strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE) || !strcmp(*nodes[i]->values, CLOUDWATCHLOGS_SERVICE_TYPE)) {
+                    os_strdup(*nodes[i]->values, cur_service->type);
+                } else {
+                    mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, INSPECTOR_SERVICE_TYPE, CLOUDWATCHLOGS_SERVICE_TYPE);
+                    return OS_INVALID;
+                }
+            } else {
+                mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SERVICE_TYPE);
+                return OS_INVALID;
+            }
+
+            // Expand service Child Nodes
+
+            if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
+                continue;
+            }
+
+            mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+            for (j = 0; children[j]; j++) {
+
+                mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+
+                if (!children[j]->element) {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+
+                // Start
+                if (strcmp(children[j]->element, XML_SECURITY_LAKE_QUEUE) == 0) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_security_lake->sqs_queue_name);
+                        os_strdup(children[j]->content, cur_security_lake->sqs_queue_name);
+                    }
+                } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_security_lake->aws_profile);
+                        os_strdup(children[j]->content, cur_security_lake->aws_profile);
+                    }
+                } else if (!strcmp(children[j]->element, XML_IAM_ROLE_ARN)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_security_lake->iam_role_arn);
+                        os_strdup(children[j]->content, cur_security_lake->iam_role_arn);
+                    }
+                } else if (!strcmp(children[j]->element, XML_IAM_ROLE_DURATION)){
+                        if (strlen(children[j]->content) != 0){
+                            free(cur_security_lake->iam_role_duration);
+                            os_strdup(children[j]->content, cur_security_lake->iam_role_duration);
+                        }
+                } else if (!strcmp(children[j]->element, XML_REGION)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_security_lake->regions);
+                        os_strdup(children[j]->content, cur_security_lake->regions);
+                    }
+                } else if (!strcmp(children[j]->element, XML_DONT_REMOVE_FROM_QUEUE)) {
+                    if (!strcmp(children[j]->content, "yes")) {
+                        cur_security_lake->dont_remove_from_queue = 1;
+                    } else if (!strcmp(children[j]->content, "no")) {
+                        cur_security_lake->dont_remove_from_queue = 0;
+                    } else {
+                        merror("Invalid content for tag '%s' at module '%s'.", XML_DONT_REMOVE_FROM_QUEUE, WM_AWS_CONTEXT.name);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(children[j]->element, XML_STS_ENDPOINT)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_security_lake->sts_endpoint);
+                        os_strdup(children[j]->content, cur_security_lake->sts_endpoint);
+                    }
+                } else {
+                    merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+
+            OS_ClearNode(children);
+
         } else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
         } else {
@@ -530,8 +638,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         os_strdup(LEGACY_AWS_ACCOUNT_ALIAS, cur_bucket->aws_account_alias);
     }
 
-    if (!aws_config->buckets && !aws_config->services) {
-        mtwarn(WM_AWS_LOGTAG, "No buckets or services definitions found at module '%s'.", WM_AWS_CONTEXT.name);
+    if (!aws_config->buckets && !aws_config->services  && !aws_config->security_lakes) {
+        mtwarn(WM_AWS_LOGTAG, "No buckets, services or security lake definitions found at module '%s'.", WM_AWS_CONTEXT.name);
         return OS_INVALID;
     }
 
