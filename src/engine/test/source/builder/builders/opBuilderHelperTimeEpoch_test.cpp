@@ -13,7 +13,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperTimeEpoch, Builds)
 {
     auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {" sys_epoch"}, std::vector<std::string> {});
+        std::string {"/field"}, std::string {" system_epoch"}, std::vector<std::string> {});
 
     ASSERT_NO_THROW(bld::opBuilderHelperEpochTimeFromSystem(tuple));
 }
@@ -21,7 +21,7 @@ TEST(opBuilderHelperTimeEpoch, Builds)
 TEST(opBuilderHelperTimeEpoch, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {" sys_epoch"},
+                                 std::string {" system_epoch"},
                                  std::vector<std::string> {"test"});
 
     ASSERT_THROW(bld::opBuilderHelperEpochTimeFromSystem(tuple), std::runtime_error);
@@ -30,7 +30,7 @@ TEST(opBuilderHelperTimeEpoch, Builds_bad_parameters)
 TEST(opBuilderHelperTimeEpoch, Exec_string_UP_field_not_exist)
 {
     auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {" sys_epoch"}, std::vector<std::string> {});
+        std::string {"/field"}, std::string {" system_epoch"}, std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
 

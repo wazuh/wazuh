@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperExists, Builds)
 {
     auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"ef_exists"}, std::vector<std::string> {});
+        std::string {"/field"}, std::string {"exists"}, std::vector<std::string> {});
 
     ASSERT_NO_THROW(bld::opBuilderHelperExists(tuple));
 }
@@ -29,7 +29,7 @@ TEST(opBuilderHelperExists, Builds)
 TEST(opBuilderHelperExists, Exec_exists_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"ef_exists"},
+                                 std::string {"exists"},
                                  std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "valid"})");
@@ -44,7 +44,7 @@ TEST(opBuilderHelperExists, Exec_exists_false)
 TEST(opBuilderHelperExists, Exec_exists_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"ef_exists"},
+                                 std::string {"exists"},
                                  std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "valid"})");
@@ -59,7 +59,7 @@ TEST(opBuilderHelperExists, Exec_exists_true)
 TEST(opBuilderHelperExists, Exec_multilevel_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"ef_exists"},
+                                 std::string {"exists"},
                                  std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -83,7 +83,7 @@ TEST(opBuilderHelperExists, Exec_multilevel_false)
 TEST(opBuilderHelperExists, Exec_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"ef_exists"},
+                                 std::string {"exists"},
                                  std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({

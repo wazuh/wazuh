@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperStringFromArray, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_from_array"},
+                                 std::string {"join"},
                                  std::vector<std::string> {"$t", "begin"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringFromArray(tuple));
@@ -30,7 +30,7 @@ TEST(opBuilderHelperStringFromArray, Builds)
 TEST(opBuilderHelperStringFromArray, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"s_from_array"},
+                                 std::string {"join"},
                                  std::vector<std::string> {"begin"});
 
     ASSERT_THROW(bld::opBuilderHelperStringFromArray(tuple), std::runtime_error);
@@ -39,7 +39,7 @@ TEST(opBuilderHelperStringFromArray, Builds_bad_parameters)
 TEST(opBuilderHelperStringFromArray, Failed_with_seccond_parameter_not_reference)
 {
     auto tuple = std::make_tuple(std::string {"/arrayResult/0/field2check"},
-                                 std::string {"s_from_array"},
+                                 std::string {"join"},
                                  std::vector<std::string> {"[\"A\",\"B\"]", ","});
 
     auto event1 = std::make_shared<json::Json>(R"({"arrayField": ["A","B"]})");
@@ -50,7 +50,7 @@ TEST(opBuilderHelperStringFromArray, Failed_with_seccond_parameter_not_reference
 TEST(opBuilderHelperStringFromArray, Executes_with_string_from_array_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_from_array"},
+                                 std::string {"join"},
                                  std::vector<std::string> {"$arrayField", "-"});
 
     auto event1 =
@@ -69,7 +69,7 @@ TEST(opBuilderHelperStringFromArray, Executes_with_string_from_array_success)
 TEST(opBuilderHelperStringFromArray, Failed_parameter_is_not_array)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_from_array"},
+                                 std::string {"join"},
                                  std::vector<std::string> {"$arrayField", ","});
 
     auto event1 = std::make_shared<json::Json>(R"({"arrayField": "A"})");
@@ -85,7 +85,7 @@ TEST(opBuilderHelperStringFromArray, Failed_parameter_is_not_array)
 TEST(opBuilderHelperStringFromArray, Failed_array_without_strings)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_from_array"},
+                                 std::string {"join"},
                                  std::vector<std::string> {"$arrayField", ","});
 
     auto event1 = std::make_shared<json::Json>(R"({"arrayField": [1,150]})");
@@ -101,7 +101,7 @@ TEST(opBuilderHelperStringFromArray, Failed_array_without_strings)
 TEST(opBuilderHelperStringFromArray, Empty_string_from_empty_array)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"s_from_array"},
+                                 std::string {"join"},
                                  std::vector<std::string> {"$arrayField", ","});
 
     auto event1 = std::make_shared<json::Json>(R"({"arrayField": []})");
@@ -118,7 +118,7 @@ TEST(opBuilderHelperStringFromArray, Empty_string_from_empty_array)
 TEST(opBuilderHelperStringFromArray, Success_with_multi_level_assignment)
 {
     auto tuple = std::make_tuple(std::string {"/arrayResult/0/field2check"},
-                                 std::string {"s_from_array"},
+                                 std::string {"join"},
                                  std::vector<std::string> {"$arrayField", "."});
 
     auto event1 = std::make_shared<json::Json>(R"({"arrayField": ["A","B"]})");

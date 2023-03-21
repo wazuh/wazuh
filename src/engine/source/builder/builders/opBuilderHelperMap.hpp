@@ -31,7 +31,7 @@ namespace builder::internals::builders
 /**
  * @brief Transforms a string to uppercase and append or remplace it in the event `e`
  *
- * @param definition The transformation definition. i.e : `<field>: +s_up/<str>|$<ref>`
+ * @param definition The transformation definition. i.e : `<field>: +upcase/<str>|$<ref>`
  * @return base::Expression The lifter with the `uppercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -40,7 +40,7 @@ base::Expression opBuilderHelperStringUP(const std::any& definition);
 /**
  * @brief Transforms a string to lowercase and append or remplace it in the event `e`
  *
- * @param definition The transformation definition. i.e : `<field>: +s_lo/<str>|$<ref>`
+ * @param definition The transformation definition. i.e : `<field>: +downcase/<str>|$<ref>`
  * @return base::Expression The lifter with the `lowercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -50,7 +50,7 @@ base::Expression opBuilderHelperStringLO(const std::any& definition);
  * @brief Transforms a string, trim it and append or remplace it in the event `e`
  *
  * @param definition The transformation definition.
- * i.e : `<field>: +s_trim/[begin | end | both]/char`
+ * i.e : `<field>: +trim/[begin | end | both]/char`
  * @return base::Expression The lifter with the `trim` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -60,7 +60,7 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition);
  * @brief Transform a list of arguments into a single strim with all of them concatenated
  *
  * @param def The transformation definition.
- * i.e : '<field>: +s_concat/<stringA>|$<referenceA>/<stringB>|$<referenceB>/...'
+ * i.e : '<field>: +concat/<stringA>|$<referenceA>/<stringB>|$<referenceB>/...'
  * @return base::Expression The lifter with the `concat` transformation.
  */
 base::Expression opBuilderHelperStringConcat(const std::any& definition);
@@ -68,7 +68,7 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition);
 /**
  * @brief Transforms an array of strings into a single string field result of concatenate
  * them with a separator between (not at the start or the end).
- * i.e: '<field>: +s_from_array/$<array_reference1>/<separator>'
+ * i.e: '<field>: +join/$<array_reference1>/<separator>'
  * @param definition The transformation definition.
  * @throw std::runtime_error if the parameter is not a reference or if theres no
  * Value argument for the separator.
@@ -78,7 +78,7 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition);
 
 /**
  * @brief Transforms a string of hexa digits into an ASCII string
- * i.e: 'targetField: +s_from_hexa/48656C6C6F20776F726C6421' then 'targetField' would be
+ * i.e: 'targetField: +decode_base16/48656C6C6F20776F726C6421' then 'targetField' would be
  * 'Hello world!'
  * @param definition The transformation definition.
  * @throw std::runtime_error if the parameter is not a reference
@@ -88,7 +88,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition);
 
 /**
  * @brief Transforms a string of hexadecimal digits into a number
- * i.e: 'targetField: +s_hex_to_num/0x1234' then 'targetField' would be 4660
+ * i.e: 'targetField: +hex_to_number/0x1234' then 'targetField' would be 4660
  * Fail if the string is not a valid hexadecimal number or the reference is not found.
  *
  * @param definition The transformation definition.
@@ -123,7 +123,7 @@ base::Expression opBuilderHelperStringReplace(const std::any& definition);
  * of a single or a set of values or references into the target field.
  *
  * @param definition The transformation definition.
- * i.e : `<field>: +i_calc/[sum|sub|mul|div]/[value1|$<ref1>]/.../[valueN|$<refN>]`
+ * i.e : `<field>: +int_calculate/[sum|sub|mul|div]/[value1|$<ref1>]/.../[valueN|$<refN>]`
  * @return base::Expression The lifter with the `mathematical operation` transformation.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -133,13 +133,13 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition);
 //*             JSON tranform                     *
 //*************************************************
 
-// <field>: +ef_delete/
+// <field>: +delete/
 /**
  * @brief Delete a field of the json event
  *
  * @param def The transformation definition.
- * i.e : '<field>: +ef_delete
- * @return base::Expression The lifter with the `ef_delete` transformation.
+ * i.e : '<field>: +delete
+ * @return base::Expression The lifter with the `delete` transformation.
  */
 base::Expression opBuilderHelperDeleteField(const std::any& definition);
 
@@ -147,8 +147,8 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition);
  * @brief Renames a field of the json event
  *
  * @param def The transformation definition.
- * i.e : '<field>: +ef_rename/$<sourceField>
- * @return base::Expression The lifter with the `ef_rename` transformation.
+ * i.e : '<field>: +rename/$<sourceField>
+ * @return base::Expression The lifter with the `rename` transformation.
  */
 base::Expression opBuilderHelperRenameField(const std::any& definition);
 
@@ -161,7 +161,7 @@ base::Expression opBuilderHelperRenameField(const std::any& definition);
  * - If source or target are not arrays or objects
  *
  * @param definition Definition of the operation to be built
- * @return base::Expression The lifter with the `ef_merge` transformation.
+ * @return base::Expression The lifter with the `merge` transformation.
  *
  * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
  */
@@ -175,7 +175,7 @@ base::Expression opBuilderHelperMerge(const std::any& definition);
  * - If source or target are not arrays or objects
  *
  * @param definition Definition of the operation to be built
- * @return base::Expression The lifter with the `ef_merge` transformation.
+ * @return base::Expression The lifter with the `merge` transformation.
  *
  * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
  */
@@ -241,7 +241,7 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition);
 
 /**
  * @brief Builds helper SHA1 hash calculated from a strings or a reference.
- * <field>: +h_sha1/<string1>|$<string_reference1>
+ * <field>: +sha1/<string1>|$<string_reference1>
  *
  * @param definition Definition of the operation to be built.
  * @return base::Expression The Lifter with the SHA1 hash.

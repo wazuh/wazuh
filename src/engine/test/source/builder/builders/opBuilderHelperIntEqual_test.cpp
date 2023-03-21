@@ -21,7 +21,7 @@ namespace bld = builder::internals::builders;
 TEST(opBuilderHelperIntEqual, Builds)
 {
     auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"i_eq"}, std::vector<std::string> {"10"});
+        std::string {"/field"}, std::string {"int_equal"}, std::vector<std::string> {"10"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperIntEqual(tuple));
 }
@@ -29,7 +29,7 @@ TEST(opBuilderHelperIntEqual, Builds)
 TEST(opBuilderHelperIntEqual, Exec_equal_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"i_eq"},
+                                 std::string {"int_equal"},
                                  std::vector<std::string> {"12"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
@@ -44,7 +44,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_false)
 TEST(opBuilderHelperIntEqual, Exec_equal_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"i_eq"},
+                                 std::string {"int_equal"},
                                  std::vector<std::string> {"10"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
@@ -59,7 +59,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_true)
 TEST(opBuilderHelperIntEqual, Exec_equal_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"i_eq"},
+                                 std::string {"int_equal"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -75,7 +75,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_false)
 TEST(opBuilderHelperIntEqual, Exec_equal_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"i_eq"},
+                                 std::string {"int_equal"},
                                  std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
@@ -91,7 +91,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_true)
 TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"i_eq"},
+                                 std::string {"int_equal"},
                                  std::vector<std::string> {"12"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -115,7 +115,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_false)
 TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"i_eq"},
+                                 std::string {"int_equal"},
                                  std::vector<std::string> {"11"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -139,7 +139,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_true)
 TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"i_eq"},
+                                 std::string {"int_equal"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({
@@ -163,7 +163,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_ref_false)
 TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"i_eq"},
+                                 std::string {"int_equal"},
                                  std::vector<std::string> {"$parentObjt_2.field2check"});
 
     auto event1 = std::make_shared<json::Json>(R"({

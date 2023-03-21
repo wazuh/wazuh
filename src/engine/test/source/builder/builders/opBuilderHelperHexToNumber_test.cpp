@@ -12,7 +12,7 @@ namespace bld = builder::internals::builders;
 TEST(OpBuilderHelperHexToNumber, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_hex_to_num"},
+                                 std::string {"+hex_to_number"},
                                  std::vector<std::string> {{"$ref"}});
     ASSERT_NO_THROW(bld::opBuilderHelperHexToNumber(tuple));
 }
@@ -20,12 +20,12 @@ TEST(OpBuilderHelperHexToNumber, Builds)
 TEST(OpBuilderHelperHexToNumber, WrongParametersSize)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_hex_to_num"},
+                                 std::string {"+hex_to_number"},
                                  std::vector<std::string> {{"$ref"}, {"invalid"}});
     ASSERT_THROW(bld::opBuilderHelperHexToNumber(tuple), std::runtime_error);
 
     tuple = std::make_tuple(std::string {"/field"},
-                            std::string {"+s_hex_to_num"},
+                            std::string {"+hex_to_number"},
                             std::vector<std::string> {});
     ASSERT_THROW(bld::opBuilderHelperHexToNumber(tuple), std::runtime_error);
 }
@@ -33,7 +33,7 @@ TEST(OpBuilderHelperHexToNumber, WrongParametersSize)
 TEST(OpBuilderHelperHexToNumber, WrongParameterType)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_hex_to_num"},
+                                 std::string {"+hex_to_number"},
                                  std::vector<std::string> {{"invalid"}});
     ASSERT_THROW(bld::opBuilderHelperHexToNumber(tuple), std::runtime_error);
 }
@@ -41,7 +41,7 @@ TEST(OpBuilderHelperHexToNumber, WrongParameterType)
 TEST(OpBuilderHelperHexToNumber, Success)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_hex_to_num"},
+                                 std::string {"+hex_to_number"},
                                  std::vector<std::string> {{"$ref"}});
 
     auto op = bld::opBuilderHelperHexToNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -56,7 +56,7 @@ TEST(OpBuilderHelperHexToNumber, Success)
 TEST(OpBuilderHelperHexToNumber, FailureBadHex)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_hex_to_num"},
+                                 std::string {"+hex_to_number"},
                                  std::vector<std::string> {{"$ref"}});
 
     auto op = bld::opBuilderHelperHexToNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -75,7 +75,7 @@ TEST(OpBuilderHelperHexToNumber, FailureBadHex)
 TEST(OpBuilderHelperHexToNumber, FailureRefNotFound)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_hex_to_num"},
+                                 std::string {"+hex_to_number"},
                                  std::vector<std::string> {{"$ref"}});
 
     auto op = bld::opBuilderHelperHexToNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();
@@ -89,7 +89,7 @@ TEST(OpBuilderHelperHexToNumber, FailureRefNotFound)
 TEST(OpBuilderHelperHexToNumber, FailureRefNotString)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_hex_to_num"},
+                                 std::string {"+hex_to_number"},
                                  std::vector<std::string> {{"$ref"}});
 
     auto op = bld::opBuilderHelperHexToNumber(tuple)->getPtr<Term<EngineOp>>()->getFn();

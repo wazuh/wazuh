@@ -12,7 +12,7 @@ namespace bld = builder::internals::builders;
 TEST(OpBuilderHelperAppendSplitString, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_to_array"},
+                                 std::string {"+split"},
                                  std::vector<std::string> {"$ref", ","});
 
     ASSERT_NO_THROW(bld::opBuilderHelperAppendSplitString(tuple));
@@ -21,17 +21,17 @@ TEST(OpBuilderHelperAppendSplitString, Builds)
 TEST(OpBuilderHelperAppendSplitString, WrongSizeParameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_to_array"},
+                                 std::string {"+split"},
                                  std::vector<std::string> {});
     ASSERT_THROW(bld::opBuilderHelperAppendSplitString(tuple), std::runtime_error);
 
     tuple = std::make_tuple(std::string {"/field"},
-                            std::string {"+s_to_array"},
+                            std::string {"+split"},
                             std::vector<std::string> {"$ref"});
     ASSERT_THROW(bld::opBuilderHelperAppendSplitString(tuple), std::runtime_error);
 
     tuple = std::make_tuple(std::string {"/field"},
-                            std::string {"+s_to_array"},
+                            std::string {"+split"},
                             std::vector<std::string> {"$ref", ",", "other"});
     ASSERT_THROW(bld::opBuilderHelperAppendSplitString(tuple), std::runtime_error);
 }
@@ -39,7 +39,7 @@ TEST(OpBuilderHelperAppendSplitString, WrongSizeParameters)
 TEST(OpBuilderHelperAppendSplitString, NotRefParameter0)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_to_array"},
+                                 std::string {"+split"},
                                  std::vector<std::string> {"1", ","});
     ASSERT_THROW(bld::opBuilderHelperAppendSplitString(tuple), std::runtime_error);
 }
@@ -47,7 +47,7 @@ TEST(OpBuilderHelperAppendSplitString, NotRefParameter0)
 TEST(OpBuilderHelperAppendSplitString, NotCharParameter1)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_to_array"},
+                                 std::string {"+split"},
                                  std::vector<std::string> {"$ref", "tw"});
     ASSERT_THROW(bld::opBuilderHelperAppendSplitString(tuple), std::runtime_error);
 }
@@ -55,7 +55,7 @@ TEST(OpBuilderHelperAppendSplitString, NotCharParameter1)
 TEST(OpBuilderHelperAppendSplitString, Exec_append_split)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_to_array"},
+                                 std::string {"+split"},
                                  std::vector<std::string> {"$ref", ","});
     auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref": "1,2,3"})");
     auto event2 = std::make_shared<json::Json>(R"({"field": "2", "ref": "1,2,3"})");
@@ -95,7 +95,7 @@ TEST(OpBuilderHelperAppendSplitString, Exec_append_split)
 TEST(OpBuilderHelperAppendSplitString, Exec_append_split_fail_ref)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+s_to_array"},
+                                 std::string {"+split"},
                                  std::vector<std::string> {"$ref", ","});
     auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref1": "1,2,3"})");
 

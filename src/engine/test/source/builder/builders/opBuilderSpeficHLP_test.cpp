@@ -1370,39 +1370,39 @@ TEST(Parse_csv, Ref_not_found)
 
 
 // parse key value
-TEST(parse_kv, Builds)
+TEST(parse_key_value, Builds)
 {
     auto tuple = std::make_tuple(
         std::string {"/field"},
-        std::string {"parse_kv"},
+        std::string {"parse_key_value"},
         std::vector<std::string> {"test string map", " ", "=", "\"", "\\"});
 
     ASSERT_NO_THROW(bld::opBuilderSpecificHLPKeyValueParse(tuple));
 }
 
-TEST(parse_kv, Builds_bad_parameters)
+TEST(parse_key_value, Builds_bad_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_kv"},
+                                 std::string {"parse_key_value"},
                                  std::vector<std::string> {"test", "TEST", "test"});
 
     ASSERT_THROW(bld::opBuilderSpecificHLPKeyValueParse(tuple), std::runtime_error);
 }
 
-TEST(parse_kv, Builds_bad_parameters2)
+TEST(parse_key_value, Builds_bad_parameters2)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"parse_kv"},
+                                 std::string {"parse_key_value"},
                                  std::vector<std::string> {});
 
     ASSERT_THROW(bld::opBuilderSpecificHLPKeyValueParse(tuple), std::runtime_error);
 }
 
-TEST(parse_kv, Match_value)
+TEST(parse_key_value, Match_value)
 {
     auto tuple = std::make_tuple(
         std::string {"/field"},
-        std::string {"parse_kv"},
+        std::string {"parse_key_value"},
         std::vector<std::string> {"key1=value1 key2=\"value2\"", "=", " ", "\"", "\\"});
 
     auto op {
@@ -1417,11 +1417,11 @@ TEST(parse_kv, Match_value)
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
-TEST(parse_kv, Match_ref)
+TEST(parse_key_value, Match_ref)
 {
     auto tuple =
         std::make_tuple(std::string {"/field"},
-                        std::string {"parse_kv"},
+                        std::string {"parse_key_value"},
                         std::vector<std::string> {"$field_ref", "=", " ", "\"", "\\"});
 
     auto op {
@@ -1438,11 +1438,11 @@ TEST(parse_kv, Match_ref)
     ASSERT_STREQ(result1.payload().get()->str("/field").value().c_str(), expected);
 }
 
-TEST(parse_kv, Match_fail)
+TEST(parse_key_value, Match_fail)
 {
     auto tuple =
         std::make_tuple(std::string {"/field"},
-                        std::string {"parse_kv"},
+                        std::string {"parse_key_value"},
                         std::vector<std::string> {"$field_ref", " ", "=", "\"", "\\"});
 
     auto op {
@@ -1458,11 +1458,11 @@ TEST(parse_kv, Match_fail)
     ASSERT_STREQ(result1.payload().get()->getString("/field").value().c_str(), "test");
 }
 
-TEST(parse_kv, Ref_not_found)
+TEST(parse_key_value, Ref_not_found)
 {
     auto tuple =
         std::make_tuple(std::string {"/field_dst"},
-                        std::string {"parse_kv"},
+                        std::string {"parse_key_value"},
                         std::vector<std::string> {"$field_ref", " ", "=", "\"", "\\"});
 
     auto op {
