@@ -2890,9 +2890,9 @@ class AWSInspector(AWSService):
 
         date_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
         date_scan = date_last_scan
+
         if self.only_logs_after:
-            date_only_logs = datetime.strptime(self.only_logs_after, "%Y%m%d")
-            date_scan = date_only_logs if date_only_logs > date_last_scan else date_last_scan
+            date_scan = datetime.strptime(self.only_logs_after, "%Y%m%d")
 
         # get current time (UTC)
         date_current = datetime.utcnow()
