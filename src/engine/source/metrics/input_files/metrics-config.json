@@ -1,18 +1,32 @@
 [
     {
-        "name": "BytesPerSeconds",
+        "name": "Server.ReceivedBytesPerSeconds",
         "dataHubEnable" : true,
         "enable": true,
         "signalType": "meter",
         "instrumentType" : "counter",
+	    "aggregationTemporality" : "delta",
         "subType": "uint64",
-        "exportIntervalMillis": 100,
-        "exportTimeoutMillis": 50,
-        "unit": "quantity",
-        "description": "This counter is incremented with each call to the command list from metrics."
+	    "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500,
+        "unit": "bytes/second",
+        "description": "This counter was configured in delta mode to measure the bytes per second received belonging to the events"
     },
     {
-        "name": "SizeBytesRecive",
+        "name": "Server.ReceivedEventsPerSeconds",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "aggregationTemporality" : "delta",
+        "subType": "uint64",
+        "exportIntervalMillis": 1000,
+        "exportTimeoutMillis": 500,
+        "unit": "bytes/second",
+        "description": "This counter was configured in delta mode to measure the bytes per second received belonging to the events"
+    },
+    {
+        "name": "Server.TotalEventsReceived",
         "dataHubEnable" : true,
         "enable": true,
         "signalType": "meter",
@@ -20,11 +34,11 @@
         "subType": "uint64",
         "exportIntervalMillis": 100,
         "exportTimeoutMillis": 50,
-        "unit": "quantity",
+        "unit": "bytes",
         "description": "This counter is increments every time bytes are recive"
-    }, 
+    },
     {
-        "name": "SizeBytesSent",
+        "name": "Server.TotalBytesReceived",
         "dataHubEnable" : true,
         "enable": true,
         "signalType": "meter",
@@ -32,11 +46,23 @@
         "subType": "uint64",
         "exportIntervalMillis": 100,
         "exportTimeoutMillis": 50,
-        "unit": "quantity",
-        "description": "This counter is increments every time bytes are sent"
+        "unit": "bytes",
+        "description": "This counter is increments every time bytes are recive"
     },
     {
-        "name": "DiskInsertedEvents",
+        "name": "Server.EventsInsertedDisk",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "counter",
+        "subType": "uint64",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "bytes",
+        "description": "This counter is increments each time a record occurs on the server"
+    },
+    {
+        "name": "Server.QueuedEvents",
         "dataHubEnable" : true,
         "enable": true,
         "signalType": "meter",
@@ -48,7 +74,19 @@
         "description": "This counter is increments each time a record occurs on the server"
     },
     {
-        "name": "QueuedEvents",
+        "name": "Server.ConnectedSockets",
+        "dataHubEnable" : true,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "upDownCounter",
+        "subType": "int64",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "quantity",
+        "description": "This counter is increments each time a record occurs on the server"
+    },
+    {
+        "name": "Server.TotalConnections",
         "dataHubEnable" : true,
         "enable": true,
         "signalType": "meter",
@@ -61,7 +99,7 @@
     },
     {
         "name": "MetricsTestCounter",
-        "dataHubEnable" : true,
+        "dataHubEnable" : false,
         "enable": true,
         "signalType": "meter",
         "instrumentType" : "counter",
@@ -70,19 +108,6 @@
         "exportTimeoutMillis": 50,
         "unit": "quantity",
         "description": "This counter is incremented with each call to the command list from metrics."
-    },
-    {
-        "name": "CountExample",
-        "dataHubEnable" : true,
-        "enable": true,
-        "signalType": "meter",
-        "instrumentType" : "counter",
-        "subType": "uint64",
-        "outputFile": "countExample.txt",
-        "exportIntervalMillis": 100,
-        "exportTimeoutMillis": 50,
-        "unit": "some unit",
-        "description": "some description"
     },
     {
         "name": "HistogramExample",
@@ -99,7 +124,7 @@
     },
     {
         "name": "UpDownCountExample",
-        "dataHubEnable" : true,
+        "dataHubEnable" : false,
         "enable": true,
         "signalType": "meter",
         "instrumentType" : "upDownCounter",
