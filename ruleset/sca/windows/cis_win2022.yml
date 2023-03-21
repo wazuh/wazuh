@@ -197,6 +197,7 @@ checks:
     condition: all
     rules:
       - 'c:net user guest -> r:Account active\s+No'
+      - "c:net user guest -> r:The user name could not be found."
 
   - id: 27012
     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'."
