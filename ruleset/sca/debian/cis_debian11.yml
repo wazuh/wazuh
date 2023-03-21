@@ -3055,7 +3055,7 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'not d:/etc/audit/rules.d -> r:\.+.rules$ -> !r:\s*\t*-e 2$'
+      - 'c:sh -c "grep -iEh ''^\s*\t*-e 2\s*$'' /etc/audit/rules.d/*.rules | tail -1" -> r:^\s*\t*-e 2\s*$'
 
   # 4.1.3.21 Ensure the running and on disk configuration is the same (Manual)
   - id: 29621
@@ -3548,7 +3548,7 @@ checks:
     condition: any
     rules:
       - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\s*\t*\$ModLoad imtcp|\s*\t*^\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
-      - 'f:/etc/rsyslog.conf -> r:^\s*\t*\$ModLoad imtcp|^\s*\t*\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
+      - 'not f:/etc/rsyslog.conf -> r:^\s*\t*\$ModLoad imtcp|^\s*\t*\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
 
   # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not Implemented
 
@@ -3622,7 +3622,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.hourly -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.hourly -> r:Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 29648
@@ -3646,7 +3646,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.daily -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.daily -> r:Access:\s*\(0\d00/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 29649
@@ -3670,7 +3670,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.weekly -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.weekly -> r:Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 29650
@@ -3694,7 +3694,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.monthly -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.monthly -> r:Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 29651
@@ -3718,7 +3718,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.d -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.d -> r:Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 29652
