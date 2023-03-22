@@ -34,7 +34,7 @@ private:
 
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<DatagramSocketHandle> m_handle;
-    std::shared_ptr<concurrentQueue> m_eventQueue;
+    static std::shared_ptr<concurrentQueue> m_eventQueue;
 
 public:
     /**
@@ -56,6 +56,8 @@ public:
     void close(void);
 
     std::shared_ptr<concurrentQueue> getEventQueue() const;
+
+    static void callbackUsedQueue(opentelemetry::metrics::ObserverResult, void *);
 };
 
 } // namespace engineserver::endpoints
