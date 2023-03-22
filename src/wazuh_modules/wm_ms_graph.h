@@ -39,7 +39,8 @@ typedef struct wm_ms_graph_auth {
 
 typedef struct wm_ms_graph_resource {
 	char* name;
-	char** resources;
+	char** relationships;
+	unsigned int num_relationships;
 } wm_ms_graph_resource;
 
 typedef struct wm_ms_graph {
@@ -49,8 +50,9 @@ typedef struct wm_ms_graph {
 	bool run_on_start;
 	char* version;
 	sched_scan_config scan_config;
-	wm_ms_graph_resource** resources;
 	wm_ms_graph_auth auth_config;
+	wm_ms_graph_resource* resources;
+	unsigned int num_resources;
 	wm_ms_graph_state_t state;
 };
 
