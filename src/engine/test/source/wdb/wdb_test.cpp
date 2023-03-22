@@ -6,7 +6,6 @@
 #include <logging/logging.hpp>
 
 #include "socketAuxiliarFunctions.hpp"
-#include <utils/socketInterface/unixSecureStream.hpp>
 
 using namespace wazuhdb;
 

@@ -1,0 +1,43 @@
+---
+name: decoder/upgrade/0
+
+metadata:
+    module: wazuh-agent/upgrade
+    title: Upgrade Confirmation events
+    description: >
+        Decodes Upgrade confirmation messages
+    compatibility: >
+        This decoder has been tested on Wazuh version 4.4.0
+    versions:
+      - "4.4.0"
+    author:
+        name: Wazuh, Inc.
+        url: https://wazuh.com
+        date: 2023/03/22
+    references:
+        - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
+
+sources:
+  - decoder/queue-upgrade/0
+
+check:
+  - event.original: +s_starts/{
+
+parse:
+  logpar:
+    - event.original: <~json/json>
+
+normalize:
+  - check:
+      - ~json.parameters: +t_is_object
+      - agent.id: +ef_exists
+    map:
+      - ~json.parameters.agents: +a_append/$agent.id
+      - ~tmp.send_result: +upgrade_confirmation_send/$~json
+
+  - check:
+      - ~tmp.send_result: +t_is_true
+    map:
+      - ~tmp.result: success
+      # - ~tmp: +ef_delete
+
