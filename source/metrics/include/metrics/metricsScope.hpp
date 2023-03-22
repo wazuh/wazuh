@@ -13,27 +13,17 @@
 namespace metrics_manager
 {
 
+using OTSDKMeterProvider = opentelemetry::sdk::metrics::MeterProvider;
+
 class MetricsScope : public IMetricsScope
 {
-    using OTSDKMetricExporter = opentelemetry::sdk::metrics::PushMetricExporter;
-    using OTSDKMetricReader = opentelemetry::sdk::metrics::MetricReader;
-    using OTSDKMeterProvider = opentelemetry::sdk::metrics::MeterProvider;
-    using OTDataHubExporter = opentelemetry::exporter::metrics::DataHubExporter;
-
 public:
-    MetricsScope(const std::string& name);
-
+    // TODO: Add exceptions
     void initialize();
 
 protected:
     std::shared_ptr<DataHub> m_dataHub;
-
-    std::unique_ptr<OTSDKMetricExporter> m_metricExporter;
-    std::unique_ptr<OTSDKMetricReader> m_metricReader;
     std::shared_ptr<OTSDKMeterProvider> m_meterProvider;
-
-    /// @brief Name of the Scope
-    std::string m_name;
 };
 
 } // namespace metrics_manager
