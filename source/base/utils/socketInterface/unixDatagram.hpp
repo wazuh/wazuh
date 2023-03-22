@@ -18,7 +18,7 @@ class unixDatagram : public unixInterface
 
 public:
     /**
-     * @brief Create a unixSecureStream object linked to a UNIX socket located at `path`.
+     * @brief Create a unixDatagram object linked to a UNIX socket located at `path`.
      *
      * Set the socket size to the maximum message size (default=2^16).
      * @param path UNIX domain socket pathname
