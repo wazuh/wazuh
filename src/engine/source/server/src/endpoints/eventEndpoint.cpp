@@ -23,6 +23,7 @@
 
 #include <logging/logging.hpp>
 
+#include "defaultSettings.hpp"
 #include "parseEvent.hpp"
 
 using uvw::ErrorEvent;
@@ -169,6 +170,7 @@ static inline int bindUnixDatagramSocket(const char* path)
     return (socketFd);
 }
 
+std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> EventEndpoint::m_eventQueue;
 EventEndpoint::EventEndpoint(
     const std::string& path,
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> eventQueue,
@@ -176,9 +178,8 @@ EventEndpoint::EventEndpoint(
     : BaseEndpoint {path}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<DatagramSocketHandle>()}
-    , m_eventQueue {eventQueue}
 {
-
+    m_eventQueue = eventQueue;
     m_handle->on<ErrorEvent>(
         [this](const ErrorEvent& event, DatagramSocketHandle& datagramSocketHandle)
         {
@@ -304,6 +305,9 @@ void EventEndpoint::configure(void)
 
 void EventEndpoint::run(void)
 {
+    //Used Queue
+    Metrics::instance().addObservableGauge("Server.UsedQueue", callbackUsedQueue);
+
     // Size in bytes per second received 
     m_loop->run<Loop::Mode::DEFAULT>();
 }
@@ -337,6 +341,15 @@ std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>>
 EventEndpoint::getEventQueue(void) const
 {
     return m_eventQueue;
+}
+
+void EventEndpoint::callbackUsedQueue(opentelemetry::metrics::ObserverResult observer_result, void *)
+{
+    if (opentelemetry::nostd::holds_alternative<opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<double>>>(observer_result))
+    {
+      double value = static_cast<double>(m_eventQueue->size_approx() / cmd::ENGINE_QUEUE_SIZE);
+      opentelemetry::nostd::get<opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<double>>>(observer_result)->Observe(value);
+    }
 }
 
 } // namespace engineserver::endpoints
