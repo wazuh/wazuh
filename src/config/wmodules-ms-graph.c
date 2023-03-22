@@ -19,6 +19,7 @@ static const char* XML_CURL_MAX_SIZE = "curl_max_size";
 static const char* XML_RUN_ON_START = "run_on_start";
 
 static const char* XML_VERSION = "version";
+static const char* XML_API_AUTH = "api_auth";
 static const char* XML_RESOURCE = "resource";
 
 static const char* XML_CLIENT_ID = "client_id";
@@ -30,15 +31,13 @@ static const char* XML_RESOURCE_RELATIONSHIP = "relationship";
 
 int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 
-	int i = 0;
 	wm_ms_graph* ms_graph;
-	wm_ms_graph_auth* auth_config;
 	wm_ms_graph_resource** resources;
 
 	if (!nodes) {
 		// TODO: Implement context in wm_ms_graph.c
 		mwarn("Empty configuration found in module '%s.'", WM_MS_GRAPH_CONTEXT.name);
-		return OS_INVALID;
+		return OS_CFGERR;
 	}
 
 	// Init module
@@ -48,61 +47,126 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	ms_graph->curl_max_size = WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE;
 	ms_graph->run_on_start = WM_MS_GRAPH_DEFAULT_RUN_ON_START;
 	ms_graph->version = WM_MS_GRAPH_DEFAULT_VERSION;
+	ms_graph->auth_config = &auth_config;
 	sched_scan_init(&(ms_graph->scan_config));
 	ms_graph->scan_config.interval = WM_DEF_INTERVAL;
+	os_malloc(sizeof(wm_ms_graph_resource) * 4, resources);
+	ms_graph->resources = resources;
 	module->context = &WM_MS_GRAPH_CONTEXT;
 	module->tag = strndup(module->context->name, 8); // "ms-graph"
 	module->data = ms_graph;
 
-	for (i; nodes[i]; i++) {
+	for (int i = 0; nodes[i]; i++) {
 		if (!nodes[i]->element) {
-			merror(XML_VALUENULL);
-			return OS_INVALID;
+			merror(XML_ELEMNULL);
+			return OS_CFGERR;
 		}
-		else if (!strncmp(nodes[i]->element, XML_ENABLED, sizeof(XML_ENABLED) - 1) {
-			if (!strncmp(nodes[i]->content, "yes", sizeof("yes") - 1)) {
+		else if (!nodes[i]->content) {
+			merror(XML_ELEMNULL);
+			return OS_CFGERR;
+		}
+		else if (!strcmp(nodes[i]->element, XML_ENABLED) {
+			if (!strcmp(nodes[i]->content, "yes")) {
 				ms_graph->enabled = true;
 			}
-			else if (!strncmp(nodes[i]->content, "no", sizeof("no") - 1)) {
+			else if (!strcmp(nodes[i]->content, "no")) {
 				ms_graph->enabled = false;
 			}
 			else {
-				merror("Module '%s' has invalid content in tag '%s'.", WM_MS_GRAPH_CONTEXT.name, XML_ENABLED);
-				return OS_INVALID;
+				merror(XML_INVALID, XML_ENABLED, WM_MS_GRAPH_CONTEXT.name);
+				return OS_CFGERR;
 			}
 		}
-		else if (!strncmp(nodes[i]->element, XML_ONLY_FUTURE_EVENTS, sizeof(XML_ONLY_FUTURE_EVENTS) - 1) {
-			if (!strncmp(nodes[i]->content, "yes", sizeof("yes") - 1)) {
+		else if (!strcmp(nodes[i]->element, XML_ONLY_FUTURE_EVENTS) {
+			if (!strcmp(nodes[i]->content, "yes")) {
 				ms_graph->only_future_events = true;
 			}
-			else if (!strncmp(nodes[i]->content, "no", sizeof("no") - 1)) {
+			else if (!strcmp(nodes[i]->content, "no")) {
 				ms_graph->only_future_events = false;
 			}
 			else {
-				merror("Module '%s' has invalid content in tag '%s'.", WM_MS_GRAPH_CONTEXT.name, XML_ONLY_FUTURE_EVENTS);
-				return OS_INVALID;
+				merror(XML_INVALID, XML_ONLY_FUTURE_EVENTS, WM_MS_GRAPH_CONTEXT.name);
+				return OS_CFGERR;
 			}
 		}
-		else if (!strncmp(nodes[i]->element, XML_CURL_MAX_SIZE, sizeof(XML_CURL_MAX_SIZE) - 1) {
+		else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE) {
 			ms_graph->curl_max_size = w_parse_time(nodes[i]->content);
 			// TODO: Find a good minimum size
 			if (ms_graph->curl_max_size < 1024L) {
 				merror("Module '%s' has invalid content in tag '%s': the minimum size is 1KB.", WM_MS_GRAPH_CONTEXT.name, XML_CURL_MAX_SIZE);
 				// Necessary?
 				ms_graph->curl_max_size = WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE;
-				return OS_INVALID;
+				return OS_CFGERR;
 			}
 		}
-		else if (!strncmp(nodes[i]->element, XML_RUN_ON_START, sizeof(XML_RUN_ON_START) - 1) {
-			if (!strncmp(nodes[i]->content, "yes", sizeof("yes") - 1)) {
+		else if (!strcmp(nodes[i]->element, XML_RUN_ON_START) {
+			if (!strcmp(nodes[i]->content, "yes")) {
 				ms_graph->run_on_start = true;
 			}
-			else if (!strncmp(nodes[i]->content, "no", sizeof("no") - 1)) {
+			else if (!strcmp(nodes[i]->content, "no")) {
 				ms_graph->run_on_start = false;
 			}
 			else {
-				merror("Module '%s' has invalid content in tag '%s'.", WM_MS_GRAPH_CONTEXT.name, XML_RUN_ON_START);
-					return OS_INVALID;
+				merror(XML_INVALID, XML_RUN_ON_START, WM_MS_GRAPH_CONTEXT.name);
+				return OS_CFGERR;
+			}
+		}
+		else if (!strcmp(nodes[i]->element, XML_VERSION) {
+			if (!strcmp(nodes[i]->content, "v1.0") || !strcmp(nodes[i]->content, "beta") {
+				os_strdup(nodes[i]->content, ms_graph->version);
+			}
+			else {
+				merror(XML_INVALID, XML_RUN_ON_START, WM_MS_GRAPH_CONTEXT.name);
+				return OS_CFGERR;
+			}
+		}
+		else if (!strcmp(nodes[i]->element, XML_API_AUTH) {
+			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
+				merror(XML_INVALID, XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
+				return OS_CFGERR;
+			}
+			for (int j = 0; children[j]; j++) {
+				if (!strcmp(children[j]->element, XML_CLIENT_ID)) {
+					if (sizeof(children[j]->content) != 37 ) {
+						merror(XML_INVALID, XML_CLIENT_ID, WM_MS_GRAPH_CONTEXT.name);
+						return OS_CFGERR;
+					}
+					else {
+						os_strdup(children[j]->content, ms_graph->auth_config.client_id);
+					}
+				}
+				else if (!strcmp(children[j]->element, XML_TENANT_ID)) {
+					if (sizeof(children[j]->content) != 37) {
+						merror(XML_INVALID, XML_TENANT_ID, WM_MS_GRAPH_CONTEXT.name);
+						return OS_CFGERR;
+					}
+					else {
+						os_strdup(children[j]->content, ms_graph->auth_config.tenant_id);
+					}
+				}
+				else if (!strcmp(children[j]->element, XML_SECRET_VALUE)) {
+					if (sizeof(children[j]->content) != 35) {
+						merror(XML_INVALID, XML_SECRET_VALUE, WM_MS_GRAPH_CONTEXT.name);
+						return OS_CFGERR;
+					}
+					else {
+						os_strdup(children[j]->content, ms_graph->auth_config.secret_value);
+					}
+				}
+			}
+		}
+		else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
+			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
+				merror(XML_INVALID, XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
+				return OS_CFGERR;
+			}
+			for (int j = 0; children[j]; j++) {
+				if (!strcmp(children[j]->element, XML_RESOURCE_NAME)) {
+					os_strdup(children[j]->content, ms_graph->resource[ms_graph->num_resources++].name);
+					if (ms_graph->num_resources == /*a power of 2*/) {
+						/*expand the array*/
+					}
+				}
 			}
 		}
 		// TODO: rest of code
