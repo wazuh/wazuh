@@ -82,6 +82,7 @@ typedef enum crypto_type {
 #include "task_manager/wm_task_manager.h"
 #include "wm_github.h"
 #include "wm_office365.h"
+#include "wm_ms_graph.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
