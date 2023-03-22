@@ -270,22 +270,34 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             os_strdup(children[j]->content, cur_bucket->iam_role_duration);
                         }
                     } else if (!strcmp(children[j]->element, XML_TRAIL_PREFIX)) {
-                        if (strlen(children[j]->content) != 0) {
+                        if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_TRAIL_PREFIX, WM_AWS_CONTEXT.name);
+                        }
+                        else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->trail_prefix);
                             os_strdup(children[j]->content, cur_bucket->trail_prefix);
                         }
                     } else if (!strcmp(children[j]->element, XML_TRAIL_SUFFIX)) {
-                        if (strlen(children[j]->content) != 0) {
+                        if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_TRAIL_SUFFIX, WM_AWS_CONTEXT.name);
+                        }
+                        else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->trail_suffix);
                             os_strdup(children[j]->content, cur_bucket->trail_suffix);
                         }
                     } else if (!strcmp(children[j]->element, XML_ONLY_LOGS_AFTER)) {
-                        if (strlen(children[j]->content) != 0) {
+                        if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_ONLY_LOGS_AFTER, WM_AWS_CONTEXT.name);
+                        }
+                        else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->only_logs_after);
                             os_strdup(children[j]->content, cur_bucket->only_logs_after);
                         }
                     } else if (!strcmp(children[j]->element, XML_REGION)) {
-                        if (strlen(children[j]->content) != 0) {
+                        if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_REGION, WM_AWS_CONTEXT.name);
+                        }
+                        else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->regions);
                             os_strdup(children[j]->content, cur_bucket->regions);
                         }
@@ -418,17 +430,26 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             os_strdup(children[j]->content, cur_service->iam_role_duration);
                         }
                 } else if (!strcmp(children[j]->element, XML_ONLY_LOGS_AFTER)) {
-                    if (strlen(children[j]->content) != 0) {
+                    if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_ONLY_LOGS_AFTER, WM_AWS_CONTEXT.name);
+                    }
+                    else if (strlen(children[j]->content) != 0) {
                         free(cur_service->only_logs_after);
                         os_strdup(children[j]->content, cur_service->only_logs_after);
                     }
                 } else if (!strcmp(children[j]->element, XML_REGION)) {
-                    if (strlen(children[j]->content) != 0) {
+                    if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_REGION, WM_AWS_CONTEXT.name);
+                    }
+                    else if (strlen(children[j]->content) != 0) {
                         free(cur_service->regions);
                         os_strdup(children[j]->content, cur_service->regions);
                     }
                 } else if (!strcmp(children[j]->element, XML_LOG_GROUP)) {
-                    if (strlen(children[j]->content) != 0) {
+                    if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_LOG_GROUP, WM_AWS_CONTEXT.name);
+                        }
+                    else if (strlen(children[j]->content) != 0) {
                         free(cur_service->aws_log_groups);
                         os_strdup(children[j]->content, cur_service->aws_log_groups);
                     }
