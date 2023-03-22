@@ -11,7 +11,6 @@
 
 #include <baseTypes.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
-#include <utils/socketInterface/unixSecureStream.hpp>
 
 #include <logging/logging.hpp>
 #include <wdb/wdb.hpp>
