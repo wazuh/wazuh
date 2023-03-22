@@ -305,7 +305,7 @@ void Metrics::addCounterValue(std::string counterName, const double value) const
     {
         for (auto& [key, val] : m_instrumentState)
         {
-            if (key.first == counterName)
+            if (key.first == counterName && key.second == true)
             {
                 it->second->Add(value);
             }
@@ -324,7 +324,7 @@ void Metrics::addCounterValue(std::string counterName, const uint64_t value) con
     {
         for (auto& [key, val] : m_instrumentState)
         {
-            if (key.first == counterName)
+            if (key.first == counterName && key.second == true)
             {
                 it->second->Add(value);
             }
@@ -386,7 +386,7 @@ void Metrics::addHistogramValue(std::string histogramName, const double value) c
     {
         for (auto& [key, val] : m_instrumentState)
         {
-            if (key.first == histogramName)
+            if (key.first == histogramName && key.second == true)
             {
                 std::map<std::string, std::string> labels;
                 auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
@@ -407,7 +407,7 @@ void Metrics::addHistogramValue(std::string histogramName, const uint64_t value,
     {
         for (auto& [key, val] : m_instrumentState)
         {
-            if (key.first == histogramName)
+            if (key.first == histogramName && key.second == true)
             {
                 auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
                 it->second->Record(value, labelkv, m_context);
@@ -468,7 +468,7 @@ void Metrics::addUpDownCounterValue(std::string upDownCounterName, const double 
     {
         for (auto& [key, val] : m_instrumentState)
         {
-            if (key.first == upDownCounterName)
+            if (key.first == upDownCounterName && key.second == true)
             {
                 it->second->Add(value);
             }
@@ -487,7 +487,7 @@ void Metrics::addUpDownCounterValue(std::string upDownCounterName, const int64_t
     {
         for (auto& [key, val] : m_instrumentState)
         {
-            if (key.first == upDownCounterName)
+            if (key.first == upDownCounterName && key.second == true)
             {
                 it->second->Add(value);
             }
@@ -548,7 +548,7 @@ void Metrics::addObservableGauge(std::string observableGaugeName, opentelemetry:
     {
         for (auto& [key, val] : m_instrumentState)
         {
-            if (key.first == observableGaugeName)
+            if (key.first == observableGaugeName && key.second == true)
             {
                 itDouble->second->AddCallback(callback, nullptr);
             }
@@ -558,7 +558,7 @@ void Metrics::addObservableGauge(std::string observableGaugeName, opentelemetry:
     {
         for (auto& [key, val] : m_instrumentState)
         {
-            if (key.first == observableGaugeName)
+            if (key.first == observableGaugeName && key.second == true)
             {
                 itInt->second->AddCallback(callback, nullptr);
             }
@@ -607,8 +607,8 @@ void Metrics::setEnableInstrument(const std::string& instrumentName, bool state)
         if (key.first == instrumentName)
         {
             auto newKey = std::make_pair(key.first, state);
-            m_instrumentState[newKey] = val;
             m_instrumentState.erase(key);
+            m_instrumentState[newKey] = val;
             return;
         }
     }
@@ -631,5 +631,5 @@ std::ostringstream Metrics::getInstrumentsList()
 
 void Metrics::generateCounterToTesting()
 {
-    instance().addCounterValue("MetricsTestCounter", 1UL);
+    instance().addCounterValue("Metrics.TestCounter", 1UL);
 }
