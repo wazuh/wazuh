@@ -24,6 +24,8 @@ bool MetricsManager::isRunning()
 
 std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string& metricsScopeName)
 {
+    const std::lock_guard<std::mutex> lock(m_mutexScopes);
+
     auto it = m_mapScopes.find(metricsScopeName);
     if (m_mapScopes.end() != it)
     {
@@ -36,7 +38,7 @@ std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string
         m_mapScopes.insert(
             std::make_pair<std::string, std::shared_ptr<MetricsScope>>(
                 std::string(metricsScopeName),
-                std::make_shared<MetricsScope>(metricsScopeName)));
+                std::make_shared<MetricsScope>()));
 
         auto& retScope = m_mapScopes[metricsScopeName];
 

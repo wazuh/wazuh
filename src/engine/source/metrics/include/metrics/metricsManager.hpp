@@ -2,6 +2,7 @@
 #define _METRICS_H
 
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 
 #include <utils/baseMacros.hpp>
@@ -37,6 +38,8 @@ private:
     std::unordered_map<std::string, std::shared_ptr<MetricsScope>> m_mapScopes;
 
     bool m_statusRunning;
+
+    std::mutex m_mutexScopes;
 };
 
 } // namespace metrics_manager
