@@ -40,6 +40,7 @@ add_library(builders OBJECT
   builders/opBuilderHelperFilter.cpp
   builders/opBuilderHelperMap.cpp
   builders/opBuilderHelperNetInfoAddress.cpp
+  builders/opBuilderHelperUpgradeConfirmation.cpp
   builders/opBuilderKVDB.cpp
   builders/opBuilderLogParser.cpp
   builders/opBuilderSCAdecoder.cpp

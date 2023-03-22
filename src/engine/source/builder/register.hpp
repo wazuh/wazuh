@@ -9,6 +9,7 @@
 #include "builders/opBuilderHelperFilter.hpp"
 #include "builders/opBuilderHelperMap.hpp"
 #include "builders/opBuilderHelperNetInfoAddress.hpp"
+#include "builders/opBuilderHelperUpgradeConfirmation.hpp"
 #include "builders/opBuilderKVDB.hpp"
 #include "builders/opBuilderLogParser.hpp"
 #include "builders/opBuilderSCAdecoder.hpp"
@@ -159,6 +160,9 @@ static void registerBuilders(std::shared_ptr<Registry> registry, const dependenc
     registry->registerBuilder(builders::opBuilderSpecificHLPQuotedParse, "helper.parse_quoted");
     registry->registerBuilder(builders::opBuilderSpecificHLPBetweenParse, "helper.parse_between");
     registry->registerBuilder(builders::opBuilderSpecificHLPAlphanumericParse, "helper.parse_alphanumeric");
+
+    // Update Confirmation
+    registry->registerBuilder(builders::opBuilderHelperSendUpgradeConfirmation, "helper.upgrade_confirmation_send");
 }
 } // namespace builder::internals
 
