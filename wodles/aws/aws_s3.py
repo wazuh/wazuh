@@ -3485,29 +3485,54 @@ class AWSSLSubscriberBucket(WazuhIntegration):
         Region where the logs are located.
     """
     def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None, **kwargs):
-        WazuhIntegration.__init__(self, access_key=access_key,
-                                  secret_key=secret_key,
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
                                   aws_profile=aws_profile, service_name='s3', **kwargs)
 
-    def obtain_information_from_parquet(self, bucket, parquet):
-        debug(f'Processing file {parquet} in {bucket}', 2)
+    def obtain_information_from_parquet(self, bucket_path: str, parquet_path: str) -> list:
+        """
+        Fetch a parquet file from a bucket and obtain a list of the events it contains
+
+        Parameters
+        ----------
+        bucket_path : str
+            Path of the bucket to get the parquet file from
+
+        parquet_path : str
+            Relative path of the parquet file inside the bucket
+
+        Returns
+        -------
+        A list with the events contained inside the parquet file.
+        """
+
+        debug(f'Processing file {parquet_path} in {bucket_path}', 2)
         events = []
-        raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket, Key=parquet)['Body'].read())
+        try:
+            raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket_path, Key=parquet_path)['Body'].read())
+        except Exception as e:
+            debug(f'Could not get the parquet file {parquet_path} in {bucket_path}: {e}', 2)
+            sys.exit(4)
         pfile = pq.ParquetFile(raw_parquet)
         for i in pfile.iter_batches():
             for j in i.to_pylist():
                 events.append(json.dumps(j))
-        debug(f'Found {len(events)} events in file {parquet}', 2)
+        debug(f'Found {len(events)} events in file {parquet_path}', 2)
         return events
 
-    def process_files(self, messages):
-        total_events = 0
-        for msg in messages:
-            events_in_file = self.obtain_information_from_parquet(bucket=msg['bucket_path'], parquet=msg['parquet_path'])
-            for event in events_in_file:
-                self.send_msg(event, dump_json=False)
-            total_events = total_events + len(events_in_file)
-        debug(f'{total_events} events sent to AnalysisD', 2)
+    def process_file(self, message: dict) -> None:
+        """
+        Parse an SQS message, obtain the events associated, and send them to AnalysisD.
+
+        Parameters
+        ----------
+        message : dict
+            An SQS message recieved from the queue
+        """
+        events_in_file = self.obtain_information_from_parquet(bucket_path=message['bucket_path'],
+                                                              parquet_path=message['parquet_path'])
+        for event in events_in_file:
+            self.send_msg(event, dump_json=False)
+        debug(f'{len(events_in_file)} events sent to AnalysisD', 2)
 
 
 class AWSSQSQueue(WazuhIntegration):
@@ -3532,8 +3557,8 @@ class AWSSQSQueue(WazuhIntegration):
         If notifications should not be deleted after being read.
     """
 
-    def __init__(self, name: str, access_key: str = None, secret_key: str = None, aws_profile: str = None,
-                 dont_remove_from_queue: bool = False, **kwargs):
+    def __init__(self, name: str, access_key: str = None, secret_key: str = None,
+                 aws_profile: str = None, dont_remove_from_queue: bool = False, **kwargs):
         self.sqs_queue = name
         WazuhIntegration.__init__(self, access_key=access_key,
                                   secret_key=secret_key,
@@ -3550,9 +3575,16 @@ class AWSSQSQueue(WazuhIntegration):
         #     self.purge()
 
     def _get_sqs_url(self) -> str:
+        """
+        Get the URL of the AWS SQS queue
+
+        Returns
+        -------
+        The URL of the AWS SQS queue
+        """
         try:
-            url = self.client.get_queue_url(QueueName=self.sqs_queue, QueueOwnerAWSAccountId=self.account_id)[
-                'QueueUrl']
+            url = self.client.get_queue_url(QueueName=self.sqs_queue,
+                                            QueueOwnerAWSAccountId=self.account_id)['QueueUrl']
             debug(f'The SQS queue is: {url}', 3)
             return url
         except botocore.errorfactory.QueueDoesNotExist:
@@ -3560,67 +3592,92 @@ class AWSSQSQueue(WazuhIntegration):
             sys.exit(19)
 
 
-    def configure_queue_long_polling(self):
+    def configure_queue_long_polling(self) -> None:
         """
-        Configure queue to for long polling.
+        Configure queue for long polling.
         """
         try:
-            debug(f'Enabling long polling on {self.sqs_url}.', 1)
             self.client.set_queue_attributes(
                 QueueUrl=self.sqs_url,
                 Attributes={'ReceiveMessageWaitTimeSeconds': '20'})
+            debug(f'Long polling succesfully enabled {self.sqs_url}.', 2)
         except Exception as e:
-            debug(f'Could not configure long polling on - {self.sqs_url}.', 1)
+            debug(f'Could not configure long polling on - {self.sqs_url}: {e}', 2)
             sys.exit(4)
 
     
 
-    def delete_message(self, message_handle):
-        self.client.delete_message(QueueUrl=self.sqs_queue, ReceiptHandle=message_handle)
+    def delete_message(self, message: dict) -> None:
+        """
+        Delete message from the SQS queue.
 
-    def delete_messages(self, messages):
-        for message in messages:
-            self.delete_message(message["handle"])
+        Parameters
+        ----------
+        message : dict
+            An SQS message recieved from the queue
+        """
+        try:
+            self.client.delete_message(QueueUrl=self.sqs_queue, ReceiptHandle=message["handle"])
+            debug(f'Message deleted from: {self.sqs_queue}', 2)
+        except Exception as e:
+            debug(f'ERROR: Error deleting message from SQS: {e}', 2)
+            sys.exit(4)
 
-    def fetch_message(self):
+
+    def fetch_messages(self) -> dict:
+        """
+        Retrieves one or more messages (up to 10), from the specified queue.
+
+        Returns
+        -------
+        A dictionary with a list of messages from the SQS queue
+        """
         try:
             debug(f'Retrieving messages from: {self.sqs_queue}', 2)
             return self.client.receive_message(QueueUrl=self.sqs_queue, AttributeNames=['All'],
                                                MaxNumberOfMessages=10, MessageAttributeNames=['All'],
                                                WaitTimeSeconds=20)
         except Exception as e:
-            print("ERROR: Error receiving message from SQS: {}".format(e))
+            debug(f'ERROR: Error receiving message from SQS: {e}', 2)
             sys.exit(4)
 
-    def get_messages(self):
+    def get_messages(self) -> list:
+        """
+        Retrieve parsed messages from the SQS queue.
+
+        Returns
+        -------
+        A list of parsed messages from the SQS queue
+        """
         messages = []
-        sqs_message = self.fetch_message()
-        sqs_messages = sqs_message.get('Messages', [])
+        sqs_raw_messages = self.fetch_messages()
+        sqs_messages = sqs_raw_messages.get('Messages', [])
         for mesg in sqs_messages:
             body = mesg['Body']
             msg_handle = mesg["ReceiptHandle"]
             message = json.loads(body)
             parquet_path = message["detail"]["object"]["key"]
             bucket_path = message["detail"]["bucket"]["name"]
-            # path = "s3://" + bucket_path + "/" + parquet_path
-            messages.append({"parquet_path": parquet_path, "bucket_path": bucket_path, "handle": msg_handle})
+            messages.append({"parquet_path": parquet_path, "bucket_path": bucket_path,
+                              "handle": msg_handle})
         return messages
 
-    def sync_events(self):
-        asl_bucket_handler = AWSSLSubscriberBucket(aws_profile=self.profile, iam_role_arn=self.iam_role_arn)
+    def sync_events(self) -> None:
+        """
+        Get messages from the SQS queue, parse their events and send them to AnalysisD,
+        and delete the  from the queue.
+        """
+        asl_bucket_handler = AWSSLSubscriberBucket(aws_profile=self.profile,
+                                                   iam_role_arn=self.iam_role_arn)
         messages = self.get_messages()
         while(messages != []):
-            asl_bucket_handler.process_files(messages)
-            if not self.dont_remove_from_queue:
-                debug('Removing messages from SQS queue', 2)
-                self.delete_messages(messages)
+            for message in messages:
+                asl_bucket_handler.process_file(message)
+                if not self.dont_remove_from_queue:
+                    self.delete_message(message)
+                
             messages = self.get_messages()
 
-    def purge(self):  # Check if necessary
-        debug('Purging SQS queue, please wait a minute..:', 1)
-        self.client.purge_queue(QueueUrl=self.sqs_queue)
-        sleep(60)  # The message deletion process takes up to 60 seconds.
-        debug('SQS queue purged succesfully', 2)
 
 
 ################################################################################
