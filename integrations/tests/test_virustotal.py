@@ -5,7 +5,6 @@
 
 """Unit tests for virustotal.py integration."""
 
-from dotenv import load_dotenv
 import json
 import os
 import pytest
@@ -22,15 +21,9 @@ ERR_FILE_NOT_FOUND      = 6
 ERR_INVALID_JSON        = 7
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..')) #Necessary to run PyTest
-try:
-    load_dotenv()
-    apikey_virustotal = os.getenv('APIKEY_VT')
-    if not apikey_virustotal:
-        raise KeyError
-except KeyError:
-    print("No environment variable 'APIKEY_VT' found. Define your virustotal apikey before run this test")
-    sys.exit(ERR_NO_APIKEY)
-    
+
+apikey_virustotal = ""
+
 """
     Mockup messages for testing
 """
@@ -39,7 +32,7 @@ alert_template = {
     'timestamp': '2023-02-23T00:00:00+00:00',
     'rule': {
         'level': 0,
-        'description': 'alert description',        
+        'description': 'alert description',
         'id': '',
         'firedtimes': 1
     },
@@ -79,20 +72,20 @@ msg_template = {
 }
 
 sys_args_template = ['/var/ossec/integrations/virustotal.py', '/tmp/virustotal-XXXXXX-XXXXXXX.alert', f'{apikey_virustotal}', '', '>/dev/null 2>&1','/tmp/virustotal-XXXXXX-XXXXXXX.options']
-               
+
 
 def test_main_bad_arguments_exit():
     """Test that main function exits when wrong number of arguments are passed."""
     with patch("virustotal.open", mock_open()), pytest.raises(SystemExit) as pytest_wrapped_e:
         virustotal.main(sys_args_template[0:2])
     assert pytest_wrapped_e.value.code == ERR_BAD_ARGUMENTS
-    
+
 def test_main_exception():
     """Test exception handling in main when process_args raises an exception."""
     with patch("virustotal.open", mock_open()), pytest.raises(Exception),patch('virustotal.process_args') as process:
         process.side_effect = Exception
         virustotal.main(sys_args_template)
-        
+
 def test_main():
     """Test the correct execution of the main function."""
     with patch("virustotal.open", mock_open()), patch('json.load', return_value=alert_template),\
@@ -100,7 +93,7 @@ def test_main():
         patch('requests.post', return_value=requests.Response), patch('virustotal.process_args') as process:
         virustotal.main(sys_args_template)
         process.assert_called_once_with(sys_args_template)
-        
+
 @pytest.mark.parametrize('side_effect, return_value', [
     (FileNotFoundError, ERR_FILE_NOT_FOUND),
     (json.decoder.JSONDecodeError("Expecting value", "", 0), ERR_INVALID_JSON)
@@ -121,7 +114,7 @@ def test_process_args_exit(side_effect, return_value):
         json_load.side_effect = side_effect
         virustotal.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == return_value
-    
+
 def test_process_args():
     """Test the correct execution of the process_args function."""
     with patch("virustotal.open", mock_open()), \
@@ -137,7 +130,7 @@ def test_process_args():
         generated_msg = virustotal.generate_msg(alert_template,options_template,sys_args_template[2])
         assert generated_msg==msg_template
         send_msg.assert_called_once_with(msg_template,msg_template['agent'])
-        
+
 def test_process_args_not_sending_message():
     """Test that the send_msg function is not executed due to empty message after generate_msg."""
     with patch("virustotal.open", mock_open()), \
@@ -150,7 +143,7 @@ def test_process_args_not_sending_message():
         options_load.return_value = options_template
         virustotal.process_args(sys_args_template)
         send_msg.assert_not_called()
-        
+
 def test_debug():
     """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
     with patch('virustotal.debug_enabled', return_value=True), \
@@ -158,7 +151,7 @@ def test_debug():
             patch('virustotal.LOG_FILE', return_value='integrations.log') as log_file:
         virustotal.debug(msg_template)
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(f"{virustotal.now}: {msg_template}\n")
+        open_mock().write.assert_called_with(msg_template)
 
 
 def test_send_msg_raise_exception():

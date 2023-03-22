@@ -29,7 +29,7 @@ alert_template = {
     'timestamp': '2023-02-23T00:00:00+00:00',
     'rule': {
         'level': 0,
-        'description': 'alert description',        
+        'description': 'alert description',
         'id': '',
         'firedtimes': 1
     },
@@ -52,7 +52,7 @@ msg_template = '{"severity": 1, "pretext": "Wazuh-X -- Alert generated", "title"
                '"full log.", "decoder": {"name": "decoder-name"}, "location": "wazuh-X"}}'
 
 sys_args_template = ['/var/ossec/integrations/shuffle.py', '/tmp/shuffle-XXXXXX-XXXXXXX.alert', '',
-                     'http://<IP>:3001/api/v1/hooks/<HOOK_ID>', ' > /dev/null 2>&1']
+                     'http://<IP>:3001/api/v1/hooks/<HOOK_ID>', ' > /dev/null 2>&1', '/tmp/virustotal-XXXXXX-XXXXXXX.options']
 
 
 def test_main_bad_arguments_exit():
@@ -138,7 +138,7 @@ def test_debug():
             patch('shuffle.LOG_FILE', return_value='integrations.log') as log_file:
         shuffle.debug(msg_template)
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(f"{shuffle.now}: {msg_template}\n")
+        open_mock().write.assert_called_with(msg_template)
 
 
 @pytest.mark.parametrize('rule_id, expected_msg', [

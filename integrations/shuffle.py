@@ -44,7 +44,6 @@ except ModuleNotFoundError as e:
 debug_enabled   = False
 pwd             = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert      = {}
-now             = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 SKIP_RULE_IDS   = ["87924", "87900", "87901", "87902", "87903", "87904", "86001", "86002", "86003", "87932",
                  "80710", "87929", "87928", "5710"]
 
@@ -62,8 +61,7 @@ def main(args: list[str]):
         # Read arguments
         bad_arguments: bool = False
         if len(args) >= 4:
-            msg = '{0} {1} {2} {3} {4} {5}'.format(
-                now,
+            msg = '{0} {1} {2} {3} {4}'.format(
                 args[1],
                 args[2],
                 args[3],
@@ -72,7 +70,7 @@ def main(args: list[str]):
             )
             debug_enabled = (len(args) > 4 and args[4] == 'debug')
         else:
-            msg = '{0} Wrong arguments'.format(now)
+            msg = '# ERROR: Wrong arguments'
             bad_arguments = True
 
         # Logging the call
@@ -80,7 +78,7 @@ def main(args: list[str]):
             f.write(msg + '\n')
 
         if bad_arguments:
-            debug("# Exiting: Bad arguments. Inputted: %s" % args)
+            debug("# ERROR: Exiting, bad arguments. Inputted: %s" % args)
             sys.exit(ERR_BAD_ARGUMENTS)
 
         # Core function
@@ -108,7 +106,7 @@ def process_args(args: list[str]) -> None:
         JSONDecodeError
             If no valid JSON file are used
     """
-    debug("# Starting")
+    debug("# Running Shuffle script")
 
     # Read args
     alert_file_location: str     = args[ALERT_INDEX]
@@ -122,26 +120,13 @@ def process_args(args: list[str]) -> None:
             options_file_location = args[idx]
             break
 
-    debug("# Webhook")
-    debug(webhook)
-
-    debug("# Options file location")
-    debug(options_file_location)
-
     # Load options. Parse JSON object.
-    json_options = get_json_file(options_file_location)
-
-    debug("# Processing options")
-    debug(json_options)
-
-    debug("# Alert file location")
-    debug(alert_file_location)
+    json_options = get_json_options(options_file_location)
+    debug("# Opening options file at '{options_file_location}' with '{json_options}'")
 
     # Load alert. Parse JSON object.
-    json_alert = get_json_file(alert_file_location)
-
-    debug("# Processing alert")
-    debug(json_alert)
+    json_alert  = get_json_alert(alert_file_location)
+    debug("# Opening alert file at '{alert_file_location}' with '{json_alert}'")
 
     debug("# Generating message")
     msg: str = generate_msg(json_alert, json_options)
@@ -150,8 +135,6 @@ def process_args(args: list[str]) -> None:
     if isinstance(msg, str):
         if not msg:
             return
-
-    debug(msg)
 
     debug("# Sending message")
     send_msg(msg, webhook)
@@ -167,7 +150,6 @@ def debug(msg: str) -> None:
             The message to be logged.
     """
     if debug_enabled:
-        msg = "{0}: {1}\n".format(now, msg)
         print(msg)
         with open(LOG_FILE, "a") as f:
             f.write(msg)
@@ -235,16 +217,16 @@ def send_msg(msg: str, url: str) -> None:
     """
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
     res     = requests.post(url, data=msg, headers=headers, verify=False)
-    debug("# Response received: %s" % res)
+    debug("# Response received: %s" % res.json)
 
-def get_json_file(file_location: str) -> any:
+def get_json_alert(file_location: str) -> any:
     """
-        Read the JSON object from alert file
+        Read JSON alert object from file
 
         Parameters
         ----------
         file_location : str
-            Path to file alert location.
+            Path to the JSON file location.
 
         Returns
         -------
@@ -254,7 +236,7 @@ def get_json_file(file_location: str) -> any:
         Raises
         ------
         FileNotFoundError
-            If no alert file is not present.
+            If no JSON file is found.
         JSONDecodeError
             If no valid JSON file are used
     """
@@ -265,7 +247,38 @@ def get_json_file(file_location: str) -> any:
         debug("# JSON file %s doesn't exist" % file_location)
         sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
-        debug("Failed getting json_alert %s" % e)
+        debug("Failed getting JSON alert. Error: %s" % e)
+        sys.exit(ERR_INVALID_JSON)
+
+def get_json_options(file_location: str) -> any:
+    """
+        Read JSON options object from file
+
+        Parameters
+        ----------
+        file_location : str
+            Path to the JSON file location.
+
+        Returns
+        -------
+        {}: any
+            The JSON object read it.
+
+        Raises
+        ------
+        FileNotFoundError
+            If no JSON file is found.
+        JSONDecodeError
+            If no valid JSON file are used
+    """
+    try:
+        with open(file_location) as alert_file:
+            return json.load(alert_file)
+    except FileNotFoundError:
+        debug("# JSON file %s doesn't exist" % file_location)
+        sys.exit(ERR_FILE_NOT_FOUND)
+    except BaseException as e:
+        debug("Failed getting JSON options. Error: %s" % e)
         sys.exit(ERR_INVALID_JSON)
 
 if __name__ == "__main__":

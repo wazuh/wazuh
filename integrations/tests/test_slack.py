@@ -5,7 +5,6 @@
 
 """Unit tests for slack.py integration."""
 
-from dotenv import load_dotenv
 import json
 import os
 import pytest
@@ -30,7 +29,7 @@ alert_template = {
     'timestamp': '2023-02-23T00:00:00+00:00',
     'rule': {
         'level': 0,
-        'description': 'alert description',        
+        'description': 'alert description',
         'id': '',
         'firedtimes': 1
     },
@@ -54,30 +53,23 @@ msg_template = '{"severity": 1, "pretext": "Wazuh-X -- Alert generated", "title"
                '"description": "alert description", "id": "rule-id", "firedtimes": 1}, "id": "alert_id", "full_log": ' \
                '"full log.", "decoder": {"name": "decoder-name"}, "location": "wazuh-X", "author_name": "The amazing Wazuh",'\
                '"footer": "Slack API"}'
-try:
-    load_dotenv()
-    slack_webhook = os.getenv('SLACK_WHK')
-    if not slack_webhook:
-        raise KeyError
-except KeyError:
-    print("No environment variable 'SLACK_WHK' found. Define your Slack webhook before run this test")
-    sys.exit(ERR_NO_APIKEY)
+slack_webhook = ""
 
 sys_args_template = ['/var/ossec/integrations/slack.py', '/tmp/slack-XXXXXX-XXXXXXX.alert', '', f'{slack_webhook}', '>/dev/null 2>&1','/tmp/slack-XXXXXX-XXXXXXX.options']
-               
+
 
 def test_main_bad_arguments_exit():
     """Test that main function exits when wrong number of arguments are passed."""
     with patch("slack.open", mock_open()), pytest.raises(SystemExit) as pytest_wrapped_e:
         slack.main(sys_args_template[0:2])
     assert pytest_wrapped_e.value.code == ERR_BAD_ARGUMENTS
-    
+
 def test_main_exception():
     """Test exception handling in main when process_args raises an exception."""
     with patch("slack.open", mock_open()), pytest.raises(Exception),patch('slack.process_args') as process:
         process.side_effect = Exception
         slack.main(sys_args_template)
-        
+
 def test_main():
     """Test the correct execution of the main function."""
     with patch("slack.open", mock_open()), patch('json.load', return_value=alert_template),\
@@ -85,7 +77,7 @@ def test_main():
         patch('requests.post', return_value=requests.Response), patch('slack.process_args') as process:
         slack.main(sys_args_template)
         process.assert_called_once_with(sys_args_template)
-        
+
 @pytest.mark.parametrize('side_effect, return_value', [
     (FileNotFoundError, ERR_FILE_NOT_FOUND),
     (json.decoder.JSONDecodeError("Expecting value", "", 0), ERR_INVALID_JSON)
@@ -106,7 +98,7 @@ def test_process_args_exit(side_effect, return_value):
         json_load.side_effect = side_effect
         slack.process_args(sys_args_template)
     assert pytest_wrapped_e.value.code == return_value
-    
+
 def test_process_args():
     """Test the correct execution of the process_args function."""
     with patch("slack.open", mock_open()), \
@@ -122,7 +114,7 @@ def test_process_args():
         generated_msg = slack.generate_msg(alert_template,options_template)
         assert generated_msg==msg_template
         send_msg.assert_called_once_with(msg_template, sys_args_template[3])
-        
+
 def test_process_args_not_sending_message():
     """Test that the send_msg function is not executed due to empty message after generate_msg."""
     with patch("slack.open", mock_open()), \
@@ -135,7 +127,7 @@ def test_process_args_not_sending_message():
         options_load.return_value = options_template
         slack.process_args(sys_args_template)
         send_msg.assert_not_called()
-        
+
 def test_debug():
     """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
     with patch('slack.debug_enabled', return_value=True), \
@@ -143,8 +135,8 @@ def test_debug():
             patch('slack.LOG_FILE', return_value='integrations.log') as log_file:
         slack.debug(msg_template)
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(f"{slack.now}: {msg_template}\n")
-        
+        open_mock().write.assert_called_with(f"{msg_template}")
+
 def test_send_msg_raise_exception():
     """Test that the send_msg function will raise an exception when passed the wrong webhook url."""
     with patch('requests.post') as request_post, \

@@ -127,7 +127,7 @@ void test_OS_IntegratorD(void **state) {
 
     expect_fprintf((FILE *)1, alert_to_virustotal, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "file /tmp/virustotal-1111-2222.alert was written.");
+    expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/virustotal-1111-2222.alert was written.");
 
     expect_fclose((FILE *)1, 0);
 
@@ -140,7 +140,7 @@ void test_OS_IntegratorD(void **state) {
 
     expect_fprintf((FILE *)1, options_to_vt, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "file /tmp/virustotal-1111-2222.options was written.");
+    expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/virustotal-1111-2222.options was written.");
 
     expect_fclose((FILE *)1, 0);
 
@@ -174,7 +174,7 @@ void test_OS_IntegratorD(void **state) {
 
     expect_fprintf((FILE *)1, alert_to_pagerduty, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "file /tmp/pagerduty-1111-2222.alert was written.");
+    expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/pagerduty-1111-2222.alert was written.");
 
     expect_fclose((FILE *)1, 0);
 
@@ -187,7 +187,7 @@ void test_OS_IntegratorD(void **state) {
 
     expect_fprintf((FILE *)1, options_to_pd, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "file /tmp/pagerduty-1111-2222.options was written.");
+    expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/pagerduty-1111-2222.options was written.");
 
     expect_fclose((FILE *)1, 0);
 
@@ -211,7 +211,7 @@ void test_OS_IntegratorD(void **state) {
     will_return(__wrap_unlink, 0);
     expect_string(__wrap_unlink, file, pd_options);
     will_return(__wrap_unlink, 0);
-    
+
     will_return(__wrap_FOREVER, NULL);
 
     OS_IntegratorD(integrator_config);

@@ -5,7 +5,6 @@
 
 """Unit tests for pagerduty.py integration."""
 
-from dotenv import load_dotenv
 import json
 import os
 import pytest
@@ -21,14 +20,8 @@ ERR_FILE_NOT_FOUND      = 6
 ERR_INVALID_JSON        = 7
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..')) #Necessary to run PyTest
-try:
-    load_dotenv()
-    apikey_pagerduty = os.getenv('APIKEY_PD')
-    if not apikey_pagerduty:
-        raise KeyError
-except KeyError:
-    print("No environment variable 'APIKEY_PD' found. Define your pagerduty apikey before run this test")
-    sys.exit(ERR_NO_APIKEY)
+
+apikey_pagerduty = ""
 
 """
     Mockup messages for testing
@@ -114,8 +107,8 @@ def test_process_args_exit(side_effect, return_value):
 def test_process_args():
     """Test the correct execution of the process_args function."""
     with patch("pagerduty.open", mock_open()), \
-            patch('pagerduty.get_json_file') as alert_load,\
-            patch('pagerduty.get_json_file') as options_load,\
+            patch('pagerduty.get_json_alert') as alert_load,\
+            patch('pagerduty.get_json_options') as options_load,\
             patch('pagerduty.send_msg') as send_msg, \
             patch('pagerduty.generate_msg', return_value=msg_template) as generate_msg, \
             patch('requests.post', return_value=requests.Response):
@@ -130,8 +123,8 @@ def test_process_args():
 def test_process_args_not_sending_message():
     """Test that the send_msg function is not executed due to empty message after generate_msg."""
     with patch("pagerduty.open", mock_open()), \
-            patch('pagerduty.get_json_file') as alert_load,\
-            patch('pagerduty.get_json_file') as options_load,\
+            patch('pagerduty.get_json_alert') as alert_load,\
+            patch('pagerduty.get_json_options') as options_load,\
             patch('pagerduty.send_msg') as send_msg, \
             patch('pagerduty.generate_msg', return_value=''), \
             pytest.raises(Exception):
@@ -147,7 +140,7 @@ def test_debug():
             patch('pagerduty.LOG_FILE', return_value='integrations.log') as log_file:
         pagerduty.debug(msg_template)
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(f"{pagerduty.now}: {msg_template}\n")
+        open_mock().write.assert_called_with(msg_template)
 
 def test_send_msg_raise_exception():
     """Test that the send_msg function will raise an exception when passed the wrong webhook url."""
