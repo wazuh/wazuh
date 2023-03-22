@@ -903,407 +903,431 @@ checks:
   # 5.1 Configure time-based job schedulers.
   ####################################################
 
-  # 5.1.1 Ensure cron daemon is enabled.
-  - id: 31132
+  # 5.1.1 Ensure cron daemon is enabled. (Automated)
+  - id: 31187
     title: "Ensure cron daemon is enabled."
     description: "The cron daemon is used to execute batch jobs on the system."
     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
-    remediation: "Run the following command to enable cron : # systemctl --now enable crond."
+    remediation: "Run the following command to enable cron: # systemctl --now enable crond."
     compliance:
       - cis: ["5.1.1"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - "c:systemctl is-enabled crond -> r:enabled"
+      - 'c:systemctl is-enabled crond -> r:^\s*\t*enabled$'
 
-  # 5.1.2 Ensure permissions on /etc/crontab are configured.
-  - id: 31133
+  # 5.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
+  - id: 31188
     title: "Ensure permissions on /etc/crontab are configured."
     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
     rationale: "This file contains information on what system jobs are run by cron. Write access to these files could provide unprivileged users with the ability to elevate their privileges. Read access to these files could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
-    remediation: "Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab; # chmod og-rwx /etc/crontab."
+    remediation: "Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab # chmod og-rwx /etc/crontab."
     compliance:
       - cis: ["5.1.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/crontab -> r:^Access: \(0\w00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/crontab -> r:^Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
-  # 5.1.3 Ensure permissions on /etc/cron.hourly are configured
-  - id: 31134
+  # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
+  - id: 31189
     title: "Ensure permissions on /etc/cron.hourly are configured."
     description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-    remediation: "Run the following commands to set ownership and permissions on /etc/cron.hourly : chown root:root /etc/cron.hourly; # chmod og-rwx /etc/cron.hourly;."
+    remediation: "Run the following commands to set ownership and permissions on /etc/cron.hourly : # chown root:root /etc/cron.hourly # chmod og-rwx /etc/cron.hourly."
     compliance:
       - cis: ["5.1.3"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.hourly -> r:^Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
-  # 5.1.4 Ensure permissions on /etc/cron.daily are configured
-  - id: 31135
+  # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
+  - id: 31190
     title: "Ensure permissions on /etc/cron.daily are configured."
     description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-    remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : chown root:root /etc/cron.daily; # chmod og-rwx /etc/cron.daily;."
+    remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : # chown root:root /etc/cron.daily # chmod og-rwx /etc/cron.daily."
     compliance:
       - cis: ["5.1.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.daily -> r:^Access:\s*\(0\d00/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
-  # 5.1.5 Ensure permissions on /etc/cron.weekly are configured
-  - id: 31136
+  # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
+  - id: 31191
     title: "Ensure permissions on /etc/cron.weekly are configured."
     description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-    remediation: "Run the following commands to set ownership and permissions on /etc/cron.weekly : chown root:root /etc/cron.weekly; # chmod og-rwx /etc/cron.weekly;."
+    remediation: "Run the following commands to set ownership and permissions on /etc/cron.weekly : # chown root:root /etc/cron.weekly # chmod og-rwx /etc/cron.weekly."
     compliance:
       - cis: ["5.1.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
-  # 5.1.6 Ensure permissions on /etc/cron.monthly are configured
-  - id: 31137
+  # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
+  - id: 31192
     title: "Ensure permissions on /etc/cron.monthly are configured."
     description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-    remediation: "Run the following commands to set ownership and permissions on /etc/cron.monthly : chown root:root /etc/cron.monthly; # chmod og-rwx /etc/cron.monthly;."
+    remediation: "Run the following commands to set ownership and permissions on /etc/cron.monthly : # chown root:root /etc/cron.monthly # chmod og-rwx /etc/cron.monthly."
     compliance:
       - cis: ["5.1.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\w00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.monthly -> r:^Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
-  # 5.1.7 Ensure permissions on /etc/cron.d are configured
-  - id: 31138
+  # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
+  - id: 31193
     title: "Ensure permissions on /etc/cron.d are configured."
-    description: "The /etc/cron.d/directory contains system cronjobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab, but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
+    description: "The /etc/cron.d directory contains system cron jobs that need to run in a similar manner to the hourly, daily weekly and monthly jobs from /etc/crontab , but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
-    remediation: "Run the following commands to set ownership and permissions on /etc/cron.d :   # chown root:root /etc/cron.d;   # chmod og-rwx /etc/cron.d;."
+    remediation: "Run the following commands to set ownership and permissions on /etc/cron.d : # chown root:root /etc/cron.d # chmod og-rwx /etc/cron.d."
     compliance:
       - cis: ["5.1.7"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.d -> r:^Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
-  # 5.1.8 Ensure cron is restricted to authorized users.
-  # 5.1.9 Ensure at is restricted to authorized users.
-  - id: 31139
-    title: "Ensure at & cron are restricted to authorized users."
-    description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.alloware allowed to use at and cron."
-    rationale: "On many systems, only the system administrator is authorized to schedule cron or at jobs. Using the cron.allowfile or at.allow to control who can run cron/at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "Run the following commands to remove /etc/cron.deny and /etc/at.deny and create and set permissions and ownership for /etc/cron.allow and /etc/at.allow: rm /etc/cron.deny;rm /etc/at.deny;touch /etc/cron.allow; touch /etc/at.allow; chmod og-rwx /etc/cron.allow; chmod og-rwx /etc/at.allow; chown root:root /etc/cron.allow and chown root:root /etc/at.allow."
+  # 5.1.8 Ensure cron is restricted to authorized users. (Automated)
+  - id: 31194
+    title: "Ensure cron is restricted to authorized users."
+    description: "If cron is installed in the system, configure /etc/cron.allow to allow specific users to use these services. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in those files is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Note: Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
+    rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
+    remediation: 'Run the following script to remove /etc/cron.deny, create /etc/cron.allow, and set the file mode on /etc/cron.allow: #!/usr/bin/env bash { if rpm -q cronie >/dev/null; then [ -e /etc/cron.deny ] && rm -f /etc/cron.deny [ ! -e /etc/cron.allow ] && touch /etc/cron.allow chown root:root /etc/cron.allow chmod u-x,go-rwx /etc/cron.allow else echo "cron is not installed on the system" fi } OR Run the following command to remove cron: # dnf remove cronie.'
     compliance:
-      - cis: ["5.1.8", "5.1.9"]
+      - cis: ["5.1.8"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:stat -L /etc/cron.deny -> r:No such file or directory$"
-      - "c:stat -L /etc/at.deny -> r:No such file or directory$"
-      - 'c:stat -L /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - "f:/etc/cron.allow"
+      - "not f:/etc/cron.deny"
+      - 'c:stat -L /etc/cron.allow -> r:^Access:\s*\(0\d\d0/-\w\w\w\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
+
+  # 5.1.9 Ensure at is restricted to authorized users. (Automated)
+  - id: 31195
+    title: "Ensure at is restricted to authorized users."
+    description: "If at is installed in the system, configure /etc/at.allow to allow specific users to use these services. If /etc/at.allow does not exist, then /etc/at.deny is checked. Any user not specifically defined in those files is allowed to use at. By removing the file, only users in /etc/at.allow are allowed to use at. Note: Even though a given user is not listed in at.allow, at jobs can still be run as that user. The at.allow file only controls administrative access to the at command for scheduling and modifying at jobs."
+    rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
+    remediation: 'Run the following script to remove /etc/at.deny, create /etc/at.allow, and set the file mode for /etc/at.allow: #!/usr/bin/env bash { if rpm -q at >/dev/null; then [ -e /etc/at.deny ] && rm -f /etc/at.deny [ ! -e /etc/at.allow ] && touch /etc/at.allow chown root:root /etc/at.allow chmod u-x,go-rwx /etc/at.allow else echo "at is not installed on the system" fi } OR Run the following command to remove at: # dnf remove at.'
+    compliance:
+      - cis: ["5.1.9"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - "f:/etc/at.allow"
+      - "not f:/etc/at.deny"
+      - 'c:stat -L /etc/at.allow -> r:^Access:\s*\(0\d\d0/-\w\w\w\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
   ####################################################
   # 5.2 Configure SSH Server
   ####################################################
 
-  # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured.
-  - id: 31140
+  # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
+  - id: 31196
     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
     rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
-    remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: chown root:root /etc/ssh/sshd_config and chmod og-rwx /etc/ssh/sshd_config."
+    remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod og-rwx /etc/ssh/sshd_config."
     compliance:
       - cis: ["5.2.1"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access:\s*\t*\(0600/-rw-------\)\s*\t*Uid:\s*\t*\(\t*\s*0/\t*\s*root\)\s*\t*Gid:\s*\t*\(\t*\s*0/\t*\s*root\)$'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
-  # 5.2.2 Ensure permissions on SSH private host key files are configured.
-  - id: 31141
+  # 5.2.2 Ensure permissions on SSH private host key files are configured. (Automated)
+  - id: 31197
     title: "Ensure permissions on SSH private host key files are configured."
-    description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, The possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
+    description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, the possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
     rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
-    remediation: "Run the following commands to set ownership and permissions on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0600 {} \\;  # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\;."
+    remediation: "Run the following commands to set permissions, ownership, and group on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod u-x,g-wx,o-rwx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:ssh_keys {} \\;."
     compliance:
       - cis: ["5.2.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["5.1"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_*_key" -exec stat {} \; -> r:^Access:\t*\s*\(0600/-rw-------\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_*_key" -exec stat {} \; -> r:^Access:\t*\s*\(0640/-rw-r-----\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*ssh_keys\)$'
+      - 'c:sh -c "stat -L /etc/ssh/ssh_host_*_key" -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/ssh_keys\)$'
+      - 'c:sh -c "stat -L /etc/ssh/ssh_host_*_key" -> r:^Access:\s*\(0\d\d0/-\w\w\w\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
-  # 5.2.3 Ensure permissions on SSH public host key files are configured.
-  - id: 31142
-    title: "Ensure permissions on SSH private host key files are configured."
+  # 5.2.3 Ensure permissions on SSH public host key files are configured. (Automated)
+  - id: 31198
+    title: "Ensure permissions on SSH public host key files are configured."
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
     rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following commands to set permissions and ownership on the SSH host public key: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go-wx {} \\;  # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;."
+    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go-wx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;."
     compliance:
       - cis: ["5.2.3"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["5.1"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: any
+    condition: all
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_*_key" -exec stat {} \; -> r:^Access:\t*\s*\(0600/-rw-------\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_*_key" -exec stat {} \; -> r:^Access:\t*\s*\(0640/-rw-r-----\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*ssh_keys\)$'
+      - 'c:sh -c "find /etc/ssh -xdev -type f -name \"ssh_host_*_key.pub\" -exec stat {} \\;" -> r:Access:\s*\( && !r:-rw-r--r--'
 
-  # 5.2.4 Ensure SSH access is limited
-  - id: 31143
+  # 5.2.4 Ensure SSH access is limited. (Automated)
+  - id: 31199
     title: "Ensure SSH access is limited."
-    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: > The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: > The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: > The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: > The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
+    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: o The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: o The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: o The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: o The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
-    remediation: "Edit the /etc/ssh/sshd_config file or a included configuration file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>."
-    references:
-      - SSHD_CONFIG(5)
+    remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>."
     compliance:
       - cis: ["5.2.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["4.3"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.2.3"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: any
+    condition: all
     rules:
-      - "c:sshd -T -> r:allowusers|allowgroups|denyusers|denygroups"
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
 
-  # 5.2.5 Ensure SSH LogLevel is appropriate
-  - id: 31144
+  # 5.2.5 Ensure SSH LogLevel is appropriate. (Automated)
+  - id: 31200
     title: "Ensure SSH LogLevel is appropriate."
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE OR LogLevel INFO."
     references:
-      - https://www.ssh.com/ssh/sshd_config/
+      - "https://www.ssh.com/ssh/sshd_config/"
     compliance:
       - cis: ["5.2.5"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
-      - nist_sp_800-53: ["AU-2", "AU-12", "SI-5"]
-    condition: any
+      - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+    condition: all
     rules:
-      - "c:sshd -T -> r:^loglevel VERBOSE|^loglevel INFO"
-      - "not f:/etc/ssh/sshd_config -> !r:^\\s*\\t*loglevel\\s*\\t*VERBOSE|^\\s*\\t*loglevel\\s*\\t*INFO"
+      - 'c:sshd -T -> r:^\s*\t*LogLevel\s+INFO|^\s*\t*LogLevel\s+VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*LogLevel\s+INFO|^\s*\t*LogLevel\s+VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*LogLevel\s+ && !r:INFO|VERBOSE'
 
-  # 5.2.6 Ensure SSH PAM is enabled
-  - id: 31145
+  # 5.2.6 Ensure SSH PAM is enabled. (Automated)
+  - id: 31201
     title: "Ensure SSH PAM is enabled."
-    description: "The UsePAM directive enables the Pluggable Authentication Module (PAM) interface. If set to yes this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication directives in addition to PAM account and session module processing for all authentication types."
+    description: 'UsePAM Enables the Pluggable Authentication Module interface. If set to "yes" this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types.'
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     impact: "If UsePAM is enabled, you will not be able to run sshd(8) as a non-root user."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.6"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - pci_dss_3.2.1: ["11.5", "2.2"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -> r:^usepam yes"
-      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*UsePAM\\s*\\t*no"
+      - 'c:sshd -T -> r:^\s*\t*usepam\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*usepam\s+no'
 
-  # 5.2.7 Ensure SSH root login is disabled
-  - id: 31146
+  # 5.2.7 Ensure SSH root login is disabled. (Automated)
+  - id: 31202
     title: "Ensure SSH root login is disabled."
-    description: "The PermitRootLogin parameter specifies if the root user can log in using SSH. The default is prohibit-password."
-    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root. This limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
+    description: "The PermitRootLogin parameter specifies if the root user can log in using ssh. The default is no."
+    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.7"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - iso_27001-2013: ["A.9.2.3"]
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
     condition: all
     rules:
-      - "c:sshd -T -> r:^permitrootlogin no"
-      - "f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitRootLogin\\s*\\t*no"
+      - 'c:sshd -T -> r:^\s*\t*PermitRootLogin\s+no'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*\t*PermitRootLogin\s+no'
 
-  # 5.2.8 Ensure SSH HostbasedAuthentication is disabled
-  - id: 31147
+  # 5.2.8 Ensure SSH HostbasedAuthentication is disabled. (Automated)
+  - id: 31203
     title: "Ensure SSH HostbasedAuthentication is disabled."
-    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication."
+    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.8"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["16.3"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - pci_dss_3.2.1: ["11.5", "2.2"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -> r:^hostbasedauthentication no"
-      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*HostBasedAuthentication\\s*\\t*yes"
+      - 'c:sshd -T -> r:^\s*\t*HostbasedAuthentication\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*HostbasedAuthentication\s+yes'
 
-  # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled
-  - id: 31148
+  # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
+  - id: 31204
     title: "Ensure SSH PermitEmptyPasswords is disabled."
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.9"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["16.3"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - pci_dss_3.2.1: ["11.5", "2.2"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -> r:^permitemptypasswords no"
-      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitEmptyPasswords\\s*\\t*yes"
+      - 'c:sshd -T -> r:^\s*\t*PermitEmptyPasswords\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*PermitEmptyPasswords\s+yes'
 
-  # 5.2.10 Ensure SSH PermitUserEnvironment is disabled
-  - id: 31149
+  # 5.2.10 Ensure SSH PermitUserEnvironment is disabled. (Automated)
+  - id: 31205
     title: "Ensure SSH PermitUserEnvironment is disabled."
-    description: "The PermitUserEnvironment option allows users to present environment options to the SSH daemon."
-    rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has SSH executing trojan'd programs)."
+    description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
+    rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.10"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - pci_dss_3.2.1: ["11.5", "2.2"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -> r:^permituserenvironment no"
-      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*PermitUserEnvironment\\s*\\t*yes"
+      - 'c:sshd -T -> r:^\s*\t*PermitUserEnvironment\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*PermitUserEnvironment\s+yes'
 
-  # 5.2.11 Ensure SSH IgnoreRhosts is enabled
-  - id: 31150
+  # 5.2.11 Ensure SSH IgnoreRhosts is enabled. (Automated)
+  - id: 31206
     title: "Ensure SSH IgnoreRhosts is enabled."
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
-    rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
+    rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes."
-    references:
-      - SSHD_CONFIG(5)
     compliance:
       - cis: ["5.2.11"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - pci_dss_3.2.1: ["11.5", "2.2"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:sshd -T -> r:^ignorerhosts yes"
-      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*IgnoreRhosts\\s*\\t*no"
+      - 'c:sshd -T -> r:^\s*\t*IgnoreRhosts\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*IgnoreRhosts\s+no'
 
-  # 5.2.12 Ensure SSH X11 forwarding is disabled
-  - id: 31151
+  # 5.2.12 Ensure SSH X11 forwarding is disabled. (Automated)
+  - id: 31207
     title: "Ensure SSH X11 forwarding is disabled."
     description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through the connection to enable remote graphic connections."
     rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
@@ -1312,16 +1336,16 @@ checks:
       - cis: ["5.2.12"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["AU.L2-3.3.1", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "10.2", "10.3"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
-      - soc_2: ["CC6.3", "CC6.6"]
-      - hipaa: ["164.312(b)"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
       - nist_sp_800-53: ["CM-7"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "c:sshd -T -> r:^x11forwarding no"
-      - "not f:/etc/ssh/sshd_config -> r:^\\s*\\t*x11forwarding\\s*\\t*yes"
+      - 'c:sshd -T -> r:^\s*X11Forwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*X11Forwarding\s+yes'
 
   # 5.2.13 Ensure SSH AllowTcpForwarding is disabled.
   - id: 31152
@@ -1365,7 +1389,7 @@ checks:
       - nist_sp_800-53: ["SC-8"]
     condition: all
     rules:
-      - "not f:/etc/sysconfig/sshd -> r:^\\s*CRYPTO_POLICY="
+      - 'not f:/etc/sysconfig/sshd -> r:^\s*CRYPTO_POLICY\s*='
 
   # 5.3.15 Ensure SSH warning banner is configured.
   - id: 31154
