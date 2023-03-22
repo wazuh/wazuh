@@ -1,0 +1,54 @@
+[   
+    {
+        "name": "Test.CountExample",
+        "dataHubEnable" : false,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "count",
+        "subType": "uint64",
+        "outputFile": "countExample.txt",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "some unit",
+        "description": "some description"
+    },
+    {
+        "name": "Test.HistogramExample",
+        "dataHubEnable" : false,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "histogram",
+        "subType": "double",
+        "outputFile": "histogramExample.txt",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "some unit",
+        "description": "some description"
+    },
+    {
+        "name": "Test.UpDownCountExample",
+        "dataHubEnable" : false,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "upDownCounter",
+        "subType": "int64",
+        "outputFile": "upDownCounterExample.txt",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "some unit",
+        "description": "some description"
+    },
+    {
+        "name": "Test.ObservableGaugeExample",
+        "dataHubEnable" : false,
+        "enable": true,
+        "signalType": "meter",
+        "instrumentType" : "observableGauge",
+        "subType": "double",
+        "outputFile": "observableGauge.txt",
+        "exportIntervalMillis": 100,
+        "exportTimeoutMillis": 50,
+        "unit": "some unit",
+        "description": "some description"
+    }
+]

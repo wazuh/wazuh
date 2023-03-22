@@ -54,4 +54,5 @@ target_include_directories(server
     ${RxCpp_SOURCE_DIR}/Rx/v2/src
     ${ENGINE_SERVER_SOURCE_DIR}/base
     ${ENGINE_SOURCE_DIR}/API/include
+    ${ENGINE_SOURCE_DIR}/cmds/src
 )
