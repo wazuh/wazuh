@@ -1,0 +1,86 @@
+winlog.trustType:
+  description: >
+            The account name that was added, modified or deleted in the event.
+
+            Possible values are `TRUST_TYPE_DOWNLEVEL`, `TRUST_TYPE_UPLEVEL`,
+            `TRUST_TYPE_MIT` and `TRUST_TYPE_DCE`
+  type: keyword
+
+
+winlog.channel:
+  description: >
+            The name of the channel from which this record was read.
+  type: keyword
+
+winlog.process.pid:
+  description: >
+              Process id that generated the log
+  type: long
+
+winlog.process.thread.id:
+  description: >
+              Thread id that generated the log
+  type: long
+
+winlog.record_id:
+  description: >
+            The record ID of the event log record. The first record written
+            to an event log is record number 1, and other records are numbered
+            sequentially. If the record number reaches the maximum value (2^32^
+            for the Event Logging API and 2^64^ for the Windows Event Log API),
+            the next record number will be 0.
+  type: keyword
+
+winlog.event_data:
+  description: >
+            The event-specific data. This field is mutually exclusive with
+            `user_data`. If you are capturing event data on versions prior
+            to Windows Vista, the parameters in `event_data` are named `param1`,
+            `param2`, and so on, because event log parameters are unnamed in
+            earlier versions of Windows.
+  type: keyword
+  array: true
+
+winlog.trustAttribute:
+  description: >
+            The decimal value of attributes for new trust created to a domain.
+  type: keyword
+
+winlog.trustDirection:
+  description: >
+            The direction of new trust created to a domain.
+
+            Possible values are `TRUST_DIRECTION_DISABLED`, `TRUST_DIRECTION_INBOUND`,
+            `TRUST_DIRECTION_OUTBOUND` and `TRUST_DIRECTION_BIDIRECTIONAL`
+  type: keyword
+
+winlog.trustType:
+  description: >
+            The account name that was added, modified or deleted in the event.
+
+            Possible values are `TRUST_TYPE_DOWNLEVEL`, `TRUST_TYPE_UPLEVEL`,
+            `TRUST_TYPE_MIT` and `TRUST_TYPE_DCE`
+  type: keyword
+
+winlog.computerObject.domain:
+  description: >
+            The domain of the account that was added, modified or deleted in the event.
+  type: keyword
+
+winlog.computerObject.id:
+  description: >
+            A globally unique identifier that identifies the target device.
+  type: keyword
+  
+winlog.computerObject.name:      
+  description: >
+            The account name that was added, modified or deleted in the event.
+  type: keyword            
+
+winlog.task:
+  description: >
+            The task defined in the event. Task and opcode are typically used to
+            identify the location in the application from where the event was
+            logged. The category used by the Event Logging API (on pre Windows Vista
+            operating systems) is written to this field.
+  type: keyword
