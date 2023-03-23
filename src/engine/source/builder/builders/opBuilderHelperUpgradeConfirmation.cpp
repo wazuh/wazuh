@@ -5,17 +5,13 @@
 
 #include "opBuilderHelperUpgradeConfirmation.hpp"
 
-#include <algorithm>
 #include <optional>
 #include <string>
-#include <string_view>
-#include <variant>
 
 #include "syntax.hpp"
 
 #include <baseHelper.hpp>
 #include <utils/socketInterface/unixSecureStream.hpp>
-#include <utils/stringUtils.hpp>
 
 namespace sint = base::utils::socketInterface;
 using helper::base::Parameter;
@@ -54,9 +50,9 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definiti
     const std::string failureTrace2 {
         fmt::format("[{}] -> Failure: The query is empty", name)};
     const std::string failureTrace3 {
-        fmt::format("[{}] -> Failure: Upgrade Confirmation message could not be send", name)};
+        fmt::format("[{}] -> Failure: Upgrade confirmation message could not be send", name)};
     const std::string failureTrace4 {
-        fmt::format("[{}] -> Failure: Error trying to send Update Confirmation message: ", name)};
+        fmt::format("[{}] -> Failure: Error trying to send upgrade confirmation message: ", name)};
 
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
