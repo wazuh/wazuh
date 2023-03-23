@@ -662,6 +662,14 @@ def test_load_wazuh_xml():
 
         assert elements_equal(original, result.find('dummy_tag'))
 
+@pytest.mark.parametrize('expected_exception', [
+    (1201)
+])
+def test_load_wazuh_xml_ko(expected_exception):
+    """Test load_wazuh_xml fails gracefully when reading an invalid utf-8 character sequence"""
+    file_path = os.path.join(test_data_path, 'test_load_wazuh_xml_ko/invalid_utf8.xml')
+    with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
+        utils.load_wazuh_xml(file_path)
 
 @pytest.mark.parametrize('version1, version2', [
     ('Wazuh v3.5.0', 'Wazuh v3.5.2'),
