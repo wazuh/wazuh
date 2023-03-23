@@ -168,11 +168,9 @@ typedef struct _global_belongs_t {
 
 typedef struct _global_group_t {
     uint64_t delete_group_queries;
-    uint64_t find_group_queries;
     uint64_t insert_agent_group_queries;
     uint64_t select_groups_queries;
     struct timeval delete_group_time;
-    struct timeval find_group_time;
     struct timeval insert_agent_group_time;
     struct timeval select_groups_time;
 } global_group_t;
@@ -975,19 +973,6 @@ void w_inc_global_group_select_groups();
  * @param time Value to increment the counter.
  */
 void w_inc_global_group_select_groups_time(struct timeval time);
-
-/**
- * @brief Increment find-group global group queries counter
- *
- */
-void w_inc_global_group_find_group();
-
-/**
- * @brief Increment find-group global group time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_group_find_group_time(struct timeval time);
 
 /**
  * @brief Increment select-group-belong global belongs queries counter

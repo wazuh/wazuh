@@ -150,7 +150,6 @@ static int test_setup(void ** state) {
     wdb_state.queries_breakdown.global_breakdown.group.insert_agent_group_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.group.delete_group_queries = 1;
     wdb_state.queries_breakdown.global_breakdown.group.select_groups_queries = 84;
-    wdb_state.queries_breakdown.global_breakdown.group.find_group_queries = 10;
     wdb_state.queries_breakdown.global_breakdown.belongs.select_group_belong_queries = 10;
     wdb_state.queries_breakdown.global_breakdown.belongs.get_group_agent_queries = 0;
     wdb_state.queries_breakdown.global_breakdown.labels.get_labels_queries = 1;
@@ -202,8 +201,6 @@ static int test_setup(void ** state) {
     wdb_state.queries_breakdown.global_breakdown.group.delete_group_time.tv_usec = 92200;
     wdb_state.queries_breakdown.global_breakdown.group.select_groups_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.group.select_groups_time.tv_usec = 10560;
-    wdb_state.queries_breakdown.global_breakdown.group.find_group_time.tv_sec = 0;
-    wdb_state.queries_breakdown.global_breakdown.group.find_group_time.tv_usec = 510;
     wdb_state.queries_breakdown.global_breakdown.belongs.select_group_belong_time.tv_sec = 0;
     wdb_state.queries_breakdown.global_breakdown.belongs.select_group_belong_time.tv_usec = 25600;
     wdb_state.queries_breakdown.global_breakdown.belongs.get_group_agent_time.tv_sec = 0;
@@ -426,8 +423,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_group_queries_breakdown, "delete-group")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(global_group_queries_breakdown, "select-groups"));
     assert_int_equal(cJSON_GetObjectItem(global_group_queries_breakdown, "select-groups")->valueint, 84);
-    assert_non_null(cJSON_GetObjectItem(global_group_queries_breakdown, "find-group"));
-    assert_int_equal(cJSON_GetObjectItem(global_group_queries_breakdown, "find-group")->valueint, 10);
 
     cJSON* global_belongs_queries_breakdown = cJSON_GetObjectItem(global_queries_tables, "belongs");
     assert_non_null(cJSON_GetObjectItem(global_belongs_queries_breakdown, "select-group-belong"));
@@ -645,8 +640,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_group_time_breakdown, "delete-group")->valueint, 92);
     assert_non_null(cJSON_GetObjectItem(global_group_time_breakdown, "select-groups"));
     assert_int_equal(cJSON_GetObjectItem(global_group_time_breakdown, "select-groups")->valueint, 10);
-    assert_non_null(cJSON_GetObjectItem(global_group_time_breakdown, "find-group"));
-    assert_int_equal(cJSON_GetObjectItem(global_group_time_breakdown, "find-group")->valueint, 0);
 
     cJSON* global_belongs_time_breakdown = cJSON_GetObjectItem(global_time_tables, "belongs");
     assert_non_null(cJSON_GetObjectItem(global_belongs_time_breakdown, "select-group-belong"));

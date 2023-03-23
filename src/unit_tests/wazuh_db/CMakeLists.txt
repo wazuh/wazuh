@@ -45,9 +45,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_global_get_agent_labels -Wl,--wrap,wdb_global_del_agent_labels -Wl,--wrap,wdb_global_set_agent_label \
                              -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_update_agent_connection_status -Wl,--wrap,wdb_global_update_agent_status_code \
                              -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_name \
-                             -Wl,--wrap,wdb_global_delete_agent_belong -Wl,--wrap,wdb_global_find_agent -Wl,--wrap,wdb_global_find_group \
-                             -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_insert_agent_belong -Wl,--wrap,wdb_global_delete_group_belong \
-                             -Wl,--wrap,wdb_global_delete_group -Wl,--wrap,wdb_global_select_groups \
+                             -Wl,--wrap,wdb_global_delete_agent_belong -Wl,--wrap,wdb_global_find_agent \
+                             -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_delete_group -Wl,--wrap,wdb_global_select_groups \
                              -Wl,--wrap,wdb_global_sync_agent_info_get -Wl,--wrap,wdb_global_sync_agent_info_set \
                              -Wl,--wrap,wdb_global_get_all_agents -Wl,--wrap,wdb_global_get_agent_info -Wl,--wrap,wdb_global_reset_agents_connection \
                              -Wl,--wrap,wdb_global_get_agents_by_connection_status -Wl,--wrap,wdb_global_get_agents_to_disconnect \
@@ -66,8 +65,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,w_inc_global_agent_delete_agent -Wl,--wrap,w_inc_global_agent_delete_agent_time -Wl,--wrap,w_inc_global_agent_select_agent_name \
                              -Wl,--wrap,w_inc_global_agent_select_agent_name_time -Wl,--wrap,w_inc_global_agent_select_agent_group \
                              -Wl,--wrap,w_inc_global_agent_select_agent_group_time -Wl,--wrap,w_inc_global_agent_find_agent -Wl,--wrap,w_inc_global_agent_find_agent_time \
-                             -Wl,--wrap,w_inc_global_group_find_group -Wl,--wrap,w_inc_global_group_find_group_time -Wl,--wrap,w_inc_global_group_insert_agent_group \
-                             -Wl,--wrap,w_inc_global_group_insert_agent_group_time -Wl,--wrap,w_inc_global_belongs_select_group_belong \
+                             -Wl,--wrap,w_inc_global_group_insert_agent_group -Wl,--wrap,w_inc_global_group_insert_agent_group_time -Wl,--wrap,w_inc_global_belongs_select_group_belong \
                              -Wl,--wrap,w_inc_global_belongs_select_group_belong_time -Wl,--wrap,w_inc_global_belongs_get_group_agent \
                              -Wl,--wrap,w_inc_global_belongs_get_group_agent_time -Wl,--wrap,w_inc_global_group_delete_group -Wl,--wrap,w_inc_global_group_delete_group_time \
                              -Wl,--wrap,w_inc_global_group_select_groups -Wl,--wrap,w_inc_global_group_select_groups_time -Wl,--wrap,w_inc_global_agent_sync_agent_info_get \

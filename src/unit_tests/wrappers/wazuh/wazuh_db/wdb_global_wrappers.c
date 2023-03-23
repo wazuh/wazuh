@@ -175,12 +175,6 @@ cJSON* __wrap_wdb_global_find_agent(__attribute__((unused)) wdb_t *wdb,
     return mock_ptr_type(cJSON*);
 }
 
-cJSON* __wrap_wdb_global_find_group(__attribute__((unused)) wdb_t *wdb,
-                                    char *group_name) {
-    check_expected(group_name);
-    return mock_ptr_type(cJSON*);
-}
-
 int __wrap_wdb_global_insert_agent_group(__attribute__((unused)) wdb_t *wdb,
                                          char *group_name) {
     check_expected(group_name);
@@ -191,14 +185,6 @@ cJSON* __wrap_wdb_global_select_group_belong(__attribute__((unused)) wdb_t *wdb,
                                              int id_agent) {
     check_expected(id_agent);
     return mock_ptr_type(cJSON*);
-}
-
-int __wrap_wdb_global_insert_agent_belong(__attribute__((unused)) wdb_t *wdb,
-                                          int id_group,
-                                          int id_agent) {
-    check_expected(id_group);
-    check_expected(id_agent);
-    return mock();
 }
 
 int __wrap_wdb_global_delete_group( __attribute__((unused)) wdb_t *wdb,

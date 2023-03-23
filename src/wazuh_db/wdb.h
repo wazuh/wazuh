@@ -245,7 +245,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG,
     WDB_STMT_GLOBAL_DELETE_GROUP,
-    WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
     WDB_STMT_GLOBAL_GROUP_BELONG_GET,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
@@ -1253,17 +1252,6 @@ int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output)
 int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the find group request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the group name.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to parse the insert group request.
  *
  * @param [in] wdb The global struct database.
@@ -1869,13 +1857,13 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
 cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
 
 /**
- * @brief Function to get a group id using the group name.
+ * @brief Function to check if a group exists.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] group_name The group name.
- * @return JSON with group id on success. NULL on error.
+ * @return OS_SUCCESS if exists, OS_INVALID otherwise.
  */
-cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name);
+int wdb_global_find_group(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to insert a group using the group name.
@@ -1899,22 +1887,22 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
  * @brief Function to insert an agent to the belongs table.
  *
  * @param [in] wdb The Global struct database.
- * @param [in] id_group The group id.
+ * @param [in] name_group The group name.
  * @param [in] id_agent The agent id.
  * @param [in] priority The group priority.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority);
+int wdb_global_insert_agent_belong(wdb_t *wdb, const char *name_group, int id_agent, int priority);
 
 /**
  * @brief Function to remove an agent-group tuple from the belongs table.
  *
  * @param [in] wdb The Global struct database.
- * @param [in] id_group The group id.
+ * @param [in] name_group The group name.
  * @param [in] id_agent The agent id.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent);
+int wdb_global_delete_tuple_belong(wdb_t *wdb, const char *name_group, int id_agent);
 
 /**
  * @brief Function to check if a group is empty.

@@ -2310,48 +2310,6 @@ void test_wdb_get_all_agents_rbtree_success(void **state) {
     memset(test_payload, '\0', OS_MAXSTR);
 }
 
-/* Tests wdb_find_group */
-
-void test_wdb_find_group_error_no_json_response(void **state) {
-    int id = 0;
-    char *name = "test_group";
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
-
-    id = wdb_find_group(name, NULL);
-
-    assert_int_equal(OS_INVALID, id);
-}
-
-void test_wdb_find_group_success(void **state) {
-    int id = 0;
-    char *name = "test_group";
-
-    cJSON *root = __real_cJSON_CreateArray();
-    cJSON *row = __real_cJSON_CreateObject();
-    __real_cJSON_AddNumberToObject(row, "id", 1);
-    __real_cJSON_AddItemToArray(root, row);
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, root);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
-
-    expect_function_call(__wrap_cJSON_Delete);
-
-    id = wdb_find_group(name, NULL);
-
-    assert_int_equal(1, id);
-
-    __real_cJSON_Delete(root);
-}
-
 /* Tests wdb_insert_group */
 
 void test_wdb_insert_group_error_socket(void **state)
@@ -2721,13 +2679,6 @@ void test_wdb_update_groups_success(void **state) {
     will_return(__wrap_readdir, dir_ent);
     expect_string(__wrap_IsDir, file, "etc/shared/test_group");
     will_return(__wrap_IsDir, 0);
-
-    //// Call to wdb_find_group
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
 
     //// Call to wdb_insert_group
     const char *query_str = "global insert-agent-group test_group";
@@ -4154,9 +4105,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_find_group */
-        cmocka_unit_test_setup_teardown(test_wdb_find_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_find_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_insert_group */
         cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),

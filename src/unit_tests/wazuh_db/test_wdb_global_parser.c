@@ -1508,88 +1508,6 @@ void test_wdb_parse_global_find_agent_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-/* Tests wdb_parse_global_find_group */
-
-void test_wdb_parse_global_find_group_syntax_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global find-group";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: find-group");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for find-group.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: find-group");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_group_find_group);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'find-group'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_find_group_query_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global find-group test_group";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: find-group test_group");
-    expect_string(__wrap_wdb_global_find_group, group_name, "test_group");
-    will_return(__wrap_wdb_global_find_group, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error getting group id from global.db.");
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_group_find_group);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_group_find_group_time);
-
-    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
-    will_return(__wrap_w_is_file, 1);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Error getting group id from global.db.");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_find_group_success(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global find-group test_group";
-    cJSON *j_object = NULL;
-
-    j_object = cJSON_CreateObject();
-    cJSON_AddNumberToObject(j_object, "id", 1);
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: find-group test_group");
-    expect_string(__wrap_wdb_global_find_group, group_name, "test_group");
-    will_return(__wrap_wdb_global_find_group, j_object);
-
-    expect_function_call(__wrap_w_inc_queries_total);
-    expect_function_call(__wrap_w_inc_global);
-    expect_function_call(__wrap_w_inc_global_group_find_group);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_w_inc_global_group_find_group_time);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok {\"id\":1}");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
 /* Tests wdb_parse_global_insert_agent_group */
 
 void test_wdb_parse_global_insert_agent_group_syntax_error(void **state)
@@ -4243,10 +4161,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_invalid_data, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_success, test_setup, test_teardown),
-        /* Tests wdb_parse_global_find_group */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_group_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_group_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_group_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_insert_agent_group */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_group_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_insert_agent_group_query_error, test_setup, test_teardown),

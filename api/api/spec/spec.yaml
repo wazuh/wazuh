@@ -3194,9 +3194,6 @@ components:
                                 delete-group:
                                   type: integer
                                   format: int32
-                                find-group:
-                                  type: integer
-                                  format: int32
                                 insert-agent-group:
                                   type: integer
                                   format: int32
@@ -3512,9 +3509,6 @@ components:
                               type: object
                               properties:
                                 delete-group:
-                                  type: integer
-                                  format: int32
-                                find-group:
                                   type: integer
                                   format: int32
                                 insert-agent-group:
