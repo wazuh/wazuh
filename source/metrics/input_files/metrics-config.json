@@ -83,7 +83,7 @@
         "exportIntervalMillis": 1000,
         "exportTimeoutMillis": 500,
         "unit": "unit",
-        "description": "KVDB databases counter"
+        "description": "KVDB databases counter, this instrument measures the number of KVDB created."
     },
     {
         "name": "Kvdb.DatabaseInUseCounter",
@@ -95,7 +95,7 @@
         "exportIntervalMillis": 1000,
         "exportTimeoutMillis": 500,
         "unit": "unit",
-        "description": "KVDB database in use counter"
+        "description": "KVDB database in use counter, this instrument measures the current number of active KVDB."
     },
     {
         "name": "Kvdb.WritesCounter",
@@ -107,7 +107,7 @@
         "exportIntervalMillis": 1000,
         "exportTimeoutMillis": 500,
         "unit": "unit",
-        "description": "KVDB database writes counter"
+        "description": "KVDB database writes counter, this instrument measures the number of writes in KVDB."
     },
     {
         "name": "Kvdb.ReadsCounter",
@@ -119,19 +119,7 @@
         "exportIntervalMillis": 1000,
         "exportTimeoutMillis": 500,
         "unit": "unit",
-        "description": "KVDB database reads counter"
-    },
-    {
-        "name": "Kvdb.DeletesCounter",
-        "dataHubEnable" : true,
-        "enable": true,
-        "signalType": "meter",
-        "instrumentType" : "counter",
-        "subType": "uint64",
-        "exportIntervalMillis": 1000,
-        "exportTimeoutMillis": 500,
-        "unit": "unit",
-        "description": "KVDB database deletes counter"
+        "description": "KVDB database reads counter, this instrument measures the number of reads in KVDB."
     },
     {
         "name": "Kvdb.AccessTimeDBHistogram",
@@ -143,6 +131,6 @@
         "exportIntervalMillis": 10000,
         "exportTimeoutMillis": 500,
         "unit": "nanoseconds",
-        "description": "Access time: measures the time it takes for the database to process a request and send the response (histogram)."
+        "description": "KVDB access time histogram, this instrument measures the time it takes for the database to process a request and send the response."
     }
 ]
