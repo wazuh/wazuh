@@ -663,7 +663,7 @@ def test_load_wazuh_xml():
         assert elements_equal(original, result.find('dummy_tag'))
 
 @pytest.mark.parametrize('expected_exception', [
-    (1201)
+    (1113)
 ])
 def test_load_wazuh_xml_ko(expected_exception):
     """Test load_wazuh_xml fails gracefully when reading an invalid utf-8 character sequence"""

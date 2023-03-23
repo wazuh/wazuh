@@ -933,7 +933,7 @@ def load_wazuh_xml(xml_path, data=None):
             try:
                 data = f.read()
             except Exception as e:
-                raise WazuhError(1201, extra_message=str(e))
+                raise WazuhError(1113, extra_message=str(e))
 
     # -- characters are not allowed in XML comments
     xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
