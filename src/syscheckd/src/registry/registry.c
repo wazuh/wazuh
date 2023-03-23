@@ -331,7 +331,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddStringToObject(data, "tags", configuration->tag);
     }
 
-    if (diff != NULL) {
+    if (diff != NULL && resultType == MODIFIED) {
         cJSON_AddStringToObject(data, "content_changes", diff);
     }
 
