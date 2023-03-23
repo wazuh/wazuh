@@ -1,7 +1,6 @@
-#include "metrics.hpp"
 #include <gtest/gtest.h>
 
-#include "metrics.hpp"
+#include <metrics.hpp>
 
 const auto INPUT_PATH {(std::filesystem::current_path() / "source/metrics/input_files/test-metrics-config.json").string()};
 
