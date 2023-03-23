@@ -62,7 +62,9 @@ KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
     if (KVDB::CreationStatus::OkInitialized == result
         || KVDB::CreationStatus::OkCreated == result)
     {
+        // This instrument measures the number of KVDB created
         Metrics::instance().addCounterValue("Kvdb.DatabaseCounter", 1UL);
+        // This instrument measures the current number of active KVDB
         Metrics::instance().addUpDownCounterValue("Kvdb.DatabaseInUseCounter", 1L);
 
         m_dbs[name] = kvdb;
@@ -80,6 +82,7 @@ void KVDBManager::unloadDB(const std::string& name)
     if (isLoaded)
     {
         m_dbs.erase(name);
+        // This instrument measures the current number of active KVDB
         Metrics::instance().addUpDownCounterValue("Kvdb.DatabaseInUseCounter", -1L);
     }
 }
@@ -375,6 +378,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
         if (handler.use_count() == MAX_USE_COUNT)
         {
             m_dbs.erase(name);
+            // This instrument measures the current number of active KVDB
             Metrics::instance().addUpDownCounterValue("Kvdb.DatabaseInUseCounter", -1L);
         }
         else

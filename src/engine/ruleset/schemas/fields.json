@@ -10764,6 +10764,14 @@
                 "string"
             ]
         },
+        "wazuh.queue": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nA char indicating the Wazuh protocol queue of the eventes ingested",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "auditd.log.new_auid": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFor login events this is the new audit ID. The audit ID can be used to trace future events to the user even if their identity changes (like becoming root).\n",
             "type": [
@@ -10787,14 +10795,6 @@
             "type": [
                 "string"
             ]
-        },
-        "wazuh.queue": {
-            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nA char indicating the Wazuh protocol queue of the eventes ingested",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
         }
     }
 }

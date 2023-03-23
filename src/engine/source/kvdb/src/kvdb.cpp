@@ -676,6 +676,7 @@ bool KVDB::write(const std::string& key,
                  const std::string& value,
                  const std::string& columnName)
 {
+    // This instrument measures the number of writes in KVDB
     Metrics::instance().addCounterValue("Kvdb.WritesCounter", 1UL);
     return mImpl->write(key, value, columnName);
 }
@@ -683,6 +684,7 @@ bool KVDB::write(const std::string& key,
 std::variant<std::string, base::Error> KVDB::read(const std::string& key,
                                       const std::string& columnName)
 {
+    // This instrument measures the number of reads in KVDB
     Metrics::instance().addCounterValue("Kvdb.ReadsCounter", 1UL);
 
     auto startTime = std::chrono::high_resolution_clock::now();
@@ -691,9 +693,9 @@ std::variant<std::string, base::Error> KVDB::read(const std::string& key,
 
     auto elapsedTime = std::chrono::high_resolution_clock::now() - startTime;
     auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
-    auto result = static_cast<uint64_t>(microseconds);
 
-    Metrics::instance().addHistogramValue("Kvdb.AccessTimeDBHistogram", result);
+    // This instrument measures the time it takes for the database to process a request and send the response in microseconds
+    Metrics::instance().addHistogramValue("Kvdb.AccessTimeDBHistogram", static_cast<uint64_t>(microseconds));
 
     return response;
 }
