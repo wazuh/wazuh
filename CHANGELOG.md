@@ -636,6 +636,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 - Updated `tag` parameter of `GET /manager/logs` and `GET /cluster/{node_id}/logs` endpoints to accept any string. ([#13867](https://github.com/wazuh/wazuh/pull/13867))
+- Fail gracefully when reading files with invalid utf-8 encoded data [#16489](https://github.com/wazuh/wazuh/pull/16489)
 
 ### Ruleset
 
