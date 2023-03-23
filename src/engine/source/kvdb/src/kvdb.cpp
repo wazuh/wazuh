@@ -14,6 +14,9 @@
 #include <logging/logging.hpp>
 
 #include <iostream>
+#include <chrono>
+#include <sys/time.h>
+#include <ctime>
 
 #include <metrics.hpp>
 
@@ -682,10 +685,14 @@ std::variant<std::string, base::Error> KVDB::read(const std::string& key,
 {
     Metrics::instance().addCounterValue("Kvdb.ReadsCounter", 1UL);
 
-    auto startTime = 100;
+    auto startTime = std::chrono::high_resolution_clock::now();
+
     auto response = mImpl->read(key, columnName);
-    auto endTime = 200;
-    double result = endTime - startTime;
+
+    auto elapsedTime = std::chrono::high_resolution_clock::now() - startTime;
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsedTime).count();
+    auto result = static_cast<uint64_t>(nanoseconds);
+
     Metrics::instance().addHistogramValue("Kvdb.AccessTimeDBHistogram", result);
 
     return response;

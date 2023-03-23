@@ -217,7 +217,7 @@ void DataHubExporter::printPointData(json::Json& jsonObj, const opentelemetry::s
       rapidjson::Document jCounts;
       jCounts.SetArray();
       auto allocator = jCounts.GetAllocator();
-      for (auto &bElement : histogram_point_data.boundaries_)
+      for (auto &bElement : histogram_point_data.counts_)
       {
         rapidjson::Value tmp(bElement);
         jCounts.PushBack(tmp, allocator);
