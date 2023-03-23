@@ -527,9 +527,7 @@ int wm_sync_shared_group(const char *fname) {
         wdb_remove_group_db(fname, &wdb_wmdb_sock);
     }
     else {
-        if(wdb_find_group(fname, &wdb_wmdb_sock) <= 0) {
-            wdb_insert_group(fname, &wdb_wmdb_sock);
-        }
+        wdb_insert_group(fname, &wdb_wmdb_sock);
         closedir(dp);
     }
 

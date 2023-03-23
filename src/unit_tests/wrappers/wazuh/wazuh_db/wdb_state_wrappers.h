@@ -140,10 +140,6 @@ void __wrap_w_inc_global_group_select_groups();
 
 void __wrap_w_inc_global_group_select_groups_time(__attribute__((unused))struct timeval diff);
 
-void __wrap_w_inc_global_group_find_group();
-
-void __wrap_w_inc_global_group_find_group_time(__attribute__((unused))struct timeval diff);
-
 // Global belongs counters
 
 void __wrap_w_inc_global_belongs_select_group_belong();

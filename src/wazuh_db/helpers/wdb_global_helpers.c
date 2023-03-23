@@ -31,7 +31,6 @@ static const char *global_db_commands[] = {
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_GROUP_BELONG] = "global select-group-belong %d",
-    [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_SELECT_GROUPS] = "global select-groups",
     [WDB_DELETE_AGENT] = "global delete-agent %d",
     [WDB_DELETE_GROUP] = "global delete-group %s",
@@ -668,33 +667,6 @@ char* wdb_get_agent_group(int id, int *sock) {
     return output;
 }
 
-int wdb_find_group(const char *name, int *sock) {
-    int output = OS_INVALID;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    cJSON *root = NULL;
-    cJSON *json_group = NULL;
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_FIND_GROUP], name);
-    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get the agent group id.");
-        return OS_INVALID;
-    }
-
-    json_group = cJSON_GetObjectItem(root->child,"id");
-    output = cJSON_IsNumber(json_group) ? json_group->valueint : OS_INVALID;
-
-    cJSON_Delete(root);
-    return output;
-}
-
 int wdb_update_groups(const char *dirname, int *sock) {
     cJSON *root = NULL;
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -762,9 +734,7 @@ int wdb_update_groups(const char *dirname, int *sock) {
             snprintf(path, PATH_MAX, "%s/%s", dirname, dirent->d_name);
 
             if (!IsDir(path)) {
-                if (wdb_find_group(dirent->d_name, sock?sock:&aux_sock) <= 0) {
-                    wdb_insert_group(dirent->d_name, sock?sock:&aux_sock);
-                }
+                wdb_insert_group(dirent->d_name, sock?sock:&aux_sock);
             }
         }
     }

@@ -58,23 +58,21 @@ CREATE TABLE IF NOT EXISTS info (
 );
 
 CREATE TABLE IF NOT EXISTS `group` (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    UNIQUE (name)
+    name TEXT PRIMARY KEY
 );
 
 CREATE INDEX IF NOT EXISTS group_name ON `group` (name);
 
 CREATE TABLE IF NOT EXISTS belongs (
     id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
-    id_group INTEGER REFERENCES `group` (id) ON DELETE CASCADE,
+    name_group TEXT REFERENCES `group` (name) ON DELETE CASCADE,
     priority INTEGER NOT NULL DEFAULT 0,
     UNIQUE (id_agent, priority),
-    PRIMARY KEY (id_agent, id_group)
+    PRIMARY KEY (id_agent, name_group)
 );
 
 CREATE INDEX IF NOT EXISTS belongs_id_agent ON belongs (id_agent);
-CREATE INDEX IF NOT EXISTS belongs_id_group ON belongs (id_group);
+CREATE INDEX IF NOT EXISTS belongs_name_group ON belongs (name_group);
 
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,

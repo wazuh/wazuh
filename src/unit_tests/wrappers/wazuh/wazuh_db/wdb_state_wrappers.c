@@ -258,14 +258,6 @@ void __wrap_w_inc_global_group_select_groups_time(__attribute__((unused))struct 
     function_called();
 }
 
-void __wrap_w_inc_global_group_find_group() {
-    function_called();
-}
-
-void __wrap_w_inc_global_group_find_group_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}
-
 // Global belongs counters
 
 void __wrap_w_inc_global_belongs_select_group_belong() {

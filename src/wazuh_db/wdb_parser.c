@@ -1041,20 +1041,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_find_agent_time(diff);
             }
-        } else if (strcmp(query, "find-group") == 0) {
-            w_inc_global_group_find_group();
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for find-group.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_global_find_group(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_global_group_find_group_time(diff);
-            }
         } else if (strcmp(query, "insert-agent-group") == 0) {
             w_inc_global_group_insert_agent_group();
             if (!next) {
@@ -5545,27 +5531,6 @@ int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output) {
     os_free(out);
     cJSON_Delete(j_id);
     cJSON_Delete(agent_data);
-
-    return OS_SUCCESS;
-}
-
-int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output) {
-    char *group_name = NULL;
-    cJSON *group_id = NULL;
-    char *out = NULL;
-
-    group_name = input;
-
-    if (group_id = wdb_global_find_group(wdb, group_name), !group_id) {
-        mdebug1("Error getting group id from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting group id from global.db.");
-        return OS_INVALID;
-    }
-
-    out = cJSON_PrintUnformatted(group_id);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(group_id);
 
     return OS_SUCCESS;
 }
