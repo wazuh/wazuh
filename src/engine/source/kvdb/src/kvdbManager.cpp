@@ -107,9 +107,6 @@ KVDBHandle KVDBManager::getDB(const std::string& name)
                                 db->getName());
                 return nullptr;
             }
-
-            // TODO: add metric to count reopen DB
-            // Metrics::instance().addCounterValue("Kvdb.DatabaseCounter", 1UL);
         }
 
         // return handle
