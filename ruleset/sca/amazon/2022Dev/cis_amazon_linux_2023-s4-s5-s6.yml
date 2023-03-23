@@ -58,39 +58,21 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition: any
-    rules:
-      - "c:rpm -q audit -> r:^audit-"
-      - "c:rpm -q audit -> !r:^package audit is not installed$"
-
-  # 4.1.1.2 Ensure auditd service is enabled. (Automated)
-  - id: 31141
-    title: "Ensure auditd service is enabled."
-    description: "Turn on the auditd daemon to record system events."
-    rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
-    remediation: "Run the following command to enable auditd: # systemctl --now enable auditd."
-    compliance:
-      - cis: ["4.1.1.2"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1562", "T1562.001"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled auditd -> r:^\s*enabled'
+      - "c:rpm -q audit -> r:^audit-"
+      - "not c:rpm -q audit -> r:^package audit is not installed$"
 
-  # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
+  # 4.1.1.2 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 31142
     title: "Ensure auditing for processes that start prior to auditd is enabled."
     description: "Configure grub2 so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
     rationale: "Audit events need to be captured on processes that start up prior to auditd , so that potential malicious activity cannot go undetected."
     remediation: "Run the following command to add audit=1 to GRUB_CMDLINE_LINUX: # grubby --update-kernel ALL --args 'audit=1'."
     compliance:
-      - cis: ["4.1.1.3"]
+      - cis: ["4.1.1.2"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -99,18 +81,20 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1562", "T1562.001"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !n:audit=(\d+) compare == 1'
 
-  # 4.1.1.4 Ensure audit_backlog_limit is sufficient. (Automated)
+  # 4.1.1.3 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 31143
     title: "Ensure audit_backlog_limit is sufficient."
     description: "The backlog limit has a default setting of 64."
     rationale: "During boot if audit=1, then the backlog will hold 64 records. If more that 64 records are created during boot, auditd records will be lost and potential malicious activity could go undetected."
     remediation: "Run the following command to add audit_backlog_limit=<BACKLOG SIZE> to GRUB_CMDLINE_LINUX: # grubby --update-kernel ALL --args 'audit_backlog_limit=<BACKLOG SIZE>' Example: # grubby --update-kernel ALL --args 'audit_backlog_limit=8192'."
     compliance:
-      - cis: ["4.1.1.4"]
+      - cis: ["4.1.1.3"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -119,9 +103,33 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1562", "T1562.001"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !n:audit_backlog_limit=(\d+) compare >= 8192'
+
+  # 4.1.1.4 Ensure auditd service is enabled. (Automated)
+  - id: 31141
+    title: "Ensure auditd service is enabled."
+    description: "Turn on the auditd daemon to record system events."
+    rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
+    remediation: "Run the following command to enable auditd: # systemctl --now enable auditd."
+    compliance:
+      - cis: ["4.1.1.4"]
+      - cis_csc_v8: ["8.2"]
+      - cis_csc_v7: ["6.2", "6.3"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - hipaa: ["164.312(b)"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
+      - pci_dss_3.2.1: ["10.2", "10.3"]
+      - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1562", "T1562.001"]
+      - mitre_tactics: ["TA0005"]
+    condition: all
+    rules:
+      - 'c:systemctl is-enabled auditd -> r:^\s*enabled'
 
   # 4.1.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 31144
@@ -137,6 +145,9 @@ checks:
       - nist_sp_800-53: ["AU-8"]
       - pci_dss_3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1053"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+$'
@@ -155,6 +166,8 @@ checks:
       - nist_sp_800-53: ["AU-8"]
       - pci_dss_3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs$'
@@ -175,6 +188,8 @@ checks:
       - pci_dss_3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*space_left_action\s*=\s*email'
@@ -197,6 +212,9 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0004"]
+      - mitre_mitigations: ["M1047"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -222,6 +240,9 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0004"]
+      - mitre_mitigations: ["M1047"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -249,6 +270,8 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -276,6 +299,9 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_mitigations: ["M1047"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -314,6 +340,9 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0004"]
+      - mitre_mitigations: ["M1047"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -347,6 +376,9 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0010"]
+      - mitre_mitigations: ["M1034"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -372,6 +404,8 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0001"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -399,6 +433,8 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0001"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -424,6 +460,8 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -449,6 +487,9 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -474,6 +515,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -497,6 +541,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -520,6 +567,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -543,6 +593,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -566,6 +619,9 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0004"]
+      - mitre_mitigations: ["M1047"]
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
@@ -598,9 +654,11 @@ checks:
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "7.1", "9.4.5"]
       - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'not d:/etc/audit/rules.d -> r:\.+.rules$ -> !r:\s*\t*-e 2$'
+      - 'c:sh -c "grep -iEh ''^\s*\t*-e 2\s*$'' /etc/audit/rules.d/*.rules | tail -1" -> r:^\s*\t*-e 2\s*$'
 
   # 4.1.3.21 Ensure the running and on disk configuration is the same. (Manual)
   - id: 31167
