@@ -690,8 +690,8 @@ std::variant<std::string, base::Error> KVDB::read(const std::string& key,
     auto response = mImpl->read(key, columnName);
 
     auto elapsedTime = std::chrono::high_resolution_clock::now() - startTime;
-    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsedTime).count();
-    auto result = static_cast<uint64_t>(nanoseconds);
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
+    auto result = static_cast<uint64_t>(microseconds);
 
     Metrics::instance().addHistogramValue("Kvdb.AccessTimeDBHistogram", result);
 

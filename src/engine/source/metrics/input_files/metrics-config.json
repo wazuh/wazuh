@@ -130,7 +130,7 @@
         "subType": "uint64",
         "exportIntervalMillis": 10000,
         "exportTimeoutMillis": 500,
-        "unit": "nanoseconds",
-        "description": "KVDB access time histogram, this instrument measures the time it takes for the database to process a request and send the response."
+        "unit": "microseconds",
+        "description": "KVDB access time histogram, this instrument measures the time it takes for the database to process a request and send the response in microseconds."
     }
 ]
