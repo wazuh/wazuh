@@ -3094,6 +3094,12 @@
                 "string"
             ]
         },
+        "observer.egress.interface.name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInterface name as reported by the system.",
+            "type": [
+                "string"
+            ]
+        },
         "observer.egress": {
             "description": "Module: ecs\nIndexerType: object\nArray: False\n\nObserver.egress holds information like interface number and name, vlan, and zone information to classify egress traffic.  Single armed monitoring such as a network sensor on a span port should only use observer.ingress to categorize traffic.",
             "type": [
@@ -3209,6 +3215,12 @@
         },
         "observer.hostname": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nHostname of the observer.",
+            "type": [
+                "string"
+            ]
+        },
+        "observer.ingress.interface.name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInterface name as reported by the system.",
             "type": [
                 "string"
             ]
