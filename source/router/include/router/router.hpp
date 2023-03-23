@@ -16,7 +16,6 @@
 
 #include "environmentManager.hpp"
 #include "route.hpp"
-#include "metrics.hpp"
 
 namespace router
 {

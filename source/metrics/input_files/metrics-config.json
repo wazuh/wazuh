@@ -9,7 +9,7 @@
         "subType": "uint64",
 	    "exportIntervalMillis": 1000,
         "exportTimeoutMillis": 500,
-        "unit": "bytes/second",
+        "unit": "unit",
         "description": "This counter was configured in delta mode to measure the bytes per second received belonging to the events"
     },
     {
@@ -22,7 +22,7 @@
         "subType": "uint64",
         "exportIntervalMillis": 1000,
         "exportTimeoutMillis": 500,
-        "unit": "events/second",
+        "unit": "unit",
         "description": "This counter was configured in delta mode to measure the events per second received belonging to the events"
     },
     {
@@ -34,7 +34,7 @@
         "subType": "uint64",
         "exportIntervalMillis": 100,
         "exportTimeoutMillis": 50,
-        "unit": "events",
+        "unit": "unit",
         "description": "This counter was configured in cumulative mode to measure total events received"
     },
     {
@@ -46,7 +46,7 @@
         "subType": "uint64",
         "exportIntervalMillis": 100,
         "exportTimeoutMillis": 50,
-        "unit": "bytes",
+        "unit": "unit",
         "description": "This counter was configured in cumulative mode to measure total bytes received"
     },
     {
@@ -58,7 +58,7 @@
         "subType": "uint64",
         "exportIntervalMillis": 100,
         "exportTimeoutMillis": 50,
-        "unit": "events",
+        "unit": "unit",
         "description": "This counter was configured in cumulative mode to measure events inserted disk"
     },
     {
@@ -70,7 +70,7 @@
         "subType": "uint64",
         "exportIntervalMillis": 100,
         "exportTimeoutMillis": 50,
-        "unit": "events",
+        "unit": "unit",
         "description": "This counter was configured in cumulative mode to measure events queued"
     },
     {
@@ -82,7 +82,7 @@
         "subType": "int64",
         "exportIntervalMillis": 100,
         "exportTimeoutMillis": 50,
-        "unit": "connections",
+        "unit": "unit",
         "description": "This up down counter was configured in cumulative mode to measure connected sockets"
     },
     {
@@ -94,7 +94,7 @@
         "subType": "uint64",
         "exportIntervalMillis": 100,
         "exportTimeoutMillis": 50,
-        "unit": "connections",
+        "unit": "unit",
         "description": "This counter was configured in cumulative mode to measure total connections"
     },
     {
@@ -106,7 +106,7 @@
         "subType": "double",
         "exportIntervalMillis": 1000,
         "exportTimeoutMillis": 500,
-        "unit": "queue_occupancy_percentage",
+        "unit": "unit",
         "description": "This observableGauge was configured to measure Used queue"
     },
     {
