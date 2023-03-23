@@ -700,7 +700,6 @@ std::variant<std::string, base::Error> KVDB::read(const std::string& key,
 
 std::optional<base::Error> KVDB::deleteKey(const std::string& key, const std::string& columnName)
 {
-    Metrics::instance().addCounterValue("Kvdb.DeletesCounter", 1UL);
     return mImpl->deleteKey(key, columnName);
 }
 
