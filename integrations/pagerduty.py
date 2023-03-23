@@ -102,11 +102,11 @@ def process_args(args: list[str]) -> None:
 
     # Load options. Parse JSON object.
     json_options = get_json_options(options_file_location)
-    debug("# Opening options file at '{options_file_location}' with '{json_options}'")
+    debug(f"# Opening options file at '{options_file_location}' with '{json_options}'")
 
     # Load alert. Parse JSON object.
     json_alert  = get_json_alert(alert_file_location)
-    debug("# Opening alert file at '{alert_file_location}' with '{json_alert}'")
+    debug(f"# Opening alert file at '{alert_file_location}' with '{json_alert}'")
 
     debug("# Generating message")
     msg: any = generate_msg(json_alert, json_options,apikey)
@@ -225,7 +225,7 @@ def get_json_alert(file_location: str) -> any:
         with open(file_location) as alert_file:
             return json.load(alert_file)
     except FileNotFoundError:
-        debug("# JSON file %s doesn't exist" % file_location)
+        debug("# JSON file for alert %s doesn't exist" % file_location)
         sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
         debug("Failed getting JSON alert. Error: %s" % e)
@@ -247,17 +247,14 @@ def get_json_options(file_location: str) -> any:
 
         Raises
         ------
-        FileNotFoundError
-            If no JSON file is found.
         JSONDecodeError
             If no valid JSON file are used
     """
     try:
-        with open(file_location) as alert_file:
-            return json.load(alert_file)
+        with open(file_location) as options_file:
+            return json.load(options_file)
     except FileNotFoundError:
-        debug("# JSON file %s doesn't exist" % file_location)
-        sys.exit(ERR_FILE_NOT_FOUND)
+        debug("# JSON file for options %s doesn't exist" % file_location)
     except BaseException as e:
         debug("Failed getting JSON options. Error: %s" % e)
         sys.exit(ERR_INVALID_JSON)
