@@ -32,10 +32,10 @@ checks:
   # 1 Install Updates, Patches and Additional Security Software
   ##########################################################################
 
-  # 1.1 Ensure All Apple-provided Software Is Current (Automated)
-  - id: 30000
+  # 1.1 Ensure All Apple-provided Software Is Current. (Automated)
+  - id: 31000
     title: "Ensure All Apple-provided Software Is Current."
-    description: "Software vendors release security patches and software updates for their products when security vulnerabilities are discovered. There is no simple way to complete this action without a network connection to an Apple software repository. Please ensure appropriate access for this control. This check is only for what Apple provides through software update. Software updates should be run at minimum every 30 days. Run the following command to verify when software update was previously run: $ /usr/bin/sudo defaults read /Library/Preferences/com.apple.SoftwareUpdate | grep -e LastFullSuccessfulDate. The response should be in the last 30 days (Example): LastFullSuccessfulDate = '2020-07-30 12:45:25 +0000';."
+    description: 'Software vendors release security patches and software updates for their products when security vulnerabilities are discovered. There is no simple way to complete this action without a network connection to an Apple software repository. Please ensure appropriate access for this control. This check is only for what Apple provides through software update. Software updates should be run at minimum every 30 days. Run the following command to verify when software update was previously run: $ /usr/bin/sudo defaults read /Library/Preferences/com.apple.SoftwareUpdate | grep -e LastFullSuccessfulDate. The response should be in the last 30 days (Example): LastFullSuccessfulDate = "2020-07-30 12:45:25 +0000";.'
     rationale: "It is important that these updates be applied in a timely manner to prevent unauthorized persons from exploiting the identified vulnerabilities."
     impact: "Missing patches can lead to more exploit opportunities."
     remediation: "Graphical Method: Perform the following to install all available software updates: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select Update All Terminal Method: Run the following command to verify what packages need to be installed: $ /usr/bin/sudo /usr/sbin/softwareupdate -l The output will include the following: Software Update found the following new or updated software: Run the following command to install all the packages that need to be updated: $ /usr/bin/sudo /usr/sbin/softwareupdate -i -a -R Or run the following command to install individual packages: $ /usr/bin/sudo /usr/sbin/softwareupdate -i '<package name>' example: $ /usr/bin/sudo /usr/sbin/softwareupdate -l Software Update Tool Finding available software Software Update found the following new or updated software: * iTunesX-12.8.2 iTunes (12.8.2), 273614K [recommended] $ /usr/bin/sudo /usr/sbin/softwareupdate -i 'iTunesX-12.8.2' Software Update Tool Downloaded iTunes Installing iTunes Done with iTunes Done."
@@ -44,104 +44,101 @@ checks:
       - cis_csc_v8: ["7.3", "7.4"]
       - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
       - "c:softwareupdate -l -> r:No new software available."
 
-  # 1.2 Ensure Auto Update Is Enabled (Automated)
-  - id: 30001
+  # 1.2 Ensure Auto Update Is Enabled. (Automated)
+  - id: 31001
     title: "Ensure Auto Update Is Enabled."
-    description: "Auto Update verifies that your system has the newest security patches and software updates. If 'Automatically check for updates' is not selected, background updates for new malware definition files from Apple for XProtect and Gatekeeper will not occur. http://macops.ca/os-x-admins-your-clients-are-not-getting-background-security-updates/ https://derflounder.wordpress.com/2014/12/17/forcing-xprotect-blacklist-updates-on-mavericks-and-yosemite/."
+    description: 'Auto Update verifies that your system has the newest security patches and software updates. If "Automatically check for updates" is not selected, background updates for new malware definition files from Apple for XProtect and Gatekeeper will not occur. http://macops.ca/os-x-admins-your-clients-are-not-getting-background-security-updates/ https://derflounder.wordpress.com/2014/12/17/forcing-xprotect-blacklist-updates-on-mavericks-and-yosemite/.'
     rationale: "It is important that a system has the newest updates applied so as to prevent unauthorized persons from exploiting identified vulnerabilities."
     impact: "Without automatic update, updates may not be made in a timely manner and the system will be exposed to additional risk."
-    remediation: "Graphical Method: Perform the steps following to enable the system to automatically check for updates: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Check for updates to enabled 6. Select Done. Terminal Method: Run the following command to enable auto update: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticCheckEnabled 3. The key must be set to <true/>."
-    references:
-      - http://macops.ca/os-x-admins-your-clients-are-not-getting-background-security-updates/
-      - https://derflounder.wordpress.com/2014/12/17/forcing-xprotect-blacklist-updates-on-mavericks-and-yosemite/
+    remediation: "Graphical Method: Perform the steps following to enable the system to automatically check for updates: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Check for updates to enabled 6. Select Done Terminal Method: Run the following command to enable auto update: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticCheckEnabled 3. The key must be set to <true/>."
     compliance:
       - cis: ["1.2"]
       - cis_csc_v8: ["7.3", "7.4"]
       - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -> r:^1$"
 
-  # 1.3 Ensure Download New Updates When Available Is Enabled (Automated)
-  - id: 30002
+  # 1.3 Ensure Download New Updates When Available Is Enabled. (Automated)
+  - id: 31002
     title: "Ensure Download New Updates When Available Is Enabled."
-    description: "In the GUI, both 'Install macOS updates' and 'Install app updates from the App Store' are dependent on whether 'Download new updates when available' is selected."
+    description: 'In the GUI, both "Install macOS updates" and "Install app updates from the App Store" are dependent on whether "Download new updates when available" is selected.'
     rationale: "It is important that a system has the newest updates downloaded so that they can be applied."
-    impact: "If 'Download new updates when available' is not selected, updates may not be made in a timely manner and the system will be exposed to additional risk."
-    remediation: "Perform the following to enable the system to automatically check for updates: Graphical Method: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Download new updates when available to enabled 6. Select Done. Terminal Method: Run the following command to enable auto update: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticDownload 3. The key must be set to <true/>."
+    impact: 'If "Download new updates when available" is not selected, updates may not be made in a timely manner and the system will be exposed to additional risk.'
+    remediation: "Perform the following to enable the system to automatically check for updates: Graphical Method: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Download new updates when available to enabled 6. Select Done Terminal Method: Run the following command to enable auto update: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticDownload 3. The key must be set to <true/>."
     compliance:
       - cis: ["1.3"]
       - cis_csc_v8: ["7.3", "7.4"]
       - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -> r:^1$"
 
-  # 1.4 Ensure Install of macOS Updates Is Enabled (Automated)
-  - id: 30003
+  # 1.4 Ensure Install of macOS Updates Is Enabled. (Automated)
+  - id: 31003
     title: "Ensure Install of macOS Updates Is Enabled."
     description: "Ensure that macOS updates are installed after they are available from Apple. This setting enables macOS updates to be automatically installed. Some environments will want to approve and test updates before they are delivered. It is best practice to test first where updates can and have caused disruptions to operations. Automatic updates should be turned off where changes are tightly controlled and there are mature testing and approval processes. Automatic updates should not be turned off simply to allow the administrator to contact users in order to verify installation. A dependable, repeatable process involving a patch agent or remote management tool should be in place before auto-updates are turned off."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
     impact: "Unpatched software may be exploited."
-    remediation: "Graphical Method: Perform the following steps to enable macOS updates to run automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install macOS updates to enabled 6. Select Done. Terminal Method: Run the following command to to enable automatic checking and installing of macOS updates: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool TRUE Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallMacOSUpdates 3. The key must be set to <true/>."
+    remediation: "Graphical Method: Perform the following steps to enable macOS updates to run automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install macOS updates to enabled 6. Select Done Terminal Method: Run the following command to to enable automatic checking and installing of macOS updates: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool TRUE Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallMacOSUpdates 3. The key must be set to <true/>."
     compliance:
       - cis: ["1.4"]
       - cis_csc_v8: ["7.3", "7.4"]
       - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -> r:^1$"
 
-  # 1.5 Ensure Install Application Updates from the App Store Is Enabled (Automated)
-  - id: 30004
+  # 1.5 Ensure Install Application Updates from the App Store Is Enabled. (Automated)
+  - id: 31004
     title: "Ensure Install Application Updates from the App Store Is Enabled."
     description: "Ensure that application updates are installed after they are available from Apple. These updates do not require reboots or administrator privileges for end users."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
     impact: "Unpatched software may be exploited."
-    remediation: "Graphical Method: Perform the following steps to enable App Store updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install application updates from the App Store to enabled 6. Select Done. Terminal Method: Run the following command to turn on App Store auto updating: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool TRUE Note: This remediation requires a log out and log in to show in the GUI. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallAppUpdates 3. The key must be set to <true/>."
+    remediation: "Graphical Method: Perform the following steps to enable App Store updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install application updates from the App Store to enabled 6. Select Done Terminal Method: Run the following command to turn on App Store auto updating: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool TRUE Note: This remediation requires a log out and log in to show in the GUI. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is AutomaticallyInstallAppUpdates 3. The key must be set to <true/>."
     compliance:
       - cis: ["1.5"]
       - cis_csc_v8: ["7.3", "7.4"]
       - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> r:^1$"
 
-  # 1.6 Ensure Install Security Responses and System Files Is Enabled (Automated)
-  - id: 30005
+  # 1.6 Ensure Install Security Responses and System Files Is Enabled. (Automated)
+  - id: 31005
     title: "Ensure Install Security Responses and System Files Is Enabled."
     description: "Ensure that system and security updates are installed after they are available from Apple. This setting enables definition updates for XProtect and Gatekeeper. With this setting in place, new malware and adware that Apple has added to the list of malware or untrusted software will not execute. These updates do not require reboots or end user admin rights."
     rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
     impact: "Unpatched software may be exploited."
-    remediation: "Graphical Method: Perform the following steps to enable system data files and security updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install Security Responses and System files to enabled 6. Select Done. Terminal Method: Run the following commands to enable automatic checking of system data files and security updates: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is ConfigDataInstall 3. The key must be set to <true/> 4. The key to also include is CriticalUpdateInstall 5. The key must be set to <true/>."
+    remediation: "Graphical Method: Perform the following steps to enable system data files and security updates to install automatically: 1. Open System Settings 2. Select General 3. Select Software Update 4. Select the i 5. Set Install Security Responses and System files to enabled 6. Select Done Terminal Method: Run the following commands to enable automatic checking of system data files and security updates: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.SoftwareUpdate 2. The key to include is ConfigDataInstall 3. The key must be set to <true/> 4. The key to also include is CriticalUpdateInstall 5. The key must be set to <true/>."
     references:
       - https://eclecticlight.co/2021/10/27/silently-updated-security-data-files-in-monterey/
       - https://support.apple.com/en-us/HT202491
@@ -151,10 +148,10 @@ checks:
       - cis: ["1.6"]
       - cis_csc_v8: ["7.3", "7.4", "7.7"]
       - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["RA.L2-3.11.3", "CA.L2-3.12.2", "SI.L1-3.14.1"]
+      - cmmc_v2.0: ["CA.L2-3.12.2", "RA.L2-3.11.3", "SI.L1-3.14.1"]
+      - nist_sp_800-53: ["SI-2(2)"]
       - pci_dss_3.2.1: ["6.2"]
       - pci_dss_4.0: ["11.3.1", "11.3.2", "11.3.2.1"]
-      - nist_sp_800-53: ["SI-2(2)"]
       - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
@@ -162,8 +159,8 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -> r:^1$"
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -> r:^1$"
 
-  # 1.7 Ensure Software Update Deferment Is Less Than or Equal to 30 Days (Automated)
-  - id: 30006
+  # 1.7 Ensure Software Update Deferment Is Less Than or Equal to 30 Days. (Automated)
+  - id: 31006
     title: "Ensure Software Update Deferment Is Less Than or Equal to 30 Days."
     description: "Apple provides the capability to manage software updates on Apple devices through mobile device management. Part of those capabilities permit organizations to defer software updates and allow for testing. Many organizations have specialized software and configurations that may be negatively impacted by Apple updates. If software updates are deferred, they should not be deferred for more than 30 days. This control only verifies that deferred software updates are not deferred for more than 30 days."
     rationale: "Apple software updates almost always include security updates. Attackers evaluate updates to create exploit code in order to attack unpatched systems. The longer a system remains unpatched, the greater an exploit possibility exists in which there are publicly reported vulnerabilities."
@@ -176,8 +173,8 @@ checks:
       - cis_csc_v8: ["7.3", "7.4"]
       - cis_csc_v7: ["3.4", "3.5"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - pci_dss_3.2.1: ["6.2"]
       - nist_sp_800-53: ["SI-2(2)"]
+      - pci_dss_3.2.1: ["6.2"]
       - soc_2: ["CC7.1"]
       - mitre_techniques: ["T1103", "T1017", "T1138", "T1189", "T1190", "T1212", "T1211", "T1068", "T1210", "T1495", "T1137", "T1075", "T1195", "T1019", "T1072", "T1100", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
