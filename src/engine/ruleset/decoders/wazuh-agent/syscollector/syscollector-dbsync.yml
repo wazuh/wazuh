@@ -21,7 +21,12 @@ metadata:
         - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#syscollector-tables
 
 sources:
-  - decoder/syscollector-dbsync-base/0
+  - decoder/syscollector-base/0
+
+check:
+  - ~json.type: +s_starts/dbsync_
+  - ~json.operation: +t_is_string
+  - ~json.data: +t_is_object
 
 # processes
 # {"data":{"argvs":null,"checksum":"71ece4e42dd41b4b06df00e3f5c4fab33aacc1c5","cmd":null,"egroup":"root","euser":"root","fgroup":"root","name":"kworker/1:2-eve","nice":0,"nlwp":1,"pgrp":0,"pid":"4188","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","scan_time":"2023/03/10 03:27:12","session":0,"sgroup":"root","share":0,"size":0,"start_time":1678418235,"state":"R","stime":14,"suser":"root","tgid":4188,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"}
@@ -42,14 +47,8 @@ sources:
 # hotfixes
 # {"data":{"scan_time":"2021/10/29 14:26:24","hotfix":"KB123456","checksum":"abcdef0123456789"}, "type":"dbsync_hotfixes","operation":"MODIFIED"}
 
-
-
 normalize:
-  - check: +ef_exists/~json.data.address OR +ef_exists/~json.data.mac OR +ef_exists/~json.data.os_version OR +ef_exists/~json.data.release
-    map:
-      - ~do_update_kvdb: true
-
-  - check: +s_ne/~json.data.hostname/ OR +s_ne/~json.data.os_name/ OR +s_ne/~json.data.os_platform/ OR +s_ne/~json.data.sysname/
+  - check: +ef_exists/~json.data.address OR +ef_exists/~json.data.mac OR +ef_exists/~json.data.os_version OR +ef_exists/~json.data.release OR +s_ne/~json.data.hostname/ OR +s_ne/~json.data.os_name/ OR +s_ne/~json.data.os_platform/ OR +s_ne/~json.data.sysname/
     map:
       - ~do_update_kvdb: true
 
