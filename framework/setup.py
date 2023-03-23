@@ -10,7 +10,7 @@ import json
 import os
 from datetime import datetime, timezone
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 from setuptools.command.install import install
 
 
@@ -47,7 +47,7 @@ setup(name='wazuh',
       author='Wazuh',
       author_email='hello@wazuh.com',
       license='GPLv2',
-      packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
+      packages=find_namespace_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
       package_data={'wazuh': ['core/wazuh.json', 'core/cluster/cluster.json', 'rbac/default/*.yaml']},
       include_package_data=True,
       install_requires=[],
