@@ -400,7 +400,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
         if (handler.use_count() == MAX_USE_COUNT)
         {
             m_dbs.erase(name);
-            Metrics::instance().addCounterValue("Kvdb.DatabaseInUseCounter", -1UL);
+            Metrics::instance().addUpDownCounterValue("Kvdb.DatabaseInUseCounter", -1L);
         }
         else
         {
