@@ -232,18 +232,22 @@ class WazuhIntegration:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
     @staticmethod
-    def default_config(profile: str):
-        """Sets a default configuration in case retry parameters are missing.
+    def default_config(profile: str = 'default'):
+        """Sets the parameters found in .aws/config as a default configuration for client.
 
-        This method is called when Wazuh Integration is instantiated and sets the configuration for received param
+        This method is called when Wazuh Integration is instantiated and sets a default config using .aws/config file
+        using the profile received from parameter.
 
-        If there is no configuration in config path a Config object is created and default configuration is set.
-    Else, if max_attempts and mode configuration are not within the param configuration dict
+        If .aws/config file exist the file is retrieved and read to check for the existence of retry parameters mode and
+         max attempts if they exist and empty dictionary is returned and config is handled by botocore but if they dont
+         exist a botocore Config object is created and default configuration is set using user config for received
+         profile and retry parameters are set to avoid a throttling exception
 
         Parameters
         ----------
         profile : string
                 Aws profile configuration to use
+
         Returns
         -------
         dict
@@ -251,11 +255,47 @@ class WazuhIntegration:
 
         Raises
         ------
-
-
+        KeyError
+             KeyError when there is no region declared in .aws/config file
         """
         args = {}
-        if not path.exists(DEFAULT_AWS_CONFIG_PATH):
+
+        if path.exists(DEFAULT_AWS_CONFIG_PATH):
+            # Get User Aws Config
+            aws_config = get_aws_config_params()
+
+            # Set profile
+            profile = profile if profile is not None else 'default'
+
+            user_config = aws_config._sections[profile]
+
+            # Checks if retries config have the necessary parameters to avoid a throttling exception
+            if 'retries' in user_config:
+                retries = user_config['retries']
+                retries.setdefault('max_attempts', 10)
+                retries.setdefault('mode', 'standard')
+            else:
+                return args
+
+            # Get region name in the config file or raised a key error
+            region_name = user_config.get('region') or user_config['region_name']
+
+            # Get primary botocore Config parameters
+            signature_version = user_config.get('signature_version', 'v4')
+            s3 = user_config.get('s3')
+            proxies = user_config.get('proxies')
+            proxies_config = user_config.get('proxies_config')
+
+            args['config'] = botocore.config.Config(
+                region_name,
+                retries,
+                signature_version,
+                **s3,
+                **proxies,
+                **proxies_config
+            )
+
+        else:
             args['config'] = botocore.config.Config(
                 retries={
                     'max_attempts': 10,
@@ -265,29 +305,6 @@ class WazuhIntegration:
             debug(
                 f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
                 2)
-        else:
-            aws_config = get_aws_config_params()
-
-            config_dict = dict(aws_config.items(profile))
-
-            if config_dict['retry_mode'] and config_dict['max_attempts']:
-                debug(
-                    f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',
-                    2)
-            else:
-
-                if not config_dict['max_attempts']:
-                    config_dict['retries'].update({
-                        'max_attempts': 10
-                    })
-                    debug("")
-
-                if not config_dict['retry_mode']:
-                    config_dict['retries'].update({
-                        'mode': 'standard'
-                    })
-
-                args['config'] = botocore.config.Config(config_dict)
 
         return args
 
