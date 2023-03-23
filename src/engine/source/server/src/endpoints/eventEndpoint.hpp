@@ -36,6 +36,8 @@ private:
     std::shared_ptr<DatagramSocketHandle> m_handle;
     static std::shared_ptr<concurrentQueue> m_eventQueue;
 
+    static void callbackUsedQueue(opentelemetry::metrics::ObserverResult, void *);
+
 public:
     /**
      * @brief Construct a new EventEndpoint object.
@@ -56,8 +58,6 @@ public:
     void close(void);
 
     std::shared_ptr<concurrentQueue> getEventQueue() const;
-
-    static void callbackUsedQueue(opentelemetry::metrics::ObserverResult, void *);
 };
 
 } // namespace engineserver::endpoints
