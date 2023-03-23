@@ -3119,6 +3119,16 @@ def arg_valid_date(arg_string):
 
 
 def arg_valid_prefix(arg_string):
+    CHARACTERS_TO_AVOID = "{}^%`[]'<>~#|"
+    XML_CONSTRAINTS = ["&apos;", "&quot;", "&amp;", "&lt;", "&gt;", "&#13;", "&#10;"]
+
+    # Validate against the naming guidelines https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html
+    if any([char in arg_string for char in list(CHARACTERS_TO_AVOID) + XML_CONSTRAINTS]):
+        raise argparse.ArgumentTypeError(
+            f"'{arg_string}' has an invalid character."
+            f" Avoid to use '{CHARACTERS_TO_AVOID}' or '{''.join(XML_CONSTRAINTS)}'."
+        )
+
     if arg_string and arg_string[-1] != '/' and arg_string[-1] != "\\":
         return '{arg_string}/'.format(arg_string=arg_string)
     return arg_string
@@ -3142,6 +3152,10 @@ def arg_valid_regions(arg_string):
     final_regions = []
     regions = arg_string.split(',')
     for arg_region in regions:
+        if not re.match(r'(us(-gov)?|ap|ca|cn|eu|sa)-(central|(north|south)?(east|west)?)-\d', arg_region):
+            raise argparse.ArgumentTypeError(
+                f"WARNING: The region '{arg_region}' has not a valid format.'"
+            )
         if arg_region.strip():
             final_regions.append(arg_region.strip())
     return final_regions
@@ -3172,6 +3186,30 @@ def arg_valid_iam_role_duration(arg_string):
     return int(arg_string)
 
 
+def arg_valid_bucket_name(arg: str) -> str:
+    """Validate the bucket name against the S3 naming rules.
+    https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+
+    Parameters
+    ----------
+    arg : str
+        Argument to validate.
+
+    Returns
+    -------
+    str
+        The bucket name if match with the rules.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the bucket name is not valid.
+    """
+    if not re.match(r'(?!(^xn--|.+-s3alias$))^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$', arg):
+        raise argparse.ArgumentTypeError(f"'{arg}' isn't a valid bucket name.")
+    return arg
+
+
 def get_aws_config_params() -> configparser.RawConfigParser:
     """Read and retrieve parameters from aws config file
 
@@ -3193,7 +3231,7 @@ def get_script_arguments():
     # only one must be present (bucket or service)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS logs',
-                       action='store')
+                       action='store', type=arg_valid_bucket_name)
     group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
                        action='store')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
@@ -3235,7 +3273,7 @@ def get_script_arguments():
                         help='Parse the log file, even if its been parsed before', default=False)
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
     parser.add_argument('-g', '--aws_log_groups', dest='aws_log_groups', help='Name of the log group to be parsed',
-                        default='')
+                        default='', type=arg_valid_prefix)
     parser.add_argument('-P', '--remove-log-streams', action='store_true', dest='deleteLogStreams',
                         help='Remove processed log streams from the log group', default=False)
     parser.add_argument('-df', '--discard-field', type=str, dest='discard_field', default=None,
