@@ -6,31 +6,42 @@
 #include <unordered_map>
 
 #include <utils/baseMacros.hpp>
-#include <metrics/iMetricsManager.hpp>
 
+#include <metrics/iMetricsManager.hpp>
 #include <metrics/dataHub.hpp>
+#include <metrics/metricsScope.hpp>
 
 namespace metrics_manager
 {
-
-class MetricsScope;
 
 class MetricsManager : public IMetricsManager
 {
 public:
     MetricsManager();
-
-    /// @copydoc IMetricsManager::getMetricsScope
+    /**
+     * @copydoc IMetricsManager::getMetricsScope
+    */
     std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name) override;
     
-    /// @copydoc IMetricsManager::getScopeNames
+    /**
+     * @copydoc IMetricsManager::getScopeNames
+    */
     std::vector<std::string> getScopeNames() override;
 
-    /// @copydoc IMetricsManager::start
+    /**
+     * @copydoc IMetricsManager::start
+    */
     void start() override;
 
-    /// @copydoc IMetricsManager::isRunning
+    /** 
+     * @copydoc IMetricsManager::isRunning
+    */
     bool isRunning() override;
+
+    /**
+     * @copydoc IMetricsManager::getAllMetrics
+    */
+    json::Json getAllMetrics() override;
 
 private:
 
