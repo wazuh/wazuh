@@ -61,3 +61,11 @@ TEST_F(MetricsInterfaceTest, getMetricsScopeNames)
     ASSERT_EQ(scopeNames[0], "scope_0");
     ASSERT_EQ(scopeNames[1], "scope_1");
 }
+
+TEST_F(MetricsInterfaceTest, createDoubleCounter)
+{
+    auto scope0 = m_manager->getMetricsScope("scope_0");
+    auto counter0 = scope0->getCounterDouble("counter_0");
+
+}
+
