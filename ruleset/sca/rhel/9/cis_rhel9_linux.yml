@@ -1987,8 +1987,8 @@ checks:
       - "c:nft list ruleset -> r:filter hook output"
 
   # 3.4.2.4 Ensure host based firewall loopback traffic is configured (Automated) - Not implemented
-  # 3.4.2.5 Ensure firewalld drops unnecessary services and ports (Manual)
-  # 3.4.2.6 Ensure nftables established connections are configured (Manual)
+  # 3.4.2.5 Ensure firewalld drops unnecessary services and ports (Manual) - Not Implemented
+  # 3.4.2.6 Ensure nftables established connections are configured (Manual) - Not Implemented
 
   # 3.4.2.7 Ensure nftables default deny firewall policy (Automated)
   - id: 28078
@@ -3610,7 +3610,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
+      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.6.1.2 Ensure minimum days between password changes is configured (Automated)
   - id: 28144
@@ -3679,8 +3679,8 @@ checks:
     condition: all
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*\t*(\d+) compare <= 30'
-      - 'f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
-      - 'not f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
+      - 'f:/etc/shadow -> !r:^\w+:!|^\w+:\p && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
+      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
   # 5.6.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
   # 5.6.2 Ensure system accounts are secured (Automated) - Not implemented
