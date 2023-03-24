@@ -3579,8 +3579,8 @@ checks:
       - mitre_mitigations: ["M1041"]
     condition: all
     rules:
-      - 'f:/etc/libuser.conf -> r:^\s*\t*crypt_style\s*\t*=\s*\t*sha512|^\s*crypt_style\s*\t*=\s*\t*yescript'
-      - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD SHA512|^\s*\t*ENCRYPT_METHOD YESCRIPT'
+      - 'f:/etc/libuser.conf -> r:^\s*\t*crypt_style\s*\t*=\s*\t*sha512|^\s*crypt_style\s*\t*=\s*\t*yescrypt'
+      - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD SHA512|^\s*\t*ENCRYPT_METHOD YESCRYPT'
       - 'f:/etc/pam.d/password-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
       - 'f:/etc/pam.d/system-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
 
