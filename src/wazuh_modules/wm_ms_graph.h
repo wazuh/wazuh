@@ -54,7 +54,7 @@ typedef struct wm_ms_graph {
 	wm_ms_graph_resource* resources;
 	unsigned int num_resources;
 	wm_ms_graph_state_t state;
-};
+} wm_ms_graph;
 
 extern const wm_context WM_MS_GRAPH_CONTEXT; // Context
 
