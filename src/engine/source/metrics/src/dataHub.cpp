@@ -3,6 +3,7 @@
 #include <mutex>
 #include <iostream>
 #include <fmt/format.h>
+#include <metrics/dataHub.hpp>
 
 namespace metrics_manager
 {
@@ -27,4 +28,18 @@ void DataHub::setResource(const std::string& scope, json::Json object)
     m_resources[scope] = object;
 }
 
+json::Json DataHub::getAllResources()
+{
+    const std::lock_guard<std::mutex> lock(m_mutex);
+    
+    json::Json retValue;
+    retValue.setArray();
+
+    auto it = m_resources.begin();
+    while (it!=m_resources.end())
+    {
+        retValue.appendJson(it->second);
+    }
+    return json::Json();
+}
 } // namespace metrics_manager

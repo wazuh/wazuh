@@ -22,6 +22,22 @@ bool MetricsManager::isRunning()
     return m_statusRunning;
 }
 
+json::Json MetricsManager::getAllMetrics()
+{
+    const std::lock_guard<std::mutex> lock(m_mutexScopes);
+
+    json::Json retValue;
+    retValue.setArray();
+
+    auto it = m_mapScopes.begin();
+    while (it!=m_mapScopes.end())
+    {
+        auto scopeMetrics = it->second->getAllMetrics();
+        scopeMetrics.setObject("/" + it->first);
+        retValue.appendJson(scopeMetrics);
+    }
+}
+
 std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string& metricsScopeName)
 {
     const std::lock_guard<std::mutex> lock(m_mutexScopes);

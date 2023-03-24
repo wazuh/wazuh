@@ -23,6 +23,8 @@ public:
     /// @param object json object with updated information
     void setResource(const std::string& scope, json::Json object) override;
 
+    json::Json getAllResources();
+
 private:
     std::map<std::string, json::Json> m_resources;
     std::mutex m_mutex;
