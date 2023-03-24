@@ -234,11 +234,11 @@ char *fim_registry_value_diff(const char *key_name,
     // Check for file limit and disk quota
     if (ret = fim_diff_check_limits(diff), ret == 1) {
         mdebug2(FIM_BIG_FILE_REPORT_CHANGES, full_value_name);
-        os_strdup("Unable to calculate diff due to 'file_size' limit has been reached", diff_changes);
+        os_strdup("Unable to calculate diff due to 'file_size' limit has been reached.", diff_changes);
         goto cleanup;
     } else if (ret == 2){
         mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", full_value_name);
-        os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached", diff_changes);
+        os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
         goto cleanup;
     }
 
@@ -249,7 +249,7 @@ char *fim_registry_value_diff(const char *key_name,
             save_compress_file(diff);
             os_strdup("Unable to calculate diff due to no previous data stored for this registry value.", diff_changes);
         } else if (ret == -2){
-            os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached", diff_changes);
+            os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
         }
         goto cleanup;
     }
@@ -257,10 +257,10 @@ char *fim_registry_value_diff(const char *key_name,
     // If it exists, estimate the new compressed file
     float backup_file_size = (FileSize(diff->compress_file) / 1024.0f);
     syscheck.diff_folder_size -= backup_file_size;
-    if (ret = fim_diff_create_compress_file(diff), ret == -1) {
+    if (ret = fim_diff_create_compress_file(diff), ret != 0) {
         syscheck.diff_folder_size += backup_file_size;
         if (ret == -2){
-            os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached", diff_changes);
+            os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
         }
         goto cleanup;
     }
@@ -273,7 +273,7 @@ char *fim_registry_value_diff(const char *key_name,
     }
 
     if (is_registry_nodiff(key_name, value_name, configuration->arch)) {
-        os_strdup("Diff truncated due to 'nodiff' configuration detected for this registry value", diff_changes);
+        os_strdup("Diff truncated due to 'nodiff' configuration detected for this registry value.", diff_changes);
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }

@@ -4020,9 +4020,9 @@ static void test_fim_event_callback(void **state) {
 
     fim_event_callback(json_event, &callback_ctx);
 #ifndef TEST_WINAGENT
-    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0,\"ppid\":0},\"tags\":\"tag_name\"}}";
+    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0,\"ppid\":0},\"tags\":\"tag_name\"}}";
 #else
-    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0},\"tags\":\"tag_name\"}}";
+    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0},\"tags\":\"tag_name\"}}";
 #endif
     char* string_event = cJSON_PrintUnformatted(json_event);
     assert_string_equal(string_event, test_event);
