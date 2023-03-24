@@ -57,7 +57,7 @@ void wm_ms_graph_setup(wm_ms_graph* _ms_graph) {
     queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
-        mterror(WM_AZURE_LOGTAG, "Can't connect to queue.");
+        mterror(WM_AZURE_LOGTAG, "Unable to connect to Message Queue. Exiting...");
         pthread_exit(NULL);
     }
 
