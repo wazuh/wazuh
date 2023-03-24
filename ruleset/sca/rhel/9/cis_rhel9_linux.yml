@@ -3237,10 +3237,10 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
       - mitre_techniques: ["T1499", "T1499.002"]
       - mitre_tactics: ["TA0040"]
-    condition: all
+    condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare > 10'
 
   # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 28121
