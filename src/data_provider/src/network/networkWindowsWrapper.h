@@ -348,7 +348,6 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
         std::string MAC() const override
         {
             std::string retVal { "00:00:00:00:00:00" };
-            constexpr auto MAC_ADDRESS_MAX_LENGHT { 30 };
             const auto physicalAddressLen { m_interfaceAddress->PhysicalAddressLength };
 
             if (0 != physicalAddressLen)
@@ -360,7 +359,7 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
                     ss << std::hex << std::setfill('0') << std::setw(2);
                     ss << static_cast<int>(static_cast<uint8_t>(m_interfaceAddress->PhysicalAddress[idx]));
 
-                    if (MAC_ADDRESS_MAX_LENGHT - 1 != idx)
+                    if (physicalAddressLen - 1 != idx)
                     {
                         ss << ":";
                     }
