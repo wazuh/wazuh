@@ -217,10 +217,10 @@ EventEndpoint::EventEndpoint(
             auto strRequest = std::string {eventSocket.data.get(), eventSocket.length};
 
             // Received bytes per seconds
-            Metrics::instance().addCounterValue("Server.ReceivedBytesPerSeconds", static_cast<uint64_t>(eventSocket.length));
+            Metrics::instance().addCounterValue("Server.ReceivedBytesPerSecond", static_cast<uint64_t>(eventSocket.length));
 
             // Received events per seconds
-            Metrics::instance().addCounterValue("Server.ReceivedEventsPerSeconds", 1UL);
+            Metrics::instance().addCounterValue("Server.ReceivedEventsPerSecond", 1UL);
 
             // Total events received
             Metrics::instance().addCounterValue("Server.TotalEventsReceived", 1UL);
@@ -308,7 +308,7 @@ void EventEndpoint::run(void)
     //Used Queue
     Metrics::instance().addObservableGauge("Server.UsedQueue", callbackUsedQueue);
 
-    // Size in bytes per second received 
+    // Size in bytes per second received
     m_loop->run<Loop::Mode::DEFAULT>();
 }
 
