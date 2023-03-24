@@ -18,13 +18,13 @@
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 #include "../wrappers/wazuh/remoted/shared_download_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/remoted/request_wrappers.h"
 #include "../wrappers/wazuh/remoted/remoted_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 
+#include "../wazuh_db/wdb.h"
 #include "../remoted/remoted.h"
 #include "../remoted/shared_download.h"
 #include "../../remoted/manager.c"
@@ -70,7 +70,8 @@ static void free_group_c_group(void *data) {
     }
 }
 
-int __wrap_send_msg(const char *msg, ssize_t msg_length) {
+int __wrap_send_msg(const char *agent_id, const char *msg, ssize_t msg_length) {
+    check_expected(agent_id);
     check_expected(msg);
     return 0;
 }
@@ -4570,7 +4571,6 @@ void test_save_controlmsg_request_success(void **state)
 
 void test_save_controlmsg_invalid_msg(void **state)
 {
-
     char r_msg[OS_SIZE_128] = {0};
     strcpy(r_msg, "Invalid message");
 
@@ -4581,6 +4581,81 @@ void test_save_controlmsg_invalid_msg(void **state)
     int *wdb_sock = NULL;
 
     expect_string(__wrap__mwarn, formatted_msg, "Invalid message from agent: 'NEW_AGENT' (001)");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+}
+
+void test_save_controlmsg_agent_invalid_version(void **state)
+{
+    char r_msg[OS_SIZE_128] = {0};
+    char s_msg[OS_FLSIZE + 1] = {0};
+    strcpy(r_msg, "agent startup {\"version\":\"v4.6.0\"}");
+    snprintf(s_msg, OS_FLSIZE, "%s%s%s%s%s", CONTROL_HEADER, HC_ERROR, "{\"message\":\"", HC_INVALID_VERSION_RESPONSE, "\"}");
+
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+    memset(&key.peer_info, 0, sizeof(struct sockaddr_storage));
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
+
+    expect_string(__wrap_compare_wazuh_versions, version1, "v4.5.0");
+    expect_string(__wrap_compare_wazuh_versions, version2, "v4.6.0");
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
+    will_return(__wrap_compare_wazuh_versions, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to connect agent: '001': 'Incompatible version'");
+
+    expect_value(__wrap_wdb_update_agent_status_code, id, 1);
+    expect_value(__wrap_wdb_update_agent_status_code, status_code, INVALID_VERSION);
+    expect_string(__wrap_wdb_update_agent_status_code, version, "v4.6.0");
+    expect_string(__wrap_wdb_update_agent_status_code, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_status_code, OS_SUCCESS);
+
+    expect_string(__wrap_send_msg, agent_id, "001");
+    expect_string(__wrap_send_msg, msg, s_msg);
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+}
+
+void test_save_controlmsg_get_agent_version_fail(void **state)
+{
+    char r_msg[OS_SIZE_128] = {0};
+    char s_msg[OS_FLSIZE + 1] = {0};
+    strcpy(r_msg, "agent startup {\"test\":\"fail\"}");
+    snprintf(s_msg, OS_FLSIZE, "%s%s%s%s%s", CONTROL_HEADER, HC_ERROR, "{\"message\":\"", HC_RETRIEVE_VERSION, "\"}");
+
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+    memset(&key.peer_info, 0, sizeof(struct sockaddr_storage));
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
+    expect_string(__wrap__merror, formatted_msg, "Error getting version from agent '001'");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to connect agent: '001': 'Couldn't retrieve version'");
+
+    expect_value(__wrap_wdb_update_agent_status_code, id, 1);
+    expect_value(__wrap_wdb_update_agent_status_code, status_code, ERR_VERSION_RECV);
+    expect_string(__wrap_wdb_update_agent_status_code, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_status_code, OS_INVALID);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to set status code for agent: '001'");
+
+    expect_string(__wrap_send_msg, agent_id, "001");
+    expect_string(__wrap_send_msg, msg, s_msg);
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
@@ -4598,7 +4673,8 @@ void test_save_controlmsg_could_not_add_pending_data(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
+    expect_string(__wrap_send_msg, agent_id, "001");
+    expect_string(__wrap_send_msg, msg, "#!-agent ack ");
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
@@ -4637,7 +4713,8 @@ void test_save_controlmsg_unable_to_save_last_keepalive(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
+    expect_string(__wrap_send_msg, agent_id, "001");
+    expect_string(__wrap_send_msg, msg, "#!-agent ack ");
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
@@ -4682,7 +4759,8 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
+    expect_string(__wrap_send_msg, agent_id, "001");
+    expect_string(__wrap_send_msg, msg, "#!-agent ack ");
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
@@ -4762,7 +4840,8 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
+    expect_string(__wrap_send_msg, agent_id, "001");
+    expect_string(__wrap_send_msg, msg, "#!-agent ack ");
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
@@ -4865,7 +4944,8 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
+    expect_string(__wrap_send_msg, agent_id, "001");
+    expect_string(__wrap_send_msg, msg, "#!-agent ack ");
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
@@ -4930,20 +5010,26 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 void test_save_controlmsg_startup(void **state)
 {
     char r_msg[OS_SIZE_128] = {0};
-    strcpy(r_msg, HC_STARTUP);
+    strcpy(r_msg, "agent startup {\"version\":\"v4.5.0\"}");
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
     key.peer_info.ss_family = 0;
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_send_msg, msg, "001");
+    expect_string(__wrap_send_msg, agent_id, "001");
+    expect_string(__wrap_send_msg, msg, "#!-agent ack ");
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
     expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
+
+    expect_string(__wrap_compare_wazuh_versions, version1, "v4.5.0");
+    expect_string(__wrap_compare_wazuh_versions, version2, "v4.5.0");
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
+    will_return(__wrap_compare_wazuh_versions, 0);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -4986,13 +5072,13 @@ void test_save_controlmsg_shutdown(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
-
     expect_any(__wrap_get_ipv4_string, address);
     expect_any(__wrap_get_ipv4_string, address_size);
     will_return(__wrap_get_ipv4_string, OS_INVALID);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_SHUTDOWN from ''");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -5054,13 +5140,13 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     size_t msg_length = sizeof(r_msg);
     int *wdb_sock = NULL;
 
-    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
-
     expect_any(__wrap_get_ipv6_string, address);
     expect_any(__wrap_get_ipv6_string, address_size);
     will_return(__wrap_get_ipv6_string, OS_INVALID);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_SHUTDOWN from ''");
+
+    expect_string(__wrap_rem_inc_recv_ctrl_shutdown, agent_id, "001");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -5214,6 +5300,8 @@ int main(void)
         cmocka_unit_test(test_save_controlmsg_request_error),
         cmocka_unit_test(test_save_controlmsg_request_success),
         cmocka_unit_test(test_save_controlmsg_invalid_msg),
+        cmocka_unit_test(test_save_controlmsg_agent_invalid_version),
+        cmocka_unit_test(test_save_controlmsg_get_agent_version_fail),
         cmocka_unit_test(test_save_controlmsg_could_not_add_pending_data),
         cmocka_unit_test(test_save_controlmsg_unable_to_save_last_keepalive),
         cmocka_unit_test(test_save_controlmsg_update_msg_error_parsing),

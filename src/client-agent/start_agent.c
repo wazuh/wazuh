@@ -20,6 +20,10 @@
             #define CloseSocket wrap_closesocket
             #define recv wrap_recv
     #endif
+
+    // Redefine ossec_version
+    #undef __ossec_version
+    #define __ossec_version "v4.5.0"
 #endif
 
 #define ENROLLMENT_RETRY_TIME_MAX   60
@@ -328,7 +332,13 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
     char buffer[OS_MAXSTR + 1] = { '\0' };
     char cleartext[OS_MAXSTR + 1] = { '\0' };
 
-    snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
+    cJSON* agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "version", __ossec_version);
+    char *agent_info_string = cJSON_PrintUnformatted(agent_info);
+    cJSON_Delete(agent_info);
+
+    snprintf(msg, OS_MAXSTR, "%s%s%s", CONTROL_HEADER, HC_STARTUP, agent_info_string);
+    os_free(agent_info_string);
 
     if (connect_server(server_id, true)) {
         /* Send start up message */
@@ -357,6 +367,19 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
                         }
 
                         return true;
+                    } else if (strncmp(tmp_msg, HC_ERROR, strlen(HC_ERROR)) == 0) {
+                        cJSON *error_msg = NULL;
+                        cJSON *error_info = NULL;
+                        if (error_msg = cJSON_Parse(strchr(tmp_msg, '{')), error_msg) {
+                            if (error_info = cJSON_GetObjectItem(error_msg, "message"), cJSON_IsString(error_info)) {
+                                mwarn("Couldn't connect to server '%s': '%s'", agt->server[server_id].rip, error_info->valuestring);
+                            } else {
+                                merror("Error getting message from server '%s'", agt->server[server_id].rip);
+                            }
+                        } else {
+                            merror("Error getting message from server '%s'", agt->server[server_id].rip);
+                        }
+                        cJSON_Delete(error_msg);
                     }
                 }
             }

@@ -18,6 +18,10 @@
     /* Remove static qualifier when unit testing */
     #define static
 
+    // Redefine ossec_version
+    #undef __ossec_version
+    #define __ossec_version "v4.5.0"
+
     /* Replace assert with mock_assert */
     extern void mock_assert(const int result, const char* const expression,
                             const char * const file, const int line);
@@ -38,6 +42,7 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg);
 static int w_enrollment_process_response(SSL *ssl);
 /* Auxiliary */
 static int w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
+static void w_enrollment_concat_agent_version (char *buff, const char *agent_version);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
 static int w_enrollment_concat_src_ip(char *buff, const size_t remain_size, const char* sender_ip, const int use_src_ip);
 static void w_enrollment_concat_key(char *buff, keyentry* key);
@@ -108,11 +113,13 @@ w_enrollment_ctx * w_enrollment_init(w_enrollment_target *target, w_enrollment_c
     cfg->allow_localhost = true;
     cfg->delay_after_enrollment = 20;
     cfg->keys = keys;
+    os_strdup(__ossec_version, cfg->agent_version);
     return cfg;
 }
 
 void w_enrollment_destroy(w_enrollment_ctx *cfg) {
     assert(cfg != NULL);
+    os_free(cfg->agent_version);
     os_free(cfg);
 }
 
@@ -281,6 +288,10 @@ static int w_enrollment_send_message(w_enrollment_ctx *cfg) {
         snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s'", cfg->cert_cfg->authpass, lhostname);
     } else {
         snprintf(buf, 2048, "OSSEC A:'%s'", lhostname);
+    }
+
+    if (cfg->agent_version) {
+        w_enrollment_concat_agent_version(buf, cfg->agent_version);
     }
 
     if (cfg->target_cfg->centralized_group) {
@@ -514,6 +525,23 @@ static void w_enrollment_concat_key(char *buff, keyentry* key_entry) {
     if (strlen(buff) < (OS_SIZE_65536 + OS_SIZE_4096)) {
         strncat(buff, opt_buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buff));
     }
+    free(opt_buf);
+}
+
+/**
+ * @brief Concats agent version part of the enrollment message
+ *
+ * @param buff buffer where the agent version section will be concatenated
+ * @param agent_version version of the agent that will be added
+ */
+static void w_enrollment_concat_agent_version(char *buff, const char *agent_version) {
+    assert(buff != NULL);
+    assert(agent_version != NULL);
+
+    char * opt_buf = NULL;
+    os_calloc(OS_SIZE_32, sizeof(char), opt_buf);
+    snprintf(opt_buf,OS_SIZE_32," V:'%s'",agent_version);
+    strncat(buff,opt_buf,OS_SIZE_32);
     free(opt_buf);
 }
 

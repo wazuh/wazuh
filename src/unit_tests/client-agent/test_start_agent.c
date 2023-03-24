@@ -251,7 +251,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(wrap_recv, SERVER_ENC_ACK);
     #endif
     will_return(__wrap_wnet_select, 1);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
@@ -280,7 +280,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
@@ -309,7 +309,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_send_msg, msg, "1:wazuh-agent:ossec: Agent started: 'agent0->any'.");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
@@ -343,7 +343,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
     will_return(__wrap_OS_ConnectUDP, 23);
     will_return(__wrap_wnet_select, 0);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
 
     expect_any(__wrap__mwarn, formatted_msg);
 
@@ -363,7 +363,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(wrap_recv, SERVER_WRONG_ACK);
 #endif
     will_return(__wrap_wnet_select, 1);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup ");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, KS_CORRUPT);
@@ -372,6 +372,88 @@ static void test_agent_handshake_to_server(void **state) {
     assert_false(handshaked);
 
     return;
+}
+
+
+static void test_agent_handshake_to_server_invalid_version(void **state) {
+    bool handshaked = false;
+
+    /* Handshake with first server (UDP) */
+    will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
+    will_return(__wrap_OS_ConnectUDP, 21);
+    #ifndef TEST_WINAGENT
+    will_return(__wrap_recv, SERVER_ENC_ACK);
+    #else
+    will_return(wrap_recv, SERVER_ENC_ACK);
+    #endif
+    will_return(__wrap_wnet_select, 1);
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
+    will_return(__wrap_ReadSecMSG, "#!-err {\"message\": \"Agent version must be lower or equal to manager version\"}");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 1);
+
+    expect_string(__wrap__mwarn, formatted_msg ,"Couldn't connect to server '127.0.0.1': 'Agent version must be lower or equal to manager version'");
+
+    handshaked = agent_handshake_to_server(0, false);
+    assert_false(handshaked);
+}
+
+static void test_agent_handshake_to_server_error_getting_msg1(void **state) {
+    bool handshaked = false;
+
+    /* Handshake with first server (UDP) */
+    will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
+    will_return(__wrap_OS_ConnectUDP, 21);
+    #ifndef TEST_WINAGENT
+    will_return(__wrap_recv, SERVER_ENC_ACK);
+    #else
+    will_return(wrap_recv, SERVER_ENC_ACK);
+    #endif
+    will_return(__wrap_wnet_select, 1);
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
+    will_return(__wrap_ReadSecMSG, "#!-err \"message\": \"Agent version must be lower or equal to manager version\"}");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 1);
+
+    expect_string(__wrap__merror, formatted_msg ,"Error getting message from server '127.0.0.1'");
+
+    handshaked = agent_handshake_to_server(0, false);
+    assert_false(handshaked);
+}
+
+static void test_agent_handshake_to_server_error_getting_msg2(void **state) {
+    bool handshaked = false;
+
+    /* Handshake with first server (UDP) */
+    will_return(__wrap_getDefine_Int, 5);
+    expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
+    will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
+    will_return(__wrap_OS_ConnectUDP, 21);
+    #ifndef TEST_WINAGENT
+    will_return(__wrap_recv, SERVER_ENC_ACK);
+    #else
+    will_return(wrap_recv, SERVER_ENC_ACK);
+    #endif
+    will_return(__wrap_wnet_select, 1);
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
+    will_return(__wrap_ReadSecMSG, "#!-err {\"key\": \"Agent version must be lower or equal to manager version\"}");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_any_count(__wrap__minfo, formatted_msg, 1);
+
+    expect_string(__wrap__merror, formatted_msg ,"Error getting message from server '127.0.0.1'");
+
+    handshaked = agent_handshake_to_server(0, false);
+    assert_false(handshaked);
 }
 
 /* agent_start_up_to_server */
@@ -394,6 +476,9 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_connect_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_handshake_to_server_invalid_version, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_handshake_to_server_error_getting_msg1, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_handshake_to_server_error_getting_msg2, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
     };

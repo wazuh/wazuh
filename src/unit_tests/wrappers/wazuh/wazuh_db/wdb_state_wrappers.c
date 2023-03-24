@@ -104,6 +104,14 @@ void __wrap_w_inc_global_agent_update_connection_status_time(__attribute__((unus
     function_called();
 }
 
+void __wrap_w_inc_global_agent_update_status_code() {
+    function_called();
+}
+
+void __wrap_w_inc_global_agent_update_status_code_time(__attribute__((unused))struct timeval diff) {
+    function_called();
+}
+
 void __wrap_w_inc_global_agent_reset_agents_connection() {
     function_called();
 }

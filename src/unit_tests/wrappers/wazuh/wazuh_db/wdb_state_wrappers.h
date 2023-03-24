@@ -62,6 +62,10 @@ void __wrap_w_inc_global_agent_update_connection_status();
 
 void __wrap_w_inc_global_agent_update_connection_status_time(__attribute__((unused))struct timeval diff);
 
+void __wrap_w_inc_global_agent_update_status_code();
+
+void __wrap_w_inc_global_agent_update_status_code_time(__attribute__((unused))struct timeval diff);
+
 void __wrap_w_inc_global_agent_reset_agents_connection();
 
 void __wrap_w_inc_global_agent_reset_agents_connection_time(__attribute__((unused))struct timeval diff);

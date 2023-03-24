@@ -447,6 +447,10 @@ void test_wdb_upgrade_global_full_upgrade_success(void **state)
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
     will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
+    // Upgrading database from version 4 to 5
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
+    will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
 
     ret = wdb_upgrade_global(data->wdb);
 
@@ -493,6 +497,10 @@ void test_wdb_upgrade_global_full_upgrade_success_from_unversioned_db(void **sta
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
     will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
+    // Upgrading database from version 4 to 5
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
+    will_return(__wrap_wdb_sql_exec, OS_SUCCESS);
 
     ret = wdb_upgrade_global(data->wdb);
 
@@ -500,7 +508,7 @@ void test_wdb_upgrade_global_full_upgrade_success_from_unversioned_db(void **sta
     assert_true(ret->enabled);
 }
 
-void test_wdb_upgrade_global_update_v1_to_v4_success(void **state)
+void test_wdb_upgrade_global_update_v1_to_v5_success(void **state)
 {
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -526,13 +534,16 @@ void test_wdb_upgrade_global_update_v1_to_v4_success(void **state)
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, 0);
     will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
 
     ret = wdb_upgrade_global(data->wdb);
 
     assert_int_equal(ret, data->wdb);
 }
 
-void test_wdb_upgrade_global_update_v1_to_v4_fail(void **state)
+void test_wdb_upgrade_global_update_v1_to_v5_fail(void **state)
 {
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -562,7 +573,7 @@ void test_wdb_upgrade_global_update_v1_to_v4_fail(void **state)
     assert_ptr_equal(ret, data->wdb);
 }
 
-void test_wdb_upgrade_global_update_v2_to_v4_success(void **state)
+void test_wdb_upgrade_global_update_v2_to_v5_success(void **state)
 {
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -585,13 +596,16 @@ void test_wdb_upgrade_global_update_v2_to_v4_success(void **state)
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, 0);
     will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
 
     ret = wdb_upgrade_global(data->wdb);
 
     assert_int_equal(ret, data->wdb);
 }
 
-void test_wdb_upgrade_global_update_v2_to_v4_fail(void **state)
+void test_wdb_upgrade_global_update_v2_to_v5_fail(void **state)
 {
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -621,7 +635,7 @@ void test_wdb_upgrade_global_update_v2_to_v4_fail(void **state)
     assert_int_equal(ret, data->wdb);
 }
 
-void test_wdb_upgrade_global_update_v3_to_v4_success(void **state)
+void test_wdb_upgrade_global_update_v3_to_v5_success(void **state)
 {
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -641,13 +655,16 @@ void test_wdb_upgrade_global_update_v3_to_v4_success(void **state)
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, 0);
     will_return(__wrap_wdb_global_adjust_v4, OS_SUCCESS);
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
 
     ret = wdb_upgrade_global(data->wdb);
 
     assert_int_equal(ret, data->wdb);
 }
 
-void test_wdb_upgrade_global_update_v3_to_v4_fail(void **state)
+void test_wdb_upgrade_global_update_v3_to_v5_fail(void **state)
 {
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -667,6 +684,60 @@ void test_wdb_upgrade_global_update_v3_to_v4_fail(void **state)
     expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v4_sql);
     will_return(__wrap_wdb_sql_exec, -1);
     expect_string(__wrap__merror, formatted_msg, "Failed to update global.db to version 4.");
+
+    expect_value(__wrap_wdb_global_restore_backup, save_pre_restore_state, false);
+    will_return(__wrap_wdb_global_restore_backup, OS_INVALID);
+
+    ret = wdb_upgrade_global(data->wdb);
+
+    assert_int_equal(ret, data->wdb);
+}
+
+void test_wdb_upgrade_global_update_v4_to_v5_success(void **state)
+{
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap_wdb_count_tables_with_name, key, "metadata");
+    will_return(__wrap_wdb_count_tables_with_name, 1);
+    will_return(__wrap_wdb_count_tables_with_name, OS_SUCCESS);
+
+    expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
+    will_return(__wrap_wdb_metadata_get_entry, "4");
+    will_return(__wrap_wdb_metadata_get_entry, OS_SUCCESS);
+
+    will_return(__wrap_wdb_global_create_backup, "string");
+    will_return(__wrap_wdb_global_create_backup, OS_SUCCESS);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
+    will_return(__wrap_wdb_sql_exec, 0);
+
+    ret = wdb_upgrade_global(data->wdb);
+
+    assert_int_equal(ret, data->wdb);
+}
+
+void test_wdb_upgrade_global_update_v4_to_v5_fail(void **state)
+{
+    wdb_t *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap_wdb_count_tables_with_name, key, "metadata");
+    will_return(__wrap_wdb_count_tables_with_name, 1);
+    will_return(__wrap_wdb_count_tables_with_name, OS_SUCCESS);
+
+    expect_string(__wrap_wdb_metadata_get_entry, key, "db_version");
+    will_return(__wrap_wdb_metadata_get_entry, "4");
+    will_return(__wrap_wdb_metadata_get_entry, OS_SUCCESS);
+
+    will_return(__wrap_wdb_global_create_backup, "string");
+    will_return(__wrap_wdb_global_create_backup, OS_SUCCESS);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Updating database 'global' to version 5");
+    expect_string(__wrap_wdb_sql_exec, sql_exec, schema_global_upgrade_v5_sql);
+    will_return(__wrap_wdb_sql_exec, -1);
+    expect_string(__wrap__merror, formatted_msg, "Failed to update global.db to version 5.");
 
     expect_value(__wrap_wdb_global_restore_backup, save_pre_restore_state, false);
     will_return(__wrap_wdb_global_restore_backup, OS_INVALID);
@@ -769,12 +840,14 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_is_older_than_v310_step_error, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_is_older_than_v310_step_nodata, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_is_older_than_v310_step_ok, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v1_to_v4_fail, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v1_to_v4_success, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v2_to_v4_fail, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v2_to_v4_success, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v3_to_v4_fail, setup_wdb, teardown_wdb),
-        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v3_to_v4_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v1_to_v5_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v1_to_v5_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v2_to_v5_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v2_to_v5_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v3_to_v5_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v3_to_v5_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v4_to_v5_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_update_v4_to_v5_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_upgrade_global_fail_backup_fail, setup_wdb, teardown_wdb),
     };
 

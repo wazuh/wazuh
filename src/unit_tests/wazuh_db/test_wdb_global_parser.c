@@ -943,14 +943,16 @@ void test_wdb_parse_global_update_connection_status_query_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
+    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, "active");
+    expect_string(__wrap_wdb_global_update_agent_connection_status, sync_status, "syncreq");
+    expect_value(__wrap_wdb_global_update_agent_connection_status, status_code, 0);
     will_return(__wrap_wdb_global_update_agent_connection_status, OS_INVALID);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}");
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
 
@@ -971,14 +973,16 @@ void test_wdb_parse_global_update_connection_status_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
+    char query[OS_BUFFER_SIZE] = "global update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_value(__wrap_wdb_global_update_agent_connection_status, id, 1);
     expect_string(__wrap_wdb_global_update_agent_connection_status, connection_status, "active");
+    expect_string(__wrap_wdb_global_update_agent_connection_status, sync_status, "syncreq");
+    expect_value(__wrap_wdb_global_update_agent_connection_status, status_code, 0);
     will_return(__wrap_wdb_global_update_agent_connection_status, OS_SUCCESS);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-connection-status {\"id\":1,\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"status_code\":0}");
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
@@ -986,6 +990,134 @@ void test_wdb_parse_global_update_connection_status_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_connection_status_time);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+/* Tests wdb_parse_global_update_status_code */
+
+void test_wdb_parse_global_update_status_code_syntax_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-status-code";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-status-code");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for update-status-code.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: update-status-code");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'update-status-code'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_status_code_invalid_json(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-status-code {INVALID_JSON}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-status-code {INVALID_JSON}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON syntax when updating agent status code.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB JSON error near: NVALID_JSON}");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code_time);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_status_code_invalid_data(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-status-code {\"id\":1,\"sync_status\":null}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-status-code {\"id\":1,\"sync_status\":null}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent status code.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code_time);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON data, near '{\"id\":1,\"sync_status\":null}'");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_status_code_query_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-status-code {\"id\":1,\"status_code\":0,\"version\":\"v4.5.0\",\"sync_status\":\"syncreq\"}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_value(__wrap_wdb_global_update_agent_status_code, id, 1);
+    expect_value(__wrap_wdb_global_update_agent_status_code, status_code, 0);
+    expect_string(__wrap_wdb_global_update_agent_status_code, version, "v4.5.0");
+    expect_string(__wrap_wdb_global_update_agent_status_code, sync_status, "syncreq");
+    will_return(__wrap_wdb_global_update_agent_status_code, OS_INVALID);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-status-code {\"id\":1,\"status_code\":0,\"version\":\"v4.5.0\",\"sync_status\":\"syncreq\"}");
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db: ERROR MESSAGE");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code_time);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_update_status_code_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global update-status-code {\"id\":1,\"status_code\":0,\"version\":\"v4.5.0\",\"sync_status\":\"syncreq\"}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_value(__wrap_wdb_global_update_agent_status_code, id, 1);
+    expect_value(__wrap_wdb_global_update_agent_status_code, status_code, 0);
+    expect_string(__wrap_wdb_global_update_agent_status_code, version, "v4.5.0");
+    expect_string(__wrap_wdb_global_update_agent_status_code, sync_status, "syncreq");
+    will_return(__wrap_wdb_global_update_agent_status_code, OS_SUCCESS);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: update-status-code {\"id\":1,\"status_code\":0,\"version\":\"v4.5.0\",\"sync_status\":\"syncreq\"}");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_update_status_code_time);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3978,6 +4110,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_connection_status_invalid_data, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_connection_status_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_connection_status_success, test_setup, test_teardown),
+        /* Tests wdb_parse_global_update_status_code */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_status_code_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_status_code_invalid_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_status_code_invalid_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_status_code_query_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_update_status_code_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_delete_agent */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_query_error, test_setup, test_teardown),
