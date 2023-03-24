@@ -39,7 +39,7 @@ int wdb_metadata_get_entry(wdb_t * wdb, const char *key, char *output) {
     sqlite3_bind_text(stmt, 1, key, -1, NULL);
 
     int ret = OS_INVALID;
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
         case SQLITE_ROW: {
             strncpy(output, (char *)sqlite3_column_text(stmt, 0), OS_SIZE_256);
             ret = OS_SUCCESS;
@@ -78,7 +78,7 @@ int wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* count) {
     }
 
     int ret = OS_INVALID;
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
         case SQLITE_ROW: {
             *count = sqlite3_column_int(stmt, 0);
             ret = OS_SUCCESS;

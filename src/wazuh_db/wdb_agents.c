@@ -21,7 +21,7 @@ cJSON* wdb_agents_get_sys_osinfo(wdb_t *wdb){
         return NULL;
     }
 
-    cJSON* result = wdb_exec_stmt(stmt);
+    cJSON* result = wdb_exec_stmt(stmt, wdb);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
@@ -37,7 +37,7 @@ int wdb_agents_set_sys_osinfo_triaged(wdb_t *wdb){
         return OS_INVALID;
     }
 
-    return wdb_exec_stmt_silent(stmt);
+    return wdb_exec_stmt_silent(stmt, wdb);
 }
 
 bool wdb_agents_find_package(wdb_t *wdb, const char* reference){
@@ -49,7 +49,7 @@ bool wdb_agents_find_package(wdb_t *wdb, const char* reference){
 
     sqlite3_bind_text(stmt, 1, reference, -1, NULL);
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         return TRUE;
     case SQLITE_DONE:
@@ -70,7 +70,7 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference){
     sqlite3_bind_text(stmt, 1, cve, -1, NULL);
     sqlite3_bind_text(stmt, 2, reference, -1, NULL);
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         return TRUE;
     case SQLITE_DONE:
@@ -162,7 +162,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
             sqlite3_bind_null(stmt, 15);
         }
 
-        if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
+        if (OS_SUCCESS == wdb_exec_stmt_silent(stmt, wdb)) {
             cJSON_AddStringToObject(result, "status", "SUCCESS");
         }
         else {
@@ -211,7 +211,7 @@ int wdb_agents_update_vuln_cves_status(wdb_t *wdb, const char* old_status, const
         return OS_INVALID;
     }
 
-    return wdb_exec_stmt_silent(stmt);
+    return wdb_exec_stmt_silent(stmt, wdb);
 }
 
 int wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* reference) {
@@ -229,7 +229,7 @@ int wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* referen
     sqlite3_bind_text(stmt, 1, cve, -1, NULL);
     sqlite3_bind_text(stmt, 2, reference, -1, NULL);
 
-    return wdb_exec_stmt_silent(stmt);
+    return wdb_exec_stmt_silent(stmt, wdb);
 }
 
 wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status, char **output) {
@@ -249,7 +249,7 @@ wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status
 
     //Execute SQL query limited by size
     int sql_status = SQLITE_ERROR;
-    cJSON* cves = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
+    cJSON* cves = wdb_exec_stmt_sized(stmt, wdb, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
 
     if (SQLITE_DONE == sql_status) wdb_res = WDBC_OK;
     else if (SQLITE_ROW == sql_status) wdb_res = WDBC_DUE;
@@ -286,7 +286,7 @@ int wdb_agents_set_packages_triaged(wdb_t *wdb) {
         return OS_INVALID;
     }
 
-    return wdb_exec_stmt_silent(stmt);
+    return wdb_exec_stmt_silent(stmt, wdb);
 }
 
 int wdb_agents_send_packages(wdb_t *wdb, bool not_triaged_only) {
@@ -295,7 +295,7 @@ int wdb_agents_send_packages(wdb_t *wdb, bool not_triaged_only) {
         return OS_INVALID;
     }
 
-    return wdb_exec_stmt_send(stmt, wdb->peer);
+    return wdb_exec_stmt_send(stmt, wdb, wdb->peer);
 }
 
 int wdb_agents_send_hotfixes(wdb_t *wdb) {
@@ -304,7 +304,7 @@ int wdb_agents_send_hotfixes(wdb_t *wdb) {
         return OS_INVALID;
     }
 
-    return wdb_exec_stmt_send(stmt, wdb->peer);
+    return wdb_exec_stmt_send(stmt, wdb, wdb->peer);
 }
 
 int wdb_agents_get_packages(wdb_t *wdb, bool not_triaged_only, cJSON** response) {

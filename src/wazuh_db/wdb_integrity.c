@@ -86,7 +86,7 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_val
         return;
     }
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return;
     }
@@ -108,7 +108,7 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_
     assert(stmt != NULL);
     assert(hexdigest != NULL);
 
-    int step = sqlite3_step(stmt);
+    int step = wdb_step(stmt);
 
     if (step != SQLITE_ROW) {
         return 0;
@@ -118,7 +118,7 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_
     EVP_DigestInit(ctx, EVP_sha1());
 
     size_t row_count = 0;
-    for (; step == SQLITE_ROW; step = sqlite3_step(stmt)) {
+    for (; step == SQLITE_ROW; step = wdb_step(stmt)) {
         ++row_count;
 
         char * checksum = (char *)sqlite3_column_text(stmt, 0);
@@ -311,7 +311,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
         sqlite3_bind_text(stmt, 2, end, -1, NULL);
     }
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -333,7 +333,7 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
     sqlite3_bind_text(stmt, 3, manager_checksum, -1, NULL);
     sqlite3_bind_text(stmt, 4, COMPONENT_NAMES[component], -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
@@ -353,7 +353,7 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
     sqlite3_bind_text(stmt, 4, manager_checksum, -1, NULL);
     sqlite3_bind_text(stmt, 5, COMPONENT_NAMES[component], -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
@@ -379,7 +379,7 @@ void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long times
     sqlite3_bind_int64(stmt, 1, timestamp);
     sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
@@ -517,7 +517,7 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
 
     sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
+    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         goto end;
     }
@@ -541,7 +541,7 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
     sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_GET_INFO];
     sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
 
-    cJSON* j_sync_info = wdb_exec_stmt(stmt);
+    cJSON* j_sync_info = wdb_exec_stmt(stmt, wdb);
     if (!j_sync_info) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
         return result;
@@ -655,7 +655,7 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
     sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_GET_INFO];
     sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
 
-    j_sync_info = wdb_exec_stmt(stmt);
+    j_sync_info = wdb_exec_stmt(stmt, wdb);
 
     if (!j_sync_info) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));

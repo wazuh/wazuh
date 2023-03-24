@@ -40,7 +40,7 @@ int wdb_rootcheck_insert(wdb_t * wdb, const rk_event_t *event) {
     sqlite3_bind_text(stmt, 4, pci_dss, -1, NULL);
     sqlite3_bind_text(stmt, 5, cis, -1, NULL);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(wdb->db) : -1;
+    result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE ? (int)sqlite3_last_insert_rowid(wdb->db) : -1;
     free(pci_dss);
     free(cis);
     return result;
@@ -60,7 +60,7 @@ int wdb_rootcheck_update(wdb_t * wdb, const rk_event_t *event) {
     sqlite3_bind_int(stmt, 1, event->date_last);
     sqlite3_bind_text(stmt, 2, event->log, -1, NULL);
 
-    result = wdb_step(stmt) == SQLITE_DONE ? sqlite3_changes(wdb->db) : -1;
+    result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE ? sqlite3_changes(wdb->db) : -1;
     return result;
 }
 
@@ -75,7 +75,7 @@ int wdb_rootcheck_delete(wdb_t * wdb) {
     }
     stmt = wdb->stmt[WDB_STMT_ROOTCHECK_DELETE_PM];
 
-    result = wdb_step(stmt) == SQLITE_DONE ? sqlite3_changes(wdb->db) : -1;
+    result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE ? sqlite3_changes(wdb->db) : -1;
     return result;
 }
 

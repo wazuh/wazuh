@@ -85,7 +85,7 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -120,7 +120,7 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -246,7 +246,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -278,7 +278,7 @@ cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
         return NULL;
     }
 
-    result = wdb_exec_stmt(stmt);
+    result = wdb_exec_stmt(stmt, wdb);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
@@ -307,7 +307,7 @@ int wdb_global_del_agent_labels(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -346,7 +346,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -385,7 +385,7 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -483,7 +483,7 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, con
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -514,7 +514,7 @@ int wdb_global_delete_agent(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -546,7 +546,7 @@ cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id) {
         return NULL;
     }
 
-    result = wdb_exec_stmt(stmt);
+    result = wdb_exec_stmt(stmt, wdb);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
@@ -576,7 +576,7 @@ cJSON* wdb_global_select_agent_group(wdb_t *wdb, int id) {
         return NULL;
     }
 
-    result = wdb_exec_stmt(stmt);
+    result = wdb_exec_stmt(stmt, wdb);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
@@ -614,7 +614,7 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip) {
         return NULL;
     }
 
-    result = wdb_exec_stmt(stmt);
+    result = wdb_exec_stmt(stmt, wdb);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
@@ -666,7 +666,7 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_DONE:
         result = OS_SUCCESS;
         break;
@@ -746,7 +746,7 @@ cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name) {
         return NULL;
     }
 
-    result = wdb_exec_stmt(stmt);
+    result = wdb_exec_stmt(stmt, wdb);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
@@ -780,7 +780,7 @@ int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -812,7 +812,7 @@ cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent) {
     }
 
     int sql_status = SQLITE_ERROR;
-    cJSON *result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_SINGLE_COLUMN);
+    cJSON *result = wdb_exec_stmt_sized(stmt, wdb, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_SINGLE_COLUMN);
 
     if (SQLITE_ROW == sql_status) {
         mwarn("The agent's groups exceed the socket maximum response size.");
@@ -851,7 +851,7 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int p
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -870,7 +870,7 @@ int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent) {
     sqlite3_bind_int(stmt, 1, id_group);
     sqlite3_bind_int(stmt, 2, id_agent);
 
-    return wdb_exec_stmt_silent(stmt);
+    return wdb_exec_stmt_silent(stmt, wdb);
 }
 
 cJSON* wdb_is_group_empty(wdb_t *wdb, char* group_name) {
@@ -881,7 +881,7 @@ cJSON* wdb_is_group_empty(wdb_t *wdb, char* group_name) {
 
     sqlite3_bind_text(stmt, 1, group_name, -1, NULL);
 
-    cJSON* sql_agents_id = wdb_exec_stmt(stmt);
+    cJSON* sql_agents_id = wdb_exec_stmt(stmt, wdb);
 
     if (!sql_agents_id) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
@@ -919,7 +919,7 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         sync_status = (w_is_single_node(&is_worker) || is_worker)?"synced":"syncreq";
@@ -957,7 +957,7 @@ cJSON* wdb_global_select_groups(wdb_t *wdb) {
     sqlite3_stmt *stmt = wdb->stmt[WDB_STMT_GLOBAL_SELECT_GROUPS];
 
     int sql_status = SQLITE_ERROR;
-    cJSON* result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(stmt, wdb, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
 
     if (SQLITE_ROW == sql_status) {
         mwarn("The groups exceed the socket maximum response size.");
@@ -988,7 +988,7 @@ cJSON* wdb_global_get_group_agents(wdb_t *wdb,  wdbc_result* status, char* group
     }
 
     int sql_status = SQLITE_ERROR;
-    cJSON* result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_SINGLE_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(stmt, wdb, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_SINGLE_COLUMN);
 
     if (SQLITE_DONE == sql_status) {
         *status = WDBC_OK;
@@ -1021,7 +1021,7 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -1056,7 +1056,7 @@ int wdb_global_set_sync_status(wdb_t *wdb, int id, const char* sync_status) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -1101,7 +1101,7 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
         }
 
         //Get agent info
-        cJSON* sql_agents_response = wdb_exec_stmt(agent_stmt);
+        cJSON* sql_agents_response = wdb_exec_stmt(agent_stmt, wdb);
         if (sql_agents_response && sql_agents_response->child) {
             cJSON* json_agent = sql_agents_response->child;
             cJSON* json_id = cJSON_GetObjectItem(json_agent, "id");
@@ -1197,7 +1197,7 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
     sqlite3_bind_text(stmt, 3, sync_status, -1, NULL);
     sqlite3_bind_int(stmt, 4, id);
 
-    if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
+    if (OS_SUCCESS == wdb_exec_stmt_silent(stmt, wdb)) {
         return WDBC_OK;
     }
     else {
@@ -1246,7 +1246,7 @@ int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id) {
     }
 
     int group_priority = OS_INVALID;
-    cJSON* j_result = wdb_exec_stmt(stmt);
+    cJSON* j_result = wdb_exec_stmt(stmt, wdb);
     if (j_result) {
         if (j_result->child && j_result->child->child) {
             cJSON* j_priority = j_result->child->child;
@@ -1358,7 +1358,7 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id) {
     }
 
     int groups_number = OS_INVALID;
-    cJSON* j_result = wdb_exec_stmt(stmt);
+    cJSON* j_result = wdb_exec_stmt(stmt, wdb);
 
     if (j_result) {
         if (j_result->child && j_result->child->child) {
@@ -1517,7 +1517,7 @@ int wdb_global_set_agent_groups_sync_status(wdb_t *wdb, int id, const char* sync
         return OS_INVALID;
     }
 
-    return wdb_exec_stmt_silent(stmt);
+    return wdb_exec_stmt_silent(stmt, wdb);
 }
 
 wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_condition_t condition, int last_agent_id, bool set_synced, bool get_hash, int agent_registration_delta, cJSON** output) {
@@ -1576,7 +1576,7 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
             }
 
             //Get agents to sync
-            cJSON* j_agent_stmt = wdb_exec_stmt(sync_stmt);
+            cJSON* j_agent_stmt = wdb_exec_stmt(sync_stmt, wdb);
             if (j_agent_stmt && j_agent_stmt->child) {
                 cJSON* j_agent = j_agent_stmt->child;
                 cJSON* j_id = cJSON_GetObjectItem(j_agent, "id");
@@ -1707,7 +1707,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON * json_agent) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -1739,7 +1739,7 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
         return NULL;
     }
 
-    result = wdb_exec_stmt(stmt);
+    result = wdb_exec_stmt(stmt, wdb);
 
     if (!result) {
         mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
@@ -1780,7 +1780,7 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
 
     //Execute SQL query limited by size
     int sql_status = SQLITE_ERROR;
-    cJSON* result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(stmt, wdb, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
     if (SQLITE_DONE == sql_status) *status = WDBC_OK;
     else if (SQLITE_ROW == sql_status) *status = WDBC_DUE;
     else *status = WDBC_ERROR;
@@ -1826,7 +1826,7 @@ cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* sta
 
     //Execute SQL query limited by size
     int sql_status = SQLITE_ERROR;
-    cJSON* result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(stmt, wdb, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
     if (SQLITE_DONE == sql_status) *status = WDBC_OK;
     else if (SQLITE_ROW == sql_status) *status = WDBC_DUE;
     else *status = WDBC_ERROR;
@@ -1885,7 +1885,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -1944,7 +1944,7 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
 
     //Execute SQL query limited by size
     int sql_status = SQLITE_ERROR;
-    cJSON* result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(stmt, wdb, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
     if (SQLITE_DONE == sql_status) *status = WDBC_OK;
     else if (SQLITE_ROW == sql_status) *status = WDBC_DUE;
     else *status = WDBC_ERROR;
@@ -1986,7 +1986,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
         return OS_INVALID;
     }
 
-    result = wdb_exec_stmt_silent(stmt);
+    result = wdb_exec_stmt_silent(stmt, wdb);
     if (OS_INVALID == result) {
         snprintf(output, OS_MAXSTR + 1, "err SQLite: %s", sqlite3_errmsg(wdb->db));
     }
@@ -2234,7 +2234,7 @@ cJSON* wdb_global_get_distinct_agent_groups(wdb_t *wdb, char *group_hash, wdbc_r
 
     //Execute SQL query limited by size
     int sql_status = SQLITE_ERROR;
-    cJSON* result = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(stmt, wdb, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
     if (SQLITE_DONE == sql_status) *status = WDBC_OK;
     else if (SQLITE_ROW == sql_status) *status = WDBC_DUE;
     else *status = WDBC_ERROR;

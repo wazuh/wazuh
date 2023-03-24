@@ -297,7 +297,7 @@ static const char *SQL_STMT[] = {
  * @param[in] query query to run.
  * @return Returns OS_SUCCESS on success or OS_INVALID on error.
  */
-STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query);
+STATIC int wdb_execute_non_select_query(wdb_t * wdb, const char *query);
 
 /**
  * @brief Run a select query on the temporary table.
@@ -660,7 +660,7 @@ int wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQue
         }
     }
 
-    if (result != SQLITE_DONE && theQueryModifyDB) {
+    if (result != SQLITE_DONE && result != SQLITE_ROW && theQueryModifyDB) {
         rollback_data_t rollback_data = { .wdb = wdb, .output = output };
         result = doRollback(&rollback_data);
     }
@@ -670,12 +670,12 @@ int wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQue
 
 /* Execute statement with availability waiting */
 int wdb_step(sqlite3_stmt *stmt){
-    return wdb_step1(stmt, NULL, 0, false);
+    return wdb_step1(stmt, NULL, WDB_NO_ATTEMPTS, false);
 }
 
 /* Begin transaction */
-int wdb_begin(sqlite3 *db) {
-    return wdb_any_transaction(db, SQL_BEGIN);
+int wdb_begin(wdb_t * wdb) {
+    return wdb_any_transaction(wdb, SQL_BEGIN);
 }
 
 int wdb_begin2(wdb_t * wdb) {
@@ -683,8 +683,8 @@ int wdb_begin2(wdb_t * wdb) {
 }
 
 /* Commit transaction */
-int wdb_commit(sqlite3 *db) {
-    return wdb_any_transaction(db, SQL_COMMIT);
+int wdb_commit(wdb_t * wdb) {
+    return wdb_any_transaction(wdb, SQL_COMMIT);
 }
 
 int wdb_commit2(wdb_t * wdb) {
@@ -692,8 +692,8 @@ int wdb_commit2(wdb_t * wdb) {
 }
 
 /* Rollback transaction */
-int wdb_rollback(sqlite3 *db) {
-    return wdb_any_transaction(db, SQL_ROLLBACK);
+int wdb_rollback(wdb_t * wdb) {
+    return wdb_any_transaction(wdb, SQL_ROLLBACK);
 }
 
 int wdb_rollback2(wdb_t * wdb) {
@@ -739,7 +739,7 @@ int wdb_create_file(const char *path, const char *source) {
             return OS_INVALID;
         }
 
-        result = sqlite3_step(stmt);
+        result = wdb_step(stmt);
 
         switch (result) {
         case SQLITE_MISUSE:
@@ -794,15 +794,15 @@ int wdb_create_file(const char *path, const char *source) {
 }
 
 /* Rebuild database. Returns 0 on success or -1 on error. */
-int wdb_vacuum(sqlite3 *db) {
+int wdb_vacuum(wdb_t * wdb) {
     sqlite3_stmt *stmt;
     int result;
 
-    if (!wdb_prepare(db, SQL_VACUUM, -1, &stmt, NULL)) {
-        result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
+    if (!wdb_prepare(wdb->db, SQL_VACUUM, -1, &stmt, NULL)) {
+        result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE ? 0 : -1;
         sqlite3_finalize(stmt);
     } else {
-        mdebug1("SQLite: %s", sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         result = -1;
     }
 
@@ -813,17 +813,17 @@ int wdb_vacuum(sqlite3 *db) {
 int wdb_get_db_state(wdb_t * wdb) {
     int result = OS_INVALID;
 
-    if (wdb_execute_non_select_query(wdb->db, SQL_CREATE_TEMP_TABLE) == OS_INVALID) {
+    if (wdb_execute_non_select_query(wdb, SQL_CREATE_TEMP_TABLE) == OS_INVALID) {
         mdebug1("Error creating temporary table.");
         return OS_INVALID;
     }
 
-    if (wdb_execute_non_select_query(wdb->db, SQL_TRUNCATE_TEMP_TABLE) == OS_INVALID) {
+    if (wdb_execute_non_select_query(wdb, SQL_TRUNCATE_TEMP_TABLE) == OS_INVALID) {
         mdebug1("Error truncate temporary table.");
         return OS_INVALID;
     }
 
-    if (wdb_execute_non_select_query(wdb->db, SQL_INSERT_INTO_TEMP_TABLE) != OS_INVALID) {
+    if (wdb_execute_non_select_query(wdb, SQL_INSERT_INTO_TEMP_TABLE) != OS_INVALID) {
         if (result = wdb_select_from_temp_table(wdb->db), result == OS_INVALID) {
             mdebug1("Error in select from temporary table.");
         }
@@ -881,7 +881,7 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
 }
 
 /* Run a query without selecting any fields */
-STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
+STATIC int wdb_execute_non_select_query(wdb_t * wdb, const char *query) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_SUCCESS;
 
@@ -890,13 +890,14 @@ STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
         return OS_INVALID;
     }
 
-    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+    if (sqlite3_prepare_v2(wdb->db, query, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
+    if (result = wdb_step1(stmt, wdb,
+        WDB_NO_ATTEMPTS, true) != SQLITE_DONE, result) {
+        mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         result = OS_INVALID;
     }
 
@@ -1151,7 +1152,7 @@ void wdb_check_fragmentation() {
                     wdb_finalize_all_statements(node);
 
                     gettime(&ts_start);
-                    if (wdb_vacuum(node->db) < 0) {
+                    if (wdb_vacuum(node) < 0) {
                         merror("Couldn't execute vacuum for the database '%s'", node->id);
                         w_mutex_unlock(&node->mutex);
                         w_mutex_unlock(&pool_mutex);
@@ -1190,7 +1191,7 @@ STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last
    int result = OS_INVALID;
    cJSON *data = NULL;
 
-   if (data = wdb_exec(wdb->db, SQL_METADATA_GET_FRAGMENTATION_DATA), data) {
+   if (data = wdb_exec(wdb, SQL_METADATA_GET_FRAGMENTATION_DATA), data) {
         int response_size = 0;
         int tmp_vacuum_time = -1;
         int tmp_vacuum_value = -1;
@@ -1252,7 +1253,8 @@ int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const 
     sqlite3_bind_text(stmt, 1, last_vacuum_time, -1, NULL);
     sqlite3_bind_text(stmt, 2, last_vacuum_value, -1, NULL);
 
-    if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+    if (result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true),
+        result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         sqlite3_finalize(stmt);
         return OS_INVALID;
@@ -1295,8 +1297,8 @@ void wdb_close_old() {
     }
 }
 
-int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
-    switch (wdb_step(stmt)) {
+int wdb_exec_stmt_silent(sqlite3_stmt* stmt, wdb_t * wdb) {
+    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -1307,21 +1309,21 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
     }
 }
 
-cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, int* status, bool column_mode) {
+cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, wdb_t* wdb, int* status, bool column_mode) {
     if(STMT_SINGLE_COLUMN == column_mode) {
-        return wdb_exec_row_stmt_single_column(stmt, status);
+        return wdb_exec_row_stmt_single_column(stmt, wdb, status);
     } else if (STMT_MULTI_COLUMN == column_mode){
-        return wdb_exec_row_stmt_multi_column(stmt, status);
+        return wdb_exec_row_stmt_multi_column(stmt, wdb, status);
     } else {
         mdebug2("Invalid column mode");
         return NULL;
     }
 }
 
-cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status) {
+cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, wdb_t* wdb, int* status) {
     cJSON* result = NULL;
 
-    int _status = sqlite3_step(stmt);
+    int _status = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true);
     if (SQLITE_ROW == _status) {
         int count = sqlite3_column_count(stmt);
         if (count > 0) {
@@ -1357,7 +1359,7 @@ cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status) {
     return result;
 }
 
-cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, const size_t max_size, int* status, bool column_mode) {
+cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, wdb_t * wdb, const size_t max_size, int* status, bool column_mode) {
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
         *status = SQLITE_ERROR;
@@ -1368,7 +1370,7 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, const size_t max_size, int* statu
     int result_size = 2; //'[]' json array
     cJSON* row = NULL;
     bool fit = true;
-    while (fit && (row = wdb_exec_row_stmt(stmt, status, column_mode))) {
+    while (fit && (row = wdb_exec_row_stmt(stmt, wdb, status, column_mode))) {
         char *row_str = cJSON_PrintUnformatted(row);
         size_t row_len = strlen(row_str)+1;
         //Check if new agent fits in response
@@ -1392,7 +1394,7 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, const size_t max_size, int* statu
     return result;
 }
 
-int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
+int wdb_exec_stmt_send(sqlite3_stmt* stmt, wdb_t * wdb, int peer) {
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
         return OS_INVALID;
@@ -1417,7 +1419,7 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
     char* payload = response + header_size;
     int payload_size = OS_MAXSTR - header_size;
 
-    while ((row = wdb_exec_row_stmt(stmt, &sql_status, STMT_MULTI_COLUMN))) {
+    while ((row = wdb_exec_row_stmt(stmt, wdb, &sql_status, STMT_MULTI_COLUMN))) {
         bool row_fits = cJSON_PrintPreallocated(row, payload, payload_size, FALSE);
         cJSON_Delete(row);
         if (row_fits) {
@@ -1442,7 +1444,7 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
     return status;
 }
 
-cJSON* wdb_exec_stmt(sqlite3_stmt* stmt) {
+cJSON* wdb_exec_stmt(sqlite3_stmt* stmt, wdb_t* wdb) {
     cJSON * result;
     cJSON * row;
 
@@ -1453,7 +1455,7 @@ cJSON* wdb_exec_stmt(sqlite3_stmt* stmt) {
 
     int status = SQLITE_ERROR;
     result = cJSON_CreateArray();
-    while ((row = wdb_exec_row_stmt(stmt, &status, STMT_MULTI_COLUMN))) {
+    while ((row = wdb_exec_row_stmt(stmt, wdb, &status, STMT_MULTI_COLUMN))) {
         cJSON_AddItemToArray(result, row);
     }
 
@@ -1465,7 +1467,7 @@ cJSON* wdb_exec_stmt(sqlite3_stmt* stmt) {
     return result;
 }
 
-cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status) {
+cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, wdb_t* wdb, int* status) {
     cJSON* result = NULL;
     int _status = SQLITE_ERROR;
 
@@ -1474,7 +1476,7 @@ cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status) {
         return NULL;
     }
 
-    _status = sqlite3_step(stmt);
+    _status = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true);
     if (SQLITE_ROW == _status) {
         int count = sqlite3_column_count(stmt);
         // Every step should return only one element. Extra columns will be ignored
@@ -1506,20 +1508,20 @@ cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status) {
     return result;
 }
 
-cJSON* wdb_exec(sqlite3* db, const char * sql) {
+cJSON* wdb_exec(wdb_t* wdb, const char * sql) {
     sqlite3_stmt * stmt = NULL;
     cJSON * result = NULL;
 
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+    if (sqlite3_prepare_v2(wdb->db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
         mdebug2("SQL: %s", sql);
         return NULL;
     }
 
-    result = wdb_exec_stmt(stmt);
+    result = wdb_exec_stmt(stmt, wdb);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(db));
+        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
     }
 
     sqlite3_finalize(stmt);
@@ -1908,17 +1910,19 @@ bool wdb_check_backup_enabled() {
     return result;
 }
 
-int wdb_any_transaction(sqlite3 *db, const char* sql_transaction) {
+int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
 
-    if (sqlite3_prepare_v2(db, sql_transaction, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+    if (sqlite3_prepare_v2(wdb->db, sql_transaction, -1, &stmt, NULL)
+        != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
+    if (result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) != SQLITE_DONE,
+        result) {
+        mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         result = -1;
     }
 
@@ -1933,7 +1937,7 @@ int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wd
     }
 
     if (wdb_ptr_any_txn != NULL) {
-        if (wdb_ptr_any_txn(wdb->db) == -1) {
+        if (wdb_ptr_any_txn(wdb) == -1) {
             return -1;
         }
     }
@@ -1945,3 +1949,4 @@ int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wd
 
     return 0;
 }
+
