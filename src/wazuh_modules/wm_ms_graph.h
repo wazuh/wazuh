@@ -27,7 +27,7 @@
 #define WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD "scope=https://graph.microsoft.com/.default&grant_type=client_credentials&client_id=%s&client_secret=%s"
 
 typedef struct wm_ms_graph_state_t {
-	timet_t next_time;
+	time_t next_time;
 } wm_ms_graph_state_t;
 
 typedef struct wm_ms_graph_auth {
