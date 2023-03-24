@@ -3610,7 +3610,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && n:^\w+:\S*:\S*:\S*:(\S*):\S*:\S*:\S*:\S* compare > 365'
+      - 'not f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.6.1.2 Ensure minimum days between password changes is configured (Automated)
   - id: 28144
@@ -3632,7 +3632,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
-      - 'not f:/etc/shadow -> n:^\w+:\S*:\S*:(\S*):\S*:\S*:\S*:\S*:\S* compare < 1'
+      - 'not f:/etc/shadow -> n:^\w+:\S*:\S*:(\d+):\S*:\S*:\S*:\S*:\S* compare < 1'
       - 'not f:/etc/shadow -> r:^\w+:\S*:\S*::\S*:\S*:\S*:\S*:\S*'
 
   # 5.6.1.3 Ensure password expiration warning days is 7 or more (Automated)
@@ -3656,8 +3656,8 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
-      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\S*):\S*:\S*:\S* compare >= 7'
-      - 'not f:/etc/shadowd -> r:^\w+:\S*:\S*:S*:\S*::\S*:\S*:\S*'
+      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
+      - 'not f:/etc/shadowd -> r:^\w+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
 
   # 5.6.1.4 Ensure inactive password lock is 30 days or less (Automated)
   - id: 28146
@@ -3680,7 +3680,7 @@ checks:
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*\t*(\d+) compare <= 30'
       - 'f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
-      - 'not f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && r:^\w+:\S*:\S*:\S*:\S*:S*::\S*:\S*'
+      - 'not f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
   # 5.6.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
   # 5.6.2 Ensure system accounts are secured (Automated) - Not implemented
@@ -4009,7 +4009,7 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\S*):\S*:\S*:\S*:\S* compare == 0'
+      - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
 
   # 6.2.10 Ensure local interactive users home directories exist - Not implemented, requires manual operation.
   # 6.2.11 Ensure local interactive users own their home directories - Not implemented, requires manual operation.
