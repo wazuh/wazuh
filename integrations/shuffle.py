@@ -217,7 +217,7 @@ def send_msg(msg: str, url: str) -> None:
     """
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
     res     = requests.post(url, data=msg, headers=headers, verify=False)
-    debug("# Response received: %s" % res.json())
+    debug("# Response received: %s" % res.json)
 
 def get_json_alert(file_location: str) -> any:
     """

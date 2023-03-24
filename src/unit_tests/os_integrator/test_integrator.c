@@ -144,14 +144,14 @@ void test_OS_IntegratorD(void **state) {
 
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Running: integrations /tmp/virustotal-1111-2222.alert 123456   /tmp/virustotal-1111-2222.options > /dev/null 2>&1");
+    expect_string(__wrap__mdebug1, formatted_msg, "Running script with args: integrations /tmp/virustotal-1111-2222.alert 123456   /tmp/virustotal-1111-2222.options > /dev/null 2>&1");
 
     will_return(__wrap_wpopenv, wfd);
 
     expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, "test");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "integratord: test");
+    expect_string(__wrap__mdebug2, formatted_msg, "test");
 
     expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, 0);
@@ -191,14 +191,14 @@ void test_OS_IntegratorD(void **state) {
 
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Running: integrations /tmp/pagerduty-1111-2222.alert 123456   /tmp/pagerduty-1111-2222.options > /dev/null 2>&1");
+    expect_string(__wrap__mdebug1, formatted_msg, "Running script with args: integrations /tmp/pagerduty-1111-2222.alert 123456   /tmp/pagerduty-1111-2222.options > /dev/null 2>&1");
 
     will_return(__wrap_wpopenv, wfd);
 
     expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, "test");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "integratord: test");
+    expect_string(__wrap__mdebug2, formatted_msg, "test");
 
     expect_value(__wrap_fgets, __stream, wfd->file_out);
     will_return(__wrap_fgets, 0);

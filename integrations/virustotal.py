@@ -41,7 +41,6 @@ except Exception as e:
 debug_enabled   = False
 pwd             = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert      = {}
-json_options    = {}
 
 # Log and socket path
 LOG_FILE        = f'{pwd}/logs/integrations.log'
@@ -106,7 +105,7 @@ def process_args(args: list[str]) -> None:
     debug(f"# Opening alert file at '{alert_file_location}' with '{json_alert}'")
 
     debug("# Generating message")
-    msg: any    = generate_msg(json_alert, json_options,apikey)
+    msg: any    = generate_msg(json_alert,apikey)
 
     if not msg:
         debug("# ERROR: Empty message")

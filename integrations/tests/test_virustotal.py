@@ -49,10 +49,6 @@ alert_template = {
     }
 }
 
-options_template = {
-    'client': 'Wazuh-X -- Alert generated'
-}
-
 msg_template = {
     "payload": {
     "summary": "alert description",
@@ -89,7 +85,6 @@ def test_main_exception():
 def test_main():
     """Test the correct execution of the main function."""
     with patch("virustotal.open", mock_open()), patch('json.load', return_value=alert_template),\
-        patch('json.load', return_value=options_template),\
         patch('requests.post', return_value=requests.Response), patch('virustotal.process_args') as process:
         virustotal.main(sys_args_template)
         process.assert_called_once_with(sys_args_template)
@@ -119,15 +114,13 @@ def test_process_args():
     """Test the correct execution of the process_args function."""
     with patch("virustotal.open", mock_open()), \
             patch('virustotal.get_json_alert') as alert_load,\
-            patch('virustotal.get_json_options') as options_load,\
             patch('virustotal.send_msg') as send_msg, \
             patch('virustotal.generate_msg', return_value=msg_template) as generate_msg, \
             patch('requests.post', return_value=requests.Response):
         alert_load.return_value = alert_template
-        options_load.return_value = options_template
         virustotal.process_args(sys_args_template)
-        generate_msg.assert_called_once_with(alert_template,options_template,sys_args_template[2])
-        generated_msg = virustotal.generate_msg(alert_template,options_template,sys_args_template[2])
+        generate_msg.assert_called_once_with(alert_template,sys_args_template[2])
+        generated_msg = virustotal.generate_msg(alert_template,sys_args_template[2])
         assert generated_msg==msg_template
         send_msg.assert_called_once_with(msg_template,msg_template['agent'])
 
@@ -135,12 +128,10 @@ def test_process_args_not_sending_message():
     """Test that the send_msg function is not executed due to empty message after generate_msg."""
     with patch("virustotal.open", mock_open()), \
             patch('virustotal.get_json_alert') as alert_load,\
-            patch('virustotal.get_json_options') as options_load,\
             patch('virustotal.send_msg') as send_msg, \
             patch('virustotal.generate_msg', return_value=''), \
             pytest.raises(Exception):
         alert_load.return_value = alert_template
-        options_load.return_value = options_template
         virustotal.process_args(sys_args_template)
         send_msg.assert_not_called()
 

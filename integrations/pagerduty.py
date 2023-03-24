@@ -198,7 +198,7 @@ def send_msg(msg: any) -> None:
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
     url     = 'https://events.pagerduty.com/v2/enqueue'
     res     = requests.post(url, data=msg, headers=headers)
-    debug("# Response received: %s" % res.json())
+    debug("# Response received: %s" % res.json)
 
 def get_json_alert(file_location: str) -> any:
     """
