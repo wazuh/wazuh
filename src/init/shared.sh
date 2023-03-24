@@ -5,7 +5,7 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 ### Setting up variables
-VERSION_FILE="./src/VERSION.w"
+VERSION_FILE="./src/VERSION"
 REVISION_FILE="./src/REVISION"
 VERSION=`cat ${VERSION_FILE}`
 REVISION=`cat ${REVISION_FILE}`

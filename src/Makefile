@@ -15,6 +15,7 @@ uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 
+
 ifeq (${TARGET}, winagent)
 WAZUH_LIB_OUTPUT_PATH := win32/
 STRIP_TOOL := i686-w64-mingw32-strip
@@ -593,7 +594,7 @@ endif
 
 
 .PHONY: build
-build: ${TARGET}
+build: ${TARGET} post-build-macos
 ifneq (${TARGET},failtarget)
 	${MAKE} settings
 	@echo
@@ -601,6 +602,18 @@ ifneq (${TARGET},failtarget)
 	@echo "Done building ${TARGET}"
 	${QUIET_ENDCOLOR}
 endif
+	@echo
+
+.PHONY: pre-build-macos post-build-macos
+
+pre-build-macos:
+ifeq (${uname_S},Darwin)
+	$(shell mv ./VERSION ./VERSION.bck)
+endif
+	@echo
+
+post-build-macos:
+	$(shell mv ./VERSION.bck ./VERSION)
 	@echo
 
 
@@ -768,7 +781,8 @@ hybrid: external ${CPPLIBDEPS}
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
-agent: external ${CPPLIBDEPS}
+
+agent: pre-build-macos external ${CPPLIBDEPS}
 ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
@@ -929,7 +943,7 @@ ifeq (${uname_M},arm64)
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-arm64-cc && ${MAKE} build_libs
 else
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
-endif	
+endif
 else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
