@@ -100,17 +100,6 @@ def process_args(args: list[str]) -> None:
     # Read args
     alert_file_location: str     = args[ALERT_INDEX]
     apikey: str                  = args[APIKEY_INDEX]
-    options_file_location: str   = ''
-
-    # Look for options file location
-    for idx in range(4, len(args)):
-        if(args[idx][-7:] == "options"):
-            options_file_location = args[idx]
-            break
-
-    # Load options. Parse JSON object.
-    json_options = get_json_options(options_file_location)
-    debug(f"# Opening options file at '{options_file_location}' with '{json_options}'")
 
     # Load alert. Parse JSON object.
     json_alert  = get_json_alert(alert_file_location)
@@ -123,7 +112,7 @@ def process_args(args: list[str]) -> None:
         debug("# ERROR: Empty message")
         raise Exception
 
-    debug("# Sending message")
+    debug(f"# Sending message {msg} from VirusTotal server")
     send_msg(msg, json_alert["agent"])
 
 def debug(msg: str) -> None:
@@ -167,7 +156,7 @@ def generate_msg(alert: any, options: any,apikey: str) -> dict[str, str]:
     try:
         vt_response_data = query_api(alert["syscheck"]["md5_after"], apikey)
     except Exception as e:
-        debug(e)
+        debug(str(e))
         sys.exit(ERR_NO_RESPONSE_VT)
 
     alert_output["virustotal"]                           = {}
@@ -194,9 +183,6 @@ def generate_msg(alert: any, options: any,apikey: str) -> dict[str, str]:
         alert_output["virustotal"]["positives"]      = vt_response_data['positives']
         alert_output["virustotal"]["total"]          = vt_response_data['total']
         alert_output["virustotal"]["permalink"]      = vt_response_data['permalink']
-
-    if(options):
-        alert_output.update(options)
 
     return alert_output
 
@@ -297,34 +283,6 @@ def get_json_alert(file_location: str) -> any:
         sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
         debug("Failed getting JSON alert. Error: %s" % e)
-        sys.exit(ERR_INVALID_JSON)
-
-def get_json_options(file_location: str) -> any:
-    """
-        Read JSON options object from file
-
-        Parameters
-        ----------
-        file_location : str
-            Path to the JSON file location.
-
-        Returns
-        -------
-        {}: any
-            The JSON object read it.
-
-        Raises
-        ------
-        JSONDecodeError
-            If no valid JSON file are used
-    """
-    try:
-        with open(file_location) as options_file:
-            return json.load(options_file)
-    except FileNotFoundError:
-        debug("# JSON file for options %s doesn't exist" % file_location)
-    except BaseException as e:
-        debug("Failed getting JSON options. Error: %s" % e)
         sys.exit(ERR_INVALID_JSON)
 
 if __name__ == "__main__":

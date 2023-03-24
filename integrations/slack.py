@@ -117,7 +117,7 @@ def process_args(args: list[str]) -> None:
         debug("# ERROR: Empty message")
         raise Exception
 
-    debug("# Sending message")
+    debug(f"# Sending message {msg} to Slack server")
     send_msg(msg, webhook)
 
 def debug(msg: str) -> None:
@@ -209,7 +209,7 @@ def send_msg(msg: str, url: str) -> None:
     """
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
     res     = requests.post(url, data=msg, headers=headers)
-    debug("# Response received: %s" % res.json)
+    debug("# Response received: %s" % res.json())
 
 def get_json_alert(file_location: str) -> any:
     """

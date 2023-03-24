@@ -115,7 +115,7 @@ def process_args(args: list[str]) -> None:
         debug("# ERROR: Empty message")
         raise Exception
 
-    debug("# Sending message")
+    debug(f"# Sending message {msg} to PagerDuty server")
     send_msg(msg)
 
 def debug(msg: str) -> None:
@@ -169,7 +169,7 @@ def generate_msg(alert: any, options: any, apikey: str) -> str:
         'payload': {
             "summary": alert['rule']['description'] if 'description' in alert['rule'] else "N/A",
             "timestamp": alert['timestamp'],
-            "source": alert['agent']['location'],
+            "source": alert['agent']['name'],
             "severity": severity,
             "group": groups,
             "custom_details": alert
@@ -198,7 +198,7 @@ def send_msg(msg: any) -> None:
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
     url     = 'https://events.pagerduty.com/v2/enqueue'
     res     = requests.post(url, data=msg, headers=headers)
-    debug("# Response received: %s" % res.json)
+    debug("# Response received: %s" % res.json())
 
 def get_json_alert(file_location: str) -> any:
     """

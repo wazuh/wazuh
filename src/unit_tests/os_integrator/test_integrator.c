@@ -115,7 +115,7 @@ void test_OS_IntegratorD(void **state) {
 
     will_return(__wrap_jqueue_next, al_json);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "sending new alert.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Sending new alert.");
 
     will_return(__wrap_time, 1111);
 
