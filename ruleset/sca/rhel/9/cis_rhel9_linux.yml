@@ -3533,8 +3533,8 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'f:/etc/security/faillock.conf -> n:deny\s*\t*=\s*\t*(\d+) compare <= 5'
-      - 'not f:/etc/security/faillock.conf -> n:unlock_time\s*\t*=\s*\t*(\d+) compare > 0 && n:unlock_time\s*\t*=\s*\t*(\d+) compare < 900'
+      - 'f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:deny\s*\t*=\s*\t*(\d+) compare <= 5'
+      - 'not f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:unlock_time\s*\t*=\s*\t*(\d+) compare > 0 && n:unlock_time\s*\t*=\s*\t*(\d+) compare < 900'
 
   # 5.5.3 Ensure password reuse is limited (Automated)
   - id: 28133
@@ -3860,7 +3860,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow -> r:\s*0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow -> r:\s0 0/root 0/root'
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured (Automated)
   - id: 28146
@@ -3884,7 +3884,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- ->  r:\s*0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- ->  r:\s0 0/root 0/root'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 28147
@@ -3908,7 +3908,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow ->  r:\s*0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow ->  r:\s0 0/root 0/root'
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 28148
@@ -3931,7 +3931,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- ->  r:\s*0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- ->  r:\s0 0/root 0/root'
 
   # 6.1.9 Ensure no world writable files exist (Automated) - Not implemented
   # 6.1.10 Ensure no unowned files or directories exist (Automated) - Not implemented, requires manual operation.
@@ -3947,7 +3947,7 @@ checks:
   # 6.2.1 Ensure accounts in /etc/passwd use shadowed passwords (Automated)
   - id: 281490
     title: "Ensure accounts in /etc/passwd use shadowed passwords."
-    description: "Local accounts can uses shadowed passwords. With shadowed passwords, The passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
+    description: "Local accounts can uses shadowed passwords. With shadowed passwords, the passwords are saved in shadow password file, /etc/shadow, encrypted by a salted one-way hash. Accounts with a shadowed password have an x in the second field in /etc/passwd."
     rationale: "The /etc/passwd file also contains information like user ID's and group ID's that are used by many system programs. Therefore, the /etc/passwd file must remain world readable. In spite of encoding the password with a randomly-generated one-way hash function, an attacker could still break the system if they got access to the /etc/passwd file. This can be mitigated by using shadowed passwords, thus moving the passwords in the /etc/passwd file to /etc/shadow. The /etc/shadow file is set so only root will be able to read and write. This helps mitigate the risk of an attacker gaining access to the encoded passwords with which to perform a dictionary attack. Note: - All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user. - A user account with an empty second field in /etc/passwd allows the account to be logged into by providing only the username."
     remediation: "Run the following command to set accounts to use shadowed passwords: # sed -e 's/^\\([a-zA-Z0-9_]*\\):[^:]*:/\\1:x:/' -i /etc/passwd Investigate to determine if the account is logged in and what it is being used for, to determine if it needs to be forced off."
     compliance:
@@ -3966,7 +3966,7 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'not f:/etc/passwd -> r:^\w+:x:'
+      - 'not f:/etc/passwd -> !r:^\w+:x:'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty (Automated)
   - id: 28149
