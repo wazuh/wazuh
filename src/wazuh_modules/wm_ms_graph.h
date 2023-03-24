@@ -12,7 +12,7 @@
 #ifndef WM_MS_GRAPH_H
 #define WM_MS_GRAPH_H
 
-#define WM_MS_GRAPH_H_LOGTAG ARGV0 ":" MS_GRAPH_WM_NAME
+#define WM_MS_GRAPH_LOGTAG ARGV0 ":" MS_GRAPH_WM_NAME
 
 #define WM_MS_GRAPH_SCRIPT_PATH "wodles/ms-graph/ms-graph-logs"
 
@@ -21,6 +21,8 @@
 #define WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE 1048576L
 #define WM_MS_GRAPH_DEFAULT_RUN_ON_START true
 #define WM_MS_GRAPH_DEFAULT_VERSION "v1.0"
+
+#define WM_MS_GRAPH_DEFAULT_TIMEOUT 60L
 
 #define WM_MS_GRAPH_API_URL "https://graph.microsoft.com/%s/%s/%s?$filter=createdDateTime+gt+%s"
 #define WM_MS_GRAPH_ACCESS_TOKEN_URL "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
