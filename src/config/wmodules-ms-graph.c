@@ -32,7 +32,6 @@ static const char* XML_RESOURCE_RELATIONSHIP = "relationship";
 int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 
 	wm_ms_graph* ms_graph;
-	wm_ms_graph_auth* auth_config;
 	wm_ms_graph_resource** resources;
 
 	if (!nodes) {
@@ -48,8 +47,6 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	ms_graph->curl_max_size = WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE;
 	ms_graph->run_on_start = WM_MS_GRAPH_DEFAULT_RUN_ON_START;
 	ms_graph->version = WM_MS_GRAPH_DEFAULT_VERSION;
-	os_malloc(sizeof(wm_ms_graph_auth), auth_config);
-	ms_graph->auth_config = *(auth_config);
 	sched_scan_init(&(ms_graph->scan_config));
 	ms_graph->scan_config.interval = WM_DEF_INTERVAL;
 	os_malloc(sizeof(wm_ms_graph_resource) * 2, resources);
@@ -126,8 +123,8 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 		}
 		else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-				merror(XML_INVALID, XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
 				OS_ClearNode(children);
+				merror(XML_INVALID, XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
 				return OS_CFGERR;
 			}
 			for (int j = 0; children[j]; j++) {
