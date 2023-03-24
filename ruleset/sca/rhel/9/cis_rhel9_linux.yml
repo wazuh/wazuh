@@ -3332,7 +3332,7 @@ checks:
     description: "sudo can use a custom log file."
     rationale: "A sudo log file simplifies auditing of sudo commands."
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files. Creation of additional log files can cause disk space exhaustion if not correctly managed. You should configure logrotate to manage the sudo log in accordance with your local policy."
-    remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>" Example: Defaults logfile="/var/log/sudo.log".'
+    remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>" Example: Defaults logfile="/var/log/sudo.log".'
     compliance:
       - cis: ["5.3.3"]
       - cis_csc_v8: ["8.5"]
@@ -3395,9 +3395,9 @@ checks:
   # 5.3.6 Ensure sudo authentication timeout is configured correctly (Automated)
   - id: 281270
     title: "Ensure sudo authentication timeout is configured correctly."
-    description: "sudo caches used credentials for a default of 15 minutes. This is for ease of use when there are multiple administrative tasks to perform. The timeout can be modified to suit local security policies. This default is distribution specific. See audit section for further information."
+    description: "sudo caches used credentials for a default of 5 minutes. This is for ease of use when there are multiple administrative tasks to perform. The timeout can be modified to suit local security policies."
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized privileged access to another user."
-    remediation: "If the currently configured timeout is larger than 15 minutes, edit the file listed in the audit section with visudo -f <PATH TO FILE> and modify the entry timestamp_timeout= to 15 minutes or less as per your site policy. The value is in minutes. This particular entry may appear on it's own, or on the same line as env_reset. See the following two examples: Defaults Defaults Defaults env_reset, timestamp_timeout=15 timestamp_timeout=15 env_reset."
+    remediation: "If the currently configured timeout is larger than 15 minutes, edit the file listed in the audit section with visudo -f <PATH TO FILE> and modify the entry timestamp_timeout= to 15 minutes or less as per your site policy. The value is in minutes. This particular entry may appear on its own, or on the same line as env_reset. See the following two examples: Defaults env_reset, timestamp_timeout=15 Defaults timestamp_timeout=15 Defaults env_reset."
     references:
       - https://www.sudo.ws/man/1.9.0/sudoers.man.html
     compliance:
@@ -3409,10 +3409,12 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
       - iso_27001-2013: ["A.9.2.3"]
-    condition: any
+    condition: all
     rules:
-      - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15.0 minutes'
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare < 15'
+      - 'not f:/etc/sudoers -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not f:/etc/sudoers -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
+      - 'not d:/etc/sudoers.d -> !r:^\s*\t*# && r:\.+ -> n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
 
   # 5.3.7 Ensure access to the su command is restricted (Automated)
   - id: 28128
@@ -3531,8 +3533,8 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'f:/etc/security/faillock.conf -> n:deny\s*=\s*(d+) compare <= 5'
-      - 'not f:/etc/security/faillock.conf -> n:unlock_time\s*=\s*(d+) compare > 0 && n:unlock_time\s*=\s*(d+) compare < 900'
+      - 'f:/etc/security/faillock.conf -> n:deny\s*\t*=\s*\t*(\d+) compare <= 5'
+      - 'not f:/etc/security/faillock.conf -> n:unlock_time\s*\t*=\s*\t*(\d+) compare > 0 && n:unlock_time\s*\t*=\s*\t*(\d+) compare < 900'
 
   # 5.5.3 Ensure password reuse is limited (Automated)
   - id: 28133
@@ -3577,10 +3579,10 @@ checks:
       - mitre_mitigations: ["M1041"]
     condition: all
     rules:
-      - 'f:/etc/libuser.conf -> r:^\s*crypt_style\s*=\s*sha512|^\s*crypt_style\s*=\s*yescript'
-      - 'f:/etc/login.defs -> r:^\s*ENCRYPT_METHOD SHA512'
-      - 'f:/etc/pam.d/password-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so'
+      - 'f:/etc/libuser.conf -> r:^\s*\t*crypt_style\s*\t*=\s*\t*sha512|^\s*crypt_style\s*\t*=\s*\t*yescript'
+      - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD SHA512|^\s*\t*ENCRYPT_METHOD YESCRIPT'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
 
   ###############################################
   # 5.6 User Accounts and Environment
@@ -3608,7 +3610,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:(\S*):\S*:\S*:\S*:\S* compare > 365'
+      - 'not f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && n:^\w+:\S*:\S*:\S*:(\S*):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.6.1.2 Ensure minimum days between password changes is configured (Automated)
   - id: 28136
@@ -3677,8 +3679,8 @@ checks:
     condition: all
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*\t*(\d+) compare <= 30'
-      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:\S*:(\S*):\S*:\S* compare <= 30'
-      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:S*:\S*:S*::\S*:\S*'
+      - 'f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
+      - 'not f:/etc/shadow -> !r:^\w+:!*:|^\w+:\p+: && r:^\w+:\S*:\S*:\S*:\S*:S*::\S*:\S*'
 
   # 5.6.1.5 Ensure all users last password change date is in the past (Automated) - Not implemented
   # 5.6.2 Ensure system accounts are secured (Automated) - Not implemented
