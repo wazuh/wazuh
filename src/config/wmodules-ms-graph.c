@@ -32,6 +32,7 @@ static const char* XML_RESOURCE_RELATIONSHIP = "relationship";
 int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 
 	wm_ms_graph* ms_graph;
+	wm_ms_graph_auth* auth_config;
 	wm_ms_graph_resource** resources;
 
 	if (!nodes) {
@@ -47,16 +48,19 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	ms_graph->curl_max_size = WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE;
 	ms_graph->run_on_start = WM_MS_GRAPH_DEFAULT_RUN_ON_START;
 	ms_graph->version = WM_MS_GRAPH_DEFAULT_VERSION;
-	ms_graph->auth_config = &auth_config;
+	os_malloc(sizeof(wm_ms_graph_auth), auth_config);
+	ms_graph->auth_config = *(auth_config);
 	sched_scan_init(&(ms_graph->scan_config));
 	ms_graph->scan_config.interval = WM_DEF_INTERVAL;
-	os_malloc(sizeof(wm_ms_graph_resource) * 4, resources);
+	os_malloc(sizeof(wm_ms_graph_resource) * 2, resources);
 	ms_graph->resources = resources;
 	module->context = &WM_MS_GRAPH_CONTEXT;
 	module->tag = strndup(module->context->name, 8); // "ms-graph"
 	module->data = ms_graph;
 
 	for (int i = 0; nodes[i]; i++) {
+		XML_NODE children = NULL;
+
 		if (!nodes[i]->element) {
 			merror(XML_ELEMNULL);
 			return OS_CFGERR;
@@ -65,7 +69,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			merror(XML_ELEMNULL);
 			return OS_CFGERR;
 		}
-		else if (!strcmp(nodes[i]->element, XML_ENABLED) {
+		else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
 			if (!strcmp(nodes[i]->content, "yes")) {
 				ms_graph->enabled = true;
 			}
@@ -77,7 +81,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				return OS_CFGERR;
 			}
 		}
-		else if (!strcmp(nodes[i]->element, XML_ONLY_FUTURE_EVENTS) {
+		else if (!strcmp(nodes[i]->element, XML_ONLY_FUTURE_EVENTS)) {
 			if (!strcmp(nodes[i]->content, "yes")) {
 				ms_graph->only_future_events = true;
 			}
@@ -89,7 +93,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				return OS_CFGERR;
 			}
 		}
-		else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE) {
+		else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE)) {
 			ms_graph->curl_max_size = w_parse_time(nodes[i]->content);
 			// TODO: Find a good minimum size
 			if (ms_graph->curl_max_size < 1024L) {
@@ -99,7 +103,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				return OS_CFGERR;
 			}
 		}
-		else if (!strcmp(nodes[i]->element, XML_RUN_ON_START) {
+		else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
 			if (!strcmp(nodes[i]->content, "yes")) {
 				ms_graph->run_on_start = true;
 			}
@@ -111,8 +115,8 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				return OS_CFGERR;
 			}
 		}
-		else if (!strcmp(nodes[i]->element, XML_VERSION) {
-			if (!strcmp(nodes[i]->content, "v1.0") || !strcmp(nodes[i]->content, "beta") {
+		else if (!strcmp(nodes[i]->element, XML_VERSION)) {
+			if (!strcmp(nodes[i]->content, "v1.0") || !strcmp(nodes[i]->content, "beta")) {
 				os_strdup(nodes[i]->content, ms_graph->version);
 			}
 			else {
@@ -120,58 +124,98 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				return OS_CFGERR;
 			}
 		}
-		else if (!strcmp(nodes[i]->element, XML_API_AUTH) {
+		else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
 				merror(XML_INVALID, XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
+				OS_ClearNode(children);
 				return OS_CFGERR;
 			}
 			for (int j = 0; children[j]; j++) {
 				if (!strcmp(children[j]->element, XML_CLIENT_ID)) {
-					if (sizeof(children[j]->content) != 37 ) {
+					if (sizeof(children[j]->content) == 37 ) {
+						os_strdup(children[j]->content, ms_graph->auth_config.client_id);
+					}
+					else {
 						merror(XML_INVALID, XML_CLIENT_ID, WM_MS_GRAPH_CONTEXT.name);
 						return OS_CFGERR;
 					}
-					else {
-						os_strdup(children[j]->content, ms_graph->auth_config.client_id);
-					}
 				}
 				else if (!strcmp(children[j]->element, XML_TENANT_ID)) {
-					if (sizeof(children[j]->content) != 37) {
+					if (sizeof(children[j]->content) == 37) {
+						os_strdup(children[j]->content, ms_graph->auth_config.tenant_id);
+					}
+					else {
 						merror(XML_INVALID, XML_TENANT_ID, WM_MS_GRAPH_CONTEXT.name);
 						return OS_CFGERR;
 					}
-					else {
-						os_strdup(children[j]->content, ms_graph->auth_config.tenant_id);
-					}
 				}
 				else if (!strcmp(children[j]->element, XML_SECRET_VALUE)) {
-					if (sizeof(children[j]->content) != 35) {
+					if (sizeof(children[j]->content) == 35) {
+						os_strdup(children[j]->content, ms_graph->auth_config.secret_value);
+					}
+					else {
 						merror(XML_INVALID, XML_SECRET_VALUE, WM_MS_GRAPH_CONTEXT.name);
 						return OS_CFGERR;
 					}
-					else {
-						os_strdup(children[j]->content, ms_graph->auth_config.secret_value);
-					}
+				}
+				else {
+					OS_ClearNode(children);
+					merror(XML_INVATTR, children[i]->element, WM_MS_GRAPH_CONTEXT.name);
+					return OS_CFGERR;
 				}
 			}
+			OS_ClearNode(children);
 		}
 		else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
+				OS_ClearNode(children);
 				merror(XML_INVALID, XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
 				return OS_CFGERR;
 			}
 			for (int j = 0; children[j]; j++) {
 				if (!strcmp(children[j]->element, XML_RESOURCE_NAME)) {
-					os_strdup(children[j]->content, ms_graph->resource[ms_graph->num_resources++].name);
-					if (ms_graph->num_resources == /*a power of 2*/) {
-						/*expand the array*/
+					if(sizeof(children[j]->content) > 0){
+						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources++].name);
+						// Check if power of 2
+						if (ms_graph->num_resources != 0 && !(ms_graph->num_resources & (ms_graph->num_resources - 1))) {
+							os_realloc(ms_graph->resources, ms_graph->num_resources * 2, ms_graph->resources);
+						}
+					}
+					else{
+						merror(XML_INVALID, XML_RESOURCE_NAME, WM_MS_GRAPH_CONTEXT.name);
+						return OS_CFGERR;
 					}
 				}
+				if(!strcmp(children[j]->element, XML_RESOURCE_RELATIONSHIP)) {
+					if(sizeof(children[j]->content) > 0){
+						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources - 1].relationships[ms_graph->resources->num_relationships++]);
+						// Check if power of 2
+						if (ms_graph->resources->num_relationships != 0 && !(ms_graph->resources->num_relationships & (ms_graph->resources->num_relationships - 1))) {
+							os_realloc(ms_graph->resources->relationships, ms_graph->resources->num_relationships * 2, ms_graph->resources->relationships);
+						}
+					}
+					else{
+						merror(XML_INVALID, XML_RESOURCE_NAME, WM_MS_GRAPH_CONTEXT.name);
+						return OS_CFGERR;
+					}
+				}
+				else {
+					OS_ClearNode(children);
+					merror(XML_INVATTR, children[i]->element, WM_MS_GRAPH_CONTEXT.name);
+					return OS_CFGERR;
+				}
 			}
+			OS_ClearNode(children);
 		}
-		// TODO: rest of code
-
+		else {
+			merror(XML_INVATTR, nodes[i]->element, WM_MS_GRAPH_CONTEXT.name);
+			return OS_CFGERR;
+		}
 	}
+
+    if (sched_scan_read(&(ms_graph->scan_config), nodes, module->context->name) != 0) {
+        return OS_INVALID;
+    }
 
 	return OS_SUCCESS;
 }
