@@ -97,6 +97,12 @@ protected:
 
     virtual void SetUp()
     {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+
         // cleaning directory in order to start without garbage.
         if (std::filesystem::exists(KVDB_PATH))
         {

@@ -10,22 +10,69 @@
 
 #include <gtest/gtest.h>
 
+#include <logging/logging.hpp>
+
 #include "socketAuxiliarFunctions.hpp"
 
 // Note: server DGRAM sockets are only able to receive and clients are only able to send.
 
-TEST(socketAuxiliarFunctions, StreamConnectError)
+void initLogging(void)
+{
+    // Logging setup
+    logging::LoggingConfig logConfig;
+    logConfig.logLevel = spdlog::level::off;
+    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+    logging::loggingInit(logConfig);
+}
+
+class socketAuxiliarFunctions : public ::testing::Test
+{
+
+protected:
+    virtual void SetUp()
+    {
+        initLogging();
+    }
+
+    virtual void TearDown() {}
+};
+
+class unixDatagramSocket : public ::testing::Test
+{
+
+protected:
+    virtual void SetUp()
+    {
+        initLogging();
+    }
+
+    virtual void TearDown() {}
+};
+
+class unixSecureStreamSocket : public ::testing::Test
+{
+
+protected:
+    virtual void SetUp()
+    {
+        initLogging();
+    }
+
+    virtual void TearDown() {}
+};
+
+TEST_F(socketAuxiliarFunctions, StreamConnectError)
 {
     ASSERT_THROW(testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM),
                  std::runtime_error);
 }
 
-TEST(socketAuxiliarFunctions, DatagramConnectError)
+TEST_F(socketAuxiliarFunctions, DatagramConnectError)
 {
     ASSERT_THROW(testSocketConnect(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM), std::runtime_error);
 }
 
-TEST(socketAuxiliarFunctions, StreamBind)
+TEST_F(socketAuxiliarFunctions, StreamBind)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -36,7 +83,7 @@ TEST(socketAuxiliarFunctions, StreamBind)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, DatagramBind)
+TEST_F(socketAuxiliarFunctions, DatagramBind)
 {
     // Create server
     const int socketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
@@ -47,7 +94,7 @@ TEST(socketAuxiliarFunctions, DatagramBind)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamConnect)
+TEST_F(socketAuxiliarFunctions, StreamConnect)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -63,7 +110,7 @@ TEST(socketAuxiliarFunctions, StreamConnect)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, DatagramConnect)
+TEST_F(socketAuxiliarFunctions, DatagramConnect)
 {
     // Create server
     const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
@@ -79,7 +126,7 @@ TEST(socketAuxiliarFunctions, DatagramConnect)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamSendMessageError)
+TEST_F(socketAuxiliarFunctions, StreamSendMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -100,7 +147,7 @@ TEST(socketAuxiliarFunctions, StreamSendMessageError)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, DatagramSendMessageError)
+TEST_F(socketAuxiliarFunctions, DatagramSendMessageError)
 {
     // Create server
     const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
@@ -121,7 +168,7 @@ TEST(socketAuxiliarFunctions, DatagramSendMessageError)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamSendLongMessageError)
+TEST_F(socketAuxiliarFunctions, StreamSendLongMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -144,7 +191,7 @@ TEST(socketAuxiliarFunctions, StreamSendLongMessageError)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, DatagramSendLongMessageError)
+TEST_F(socketAuxiliarFunctions, DatagramSendLongMessageError)
 {
     // Create server
     const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
@@ -167,7 +214,7 @@ TEST(socketAuxiliarFunctions, DatagramSendLongMessageError)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamSendEmptyMessageError)
+TEST_F(socketAuxiliarFunctions, StreamSendEmptyMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -187,7 +234,7 @@ TEST(socketAuxiliarFunctions, StreamSendEmptyMessageError)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, DatagramSendEmptyMessageError)
+TEST_F(socketAuxiliarFunctions, DatagramSendEmptyMessageError)
 {
     // Create server
     const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
@@ -207,19 +254,19 @@ TEST(socketAuxiliarFunctions, DatagramSendEmptyMessageError)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, SendInvalidSocketError)
+TEST_F(socketAuxiliarFunctions, SendInvalidSocketError)
 {
     ASSERT_EQ(testSendMsg(0, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
     ASSERT_EQ(testSendMsg(-5, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
 }
 
-TEST(socketAuxiliarFunctions, SendWrongSocketFDError)
+TEST_F(socketAuxiliarFunctions, SendWrongSocketFDError)
 {
     ASSERT_EQ(testSendMsg(999, TEST_SEND_MESSAGE.data()),
               CommRetval::COMMUNICATION_ERROR);
 }
 
-TEST(socketAuxiliarFunctions, StreamSendMessage)
+TEST_F(socketAuxiliarFunctions, StreamSendMessage)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -237,7 +284,7 @@ TEST(socketAuxiliarFunctions, StreamSendMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, DatagramSendMessage)
+TEST_F(socketAuxiliarFunctions, DatagramSendMessage)
 {
     // Create server
     const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
@@ -256,7 +303,7 @@ TEST(socketAuxiliarFunctions, DatagramSendMessage)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamRecvMessage)
+TEST_F(socketAuxiliarFunctions, StreamRecvMessage)
 {
 
     // Create server
@@ -283,7 +330,7 @@ TEST(socketAuxiliarFunctions, StreamRecvMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, DatagramRecvMessage)
+TEST_F(socketAuxiliarFunctions, DatagramRecvMessage)
 {
 
     // Create server
@@ -307,7 +354,7 @@ TEST(socketAuxiliarFunctions, DatagramRecvMessage)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamSendRecvMessage)
+TEST_F(socketAuxiliarFunctions, StreamSendRecvMessage)
 {
     char msg[MAX_BUFFER_SIZE] = {};
 
@@ -339,7 +386,7 @@ TEST(socketAuxiliarFunctions, StreamSendRecvMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamSendRecvLongestMessage)
+TEST_F(socketAuxiliarFunctions, StreamSendRecvLongestMessage)
 {
     char msg[MSG_MAX_SIZE + 1] = {};
     memset(msg, 'x', MSG_MAX_SIZE);
@@ -368,7 +415,7 @@ TEST(socketAuxiliarFunctions, StreamSendRecvLongestMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, DatagramSendRecvLongestMessage)
+TEST_F(socketAuxiliarFunctions, DatagramSendRecvLongestMessage)
 {
     char msg[MSG_MAX_SIZE + 1] = {};
     memset(msg, 'x', MSG_MAX_SIZE);
@@ -393,7 +440,7 @@ TEST(socketAuxiliarFunctions, DatagramSendRecvLongestMessage)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamRemoteCloseBeforeSend)
+TEST_F(socketAuxiliarFunctions, StreamRemoteCloseBeforeSend)
 {
 
     // Create server
@@ -422,7 +469,7 @@ TEST(socketAuxiliarFunctions, StreamRemoteCloseBeforeSend)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamRemoteCloseBeforeRcv)
+TEST_F(socketAuxiliarFunctions, StreamRemoteCloseBeforeRcv)
 {
 
     // Create server
@@ -445,7 +492,7 @@ TEST(socketAuxiliarFunctions, StreamRemoteCloseBeforeRcv)
         try {
             testRecvString(clientLocal, SOCK_STREAM);
         } catch (const std::runtime_error& e) {
-            ASSERT_STREQ(e.what(), "recvMsg: socket disconnected.");
+            ASSERT_STREQ(e.what(), "recvMsg: socket disconnected");
             throw;
         },
         std::runtime_error);
@@ -456,7 +503,7 @@ TEST(socketAuxiliarFunctions, StreamRemoteCloseBeforeRcv)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(socketAuxiliarFunctions, StreamLocalSendremoteCloseBeforeRcv)
+TEST_F(socketAuxiliarFunctions, StreamLocalSendremoteCloseBeforeRcv)
 {
 
     // Create server

@@ -2,13 +2,29 @@
 
 #include <gtest/gtest.h>
 
-TEST(StackExecutor, Init_empty)
+class StackExecutor : public ::testing::Test
+{
+
+protected:
+    virtual void SetUp()
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+    }
+
+    virtual void TearDown() {}
+};
+
+TEST_F(StackExecutor, Init_empty)
 {
     ASSERT_NO_THROW(cmd::details::StackExecutor());
     ASSERT_NO_THROW(cmd::details::StackExecutor().execute());
 }
 
-TEST(StackExecutor, add)
+TEST_F(StackExecutor, add)
 {
     cmd::details::StackExecutor stack;
     std::string result {};
@@ -20,7 +36,7 @@ TEST(StackExecutor, add)
     ASSERT_EQ(result, "");
 }
 
-TEST(StackExecutor, execute_as_lifo)
+TEST_F(StackExecutor, execute_as_lifo)
 {
     cmd::details::StackExecutor stack;
     std::string result {};
@@ -33,7 +49,7 @@ TEST(StackExecutor, execute_as_lifo)
     ASSERT_EQ(result, "321");
 }
 
-TEST(StackExecutor, execute_clears_stack)
+TEST_F(StackExecutor, execute_clears_stack)
 {
     cmd::details::StackExecutor stack;
     std::string result {};
@@ -48,7 +64,7 @@ TEST(StackExecutor, execute_clears_stack)
     ASSERT_EQ(result, "321");
 }
 
-TEST(StackExecutor, execute_catches_exceptions)
+TEST_F(StackExecutor, execute_catches_exceptions)
 {
     cmd::details::StackExecutor stack;
     std::string result {};

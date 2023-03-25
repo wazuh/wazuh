@@ -16,7 +16,16 @@ static const json::Json TEST_JSON2 {R"({"key": "value2"})"};
 class FileDriverTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { std::filesystem::create_directories(TEST_PATH); }
+    void SetUp() override
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+
+        std::filesystem::create_directories(TEST_PATH);
+    }
 
     void TearDown() override { std::filesystem::remove_all(TEST_PATH); }
 };
