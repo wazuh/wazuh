@@ -32,6 +32,15 @@ const string targetField {"/wdb/result"};
 const string helperFunctionName {"sca_decoder"};
 const std::vector<string> commonArguments {"$event.original", "$agent.id"};
 
+void initLogging(void)
+{
+    // Logging setup
+    logging::LoggingConfig logConfig;
+    logConfig.logLevel = spdlog::level::off;
+    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+    logging::loggingInit(logConfig);
+}
+
 class opBuilderSCAdecoder_Functions : public ::testing::Test
 {
 protected:
@@ -40,123 +49,61 @@ protected:
     std::unordered_map<sca::field::Name, std::string> fieldSource {};
     std::unordered_map<sca::field::Name, std::string> fieldDest {};
 
-    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
-
-    void SetUp() override
+    virtual void SetUp()
     {
-        // Disable error logs for these tests
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
+        initLogging();
 
         wdb = std::make_shared<wazuhdb::WazuhDB>(WDB_SOCK_PATH);
-        cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(
-            CFG_AR_SOCK_PATH);
+        cfg = std::make_shared<base::utils::socketInterface::unixDatagram>(CFG_AR_SOCK_PATH);
 
-        for (sca::field::Name field = sca::field::Name::A_BEGIN;
-             field != sca::field::Name::A_END;
-             ++field)
+        for (sca::field::Name field = sca::field::Name::A_BEGIN; field != sca::field::Name::A_END; ++field)
         {
-            fieldSource.insert(
-                {field, "/event/original" + sca::field::getRealtivePath(field)});
-            fieldDest.insert(
-                {field, std::string {"/sca"} + sca::field::getRealtivePath(field)});
+            fieldSource.insert({field, "/event/original" + sca::field::getRealtivePath(field)});
+            fieldDest.insert({field, std::string {"/sca"} + sca::field::getRealtivePath(field)});
         }
     }
 
-    void TearDown() override
-    {
-        // Restore original log level
-        logging::getDefaultLogger()->set_level(logLevel);
-    }
+    virtual void TearDown() {}
 };
 
 class opBuilderSCAdecoderInit : public ::testing::Test
 {
 protected:
-    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
+    virtual void SetUp() { initLogging(); }
 
-    void SetUp() override
-    {
-        // Disable error logs for these tests
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
-    }
-
-    void TearDown() override
-    {
-        // Restore original log level
-        logging::getDefaultLogger()->set_level(logLevel);
-    }
+    virtual void TearDown() {}
 };
 
 class checkTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
+    virtual void SetUp() { initLogging(); }
 
-    void SetUp() override
-    {
-        // Disable error logs for these tests
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
-    }
-
-    void TearDown() override
-    {
-        // Restore original log level
-        logging::getDefaultLogger()->set_level(logLevel);
-    }
+    virtual void TearDown() {}
 };
 
 class summaryTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
+    virtual void SetUp() { initLogging(); }
 
-    void SetUp() override
-    {
-        // Disable error logs for these tests
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
-    }
-
-    void TearDown() override
-    {
-        // Restore original log level
-        logging::getDefaultLogger()->set_level(logLevel);
-    }
+    virtual void TearDown() {}
 };
 
 class policiesTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
+    virtual void SetUp() { initLogging(); }
 
-    void SetUp() override
-    {
-        // Disable error logs for these tests
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
-    }
-
-    void TearDown() override
-    {
-        // Restore original log level
-        logging::getDefaultLogger()->set_level(logLevel);
-    }
+    virtual void TearDown() {}
 };
 
 class dumpEndTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
+    virtual void SetUp() { initLogging(); }
 
-    void SetUp() override
-    {
-        // Disable error logs for these tests
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
-    }
-
-    void TearDown() override
-    {
-        // Restore original log level
-        logging::getDefaultLogger()->set_level(logLevel);
-    }
+    virtual void TearDown() {}
 };
 
 // Result true, only mandatory fields present

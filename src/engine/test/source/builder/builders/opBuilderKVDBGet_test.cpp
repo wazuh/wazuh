@@ -15,6 +15,7 @@
 
 #include <baseTypes.hpp>
 #include <kvdb/kvdbManager.hpp>
+#include <logging/logging.hpp>
 #include <opBuilderKVDB.hpp>
 
 #include <metrics/metricsManager.hpp>
@@ -38,6 +39,12 @@ protected:
 
     virtual void SetUp()
     {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+
         auto res = kvdbManager->getHandler(DB_NAME, true);
         if (auto err = std::get_if<base::Error>(&res))
         {

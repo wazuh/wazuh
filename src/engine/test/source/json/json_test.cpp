@@ -1,34 +1,101 @@
-#include "gtest/gtest.h"
-#include <json/json.hpp>
+#include <gtest/gtest.h>
 
 #include <iostream>
 #include <limits>
 #include <string>
+
+#include <json/json.hpp>
+#include <logging/logging.hpp>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
 using namespace std;
 using namespace json;
 
-TEST(JsonBase, InitializeDefault)
+void initLogging(void)
+{
+    // Logging setup
+    logging::LoggingConfig logConfig;
+    logConfig.logLevel = spdlog::level::off;
+    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+    logging::loggingInit(logConfig);
+}
+
+class JsonBase : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+    virtual void TearDown() {}
+};
+
+class JsonStatic : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+    virtual void TearDown() {}
+};
+
+class JsonBuildtime : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+    virtual void TearDown() {}
+};
+
+class JsonRuntime : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+    virtual void TearDown() {}
+};
+
+class JsonQueryTest : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+    virtual void TearDown() {}
+};
+
+class JsonGettersTest : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+    virtual void TearDown() {}
+};
+
+class JsonSettersTest : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+    virtual void TearDown() {}
+};
+
+class getJsonTest : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+    virtual void TearDown() {}
+};
+
+TEST_F(JsonBase, InitializeDefault)
 {
     ASSERT_NO_THROW(Json doc;);
     ASSERT_NO_THROW(Json doc {};);
 }
 
-TEST(JsonBase, InitializeCopy)
+TEST_F(JsonBase, InitializeCopy)
 {
     Json doc;
     ASSERT_NO_THROW(Json doc2 {doc};);
 }
 
-TEST(JsonBase, AssignmentCopy)
+TEST_F(JsonBase, AssignmentCopy)
 {
     Json doc;
     ASSERT_NO_THROW(Json doc2 = doc;);
 }
 
-TEST(JsonBase, InitializeJsonString)
+TEST_F(JsonBase, InitializeJsonString)
 {
     ASSERT_NO_THROW(Json doc {"{\"key\":\"value\"}"};);
     ASSERT_NO_THROW(Json doc {"{}"};);
@@ -36,7 +103,7 @@ TEST(JsonBase, InitializeJsonString)
 }
 
 // TODO: Add more use cases, and add cases once operators and arrays are implemented.
-TEST(JsonStatic, FormatJsonPath)
+TEST_F(JsonStatic, FormatJsonPath)
 {
     auto dotPath = "key.value";
     std::string pointerPath;
@@ -64,7 +131,7 @@ TEST(JsonStatic, FormatJsonPath)
     ASSERT_EQ(pointerPath, "/field/~0tmp/~1field/~1tmp");
 }
 
-TEST(JsonBuildtime, Size)
+TEST_F(JsonBuildtime, Size)
 {
     // Empty object
     Json emptyObj {"{}"};
@@ -87,13 +154,13 @@ TEST(JsonBuildtime, Size)
     ASSERT_THROW(none.size(), std::runtime_error);
 }
 
-TEST(JsonBuildtime, Null)
+TEST_F(JsonBuildtime, Null)
 {
     Json none {"null"};
     ASSERT_TRUE(none.isNull());
 }
 
-TEST(JsonBuildtime, Bool)
+TEST_F(JsonBuildtime, Bool)
 {
     Json trueVal {"true"};
     ASSERT_TRUE(trueVal.isBool());
@@ -104,7 +171,7 @@ TEST(JsonBuildtime, Bool)
     ASSERT_FALSE(falseVal.getBool().value());
 }
 
-TEST(JsonBuildtime, Number)
+TEST_F(JsonBuildtime, Number)
 {
     Json integer {"123"};
     ASSERT_TRUE(integer.isNumber());
@@ -123,14 +190,14 @@ TEST(JsonBuildtime, Number)
     ASSERT_EQ(doubleAsDouble.getNumberAsDouble(), 123.456);
 }
 
-TEST(JsonBuildtime, String)
+TEST_F(JsonBuildtime, String)
 {
     Json str {"\"value\""};
     ASSERT_TRUE(str.isString());
     ASSERT_EQ(str.getString(), "value");
 }
 
-TEST(JsonBuildtime, Array)
+TEST_F(JsonBuildtime, Array)
 {
     Json arr {"[\"value\"]"};
     ASSERT_TRUE(arr.isArray());
@@ -138,7 +205,7 @@ TEST(JsonBuildtime, Array)
     ASSERT_EQ(arr.getArray().value()[0].getString().value(), "value");
 }
 
-TEST(JsonBuildtime, Object)
+TEST_F(JsonBuildtime, Object)
 {
     Json obj {"{\"key\":\"value\"}"};
     ASSERT_TRUE(obj.isObject());
@@ -147,19 +214,19 @@ TEST(JsonBuildtime, Object)
     ASSERT_EQ(std::get<1>(obj.getObject().value()[0]).getString(), "value");
 }
 
-TEST(JsonRuntime, InitializeCopyMove)
+TEST_F(JsonRuntime, InitializeCopyMove)
 {
     Json doc;
     ASSERT_NO_THROW(Json doc2 {std::move(doc)};);
 }
 
-TEST(JsonRuntime, AssignmentCopyMove)
+TEST_F(JsonRuntime, AssignmentCopyMove)
 {
     Json doc;
     ASSERT_NO_THROW(Json doc2 = std::move(doc););
 }
 
-TEST(JsonRuntime, Exists)
+TEST_F(JsonRuntime, Exists)
 {
     // One level deep
     Json doc {"{\"key\":\"value\"}"};
@@ -183,7 +250,7 @@ TEST(JsonRuntime, Exists)
     ASSERT_THROW(doc.exists(".key/key2/key3/key4"), std::runtime_error);
 }
 
-TEST(JsonRuntime, EqualsValue)
+TEST_F(JsonRuntime, EqualsValue)
 {
     Json doc {R"({
         "object": {
@@ -274,7 +341,7 @@ TEST(JsonRuntime, EqualsValue)
     ASSERT_FALSE(doc.equals("/nested/object", value));
 }
 
-TEST(JsonRuntime, EqualsReference)
+TEST_F(JsonRuntime, EqualsReference)
 {
     Json doc {R"({
         "object": {
@@ -360,7 +427,7 @@ TEST(JsonRuntime, EqualsReference)
     ASSERT_FALSE(doc.equals("/nested/int", "/object"));
 }
 
-TEST(JsonRuntime, SetValue)
+TEST_F(JsonRuntime, SetValue)
 {
     Json expected {R"({
         "object": {
@@ -446,7 +513,7 @@ TEST(JsonRuntime, SetValue)
     ASSERT_THROW(doc.set("object/key", Json {"\"value\""}), std::runtime_error);
 }
 
-TEST(JsonRuntime, SetReference)
+TEST_F(JsonRuntime, SetReference)
 {
     Json doc1 {R"({
         "nested": {
@@ -540,7 +607,7 @@ TEST(JsonRuntime, SetReference)
     ASSERT_TRUE(doc1.equals("/object", Json {"null"}));
 }
 
-TEST(JsonRuntime, PrettyStr)
+TEST_F(JsonRuntime, PrettyStr)
 {
     std::string expected = R"({
     "nested": {
@@ -564,7 +631,7 @@ TEST(JsonRuntime, PrettyStr)
     ASSERT_EQ(expected, doc.prettyStr());
 }
 
-TEST(JsonRuntime, Str)
+TEST_F(JsonRuntime, Str)
 {
     std::string expected = "{\"nested\":{\"object\":{\"key\":\"value\"},\"array\":["
                            "\"value\"],\"int\":123,\"real\":123.456,\"boolT\":true,"
@@ -576,7 +643,7 @@ TEST(JsonRuntime, Str)
 }
 
 // Checking basic functionality of str from path method
-TEST(JsonRuntime, strFromPath)
+TEST_F(JsonRuntime, strFromPath)
 {
     std::string expected =
         R"({
@@ -612,7 +679,7 @@ TEST(JsonRuntime, strFromPath)
 }
 
 // Cheking that returns nullopt when no present but correct field format
-TEST(JsonRuntime, strFromPathNotPresentField)
+TEST_F(JsonRuntime, strFromPathNotPresentField)
 {
     std::string expected =
         R"({
@@ -631,7 +698,7 @@ TEST(JsonRuntime, strFromPathNotPresentField)
 }
 
 // Cheking that throws runtime_error when no valid pointer
-TEST(JsonRuntime, strFromPathNotCorrectPointer)
+TEST_F(JsonRuntime, strFromPathNotCorrectPointer)
 {
     std::string expected =
         R"({
@@ -647,7 +714,7 @@ TEST(JsonRuntime, strFromPathNotCorrectPointer)
 }
 
 // return various stages of nested objects
-TEST(JsonRuntime, strFromPathNestedObjects)
+TEST_F(JsonRuntime, strFromPathNestedObjects)
 {
     std::string expected =
         R"({
@@ -678,7 +745,7 @@ TEST(JsonRuntime, strFromPathNestedObjects)
 /****************************************************************************************/
 // QUERY
 /****************************************************************************************/
-TEST(JsonQueryTest, TypeName)
+TEST_F(JsonQueryTest, TypeName)
 {
     // Root objs
     Json nullObj {"null"};
@@ -715,7 +782,7 @@ TEST(JsonQueryTest, TypeName)
     ASSERT_THROW(nestedNullObj.typeName("/notFound"), std::runtime_error);
 }
 
-TEST(JsonQueryTest, Type)
+TEST_F(JsonQueryTest, Type)
 {
     // Root objs
     Json nullObj {"null"};
@@ -753,7 +820,7 @@ TEST(JsonQueryTest, Type)
     ASSERT_THROW(nestedObjectObj.type("/invalid"), std::runtime_error);
 }
 
-TEST(JsonQueryTest, validate)
+TEST_F(JsonQueryTest, validate)
 {
     // Schema
     Json validSchema {R"({"type": "object"})"};
@@ -778,7 +845,7 @@ TEST(JsonQueryTest, validate)
 /****************************************************************************************/
 // GETTERS
 /****************************************************************************************/
-TEST(JsonGettersTest, GetString)
+TEST_F(JsonGettersTest, GetString)
 {
     // Success cases
     Json jObjStr {R"({
@@ -847,7 +914,7 @@ TEST(JsonGettersTest, GetString)
     ASSERT_THROW(jObjStr.getString("object/key"), std::runtime_error);
 }
 
-TEST(JsonGettersTest, GetInt)
+TEST_F(JsonGettersTest, GetInt)
 {
     // Success cases
     Json jObjInt {R"({
@@ -916,7 +983,7 @@ TEST(JsonGettersTest, GetInt)
     ASSERT_THROW(jObjInt.getInt("object/key"), std::runtime_error);
 }
 
-TEST(JsonGettersTest, GetInt64)
+TEST_F(JsonGettersTest, GetInt64)
 {
     // Success cases
     Json jObjInt64 {R"({
@@ -985,7 +1052,7 @@ TEST(JsonGettersTest, GetInt64)
     ASSERT_THROW(jObjInt64.getInt64("object/key"), std::runtime_error);
 }
 
-TEST(JsonGettersTest, GetFloat)
+TEST_F(JsonGettersTest, GetFloat)
 {
     // Success cases
     Json jObjReal {R"({
@@ -1054,7 +1121,7 @@ TEST(JsonGettersTest, GetFloat)
     ASSERT_THROW(jObjReal.getDouble("object/key"), std::runtime_error);
 }
 
-TEST(JsonGettersTest, GetDouble)
+TEST_F(JsonGettersTest, GetDouble)
 {
     // Success cases
     Json jObjReal {R"({
@@ -1123,7 +1190,7 @@ TEST(JsonGettersTest, GetDouble)
     ASSERT_THROW(jObjReal.getDouble("object/key"), std::runtime_error);
 }
 
-TEST(JsonGettersTest, GetBool)
+TEST_F(JsonGettersTest, GetBool)
 {
     // Success cases
     Json jObjBool {R"({
@@ -1195,7 +1262,7 @@ TEST(JsonGettersTest, GetBool)
     ASSERT_THROW(jObjBool.getBool("object/key"), std::runtime_error);
 }
 
-TEST(JsonGettersTest, GetArray)
+TEST_F(JsonGettersTest, GetArray)
 {
     // Success cases
     Json jObjArray {R"({
@@ -1269,7 +1336,7 @@ TEST(JsonGettersTest, GetArray)
     ASSERT_THROW(jObjArray.getArray("object/key"), std::runtime_error);
 }
 
-TEST(JsonGettersTest, GetObject)
+TEST_F(JsonGettersTest, GetObject)
 {
     // Success cases
     Json jObjObject {R"({
@@ -1348,7 +1415,7 @@ TEST(JsonGettersTest, GetObject)
     ASSERT_THROW(jObjObject.getObject("object/key"), std::runtime_error);
 }
 
-TEST(JsonGettersTest, GetJson)
+TEST_F(JsonGettersTest, GetJson)
 {
     // Success cases
     Json source(R"({
@@ -1425,7 +1492,7 @@ TEST(JsonGettersTest, GetJson)
 /****************************************************************************************/
 // SETTERS
 /****************************************************************************************/
-TEST(JsonSettersTest, SetString)
+TEST_F(JsonSettersTest, SetString)
 {
     Json jObjString {R"({
         "nested": "value"
@@ -1448,7 +1515,7 @@ TEST(JsonSettersTest, SetString)
     ASSERT_THROW(jObjString.setString("newValue", "object/key"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, SetInt)
+TEST_F(JsonSettersTest, SetInt)
 {
     Json jObjInt {R"({
         "nested": 123
@@ -1469,7 +1536,7 @@ TEST(JsonSettersTest, SetInt)
     ASSERT_THROW(jObjInt.setInt(456, "object/key"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, SetInt64)
+TEST_F(JsonSettersTest, SetInt64)
 {
     Json jObjInt64 {R"({
         "nested": 9223372036854775807
@@ -1490,7 +1557,7 @@ TEST(JsonSettersTest, SetInt64)
     ASSERT_THROW(jObjInt64.setInt64(9223372036854775808ull, "object/key"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, SetFloat)
+TEST_F(JsonSettersTest, SetFloat)
 {
     Json jObjFloat {R"({
         "nested": 123.456
@@ -1511,7 +1578,7 @@ TEST(JsonSettersTest, SetFloat)
     ASSERT_THROW(jObjFloat.setFloat(789.012, "object/key"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, SetDouble)
+TEST_F(JsonSettersTest, SetDouble)
 {
     Json jObjDouble {R"({
         "nested": 123.456
@@ -1532,7 +1599,7 @@ TEST(JsonSettersTest, SetDouble)
     ASSERT_THROW(jObjDouble.setDouble(789.012, "object/key"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, SetBool)
+TEST_F(JsonSettersTest, SetBool)
 {
     Json jObjBool {R"({
         "nested": true
@@ -1553,7 +1620,7 @@ TEST(JsonSettersTest, SetBool)
     ASSERT_THROW(jObjBool.setBool(false, "object/key"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, SetArray)
+TEST_F(JsonSettersTest, SetArray)
 {
     Json jObjArray {R"({
         "nested": ["value"]
@@ -1580,7 +1647,7 @@ TEST(JsonSettersTest, SetArray)
     ASSERT_THROW(jObjArray.setArray("object/key"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, SetObject)
+TEST_F(JsonSettersTest, SetObject)
 {
     Json jObjObject {R"({
         "nested": {
@@ -1609,7 +1676,7 @@ TEST(JsonSettersTest, SetObject)
     ASSERT_THROW(jObjObject.setObject("object/key"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, AppendString)
+TEST_F(JsonSettersTest, AppendString)
 {
     Json jObjString {R"({
         "nested": ["value"]
@@ -1646,7 +1713,7 @@ TEST(JsonSettersTest, AppendString)
     ASSERT_THROW(jObjString.appendString("object/key", "value2"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, Append)
+TEST_F(JsonSettersTest, Append)
 {
     Json jString {"\"value\""};
     Json jNumber {"1"};
@@ -1715,7 +1782,7 @@ TEST(JsonSettersTest, Append)
     ASSERT_THROW(source.appendJson(jString, "invalid"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, Erase)
+TEST_F(JsonSettersTest, Erase)
 {
     Json jObj {R"({
         "nested": {
@@ -1732,7 +1799,7 @@ TEST(JsonSettersTest, Erase)
     ASSERT_THROW(jObj.erase("object/key"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, MergeObjRoot)
+TEST_F(JsonSettersTest, MergeObjRoot)
 {
     Json jObjSrc {R"({
         "key1": "newValue1",
@@ -1766,7 +1833,7 @@ TEST(JsonSettersTest, MergeObjRoot)
     ASSERT_EQ(jObjDst, jObjExpected);
 }
 
-TEST(JsonSettersTest, MergeObjNested)
+TEST_F(JsonSettersTest, MergeObjNested)
 {
     Json jObjSrc {R"({
         "key1": "newValue1",
@@ -1801,7 +1868,7 @@ TEST(JsonSettersTest, MergeObjNested)
     ASSERT_EQ(jObjDst, jObjExpected);
 }
 
-TEST(JsonSettersTest, MergeArrayRoot)
+TEST_F(JsonSettersTest, MergeArrayRoot)
 {
     Json jArraySrc {R"([
         "newValue1",
@@ -1837,7 +1904,7 @@ TEST(JsonSettersTest, MergeArrayRoot)
     ASSERT_EQ(jArrayDst, jArrayExpected);
 }
 
-TEST(JsonSettersTest, MergeArrayNested)
+TEST_F(JsonSettersTest, MergeArrayNested)
 {
     Json jArraySrc {R"([
         "newValue1",
@@ -1877,7 +1944,7 @@ TEST(JsonSettersTest, MergeArrayNested)
     ASSERT_EQ(jArrayDst, jArrayExpected);
 }
 
-TEST(JsonSettersTest, MergeFailCases)
+TEST_F(JsonSettersTest, MergeFailCases)
 {
 
     Json jObjSrc {R"({
@@ -1920,7 +1987,7 @@ TEST(JsonSettersTest, MergeFailCases)
     ASSERT_THROW(jOtherDst.merge(json::NOT_RECURSIVE, jOtherSrc), std::runtime_error);
 }
 
-TEST(JsonSettersTest, MergeObjRootRef)
+TEST_F(JsonSettersTest, MergeObjRootRef)
 {
     Json jObjDst {R"({
         "key1": "value1",
@@ -1952,7 +2019,7 @@ TEST(JsonSettersTest, MergeObjRootRef)
     ASSERT_NO_THROW(jObjDst.merge(json::NOT_RECURSIVE, "/to_merge"));
 }
 
-TEST(JsonSettersTest, MergeObjNestedRef)
+TEST_F(JsonSettersTest, MergeObjNestedRef)
 {
     Json jObjDst {R"({
         "key1": "value1",
@@ -1986,7 +2053,7 @@ TEST(JsonSettersTest, MergeObjNestedRef)
     ASSERT_EQ(jObjDst, jObjExpected);
 }
 
-TEST(JsonSettersTest, MergeArrayRootRef)
+TEST_F(JsonSettersTest, MergeArrayRootRef)
 {
     Json jArrayDst {R"([
         "value1",
@@ -2007,7 +2074,7 @@ TEST(JsonSettersTest, MergeArrayRootRef)
     ASSERT_THROW(jArrayDst.merge(json::NOT_RECURSIVE, "/to_merge"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, MergeArrayNestedRef)
+TEST_F(JsonSettersTest, MergeArrayNestedRef)
 {
     Json jArrayDst {R"({
         "key1": [
@@ -2046,7 +2113,7 @@ TEST(JsonSettersTest, MergeArrayNestedRef)
     ASSERT_EQ(jArrayDst, jArrayExpected);
 }
 
-TEST(JsonSettersTest, MergeRefFailCases)
+TEST_F(JsonSettersTest, MergeRefFailCases)
 {
     Json jObjDst {R"({
         "key1": "value1",
@@ -2081,7 +2148,7 @@ TEST(JsonSettersTest, MergeRefFailCases)
 }
 
 // json getJson test
-TEST(getJsonTest, getObjectOk)
+TEST_F(getJsonTest, getObjectOk)
 {
     Json j {R"({
         "key1": "value1",
@@ -2098,7 +2165,7 @@ TEST(getJsonTest, getObjectOk)
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getArrayOk)
+TEST_F(getJsonTest, getArrayOk)
 {
     Json j {R"({
         "key1": "value1",
@@ -2113,7 +2180,7 @@ TEST(getJsonTest, getArrayOk)
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getIntOk)
+TEST_F(getJsonTest, getIntOk)
 {
     Json j {R"({
         "key1": "value1",
@@ -2128,7 +2195,7 @@ TEST(getJsonTest, getIntOk)
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getStringOk)
+TEST_F(getJsonTest, getStringOk)
 {
     Json j {R"({
         "key1": "value1",
@@ -2143,7 +2210,7 @@ TEST(getJsonTest, getStringOk)
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getBoolOk)
+TEST_F(getJsonTest, getBoolOk)
 {
     Json j {R"({
         "key1": "value1",
@@ -2158,7 +2225,7 @@ TEST(getJsonTest, getBoolOk)
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, getNullOk)
+TEST_F(getJsonTest, getNullOk)
 {
     Json j {R"({
         "key1": "value1",
@@ -2173,7 +2240,7 @@ TEST(getJsonTest, getNullOk)
     ASSERT_EQ(j.getJson("/key3"), jExpected);
 }
 
-TEST(getJsonTest, pathNotFound)
+TEST_F(getJsonTest, pathNotFound)
 {
     Json j {R"({
         "key1": "value1",
@@ -2184,7 +2251,7 @@ TEST(getJsonTest, pathNotFound)
     ASSERT_EQ(j.getJson("/key4"), std::optional<Json>());
 }
 
-TEST(getJsonTest, invalidPath)
+TEST_F(getJsonTest, invalidPath)
 {
     Json j {R"({
         "key1": "value1",
@@ -2195,7 +2262,7 @@ TEST(getJsonTest, invalidPath)
     ASSERT_THROW(j.getJson("key3~"), std::runtime_error);
 }
 
-TEST(JsonSettersTest, MergeRecursiveObjRoot)
+TEST_F(JsonSettersTest, MergeRecursiveObjRoot)
 {
     Json jObjDst {R"({
         "field1": {

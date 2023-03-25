@@ -6,15 +6,16 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <gtest/gtest.h>
+
 #include <any>
 #include <memory>
 #include <vector>
 
-#include <gtest/gtest.h>
-#include <json/json.hpp>
-
 #include <baseTypes.hpp>
+#include <json/json.hpp>
 #include <kvdb/kvdbManager.hpp>
+#include <logging/logging.hpp>
 #include <opBuilderKVDB.hpp>
 
 #include <metrics/metricsManager.hpp>
@@ -42,7 +43,14 @@ protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager =
         std::make_shared<kvdb_manager::KVDBManager>(opBuilderKVDBDeleteTest::DB_DIR, m_manager);
 
-    virtual void SetUp() {}
+    virtual void SetUp()
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+    }
 
     virtual void TearDown() {}
 };

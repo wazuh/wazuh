@@ -9,19 +9,35 @@
 #include <gtest/gtest.h>
 
 #include <utils/socketInterface/unixSecureStream.hpp>
+#include <logging/logging.hpp>
 
 #include "testAuxiliar/socketAuxiliarFunctions.hpp"
 
 using namespace base::utils::socketInterface;
 
-TEST(unixSecureStreamSocket, build)
+class unixSecureStreamSocket : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+    }
+
+    void TearDown() override {}
+};
+
+TEST_F(unixSecureStreamSocket, build)
 {
     ASSERT_NO_THROW(unixSecureStream uStream());
     ASSERT_NO_THROW(unixSecureStream uStream(TEST_STREAM_SOCK_PATH));
     ASSERT_NO_THROW(unixSecureStream uStream("qwertyuiop"));
 }
 
-TEST(unixSecureStreamSocket, SetMaxMsgSizeError)
+TEST_F(unixSecureStreamSocket, SetMaxMsgSizeError)
 {
     ASSERT_THROW({ unixSecureStream uStream(TEST_STREAM_SOCK_PATH, 0); },
                  std::invalid_argument);
@@ -30,7 +46,7 @@ TEST(unixSecureStreamSocket, SetMaxMsgSizeError)
                  std::invalid_argument);
 }
 
-TEST(unixSecureStreamSocket, GetMaxMsgSize)
+TEST_F(unixSecureStreamSocket, GetMaxMsgSize)
 {
     {
         unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
@@ -55,13 +71,13 @@ TEST(unixSecureStreamSocket, GetMaxMsgSize)
     }
 }
 
-TEST(unixSecureStreamSocket, GetPath)
+TEST_F(unixSecureStreamSocket, GetPath)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
     ASSERT_NO_THROW(ASSERT_EQ(uStream.getPath(), TEST_STREAM_SOCK_PATH););
 }
 
-TEST(unixSecureStreamSocket, ConnectErrorInvalidPath)
+TEST_F(unixSecureStreamSocket, ConnectErrorInvalidPath)
 {
     {
         unixSecureStream uStream("/invalid/path");
@@ -73,7 +89,7 @@ TEST(unixSecureStreamSocket, ConnectErrorInvalidPath)
     }
 }
 
-TEST(unixSecureStreamSocket, Connect)
+TEST_F(unixSecureStreamSocket, Connect)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -87,7 +103,7 @@ TEST(unixSecureStreamSocket, Connect)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, ConnectTwice)
+TEST_F(unixSecureStreamSocket, ConnectTwice)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -102,28 +118,13 @@ TEST(unixSecureStreamSocket, ConnectTwice)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, Disconnect)
+TEST_F(unixSecureStreamSocket, Disconnect)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
     ASSERT_NO_THROW(uStream.socketDisconnect());
 }
 
-TEST(unixSecureStreamSocket, ConnectAndDisconnect)
-{
-    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
-
-    auto serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
-    ASSERT_GT(serverSocketFD, 0);
-
-    ASSERT_NO_THROW(uStream.socketConnect());
-    ASSERT_NO_THROW(uStream.socketDisconnect());
-
-    close(serverSocketFD);
-
-    unlink(TEST_STREAM_SOCK_PATH.data());
-}
-
-TEST(unixSecureStreamSocket, ConnectDisconnectConnect)
+TEST_F(unixSecureStreamSocket, ConnectAndDisconnect)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -132,6 +133,21 @@ TEST(unixSecureStreamSocket, ConnectDisconnectConnect)
 
     ASSERT_NO_THROW(uStream.socketConnect());
     ASSERT_NO_THROW(uStream.socketDisconnect());
+
+    close(serverSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST_F(unixSecureStreamSocket, ConnectDisconnectConnect)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    auto serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
+    ASSERT_GT(serverSocketFD, 0);
+
+    ASSERT_NO_THROW(uStream.socketConnect());
+    ASSERT_NO_THROW(uStream.socketDisconnect());
     ASSERT_NO_THROW(uStream.socketConnect());
 
     close(serverSocketFD);
@@ -139,7 +155,7 @@ TEST(unixSecureStreamSocket, ConnectDisconnectConnect)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, isConnectedFalse)
+TEST_F(unixSecureStreamSocket, isConnectedFalse)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -158,7 +174,7 @@ TEST(unixSecureStreamSocket, isConnectedFalse)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, isConnectedTrue)
+TEST_F(unixSecureStreamSocket, isConnectedTrue)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -177,13 +193,13 @@ TEST(unixSecureStreamSocket, isConnectedTrue)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, ErrorSendMessageNoSocket)
+TEST_F(unixSecureStreamSocket, ErrorSendMessageNoSocket)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
     ASSERT_THROW(uStream.sendMsg(TEST_SEND_MESSAGE.data());, std::runtime_error);
 }
 
-TEST(unixSecureStreamSocket, ErrorSendEmptyMessage)
+TEST_F(unixSecureStreamSocket, ErrorSendEmptyMessage)
 {
     const char msg[] = "";
 
@@ -199,7 +215,7 @@ TEST(unixSecureStreamSocket, ErrorSendEmptyMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, ErrorSendLongMessage)
+TEST_F(unixSecureStreamSocket, ErrorSendLongMessage)
 {
     std::vector<char> msg {{}};
     msg.resize(STREAM_MAX_MSG_SIZE + 2);
@@ -218,7 +234,7 @@ TEST(unixSecureStreamSocket, ErrorSendLongMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, SendMessage)
+TEST_F(unixSecureStreamSocket, SendMessage)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -240,7 +256,7 @@ TEST(unixSecureStreamSocket, SendMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, SendMessageDisconnected)
+TEST_F(unixSecureStreamSocket, SendMessageDisconnected)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -261,7 +277,7 @@ TEST(unixSecureStreamSocket, SendMessageDisconnected)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, ReceiveMessage)
+TEST_F(unixSecureStreamSocket, ReceiveMessage)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -285,7 +301,7 @@ TEST(unixSecureStreamSocket, ReceiveMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, SendAndReceiveMessage)
+TEST_F(unixSecureStreamSocket, SendAndReceiveMessage)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -314,7 +330,7 @@ TEST(unixSecureStreamSocket, SendAndReceiveMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, SendLongestMessage)
+TEST_F(unixSecureStreamSocket, SendLongestMessage)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -343,7 +359,7 @@ TEST(unixSecureStreamSocket, SendLongestMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, RemoteCloseBeforeSend)
+TEST_F(unixSecureStreamSocket, RemoteCloseBeforeSend)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -371,7 +387,7 @@ TEST(unixSecureStreamSocket, RemoteCloseBeforeSend)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, RemoteCloseBeforeRcv)
+TEST_F(unixSecureStreamSocket, RemoteCloseBeforeRcv)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
@@ -404,7 +420,7 @@ TEST(unixSecureStreamSocket, RemoteCloseBeforeRcv)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, LocalSendremoteCloseBeforeRcv)
+TEST_F(unixSecureStreamSocket, LocalSendremoteCloseBeforeRcv)
 {
     unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
