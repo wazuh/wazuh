@@ -14,8 +14,23 @@ constexpr auto env_1 = "policy/env_1/0";
 constexpr auto env_2 = "policy/env_2/0";
 constexpr auto env_default = "policy/default/0";
 
+class RuntimeEnvironment : public ::testing::Test
+{
 
-TEST(RuntimePolicy, build_ok)
+protected:
+    virtual void SetUp()
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+    }
+
+    virtual void TearDown() {}
+};
+
+TEST_F(RuntimeEnvironment, build_ok)
 {
     auto builder = aux::getFakeBuilder();
     auto policy = std::make_shared<router::RuntimePolicy>(env_1);
@@ -23,7 +38,7 @@ TEST(RuntimePolicy, build_ok)
     ASSERT_FALSE(error.has_value()) << error.value().message;
 }
 
-TEST(RuntimePolicy, build_fail_env)
+TEST_F(RuntimeEnvironment, build_fail_env)
 {
     auto builder = aux::getFakeBuilder();
     auto policy = std::make_shared<router::RuntimePolicy>("invalid_env");
@@ -31,7 +46,7 @@ TEST(RuntimePolicy, build_fail_env)
     ASSERT_TRUE(error.has_value());
 }
 
-TEST(RuntimePolicy, build_fail_builder)
+TEST_F(RuntimeEnvironment, build_fail_builder)
 {
     GTEST_SKIP();
     auto policy = std::make_shared<router::RuntimePolicy>("invalid_env");
@@ -39,7 +54,7 @@ TEST(RuntimePolicy, build_fail_builder)
     policy->build(nullptr);
 }
 
-TEST(RuntimePolicy, build_2_times)
+TEST_F(RuntimeEnvironment, build_2_times)
 {
     auto builder = aux::getFakeBuilder();
     auto policy = std::make_shared<router::RuntimePolicy>(env_1);
@@ -50,7 +65,7 @@ TEST(RuntimePolicy, build_2_times)
     ASSERT_STREQ(error.value().message.c_str(), "Policy 'policy/env_1/0' is already built");
 }
 
-TEST(RuntimePolicy, processEvent_not_built)
+TEST_F(RuntimeEnvironment, processEvent_not_built)
 {
     auto policy = std::make_shared<router::RuntimePolicy>(env_1);
     auto e = base::parseEvent::parseOssecEvent(aux::sampleEventsStr[0]);
@@ -60,7 +75,7 @@ TEST(RuntimePolicy, processEvent_not_built)
 }
 
 
-TEST(RuntimePolicy, processEvent_1_event)
+TEST_F(RuntimeEnvironment, processEvent_1_event)
 {
     auto builder = aux::getFakeBuilder();
     auto policy = std::make_shared<router::RuntimePolicy>(env_1);
@@ -78,7 +93,7 @@ TEST(RuntimePolicy, processEvent_1_event)
 }
 
 // TODO add more tests
-TEST(RuntimePolicy, processEvent_30_event)
+TEST_F(RuntimeEnvironment, processEvent_30_event)
 {
     auto builder = aux::getFakeBuilder();
     auto policy = std::make_shared<router::RuntimePolicy>(env_1);

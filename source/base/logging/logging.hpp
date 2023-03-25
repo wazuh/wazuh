@@ -13,6 +13,7 @@ namespace logging
 {
 
 constexpr char DEFAULT_LOG_PATH[] {"/dev/stderr"};
+constexpr char DEFAULT_TESTS_LOG_PATH[] {"/tmp/engine_code_tests.log"};
 constexpr char DEFAULT_LOG_HEADER[] {"%Y-%m-%d %T.%e %P:%t %l: %v"};
 constexpr spdlog::level::level_enum DEFAULT_LOG_LEVEL {spdlog::level::info}; ///< "trace", "debug", "info", "warning", "error", "critical", "off"
 constexpr uint32_t DEFAULT_LOG_THREADS {0};  ///< Quantity of dedicated threads, 0 means no dedicated threads

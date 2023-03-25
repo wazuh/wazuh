@@ -26,6 +26,11 @@ class AssetTest : public ::testing::Test
 {
     void SetUp() override
     {
+        logging::LoggingConfig logConfig;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logConfig.logLevel = spdlog::level::off;
+        logging::loggingInit(logConfig);
+
         if (std::filesystem::exists(outputPath))
         {
             std::filesystem::remove(outputPath);
