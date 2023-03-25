@@ -9,19 +9,35 @@
 #include <gtest/gtest.h>
 
 #include <utils/socketInterface/unixDatagram.hpp>
+#include <logging/logging.hpp>
 
 #include "testAuxiliar/socketAuxiliarFunctions.hpp"
 
 using namespace base::utils::socketInterface;
 
-TEST(unixDatagramSocket, build)
+class unixDatagramSocket : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+    }
+
+    void TearDown() override {}
+};
+
+TEST_F(unixDatagramSocket, build)
 {
     ASSERT_NO_THROW(unixDatagram uDgram());
     ASSERT_NO_THROW(unixDatagram uDgram(TEST_DGRAM_SOCK_PATH));
     ASSERT_NO_THROW(unixDatagram uDgram("qwertyuiop"));
 }
 
-TEST(unixDatagramSocket, SetMaxMsgSizeError)
+TEST_F(unixDatagramSocket, SetMaxMsgSizeError)
 {
     ASSERT_THROW({ unixDatagram uDgram(TEST_DGRAM_SOCK_PATH, 0); },
                  std::invalid_argument);
@@ -30,7 +46,7 @@ TEST(unixDatagramSocket, SetMaxMsgSizeError)
                  std::invalid_argument);
 }
 
-TEST(unixDatagramSocket, GetMaxMsgSize)
+TEST_F(unixDatagramSocket, GetMaxMsgSize)
 {
     {
         unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
@@ -55,13 +71,13 @@ TEST(unixDatagramSocket, GetMaxMsgSize)
     };
 }
 
-TEST(unixDatagramSocket, GetPath)
+TEST_F(unixDatagramSocket, GetPath)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
     ASSERT_NO_THROW(ASSERT_EQ(uDgram.getPath(), TEST_DGRAM_SOCK_PATH););
 }
 
-TEST(unixDatagramSocket, ConnectErrorInvalidPath)
+TEST_F(unixDatagramSocket, ConnectErrorInvalidPath)
 {
     {
         unixDatagram uDgram("/invalid/path");
@@ -73,7 +89,7 @@ TEST(unixDatagramSocket, ConnectErrorInvalidPath)
     }
 }
 
-TEST(unixDatagramSocket, Connect)
+TEST_F(unixDatagramSocket, Connect)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
@@ -87,7 +103,7 @@ TEST(unixDatagramSocket, Connect)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(unixDatagramSocket, ConnectTwice)
+TEST_F(unixDatagramSocket, ConnectTwice)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
@@ -102,28 +118,13 @@ TEST(unixDatagramSocket, ConnectTwice)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(unixDatagramSocket, Disconnect)
+TEST_F(unixDatagramSocket, Disconnect)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
     ASSERT_NO_THROW(uDgram.socketDisconnect());
 }
 
-TEST(unixDatagramSocket, ConnectAndDisconnect)
-{
-    unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
-
-    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
-    ASSERT_GT(serverSocketFD, 0);
-
-    ASSERT_NO_THROW(uDgram.socketConnect());
-    ASSERT_NO_THROW(uDgram.socketDisconnect());
-
-    close(serverSocketFD);
-
-    unlink(TEST_DGRAM_SOCK_PATH.data());
-}
-
-TEST(unixDatagramSocket, ConnectDisconnectConnect)
+TEST_F(unixDatagramSocket, ConnectAndDisconnect)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
@@ -132,6 +133,21 @@ TEST(unixDatagramSocket, ConnectDisconnectConnect)
 
     ASSERT_NO_THROW(uDgram.socketConnect());
     ASSERT_NO_THROW(uDgram.socketDisconnect());
+
+    close(serverSocketFD);
+
+    unlink(TEST_DGRAM_SOCK_PATH.data());
+}
+
+TEST_F(unixDatagramSocket, ConnectDisconnectConnect)
+{
+    unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
+
+    auto serverSocketFD {testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM)};
+    ASSERT_GT(serverSocketFD, 0);
+
+    ASSERT_NO_THROW(uDgram.socketConnect());
+    ASSERT_NO_THROW(uDgram.socketDisconnect());
     ASSERT_NO_THROW(uDgram.socketConnect());
 
     close(serverSocketFD);
@@ -139,7 +155,7 @@ TEST(unixDatagramSocket, ConnectDisconnectConnect)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(unixDatagramSocket, isConnectedFalse)
+TEST_F(unixDatagramSocket, isConnectedFalse)
 {
 
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
@@ -159,7 +175,7 @@ TEST(unixDatagramSocket, isConnectedFalse)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(unixDatagramSocket, isConnectedTrue)
+TEST_F(unixDatagramSocket, isConnectedTrue)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
@@ -180,13 +196,13 @@ TEST(unixDatagramSocket, isConnectedTrue)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(unixDatagramSocket, ErrorSendMessageNoSocket)
+TEST_F(unixDatagramSocket, ErrorSendMessageNoSocket)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
     ASSERT_THROW(uDgram.sendMsg(TEST_SEND_MESSAGE.data()), std::runtime_error);
 }
 
-TEST(unixDatagramSocket, ErrorSendEmptyMessage)
+TEST_F(unixDatagramSocket, ErrorSendEmptyMessage)
 {
     const char msg[] = "";
 
@@ -202,7 +218,7 @@ TEST(unixDatagramSocket, ErrorSendEmptyMessage)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(unixDatagramSocket, ErrorSendLongMessage)
+TEST_F(unixDatagramSocket, ErrorSendLongMessage)
 {
     std::vector<char> msg {{}};
     msg.resize(DATAGRAM_MAX_MSG_SIZE + 2);
@@ -221,7 +237,7 @@ TEST(unixDatagramSocket, ErrorSendLongMessage)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(unixDatagramSocket, SendMessage)
+TEST_F(unixDatagramSocket, SendMessage)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 
@@ -239,7 +255,7 @@ TEST(unixDatagramSocket, SendMessage)
     unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(unixDatagramSocket, SendMessageDisconnected)
+TEST_F(unixDatagramSocket, SendMessageDisconnected)
 {
     unixDatagram uDgram(TEST_DGRAM_SOCK_PATH);
 

@@ -1,17 +1,34 @@
 #include <name.hpp>
 
-#include <fmt/format.h>
 #include <gtest/gtest.h>
 
 #include <numeric>
 
-TEST(NameTest, InitializationDefault)
+#include <logging/logging.hpp>
+
+class NameTest : public ::testing::Test
+{
+
+protected:
+    virtual void SetUp()
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+    }
+
+    virtual void TearDown() {}
+};
+
+TEST_F(NameTest, InitializationDefault)
 {
     base::Name name;
     ASSERT_TRUE(name.parts().empty());
 }
 
-TEST(NameTest, InitializationParts)
+TEST_F(NameTest, InitializationParts)
 {
     base::Name name ({"type", "name", "version"});
     ASSERT_EQ(name.parts().size(), 3);
@@ -20,13 +37,13 @@ TEST(NameTest, InitializationParts)
     ASSERT_EQ(name.parts()[2], "version");
 }
 
-TEST(NameTest, InitializationPartsMax)
+TEST_F(NameTest, InitializationPartsMax)
 {
     ASSERT_THROW(base::Name({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}),
                  std::runtime_error);
 }
 
-TEST(NameTest, InitializationFullNameString)
+TEST_F(NameTest, InitializationFullNameString)
 {
     std::string fullName = fmt::format(
         "type{}name{}version", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S);
@@ -37,7 +54,7 @@ TEST(NameTest, InitializationFullNameString)
     ASSERT_EQ(name.parts()[2], "version");
 }
 
-TEST(NameTest, InitializationFullNameStringMaxParts)
+TEST_F(NameTest, InitializationFullNameStringMaxParts)
 {
     std::vector<std::string> parts;
     for (int i = 0; i < base::Name::MAX_PARTS + 1; i++)
@@ -54,7 +71,7 @@ TEST(NameTest, InitializationFullNameStringMaxParts)
     ASSERT_THROW(base::Name name(nameStr), std::runtime_error);
 }
 
-TEST(NameTest, InitializationFullNameChar)
+TEST_F(NameTest, InitializationFullNameChar)
 {
     std::string fullName = fmt::format(
         "type{}name{}version", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S);
@@ -65,7 +82,7 @@ TEST(NameTest, InitializationFullNameChar)
     ASSERT_EQ(name.parts()[2], "version");
 }
 
-TEST(NameTest, InitializationCopy)
+TEST_F(NameTest, InitializationCopy)
 {
     base::Name name ({"type", "name", "version"});
     base::Name copy(name);
@@ -75,7 +92,7 @@ TEST(NameTest, InitializationCopy)
     ASSERT_EQ(copy.parts()[2], "version");
 }
 
-TEST(NameTest, InitializationAssignment)
+TEST_F(NameTest, InitializationAssignment)
 {
     base::Name name ({"type", "name", "version"});
     base::Name copy;
@@ -86,14 +103,14 @@ TEST(NameTest, InitializationAssignment)
     ASSERT_EQ(copy.parts()[2], "version");
 }
 
-TEST(NameTest, Equality)
+TEST_F(NameTest, Equality)
 {
     base::Name name1 ({"type", "name", "version"});
     base::Name name2 ({"type", "name", "version"});
     ASSERT_EQ(name1, name2);
 }
 
-TEST(NameTest, Distinct)
+TEST_F(NameTest, Distinct)
 {
     // Version is different
     base::Name name1 ({"type", "name", "version"});
@@ -109,7 +126,7 @@ TEST(NameTest, Distinct)
     ASSERT_NE(name1, name4);
 }
 
-TEST(NameTest, FullName)
+TEST_F(NameTest, FullName)
 {
     base::Name name ({"type", "name", "version"});
     ASSERT_EQ(name.fullName(),

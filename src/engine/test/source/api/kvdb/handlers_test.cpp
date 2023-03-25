@@ -83,8 +83,16 @@ inline void createKeyOnlyJsonTestFile(const std::string filePath = FILE_PATH)
     }
 }
 
-// "managerPost" tests section
+void initLogging(void)
+{
+    // Logging setup
+    logging::LoggingConfig logConfig;
+    logConfig.logLevel = spdlog::level::off;
+    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+    logging::loggingInit(logConfig);
+}
 
+// "managerPost" tests section
 class managerPost_Handler : public ::testing::Test
 {
 
@@ -95,7 +103,9 @@ protected:
     virtual void SetUp()
     {
         m_manager = std::make_shared<MetricsManager>();
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
+
+        initLogging();
+
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -395,7 +405,9 @@ protected:
     virtual void SetUp()
     {
         m_manager = std::make_shared<MetricsManager>();
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
+
+        initLogging();
+
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -584,7 +596,9 @@ protected:
     virtual void SetUp()
     {
         m_manager = std::make_shared<MetricsManager>();
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
+
+        initLogging();
+
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -739,7 +753,9 @@ protected:
     virtual void SetUp()
     {
         m_manager = std::make_shared<MetricsManager>();
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
+
+        initLogging();
+
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -884,7 +900,9 @@ protected:
     virtual void SetUp()
     {
         m_manager = std::make_shared<MetricsManager>();
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
+
+        initLogging();
+
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -1054,7 +1072,9 @@ protected:
     virtual void SetUp()
     {
         m_manager = std::make_shared<MetricsManager>();
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
+
+        initLogging();
+
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
@@ -1163,7 +1183,9 @@ protected:
     virtual void SetUp()
     {
         m_manager = std::make_shared<MetricsManager>();
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
+
+        initLogging();
+
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);

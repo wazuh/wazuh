@@ -14,25 +14,74 @@ constexpr const char* TEST_PAYLOAD {"Test Query Response Payload"};
 constexpr const char* TEST_RESPONSE {"Test Response to be received"};
 constexpr const char* TEST_DUMMY_PATH {"/dummy/path"};
 
-TEST(wdb_connector, Init)
+void initLogging(void)
+{
+    // Logging setup
+    logging::LoggingConfig logConfig;
+    logConfig.logLevel = spdlog::level::off;
+    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+    logging::loggingInit(logConfig);
+}
+
+class wdb_connector : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+
+    virtual void TearDown() {}
+};
+
+class wdb_query : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+
+    virtual void TearDown() {}
+};
+
+class wdb_tryQuery : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+
+    virtual void TearDown() {}
+};
+
+class wdb_parseResult : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+
+    virtual void TearDown() {}
+};
+
+class wdb_tryQueryAndParseResult : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+
+    virtual void TearDown() {}
+};
+
+TEST_F(wdb_connector, Init)
 {
     ASSERT_NO_THROW(WazuhDB());
     ASSERT_NO_THROW(WazuhDB(TEST_DUMMY_PATH));
 }
 
-TEST(wdb_connector, ConnectErrorInexistentSocket)
+TEST_F(wdb_connector, ConnectErrorInexistentSocket)
 {
     auto wdb {WazuhDB(TEST_DUMMY_PATH)};
     ASSERT_THROW(wdb.connect(), std::runtime_error);
 }
 
-TEST(wdb_connector, ConnectErrorNotSocket)
+TEST_F(wdb_connector, ConnectErrorNotSocket)
 {
     auto wdb {WazuhDB("/")};
     ASSERT_THROW(wdb.connect(), std::runtime_error);
 }
 
-TEST(wdb_connector, Connect)
+TEST_F(wdb_connector, Connect)
 {
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
@@ -44,15 +93,11 @@ TEST(wdb_connector, Connect)
     close(serverSocketFD);
 }
 
-TEST(wdb_connector, connectManyTimes)
+TEST_F(wdb_connector, connectManyTimes)
 {
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
-
-    // Disable warning logs for this test
-    const auto logLevel {logging::getDefaultLogger()->level()};
-    logging::getDefaultLogger()->set_level(spdlog::level::err);
 
     auto wdb {WazuhDB(TEST_STREAM_SOCK_PATH)};
     ASSERT_NO_THROW(wdb.connect());
@@ -65,30 +110,20 @@ TEST(wdb_connector, connectManyTimes)
     const int clientRemoteIII {testAcceptConnection(serverSocketFD)};
     ASSERT_GT(clientRemoteIII, 0);
 
-    // Restore log level
-    logging::getDefaultLogger()->set_level(logLevel);
-
     close(serverSocketFD);
     close(clientRemoteI);
     close(clientRemoteII);
     close(clientRemoteIII);
 }
 
-TEST(wdb_query, EmptyString)
+TEST_F(wdb_query, EmptyString)
 {
     auto wdb {WazuhDB()};
 
-    // Disable warning logs for this test
-    const auto logLevel {logging::getDefaultLogger()->level()};
-    logging::getDefaultLogger()->set_level(spdlog::level::err);
-
     ASSERT_STREQ(wdb.query("").c_str(), "");
-
-    // Restore log level
-    logging::getDefaultLogger()->set_level(logLevel);
 }
 
-TEST(wdb_query, TooLongString)
+TEST_F(wdb_query, TooLongString)
 {
 
     auto wdb {WazuhDB()};
@@ -98,17 +133,10 @@ TEST(wdb_query, TooLongString)
     std::fill(msg.begin(), msg.end() - 1, 'x');
     msg.back() = '\0';
 
-    // Disable warning logs for this test
-    const auto logLevel {logging::getDefaultLogger()->level()};
-    logging::getDefaultLogger()->set_level(spdlog::level::err);
-
     ASSERT_STREQ(wdb.query(msg.data()).c_str(), "");
-
-    // Restore log level
-    logging::getDefaultLogger()->set_level(logLevel);
 }
 
-TEST(wdb_query, ConnectAndQuery)
+TEST_F(wdb_query, ConnectAndQuery)
 {
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
@@ -129,7 +157,7 @@ TEST(wdb_query, ConnectAndQuery)
     close(serverSocketFD);
 }
 
-TEST(wdb_query, SendQueryWithoutConnect)
+TEST_F(wdb_query, SendQueryWithoutConnect)
 {
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
@@ -152,7 +180,7 @@ TEST(wdb_query, SendQueryWithoutConnect)
     close(serverSocketFD);
 }
 
-TEST(wdb_query, SendQueryConexionClosed)
+TEST_F(wdb_query, SendQueryConexionClosed)
 {
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
@@ -173,7 +201,7 @@ TEST(wdb_query, SendQueryConexionClosed)
     close(serverSocketFD);
 }
 
-TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
+TEST_F(wdb_tryQuery, SendQueryOK_firstAttemp)
 {
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
@@ -198,7 +226,7 @@ TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
     close(serverSocketFD);
 }
 
-TEST(wdb_tryQuery, SendQueryOK_retry)
+TEST_F(wdb_tryQuery, SendQueryOK_retry)
 {
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
@@ -217,20 +245,13 @@ TEST(wdb_tryQuery, SendQueryOK_retry)
             close(clientRemoteRetry);
         });
 
-    // Disable warning logs for this test
-    const auto logLevel {logging::getDefaultLogger()->level()};
-    logging::getDefaultLogger()->set_level(spdlog::level::err);
-
     ASSERT_STREQ(wdb.tryQuery(TEST_MESSAGE, 5).c_str(), TEST_RESPONSE);
-
-    // Restore log level
-    logging::getDefaultLogger()->set_level(logLevel);
 
     t.join();
     close(serverSocketFD);
 }
 
-TEST(wdb_tryQuery, SendQueryIrrecoverable)
+TEST_F(wdb_tryQuery, SendQueryIrrecoverable)
 {
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
@@ -247,20 +268,13 @@ TEST(wdb_tryQuery, SendQueryIrrecoverable)
             close(clientRemote);
         });
 
-    // Disable logs for this test
-    const auto logLevel {logging::getDefaultLogger()->level()};
-    logging::getDefaultLogger()->set_level(spdlog::level::off);
-
     // Empty string on error
     ASSERT_STREQ(wdb.tryQuery(TEST_MESSAGE, 5).c_str(), "");
-
-    // Restore log level
-    logging::getDefaultLogger()->set_level(logLevel);
 
     t.join();
 }
 
-TEST(wdb_parseResult, ParseResultOk)
+TEST_F(wdb_parseResult, ParseResultOk)
 {
     const auto message {"ok"};
 
@@ -271,7 +285,7 @@ TEST(wdb_parseResult, ParseResultOk)
     ASSERT_FALSE(std::get<1>(retval));
 }
 
-TEST(wdb_parseResult, ParseResultOkWithPayload)
+TEST_F(wdb_parseResult, ParseResultOkWithPayload)
 {
     const auto message {std::string("ok") + " " + TEST_PAYLOAD};
 
@@ -283,7 +297,7 @@ TEST(wdb_parseResult, ParseResultOkWithPayload)
     ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
 }
 
-TEST(wdb_parseResult, ParseResultDue)
+TEST_F(wdb_parseResult, ParseResultDue)
 {
     const auto message {"due"};
 
@@ -294,7 +308,7 @@ TEST(wdb_parseResult, ParseResultDue)
     ASSERT_FALSE(std::get<1>(retval));
 }
 
-TEST(wdb_parseResult, ParseResultDueWithPayload)
+TEST_F(wdb_parseResult, ParseResultDueWithPayload)
 {
     const auto message {std::string("due") + " " + TEST_PAYLOAD};
 
@@ -306,7 +320,7 @@ TEST(wdb_parseResult, ParseResultDueWithPayload)
     ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
 }
 
-TEST(wdb_parseResult, ParseResultError)
+TEST_F(wdb_parseResult, ParseResultError)
 {
     const auto message {"err"};
 
@@ -317,7 +331,7 @@ TEST(wdb_parseResult, ParseResultError)
     ASSERT_FALSE(std::get<1>(retval));
 }
 
-TEST(wdb_parseResult, ParseResultErrorWithPayload)
+TEST_F(wdb_parseResult, ParseResultErrorWithPayload)
 {
     const auto message {std::string("err") + " " + TEST_PAYLOAD};
 
@@ -329,7 +343,7 @@ TEST(wdb_parseResult, ParseResultErrorWithPayload)
     ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
 }
 
-TEST(wdb_parseResult, ParseResultIgnore)
+TEST_F(wdb_parseResult, ParseResultIgnore)
 {
     const auto message {"ign"};
 
@@ -340,7 +354,7 @@ TEST(wdb_parseResult, ParseResultIgnore)
     ASSERT_FALSE(std::get<1>(retval));
 }
 
-TEST(wdb_parseResult, ParseResultIgnoreWithPayload)
+TEST_F(wdb_parseResult, ParseResultIgnoreWithPayload)
 {
     const auto message {std::string("ign") + " " + TEST_PAYLOAD};
 
@@ -352,45 +366,31 @@ TEST(wdb_parseResult, ParseResultIgnoreWithPayload)
     ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
 }
 
-TEST(wdb_parseResult, ParseResultUnknown)
+TEST_F(wdb_parseResult, ParseResultUnknown)
 {
     const auto message {"xyz"};
 
     WazuhDB wdb {};
 
-    // Disable logs for this test
-    const auto logLevel {logging::getDefaultLogger()->level()};
-    logging::getDefaultLogger()->set_level(spdlog::level::off);
-
     auto retval {wdb.parseResult(message)};
-
-    // Restore log level
-    logging::getDefaultLogger()->set_level(logLevel);
 
     ASSERT_EQ(std::get<0>(retval), QueryResultCodes::UNKNOWN);
     ASSERT_FALSE(std::get<1>(retval));
 }
 
-TEST(wdb_parseResult, ParseResultUnknownWithPayload)
+TEST_F(wdb_parseResult, ParseResultUnknownWithPayload)
 {
     const auto message {std::string("xyz") + " " + TEST_PAYLOAD};
 
     WazuhDB wdb {};
 
-    // Disable logs for this test
-    const auto logLevel {logging::getDefaultLogger()->level()};
-    logging::getDefaultLogger()->set_level(spdlog::level::off);
-
     auto retval {wdb.parseResult(message)};
 
     ASSERT_EQ(std::get<0>(retval), QueryResultCodes::UNKNOWN);
     ASSERT_FALSE(std::get<1>(retval));
-
-    // Restore log level
-    logging::getDefaultLogger()->set_level(logLevel);
 }
 
-TEST(wdb_tryQueryAndParseResult, SendQueryOK_firstAttemp_wopayload)
+TEST_F(wdb_tryQueryAndParseResult, SendQueryOK_firstAttemp_wopayload)
 {
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
@@ -415,7 +415,7 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_firstAttemp_wopayload)
     close(serverSocketFD);
 }
 
-TEST(wdb_tryQueryAndParseResult, SendQueryOK_retry_wpayload)
+TEST_F(wdb_tryQueryAndParseResult, SendQueryOK_retry_wpayload)
 {
 
     // Create server
@@ -435,24 +435,16 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_retry_wpayload)
             close(clientRemoteRetry);
         });
 
-    // Disable warning logs for this test
-    const auto logLevel {logging::getDefaultLogger()->level()};
-    logging::getDefaultLogger()->set_level(spdlog::level::err);
-
     auto retval {wdb.tryQueryAndParseResult(TEST_MESSAGE, 5)};
     ASSERT_EQ(std::get<0>(retval), QueryResultCodes::OK);
     ASSERT_STREQ(std::get<1>(retval).value().c_str(), "payload");
-
-    // Restore log level
-    logging::getDefaultLogger()->set_level(logLevel);
 
     t.join();
     close(serverSocketFD);
 }
 
-TEST(wdb_tryQueryAndParseResult, SendQueryIrrecoverable)
+TEST_F(wdb_tryQueryAndParseResult, SendQueryIrrecoverable)
 {
-
     // Create server
     const int serverSocketFD {testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM)};
     ASSERT_GT(serverSocketFD, 0);
@@ -468,17 +460,10 @@ TEST(wdb_tryQueryAndParseResult, SendQueryIrrecoverable)
             close(clientRemote);
         });
 
-    // Disable logs for this test
-    const auto logLevel {logging::getDefaultLogger()->level()};
-    logging::getDefaultLogger()->set_level(spdlog::level::off);
-
     // Empty string on error
     auto retval {wdb.tryQueryAndParseResult(TEST_MESSAGE, 5)};
     ASSERT_EQ(std::get<0>(retval), QueryResultCodes::UNKNOWN);
     ASSERT_FALSE(std::get<1>(retval));
-
-    // Restore log level
-    logging::getDefaultLogger()->set_level(logLevel);
 
     t.join();
 }

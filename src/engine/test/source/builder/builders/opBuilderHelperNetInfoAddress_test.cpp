@@ -15,13 +15,30 @@
 
 #include <baseTypes.hpp>
 #include <wdb/wdb.hpp>
+#include <logging/logging.hpp>
 
 #include "socketAuxiliarFunctions.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-TEST(opBuilderHelperNetInfoTest, Builds)
+class opBuilderHelperNetInfoTest : public ::testing::Test
+{
+
+protected:
+    virtual void SetUp()
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = spdlog::level::off;
+        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+        logging::loggingInit(logConfig);
+    }
+
+    virtual void TearDown() {}
+};
+
+TEST_F(opBuilderHelperNetInfoTest, Builds)
 {
     const auto tuple = std::make_tuple(
         std::string {"/field"},
@@ -31,7 +48,7 @@ TEST(opBuilderHelperNetInfoTest, Builds)
     ASSERT_NO_THROW(bld::opBuilderHelperSaveNetInfoIPv4(tuple));
 }
 
-TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
+TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
 {
     const auto tuple = std::make_tuple(
         std::string {"/field"},
@@ -41,7 +58,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
     ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
 }
 
-TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_reference)
+TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_reference)
 {
     const auto tuple = std::make_tuple(
         std::string {"/field"},
@@ -51,7 +68,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_referen
     ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
 }
 
-TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quantity)
+TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quantity)
 {
     const auto tuple = std::make_tuple(
         std::string {"/field"},
@@ -61,7 +78,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quantity
     ASSERT_THROW(bld::opBuilderHelperSaveNetInfoIPv6(tuple), std::runtime_error);
 }
 
-TEST(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
+TEST_F(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -111,7 +128,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperNetInfoTest, Failed_execution_agentid_not_present)
+TEST_F(opBuilderHelperNetInfoTest, Failed_execution_agentid_not_present)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -160,7 +177,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_agentid_not_present)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperNetInfoTest, Failed_execution_not_base_object)
+TEST_F(opBuilderHelperNetInfoTest, Failed_execution_not_base_object)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -195,7 +212,7 @@ TEST(opBuilderHelperNetInfoTest, Failed_execution_not_base_object)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
+TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_event)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -273,7 +290,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_event)
     ASSERT_TRUE(result.payload()->getBool("/field").value());
 }
 
-TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
+TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -341,7 +358,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
     ASSERT_TRUE(result.payload()->getBool("/field").value());
 }
 
-TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
+TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -415,7 +432,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_event)
+TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_event)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -483,7 +500,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_even
     ASSERT_TRUE(result.payload()->getBool("/field").value());
 }
 
-TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_others)
+TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_others)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -562,7 +579,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_othe
     ASSERT_TRUE(result);
 }
 
-TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wrong_type)
+TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wrong_type)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -645,7 +662,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_wr
     ASSERT_TRUE(result);
 }
 
-TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
+TEST_F(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},
@@ -721,7 +738,7 @@ TEST(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
     ASSERT_TRUE(result);
 }
 
-TEST(opBuilderHelperNetInfoTest, False_result_when_no_address)
+TEST_F(opBuilderHelperNetInfoTest, False_result_when_no_address)
 {
     const auto tuple =
         std::make_tuple(std::string {"/field"},

@@ -35,24 +35,48 @@ auto commandName {"dummy-command-name"};
 auto location {"ALL"};
 auto timeout {"100"};
 auto extraArgsRef {"$_extra_args"};
-const vector<string> arCreateCommonArguments {
-    commandName, location, timeout, extraArgsRef};
+const vector<string> arCreateCommonArguments {commandName, location, timeout, extraArgsRef};
 
-TEST(opBuilderSendARTestSuite, Builder)
+void initLogging(void)
+{
+    // Logging setup
+    logging::LoggingConfig logConfig;
+    logConfig.logLevel = spdlog::level::off;
+    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
+    logging::loggingInit(logConfig);
+}
+
+class opBuilderSendARTestSuite : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+
+    virtual void TearDown() {}
+};
+
+class opBuilderHelperCreateARTestSuite : public ::testing::Test
+{
+protected:
+    virtual void SetUp() { initLogging(); }
+
+    virtual void TearDown() {}
+};
+
+TEST_F(opBuilderSendARTestSuite, Builder)
 {
     auto tuple {make_tuple(targetField, arSendHFName, vector<string> {"query params"})};
 
     ASSERT_NO_THROW(opBuilderHelperSendAR(tuple));
 }
 
-TEST(opBuilderSendARTestSuite, BuilderNoParameterError)
+TEST_F(opBuilderSendARTestSuite, BuilderNoParameterError)
 {
     auto tuple {make_tuple(targetField, arSendHFName, vector<string> {})};
 
     ASSERT_THROW(opBuilderHelperSendAR(tuple), std::runtime_error);
 }
 
-TEST(opBuilderSendARTestSuite, Send)
+TEST_F(opBuilderSendARTestSuite, Send)
 {
     auto tuple {make_tuple(targetField, arSendHFName, vector<string> {"test\n123"})};
     auto op {opBuilderHelperSendAR(tuple)->getPtr<Term<EngineOp>>()->getFn()};
@@ -73,7 +97,7 @@ TEST(opBuilderSendARTestSuite, Send)
     unlink(AR_QUEUE_PATH);
 }
 
-TEST(opBuilderSendARTestSuite, SendFromReference)
+TEST_F(opBuilderSendARTestSuite, SendFromReference)
 {
     auto tuple {
         make_tuple(targetField, arSendHFName, vector<string> {"$wdb.query_params"})};
@@ -96,7 +120,7 @@ TEST(opBuilderSendARTestSuite, SendFromReference)
     unlink(AR_QUEUE_PATH);
 }
 
-TEST(opBuilderSendARTestSuite, SendEmptyReferencedValueError)
+TEST_F(opBuilderSendARTestSuite, SendEmptyReferencedValueError)
 {
     auto tuple {
         make_tuple(targetField, arSendHFName, vector<string> {"$wdb.query_params"})};
@@ -107,7 +131,7 @@ TEST(opBuilderSendARTestSuite, SendEmptyReferencedValueError)
     ASSERT_FALSE(result);
 }
 
-TEST(opBuilderSendARTestSuite, SendEmptyReferenceError)
+TEST_F(opBuilderSendARTestSuite, SendEmptyReferenceError)
 {
     auto tuple {
         make_tuple(targetField, arSendHFName, vector<string> {"$wdb.query_params"})};
@@ -160,24 +184,6 @@ string getExpectedResult(string commandName,
 
     return expectedResult;
 }
-
-class opBuilderHelperCreateARTestSuite : public ::testing::Test
-{
-protected:
-    const spdlog::level::level_enum logLevel {logging::getDefaultLogger()->level()};
-
-    void SetUp() override
-    {
-        // Disable error logs for these tests
-        logging::getDefaultLogger()->set_level(spdlog::level::off);
-    }
-
-    void TearDown() override
-    {
-        // Restore original log level
-        logging::getDefaultLogger()->set_level(logLevel);
-    }
-};
 
 TEST_F(opBuilderHelperCreateARTestSuite, buildMinimal)
 {
