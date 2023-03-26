@@ -939,7 +939,7 @@ checks:
     title: "Ensure AppArmor is enabled in the bootloader configuration."
     description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwritten by the bootloader boot parameters. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
     rationale: "AppArmor must be enabled at boot time in your bootloader configuration to ensure that the controls it provides are not overridden."
-    remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor" Run the following command to update the grub2 configuration: # update-grub.'
+    remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor". Run the following command to update the grub2 configuration: # update-grub.'
     compliance:
       - cis: ["1.6.1.2"]
       - cis_csc_v8: ["3.3"]
@@ -2477,7 +2477,7 @@ checks:
     title: "Ensure auditd is installed."
     description: "auditd is the userspace component to the Linux Auditing System. It's responsible for writing audit records to the disk."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
-    remediation: "Run the following command to Install auditd # apt install auditd audispd-plugins."
+    remediation: "Run the following command to Install auditd: # apt install auditd audispd-plugins."
     compliance:
       - cis: ["4.1.1.1"]
       - cis_csc_v8: ["8.5"]
@@ -2523,7 +2523,7 @@ checks:
     title: "Ensure auditing for processes that start prior to auditd is enabled."
     description: "Configure grub2 so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
     rationale: "Audit events need to be captured on processes that start up prior to auditd , so that potential malicious activity cannot go undetected."
-    remediation: 'Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: Example: GRUB_CMDLINE_LINUX="audit=1" Run the following command to update the grub2 configuration: # update-grub.'
+    remediation: 'Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: Example: GRUB_CMDLINE_LINUX="audit=1". Run the following command to update the grub2 configuration: # update-grub.'
     compliance:
       - cis: ["4.1.1.3"]
       - cis_csc_v8: ["8.2"]
@@ -2545,7 +2545,7 @@ checks:
     title: "Ensure audit_backlog_limit is sufficient."
     description: "In the kernel-level audit subsystem, a socket buffer queue is used to hold audit events. Whenever a new audit event is received, it is logged and prepared to be added to this queue. The kernel boot parameter audit_backlog_limit=N, with N representing the amount of messages, will ensure that a queue cannot grow beyond a certain size. If an audit event is logged which would grow the queue beyond this limit, then a failure occurs and is handled according to the system configuration."
     rationale: "If an audit event is logged which would grow the queue beyond the audit_backlog_limit, then a failure occurs, auditd records will be lost, and potential malicious activity could go undetected."
-    remediation: 'Edit /etc/default/grub and add audit_backlog_limit=N to GRUB_CMDLINE_LINUX. The recommended size for N is 8192 or larger. Example: GRUB_CMDLINE_LINUX="audit_backlog_limit=8192" Run the following command to update the grub2 configuration: # update-grub.'
+    remediation: 'Edit /etc/default/grub and add audit_backlog_limit=N to GRUB_CMDLINE_LINUX. The recommended size for N is 8192 or larger. Example: GRUB_CMDLINE_LINUX="audit_backlog_limit=8192". Run the following command to update the grub2 configuration: # update-grub.'
     compliance:
       - cis: ["4.1.1.4"]
       - cis_csc_v8: ["8.2"]
@@ -2657,10 +2657,10 @@ checks:
       - mitre_mitigations: ["M1047"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\s*\t*scope'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\s*\t*scope'
-      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\s*\t*scope'
-      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\s*\t*scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=scope'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=scope'
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=scope"
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=scope"
 
   # 4.1.3.2 Ensure actions as another user are always logged (Automated)
   - id: 29606
@@ -2720,7 +2720,7 @@ checks:
   # 4.1.3.5 Ensure events that modify the system's network environment are collected (Automated)
   - id: 29608
     title: "Ensure events that modify the system's network environment are collected."
-    description: "Record changes to network environment files or system calls. The below parameters monitors the following system calls, and write an audit event on system call exit: - sethostname: set the systems host name. - setdomainname: set the systems domain name. The files being monitored are: > /etc/issue and /etc/issue.net - messages displayed pre-login > /etc/hosts - file containing host names and associated IP addresses > /etc/networks - symbolic names for networks > /etc/network/ - directory containing network interface scripts and configurations files."
+    description: "Record changes to network environment files or system calls. The below parameters monitors the following system calls, and write an audit event on system call exit: - sethostname: set the systems host name. - setdomainname: set the systems domain name. The files being monitored are: > /etc/issue and /etc/issue.net - messages displayed pre-login. > /etc/hosts - file containing host names and associated IP addresses. > /etc/networks - symbolic names for networks. > /etc/network/ - directory containing network interface scripts and configurations files."
     rationale: "Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records should have a relevant tag associated with them."
     remediation: 'Create audit rules: Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the system''s network environment. - 64 Bit systems: Example: # printf " -a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname,setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/networks -p wa -k system-locale -w /etc/network/ -p wa -k system-locale " >> /etc/audit/rules.d/50-system_local.rules - Load audit rules: Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi - 32 Bit systems: Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
     compliance:
@@ -2745,8 +2745,8 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/network/ && r:-p wa && r:-k system-locale|key=system-locale'
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
-      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale"
       - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale"
       - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale"
       - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale"
@@ -2759,7 +2759,7 @@ checks:
   # 4.1.3.8 Ensure events that modify user/group information are collected (Automated)
   - id: 29609
     title: "Ensure events that modify user/group information are collected."
-    description: 'Record events affecting the modification of user or group information, including that of passwords and old passwords if in use. - /etc/group: system groups - /etc/passwd: system users - /etc/gshadow: encrypted password for each group - /etc/shadow: system user passwords - /etc/security/opasswd: storage of old passwords if the relevant PAM module is in use. The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier "identity" in the audit log file.'
+    description: 'Record events affecting the modification of user or group information, including that of passwords and old passwords if in use. - /etc/group: system groups. - /etc/passwd: system users. - /etc/gshadow: encrypted password for each group. - /etc/shadow: system user passwords. - /etc/security/opasswd: storage of old passwords if the relevant PAM module is in use. The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier "identity" in the audit log file.'
     rationale: "Unexpected changes to these files could be an indication that the system has been compromised and that an unauthorized user is attempting to hide their activities or compromise additional accounts."
     remediation: 'Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify user/group information. Example: # printf " -w /etc/group -p wa -k identity -w /etc/passwd -p wa -k identity -w /etc/gshadow -p wa -k identity -w /etc/shadow -p wa -k identity -w /etc/security/opasswd -p wa -k identity " >> /etc/audit/rules.d/50-identity.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
     compliance:
@@ -2959,7 +2959,7 @@ checks:
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
-      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|key=perm_chng'
 
   # 4.1.3.17 Ensure successful and unsuccessful attempts to use the chacl command are recorded (Automated)
   - id: 29617
@@ -2986,7 +2986,7 @@ checks:
   - id: 29618
     title: "Ensure successful and unsuccessful attempts to use the usermod command are recorded."
     description: "The operating system must generate audit records for successful/unsuccessful uses of the usermod command."
-    rationale: "The usermod command modifies the system account files to reflect the changes that are specified on the command line. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one.Audit records can be generated from various components within the information system (e.g., module or policy filter)."
+    rationale: "The usermod command modifies the system account files to reflect the changes that are specified on the command line. Without generating audit records that are specific to the security and mission needs of the organization, it would be difficult to establish, correlate, and investigate the events relating to an incident or identify those responsible for one. Audit records can be generated from various components within the information system (e.g., module or policy filter)."
     remediation: 'Create audit rules: Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor successful and unsuccessful attempts to use the usermod command. - 64 Bit systems Example: # { UID_MIN=$(awk ''/^\s*UID_MIN/{print $2}'' /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k usermod " >> /etc/audit/rules.d/50-usermod.rules || printf "ERROR:Variable ''UID_MIN'' is unset.\n" } Load audit rules: Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi - 32 Bit systems: Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
     compliance:
       - cis: ["4.1.3.18"]
@@ -3006,7 +3006,7 @@ checks:
   # 4.1.3.19 Ensure kernel module loading unloading and modification is collected (Automated)
   - id: 29619
     title: "Ensure kernel module loading unloading and modification is collected."
-    description: "Monitor the loading and unloading of kernel modules. All the loading / listing / dependency checking of modules is done by kmod via symbolic links. The following system calls control loading and unloading of modules: - init_module: load a module. - finit_module: load a module (used when the overhead of using cryptographically signed modules to determine the authenticity of a module can be avoided). - delete_module: delete a module. - create_module: create a loadable module entry. - query_module: query the kernel for various bits pertaining to modules. Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of modules."
+    description: "Monitor the loading and unloading of kernel modules. All the loading / listing / dependency checking of modules is done by kmod via symbolic links. The following system calls control loading and unloading of modules: - init_module - load a module. - finit_module - load a module (used when the overhead of using cryptographically signed modules to determine the authenticity of a module can be avoided). - delete_module - delete a module. - create_module - create a loadable module entry. - query_module - query the kernel for various bits pertaining to modules. Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of modules."
     rationale: "Monitoring the use of all the various ways to manipulate kernel modules could provide system administrators with evidence that an unauthorized change was made to a kernel module, possibly compromising the security of the system."
     remediation: 'Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor kernel module modification. 64 Bit systems Example: # { UID_MIN=$(awk ''/^\s*UID_MIN/{print $2}'' /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F arch=b64 -S init_module,finit_module,delete_module,create_module,query_module -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules -a always,exit -F path=/usr/bin/kmod -F perm=x -F auid>=${UID_MIN} -F auid!=unset -k kernel_modules " >> /etc/audit/rules.d/50-kernel_modules.rules || printf "ERROR: Variable ''UID_MIN'' is unset.\n" } Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi.'
     compliance:
@@ -3045,12 +3045,13 @@ checks:
       - cis: ["4.1.3.20"]
       - cis_csc_v8: ["3.3", "8.5"]
       - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2", "AU.L2-3.3.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "AU.L2-3.3.1", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1", "9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AC-3", "AU-3", "AU-3(1)", "MP-2"]
       - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
+      - iso_27001-2013: ["A.12.4.1"]
       - mitre_techniques: ["T1562", "T1562.001"]
       - mitre_tactics: ["TA0005"]
     condition: all
@@ -3105,7 +3106,8 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - 'f:/etc/audit/auditd.conf -> r:^\s*log_group\s*=\s*adm|^\s*log_group\s*=\s*root'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*log_group\s*\t*=\s*\t*adm|^\s*\t*log_group\s*\t*=\s*\t*root'
+      - 'c:sh -c "DIR_NAME=$(awk -F\"=\" ''/^\s*\t*log_file\s*\t*/ {print $2}'' /etc/audit/auditd.conf); stat -c \"%G\" $DIR_NAME" -> r:adm|root'
 
   # 4.1.4.4 Ensure the audit log directory is 0750 or more restrictive (Automated) - Not Implemented
 
@@ -3130,8 +3132,10 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - 'not c:sh -c "stat -Lc \"%n %#a %u %U %g %G\" /etc/audit/*.rules" -> r:^/etc/audit && !r:640|600|400'
-      - 'not c:sh -c "stat -Lc \"%n %#a %u %U %g %G\" /etc/audit/*.conf" -> r:^/etc/audit && !r:640|600|400'
+      - 'not c:sh -c "stat -Lc \"%n %#a\" /etc/audit/*.rules" -> r:^/etc/audit && !r:640|600|400'
+      - 'not c:sh -c "stat -Lc \"%n %#a\" /etc/audit/*.conf" -> r:^/etc/audit && !r:640|600|400'
+      - 'not c:sh -c "stat -Lc \"%n %u %U %g %G\" /etc/audit/*.rules" -> r:^/etc/audit && !r:\s*0 root 0 root'
+      - 'not c:sh -c "stat -Lc \"%n %u %U %g %G\" /etc/audit/*.conf" -> r:^/etc/audit && !r:\s*0 root 0 root'
 
   # 4.1.4.6 Ensure audit configuration files are owned by root (Automated)
   - id: 29625
@@ -3154,8 +3158,8 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - 'not c:sh -c "stat -Lc \"%n %#a %U\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
-      - 'not c:sh -c "stat -Lc \"%n %#a %U\" /etc/audit/*.conf" -> r:^/etc/audit && !r:root'
+      - 'not c:sh -c "stat -Lc \"%n %U\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
+      - 'not c:sh -c "stat -Lc \"%n %U\" /etc/audit/*.conf" -> r:^/etc/audit && !r:root'
 
   # 4.1.4.7 Ensure audit configuration files belong to group root (Automated)
   - id: 29626
@@ -3178,8 +3182,8 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - 'not c:sh -c "stat -Lc \"%n %#a %G\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
-      - 'not c:sh -c "stat -Lc \"%n %#a %G\" /etc/audit/*.conf" -> r:^/etc/audit && !r:root'
+      - 'not c:sh -c "stat -Lc \"%n %G\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
+      - 'not c:sh -c "stat -Lc \"%n %G\" /etc/audit/*.conf" -> r:^/etc/audit && !r:root'
 
   # 4.1.4.8 Ensure audit tools are 755 or more restrictive (Automated)
   - id: 29627
@@ -3202,7 +3206,8 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - 'not c:sh -c "stat -c \"%n %a\" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules" -> r:^/sbin && r:766|776|767|777'
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:0 root 0 root'
 
   # 4.1.4.9 Ensure audit tools are owned by root (Automated)
   - id: 29628
@@ -3225,7 +3230,8 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - 'not c:sh -c "stat -c \"%n %U\" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules" -> r:^/sbin && !r:root'
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:0 root 0 root'
 
   # 4.1.4.10 Ensure audit tools belong to group root (Automated)
   - id: 29629
@@ -3248,7 +3254,8 @@ checks:
       - mitre_tactics: ["TA0007"]
     condition: all
     rules:
-      - 'not c:sh -c "stat -c \"%n %a %G\" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules" -> r:^/sbin && !r:root'
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:0 root 0 root'
 
   # 4.1.4.11 Ensure cryptographic mechanisms are used to protect the integrity of audit tools (Automated) - Not Implemented
 
@@ -3287,7 +3294,7 @@ checks:
   # 4.2.1.1.2 Ensure systemd-journal-remote is configured (Manual) - Not Implemented
 
   # 4.2.1.1.3 Ensure systemd-journal-remote is enabled (Manual)
-  - id: 29633
+  - id: 29632
     title: "Ensure systemd-journal-remote is enabled."
     description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
@@ -3310,7 +3317,7 @@ checks:
       - 'c:systemctl is-enabled systemd-journal-upload.service -> r:^\s*\t*enabled$'
 
   # 4.2.1.1.4 Ensure journald is not configured to recieve logs from a remote client (Automated)
-  - id: 29632
+  - id: 29633
     title: "Ensure journald is not configured to recieve logs from a remote client."
     description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: - The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs. - With regards to receiving logs, there are two services; systemd-journal-remote.socket and systemd-journal-remote.service."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
@@ -3319,10 +3326,10 @@ checks:
       - cis: ["4.2.1.1.4"]
       - cis_csc_v8: ["4.8", "8.2"]
       - cis_csc_v7: ["6.2", "6.3", "9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6", "AU.L2-3.3.1"]
+      - cmmc_v2.0: ["AU.L2-3.3.1", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - hipaa: ["164.312(b)"]
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5", "10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "1.2.5", "2.2.4", "6.4.1"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["CC6.3", "CC6.6"]
       - iso_27001-2013: ["A.13.1.3", "A.12.4.1"]
@@ -3377,7 +3384,7 @@ checks:
       - mitre_mitigations: ["M1053"]
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^\s*Compress=yes'
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Compress\s*\t*=\s*\t*yes'
 
   # 4.2.1.4 Ensure journald is configured to write logfiles to persistent disk (Automated)
   - id: 29637
@@ -3400,7 +3407,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^\s*Storage=persistent'
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Storage\s*\t*=\s*\t*persistent'
 
   # 4.2.1.5 Ensure journald is not configured to send logs to rsyslog (Manual)
   - id: 29638
@@ -3424,7 +3431,7 @@ checks:
       - mitre_mitigations: ["M1029"]
     condition: all
     rules:
-      - 'not f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
+      - 'not f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*\t*=\s*\t*yes'
 
   # 4.2.1.6 Ensure journald log rotation is configured per site policy (Manual) - Not Implemented
   # 4.2.1.7 Ensure journald default file permissions configured (Manual) - Not Implemented
@@ -3496,7 +3503,7 @@ checks:
       - iso_27001-2013: ["A.12.4.1"]
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*\t*=\s*\t*yes'
 
   # 4.2.2.4 Ensure rsyslog default file permissions are configured (Automated)
   - id: 29643
@@ -3518,10 +3525,10 @@ checks:
       - iso_27001-2013: ["A.8.1.3", "A.14.2.5", "A.12.4.1"]
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
       - mitre_tactics: ["TA0007"]
-    condition: any
+    condition: all
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0640|^\$FileCreateMode 0600|^\$FileCreateMode 0400'
-      - 'd:/etc/rsyslog.d/ -> r:\.+.conf -> r:^\$FileCreateMode 0640|^\$FileCreateMode 0600|^\$FileCreateMode 0400'
+      - 'not f:/etc/rsyslog.conf -> r:^\s*\t*\$FileCreateMode && !r:0640|0600|0400'
+      - 'not d:/etc/rsyslog.d/ -> r:\.+.conf -> r:^\s*\t*\$FileCreateMode && !r:0640|0600|0400'
 
   # 4.2.2.5 Ensure logging is configured (Manual) - Not Implemented
   # 4.2.2.6 Ensure rsyslog is configured to send logs to a remote log host (Manual) - Not Implemented
@@ -3534,7 +3541,7 @@ checks:
     remediation: 'Should there be any active log server configuration found in the auditing section, modify those file and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. Old format $ModLoad imtcp $InputTCPServerRun New format module(load="imtcp") input(type="imtcp" port="514") Restart the service: # systemctl restart rsyslog.'
     compliance:
       - cis: ["4.2.2.7"]
-      - cis_csc_v8: ["8.2", "4.8"]
+      - cis_csc_v8: ["4.8", "8.2"]
       - cis_csc_v7: ["6.2", "6.3", "9.2"]
       - cmmc_v2.0: ["AU.L2-3.3.1", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - hipaa: ["164.312(b)"]
@@ -3545,10 +3552,10 @@ checks:
       - iso_27001-2013: ["A.12.4.1", "A.13.1.3"]
       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
       - mitre_tactics: ["TA0005"]
-    condition: any
+    condition: all
     rules:
-      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\s*\t*\$ModLoad imtcp|\s*\t*^\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
-      - 'not f:/etc/rsyslog.conf -> r:^\s*\t*\$ModLoad imtcp|^\s*\t*\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
+      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\s*\t*\$ModLoad imtcp|^\s*\t*module\(load="imtcp"\)|^\s*\t*input\(type="imtcp" port="514"\)|^\s*\t*\$InputTCPServerRun'
+      - 'not f:/etc/rsyslog.conf -> r:^\s*\t*\$ModLoad imtcp|^\s*\t*module\(load="imtcp"\)|^\s*\t*input\(type="imtcp" port="514"\)|^\s*\t*\$InputTCPServerRun'
 
   # 4.2.3 Ensure all logfiles have appropriate permissions and ownership (Automated) - Not Implemented
 
