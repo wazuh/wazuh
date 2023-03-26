@@ -8,13 +8,14 @@
 #include <utils/baseMacros.hpp>
 
 #include <metrics/iMetricsManager.hpp>
+#include <metrics/iMetricsManagerAPI.hpp>
 #include <metrics/dataHub.hpp>
 #include <metrics/metricsScope.hpp>
 
 namespace metrics_manager
 {
 
-class MetricsManager : public IMetricsManager
+class MetricsManager : public IMetricsManager, public IMetricsManagerAPI
 {
 public:
     MetricsManager();
@@ -43,10 +44,13 @@ public:
     */
     json::Json getAllMetrics() override;
 
+    // API Commands
+    std::variant<json::Json, base::Error> dumpCmd() override;
+
 private:
 
     /// @brief Instrumentation scopes across the application.
-    std::unordered_map<std::string, std::shared_ptr<MetricsScope>> m_mapScopes;
+    std::map<std::string, std::shared_ptr<MetricsScope>> m_mapScopes;
 
     bool m_statusRunning;
 
