@@ -3605,7 +3605,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/crontab -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Automated)
   - id: 29647
@@ -3629,7 +3629,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.hourly -> r:Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Automated)
   - id: 29648
@@ -3653,12 +3653,12 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.daily -> r:Access:\s*\(0\d00/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Automated)
   - id: 29649
     title: "Ensure permissions on /etc/cron.weekly are configured."
-    description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site polic."
+    description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory. Note: Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on the /etc/cron.weekly directory: # chown root:root /etc/cron.weekly/ # chmod og-rwx /etc/cron.weekly/."
     compliance:
@@ -3677,7 +3677,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.weekly -> r:Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Automated)
   - id: 29650
@@ -3701,7 +3701,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.monthly -> r:Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured (Automated)
   - id: 29651
@@ -3725,7 +3725,7 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.d -> r:Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.8 Ensure cron is restricted to authorized users (Automated)
   - id: 29652
@@ -3751,7 +3751,7 @@ checks:
     rules:
       - "f:/etc/cron.allow"
       - "not f:/etc/cron.deny"
-      - 'c:stat -L /etc/cron.allow -> r:Access:\s*\(0\d\d0/-\w\w\w\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%n %#a %u %U %g %G" /etc/cron.allow -> r:/etc/cron.allow 640 0 root 0 root'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 29653
@@ -3777,7 +3777,7 @@ checks:
     rules:
       - "f:/etc/at.allow"
       - "not f:/etc/at.deny"
-      - 'c:stat -L /etc/at.allow -> r:Access:\s*\(0\d\d0/-\w\w\w\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -Lc "%n %#a %u %U %g %G" /etc/at.allow -> r:/etc/at.allow 640 0 root 0 root'
 
   ############################################################
   # 5.2 Configure SSH Server
@@ -3804,38 +3804,15 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.2.2 Ensure permissions on SSH private host key files are configured (Automated) - Not Implemented
-
-  # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated)
-  - id: 29655
-    title: "Ensure permissions on SSH public host key files are configured."
-    description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
-    rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: 'Run the following commands to set permissions and ownership on the SSH host public key files: # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chmod u-x,go-wx {} \; # find /etc/ssh -xdev -type f -name ''ssh_host_*_key.pub'' -exec chown root:root {} \;.'
-    compliance:
-      - cis: ["5.2.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - soc_2: ["CC5.2", "CC6.1"]
-      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
-      - mitre_techniques: ["T1557"]
-      - mitre_tactics: ["TA0003", "TA0006"]
-      - mitre_mitigations: ["M1022"]
-    condition: none
-    rules:
-      - 'c:sh -c "find /etc/ssh -xdev -type f -name \"ssh_host_*_key.pub\" -exec stat {} \\;" -> r:Access:\s*\( && !r:-rw-r--r--'
+  # 5.2.3 Ensure permissions on SSH public host key files are configured (Automated) - Not implemented
 
   # 5.2.4 Ensure SSH access is limited (Automated)
   - id: 29656
     title: "Ensure SSH access is limited."
-    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
+    description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: > The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: > The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: > The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: > The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>."
     compliance:
@@ -3854,8 +3831,8 @@ checks:
       - mitre_mitigations: ["M1018"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
+      - 'c:sshd -T -> r:^AllowUsers\s+\w+|^AllowGroups\s+\w+|^DenyUsers\s+\w+|^DenyGroups\s+\w+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*\t*AllowUsers\s+\w+|^\s*\t*AllowGroups\s+\w+|^\s*\t*DenyUsers\s+\w+|^\s*\t*DenyGroups\s+\w+'
 
   # 5.2.5 Ensure SSH LogLevel is appropriate (Automated)
   - id: 29657
@@ -3879,9 +3856,8 @@ checks:
       - mitre_tactics: ["TA0005"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*\t*LogLevel\s+INFO|^\s*\t*LogLevel\s+VERBOSE'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*LogLevel\s+INFO|^\s*\t*LogLevel\s+VERBOSE'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*LogLevel\s+ && !r:INFO|VERBOSE'
+      - 'c:sshd -T -> r:^LogLevel\s+INFO|^LogLevel\s+VERBOSE'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*LogLevel\s*\t* && !r:INFO|VERBOSE'
 
   # 5.2.6 Ensure SSH PAM is enabled (Automated)
   - id: 29658
@@ -3904,8 +3880,8 @@ checks:
       - mitre_mitigations: ["M1035"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*\t*usepam\s+yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*usepam\s+no'
+      - 'c:sshd -T -> r:^usepam\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*usepam\s*\t*no'
 
   # 5.2.7 Ensure SSH root login is disabled (Automated)
   - id: 29659
@@ -3927,8 +3903,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*\t*PermitRootLogin\s+no'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*\t*PermitRootLogin\s+no'
+      - 'c:sshd -T -> r:^PermitRootLogin\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*PermitRootLogin\s*\t*yes'
 
   # 5.2.8 Ensure SSH HostbasedAuthentication is disabled (Automated)
   - id: 29660
@@ -3950,8 +3926,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*\t*HostbasedAuthentication\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*HostbasedAuthentication\s+yes'
+      - 'c:sshd -T -> r:^HostbasedAuthentication\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*HostbasedAuthentication\s*\t*yes'
 
   # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled (Automated)
   - id: 29661
@@ -3973,8 +3949,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*\t*PermitEmptyPasswords\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*PermitEmptyPasswords\s+yes'
+      - 'c:sshd -T -> r:^PermitEmptyPasswords\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*PermitEmptyPasswords\s*\t*yes'
 
   # 5.2.10 Ensure SSH PermitUserEnvironment is disabled (Automated)
   - id: 29662
@@ -3997,8 +3973,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*\t*PermitUserEnvironment\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*PermitUserEnvironment\s+yes'
+      - 'c:sshd -T -> r:^PermitUserEnvironment\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*PermitUserEnvironment\s*\t*yes'
 
   # 5.2.11 Ensure SSH IgnoreRhosts is enabled (Automated)
   - id: 29663
@@ -4021,8 +3997,8 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*\t*IgnoreRhosts\s+yes'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*IgnoreRhosts\s+no'
+      - 'c:sshd -T -> r:^IgnoreRhosts\s+yes'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*IgnoreRhosts\s*\t*no'
 
   # 5.2.12 Ensure SSH X11 forwarding is disabled (Automated)
   - id: 29664
@@ -4044,8 +4020,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*X11Forwarding\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*X11Forwarding\s+yes'
+      - 'c:sshd -T -> r:^X11Forwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*X11Forwarding\s*\t*yes'
 
   # 5.2.13 Ensure only strong Ciphers are used (Automated)
   - id: 29665
@@ -4066,7 +4042,7 @@ checks:
       - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
-      - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
+      - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
       - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
@@ -4091,7 +4067,7 @@ checks:
       - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
-      - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
+      - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
       - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
@@ -4114,7 +4090,7 @@ checks:
       - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
-      - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
+      - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
       - mitre_techniques: ["T1040", "T1557"]
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1041"]
@@ -4146,8 +4122,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*\t*AllowTcpForwarding\s+no'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*AllowTcpForwarding\s+yes'
+      - 'c:sshd -T -> r:^AllowTcpForwarding\s+no'
+      - 'not f:/etc/ssh/sshd_config -> r:^\s*\t*AllowTcpForwarding\s*\t*yes'
 
   # 5.2.17 Ensure SSH warning banner is configured (Automated)
   - id: 29669
@@ -4169,7 +4145,7 @@ checks:
       - mitre_mitigations: ["M1035"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*\t*banner\s*\t*/'
+      - 'c:sshd -T -> r:^banner\s/'
       - 'f:/etc/ssh/sshd_config -> r:^\s*\t*banner\s*\t*/'
 
   # 5.2.18 Ensure SSH MaxAuthTries is set to 4 or less (Automated)
@@ -4192,7 +4168,7 @@ checks:
       - mitre_mitigations: ["M1036"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*\t*MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'c:sshd -T -> n:^MaxAuthTries\s(\d+) compare <= 4'
       - 'f:/etc/ssh/sshd_config -> n:^\s*\t*MaxAuthTries\s*\t*(\d+) compare <= 4'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*MaxAuthTries\s*\t*(\d+) compare > 4'
 
@@ -4216,15 +4192,15 @@ checks:
       - mitre_tactics: ["TA0040"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*\t*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
-      - 'c:sshd -T -> n:^\s*\t*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
-      - 'c:sshd -T -> n:^\s*\t*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+(\d+):\d+:\d+ compare > 10'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+\d+:(\d+):\d+ compare > 30'
-      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+\d+:\d+:(\d+) compare > 60'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
+      - 'c:sshd -T -> n:^maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'c:sshd -T -> n:^maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'c:sshd -T -> n:^maxstartups\s+\d+:\d+:(\d+) compare <= 60'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s*\t*(\d+):\d+:\d+ compare > 10'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s*\t*\d+:(\d+):\d+ compare > 30'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s*\t*\d+:\d+:(\d+) compare > 60'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s*\t*(\d+):\d+:\d+ compare <= 10'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s*\t*\d+:(\d+):\d+ compare <= 30'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*maxstartups\s*\t*\d+:\d+:(\d+) compare <= 60'
 
   # 5.2.20 Ensure SSH MaxSessions is set to 10 or less (Automated)
   - id: 29672
@@ -4238,15 +4214,14 @@ checks:
       - mitre_tactics: ["TA0040"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*\t*maxsessions\s+(\d+) compare <= 10'
-      - 'f:/etc/ssh/sshd_config ->  n:^\s*\t*maxsessions\s+(\d+) compare <= 10'
-      - 'not f:/etc/ssh/sshd_config ->  n:^\s*\t*maxsessions\s+(\d+) compare > 10'
+      - 'c:sshd -T -> n:^maxsessions\s+(\d+) compare <= 10'
+      - 'not f:/etc/ssh/sshd_config ->  n:^\s*\t*maxsessions\s*\t*(\d+) compare > 10'
 
   # 5.2.21 Ensure SSH LoginGraceTime is set to one minute or less (Automated)
   - id: 29673
     title: "Ensure SSH LoginGraceTime is set to one minute or less."
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
-    rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds(1 Minute), set the number based on site policy."
+    rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections. While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60."
     compliance:
       - cis: ["5.2.21"]
@@ -4263,8 +4238,9 @@ checks:
       - mitre_mitigations: ["M1036"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*\t*logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*logingracetime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
+      - 'c:sshd -T -> n:^logingracetime\s(\d+) compare <= 60 && n:LoginGraceTime\s(\d+) compare != 0'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*\t*logingracetime\s*\t*(\d+) compare <= 60 && n:^\s*\t*LoginGraceTime\s*\t*(\d+) compare != 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*logingracetime\s*\t*(\d+) compare > 60'
 
   # 5.2.22 Ensure SSH Idle Timeout Interval is configured (Automated)
   - id: 29674
@@ -4281,10 +4257,12 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*\t*clientaliveinterval\s*\t*(\d+) compare > 0'
-      - 'c:sshd -T -> n:^\s*\t*clientalivecountmax\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:^clientaliveinterval\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:^clientalivecountmax\s*\t*(\d+) compare > 0'
       - 'f:/etc/ssh/sshd_config -> n:^\s*\t*clientaliveinterval\s*\t*(\d+) compare > 0'
       - 'f:/etc/ssh/sshd_config -> n:^\s*\t*clientalivecountmax\s*\t*(\d+) compare > 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*clientaliveinterval\s*\t*(\d+) compare == 0'
+      - 'not f:/etc/ssh/sshd_config -> n:^\s*\t*clientalivecountmax\s*\t*(\d+) compare == 0'
 
   ############################################################
   # 5.3 Configure privilege escalation
@@ -4294,7 +4272,7 @@ checks:
   - id: 29675
     title: "Ensure sudo is installed."
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
-    rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the users password is not entered within a configurable time limit. This limit is policy-specific."
+    rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
     remediation: "First determine is LDAP functionality is required. If so, then install sudo-ldap, else install sudo. Example: # apt install sudo."
     compliance:
       - cis: ["5.3.1"]
@@ -4309,8 +4287,8 @@ checks:
       - mitre_tactics: ["TA0001"]
     condition: any
     rules:
-      - "c:dpkg -s sudo -> r:install ok installed"
-      - "c:dpkg -s sudo-ldap -> r:install ok installed"
+      - "c: dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' sudo -> r:install ok installed"
+      - "c: dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' sudo-ldap -> r:install ok installed"
 
   # 5.3.2 Ensure sudo commands use pty (Automated)
   - id: 29676
@@ -4417,10 +4395,12 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
       - iso_27001-2013: ["A.9.2.3"]
-    condition: any
+    condition: all
     rules:
-      - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15.0 minutes'
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare < 15'
+      - 'not f:/etc/sudoers -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not f:/etc/sudoers -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
+      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
 
   # 5.3.7 Ensure access to the su command is restricted (Automated)
   - id: 29681
@@ -4469,13 +4449,15 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:minclass\s*\t*=\s*\t*(\d+) compare >=4'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:\s*\t*minlen\s*\t*=\s*\t*(\d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:\s*\t*minclass\s*\t*=\s*\t*(\d+) compare >= 4'
+      - 'not f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:\s*\t*minlen\s*\t*=\s*\t*(\d+) compare < 14'
+      - 'not f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:\s*\t*minclass\s*\t*=\s*\t*(\d+) compare < 4'
 
   # 5.4.2 Ensure lockout for failed password attempts is configured (Automated)
   - id: 29683
     title: "Ensure lockout for failed password attempts is configured."
-    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. - deny -> Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. - fail_interval -> The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out. - unlock_time -> The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
+    description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the common PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. All configuration of faillock is located in /etc/security/faillock.conf and well commented. - deny > Deny access if the number of consecutive authentication failures for this user during the recent interval exceeds n tries. - fail_interval > The length of the interval, in seconds, during which the consecutive authentication failures must happen for the user account to be locked out. - unlock_time > The access will be re-enabled after n seconds after the lock out. The value 0 has the same meaning as value never - the access will not be re-enabled without resetting the faillock entries by the faillock command. Set the lockout number and unlock time in accordance with local site policy."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     impact: "It is critical to test and validate any PAM changes before deploying. Any misconfiguration could cause the system to be inaccessible."
     remediation: 'NOTE: Pay special attention to the configuration. Incorrect configuration can cause system lock outs. This is example configuration. You configuration may differ based on previous changes to the files. Common auth: Edit /etc/pam.d/common-auth and ensure that faillock is configured. Note: It is critical to understand each line and the relevant arguments for successful implementation. The order of these entries is very specific. The pam_faillock.so lines surround the pam_unix.so line. The comment "Added to enable faillock" is shown to highlight the additional lines and their order in the file. # here are the per-package modules (the "Primary" block) auth required pam_faillock.so preauth # Added to enable faillock auth [success=1 default=ignore] pam_unix.so nullok auth [default=die] pam_faillock.so authfail # Added to enable faillock auth sufficient pam_faillock.so authsucc # Added to enable faillock # here''s the fallback if no module succeeds auth requisite pam_deny.so # prime the stack with a positive return value if there isn''t one already; # this avoids us returning an error just because nothing sets a success code # since the modules above will each just jump around auth required pam_permit.so # and here are more per-package modules (the "Additional" block) auth optional pam_cap.so # end of pam-auth-update config Common account: Edit /etc/pam.d/common-account and ensure that the following stanza is at the end of the file. > account > required > pam_faillock.so. Fail lock configuration: Edit /etc/security/faillock.conf and configure it per your site policy. Example: deny = 4 > fail_interval = 900 > unlock time = 600.'
@@ -4495,13 +4477,13 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*required\s*\t*pam_faillock.so\s*preauth'
+      - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*required\s*\t*pam_faillock.so\s*\t*preauth'
       - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth && r:default=die && r:\s*\t*pam_faillock.so && r:\s*\t*authfail'
-      - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*sufficient\s*\t*pam_faillock.so\s*authsucc'
+      - 'f:/etc/pam.d/common-auth -> !r:^\s*\t*# && r:auth\s*\t*sufficient\s*\t*pam_faillock.so\s*\t*authsucc'
       - 'f:/etc/pam.d/common-account -> !r:^\s*\t*# && r:account\s*\t*required\s*\t*pam_faillock.so'
       - 'f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:deny\s*\t*=\s*\t*(\d+) compare <= 4'
       - 'f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:fail_interval\s*\t*=\s*\t*(\d+) compare <= 900'
-      - 'f:/etc/security/faillock.conf -> !r:^\s*\t*# && !n:unlock_time\s*\t*=\s*\t*(\d+) compare > 0 && !n:unlock_time\s*\t*=\s*\t*(\d+) compare < 600'
+      - 'not f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:unlock_time\s*\t*=\s*\t*(\d+) compare > 0 && n:unlock_time\s*\t*=\s*\t*(\d+) compare < 600'
 
   # 5.4.3 Ensure password reuse is limited (Automated)
   - id: 29684
@@ -4520,7 +4502,7 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
     condition: none
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare < 5'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:\s*\t*password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare < 5'
       - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:password\s*\t*required\s*\t*pam_pwhistory.so && !r:remember'
 
   # 5.4.4 Ensure password hashing algorithm is up to date with the latest standards (Automated)
@@ -4599,8 +4581,8 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:\d+:(\d+): compare > 365'
+      - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
+      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.5.1.3 Ensure password expiration warning days is 7 or more (Automated)
   - id: 29688
@@ -4620,8 +4602,9 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
-      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:\d+:\d+:(\d+): compare < 7'
+      - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
+      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
 
   # 5.5.1.4 Ensure inactive password lock is 30 days or less (Automated)
   - id: 29689
@@ -4644,8 +4627,8 @@ checks:
     rules:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
       - "not c:useradd -D -> r:^INACTIVE=-1"
-      - 'not f:/etc/shadow -> n:^\w+:\w+:\w+:\w+:\w+:\w+:(\d+): compare > 30'
-      - 'not f:/etc/shadow -> r:^\w+:\w+:\w+:\w+:\w+:\w+:-1:'
+      - 'f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
+      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
   # 5.5.1.5 Ensure all users last password change date is in the past (Automated) - Not Implemented
   # 5.5.2 Ensure system accounts are secured (Automated) - Not Implemented
@@ -4672,7 +4655,7 @@ checks:
       - mitre_mitigations: ["M1026"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> !r:^\s*\t*# && r:root:\w+:\w+:0:'
+      - "f:/etc/passwd -> r:^root:x:0:0"
 
   # 5.5.4 Ensure default user umask is 027 or more restrictive (Automated) - Not Implemented
   # 5.5.5 Ensure default user umask is 027 or more restrictive (Automated) - Not Implemented
