@@ -236,6 +236,7 @@ void runStart(ConfHandler confManager)
             router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
         }
 
+        metrics = std::make_shared<metrics_manager::MetricsManager>();
         // Register Metrics commands
         api::metrics::handlers::registerHandlers(server->getRegistry());
         WAZUH_LOG_DEBUG("Metrics API registered.");

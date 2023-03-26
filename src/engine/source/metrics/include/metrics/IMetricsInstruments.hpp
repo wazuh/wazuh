@@ -1,6 +1,8 @@
 #ifndef _I_METRICS_INSTRUMENTS_H
 #define _I_METRICS_INSTRUMENTS_H
 
+#include <cstdint>
+
 namespace metrics_manager 
 {
 
@@ -11,6 +13,12 @@ class iCounterDouble
 {
 public:
     virtual void addValue(const double &value) = 0;
+};
+
+class iCounterInteger
+{
+public:
+    virtual void addValue(const uint64_t &value) = 0;
 };
 
 } // namespace instruments

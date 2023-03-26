@@ -2,6 +2,7 @@
 #include <memory>
 
 #include <metrics/metricsManager.hpp>
+#include <json/json.hpp>
 
 using namespace metrics_manager;
 
@@ -62,10 +63,26 @@ TEST_F(MetricsInterfaceTest, getMetricsScopeNames)
     ASSERT_EQ(scopeNames[1], "scope_1");
 }
 
-TEST_F(MetricsInterfaceTest, createDoubleCounter)
+TEST_F(MetricsInterfaceTest, getAllMetricsEmpty)
+{
+    auto contents = m_manager->getAllMetrics();
+    ASSERT_EQ(contents.size(), 0);
+}
+
+TEST_F(MetricsInterfaceTest, getAllMetricsOneScope)
+{
+    auto scope0 = m_manager->getMetricsScope("scope_0");
+    auto contents = m_manager->getAllMetrics();
+    ASSERT_EQ(contents.size(), 1);
+}
+
+TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeOneCounter)
 {
     auto scope0 = m_manager->getMetricsScope("scope_0");
     auto counter0 = scope0->getCounterDouble("counter_0");
-
+    counter0->addValue(5);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    auto contents = m_manager->getAllMetrics();
+    std::cout << contents.prettyStr() << std::endl;
 }
 

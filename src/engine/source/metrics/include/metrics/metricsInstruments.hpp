@@ -19,6 +19,18 @@ namespace instruments
     private:
         opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<double>> m_counter;
     };
+
+    class CounterInteger : public iCounterInteger
+    {
+    public:
+        CounterInteger(opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<uint64_t>> ptr );
+        
+        void addValue(const uint64_t &value) override;
+
+    private:
+        opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<uint64_t>> m_counter;
+    };
+
 } // namespace instruments
 
 } // namespace metrics_manager

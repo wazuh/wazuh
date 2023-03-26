@@ -32,6 +32,7 @@ target_link_libraries(engine_test_main
     kvdb
     wdb
     api
+    metrics
     )
 
 include(GoogleTest)
