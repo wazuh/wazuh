@@ -26,11 +26,13 @@ public:
     json::Json getAllMetrics();
 
     std::shared_ptr<instruments::iCounterDouble> getCounterDouble(const std::string& name) override;
+    std::shared_ptr<instruments::iCounterInteger> getCounterInteger(const std::string& name) override;
 
 private:
     std::shared_ptr<DataHub> m_dataHub;
     std::shared_ptr<OTSDKMeterProvider> m_meterProvider;
-    std::map<std::string, std::shared_ptr<instruments::CounterDouble>> m_instruments;
+    std::map<std::string, std::shared_ptr<instruments::CounterDouble>> m_instruments_counter_double;
+    std::map<std::string, std::shared_ptr<instruments::CounterInteger>> m_instruments_counter_integer;
 };
 
 } // namespace metrics_manager

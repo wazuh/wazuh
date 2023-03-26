@@ -35,11 +35,10 @@ json::Json DataHub::getAllResources()
     json::Json retValue;
     retValue.setArray();
 
-    auto it = m_resources.begin();
-    while (it!=m_resources.end())
-    {
-        retValue.appendJson(it->second);
+    for (auto &r : m_resources) {
+        retValue.appendJson(r.second);
     }
-    return json::Json();
+    
+    return retValue;
 }
 } // namespace metrics_manager

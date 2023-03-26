@@ -33,9 +33,12 @@ json::Json MetricsManager::getAllMetrics()
     while (it!=m_mapScopes.end())
     {
         auto scopeMetrics = it->second->getAllMetrics();
-        scopeMetrics.setObject("/" + it->first);
-        retValue.appendJson(scopeMetrics);
+        auto path = "/" + it->first;
+        retValue.appendJson(scopeMetrics, path);
+        it++;
     }
+
+    return retValue;
 }
 
 std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string& metricsScopeName)
@@ -72,6 +75,21 @@ std::vector<std::string> MetricsManager::getScopeNames()
         scopeNames.push_back(pairs.first);
     }
     return scopeNames;
+}
+
+
+// API Commands
+
+std::variant<json::Json, base::Error> MetricsManager::dumpCmd()
+{
+    const std::lock_guard<std::mutex> lock(m_mutexScopes);
+
+    if (m_mapScopes.empty())
+    {
+        return base::Error {fmt::format("Metrics Module doesn't have any Instrumentation Scope implemented.")};
+    }
+
+    return getAllMetrics();
 }
 
 } // namespace metrics_manager
