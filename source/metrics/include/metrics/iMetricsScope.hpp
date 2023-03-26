@@ -10,6 +10,7 @@ class IMetricsScope
 {
 public:
     virtual std::shared_ptr<instruments::iCounterDouble> getCounterDouble(const std::string& name) = 0;
+    virtual std::shared_ptr<instruments::iCounterInteger> getCounterInteger(const std::string& name) = 0;
 /*
 // Opcion 1
     virtual InstrumentHandler getCounterDouble(const std::string& name) = 0;
