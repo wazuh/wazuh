@@ -1229,7 +1229,7 @@ checks:
   - id: 29548
     title: "Ensure chrony is running as user _chrony."
     description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service."
-    rationale: "The chronyd service should run with only the required privlidges."
+    rationale: "The chronyd service should run with only the required privleges."
     remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony."
     compliance:
       - cis: ["2.1.2.2"]
@@ -1262,7 +1262,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["CC4.1", "CC5.2"]
       - iso_27001-2013: ["A.12.4.4"]
-    condition: any
+    condition: all
     rules:
       - "c:systemctl is-enabled chrony.service -> r:^enabled"
       - "c:systemctl is-active chrony.service -> r:^active"
@@ -1297,7 +1297,7 @@ checks:
     rules:
       - "d:/etc/systemd"
       - 'd:/etc/systemd -> r:\.+.conf$'
-      - 'd:/etc/systemd -> r:\.+.conf$ -> r:^\s*\t*NTP=\w|^\s*\t*NTP=\w'
+      - 'd:/etc/systemd -> r:\.+.conf$ -> r:^\s*\t*NTP=\w|^\s*\t*FallbackNTP=\w'
 
   # 2.1.3.2 Ensure systemd-timesyncd is enabled and running (Automated)
   - id: 29551
@@ -1329,7 +1329,7 @@ checks:
     title: "Ensure ntp access control is configured."
     description: 'ntp Access Control Commands: restrict address [mask mask] [ippeerlimit int] [flag ...]. The address argument expressed in dotted-quad form is the address of a host or network. Alternatively, the address argument can be a valid host DNS name. The mask argument expressed in dotted-quad form defaults to 255.255.255.255, meaning that the address is treated as the address of an individual host. A default entry (address 0.0.0.0, mask 0.0.0.0) is always included and is always the first entry in the list. Note: the text string default, with no mask option, may be used to indicate the default entry. The ippeerlimit directive limits the number of peer requests for each IP to int, where a value of -1 means "unlimited", the current default. A value of 0 means "none". There would usually be at most 1 peering request per IP, but if the remote peering requests are behind a proxy there could well be more than 1 per IP. In the current implementation, flag always restricts access, i.e., an entry with no flags indicates that free access to the server is to be given. The flags are not orthogonal, in that more restrictive flags will often make less restrictive ones redundant. The flags can generally be classed into two categories, those which restrict time service and those which restrict informational queries and attempts to do run-time reconfiguration of the server. One or more of the following flags may be specified: - kod - If this flag is set when an access violation occurs, a kiss-of-death (KoD) packet is sent. KoD packets are rate limited to no more than one per second. If another KoD packet occurs within one second after the last one, the packet is dropped. - limited - Deny service if the packet spacing violates the lower limits specified in the discard command. A history of clients is kept using the monitoring capability of ntpd. Thus, monitoring is always active as long as there is a restriction entry with the limited flag. - lowpriotrap - Declare traps set by matching hosts to be low priority. The number of traps a server can maintain is limited (the current limit is 3). Traps are usually assigned on a first come, first served basis, with later trap requestors being denied service. This flag modifies the assignment algorithm by allowing low priority traps to be overridden by later requests for normal priority traps. - noepeer - Deny ephemeral peer requests, even if they come from an authenticated source. Note that the ability to use a symmetric key for authentication may be restricted to one or more IPs or subnets via the third field of the ntp.keys file. This restriction is not enabled by default, to maintain backward compatibility. Expect noepeer to become the default in ntp-4.4. - nomodify - Deny ntpq and ntpdc queries which attempt to modify the state of the server (i.e., run time reconfiguration). Queries which return information are permitted. - noquery - Deny ntpq and ntpdc queries. Time service is not affected. - nopeer - Deny unauthenticated packets which would result in mobilizing a new association. This includes broadcast and symmetric active packets when a configured association does not exist. It also includes pool associations, so if you want to use servers from a pool directive and also want to use nopeer by default, you''ll want a restrict source ... line as well that does not include the nopeer directive. - noserve - Deny all packets except ntpq and ntpdc queries. - notrap - Decline to provide mode 6 control message trap service to matching hosts. The trap service is a subsystem of the ntpq control message protocol which is intended for use by remote event logging programs. - notrust - Deny service unless the packet is cryptographically authenticated. - ntpport - This is actually a match algorithm modifier, rather than a restriction flag. Its presence causes the restriction entry to be matched only if the source port in the packet is the standard NTP UDP port (123). Both ntpport and non-ntpport may be specified. The ntpport is considered more specific and is sorted later in the list.'
     rationale: "If ntp is in use on the system, proper configuration is vital to ensuring time synchronization is accurate."
-    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery ORIf another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp Default Value: restrict -4 default kod notrap nomodify nopeer noquery limited restrict -6 default kod notrap nomodify nopeer noquery limited."
+    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod nomodify notrap nopeer noquery restrict -6 default kod nomodify notrap nopeer noquery OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp."
     references:
       - http://www.ntp.org/
     compliance:
@@ -1344,6 +1344,7 @@ checks:
       - iso_27001-2013: ["A.12.4.4"]
     condition: all
     rules:
+      - "f:/etc/ntp.conf"
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
 
@@ -1371,6 +1372,7 @@ checks:
       - mitre_mitigations: ["M1022"]
     condition: all
     rules:
+      - "f:/etc/ntp.conf"
       - "f:/etc/ntp.conf -> r:pool"
       - "f:/etc/ntp.conf -> r:server"
 
@@ -1378,8 +1380,8 @@ checks:
   - id: 29554
     title: "Ensure ntp is running as user ntp."
     description: "The ntp package is installed with a dedicated user account ntp. This account is granted the access required by the ntpd daemon. Note: - If chrony or systemd-timesyncd are used, ntp should be removed and this section skipped. - This recommendation only applies if ntp is in use on the system. - Only one time synchronization method should be in use on the system."
-    rationale: "The ntpd daemon should run with only the required privlidge."
-    remediation: "Add or edit the following line in /etc/init.d/ntp: RUNASUSER=ntp. Run the following command to restart ntp.servocee: # systemctl restart ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp."
+    rationale: "The ntpd daemon should run with only the required privlege."
+    remediation: "Add or edit the following line in /etc/init.d/ntp: RUNASUSER=ntp. Run the following command to restart ntp.service: # systemctl restart ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp."
     references:
       - http://www.ntp.org/
     compliance:
@@ -1394,7 +1396,7 @@ checks:
       - iso_27001-2013: ["A.12.4.4"]
     condition: all
     rules:
-      - "f:/etc/init.d/ntp -> r:RUNASUSER=ntp"
+      - 'f:/etc/init.d/ntp -> r:^\s*\t*RUNASUSER\s*\t*=\s*\t*ntp$'
       - 'c:sh -c "ps -ef | grep ntpd | grep -v grep " -> r:ntpd\s'
       - 'not c:sh -c "ps -ef |grep ntpd | grep -v grep " -> !r:^ntp && r:ntpd\s'
 
@@ -1414,7 +1416,7 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - soc_2: ["CC4.1", "CC5.2"]
       - iso_27001-2013: ["A.12.4.4"]
-    condition: any
+    condition: all
     rules:
       - "c:systemctl is-enabled ntp.service -> r:^enabled"
       - "c:systemctl is-active ntp.service -> r:^active"
@@ -1646,8 +1648,8 @@ checks:
       - mitre_mitigations: ["M1042"]
     condition: all
     rules:
-      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-imapd -> r:install ok installed|dpkg-query: no packages found matching dovecot-imapd"
-      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-pop3d -> r:install ok installed|dpkg-query: no packages found matching dovecot-pop3d"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-imapd -> r:unknown ok not-installed|dpkg-query: no packages found matching dovecot-imapd"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-pop3d -> r:unknown ok not-installed|dpkg-query: no packages found matching dovecot-pop3d"
 
   # 2.2.11 Ensure Samba is not installed (Automated)
   - id: 29566
