@@ -1,5 +1,8 @@
 {
-    "0": "Informational",
+    "0": "Audit",
+    "1": "Critical",
     "2": "Error",
-    "4": "Information"
+    "3": "Warning",
+    "4": "Information",
+    "5": "Verbose"
 }
