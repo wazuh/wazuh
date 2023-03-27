@@ -486,6 +486,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             mtdebug2(WM_AWS_LOGTAG, "Found a subscriber tag");
 
+            if (!nodes[i]->attributes) {
+                mterror(WM_AWS_LOGTAG, "Undefined type for subscriber.");
+                return OS_INVALID;
+            }
+
             // Create subscriber node
             if (cur_service) {
                 os_calloc(1, sizeof(wm_aws_subscriber), cur_subscriber->next);
@@ -504,7 +509,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     mterror(WM_AWS_LOGTAG, "Empty service type. Valid one is '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE);
                     return OS_INVALID;
                 } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE)) {
-                    os_strdup(*nodes[i]->values, cur_service->type);
+                    os_strdup(*nodes[i]->values, cur_subscriber->type);
                 } else {
                     mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid one is '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE);
                     return OS_INVALID;
