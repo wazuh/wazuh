@@ -1,6 +1,6 @@
 name: decoder/windows-sysmon/0
 
-sources: 
+sources:
   - decoder/windows-event-decoder/0
 
 metadata:
@@ -27,16 +27,16 @@ normalize:
     - log.computer_name: $~windows.Event.System.Computer.#text
     - log.event_id:  $~windows.Event.System.EventID.#text
     - log.opcode: info
-    
+
     # Add categorization fields
-    - event:  +kvdb_get_merge/win_sysmon_categories/$event.code 
+    - event:  +kvdb_get_merge/win_sysmon_categories/$event.code
 
     - rule.name: $~windows.Event.EventData.RuleName
     - event.Hashes: $~windows.Event.EventData.Hash
     - ~temp.hashes: +parse_kv/$~windows.Event.EventData.Hashes/=/,/'/'
     - related.hash: $~temp.hashes
 
-    
+
   ## Process fields
     - process.entity_id: $~windows.Event.EventData.ProcessGuid
     - process.pid: $~windows.Event.EventData.ProcessId
@@ -63,7 +63,7 @@ normalize:
     - process.parent.args: '+s_to_array/$process.parent.command_line/ '
     #- process.parent.args_count
 
-    
+
   ## File fields
     - file.path: $~windows.Event.EventData.TargetFilename
     - file.path: $~windows.Event.EventData.Device
@@ -88,7 +88,7 @@ normalize:
     - destination.domain: $~windows.Event.EventData.DestinationHostname
     - destination.port: $~windows.Event.EventData.DestinationPort
     - dns.question.name: $~windows.Event.EventData.QueryName
-  
+
   ## User fields
     - user.id: $~windows.Event.System.Security.@UserID
     - ~temp.user_parts: +s_to_array/$~windows.Event.EventData.User/\
@@ -103,10 +103,10 @@ normalize:
 
   ## Related fields
     - related.user: $user.name
-    - related.ip: +a_append/$~windows.Event.EventData.NewTargetUserName  
+    - related.ip: +a_append/$~windows.Event.EventData.NewTargetUserName
 
 
- - check: event.code==255 
+ - check: event.code==255
    map:
     - error.code: $event.code
 
@@ -137,16 +137,16 @@ normalize:
   # Splits the QueryResults field that contains the DNS responses.
  #- check: $~windows.Event.EventData.QueryResults
  #  map:
- #   - ~temp.QueryRresultsArray: $~windows.Event.EventData.QueryResults 
+ #   - ~temp.QueryRresultsArray: $~windows.Event.EventData.QueryResults
     # Needs parsing each element of the array
 
  - check: $~windows.Event.EventData.SignatureStatus==Valid
    map:
-    - file.code_signature.valid: True   
+    - file.code_signature.valid: True
 
  - check: $~windows.Event.EventData.Initiated==True
    map:
-    - network.direction: egress  
+    - network.direction: egress
 
  - check: $~windows.Event.EventData.Initiated==false
    map:
@@ -181,25 +181,25 @@ normalize:
     - registry.value: +r_ext/$registry.path/^.*\\\\(.*)$
     # This could be better than what is done in line 181:
     # - ~temp.is_binary_data: +r_match/~windows.Event.EventData.Details/^Binary Data/
-    
+
  - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/QWORD
-   map:  
+   map:
     - registry.data.type: SZ_QWORD
     - registry.data.strings: +r_ext/$~windows.Event.EventData.Details/^QWORD\s*\((0x[0-9A-F]+-0x[0-9A-F]+)\)
 
  - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/DWORD
-   map:  
+   map:
     - registry.data.type: SZ_DWORD
     - ~temp.value: +r_ext/$~windows.Event.EventData.Details/DWORD \((0x[0-9A-F]{8})\)
     - registry.data.strings: +s_hex_to_num/$~temp.value
 
- - check: 
+ - check:
     - ~windows.Event.EventData.Details: +s_starts/Binary Data
    map:
     - ~temp.is_binary_data: True
 
  - check:  (event.code==12 OR event.code==13  OR event.code==14) AND +t_is_true/~temp.is_binary_data
-   map:  
+   map:
     - registry.data.type: REG_BINARY
     - registry.data.strings: $~windows.Event.EventData.Details
 

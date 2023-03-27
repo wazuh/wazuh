@@ -52,7 +52,7 @@ normalize:
    - powershell.command.path: $~windows.Event.EventData.CommandPath
    - powershell.command.name: $~windows.Event.EventData.CommandName
    - powershell.command.type: $~windows.Event.EventData.CommandType
-  
+
   # Add file information.
    - file.path: $~windows.Event.EventData.ScriptName
    - ~temp.file_data: +parse_file/$file.path
