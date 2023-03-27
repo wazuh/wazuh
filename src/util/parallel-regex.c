@@ -14,7 +14,7 @@
 #define ARGV0 "parallel-regex"
 
 static void helpmsg(void) __attribute__((noreturn));
-OSRegex regex, second_regex, third_regex;
+OSRegex first_regex, second_regex, third_regex;
 int input_number = 11;
 char *inputs[] = {
     "This is a test pattern for testing the parallel regex.",
@@ -61,7 +61,7 @@ void *t_regex(__attribute__((unused)) void * id){
             printf("%s\n", msg);
         }
 
-        if (OSRegex_Execute_ex(inputs[counter], &regex, &str_match)) {
+        if (OSRegex_Execute_ex(inputs[counter], &first_regex, &str_match)) {
             ptr = msg;
             size = snprintf(ptr, 1024, "+ [Thread %d][FIRST_PATTERN_MATCH]: %s\n", t_id, inputs[counter]);
             ptr += size;
@@ -114,7 +114,7 @@ int main(int argc, char **argv)
     threads = (threads < 1) ? 1 : ((threads > 40) ? 40 : threads);
     free(n_threads);
 
-    if (!OSRegex_Compile(pattern, &regex, OS_RETURN_SUBSTRING)) {
+    if (!OSRegex_Compile(pattern, &first_regex, OS_RETURN_SUBSTRING)) {
         printf("Pattern '%s' does not compile with OSRegex_Compile\n", pattern);
         return (-1);
     }

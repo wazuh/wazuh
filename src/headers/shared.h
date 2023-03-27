@@ -168,7 +168,47 @@ typedef uint8_t u_int8_t;
 
 #ifdef AIX
 #define MSG_DONTWAIT MSG_NONBLOCK
+char *strcasestr(char *a, char *b) {
+    size_t l;
+    char f[3];
+
+    snprintf(f, sizeof(f), "%c%c", tolower(*b), toupper(*b));
+    for (l = strcspn(a, f); l != strlen(a); l += strcspn(a + l + 1, f) + 1)
+        if (strncasecmp(a + l, b, strlen(b)) == 0)
+            return(a + l);
+    return(NULL);
+}
 #endif
+
+// #ifdef AIX
+// #define MSG_DONTWAIT MSG_NONBLOCK
+// static const char *strcasestr(const char *haystack, const char *needle) {
+//     if (haystack == NULL || needle == NULL) {
+//         return NULL;
+//     }
+//     if (strlen(needle) == 0) {
+//         return haystack;
+//     }
+//     int i, j, k;
+//     i = j = k = 0;
+//     int haystack_len = strlen(haystack);
+//     int needle_len = strlen(needle);
+//     while (i < (haystack_len - needle_len + 1)) {
+//         j = 0;
+//         k = i;
+//         while (k < haystack_len && j < needle_len &&
+//                tolower(haystack[k]) == tolower(needle[j])) {
+//             ++j; ++k;
+//         }
+//         if (j == needle_len) {
+//             // found the substring
+//             return &haystack[i];
+//         }
+//         ++i;
+//     }
+//     return NULL;
+// }
+// #endif
 
 #if defined(__GNUC__) && __GNUC__ >= 7
 #define fallthrough __attribute__ ((fallthrough))
