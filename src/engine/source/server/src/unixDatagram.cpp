@@ -136,7 +136,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop, const std::size_t queue
             }
 
             // Create a job to the worker thread
-            // TODO: Check if this
+            // TODO: Check if this is the best way to pass the data to the worker thread
             std::shared_ptr<std::string> dataPtr {std::make_shared<std::string>(std::move(data))};
             auto workerJob = m_loop->resource<uvw::WorkReq>([this, dataPtr]() { m_callback(std::move(*dataPtr)); });
 
