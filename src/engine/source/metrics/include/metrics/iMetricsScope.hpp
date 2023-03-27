@@ -11,6 +11,11 @@ class IMetricsScope
 public:
     virtual std::shared_ptr<instruments::iCounter<double>> getCounterDouble(const std::string& name) = 0;
     virtual std::shared_ptr<instruments::iCounter<uint64_t>> getCounterInteger(const std::string& name) = 0;
+    virtual std::shared_ptr<instruments::iCounter<double>> getUpDownCounterDouble(const std::string& name) = 0;
+    virtual std::shared_ptr<instruments::iCounter<int64_t>> getUpDownCounterInteger(const std::string& name) = 0;
+    virtual std::shared_ptr<instruments::iHistogram<double>> getHistogramDouble(const std::string& name) = 0;
+    virtual std::shared_ptr<instruments::iHistogram<uint64_t>> getHistogramInteger(const std::string& name) = 0;
+
 /*
 // Opcion 1
     virtual InstrumentHandler getCounterDouble(const std::string& name) = 0;
