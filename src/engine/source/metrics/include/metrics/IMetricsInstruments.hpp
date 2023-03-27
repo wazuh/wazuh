@@ -9,16 +9,11 @@ namespace metrics_manager
 namespace instruments
 {
 
-class iCounterDouble
+template <typename T>
+class iCounter
 {
 public:
-    virtual void addValue(const double &value) = 0;
-};
-
-class iCounterInteger
-{
-public:
-    virtual void addValue(const uint64_t &value) = 0;
+    virtual void addValue(const T &value) = 0;
 };
 
 } // namespace instruments
