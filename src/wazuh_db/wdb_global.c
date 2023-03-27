@@ -624,7 +624,7 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, const char *name_group, int id_ag
     stmt = wdb->stmt[WDB_STMT_GLOBAL_INSERT_AGENT_BELONG];
 
     if (sqlite3_bind_text(stmt, 1, name_group, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
     if (sqlite3_bind_int(stmt, 2, id_agent) != SQLITE_OK) {
