@@ -680,6 +680,176 @@ checks:
     rules:
       - 'c:augenrules --check -> r:^\s*/usr/sbin/augenrules && r:No change$'
 
+  # 4.1.4.1 Ensure audit log files are mode 0640 or less permissive. (Automated) -Not Implemented
+  # 4.1.4.2 Ensure only authorized users own audit log files (Automated) - Not Implemented
+
+  # 4.1.4.3 Ensure only authorized groups are assigned ownership of audit log files (Automated)
+  - id: 31168
+    title: "Ensure only authorized groups are assigned ownership of audit log files."
+    description: "Audit log files contain information about the system and system activity."
+    rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
+    remediation: "Run the following command to configure the audit log files to be owned by adm group: # find $(dirname $(awk -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf | xargs)) -type f \\( ! -group adm -a ! -group root \\) -exec chgrp adm {} + Run the following command to configure the audit log files to be owned by the adm group: # chgrp adm /var/log/audit/ Run the following command to set the log_group parameter in the audit configuration file to log_group = adm: # sed -ri 's/^\\s*#?\\s*log_group\\s*=\\s*\\S+(\\s*#.*)?.*$/log_group = adm\\1/' /etc/audit/auditd.conf Run the following command to restart the audit daemon to reload the configuration file: # systemctl restart auditd."
+    compliance:
+      - cis: ["4.1.4.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*log_group\s*\t*=\s*\t*adm|^\s*\t*log_group\s*\t*=\s*\t*root'
+      - 'c:sh -c "DIR_NAME=$(awk -F\"=\" ''/^\s*\t*log_file\s*\t*/ {print $2}'' /etc/audit/auditd.conf); stat -c \"%G\" $DIR_NAME" -> r:adm|root'
+
+  # 4.1.4.4 Ensure the audit log directory is 0750 or more restrictive (Automated) - Not Implemented
+
+  # 4.1.4.5 Ensure audit configuration files are 640 or more restrictive (Automated)
+  - id: 29624
+    title: "Ensure audit configuration files are 640 or more restrictive."
+    description: "Audit configuration files control auditd and what events are audited."
+    rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
+    remediation: "Run the following command to remove more permissive mode than 0640 from the audit configuration files: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec chmod u-x,g-wx,o-rwx {} +."
+    compliance:
+      - cis: ["4.1.4.5"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - 'not c:sh -c "stat -Lc \"%n %a\" /etc/audit/*.rules" -> r:^/etc/audit && !r:640|600|400'
+      - 'not c:sh -c "stat -Lc \"%n %a\" /etc/audit/*.conf" -> r:^/etc/audit && !r:640|600|400'
+
+  # 4.1.4.6 Ensure audit configuration files are owned by root (Automated)
+  - id: 29625
+    title: "Ensure audit configuration files are owned by root."
+    description: "Audit configuration files control auditd and what events are audited."
+    rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
+    remediation: "Run the following command to change ownership to root user: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -user root -exec chown root {} +."
+    compliance:
+      - cis: ["4.1.4.6"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - 'not c:sh -c "stat -Lc \"%n %U\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
+      - 'not c:sh -c "stat -Lc \"%n %U\" /etc/audit/*.conf" -> r:^/etc/audit && !r:root'
+
+  # 4.1.4.7 Ensure audit configuration files belong to group root (Automated)
+  - id: 29626
+    title: "Ensure audit configuration files belong to group root."
+    description: "Audit configuration files control auditd and what events are audited."
+    rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
+    remediation: "Run the following command to change group to root: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -group root -exec chgrp root {} +."
+    compliance:
+      - cis: ["4.1.4.7"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - 'not c:sh -c "stat -Lc \"%n %G\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
+      - 'not c:sh -c "stat -Lc \"%n %G\" /etc/audit/*.conf" -> r:^/etc/audit && !r:root'
+
+  # 4.1.4.8 Ensure audit tools are 755 or more restrictive (Automated)
+  - id: 29627
+    title: "Ensure audit tools are 755 or more restrictive."
+    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
+    rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
+    remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
+    compliance:
+      - cis: ["4.1.4.8"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+
+  # 4.1.4.9 Ensure audit tools are owned by root (Automated)
+  - id: 29628
+    title: "Ensure audit tools are owned by root."
+    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
+    rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
+    remediation: "Run the following command to change the owner of the audit tools to the root user: # chown root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
+    compliance:
+      - cis: ["4.1.4.9"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:0 root 0 root'
+
+  # 4.1.4.10 Ensure audit tools belong to group root (Automated)
+  - id: 29629
+    title: "Ensure audit tools belong to group root."
+    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
+    rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
+    remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules Run the following command to change owner and group of the audit tools to root user and group: # chown root:root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
+    compliance:
+      - cis: ["4.1.4.10"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - soc_2: ["CC5.2", "CC6.1"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:0 root 0 root'
   ############################################################
   # 4.2 Configure Logging
   ############################################################
@@ -687,9 +857,8 @@ checks:
   ############################################################
   # 4.2.1 Configure rsyslog
   ############################################################
-
   # 4.2.1.1 Ensure rsyslog is installed. (Automated)
-  - id: 31168
+  - id: 31169
     title: "Ensure rsyslog is installed."
     description: "The rsyslog software is recommended in environments where journald does not meet operation requirements."
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
@@ -704,6 +873,8 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1005", "T1070", "1070.002"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - 'c:rpm -q rsyslog -> r:^\s*\t*rsyslog-'
@@ -725,6 +896,8 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1211", "T1562", "1562.001"]
+      - mitre_tactics: ["TA0005"]
     condition: all
     rules:
       - "c:systemctl is-enabled rsyslog -> r:^enabled$"
@@ -746,6 +919,8 @@ checks:
       - pci_dss_3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["PL1.4"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006", "T1565"]
+      - mitre_tactics: ["TA0040"]
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
@@ -768,7 +943,9 @@ checks:
       - pci_dss_3.2.1: ["10.2", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: any
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0640|^\$FileCreateMode 0600|^\$FileCreateMode 0400'
       - 'd:/etc/rsyslog.d/ -> r:\.+.conf -> r:^\$FileCreateMode 0640|^\$FileCreateMode 0600|^\$FileCreateMode 0400'
@@ -793,6 +970,9 @@ checks:
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "10.2", "10.3", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "2.2.4", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["CC6.3", "CC6.6"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
     condition: all
     rules:
       - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\s*\t*\$ModLoad imtcp|\s*\t*^\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
@@ -818,6 +998,9 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
     condition: all
     rules:
       - 'c:rpm -q systemd-journal-remote -> r:^\s*\t*systemd-journal-remote-'
@@ -841,6 +1024,9 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "CM-7", "SI-5"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["1070", "T1070.002", "T1562", "T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
     condition: all
     rules:
       - 'c:systemctl is-enabled systemd-journal-upload.service -> r:^\s*\t*enabled$'
@@ -862,6 +1048,9 @@ checks:
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "10.2", "10.3", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "2.2.4", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["CC6.3", "CC6.6"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
     condition: all
     rules:
       - 'c:systemctl is-enabled systemd-journal-remote.socket -> r:^\s*\t*masked$'
@@ -882,6 +1071,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["1070", "T1070.002", "T1562", "T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
     condition: all
     rules:
       - "c:systemctl is-enabled systemd-journald.service -> r:static"
@@ -903,9 +1095,12 @@ checks:
       - pci_dss_3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
+      - mitre_techniques: ["T1562", "T1562.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1053"]
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Compress\s*=\s*yes'
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Compress\s*\t*=\s*\t*yes'
 
   # 4.2.2.4 Ensure journald is configured to write logfiles to persistent disk. (Automated)
   - id: 31181
@@ -923,9 +1118,12 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_3.2.1: ["10.2", "10.3"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
+      - mitre_techniques: ["1070", "T1070.002", "T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
-      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Storage\s*=\s*persistent'
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Storage\s*\t*=\s*\t*persistent'
 
   # 4.2.2.5 Ensure journald is not configured to send logs to rsyslog. (Manual)
   - id: 31182
@@ -944,6 +1142,9 @@ checks:
       - pci_dss_3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["PL1.4"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_mitigations: ["M1029"]
     condition: all
     rules:
       - 'not f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
