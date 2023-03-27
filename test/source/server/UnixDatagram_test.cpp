@@ -253,8 +253,6 @@ TEST_F(UnixDatagramTest, QueueWorkerSizeTestAndOverflow)
             sendedMessages++;
             WAZUH_LOG_INFO("Client is unblocked");
             isClientBlocked = false;
-            // Wait 10 to not close the socket before the client is blocked
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
         });
 
     // Wait for the sender thread to send all the messages
@@ -296,5 +294,104 @@ TEST_F(UnixDatagramTest, QueueWorkerSizeTestAndOverflow)
     // Close the loop
     stopHandler->send();
     senderThread.join();
+    loopThread.join();
+}
+
+TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
+{
+
+    // Variables to block all the queue workers
+    std::atomic<bool> enableBlockQueueWorkers = true;
+    std::condition_variable BlockWokersCV;
+    std::mutex BlockWokersMutex;
+
+    // Queue of workers
+    constexpr std::size_t queueWorkerSize = 16;
+    const std::size_t numOfWorkers = 4;
+
+    // Calculate the number of messages to send to block the queue workers
+    std::atomic<std::size_t> sendedMessages = 0;   // Number of messages sended
+    std::atomic<std::size_t> processedMessages = 0; // Number of messages processed
+
+    // Prepare the endpoint
+    UnixDatagram endpoint(socketPath,
+                          [&](std::string&& data)
+                          {
+                              if (enableBlockQueueWorkers)
+                              {
+
+                                  std::ostringstream ss;
+                                  ss << std::this_thread::get_id();
+                                  std::string idstr = ss.str();
+
+                                  WAZUH_LOG_INFO("Block the worker id: {}", idstr);
+                                  // Block the worker
+                                  std::unique_lock<std::mutex> lock(BlockWokersMutex);
+                                  BlockWokersCV.wait(lock);
+                                  WAZUH_LOG_INFO("Unblock the worker id: {}", idstr);
+                              }
+                              processedMessages++;
+                              WAZUH_LOG_INFO(
+                                  "Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
+                          });
+
+    ASSERT_NO_THROW(endpoint.bind(loop, queueWorkerSize));
+    ASSERT_TRUE(endpoint.isBound());
+    ASSERT_TRUE(endpoint.resume());
+
+    // Prepare the loop stop handler
+    auto stopHandler = loop->resource<uvw::AsyncHandle>();
+    stopHandler->on<uvw::AsyncEvent>(
+        [&](const uvw::AsyncEvent&, uvw::AsyncHandle& handle)
+        {
+            WAZUH_LOG_INFO("Stopping the loop");
+            handle.close();
+            loop->walk([](auto& handle) { handle.close(); });
+            loop->stop();
+            loop->run<uvw::Loop::Mode::ONCE>();
+        });
+    // Prepare the loop thread
+    std::thread loopThread(
+        [&]()
+        {
+            loop->run<uvw::Loop::Mode::DEFAULT>();
+            WAZUH_LOG_INFO("Loop thread finished");
+        });
+
+    // Send messages to block the queue workers
+    const auto clientFD = getSendFD(socketPath);
+    for (std::size_t i = 0; i < queueWorkerSize; ++i)
+    {
+        std::string message = "Message " + std::to_string(i);
+        WAZUH_LOG_INFO("Sending message [{}]: {}", sendedMessages, message.substr(0, 100).c_str());
+        sendUnixDatagram(clientFD, message);
+        sendedMessages++;
+    }
+    WAZUH_LOG_INFO("Queue is full");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    // Close the loop
+    stopHandler->send();
+
+    // Wait for the loop to be closed
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    // Unblock the queue workers
+    enableBlockQueueWorkers = false;
+    BlockWokersCV.notify_all();
+
+    // Wait for the all the messages to be processed
+    const auto maxAttempts = 500;
+    auto attempts = 0;
+    // 3 messages to fill the send and recv buffers and the blocked message
+    while (processedMessages < sendedMessages)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ASSERT_LE(attempts++, maxAttempts)
+            << "Not all messages were processed: " << processedMessages << " of " << sendedMessages;
+    }
+
+    // Close client
+    close(clientFD);
     loopThread.join();
 }
