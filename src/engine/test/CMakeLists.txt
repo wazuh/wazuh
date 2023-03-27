@@ -20,6 +20,8 @@ CPMAddPackage(
     EXCLUDE_FROM_ALL YES
 )
 
+include(GoogleTest)
+
 #TODO: Fix server tests
 #add_subdirectory(${TEST_SOURCE_DIR}/server)
 add_subdirectory(${TEST_SOURCE_DIR}/api)
