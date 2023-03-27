@@ -38,8 +38,11 @@ public:
     /**
      * @brief Configure and bind endpoint.
      *
+     * @param loop (std::shared_ptr<uvw::Loop>) Loop to bind endpoint.
+     * @param queueWorkerSize (std::size_t) Size of the queue worker. If 0, the callback is called synchronously.
+     * @throw (std::runtime_error) If endpoint is already bound or endpoint can't be bound.
      */
-    virtual void bind(std::shared_ptr<uvw::Loop> loop) = 0;
+    virtual void bind(std::shared_ptr<uvw::Loop> loop, const  std::size_t queueWorkerSize = 0) = 0;
 
     /**
      * @brief Close and liberate all resources used by endpoint.
@@ -65,6 +68,7 @@ public:
      * @brief Pause receiving data. Endpoint must be bound.
      *
      * @return (bool) True if endpoint was paused.
+     * This Method is not thread safe and must be called from the same thread that loop is running.
      */
     virtual bool pause() = 0;
 
@@ -72,8 +76,10 @@ public:
      * @brief Resume receiving data. Endpoint must be bound.
      *
      * @return (bool) True if endpoint was resumed.
+     * This Method is not thread safe and must be called from the same thread that loop is running.
      */
     virtual bool resume() = 0;
+
 };
 
 } // namespace engineserver
