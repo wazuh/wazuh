@@ -3570,9 +3570,7 @@ class AWSSQSQueue(WazuhIntegration):
         self.configure_queue_long_polling()
         self.profile = aws_profile
         self.iam_role_arn = kwargs['iam_role_arn']
-        # PoC code
-        # if kwargs["purge"]:
-        #     self.purge()
+
 
     def _get_sqs_url(self) -> str:
         """
