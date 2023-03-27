@@ -217,7 +217,7 @@ void test_wdb_exec_row_stmt_multi_column_one_int(void **state) {
     will_return(__wrap_sqlite3_column_double, json_value);
 
     int status = 0;
-    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, &status);
+    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, data->wdb, &status);
 
     assert_int_equal(status, SQLITE_ROW);
     assert_non_null(result);
@@ -247,7 +247,7 @@ void test_wdb_exec_row_stmt_multi_column_multiple_int(void **state) {
     }
 
     int status = 0;
-    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, &status);
+    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, data->wdb, &status);
 
     assert_int_equal(status, SQLITE_ROW);
     assert_non_null(result);
@@ -277,7 +277,7 @@ void test_wdb_exec_row_stmt_multi_column_one_text(void **state) {
     will_return(__wrap_sqlite3_column_text, json_value);
 
     int status = 0;
-    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, &status);
+    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, data->wdb, &status);
     assert_int_equal(status, SQLITE_ROW);
     assert_non_null(result);
     assert_string_equal(result->child->string, json_str);
@@ -292,7 +292,7 @@ void test_wdb_exec_row_stmt_multi_column_done(void **state) {
     expect_sqlite3_step_call(SQLITE_DONE);
 
     int status = 0;
-    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, &status);
+    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, data->wdb, &status);
 
     assert_null(result);
     assert_int_equal(status, SQLITE_DONE);
@@ -306,7 +306,7 @@ void test_wdb_exec_row_stmt_multi_column_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     int status = 0;
-    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, &status);
+    cJSON* result = wdb_exec_row_stmt_multi_column(*data->wdb->stmt, data->wdb, &status);
     assert_int_equal(status, SQLITE_ERROR);
     assert_null(result);
 }
@@ -330,7 +330,7 @@ void test_wdb_exec_stmt_sized_success_single_column_string(void **state){
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, WDB_MAX_RESPONSE_SIZE, &status, STMT_SINGLE_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, data->wdb, WDB_MAX_RESPONSE_SIZE, &status, STMT_SINGLE_COLUMN);
     char* ret_str = cJSON_PrintUnformatted(result);
 
     assert_string_equal("[\"COL_TEXT_0\",\"COL_TEXT_1\",\"COL_TEXT_2\",\"COL_TEXT_3\"]", ret_str);
@@ -354,7 +354,7 @@ void test_wdb_exec_stmt_sized_success_single_column_value(void **state){
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, WDB_MAX_RESPONSE_SIZE, &status, STMT_SINGLE_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, data->wdb, WDB_MAX_RESPONSE_SIZE, &status, STMT_SINGLE_COLUMN);
     char* ret_str = cJSON_PrintUnformatted(result);
 
     assert_string_equal("[1,2,3,4]", ret_str);
@@ -380,7 +380,7 @@ void test_wdb_exec_stmt_sized_success_multi_column(void **state) {
     will_return_count(__wrap_sqlite3_column_double, json_value, -1);
 
     int status = 0;
-    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, WDB_MAX_RESPONSE_SIZE, &status, STMT_MULTI_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, data->wdb, WDB_MAX_RESPONSE_SIZE, &status, STMT_MULTI_COLUMN);
 
     assert_int_equal(status, SQLITE_DONE);
     assert_non_null(result);
@@ -408,7 +408,7 @@ void test_wdb_exec_stmt_sized_success_limited(void **state) {
     will_return_count(__wrap_sqlite3_column_double, json_value, -1);
 
     int status = 0;
-    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, max_size, &status, STMT_MULTI_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, data->wdb, max_size, &status, STMT_MULTI_COLUMN);
 
     assert_int_equal(status, SQLITE_ROW);
     assert_non_null(result);
@@ -421,7 +421,7 @@ void test_wdb_exec_stmt_sized_invalid_statement(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
 
     int status = 0;
-    cJSON* result = wdb_exec_stmt_sized(NULL, WDB_MAX_RESPONSE_SIZE, &status, STMT_MULTI_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(NULL, NULL, WDB_MAX_RESPONSE_SIZE, &status, STMT_MULTI_COLUMN);
 
     assert_int_equal(status, SQLITE_ERROR);
     assert_null(result);
@@ -435,7 +435,7 @@ void test_wdb_exec_stmt_sized_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     int status = 0;
-    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, WDB_MAX_RESPONSE_SIZE, &status, STMT_MULTI_COLUMN);
+    cJSON* result = wdb_exec_stmt_sized(*data->wdb->stmt, data->wdb, WDB_MAX_RESPONSE_SIZE, &status, STMT_MULTI_COLUMN);
 
     assert_int_equal(status, SQLITE_ERROR);
     assert_null(result);
@@ -461,7 +461,7 @@ void test_wdb_exec_stmt_success(void **state) {
     expect_any(__wrap_sqlite3_column_double, iCol);
     will_return_count(__wrap_sqlite3_column_double, json_value, -1);
 
-    cJSON* result = wdb_exec_stmt(*data->wdb->stmt);
+    cJSON* result = wdb_exec_stmt(*data->wdb->stmt, data->wdb);
 
     assert_non_null(result);
     assert_string_equal(result->child->child->string, json_str);
@@ -473,7 +473,7 @@ void test_wdb_exec_stmt_success(void **state) {
 void test_wdb_exec_stmt_invalid_statement(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
 
-    cJSON* result = wdb_exec_stmt(NULL);
+    cJSON* result = wdb_exec_stmt(NULL, NULL);
 
     assert_null(result);
 }
@@ -485,7 +485,7 @@ void test_wdb_exec_stmt_error(void **state) {
     expect_sqlite3_step_call(SQLITE_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
-    cJSON* result = wdb_exec_stmt(*data->wdb->stmt);
+    cJSON* result = wdb_exec_stmt(*data->wdb->stmt, data->wdb);
     assert_null(result);
 
     cJSON_Delete(result);
@@ -498,7 +498,7 @@ void test_wdb_exec_stmt_silent_success_sqlite_done(void **state) {
 
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    int result = wdb_exec_stmt_silent(*data->wdb->stmt);
+    int result = wdb_exec_stmt_silent(*data->wdb->stmt, data->wdb);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -508,7 +508,7 @@ void test_wdb_exec_stmt_silent_success_sqlite_row(void **state) {
 
     expect_sqlite3_step_call(SQLITE_ROW);
 
-    int result = wdb_exec_stmt_silent(*data->wdb->stmt);
+    int result = wdb_exec_stmt_silent(*data->wdb->stmt, data->wdb);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -519,7 +519,7 @@ void test_wdb_exec_stmt_silent_invalid(void **state) {
     expect_sqlite3_step_call(SQLITE_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
-    int result = wdb_exec_stmt_silent(*data->wdb->stmt);
+    int result = wdb_exec_stmt_silent(*data->wdb->stmt, data->wdb);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -556,7 +556,7 @@ void test_wdb_exec_stmt_send_single_row_success(void **state) {
     expect_string(__wrap_OS_SendSecureTCP, msg, command_result);
     will_return(__wrap_OS_SendSecureTCP, 0);
 
-    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, data->wdb, peer);
 
     assert_int_equal(result, OS_SUCCESS);
 
@@ -596,7 +596,7 @@ void test_wdb_exec_stmt_send_multiple_rows_success(void **state) {
     expect_string_count(__wrap_OS_SendSecureTCP, msg, command_result, ROWS_RESPONSE);
     will_return_count(__wrap_OS_SendSecureTCP, 0, ROWS_RESPONSE);
 
-    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, data->wdb, peer);
 
     assert_int_equal(result, OS_SUCCESS);
 
@@ -614,7 +614,7 @@ void test_wdb_exec_stmt_send_no_rows_success(void **state) {
     //Calling wdb_exec_row_stmt
     expect_sqlite3_step_call(SQLITE_DONE);
 
-    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, data->wdb, peer);
 
     assert_int_equal(result, OS_SUCCESS);
 }
@@ -645,7 +645,7 @@ void test_wdb_exec_stmt_send_row_size_limit_err(void **state) {
     will_return(__wrap_sqlite3_sql, "STATEMENT");
     expect_string(__wrap__merror, formatted_msg, "SQL row response for statement STATEMENT is too big to be sent");
 
-    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, data->wdb, peer);
 
     assert_int_equal(result, OS_SIZELIM);
 
@@ -686,7 +686,7 @@ void test_wdb_exec_stmt_send_socket_err(void **state) {
     will_return(__wrap_strerror, "error");
     expect_string(__wrap__merror, formatted_msg, "Socket 1234 error: error (0)");
 
-    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, data->wdb, peer);
 
     assert_int_equal(result, OS_SOCKTERR);
 
@@ -704,7 +704,7 @@ void test_wdb_exec_stmt_send_timeout_set_err(void **state) {
     will_return(__wrap_strerror, "error");
     expect_string(__wrap__merror, formatted_msg, "Socket 1234 error setting timeout: error (0)");
 
-    int result = wdb_exec_stmt_send(*data->wdb->stmt, peer);
+    int result = wdb_exec_stmt_send(*data->wdb->stmt, data->wdb, peer);
 
     assert_int_equal(result, OS_SOCKTERR);
 }
@@ -714,7 +714,7 @@ void test_wdb_exec_stmt_send_statement_invalid(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
 
-    int result = wdb_exec_stmt_send(NULL, peer);
+    int result = wdb_exec_stmt_send(NULL, NULL, peer);
 
     assert_int_equal(result, OS_INVALID);
 }
@@ -859,7 +859,8 @@ void test_wdb_exec_row_stmt_single_column_success_string(){
     will_return(__wrap_sqlite3_column_text, "COL_TEXT_0");
 
     sqlite3_stmt *stmt = (sqlite3_stmt *)1;
-    cJSON *ret = wdb_exec_row_stmt_single_column(stmt, &status);
+    wdb_t *wdb = (wdb_t *)1;
+    cJSON *ret = wdb_exec_row_stmt_single_column(stmt, wdb, &status);
 
     char *ret_str = cJSON_PrintUnformatted(ret);
     assert_string_equal("\"COL_TEXT_0\"", ret_str);
@@ -879,7 +880,8 @@ void test_wdb_exec_row_stmt_single_column_success_number(){
     will_return(__wrap_sqlite3_column_double, 100);
 
     sqlite3_stmt *stmt = (sqlite3_stmt *)1;
-    cJSON *ret = wdb_exec_row_stmt_single_column(stmt, &status);
+    wdb_t *wdb = (wdb_t *)1;
+    cJSON *ret = wdb_exec_row_stmt_single_column(stmt, wdb, &status);
 
     char *ret_str = cJSON_PrintUnformatted(ret);
     assert_string_equal("100", ret_str);
@@ -892,7 +894,7 @@ void test_wdb_exec_row_stmt_single_column_invalid_stmt(){
     int *status = NULL;
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid SQL statement.");
 
-    cJSON *ret = wdb_exec_row_stmt_single_column(NULL, status);
+    cJSON *ret = wdb_exec_row_stmt_single_column(NULL, NULL, status);
 
     assert_ptr_equal(status, NULL);
     assert_null(ret);
@@ -905,7 +907,8 @@ void test_wdb_exec_row_stmt_single_column_sql_error(){
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     sqlite3_stmt *stmt = (sqlite3_stmt *)1;
-    cJSON *ret = wdb_exec_row_stmt_single_column(stmt, status);
+    wdb_t *wdb = (wdb_t *)1;
+    cJSON *ret = wdb_exec_row_stmt_single_column(stmt, wdb, status);
 
     assert_ptr_equal(status, NULL);
     assert_null(ret);
