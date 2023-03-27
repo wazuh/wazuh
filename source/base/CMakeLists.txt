@@ -52,7 +52,7 @@ CPMAddPackage(
     NAME spdlog
     GITHUB_REPOSITORY gabime/spdlog
     GIT_TAG "v1.11.0"
-    DOWNLOAD_ONLY YES
+    OPTIONS "SPDLOG_FMT_EXTERNAL_HO ON"
     )
 
 ####################################################################################################
