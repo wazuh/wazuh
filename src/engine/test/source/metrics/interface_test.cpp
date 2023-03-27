@@ -115,3 +115,19 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeTwoCounters)
     ASSERT_TRUE(name2);
     ASSERT_EQ(name2, "counter_1");
 }
+
+TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
+{
+    auto scope0 = m_manager->getMetricsScope("scope_0");
+    auto histogram0 = scope0->getHistogramInteger("histogram_0");
+    
+    for (int i=0; i<100; i++)
+    {
+        histogram0->recordValue(rand()%100);
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    auto contents = m_manager->getAllMetrics();
+    std::cout << contents.prettyStr() << std::endl;
+}

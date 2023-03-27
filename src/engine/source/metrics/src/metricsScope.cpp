@@ -61,4 +61,52 @@ std::shared_ptr<instruments::iCounter<uint64_t>> MetricsScope::getCounterInteger
     return retValue;
 }
 
+std::shared_ptr<instruments::iCounter<double>> MetricsScope::getUpDownCounterDouble(const std::string& name)
+{
+    auto retValue = m_collection_updowncounter_double.getInstrument(
+        name, [&]() {
+            auto meter = m_meterProvider->GetMeter(name);
+            return meter->CreateDoubleUpDownCounter(name);
+        }
+    );
+
+    return retValue;
+}
+
+std::shared_ptr<instruments::iCounter<int64_t>> MetricsScope::getUpDownCounterInteger(const std::string& name)
+{
+    auto retValue = m_collection_updowncounter_integer.getInstrument(
+        name, [&]() {
+            auto meter = m_meterProvider->GetMeter(name);
+            return meter->CreateInt64UpDownCounter(name);
+        }
+    );
+
+    return retValue;
+}
+
+std::shared_ptr<instruments::iHistogram<double>> MetricsScope::getHistogramDouble(const std::string& name)
+{
+    auto retValue = m_collection_histogram_double.getInstrument(
+        name, [&]() {
+            auto meter = m_meterProvider->GetMeter(name);
+            return meter->CreateDoubleHistogram(name);
+        }
+    );
+
+    return retValue;
+}
+
+std::shared_ptr<instruments::iHistogram<uint64_t>> MetricsScope::getHistogramInteger(const std::string& name)
+{
+    auto retValue = m_collection_histogram_integer.getInstrument(
+        name, [&]() {
+            auto meter = m_meterProvider->GetMeter(name);
+            return meter->CreateUInt64Histogram(name);
+        }
+    );
+
+    return retValue;
+}
+
 } // namespace metrics_manager
