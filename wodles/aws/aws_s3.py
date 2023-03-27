@@ -82,7 +82,6 @@ DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {rel
 # Enable/disable debug mode
 debug_level = 0
 
-
 ################################################################################
 # Classes
 ################################################################################
@@ -1052,7 +1051,7 @@ class AWSBucket(WazuhIntegration):
 
         def event_should_be_skipped(event_):
             return self.discard_field and self.discard_regex \
-                   and check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+                and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
@@ -3486,6 +3485,7 @@ class AWSSLSubscriberBucket(WazuhIntegration):
     region : str
         Region where the logs are located.
     """
+
     def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None, **kwargs):
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
                                   aws_profile=aws_profile, service_name='s3', **kwargs)
@@ -3565,7 +3565,6 @@ class AWSSQSQueue(WazuhIntegration):
         self.sqs_url = self._get_sqs_url()
         self.profile = aws_profile
         self.iam_role_arn = kwargs['iam_role_arn']
-    
 
     def _get_sqs_url(self) -> str:
         """
@@ -3584,7 +3583,6 @@ class AWSSQSQueue(WazuhIntegration):
             print('ERROR: Queue does not exist, verify the given name')
             sys.exit(19)
 
-
     def delete_message(self, message: dict) -> None:
         """
         Delete message from the SQS queue.
@@ -3600,7 +3598,6 @@ class AWSSQSQueue(WazuhIntegration):
         except Exception as e:
             debug(f'ERROR: Error deleting message from SQS: {e}', 1)
             sys.exit(20)
-
 
     def fetch_messages(self) -> dict:
         """
@@ -3618,7 +3615,6 @@ class AWSSQSQueue(WazuhIntegration):
         except Exception as e:
             debug(f'ERROR: Error receiving message from SQS: {e}', 1)
             sys.exit(20)
-
 
     def get_messages(self) -> list:
         """
@@ -3638,9 +3634,8 @@ class AWSSQSQueue(WazuhIntegration):
             parquet_path = message["detail"]["object"]["key"]
             bucket_path = message["detail"]["bucket"]["name"]
             messages.append({"parquet_path": parquet_path, "bucket_path": bucket_path,
-                              "handle": msg_handle})
+                             "handle": msg_handle})
         return messages
-
 
     def sync_events(self) -> None:
         """
@@ -3650,12 +3645,11 @@ class AWSSQSQueue(WazuhIntegration):
         asl_bucket_handler = AWSSLSubscriberBucket(aws_profile=self.profile,
                                                    iam_role_arn=self.iam_role_arn)
         messages = self.get_messages()
-        while(messages != []):
+        while (messages != []):
             for message in messages:
                 asl_bucket_handler.process_file(message)
-                self.delete_message(message)   
+                self.delete_message(message)
             messages = self.get_messages()
-
 
 
 ################################################################################
@@ -3747,7 +3741,7 @@ def get_script_arguments():
     group.add_argument('-sb', '--subscriber', dest='subscriber', help='Specify the name of the subscriber',
                        action='store')
     parser.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS',
-                       action='store')
+                        action='store')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
