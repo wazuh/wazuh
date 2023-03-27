@@ -7,47 +7,43 @@
 namespace metrics_manager 
 {
 
-namespace instruments
+template <typename T, typename U>
+class Counter : public iCounter<U>
 {
-    template <typename T, typename U>
-    class Counter : public iCounter<U>
+public:
+    Counter(opentelemetry::nostd::unique_ptr<T> ptr):
+    m_counter{std::move(ptr)}
     {
-    public:
-        Counter(opentelemetry::nostd::unique_ptr<T> ptr):
-        m_counter{std::move(ptr)}
-        {}
+    }
 
-        void addValue(const U& value) override
-        {
-            m_counter->Add(value);
-        }
-
-    private:
-        opentelemetry::nostd::unique_ptr<T> m_counter;
-    };
-
-    template <typename T, typename U>
-    class Histogram : public iHistogram<U>
+    void addValue(const U& value) override
     {
-    public:
-        Histogram(opentelemetry::nostd::unique_ptr<T> ptr):
-        m_histogram{std::move(ptr)}
-        {}
+        m_counter->Add(value);
+    }
+private:
+    opentelemetry::nostd::unique_ptr<T> m_counter;
+};
 
-        void recordValue(const U& value) override
-        {
-            auto context = opentelemetry::context::Context{};
-            std::map<std::string, std::string> labels;
-            auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
+template <typename T, typename U>
+class Histogram : public iHistogram<U>
+{
+public:
+    Histogram(opentelemetry::nostd::unique_ptr<T> ptr):
+    m_histogram{std::move(ptr)}
+    {
+    }
 
-            m_histogram->Record(value, labelkv, context);
-        }
+    void recordValue(const U& value) override
+    {
+        auto context = opentelemetry::context::Context{};
+        std::map<std::string, std::string> labels;
+        auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
 
-    private:
-        opentelemetry::nostd::unique_ptr<T> m_histogram;
-    };
-
-} // namespace instruments
+        m_histogram->Record(value, labelkv, context);
+    }
+private:
+    opentelemetry::nostd::unique_ptr<T> m_histogram;
+};
 
 } // namespace metrics_manager
 
