@@ -61,7 +61,6 @@ inline int bindUnixDatagramSocket(const std::string& path, int& bufferSize)
         throw std::runtime_error(std::move(msg));
     }
 
-
     // Get current maximum size
     socklen_t optlen {sizeof(bufferSize)};
     if (-1 == getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<void*>(&bufferSize), &optlen))
@@ -98,13 +97,13 @@ UnixDatagram::UnixDatagram(const std::string& address, std::function<void(std::s
     : Endpoint(address)
     , m_callback(callback)
     , m_handle(nullptr)
+    , m_currentQWSize(0)
 {
 }
 
 UnixDatagram::~UnixDatagram() = default;
 
-
-void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
+void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop, const std::size_t queueWorkerSize)
 {
     if (isBound())
     {
@@ -116,12 +115,47 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
 
     // Listen for incoming data
     m_handle->on<uvw::UDPDataEvent>(
-        [this](const uvw::UDPDataEvent& event, uvw::UDPHandle& handle)
+        [this, queueWorkerSize](const uvw::UDPDataEvent& event, uvw::UDPHandle& handle)
         {
             // Get the data
             auto data = std::string {event.data.get(), event.length};
-            // Call the callback
-            m_callback(std::move(data));
+
+            // Call the callback if is synchronous
+            if (0 == queueWorkerSize)
+            {
+                m_callback(std::move(data));
+                return;
+            }
+
+            // Call the callback if is asynchronous,
+            if (++m_currentQWSize >= queueWorkerSize)
+
+            {
+                WAZUH_LOG_WARN("Engine event endpoints: Queue is full, pause listening.");
+                pause();
+            }
+
+            // Create a job to the worker thread
+            // TODO: Check if this
+            std::shared_ptr<std::string> dataPtr {std::make_shared<std::string>(std::move(data))};
+            auto workerJob = m_loop->resource<uvw::WorkReq>([this, dataPtr]() { m_callback(std::move(*dataPtr)); });
+
+            // Listen for the job completion
+            workerJob->on<uvw::WorkEvent>(
+                [this](const uvw::WorkEvent&, uvw::WorkReq& work)
+                {
+                    m_currentQWSize--;
+                    resume();
+                });
+
+            workerJob->on<uvw::ErrorEvent>(
+                [this](const uvw::ErrorEvent& error, uvw::WorkReq& work)
+                {
+                    WAZUH_LOG_WARN("Engine event endpoints: Error on worker job: {} ({})", error.what(), error.code());
+                    m_currentQWSize--;
+                    resume();
+                });
+            workerJob->queue();
         });
 
     // Listen for errors
@@ -139,6 +173,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
 
     // Bind the socket
     auto socketFd = bindUnixDatagramSocket(m_address, m_bufferSize);
+
     m_handle->open(socketFd);
 }
 
@@ -155,7 +190,7 @@ void UnixDatagram::close()
 
 bool UnixDatagram::pause()
 {
-    if (isBound() && m_running)
+    if (m_running && isBound())
     {
         m_handle->stop();
         m_running = false;
@@ -166,7 +201,7 @@ bool UnixDatagram::pause()
 
 bool UnixDatagram::resume()
 {
-    if (isBound() && !m_running)
+    if (!m_running && isBound())
     {
         m_handle->recv();
         m_running = true;
@@ -174,7 +209,5 @@ bool UnixDatagram::resume()
     }
     return false;
 }
-
-
 
 } // namespace engineserver::endpoint

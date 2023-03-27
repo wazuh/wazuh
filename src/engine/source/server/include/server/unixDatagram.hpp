@@ -2,6 +2,7 @@
 #define _SERVER_UNIX_DATAGRAM_HPP
 
 #include <functional>
+#include <atomic>
 
 #include "endpoint.hpp"
 
@@ -13,6 +14,7 @@ private:
     std::function<void(std::string&&)> m_callback; // No thread safe
     std::shared_ptr<uvw::UDPHandle> m_handle;
     int m_bufferSize;
+    std::atomic<std::size_t> m_currentQWSize;
 
 public:
     UnixDatagram(const std::string& address, std::function<void(std::string&&)> callback);
@@ -21,7 +23,7 @@ public:
 
     int getReciveBufferSize(void) { return m_bufferSize; };
 
-    void bind(std::shared_ptr<uvw::Loop> loop) override;
+    void bind(std::shared_ptr<uvw::Loop> loop, const  std::size_t queueWorkerSize = 0) override;
     void close(void) override;
     bool pause(void) override;
     bool resume(void) override;
