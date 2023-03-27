@@ -534,8 +534,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 // Start
                 if (strcmp(children[j]->element, XML_SUBSCRIBER_QUEUE) == 0) {
                     if (strlen(children[j]->content) != 0) {
-                        free(cur_subscriber->sqs_queue_name);
-                        os_strdup(children[j]->content, cur_subscriber->sqs_queue_name);
+                        free(cur_subscriber->sqs_name);
+                        os_strdup(children[j]->content, cur_subscriber->sqs_name);
                     }
                 } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
                     if (strlen(children[j]->content) != 0) {
