@@ -17,5 +17,3 @@ metadata:
 
 check:
   - wazuh.queue: 102 # eventchannel ‘f’
-
-
