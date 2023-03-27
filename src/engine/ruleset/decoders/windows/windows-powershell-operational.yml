@@ -1,6 +1,6 @@
 name: decoder/windows-powershell-operational/0
 
-sources: 
+sources:
   - decoder/windows_event_decoder/0
 
 metadata:

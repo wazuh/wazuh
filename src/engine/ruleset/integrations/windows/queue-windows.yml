@@ -1,6 +1,6 @@
 name: decoder/queue-windows/0
 
-sources: 
+sources:
   - decoder/agent-event-enrichment/0
 
 metadata:

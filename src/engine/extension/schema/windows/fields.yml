@@ -31,15 +31,78 @@ winlog.record_id:
             the next record number will be 0.
   type: keyword
 
-winlog.event_data:
+winlog.event_data.UserAccountControl:
   description: >
-            The event-specific data. This field is mutually exclusive with
-            `user_data`. If you are capturing event data on versions prior
-            to Windows Vista, the parameters in `event_data` are named `param1`,
-            `param2`, and so on, because event log parameters are unnamed in
-            earlier versions of Windows.
+            List of changes in userAccountControl attribute. You will see a line of
+            text for each change.
   type: keyword
   array: true
+
+winlog.event_data.StatusDescription:
+  description: >
+            Kerberos Ticket Status Codes description
+  type: keyword
+
+wilog.event_data.SubCategory:
+  description: >
+            Audit subcategories categories
+  type: keyword
+
+winlog.event_data.PrivilegeList:
+  description: >
+            List of privileges assigned on Logon
+  type: keyword
+
+winlog.event_data.OldTargetUserName:
+  description: >
+            User name to be updated
+  type: keyword
+
+winlog.event_data.NewTargetUserName:
+  description: >
+            New user name to be assigned
+  type: keyword
+
+winlog.event_data.NewSd:
+  description: >
+            New security descriptor
+  type: keyword
+
+winlog.event_data.OldSd:
+  description: >
+            Old security descriptor
+  type: keyword
+
+winlog.event_data.ObjectType:
+  description: >
+            Object type accessed during the operation
+  type: keyword
+
+winlog.event_data.ObjectServer:
+  description: >
+            Object server
+  type: keyword
+
+winlog.event_data.ObjectName:
+  description: >
+            Acces route or full name of the object accessed during
+            operation
+  type: keyword
+
+winlog.logon.failure.status:
+  description: >
+              Logon failure status
+  type: keyword
+
+winlog.logon.failure.sub_status:
+  description: >
+              Logon failure sub status
+  type: keyword
+
+winlog.logon.id:
+  description: >
+              Logon id
+  type: keyword
 
 winlog.trustAttribute:
   description: >
@@ -71,11 +134,11 @@ winlog.computerObject.id:
   description: >
             A globally unique identifier that identifies the target device.
   type: keyword
-  
-winlog.computerObject.name:      
+
+winlog.computerObject.name:
   description: >
             The account name that was added, modified or deleted in the event.
-  type: keyword            
+  type: keyword
 
 winlog.task:
   description: >
@@ -84,4 +147,13 @@ winlog.task:
             logged. The category used by the Event Logging API (on pre Windows Vista
             operating systems) is written to this field.
   type: keyword
-  
+
+winlog.user_data.BackupPath:
+  description: >
+            Full path to the created log backup.
+  type: keyword
+
+winlog.user_data.Channel:
+  description: >
+            Windows event log channel that is being backed up.
+  type: keyword
