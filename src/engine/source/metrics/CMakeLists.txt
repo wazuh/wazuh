@@ -26,6 +26,7 @@ ${ENGINE_METRICS_SOURCE_DIR}/dataHub.cpp
 ${ENGINE_METRICS_SOURCE_DIR}/dataHubExporter.cpp
 ${ENGINE_METRICS_SOURCE_DIR}/metricsScope.cpp
 ${ENGINE_METRICS_SOURCE_DIR}/metricsInstruments.cpp
+${ENGINE_METRICS_SOURCE_DIR}/instrumentCollection.cpp
 )
 
 target_link_libraries(metrics PUBLIC
