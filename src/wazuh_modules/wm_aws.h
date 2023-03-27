@@ -66,16 +66,15 @@ typedef struct wm_aws_service {
     struct wm_aws_service *next;     // Pointer to next
 } wm_aws_service;
 
-typedef struct wm_aws_security_lake {
-    char *sqs_queue_name;                  // String defining SQS Queue name
+typedef struct wm_aws_subscriber {
+    char *type;                            // String defining subscriber type.
+    char *sqs_name;                        // String defining SQS name
     char *aws_profile;                     // AWS credentials profile
     char *iam_role_arn;                    // IAM role
     char *iam_role_duration;               // IAM role session duration
     char *regions;                         // CSV of regions to parse
-    char *sts_endpoint;                    // URL for the VPC endpoint to use to obtain the STS token
-    unsigned int dont_remove_from_queue:1;      // Remove notifications from SQS Queue
-    struct wm_aws_security_lake *next;     // Pointer to next
-} wm_aws_security_lake;
+    struct wm_aws_subscriber *next;        // Pointer to next
+} wm_aws_subscriber;
 
 typedef struct wm_aws {
     sched_scan_config scan_config;
@@ -90,7 +89,7 @@ typedef struct wm_aws {
     wm_aws_state_t state;
     wm_aws_bucket *buckets;      // buckets (linked list)
     wm_aws_service *services;      // services (linked list)
-    wm_aws_security_lake *security_lakes;
+    wm_aws_subscriber *subscribers;
 } wm_aws;
 
 extern const wm_context WM_AWS_CONTEXT;   // Context

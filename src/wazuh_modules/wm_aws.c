@@ -29,7 +29,7 @@ static void wm_aws_setup(wm_aws *_aws_config);          // Setup module
 static void wm_aws_check();                             // Check configuration, disable flag
 static void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *bucket);       // Run a s3 bucket
 static void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *service);// Run a AWS service such as Inspector
-static void wm_aws_run_security_lake_subscriber(wm_aws *aws_config, wm_aws_security_lake *security_lake); //Run an AWS Security Lake subscriber
+static void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *subscriber); //Run an AWS subscriber
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
 // Command module context definition
@@ -53,7 +53,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 #endif
     wm_aws_bucket *cur_bucket;
     wm_aws_service *cur_service;
-    wm_aws_security_lake *cur_sec_lake;
+    wm_aws_subscriber *cur_subscriber;
     char *log_info;
     char * timestamp = NULL;
 
@@ -173,26 +173,33 @@ void* wm_aws_main(wm_aws *aws_config) {
             free(log_info);
         }
 
-        for (cur_sec_lake = aws_config->security_lakes; cur_sec_lake; cur_sec_lake = cur_sec_lake->next) {
+        for (cur_subscriber = aws_config->subscribers; cur_subscriber; cur_subscriber = cur_subscriber->next) {
             log_info = NULL;
 
-            wm_strcat(&log_info, "Executing Security Lake Subscriber fetch: (SQS:", '\0');
-            if (cur_sec_lake->sqs_queue_name) {
-                wm_strcat(&log_info, cur_sec_lake->sqs_queue_name, ' ');
+            wm_strcat(&log_info, "Executing Subscriber fetch: (Type and SQS:", '\0');
+            if (cur_subscriber->type) {
+                wm_strcat(&log_info, cur_subscriber->type, ' ');
+            }
+            else {
+                wm_strcat(&log_info, "unknown_type", ' ');
+            }
+
+            if (cur_subscriber->sqs_name) {
+                wm_strcat(&log_info, cur_subscriber->sqs_name, ' ');
             }
             else {
                 wm_strcat(&log_info, "unknown_queue", ' ');
             }
 
-            if (cur_sec_lake->aws_profile) {
+            if (cur_subscriber->aws_profile) {
                 wm_strcat(&log_info, ", Profile:", '\0');
-                wm_strcat(&log_info, cur_sec_lake->aws_profile, ' ');
+                wm_strcat(&log_info, cur_subscriber->aws_profile, ' ');
             }
 
             wm_strcat(&log_info, ")", '\0');
 
             mtinfo(WM_AWS_LOGTAG, "%s", log_info);
-            wm_aws_run_security_lake_subscriber(aws_config, cur_sec_lake);
+            wm_aws_run_subscriber(aws_config, cur_subscriber);
             free(log_info);
         }
 
@@ -280,24 +287,23 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             cJSON_free(arr_services);
         }
     }
-    if (aws_config->security_lakes) {
-    wm_aws_security_lake *iter;
-        cJSON *arr_sec_lakes = cJSON_CreateArray();
-        for (iter = aws_config->security_lakes; iter; iter = iter->next) {
-            cJSON *security_lake = cJSON_CreateObject();
-            if (iter->sqs_queue_name) cJSON_AddStringToObject(security_lake,"sqs_queue_name",iter->sqs_queue_name);
-            if (iter->aws_profile) cJSON_AddStringToObject(security_lake,"aws_profile",iter->aws_profile);
-            if (iter->iam_role_arn) cJSON_AddStringToObject(security_lake,"iam_role_arn",iter->iam_role_arn);
-            if (iter->iam_role_duration) cJSON_AddStringToObject(security_lake, "iam_role_duration",iter->iam_role_duration);
-            if (iter->regions) cJSON_AddStringToObject(security_lake,"regions",iter->regions);
-            if (iter->sts_endpoint) cJSON_AddStringToObject(security_lake,"sts_endpoint",iter->sts_endpoint);
-            if (iter->dont_remove_from_queue) cJSON_AddStringToObject(security_lake,"dont_remove_from_queue",iter->dont_remove_from_queue);
-            cJSON_AddItemToArray(arr_sec_lakes,security_lake);
+    if (aws_config->subscribers) {
+    wm_aws_subscriber *iter;
+        cJSON *arr_subscribers = cJSON_CreateArray();
+        for (iter = aws_config->subscribers; iter; iter = iter->next) {
+            cJSON *subscriber = cJSON_CreateObject();
+            if (iter->type) cJSON_AddStringToObject(subscriber,"type",iter->type);
+            if (iter->sqs_name) cJSON_AddStringToObject(subscriber,"sqs_name",iter->sqs_name);
+            if (iter->aws_profile) cJSON_AddStringToObject(subscriber,"aws_profile",iter->aws_profile);
+            if (iter->iam_role_arn) cJSON_AddStringToObject(subscriber,"iam_role_arn",iter->iam_role_arn);
+            if (iter->iam_role_duration) cJSON_AddStringToObject(subscriber, "iam_role_duration",iter->iam_role_duration);
+            if (iter->regions) cJSON_AddStringToObject(subscriber,"regions",iter->regions);
+            cJSON_AddItemToArray(arr_subscribers,subscriber);
         }
-        if (cJSON_GetArraySize(arr_sec_lakes) > 0) {
-            cJSON_AddItemToObject(wm_aws,"security_lakes",arr_sec_lakes);
+        if (cJSON_GetArraySize(arr_subscribers) > 0) {
+            cJSON_AddItemToObject(wm_aws,"subscribers",arr_subscribers);
         } else {
-            cJSON_free(arr_sec_lakes);
+            cJSON_free(arr_subscribers);
         }
     }
     cJSON_AddItemToObject(root,"aws-s3",wm_aws);
@@ -346,8 +352,8 @@ void wm_aws_check() {
 
     // Check if there are buckets or services
 
-    if (!aws_config->buckets && !aws_config->services && !aws_config->security_lakes) {
-        mtwarn(WM_AWS_LOGTAG, "No AWS buckets, services or security lakes defined. Exiting...");
+    if (!aws_config->buckets && !aws_config->services && !aws_config->subscribers) {
+        mtwarn(WM_AWS_LOGTAG, "No AWS buckets, services or subscribers defined. Exiting...");
         pthread_exit(NULL);
     }
 
@@ -709,8 +715,8 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     os_free(output);
 }
 
-// Run a security lake parsing
-void wm_aws_run_security_lake_subscriber(wm_aws *aws_config, wm_aws_security_lake *exec_security_lake) {
+// Run a subscriber parsing
+void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscriber) {
     int status;
     char *output = NULL;
     char *command = NULL;
@@ -730,36 +736,30 @@ void wm_aws_run_security_lake_subscriber(wm_aws *aws_config, wm_aws_security_lak
     wm_strcat(&command, script, '\0');
     os_free(script);
 
-    // security lake subscriber
+    // subscriber
+    wm_strcat(&command, "--subscriber", ' ');
+    wm_strcat(&command, exec_subscriber->type, ' ');
+
     wm_strcat(&command, "--queue", ' ');
-    wm_strcat(&command, exec_security_lake->sqs_queue_name, ' ');
+    wm_strcat(&command, exec_subscriber->sqs_name, ' ');
 
-    // security lake arguments
-    if (exec_security_lake->aws_profile) {
+    // subscriber arguments
+    if (exec_subscriber->aws_profile) {
         wm_strcat(&command, "--aws_profile", ' ');
-        wm_strcat(&command, exec_security_lake->aws_profile, ' ');
+        wm_strcat(&command, exec_subscriber->aws_profile, ' ');
     }
-    if (exec_security_lake->iam_role_arn) {
+    if (exec_subscriber->iam_role_arn) {
         wm_strcat(&command, "--iam_role_arn", ' ');
-        wm_strcat(&command, exec_security_lake->iam_role_arn, ' ');
+        wm_strcat(&command, exec_subscriber->iam_role_arn, ' ');
     }
-    if (exec_security_lake->iam_role_duration){
+    if (exec_subscriber->iam_role_duration){
         wm_strcat(&command, "--iam_role_duration", ' ');
-        wm_strcat(&command, exec_security_lake->iam_role_duration, ' ');
+        wm_strcat(&command, exec_subscriber->iam_role_duration, ' ');
     }
-    if (exec_security_lake->regions) {
+    if (exec_subscriber->regions) {
         wm_strcat(&command, "--regions", ' ');
-        wm_strcat(&command, exec_security_lake->regions, ' ');
+        wm_strcat(&command, exec_subscriber->regions, ' ');
     }
-    if (exec_security_lake->sts_endpoint) {
-        wm_strcat(&command, "--sts_endpoint", ' ');
-        wm_strcat(&command, exec_security_lake->sts_endpoint, ' ');
-    }
-    if (exec_security_lake->sts_endpoint) {
-        wm_strcat(&command, "--dont_remove_from_queue", ' ');
-        wm_strcat(&command, exec_security_lake->dont_remove_from_queue, ' ');
-    }
-
 
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');
@@ -780,11 +780,12 @@ void wm_aws_run_security_lake_subscriber(wm_aws *aws_config, wm_aws_security_lak
     }
 
     // Execute
-    char *security_lake_title = NULL;
-    wm_strcat(&security_lake_title, "Security Lake SQS Queue:", ' ');
-    wm_strcat(&security_lake_title, exec_security_lake->sqs_queue_name, ' ');
+    char *subscriber_title = NULL;
+    wm_strcat(&subscriber_title, "Subscriber:", ' ');
+    wm_strcat(&subscriber_title, exec_subscriber->type, ' ');
+    wm_strcat(&subscriber_title, exec_subscriber->sqs_name, ' ');
 
-    wm_strcat(&security_lake_title, " - ", ' ');
+    wm_strcat(&subscriber_title, " - ", ' ');
 
     mtdebug1(WM_AWS_LOGTAG, "Launching Security Lake Subscriber Command: %s", command);
 
@@ -794,43 +795,43 @@ void wm_aws_run_security_lake_subscriber(wm_aws *aws_config, wm_aws_security_lak
 
     if (wm_exec_ret_code) {
         mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
-        os_free(security_lake_title);
+        os_free(subscriber_title);
 
         if (wm_exec_ret_code > 0) {
             os_free(output);
         }
         pthread_exit(NULL);
     } else if (status > 0) {
-        mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", security_lake_title, status);
+        mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", subscriber_title, status);
         if(status == 1) {
             char * unknown_error_msg = strstr(output,"Unknown error");
             if (unknown_error_msg == NULL)
-                mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", security_lake_title);
+                mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", subscriber_title);
             else
-                mtwarn(WM_AWS_LOGTAG, "%s %s", security_lake_title, unknown_error_msg);
+                mtwarn(WM_AWS_LOGTAG, "%s %s", subscriber_title, unknown_error_msg);
         } else if(status == 2) {
             char * ptr;
             if (ptr = strstr(output, "aws.py: error:"), ptr) {
                 ptr += 14;
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", security_lake_title, ptr);
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", subscriber_title, ptr);
             } else {
-                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", security_lake_title);
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", subscriber_title);
             }
         } else {
             char * ptr;
             if (ptr = strstr(output, "ERROR: "), ptr) {
                 ptr += 7;
-                mtwarn(WM_AWS_LOGTAG, "%s %s", security_lake_title, ptr);
+                mtwarn(WM_AWS_LOGTAG, "%s %s", subscriber_title, ptr);
             } else {
-                mtwarn(WM_AWS_LOGTAG, "%s %s", security_lake_title, output);
+                mtwarn(WM_AWS_LOGTAG, "%s %s", subscriber_title, output);
             }
         }
-        mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", security_lake_title, output);
+        mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", subscriber_title, output);
     } else {
-        mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", security_lake_title, output);
+        mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", subscriber_title, output);
     }
 
-    os_free(security_lake_title);
+    os_free(subscriber_title);
 
     char *line;
     char *save_ptr = NULL;
