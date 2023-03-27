@@ -3744,7 +3744,9 @@ def get_script_arguments():
                        action='store')
     group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
                        action='store')
-    group.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS queue',
+    group.add_argument('-sb', '--subscriber', dest='subscriber', help='Specify the name of the subscriber',
+                       action='store')
+    parser.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS',
                        action='store')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
@@ -3902,7 +3904,7 @@ def main(argv):
                                        iam_role_duration=options.iam_role_duration
                                        )
                 service.get_alerts()
-        elif options.queue:
+        elif options.subscriber:
             asl_queue = AWSSQSQueue(access_key=options.access_key, secret_key=options.secret_key,
                                     aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
                                     name=options.queue)
