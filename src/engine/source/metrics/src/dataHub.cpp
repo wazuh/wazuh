@@ -33,10 +33,9 @@ json::Json DataHub::getAllResources()
     const std::lock_guard<std::mutex> lock(m_mutex);
     
     json::Json retValue;
-    retValue.setArray();
 
     for (auto &r : m_resources) {
-        retValue.appendJson(r.second);
+        retValue.appendJson(r.second, "/" + r.first);
     }
     
     return retValue;

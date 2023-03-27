@@ -11,6 +11,7 @@
 #include <metrics/dataHubExporter.hpp>
 
 #include <metrics/metricsInstruments.hpp>
+#include <metrics/instrumentCollection.hpp>
 
 namespace metrics_manager
 {
@@ -24,15 +25,16 @@ public:
     void initialize();
 
     json::Json getAllMetrics();
-
-    std::shared_ptr<instruments::iCounterDouble> getCounterDouble(const std::string& name) override;
-    std::shared_ptr<instruments::iCounterInteger> getCounterInteger(const std::string& name) override;
+    
+    std::shared_ptr<instruments::iCounter<double>> getCounterDouble(const std::string& name);
+    std::shared_ptr<instruments::iCounter<uint64_t>> getCounterInteger(const std::string& name);
 
 private:
     std::shared_ptr<DataHub> m_dataHub;
     std::shared_ptr<OTSDKMeterProvider> m_meterProvider;
-    std::map<std::string, std::shared_ptr<instruments::CounterDouble>> m_instruments_counter_double;
-    std::map<std::string, std::shared_ptr<instruments::CounterInteger>> m_instruments_counter_integer;
+
+    InstrumentCollection<instruments::Counter<opentelemetry::metrics::Counter<double>, double>, opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<double>>> m_collection_counter_double;
+    InstrumentCollection<instruments::Counter<opentelemetry::metrics::Counter<uint64_t>, uint64_t>, opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<uint64_t>>> m_collection_counter_integer;
 };
 
 } // namespace metrics_manager

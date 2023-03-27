@@ -9,26 +9,21 @@ namespace metrics_manager
 
 namespace instruments
 {
-    class CounterDouble : public iCounterDouble
+    template <typename T, typename U>
+    class Counter : public iCounter<U>
     {
     public:
-        CounterDouble(opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<double>> ptr );
-        
-        void addValue(const double &value) override;
+        Counter(opentelemetry::nostd::unique_ptr<T> ptr):
+        m_counter{std::move(ptr)}
+        {}
+
+        void addValue(const U& value) override
+        {
+            m_counter->Add(value);
+        }
 
     private:
-        opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<double>> m_counter;
-    };
-
-    class CounterInteger : public iCounterInteger
-    {
-    public:
-        CounterInteger(opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<uint64_t>> ptr );
-        
-        void addValue(const uint64_t &value) override;
-
-    private:
-        opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<uint64_t>> m_counter;
+        opentelemetry::nostd::unique_ptr<T> m_counter;
     };
 
 } // namespace instruments
