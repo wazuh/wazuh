@@ -10,6 +10,7 @@
 
 #include <metrics/metricsManager.hpp>
 using namespace metricsManager;
+// TODO actually fake the store
 
 TEST(Router, build_ok)
 {
@@ -71,7 +72,7 @@ TEST(Router, add_list_remove_routes)
     ASSERT_EQ(router.getRouteTable().size(), 0);
 
     // Add a route
-    auto error = router.addRoute("e_wazuh_queue", 2,"filter/e_wazuh_queue/0", "environment/env_1/0");
+    auto error = router.addRoute("e_wazuh_queue", 2,"filter/e_wazuh_queue/0", "policy/env_1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -79,7 +80,7 @@ TEST(Router, add_list_remove_routes)
     ASSERT_EQ(routes.size(), 1);
 
     // Add a route
-    error = router.addRoute("allow_all", 1,"filter/allow_all/0", "environment/env_2/0");
+    error = router.addRoute("allow_all", 1,"filter/allow_all/0", "policy/env_2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -125,7 +126,7 @@ TEST(Router, priorityChanges) {
     router::Router router(builder, store, manager);
 
     // Add a route
-    auto error = router.addRoute("e_wazuh_queue", 2,"filter/e_wazuh_queue/0", "environment/env_1/0");
+    auto error = router.addRoute("e_wazuh_queue", 2,"filter/e_wazuh_queue/0", "policy/env_1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -133,7 +134,7 @@ TEST(Router, priorityChanges) {
     ASSERT_EQ(routes.size(), 1);
 
     // Add a route
-    error = router.addRoute("allow_all", 1,"filter/allow_all/0", "environment/env_2/0");
+    error = router.addRoute("allow_all", 1,"filter/allow_all/0", "policy/env_2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -247,7 +248,7 @@ TEST(Router, checkRouting) {
     auto message = aux::createFakeMessage();
 
     // Add a route
-    auto error = router.addRoute("allow_all_A1", 101,"filter/allow_all_A1/0", "environment/env_A1/0");
+    auto error = router.addRoute("allow_all_A1", 101,"filter/allow_all_A1/0", "policy/env_A1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -264,7 +265,7 @@ TEST(Router, checkRouting) {
     // Create a fake message
     message = aux::createFakeMessage();
 
-    error = router.addRoute("allow_all_B2", 102,"filter/allow_all_B2/0", "environment/env_B2/0");
+    error = router.addRoute("allow_all_B2", 102,"filter/allow_all_B2/0", "policy/env_B2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -281,7 +282,7 @@ TEST(Router, checkRouting) {
     // Create a fake message
     message = aux::createFakeMessage();
 
-    error = router.addRoute("allow_all_C3", 103,"filter/allow_all_C3/0", "environment/env_C3/0");
+    error = router.addRoute("allow_all_C3", 103,"filter/allow_all_C3/0", "policy/env_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -301,15 +302,15 @@ TEST(Router, checkRouting) {
     ASSERT_EQ(list.size(), 0);
 
     /* Add route 1 */
-    error = router.addRoute("allow_all_A1", 101,"filter/allow_all_A1/0", "environment/env_A1/0");
+    error = router.addRoute("allow_all_A1", 101,"filter/allow_all_A1/0", "policy/env_A1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     /* Add route 2 */
-    error = router.addRoute("allow_all_B2", 102,"filter/allow_all_B2/0", "environment/env_B2/0");
+    error = router.addRoute("allow_all_B2", 102,"filter/allow_all_B2/0", "policy/env_B2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     /* Add route 3 */
-    error = router.addRoute("allow_all_C3", 103,"filter/allow_all_C3/0", "environment/env_C3/0");
+    error = router.addRoute("allow_all_C3", 103,"filter/allow_all_C3/0", "policy/env_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     list = router.getRouteTable();
@@ -402,7 +403,7 @@ TEST(Router, checkRouting) {
 
     /* Check route 1 */
     // Add route 3 in first position
-    error = router.addRoute("allow_all_C3", 1,"filter/allow_all_C3/0", "environment/env_C3/0");
+    error = router.addRoute("allow_all_C3", 1,"filter/allow_all_C3/0", "policy/env_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     list = router.getRouteTable();

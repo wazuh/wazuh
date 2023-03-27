@@ -81,8 +81,7 @@ TEST(CatalogTest, PostResourceCollectioJson)
     auto config = getConfig();
     api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(
-        error = catalog.postResource(successCollectionAssetJson, successJson.str()));
+    ASSERT_NO_THROW(error = catalog.postResource(successCollectionAssetJson, successJson.str()));
     ASSERT_FALSE(error);
 }
 
@@ -109,8 +108,7 @@ TEST(CatalogTest, PostResourceSpecific)
     auto config = getConfig();
     api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(
-        error = catalog.postResource(successResourceAssetJson, successJson.str()));
+    ASSERT_NO_THROW(error = catalog.postResource(successResourceAssetJson, successJson.str()));
     ASSERT_TRUE(error);
 }
 
@@ -146,8 +144,7 @@ TEST(CatalogTest, PutResourceSpecificJson)
     auto config = getConfig();
     api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error =
-                        catalog.putResource(successResourceAssetJson, successJson.str()));
+    ASSERT_NO_THROW(error = catalog.putResource(successResourceAssetJson, successJson.str()));
     ASSERT_FALSE(error);
 }
 
@@ -174,8 +171,7 @@ TEST(CatalogTest, PutResourceCollection)
     auto config = getConfig();
     api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(
-        error = catalog.putResource(successCollectionAssetJson, successJson.str()));
+    ASSERT_NO_THROW(error = catalog.putResource(successCollectionAssetJson, successJson.str()));
     ASSERT_TRUE(error);
 }
 
@@ -184,8 +180,7 @@ TEST(CatalogTest, ValidateResourceSpecificJson)
     auto config = getConfig();
     api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(
-        error = catalog.validateResource(successResourceAssetJson, successJson.str()));
+    ASSERT_NO_THROW(error = catalog.validateResource(successResourceAssetJson, successJson.str()));
     ASSERT_FALSE(error);
 }
 
@@ -194,8 +189,7 @@ TEST(CatalogTest, ValidateResourceSpecificYml)
     auto config = getConfig();
     api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error =
-                        catalog.validateResource(successResourceAssetYml, successYml));
+    ASSERT_NO_THROW(error = catalog.validateResource(successResourceAssetYml, successYml));
     ASSERT_FALSE(error);
 }
 
@@ -213,7 +207,6 @@ TEST(CatalogTest, ValidateResourceCollection)
     auto config = getConfig();
     api::catalog::Catalog catalog(config);
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(
-        error = catalog.validateResource(successCollectionAssetJson, successJson.str()));
+    ASSERT_NO_THROW(error = catalog.validateResource(successCollectionAssetJson, successJson.str()));
     ASSERT_TRUE(error);
 }

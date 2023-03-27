@@ -11,12 +11,11 @@
 
 #include <fmt/format.h>
 
+#include <api/catalog/resource.hpp>
 #include <builder/ivalidator.hpp>
 #include <error.hpp>
 #include <name.hpp>
 #include <store/istore.hpp>
-
-#include "api/catalog/resource.hpp"
 
 namespace api::catalog
 {
@@ -60,19 +59,14 @@ private:
     std::shared_ptr<store::IStore> m_store;
     std::shared_ptr<builder::IValidator> m_validator;
 
-    std::unordered_map<
-        Resource::Format,
-        std::function<std::variant<std::string, base::Error>(const json::Json&)>>
+    std::unordered_map<Resource::Format, std::function<std::variant<std::string, base::Error>(const json::Json&)>>
         m_outFormat;
-    std::unordered_map<
-        Resource::Format,
-        std::function<std::variant<json::Json, base::Error>(const std::string&)>>
+    std::unordered_map<Resource::Format, std::function<std::variant<json::Json, base::Error>(const std::string&)>>
         m_inFormat;
 
     std::unordered_map<Resource::Type, json::Json> m_schemas;
 
-    std::optional<base::Error> validate(const Resource& item,
-                                        const json::Json& content) const;
+    std::optional<base::Error> validate(const Resource& item, const json::Json& content) const;
 
 public:
     /**
@@ -96,8 +90,7 @@ public:
      * @param content String with the resource to add to the collection.
      * @return std::optional<base::Error> Error if the operation failed
      */
-    std::optional<base::Error> postResource(const Resource& collection,
-                                            const std::string& content);
+    std::optional<base::Error> postResource(const Resource& collection, const std::string& content);
 
     /**
      * @brief Update an item
@@ -108,8 +101,7 @@ public:
      * @param content String with the resource to update the item.
      * @return std::optional<base::Error>
      */
-    std::optional<base::Error> putResource(const Resource& item,
-                                           const std::string& content);
+    std::optional<base::Error> putResource(const Resource& item, const std::string& content);
 
     /**
      * @brief Get a resource
@@ -143,8 +135,7 @@ public:
      * @param content Content of the Asset or Environment
      * @return std::optional<base::Error> Error if the operation failed
      */
-    std::optional<base::Error> validateResource(const Resource& item,
-                                                const std::string& content) const;
+    std::optional<base::Error> validateResource(const Resource& item, const std::string& content) const;
 };
 
 } // namespace api::catalog

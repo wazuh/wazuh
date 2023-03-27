@@ -21,7 +21,8 @@ apt-get install g++ git curl gnupg clang-format
 # Install bazel (https://bazel.build/install/ubuntu?hl=en)
 # Add Bazel distribution URI as a package source
 curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor > bazel.gpg
-mv bazel.gpg /etc/apt/trusted.gpg.d/ && echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
+mv bazel.gpg /etc/apt/trusted.gpg.d/
+echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list
 # Install and update Bazel 5.4.0 (Bazel 6 is not supported by protobuff yet)
 apt update && apt install bazel-5.4.0 && apt full-upgrade
 # Remove the symbolic link to the old version

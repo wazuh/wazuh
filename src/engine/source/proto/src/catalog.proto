@@ -28,9 +28,10 @@ enum ResourceType
     rule = 2;        // Rule
     filter = 3;      // Filter
     output = 4;      // Output
-    environment = 5; // Environment
+    policy = 5;      // Environment
     schema = 6;      // Schema
     collection = 7;  // Collection
+    integration = 8; // Integration
 }
 
 /***************************************************

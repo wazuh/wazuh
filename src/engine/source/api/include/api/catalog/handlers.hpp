@@ -16,6 +16,8 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog);
 api::Handler resourceDelete(std::shared_ptr<Catalog> catalog);
 api::Handler resourcePut(std::shared_ptr<Catalog> catalog);
 api::Handler resourceValidate(std::shared_ptr<Catalog> catalog);
+api::Handler policyAddIntegration(std::shared_ptr<Catalog> catalog);
+api::Handler policyDelIntegration(std::shared_ptr<Catalog> catalog);
 
 /**
  * @brief Register all available Catalog handlers in the API registry.

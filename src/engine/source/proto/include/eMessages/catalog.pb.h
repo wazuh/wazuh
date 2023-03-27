@@ -120,15 +120,16 @@ enum ResourceType : int {
   rule = 2,
   filter = 3,
   output = 4,
-  environment = 5,
+  policy = 5,
   schema = 6,
   collection = 7,
+  integration = 8,
   ResourceType_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
   ResourceType_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
 };
 bool ResourceType_IsValid(int value);
 constexpr ResourceType ResourceType_MIN = UNKNOWN;
-constexpr ResourceType ResourceType_MAX = collection;
+constexpr ResourceType ResourceType_MAX = integration;
 constexpr int ResourceType_ARRAYSIZE = ResourceType_MAX + 1;
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ResourceType_descriptor();

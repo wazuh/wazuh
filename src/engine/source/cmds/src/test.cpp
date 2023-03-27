@@ -96,23 +96,23 @@ void run(const Options& options)
     // Delete outputs
     try
     {
-        base::Name envName {options.environment};
+        base::Name envName {options.policy};
     }
     catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while creating the "
-                        "environment \"{}\": {}",
-                        options.environment,
+                        "policy \"{}\": {}",
+                        options.policy,
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
     }
-    auto envDefinition = fileStore->get({options.environment});
+    auto envDefinition = fileStore->get({options.policy});
     if (std::holds_alternative<base::Error>(envDefinition))
     {
         WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while getting the "
-                        "definition of the environment \"{}\": {}",
-                        options.environment,
+                        "definition of the policy \"{}\": {}",
+                        options.policy,
                         std::get<base::Error>(envDefinition).message);
         g_exitHanlder.execute();
         return;
@@ -128,7 +128,7 @@ void run(const Options& options)
 
         std::variant<json::Json, base::Error> get(const base::Name& name) const
         {
-            if ("environment" == name.parts()[0])
+            if ("policy" == name.parts()[0])
             {
                 return testEnvironment;
             }
@@ -144,16 +144,16 @@ void run(const Options& options)
 
     // TODO: Handle errors on construction
     builder::Builder _builder(_testDriver, registry);
-    decltype(_builder.buildEnvironment({options.environment})) env;
+    decltype(_builder.buildPolicy({options.policy})) env;
     try
     {
-        env = _builder.buildEnvironment({options.environment});
+        env = _builder.buildPolicy({options.policy});
     }
     catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR("Engine \"test\" command: An error occurred while building the "
-                        "environment \"{}\": {}",
-                        options.environment,
+                        "policy \"{}\": {}",
+                        options.policy,
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -338,7 +338,7 @@ void configure(CLI::App_p app)
         ->check(CLI::ExistingDirectory);
 
     // Environment
-    logtestApp->add_option("--environment", options->environment, "Name of the environment to be used.")
+    logtestApp->add_option("--policy", options->policy, "Name of the policy to be used.")
         ->default_val(ENGINE_ENVIRONMENT_TEST);
 
     // Protocol queue

@@ -41,7 +41,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
         throw std::runtime_error("Router: Store cannot be null");
     }
 
-    m_environmentManager = std::make_shared<EnvironmentManager>(builder, threads);
+    m_policyManager = std::make_shared<PolicyManager>(builder, threads);
 
     auto result = m_store->get(ROUTES_TABLE_NAME);
     if (std::holds_alternative<base::Error>(result))
@@ -81,7 +81,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
     if (getRouteTable().empty())
     {
         // Add default route
-        WAZUH_LOG_WARN("There is no environment loaded. Events will be written in disk once the queue is full.");
+        WAZUH_LOG_WARN("There is no policy loaded. Events will be written in disk once the queue is full.");
     }
 };
 
@@ -98,10 +98,10 @@ Router::addRoute(const std::string& routeName, int priority, const std::string& 
     {
         return base::Error {"Filter name cannot be empty"};
     }
-    // Validate environment name
+    // Validate policy name
     if (envName.empty())
     {
-        return base::Error {"Environment name cannot be empty"};
+        return base::Error {"Policy name cannot be empty"};
     }
     try
     {
@@ -114,14 +114,14 @@ Router::addRoute(const std::string& routeName, int priority, const std::string& 
             routeInstances.emplace_back(Route {routeName, filter, envName, priority});
         }
 
-        // Add the environment
-        auto err = m_environmentManager->addEnvironment(envName);
+        // Add the policy
+        auto err = m_policyManager->addPolicy(envName);
         if (err)
         {
             return base::Error {err.value()};
         }
 
-        // Link the route to the environment
+        // Link the route to the policy
         {
             std::unique_lock lock {m_mutexRoutes};
             std::optional<base::Error> err = std::nullopt;
@@ -139,7 +139,7 @@ Router::addRoute(const std::string& routeName, int priority, const std::string& 
             if (err)
             {
                 lock.unlock();
-                m_environmentManager->deleteEnvironment(envName);
+                m_policyManager->deletePolicy(envName);
                 return err;
             }
             m_namePriorityFilter.insert(std::make_pair(routeName, std::make_tuple(priority, filterName)));
@@ -179,11 +179,11 @@ void Router::removeRoute(const std::string& routeName)
     lock.unlock();
 
     dumpTableToStorage();
-    auto err = m_environmentManager->deleteEnvironment(envName);
+    auto err = m_policyManager->deletePolicy(envName);
     if (err)
     {
         // Should never happen
-        WAZUH_LOG_WARN("Router: couldn't delete environment '{}': {} ", envName, err.value().message);
+        WAZUH_LOG_WARN("Router: couldn't delete policy '{}': {} ", envName, err.value().message);
     }
     return;
 }
@@ -360,7 +360,7 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                             {
                                 const auto& target = route.second[i].getTarget();
                                 lock.unlock();
-                                m_environmentManager->forwardEvent(target, i, std::move(event));
+                                m_policyManager->forwardEvent(target, i, std::move(event));
                                 break;
                             }
                         }
@@ -427,7 +427,7 @@ void Router::clear()
     }
 
     dumpTableToStorage();
-    m_environmentManager->delAllEnvironments();
+    m_policyManager->delAllPolicys();
 }
 
 } // namespace router
