@@ -4,6 +4,7 @@
  */
 
 #include <any>
+#include <thread>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -18,85 +19,158 @@ using namespace base;
 using namespace builder::internals::builders;
 
 const std::string targetField {"/result"};
-const std::string arSendHFName {"upgrade_confirmation_send"};
+const std::string upgradeConfirmationHelperName {"upgrade_confirmation_send"};
+const std::string testMessage {"test String Sent"};
+const std::string messageReference {"$fieldReference"};
 
-
-TEST(opBuilderUpgradeConfirmationTestSuite, Builds)
+TEST(opBuilderUpgradeConfirmationTestSuite, Build)
 {
-    auto tuple {std::make_tuple(targetField, arSendHFName, std::vector<std::string> {"query params"})};
+    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {"query params"})};
 
     ASSERT_NO_THROW(opBuilderHelperSendUpgradeConfirmation(tuple));
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, BuildsNoParameterError)
+TEST(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithoutParameters)
 {
-    auto tuple {std::make_tuple(targetField, arSendHFName, std::vector<std::string> {})};
+    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {})};
 
     ASSERT_THROW(opBuilderHelperSendUpgradeConfirmation(tuple), std::runtime_error);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, Send)
+TEST(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithMoreParameters)
 {
-    // auto tuple {std::make_tuple(targetField, arSendHFName, std::vector<std::string> {"test\n123"})};
-    // auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto tuple {std::make_tuple(
+        targetField, upgradeConfirmationHelperName, std::vector<std::string> {"First", "Seccond", "Third"})};
 
-    // auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
-    // ASSERT_GT(serverSocketFD, 0);
+    ASSERT_THROW(opBuilderHelperSendUpgradeConfirmation(tuple), std::runtime_error);
+}
 
-    // auto event {make_shared<json::Json>(R"({"agent_id": "007"})")};
-    // auto result {op(event)};
-    // ASSERT_TRUE(result);
-    // ASSERT_TRUE(result.payload()->isBool(targetField));
-    // ASSERT_TRUE(result.payload()->getBool(targetField));
+TEST(opBuilderUpgradeConfirmationTestSuite, SendAndReceivedMessage)
+{
+    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {testMessage})};
+    auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
-    // // Check received command on the AR's queue
-    // ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_DGRAM).c_str(), "test\n123");
+    auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
 
-    // close(serverSocketFD);
-    // unlink(AR_QUEUE_PATH);
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+
+            // Check received message
+            std::string messageReveicved;
+            ASSERT_NO_THROW(messageReveicved = testRecvString(clientRemoteFD, SOCK_STREAM));
+            ASSERT_STREQ(messageReveicved.c_str(), testMessage.c_str());
+
+            close(clientRemoteFD);
+        });
+
+    auto event {std::make_shared<json::Json>("{}")};
+    auto result {op(event)};
+
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->getBool(targetField));
+
+    t.join();
+    close(serverSocketFD);
+    unlink(WM_UPGRADE_SOCK);
 }
 
 TEST(opBuilderUpgradeConfirmationTestSuite, SendFromReference)
 {
-    // auto tuple {
-    //     std::make_tuple(targetField, arSendHFName, std::vector<std::string> {"$wdb.query_params"})};
-    // auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReference})};
+    auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
-    // auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
-    // ASSERT_GT(serverSocketFD, 0);
+    auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
 
-    // auto event {
-    //     make_shared<json::Json>(R"({"wdb": {"query_params": "reference_test"}})")};
-    // auto result {op(event)};
-    // ASSERT_TRUE(result);
-    // ASSERT_TRUE(result.payload()->isBool(targetField));
-    // ASSERT_TRUE(result.payload()->getBool(targetField));
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
 
-    // // Check received command on the AR's queue
-    // ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_DGRAM).c_str(), "reference_test");
+            // Check received message
+            std::string messageReveicved;
+            ASSERT_NO_THROW(messageReveicved = testRecvString(clientRemoteFD, SOCK_STREAM));
+            ASSERT_STREQ(messageReveicved.c_str(), testMessage.c_str());
 
-    // close(serverSocketFD);
-    // unlink(AR_QUEUE_PATH);
+            close(clientRemoteFD);
+        });
+
+    auto event {std::make_shared<json::Json>(R"({"fieldReference": "test String Sent"})")};
+    auto result {op(event)};
+
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(result.payload()->getBool(targetField));
+
+    t.join();
+    close(serverSocketFD);
+    unlink(WM_UPGRADE_SOCK);
 }
 
 TEST(opBuilderUpgradeConfirmationTestSuite, SendEmptyReferencedValueError)
 {
-    // auto tuple {
-    //     std::make_tuple(targetField, arSendHFName, std::vector<std::string> {"$wdb.query_params"})};
-    // auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReference})};
+    auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
-    // auto event {make_shared<json::Json>(R"({"wdb": {"query_params": ""}})")};
-    // auto result {op(event)};
-    // ASSERT_FALSE(result);
+    auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto event {std::make_shared<json::Json>(R"({"fieldReference": ""})")};
+    auto result {op(event)};
+
+    ASSERT_FALSE(result);
+
+    close(serverSocketFD);
+    unlink(WM_UPGRADE_SOCK);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, SendEmptyReferenceError)
+TEST(opBuilderUpgradeConfirmationTestSuite, SendWrongReferenceError)
 {
-    // auto tuple {
-    //     std::make_tuple(targetField, arSendHFName, std::vector<std::string> {"$wdb.query_params"})};
-    // auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {"$NonExistentReference"})};
+    auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
-    // auto event {make_shared<json::Json>(R"({"wdb": {"NO_query_params": "123"}})")};
-    // auto result {op(event)};
-    // ASSERT_FALSE(result);
+    auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto event {std::make_shared<json::Json>(R"({"fieldReference": "test String Sent"})")};
+    auto result {op(event)};
+
+    ASSERT_FALSE(result);
+
+    close(serverSocketFD);
+    unlink(WM_UPGRADE_SOCK);
+}
+
+TEST(opBuilderUpgradeConfirmationTestSuite, EmptyMessageSent)
+{
+    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {""})};
+    auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto event {std::make_shared<json::Json>("{}")};
+    auto result {op(event)};
+
+    ASSERT_FALSE(result);
+
+    close(serverSocketFD);
+    unlink(WM_UPGRADE_SOCK);
+}
+
+TEST(opBuilderUpgradeConfirmationTestSuite, UnsuccesfullSentMessage)
+{
+    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {testMessage})};
+    auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+
+    unlink(WM_UPGRADE_SOCK);
+
+    auto event {std::make_shared<json::Json>("{}")};
+    auto result {op(event)};
+
+    ASSERT_FALSE(result);
 }
