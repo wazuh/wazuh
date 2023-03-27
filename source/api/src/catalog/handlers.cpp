@@ -1,9 +1,9 @@
 
 #include "api/catalog/handlers.hpp"
 
-#include <json/json.hpp>
-#include <eMessages/eMessage.h>
 #include <eMessages/catalog.pb.h>
+#include <eMessages/eMessage.h>
+#include <json/json.hpp>
 
 #include <api/adapter.hpp>
 
@@ -88,7 +88,7 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog)
 
         // Validate the params request
         const auto error = !eRequest.has_name()     ? std::make_optional("Missing /name parameter")
-                           : !eRequest.has_format()  ? std::make_optional("Missing or invalid /format parameter")
+                           : !eRequest.has_format() ? std::make_optional("Missing or invalid /format parameter")
                                                     : std::nullopt;
         if (error)
         {

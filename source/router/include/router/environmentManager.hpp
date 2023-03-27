@@ -15,91 +15,91 @@ namespace router
 {
 
 /**
- * @brief EnvironmentManager is responsible to manage the runtime environment,
- * Creacion, destruction, and interaction with the environment.
- * The environment manager create multiples instaces of the same environments this
- * allow interact to the same environment from different threads without any synchronization.
+ * @brief PolicyManager is responsible to manage the runtime policy,
+ * Creacion, destruction, and interaction with the policy.
+ * The policy manager create multiples instaces of the same policys this
+ * allow interact to the same policy from different threads without any synchronization.
  */
-class EnvironmentManager
+class PolicyManager
 {
 
 private:
     /* Status */
-    std::unordered_map<std::string, std::vector<RuntimeEnvironment>> m_environments; ///< Map of environments
-    std::shared_mutex m_mutex; ///< Mutex to protect the environments map
+    std::unordered_map<std::string, std::vector<RuntimePolicy>> m_policys; ///< Map of policys
+    std::shared_mutex m_mutex; ///< Mutex to protect the policys map
 
     /* Config */
-    const std::size_t m_numInstances; ///< Number of instances of each environment
+    const std::size_t m_numInstances; ///< Number of instances of each policy
 
     /* Resources */
-    std::shared_ptr<builder::Builder> m_builder; ///< Builder for environment creation
+    std::shared_ptr<builder::Builder> m_builder; ///< Builder for policy creation
 
 public:
     /**
-     * @brief Create the environment manager
+     * @brief Create the policy manager
      *
-     * The environment manager is responsible to manage the runtime environment, creation, destruction, and interaction
-     * with the environment
-     * @param builder Builder for environment creation
-     * @param maxInstances Number of instances of each environment
+     * The policy manager is responsible to manage the runtime policy, creation, destruction, and interaction
+     * with the policy
+     * @param builder Builder for policy creation
+     * @param maxInstances Number of instances of each policy
      */
-    EnvironmentManager(std::shared_ptr<builder::Builder> builder, std::size_t maxInstances)
-        : m_environments {}
+    PolicyManager(std::shared_ptr<builder::Builder> builder, std::size_t maxInstances)
+        : m_policys {}
         , m_mutex {}
         , m_numInstances {maxInstances}
         , m_builder {builder}
     {
         if (0 == maxInstances)
         {
-            throw std::runtime_error("EnvironmentManager: Number of instances of the environment cannot be 0");
+            throw std::runtime_error("PolicyManager: Number of instances of the policy cannot be 0");
         }
 
         if (nullptr == builder)
         {
-            throw std::runtime_error("EnvironmentManager: Builder cannot be null");
+            throw std::runtime_error("PolicyManager: Builder cannot be null");
         }
     };
 
-    ~EnvironmentManager() { delAllEnvironments(); };
+    ~PolicyManager() { delAllPolicys(); };
 
     /**
-     * @brief Create a new environment
+     * @brief Create a new policy
      *
-     * @param name Name of the environment
+     * @param name Name of the policy
      * @return Error message if any
      */
-    std::optional<base::Error> addEnvironment(const std::string& name);
+    std::optional<base::Error> addPolicy(const std::string& name);
 
     /**
-     * @brief Delete an environment
+     * @brief Delete an policy
      *
-     * @param name Name of the environment
+     * @param name Name of the policy
      * @return Error message if any
      */
-    std::optional<base::Error> deleteEnvironment(const std::string& name);
+    std::optional<base::Error> deletePolicy(const std::string& name);
 
     /**
-     * @brief Delete all environments
+     * @brief Delete all policys
      */
-    void delAllEnvironments();
+    void delAllPolicys();
 
     /**
-     * @brief Get a list of all environments
+     * @brief Get a list of all policys
      *
      * @return std::vector<std::string>
      */
-    std::vector<std::string> listEnvironments();
+    std::vector<std::string> listPolicys();
 
     /**
-     * @brief Forward an event to an environment
+     * @brief Forward an event to an policy
      *
-     * @param name Name of the environment
-     * @param instance Instance of the environment
+     * @param name Name of the policy
+     * @param instance Instance of the policy
      * @param event Event to forward
      * @return std::optional<base::Error> if the event can't be forwarded
      *
-     * @note The instance of the environment should be selected by the thread id,
-     * the instance of an environment is not thread safe for processing events.
+     * @note The instance of the policy should be selected by the thread id,
+     * the instance of an policy is not thread safe for processing events.
      * The lamda function of the expression is not thread safe.
      */
     std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event event);

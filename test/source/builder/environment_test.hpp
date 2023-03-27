@@ -202,39 +202,39 @@ std::map<std::string, const char*> outputs =
         })"
     }
 };
-std::map<std::string, const char*> environments =
+std::map<std::string, const char*> policys =
 {
     {"oneDecEnv",
 R"({
-"name": "environment/oneDecEnv/version",
+"name": "policy/oneDecEnv/version",
 "decoders": [
   "decoder/decoder1/version"
 ]
 })"},
     {"oneRuleEnv",
 R"({
-"name": "environment/oneRuleEnv/version",
+"name": "policy/oneRuleEnv/version",
 "rules": [
   "rule/rule1/version"
 ]
 })"},
     {"oneFilEnv",
 R"({
-"name": "environment/oneFilEnv/version",
+"name": "policy/oneFilEnv/version",
 "filters": [
   "filter/filter1/version"
 ]
 })"},
     {"oneOutEnv",
 R"({
-"name": "environment/oneOutEnv/version",
+"name": "policy/oneOutEnv/version",
 "outputs": [
   "output/output1/version"
 ]
 })"},
     {"orphanAssetEnv",
 R"({
-    "name": "environment/orphanAssetEnv/version",
+    "name": "policy/orphanAssetEnv/version",
     "decoders": [
         "decoder/decoder1_1/version"
     ],
@@ -250,7 +250,7 @@ R"({
 })"},
     {"orphanFilterEnv",
 R"({
-    "name": "environment/orphanFilterEnv/version",
+    "name": "policy/orphanFilterEnv/version",
     "rules": [
         "rule/rule1/version"
     ],
@@ -263,7 +263,7 @@ R"({
 })"},
     {"completeEnv",
 R"({
-    "name": "environment/completeEnv/version",
+    "name": "policy/completeEnv/version",
     "decoders": [
         "decoder/decoder1/version",
         "decoder/decoder1_1/version",
@@ -306,9 +306,9 @@ struct FakeStoreRead : public store::IStoreRead
         {
             return json::Json {outputs[name.fullName()]};
         }
-        else if (name.parts()[0] == "environment")
+        else if (name.parts()[0] == "policy")
         {
-            return json::Json {environments[name.parts()[1]]};
+            return json::Json {policys[name.parts()[1]]};
         }
         else
         {

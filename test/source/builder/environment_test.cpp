@@ -63,11 +63,10 @@ TEST_F(EnvironmentTest, OneDecoderEnvironment)
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson =
-        std::get<json::Json>(storeRead->get(base::Name("environment/oneDecEnv/version")));
+    auto envJson = std::get<json::Json>(storeRead->get(base::Name("policy/oneDecEnv/version")));
     ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
     auto env = Environment(envJson, storeRead, registry);
-    ASSERT_EQ(env.name(), "environment/oneDecEnv/version");
+    ASSERT_EQ(env.name(), "policy/oneDecEnv/version");
     ASSERT_EQ(env.assets().size(), 1);
     ASSERT_NO_THROW(env.getExpression());
     auto expr = env.getExpression();
@@ -88,11 +87,10 @@ TEST_F(EnvironmentTest, OneRuleEnvironment)
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(
-        storeRead->get(base::Name {"environment/oneRuleEnv/version"}));
+    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneRuleEnv/version"}));
     ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
     auto env = Environment(envJson, storeRead, registry);
-    ASSERT_EQ(env.name(), "environment/oneRuleEnv/version");
+    ASSERT_EQ(env.name(), "policy/oneRuleEnv/version");
     ASSERT_EQ(env.assets().size(), 1);
     ASSERT_NO_THROW(env.getExpression());
     auto expr = env.getExpression();
@@ -113,11 +111,10 @@ TEST_F(EnvironmentTest, OneOutputEnvironment)
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(
-        storeRead->get(base::Name {"environment/oneOutEnv/version"}));
+    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneOutEnv/version"}));
     ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
     auto env = Environment(envJson, storeRead, registry);
-    ASSERT_EQ(env.name(), "environment/oneOutEnv/version");
+    ASSERT_EQ(env.name(), "policy/oneOutEnv/version");
     ASSERT_EQ(env.assets().size(), 1);
     ASSERT_NO_THROW(env.getExpression());
     auto expr = env.getExpression();
@@ -138,8 +135,7 @@ TEST_F(EnvironmentTest, OneFilterEnvironment)
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(
-        storeRead->get(base::Name {"environment/oneFilEnv/version"}));
+    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneFilEnv/version"}));
     ASSERT_THROW(Environment(envJson, storeRead, registry), std::runtime_error);
 }
 
@@ -148,8 +144,7 @@ TEST_F(EnvironmentTest, OrphanAsset)
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(
-        storeRead->get(base::Name {"environment/orphanAssetEnv/version"}));
+    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/orphanAssetEnv/version"}));
     ASSERT_THROW(Environment(envJson, storeRead, registry), std::runtime_error);
 }
 
@@ -159,8 +154,7 @@ TEST_F(EnvironmentTest, OrphanFilter)
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(
-        storeRead->get(base::Name {"environment/orphanFilterEnv/version"}));
+    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/orphanFilterEnv/version"}));
     ASSERT_THROW(Environment(envJson, storeRead, registry), std::runtime_error);
 }
 
@@ -169,11 +163,10 @@ TEST_F(EnvironmentTest, CompleteEnvironment)
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
-    auto envJson = std::get<json::Json>(
-        storeRead->get(base::Name {"environment/completeEnv/version"}));
+    auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/completeEnv/version"}));
     ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
     auto env = Environment(envJson, storeRead, registry);
-    ASSERT_EQ(env.name(), "environment/completeEnv/version");
+    ASSERT_EQ(env.name(), "policy/completeEnv/version");
     ASSERT_EQ(env.assets().size(), 11);
     ASSERT_NO_THROW(env.getExpression());
     auto expr = env.getExpression();
@@ -186,12 +179,10 @@ TEST_F(EnvironmentTest, CompleteEnvironment)
     ASSERT_EQ(decoderGraphExpr->getName(), "decodersInput");
     ASSERT_EQ(decoderGraphExpr->getPtr<Operation>()->getOperands().size(), 3);
     // Decoder 1 subgraph
-    auto decoder1Pos = std::find_if(
-        decoderGraphExpr->getPtr<Operation>()->getOperands().begin(),
-        decoderGraphExpr->getPtr<Operation>()->getOperands().end(),
-        [](const auto& op) { return op->getName() == "decoder/decoder1/versionNode"; });
-    ASSERT_FALSE(decoder1Pos
-                 == decoderGraphExpr->getPtr<Operation>()->getOperands().end());
+    auto decoder1Pos = std::find_if(decoderGraphExpr->getPtr<Operation>()->getOperands().begin(),
+                                    decoderGraphExpr->getPtr<Operation>()->getOperands().end(),
+                                    [](const auto& op) { return op->getName() == "decoder/decoder1/versionNode"; });
+    ASSERT_FALSE(decoder1Pos == decoderGraphExpr->getPtr<Operation>()->getOperands().end());
     auto assetNodeExpr = *decoder1Pos;
     ASSERT_TRUE(assetNodeExpr->isImplication());
     ASSERT_EQ(assetNodeExpr->getPtr<Operation>()->getOperands().size(), 2);
@@ -206,30 +197,25 @@ TEST_F(EnvironmentTest, CompleteEnvironment)
     ASSERT_TRUE(filterExpr->isImplication());
     ASSERT_EQ(filterExpr->getName(), "filter/filter1/versionNode");
     ASSERT_EQ(filterExpr->getPtr<Operation>()->getOperands().size(), 2);
-    ASSERT_EQ(filterExpr->getPtr<Operation>()->getOperands()[0]->getName(),
-              "filter/filter1/version");
+    ASSERT_EQ(filterExpr->getPtr<Operation>()->getOperands()[0]->getName(), "filter/filter1/version");
     childrenNode = filterExpr->getPtr<Operation>()->getOperands()[1];
     ASSERT_TRUE(childrenNode->isOperation());
     ASSERT_EQ(childrenNode->getPtr<Operation>()->getOperands().size(), 2);
     // Decoder 1_1
-    auto decoder1_1Pos = std::find_if(
-        childrenNode->getPtr<Operation>()->getOperands().begin(),
-        childrenNode->getPtr<Operation>()->getOperands().end(),
-        [](const auto& op) { return op->getName() == "decoder/decoder1_1/version"; });
+    auto decoder1_1Pos = std::find_if(childrenNode->getPtr<Operation>()->getOperands().begin(),
+                                      childrenNode->getPtr<Operation>()->getOperands().end(),
+                                      [](const auto& op) { return op->getName() == "decoder/decoder1_1/version"; });
     ASSERT_FALSE(decoder1_1Pos == childrenNode->getPtr<Operation>()->getOperands().end());
     // Decoder 1_2
-    auto decoder1_2Pos = std::find_if(
-        childrenNode->getPtr<Operation>()->getOperands().begin(),
-        childrenNode->getPtr<Operation>()->getOperands().end(),
-        [](const auto& op) { return op->getName() == "decoder/decoder1_2/version"; });
+    auto decoder1_2Pos = std::find_if(childrenNode->getPtr<Operation>()->getOperands().begin(),
+                                      childrenNode->getPtr<Operation>()->getOperands().end(),
+                                      [](const auto& op) { return op->getName() == "decoder/decoder1_2/version"; });
     ASSERT_FALSE(decoder1_2Pos == childrenNode->getPtr<Operation>()->getOperands().end());
     // Decoder 2 subgraph
-    auto decoder2Pos = std::find_if(
-        decoderGraphExpr->getPtr<Operation>()->getOperands().begin(),
-        decoderGraphExpr->getPtr<Operation>()->getOperands().end(),
-        [](const auto& op) { return op->getName() == "decoder/decoder2/versionNode"; });
-    ASSERT_FALSE(decoder2Pos
-                 == decoderGraphExpr->getPtr<Operation>()->getOperands().end());
+    auto decoder2Pos = std::find_if(decoderGraphExpr->getPtr<Operation>()->getOperands().begin(),
+                                    decoderGraphExpr->getPtr<Operation>()->getOperands().end(),
+                                    [](const auto& op) { return op->getName() == "decoder/decoder2/versionNode"; });
+    ASSERT_FALSE(decoder2Pos == decoderGraphExpr->getPtr<Operation>()->getOperands().end());
     assetNodeExpr = *decoder2Pos;
     ASSERT_TRUE(assetNodeExpr->isImplication());
     ASSERT_EQ(assetNodeExpr->getPtr<Operation>()->getOperands().size(), 2);
@@ -240,19 +226,15 @@ TEST_F(EnvironmentTest, CompleteEnvironment)
     assetExpr = assetNodeExpr->getPtr<Operation>()->getOperands()[0];
     ASSERT_EQ(assetExpr->getName(), "decoder/decoder2/version");
     // Decoder 23_1
-    auto decoder23_1Pos = std::find_if(
-        childrenNode->getPtr<Operation>()->getOperands().begin(),
-        childrenNode->getPtr<Operation>()->getOperands().end(),
-        [](const auto& op) { return op->getName() == "decoder/decoder23_1/version"; });
-    ASSERT_FALSE(decoder23_1Pos
-                 == childrenNode->getPtr<Operation>()->getOperands().end());
+    auto decoder23_1Pos = std::find_if(childrenNode->getPtr<Operation>()->getOperands().begin(),
+                                       childrenNode->getPtr<Operation>()->getOperands().end(),
+                                       [](const auto& op) { return op->getName() == "decoder/decoder23_1/version"; });
+    ASSERT_FALSE(decoder23_1Pos == childrenNode->getPtr<Operation>()->getOperands().end());
     // Decoder 3 subgraph
-    auto decoder3Pos = std::find_if(
-        decoderGraphExpr->getPtr<Operation>()->getOperands().begin(),
-        decoderGraphExpr->getPtr<Operation>()->getOperands().end(),
-        [](const auto& op) { return op->getName() == "decoder/decoder3/versionNode"; });
-    ASSERT_FALSE(decoder3Pos
-                 == decoderGraphExpr->getPtr<Operation>()->getOperands().end());
+    auto decoder3Pos = std::find_if(decoderGraphExpr->getPtr<Operation>()->getOperands().begin(),
+                                    decoderGraphExpr->getPtr<Operation>()->getOperands().end(),
+                                    [](const auto& op) { return op->getName() == "decoder/decoder3/versionNode"; });
+    ASSERT_FALSE(decoder3Pos == decoderGraphExpr->getPtr<Operation>()->getOperands().end());
     assetNodeExpr = *decoder3Pos;
     ASSERT_TRUE(assetNodeExpr->isImplication());
     ASSERT_EQ(assetNodeExpr->getPtr<Operation>()->getOperands().size(), 2);
@@ -263,12 +245,10 @@ TEST_F(EnvironmentTest, CompleteEnvironment)
     assetExpr = assetNodeExpr->getPtr<Operation>()->getOperands()[0];
     ASSERT_EQ(assetExpr->getName(), "decoder/decoder3/version");
     // Decoder 23_1
-    decoder23_1Pos = std::find_if(
-        childrenNode->getPtr<Operation>()->getOperands().begin(),
-        childrenNode->getPtr<Operation>()->getOperands().end(),
-        [](const auto& op) { return op->getName() == "decoder/decoder23_1/version"; });
-    ASSERT_FALSE(decoder23_1Pos
-                 == childrenNode->getPtr<Operation>()->getOperands().end());
+    decoder23_1Pos = std::find_if(childrenNode->getPtr<Operation>()->getOperands().begin(),
+                                  childrenNode->getPtr<Operation>()->getOperands().end(),
+                                  [](const auto& op) { return op->getName() == "decoder/decoder23_1/version"; });
+    ASSERT_FALSE(decoder23_1Pos == childrenNode->getPtr<Operation>()->getOperands().end());
 
     // Rule graph
     auto ruleGraphExpr = expr->getPtr<Operation>()->getOperands()[1];
@@ -276,10 +256,9 @@ TEST_F(EnvironmentTest, CompleteEnvironment)
     ASSERT_EQ(ruleGraphExpr->getName(), "rulesInput");
     ASSERT_EQ(ruleGraphExpr->getPtr<Operation>()->getOperands().size(), 2);
     // Rule 1 subgraph
-    auto rule1Pos = std::find_if(
-        ruleGraphExpr->getPtr<Operation>()->getOperands().begin(),
-        ruleGraphExpr->getPtr<Operation>()->getOperands().end(),
-        [](const auto& op) { return op->getName() == "rule/rule1/versionNode"; });
+    auto rule1Pos = std::find_if(ruleGraphExpr->getPtr<Operation>()->getOperands().begin(),
+                                 ruleGraphExpr->getPtr<Operation>()->getOperands().end(),
+                                 [](const auto& op) { return op->getName() == "rule/rule1/versionNode"; });
     ASSERT_FALSE(rule1Pos == ruleGraphExpr->getPtr<Operation>()->getOperands().end());
     assetNodeExpr = *rule1Pos;
     ASSERT_TRUE(assetNodeExpr->isImplication());
@@ -294,10 +273,9 @@ TEST_F(EnvironmentTest, CompleteEnvironment)
     assetExpr = childrenNode->getPtr<Operation>()->getOperands()[0];
     ASSERT_EQ(assetExpr->getName(), "rule/rule1_1/version");
     // Rule 2
-    auto rule2Pos = std::find_if(
-        ruleGraphExpr->getPtr<Operation>()->getOperands().begin(),
-        ruleGraphExpr->getPtr<Operation>()->getOperands().end(),
-        [](const auto& op) { return op->getName() == "rule/rule2/version"; });
+    auto rule2Pos = std::find_if(ruleGraphExpr->getPtr<Operation>()->getOperands().begin(),
+                                 ruleGraphExpr->getPtr<Operation>()->getOperands().end(),
+                                 [](const auto& op) { return op->getName() == "rule/rule2/version"; });
     ASSERT_FALSE(rule2Pos == ruleGraphExpr->getPtr<Operation>()->getOperands().end());
 
     // Output graph

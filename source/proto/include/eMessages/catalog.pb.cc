@@ -238,17 +238,17 @@ const char descriptor_table_protodef_catalog_2eproto[] PROTOBUF_SECTION_VARIABLE
   "ine.catalog.ResourceFormatH\001\210\001\001\022\024\n\007conte"
   "nt\030\003 \001(\tH\002\210\001\001B\007\n\005_nameB\t\n\007_formatB\n\n\010_co"
   "ntent*1\n\016ResourceFormat\022\010\n\004json\020\000\022\010\n\004yam"
-  "l\020\001\022\007\n\003yml\020\001\032\002\020\001*w\n\014ResourceType\022\013\n\007UNKN"
-  "OWN\020\000\022\013\n\007decoder\020\001\022\010\n\004rule\020\002\022\n\n\006filter\020\003"
-  "\022\n\n\006output\020\004\022\017\n\013environment\020\005\022\n\n\006schema\020"
-  "\006\022\016\n\ncollection\020\007b\006proto3"
+  "l\020\001\022\007\n\003yml\020\001\032\002\020\001*\203\001\n\014ResourceType\022\013\n\007UNK"
+  "NOWN\020\000\022\013\n\007decoder\020\001\022\010\n\004rule\020\002\022\n\n\006filter\020"
+  "\003\022\n\n\006output\020\004\022\n\n\006policy\020\005\022\n\n\006schema\020\006\022\016\n"
+  "\ncollection\020\007\022\017\n\013integration\020\010b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_catalog_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_catalog_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_catalog_2eproto = {
-    false, false, 1105, descriptor_table_protodef_catalog_2eproto,
+    false, false, 1118, descriptor_table_protodef_catalog_2eproto,
     "catalog.proto",
     &descriptor_table_catalog_2eproto_once, descriptor_table_catalog_2eproto_deps, 1, 6,
     schemas, file_default_instances, TableStruct_catalog_2eproto::offsets,
@@ -294,6 +294,7 @@ bool ResourceType_IsValid(int value) {
     case 5:
     case 6:
     case 7:
+    case 8:
       return true;
     default:
       return false;
