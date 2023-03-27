@@ -35,7 +35,7 @@ json::Json DataHub::getAllResources()
     json::Json retValue;
 
     for (auto &r : m_resources) {
-        retValue.appendJson(r.second, "/" + r.first);
+        retValue.set("/" + r.first, r.second);
     }
     
     return retValue;
