@@ -66,7 +66,7 @@ TEST_F(MetricsInterfaceTest, getMetricsScopeNames)
 TEST_F(MetricsInterfaceTest, getAllMetricsEmpty)
 {
     auto contents = m_manager->getAllMetrics();
-    ASSERT_EQ(contents.size(), 0);
+    ASSERT_EQ(contents.isNull(), true);
 }
 
 TEST_F(MetricsInterfaceTest, getAllMetricsOneScope)
@@ -83,6 +83,35 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeOneCounter)
     counter0->addValue(5);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     auto contents = m_manager->getAllMetrics();
-    std::cout << contents.prettyStr() << std::endl;
+    
+    auto json_scope = contents.getObject("/scope_0");
+    ASSERT_TRUE(json_scope);
+    auto scope_0=json_scope.value()[0];
+    auto name=std::get<1>(scope_0).getString("/scope");
+    ASSERT_TRUE(name);
+    ASSERT_EQ(name, "counter_0");
 }
 
+TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeTwoCounters)
+{
+    auto scope0 = m_manager->getMetricsScope("scope_0");
+    auto counter0 = scope0->getCounterDouble("counter_0");
+    auto counter1 = scope0->getCounterInteger("counter_1");
+    counter0->addValue(5.0);
+    counter1->addValue(2);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    auto contents = m_manager->getAllMetrics();
+    std::cout << contents.prettyStr() << std::endl;
+    
+    auto json_scope = contents.getObject("/scope_0");
+    ASSERT_TRUE(json_scope);
+    auto scope_0=json_scope.value()[0];
+    auto name=std::get<1>(scope_0).getString("/scope");
+    ASSERT_TRUE(name);
+    ASSERT_EQ(name, "counter_0");
+
+    auto scope_1=json_scope.value()[1];
+    auto name2=std::get<1>(scope_1).getString("/scope");
+    ASSERT_TRUE(name2);
+    ASSERT_EQ(name2, "counter_1");
+}

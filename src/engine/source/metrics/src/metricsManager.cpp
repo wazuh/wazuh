@@ -27,14 +27,14 @@ json::Json MetricsManager::getAllMetrics()
     const std::lock_guard<std::mutex> lock(m_mutexScopes);
 
     json::Json retValue;
-    retValue.setArray();
+    retValue.setNull();
 
     auto it = m_mapScopes.begin();
     while (it!=m_mapScopes.end())
     {
         auto scopeMetrics = it->second->getAllMetrics();
         auto path = "/" + it->first;
-        retValue.appendJson(scopeMetrics, path);
+        retValue.set(path, scopeMetrics);
         it++;
     }
 
