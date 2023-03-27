@@ -34,7 +34,6 @@ except Exception as e:
 #   <api_key>API_KEY</api_key> <!-- Replace with your VirusTotal API key -->
 #   <group>syscheck</group>
 #   <alert_format>json</alert_format>
-#   <options>JSON</options> <!-- Replace with your custom JSON object -->
 # </integration>
 
 # Global vars
@@ -129,7 +128,7 @@ def debug(msg: str) -> None:
         with open(LOG_FILE, "a") as f:
             f.write(msg)
 
-def generate_msg(alert: any, options: any,apikey: str) -> dict[str, str]:
+def generate_msg(alert: any,apikey: str) -> dict[str, str]:
     """
         Generate the JSON object with the message to be send
 
@@ -137,8 +136,6 @@ def generate_msg(alert: any, options: any,apikey: str) -> dict[str, str]:
         ----------
         alert : any
             JSON alert object.
-        options: any
-            JSON options object.
 
         Returns
         -------
@@ -194,7 +191,7 @@ def query_api(hash: str, apikey: str) -> any:
         hash : str
             Hash need it for parameters
         apikey: str
-            JSON options object.
+            Authentication API
 
         Returns
         -------

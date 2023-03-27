@@ -67,7 +67,7 @@ msg_template = {
     }
 }
 
-sys_args_template = ['/var/ossec/integrations/virustotal.py', '/tmp/virustotal-XXXXXX-XXXXXXX.alert', f'{apikey_virustotal}', '', '>/dev/null 2>&1','/tmp/virustotal-XXXXXX-XXXXXXX.options']
+sys_args_template = ['/var/ossec/integrations/virustotal.py', '/tmp/virustotal-XXXXXX-XXXXXXX.alert', f'{apikey_virustotal}', '', '>/dev/null 2>&1']
 
 
 def test_main_bad_arguments_exit():
