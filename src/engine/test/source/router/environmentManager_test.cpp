@@ -9,22 +9,22 @@
 
 #include "testAuxiliar/routerAuxiliarFunctions.hpp"
 
-TEST(EnvironmentManager, instance_ok)
+TEST(PolicyManager, instance_ok)
 {
     auto builder = aux::getFakeBuilder();
-    ASSERT_NO_THROW(router::EnvironmentManager(builder, 1));
+    ASSERT_NO_THROW(router::PolicyManager(builder, 1));
 }
 
-TEST(EnvironmentManager, instance_fail_null_builder)
+TEST(PolicyManager, instance_fail_null_builder)
 {
     try
     {
-        router::EnvironmentManager(nullptr, 1);
+        router::PolicyManager(nullptr, 1);
         FAIL();
     }
     catch (const std::runtime_error& e)
     {
-        ASSERT_STREQ(e.what(), "EnvironmentManager: Builder cannot be null");
+        ASSERT_STREQ(e.what(), "PolicyManager: Builder cannot be null");
     }
     catch (...)
     {
@@ -32,17 +32,17 @@ TEST(EnvironmentManager, instance_fail_null_builder)
     }
 }
 
-TEST(EnvironmentManager, zero_instances)
+TEST(PolicyManager, zero_instances)
 {
     auto builder = aux::getFakeBuilder();
     try
     {
-        router::EnvironmentManager(builder, 0);
+        router::PolicyManager(builder, 0);
         FAIL();
     }
     catch (const std::runtime_error& e)
     {
-        ASSERT_STREQ(e.what(), "EnvironmentManager: Number of instances of the environment cannot be 0");
+        ASSERT_STREQ(e.what(), "PolicyManager: Number of instances of the policy cannot be 0");
     }
     catch (...)
     {
@@ -50,24 +50,24 @@ TEST(EnvironmentManager, zero_instances)
     }
 }
 
-TEST(EnvironmentManager, environmentFlow)
+TEST(PolicyManager, policyFlow)
 {
     auto builder = aux::getFakeBuilder();
     auto numOfInstances = 10;
 
     // Instance
-    auto manager = router::EnvironmentManager(builder, numOfInstances);
+    auto manager = router::PolicyManager(builder, numOfInstances);
 
     for (std::size_t i = 0; i < numOfInstances; ++i)
     {
-        // Add environment
-        auto err = manager.addEnvironment("environment/env_1/0");
+        // Add policy
+        auto err = manager.addPolicy("policy/env_1/0");
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.addEnvironment("environment/env_2/0");
+        err = manager.addPolicy("policy/env_2/0");
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.addEnvironment("environment/env_3/0");
+        err = manager.addPolicy("policy/env_3/0");
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
 
@@ -82,96 +82,96 @@ TEST(EnvironmentManager, environmentFlow)
         ASSERT_FALSE(e3->exists(pathDeco));
 
         // Process event
-        err = manager.forwardEvent("environment/env_1/0", i, e1);
+        err = manager.forwardEvent("policy/env_1/0", i, e1);
         ASSERT_FALSE(err.has_value()) << err.value().message;
         ASSERT_TRUE(e1->exists(pathDeco) && e1->isString(pathDeco));
         ASSERT_STREQ(e1->getString(pathDeco).value().c_str(), "deco_1");
 
-        err = manager.forwardEvent("environment/env_2/0", i, e2);
+        err = manager.forwardEvent("policy/env_2/0", i, e2);
         ASSERT_FALSE(err.has_value()) << err.value().message;
         ASSERT_TRUE(e2->exists(pathDeco) && e2->isString(pathDeco));
         ASSERT_STREQ(e2->getString(pathDeco).value().c_str(), "deco_2");
 
-        err = manager.forwardEvent("environment/env_3/0", i, e3);
+        err = manager.forwardEvent("policy/env_3/0", i, e3);
         ASSERT_FALSE(err.has_value()) << err.value().message;
         ASSERT_TRUE(e3->exists(pathDeco) && e3->isString(pathDeco));
         ASSERT_STREQ(e3->getString(pathDeco).value().c_str(), "deco_3");
 
-        // Delete environment
-        err = manager.deleteEnvironment("environment/env_1/0");
+        // Delete policy
+        err = manager.deletePolicy("policy/env_1/0");
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.forwardEvent("environment/env_1/0", i, e1);
+        err = manager.forwardEvent("policy/env_1/0", i, e1);
         ASSERT_TRUE(err.has_value());
-        ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_1/0' does not exist");
+        ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_1/0' does not exist");
 
-        err = manager.deleteEnvironment("environment/env_2/0");
+        err = manager.deletePolicy("policy/env_2/0");
         ASSERT_FALSE(err.has_value()) << err.value().message;// Process event
 
-        err = manager.forwardEvent("environment/env_2/0", i, e2);
+        err = manager.forwardEvent("policy/env_2/0", i, e2);
         ASSERT_TRUE(err.has_value());
-        ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_2/0' does not exist");
+        ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_2/0' does not exist");
 
-        err = manager.deleteEnvironment("environment/env_3/0");
+        err = manager.deletePolicy("policy/env_3/0");
         ASSERT_FALSE(err.has_value()) << err.value().message;
 
-        err = manager.forwardEvent("environment/env_3/0", i, e3);
+        err = manager.forwardEvent("policy/env_3/0", i, e3);
         ASSERT_TRUE(err.has_value());
-        ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_3/0' does not exist");
+        ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_3/0' does not exist");
 
     }
 }
 
-TEST(EnvironmentManager, addEnvironment_fail)
+TEST(PolicyManager, addPolicy_fail)
 {
     auto builder = aux::getFakeBuilder();
-    auto manager = router::EnvironmentManager(builder, 1);
-    auto err = manager.addEnvironment("invalid_env");
+    auto manager = router::PolicyManager(builder, 1);
+    auto err = manager.addPolicy("invalid_env");
     ASSERT_TRUE(err.has_value());
 }
 
-TEST(EnvironmentManager, add_list_del_environment)
+TEST(PolicyManager, add_list_del_policy)
 {
     auto builder = aux::getFakeBuilder();
-    auto manager = router::EnvironmentManager(builder, 1);
-    auto err = manager.addEnvironment("environment/env_1/0");
+    auto manager = router::PolicyManager(builder, 1);
+    auto err = manager.addPolicy("policy/env_1/0");
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    auto envs = manager.listEnvironments();
+    auto envs = manager.listPolicys();
     ASSERT_EQ(envs.size(), 1);
-    ASSERT_STREQ(envs[0].c_str(), "environment/env_1/0");
+    ASSERT_STREQ(envs[0].c_str(), "policy/env_1/0");
 
-    err = manager.addEnvironment("environment/env_1/0");
+    err = manager.addPolicy("policy/env_1/0");
     ASSERT_TRUE(err.has_value());
-    ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_1/0' already exists");
+    ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_1/0' already exists");
 
-    envs = manager.listEnvironments();
+    envs = manager.listPolicys();
     ASSERT_EQ(envs.size(), 1);
-    ASSERT_STREQ(envs[0].c_str(), "environment/env_1/0");
+    ASSERT_STREQ(envs[0].c_str(), "policy/env_1/0");
 
-    err = manager.deleteEnvironment("environment/env_1/0");
+    err = manager.deletePolicy("policy/env_1/0");
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    envs = manager.listEnvironments();
+    envs = manager.listPolicys();
     ASSERT_EQ(envs.size(), 0);
 
-    err = manager.deleteEnvironment("environment/env_1/0");
+    err = manager.deletePolicy("policy/env_1/0");
     ASSERT_TRUE(err.has_value());
-    ASSERT_STREQ(err.value().message.c_str(), "Environment 'environment/env_1/0' does not exist");
+    ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_1/0' does not exist");
 
-    err = manager.addEnvironment("environment/env_1/0");
+    err = manager.addPolicy("policy/env_1/0");
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    err = manager.addEnvironment("environment/env_2/0");
+    err = manager.addPolicy("policy/env_2/0");
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    err = manager.addEnvironment("environment/env_3/0");
+    err = manager.addPolicy("policy/env_3/0");
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    envs = manager.listEnvironments();
+    envs = manager.listPolicys();
     ASSERT_EQ(envs.size(), 3);
     std::sort(envs.begin(), envs.end());
-    ASSERT_STREQ(envs[0].c_str(), "environment/env_1/0");
-    ASSERT_STREQ(envs[1].c_str(), "environment/env_2/0");
-    ASSERT_STREQ(envs[2].c_str(), "environment/env_3/0");
+    ASSERT_STREQ(envs[0].c_str(), "policy/env_1/0");
+    ASSERT_STREQ(envs[1].c_str(), "policy/env_2/0");
+    ASSERT_STREQ(envs[2].c_str(), "policy/env_3/0");
 }

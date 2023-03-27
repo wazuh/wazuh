@@ -5,8 +5,8 @@
 #include <vector>
 
 #include <CLI/CLI.hpp>
-#include <cmds/apiclnt/client.hpp>
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
+#include <cmds/apiclnt/client.hpp>
 #include <json/json.hpp>
 
 namespace cmd::catalog

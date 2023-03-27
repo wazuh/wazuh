@@ -70,10 +70,10 @@ void run(const Options& options)
     }
 
     builder::Builder _builder(store, registry);
-    decltype(_builder.buildEnvironment({options.environment})) env;
+    decltype(_builder.buildPolicy({options.environment})) env;
     try
     {
-        env = _builder.buildEnvironment({options.environment});
+        env = _builder.buildPolicy({options.environment});
     }
     catch (const std::exception& e)
     {
