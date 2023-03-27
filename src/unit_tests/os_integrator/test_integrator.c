@@ -30,13 +30,13 @@ static int test_setup(void **state) {
     virustotal_config->group = "syscheck";
     virustotal_config->alert_format = "json";
     virustotal_config->enabled = 1;
-    virustotal_config->options = "{\"location\":\"syscheck-X\"}";
 
     pagerduty_config->name = "pagerduty";
     pagerduty_config->apikey = "123456";
     pagerduty_config->group = "syscheck";
     pagerduty_config->enabled = 1;
     pagerduty_config->max_log = 165;
+    pagerduty_config->alert_format = "json";
     pagerduty_config->options = "{\"location\":\"syscheck-X\"}";
 
     state[0] = virustotal_config;
@@ -82,17 +82,15 @@ void test_OS_IntegratorD(void **state) {
     char *unformatted = cJSON_PrintUnformatted(al_json);
     char *op_unformatted = cJSON_PrintUnformatted(op_json);
     char alert_to_virustotal[2048];
-    char options_to_vt[512];
+    char alert_to_pagerduty[2048];
     char options_to_pd[512];
     snprintf(alert_to_virustotal, 2048, "%s\n",unformatted);
-    snprintf(options_to_vt, 512, "%s\n",op_unformatted);
+    snprintf(alert_to_pagerduty, 2048, "%s\n",unformatted);
     snprintf(options_to_pd, 512, "%s\n",op_unformatted);
-    char *alert_to_pagerduty = "alertdate='2022-09-09T23:43:15.168+0200'\nalertlocation='syscheck'\nruleid='550'\nalertlevel='7'\nruledescription='Integrity checksum changed.'\nalertlog='File  /tmp/test/test.txt  modified Mode: realtime Changed attributes: size,mtime,md5,sha1,sha256 Size changed from  54  to  57  Old modification time was:  166275...'\nsrcip=''";
 
     const char *virustotal_file = "/tmp/virustotal-1111-2222.alert";
     const char *pagerduty_file = "/tmp/pagerduty-1111-2222.alert";
 
-    const char *vt_options = "/tmp/virustotal-1111-2222.options";
     const char *pd_options = "/tmp/pagerduty-1111-2222.options";
 
     will_return(__wrap_jqueue_open, 0);
@@ -134,17 +132,7 @@ void test_OS_IntegratorD(void **state) {
     will_return(__wrap_time, 1111);
     will_return(__wrap_os_random, 2222);
 
-    expect_string(__wrap_fopen, path, vt_options);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
-
-    expect_fprintf((FILE *)1, options_to_vt, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/virustotal-1111-2222.options was written.");
-
-    expect_fclose((FILE *)1, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Running script with args: integrations /tmp/virustotal-1111-2222.alert 123456   /tmp/virustotal-1111-2222.options > /dev/null 2>&1");
+    expect_string(__wrap__mdebug1, formatted_msg, "Running script with args: integrations /tmp/virustotal-1111-2222.alert 123456    > /dev/null 2>&1");
 
     will_return(__wrap_wpopenv, wfd);
 
@@ -162,8 +150,6 @@ void test_OS_IntegratorD(void **state) {
 
     expect_string(__wrap_unlink, file, virustotal_file);
     will_return(__wrap_unlink, 0);
-    expect_string(__wrap_unlink, file, vt_options);
-    will_return(__wrap_unlink, 0);
 
     will_return(__wrap_time, 1111);
     will_return(__wrap_os_random, 2222);
@@ -177,9 +163,6 @@ void test_OS_IntegratorD(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/pagerduty-1111-2222.alert was written.");
 
     expect_fclose((FILE *)1, 0);
-
-    will_return(__wrap_time, 1111);
-    will_return(__wrap_os_random, 2222);
 
     expect_string(__wrap_fopen, path, pd_options);
     expect_string(__wrap_fopen, mode, "w");

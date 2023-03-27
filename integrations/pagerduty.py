@@ -28,6 +28,7 @@ except Exception as e:
 #   <name>pagerduty</name>
 #   <api_key>API_KEY</api_key> <!-- Replace with your PagerDuty API key -->
 #   <options>JSON</options> <!-- Replace with your custom JSON object -->
+#   <alert_format>json</alert_format> <!-- With the new script this is mandatory -->
 # </integration>
 
 # Global vars
