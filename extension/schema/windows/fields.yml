@@ -84,3 +84,4 @@ winlog.task:
             logged. The category used by the Event Logging API (on pre Windows Vista
             operating systems) is written to this field.
   type: keyword
+  
