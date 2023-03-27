@@ -37,6 +37,8 @@ struct Options
     std::string path;
     bool recursive;
     bool abortOnError;
+    std::string policy;
+    std::string integration;
 };
 
 eCatalog::ResourceFormat toResourceFormat(const std::string& format)
@@ -55,7 +57,7 @@ eCatalog::ResourceFormat toResourceFormat(const std::string& format)
 /**
  * @brief Convert a string to a ResourceType.
  *
- * decoder, rule, filter, output, environment, schema, collection
+ * decoder, rule, filter, output, policy, schema, collection
  * @param type
  * @return eCatalog::ResourceType
  */
@@ -77,13 +79,17 @@ eCatalog::ResourceType toResourceType(const std::string& type)
     {
         return eCatalog::ResourceType::output;
     }
-    else if (type == "environment")
+    else if (type == "policy")
     {
-        return eCatalog::ResourceType::environment;
+        return eCatalog::ResourceType::policy;
     }
     else if (type == "schema")
     {
         return eCatalog::ResourceType::schema;
+    }
+    else if (type == "integration")
+    {
+        return eCatalog::ResourceType::integration;
     }
     // else if (type == "collection")
     //{
@@ -108,7 +114,6 @@ void readCinIfEmpty(std::string& content)
 }
 
 } // namespace
-
 
 void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& format, const std::string& nameStr)
 {
@@ -270,14 +275,14 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
             // If error ignore entry and continue
             if (ec)
             {
-            const auto msg = std::string {"Failed to read entry "} + dirEntry.path().string() + ": " + ec.message();
-            ec.clear();
-            if (abortOnError)
-            {
-                throw ClientException(msg, ClientException::Type::PATH_ERROR);
-            }
-            std::cerr << msg << std::endl;
-            return;
+                const auto msg = std::string {"Failed to read entry "} + dirEntry.path().string() + ": " + ec.message();
+                ec.clear();
+                if (abortOnError)
+                {
+                    throw ClientException(msg, ClientException::Type::PATH_ERROR);
+                }
+                std::cerr << msg << std::endl;
+                return;
             }
 
             // Read file content
@@ -293,7 +298,7 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
                 ec.clear();
                 if (abortOnError)
                 {
-                throw ClientException(msg, ClientException::Type::PATH_ERROR);
+                    throw ClientException(msg, ClientException::Type::PATH_ERROR);
                 }
                 std::cerr << msg << std::endl;
                 return;
@@ -307,7 +312,8 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
 
             try
             {
-                const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+                const auto request =
+                    utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
                 const auto response = client->send(request);
                 utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
             }
@@ -315,19 +321,20 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
             {
                 switch (e.getErrorType())
                 {
-                case ClientException::Type::SOCKET_COMMUNICATION_ERROR:
-                    // Fatal error, stop iterating, rethrow
-                    throw;
-                default:
-                    // Non fatal error, continue iterating
-                    const auto msg = std::string {"Failed to read entry "} + dirEntry.path().string() + ": " + e.what();
-                    ec.clear();
-                    if (abortOnError)
-                    {
-                        throw ClientException(msg, ClientException::Type::PATH_ERROR);
-                    }
-                    std::cerr << msg << std::endl;
-                    break;
+                    case ClientException::Type::SOCKET_COMMUNICATION_ERROR:
+                        // Fatal error, stop iterating, rethrow
+                        throw;
+                    default:
+                        // Non fatal error, continue iterating
+                        const auto msg =
+                            std::string {"Failed to read entry "} + dirEntry.path().string() + ": " + e.what();
+                        ec.clear();
+                        if (abortOnError)
+                        {
+                            throw ClientException(msg, ClientException::Type::PATH_ERROR);
+                        }
+                        std::cerr << msg << std::endl;
+                        break;
                 }
                 return;
             }
@@ -453,7 +460,7 @@ void configure(CLI::App_p app)
                      nameDesc
                          + "type of the items collection: item-type. The supported item "
                            "types are: \"decoder\", \"rule\", \"filter\", \"output\", "
-                           "\"schema\" and \"environment\".")
+                           "\"schema\" and \"policy\".")
         ->required();
     load_subcommand->add_option("path", options->path, "Sets the path to the directory containing the item files.")
         ->required()

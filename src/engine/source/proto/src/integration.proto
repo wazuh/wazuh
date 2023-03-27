@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package com.wazuh.api.engine.integration;
+
+/*
+ * This API is used to manage the integration of the Wazuh manager
+ */
+
+/***************************************************
+ * Add an integration to a policy in the catalog
+ *
+ * command: integration.policy/add_to (<policy>/<integration>)
+ **************************************************/
+message PolicyAddIntegration_Request
+{
+    optional string policy = 1;      // Name of the policy
+    optional string integration = 2; // Name of the integration
+}
+
+// message PolicyAddIntegration_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Add an integration to a policy in the catalog
+ *
+ * command: integration.policy/remove_from (<policy>/<integration>)
+ **************************************************/
+message PolicyDelIntegration_Request
+{
+    optional string policy = 1;      // Name of the policy
+    optional string integration = 2; // Name of the integration
+}
+
+// message PolicyDelIntegration_Response -> Return a GenericStatus_Response

@@ -12,11 +12,11 @@ namespace router
 {
 
 /**
- * @brief Runtime environment represent an environment in memory, ready to be builed and
+ * @brief Runtime policy represent an policy in memory, ready to be builed and
  * run
  * @note This class is not thread safe
  */
-class RuntimeEnvironment
+class RuntimePolicy
 {
 private:
     std::string m_asset;
@@ -24,30 +24,30 @@ private:
 
 public:
     /**
-     * @brief Construct a new Runtime Environment object
+     * @brief Construct a new Runtime Policy object
      *
-     * @param asset Asset of the environment
+     * @param asset Asset of the policy
      */
-    RuntimeEnvironment(std::string asset)
+    RuntimePolicy(std::string asset)
         : m_asset {asset}
         , m_controller {}
     {
     }
 
-    ~RuntimeEnvironment() = default;
+    ~RuntimePolicy() = default;
 
     /**
-     * @brief Build the environment and instantiate the controller.
+     * @brief Build the policy and instantiate the controller.
      *
-     * @param builder Builder to be used for environment creation
+     * @param builder Builder to be used for policy creation
      * @return Error message if creation fails
      *
-     * @note: This function is not thread safe. Only one environment can be built at a time.
+     * @note: This function is not thread safe. Only one policy can be built at a time.
      */
     std::optional<base::Error> build(std::shared_ptr<builder::Builder> builder);
 
     /**
-     * @brief Inyect an event into the environment
+     * @brief Inyect an event into the policy
      *
      * @param event Event to be inyect
      * @return std::optional<base::Error>

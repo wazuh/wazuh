@@ -56,9 +56,10 @@ public:
             case Type::rule: return "rule";
             case Type::filter: return "filter";
             case Type::output: return "output";
-            case Type::environment: return "environment";
+            case Type::policy: return "policy";
             case Type::schema: return "schema";
             case Type::collection: return "collection";
+            case Type::integration: return "integration";
             default: return "unknown";
         }
     }
@@ -69,35 +70,39 @@ public:
      * @param type String representation of the type
      * @return Type
      */
-    constexpr static auto strToType(const char* type)
+    constexpr static auto strToType(std::string_view type)
     {
-        if (std::strcmp(type, typeToStr(Type::decoder)) == 0)
+        if (type == typeToStr(Type::decoder))
         {
             return Type::decoder;
         }
-        else if (std::strcmp(type, typeToStr(Type::rule)) == 0)
+        else if (type == typeToStr(Type::rule))
         {
             return Type::rule;
         }
-        else if (std::strcmp(type, typeToStr(Type::filter)) == 0)
+        else if (type == typeToStr(Type::filter))
         {
             return Type::filter;
         }
-        else if (std::strcmp(type, typeToStr(Type::output)) == 0)
+        else if (type == typeToStr(Type::output))
         {
             return Type::output;
         }
-        else if (std::strcmp(type, typeToStr(Type::environment)) == 0)
+        else if (type == typeToStr(Type::policy))
         {
-            return Type::environment;
+            return Type::policy;
         }
-        else if (std::strcmp(type, typeToStr(Type::schema)) == 0)
+        else if (type == typeToStr(Type::schema))
         {
             return Type::schema;
         }
-        else if (std::strcmp(type, typeToStr(Type::collection)) == 0)
+        else if (type == typeToStr(Type::collection))
         {
             return Type::collection;
+        }
+        else if (type == typeToStr(Type::integration))
+        {
+            return Type::integration;
         }
         return Type::UNKNOWN; // For unknown types (errors)
     }
@@ -131,8 +136,7 @@ public:
             // Assert name of the collection is a valid type
             if (Type::UNKNOWN == strToType(name.parts()[0].c_str()))
             {
-                throw std::runtime_error(
-                    fmt::format("Invalid collection type \"{}\"", name.parts()[0]));
+                throw std::runtime_error(fmt::format("Invalid collection type \"{}\"", name.parts()[0]));
             }
 
             // Collections don't need validation
@@ -147,18 +151,16 @@ public:
 
             if (Type::UNKNOWN == m_type)
             {
-                throw std::runtime_error(
-                    fmt::format("Invalid type \"{}\"", name.parts()[0]));
+                throw std::runtime_error(fmt::format("Invalid type \"{}\"", name.parts()[0]));
             }
             else if (Type::collection == m_type)
             {
-                throw std::runtime_error(
-                    fmt::format("Invalid collection type \"{}\"", name.parts()[0]));
+                throw std::runtime_error(fmt::format("Invalid collection type \"{}\"", name.parts()[0]));
             }
 
-            // Assets and Environments needs validation
-            if (Type::environment == m_type || Type::decoder == m_type || Type::rule == m_type
-                || Type::filter == m_type || Type::output == m_type)
+            // Assets, Policy, and Integration needs validation
+            if (Type::policy == m_type || Type::decoder == m_type || Type::rule == m_type || Type::filter == m_type
+                || Type::output == m_type || Type::integration == m_type)
             {
                 m_validation = true;
             }
@@ -169,9 +171,8 @@ public:
         }
         else
         {
-            throw std::runtime_error(fmt::format(
-                "Invalid name \"{}\" received, a name with 1, 2 or 3 parts was expected",
-                name.fullName()));
+            throw std::runtime_error(
+                fmt::format("Invalid name \"{}\" received, a name with 1, 2 or 3 parts was expected", name.fullName()));
         }
     }
 };

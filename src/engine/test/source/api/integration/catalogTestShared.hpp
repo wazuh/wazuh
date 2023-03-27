@@ -6,6 +6,7 @@
 #include <fmt/format.h>
 
 #include <api/catalog/catalog.hpp>
+#include <api/integration/integration.hpp>
 
 const base::Name successName({"decoder", "name", "ok"});
 const base::Name failName {{"decoder", "name", "fail"}};
@@ -45,6 +46,46 @@ const api::catalog::Resource successCollectionAssetYml {
     base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder)}),
     api::catalog::Resource::Format::yaml};
 
+const api::catalog::Resource policyNoIntegrations {
+    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::policy),
+                "no_integrations",
+                successName.parts()[2]}),
+    api::catalog::Resource::Format::json};
+
+const json::Json policyNoIntegrationsJson(R"({
+    "name": "policy/no_integrations/ok"
+})");
+
+const api::catalog::Resource policyResource {
+    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::policy),
+                successName.parts()[1],
+                successName.parts()[2]}),
+    api::catalog::Resource::Format::json};
+
+const json::Json policyJson(R"({
+    "name": "policy/name/ok",
+    "integrations": []
+})");
+
+const api::catalog::Resource policyDuplicated {
+    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::policy),
+                "duplicated",
+                successName.parts()[2]}),
+    api::catalog::Resource::Format::json};
+
+const api::catalog::Resource integrationResource {
+    base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::integration),
+                successName.parts()[1],
+                successName.parts()[2]}),
+    api::catalog::Resource::Format::json};
+
+const json::Json policyDuplicatedJson(R"({
+    "name": "policy/duplicated/ok",
+    "integrations": [
+        "integration/name/ok"
+    ]
+})");
+
 class FakeStore : public store::IStore
 {
 public:
@@ -54,6 +95,25 @@ public:
 
     std::variant<json::Json, base::Error> get(const base::Name& name) const override
     {
+        if (name == policyResource.m_name)
+        {
+            return policyJson;
+        }
+        if (name == policyDuplicated.m_name)
+        {
+            return policyDuplicatedJson;
+        }
+        if (name == policyNoIntegrations.m_name)
+        {
+            return policyNoIntegrationsJson;
+        }
+        if (name == integrationResource.m_name)
+        {
+            return json::Json(R"({
+                "name": "integration/name/ok"
+            })");
+        }
+
         if (name.parts()[2] == successName.parts()[2])
         {
             return successJson;
@@ -159,6 +219,13 @@ inline api::catalog::Config getConfig(bool schemaOk = true)
     }
 
     return config;
+}
+
+inline api::integration::Integration getIntegration()
+{
+    auto config = getConfig();
+    auto catalog = std::make_shared<api::catalog::Catalog>(config);
+    return api::integration::Integration(catalog);
 }
 
 #endif // _CATALOG_TEST_SHARED_HPP

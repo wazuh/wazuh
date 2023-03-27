@@ -34,10 +34,10 @@ constexpr auto JSON_PATH_EVENT = "/event"; ///< Json path for the event for enqu
  * @brief Router class to manage routes and events
  *
  * The router is the main class of the router module. It manages the routes and has the logic to route the events to the
- * correct environment. Also it has the thread pool to process the events, and the environment manager to manage the
- * runtime environments (creation, destruction, and interaction).
- * Get the events from the queue, select the correct environment (with the route priority and conditions), and send the
- * event to the environment.
+ * correct policy. Also it has the thread pool to process the events, and the policy manager to manage the
+ * runtime policys (creation, destruction, and interaction).
+ * Get the events from the queue, select the correct policy (with the route priority and conditions), and send the
+ * event to the policy.
  */
 class Router
 {
@@ -60,7 +60,7 @@ private:
     std::vector<std::thread> m_threads; ///< Vector of threads for the router
 
     /* Resources */
-    std::shared_ptr<EnvironmentManager> m_environmentManager; ///< Environment manager
+    std::shared_ptr<PolicyManager> m_policyManager; ///< Policy manager
     std::shared_ptr<builder::Builder> m_builder;              ///< Builder
     std::shared_ptr<concurrentQueue> m_queue;                 ///< Queue to get events
     std::shared_ptr<store::IStore> m_store;                   ///< Store to get/save routes table
@@ -93,7 +93,7 @@ public:
     /**
      * @brief Construct a new Router with the given builder, store and number of threads for the pool
      *
-     * @param builder Builder to create the environments
+     * @param builder Builder to create the policys
      * @param store Store to get/save the routes table
      * @param threads Number of threads for the pool
      */
