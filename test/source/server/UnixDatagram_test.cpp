@@ -1,12 +1,15 @@
-#include <thread>
-#include <chrono>
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 
 #include <gtest/gtest.h>
+#include <logging/logging.hpp>
 #include <uvw.hpp>
 
 #include <server/unixDatagram.hpp>
@@ -19,10 +22,7 @@ protected:
     std::shared_ptr<uvw::Loop> loop;
     std::string socketPath = "/tmp/unix_datagram_test.sock";
 
-    void SetUp() override
-    {
-        loop = uvw::Loop::create();
-    }
+    void SetUp() override { loop = uvw::Loop::create(); }
 
     void TearDown() override
     {
@@ -42,7 +42,8 @@ protected:
         return sockfd;
     }
 
-    int getSendBufSize(int fd) {
+    int getSendBufSize(int fd)
+    {
         int size = 0;
         socklen_t len = sizeof(size);
         if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &len) == -1)
@@ -53,7 +54,17 @@ protected:
         return size;
     }
 
-    void sendUnixDatagram(int fd, const std::string& message) {
+    void setSendBufSize(int fd, int size)
+    {
+        if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) == -1)
+        {
+            perror("setsockopt");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    void sendUnixDatagram(int fd, const std::string& message)
+    {
         struct sockaddr_un addr;
 
         memset(&addr, 0, sizeof(struct sockaddr_un));
@@ -73,8 +84,6 @@ protected:
         sendUnixDatagram(sockfd, message);
         close(sockfd);
     }
-
-
 };
 
 TEST_F(UnixDatagramTest, BindAndClose)
@@ -125,7 +134,7 @@ TEST_F(UnixDatagramTest, PauseResumeReceiveData)
     std::string message = "Hello, Unix Datagram!";
     sendUnixDatagram(socketPath, message);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     // Run the loop once, data should not be received yet
     loop->run<uvw::Loop::Mode::ONCE>();
@@ -133,7 +142,7 @@ TEST_F(UnixDatagramTest, PauseResumeReceiveData)
 
     // Resume the endpoint and wait for some time
     endpoint.resume();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     // Run the loop once, data should be received now
     loop->run<uvw::Loop::Mode::ONCE>();
@@ -142,58 +151,150 @@ TEST_F(UnixDatagramTest, PauseResumeReceiveData)
     endpoint.close();
 }
 
-TEST_F(UnixDatagramTest, BufferOverflowTest)
+TEST_F(UnixDatagramTest, QueueWorkerSizeTestAndOverflow)
 {
-    std::atomic<int> processedMessages(0);
-    UnixDatagram endpoint(socketPath, [&](std::string&& data) { processedMessages++;});
-    endpoint.bind(loop);
-    endpoint.pause();
 
-    const int RecvBufferSize = endpoint.getReciveBufferSize();
-    const int messageSize = 128;
-    const int numMessages = (RecvBufferSize / messageSize) * 2;
+    // Variables to block all the queue workers
+    std::atomic<bool> enableBlockQueueWorkers = true;
+    std::condition_variable BlockWokersCV;
+    std::mutex BlockWokersMutex;
 
-    std::atomic<bool> senderWaiting(false);
-    std::thread senderThread(
-        [this, messageSize, numMessages, &senderWaiting]()
+    // Queue of workers
+    constexpr std::size_t queueWorkerSize = 16;
+    const std::size_t numOfWorkers = 4;
+
+    // Calculate the number of messages to send to block the queue workers
+    const std::size_t numMessagesToSend =
+        numOfWorkers + queueWorkerSize; // 4 messages to block the 4 workers and the queue size to full the queue
+    std::atomic<std::size_t> sendedMessages = 0;   // Number of messages sended
+    std::atomic<std::size_t> processedMessages(0); // Number of messages processed
+    std::atomic<bool> isClientBlocked = false;     // Flag to indicate that the client is blocked
+
+    // Prepare the endpoint
+    UnixDatagram endpoint(socketPath,
+                          [&](std::string&& data)
+                          {
+                              if (enableBlockQueueWorkers)
+                              {
+
+                                  std::ostringstream ss;
+                                  ss << std::this_thread::get_id();
+                                  std::string idstr = ss.str();
+
+                                  WAZUH_LOG_INFO("Block the worker id: {}", idstr);
+                                  // Block the worker
+                                  std::unique_lock<std::mutex> lock(BlockWokersMutex);
+                                  BlockWokersCV.wait(lock);
+                                  WAZUH_LOG_INFO("Unblock the worker id: {}", idstr);
+                              }
+                              processedMessages++;
+                              WAZUH_LOG_INFO(
+                                  "Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
+                          });
+
+    ASSERT_NO_THROW(endpoint.bind(loop, queueWorkerSize));
+    ASSERT_TRUE(endpoint.isBound());
+    ASSERT_TRUE(endpoint.resume());
+
+    // Prepare the loop stop handler
+    auto stopHandler = loop->resource<uvw::AsyncHandle>();
+    stopHandler->on<uvw::AsyncEvent>(
+        [&](const uvw::AsyncEvent&, uvw::AsyncHandle& handle)
         {
-            int socketFD = getSendFD(socketPath);
-            const int sendBufferSize = getSendBufSize(socketFD);
-            for (int i = 0; i < numMessages; ++i)
-            {
-                std::string message(messageSize, 'A');
-                senderWaiting = true;
-                sendUnixDatagram(socketFD, message);
-                senderWaiting = false;
-            }
-            close(socketFD);
+            WAZUH_LOG_INFO("Stopping the loop");
+            handle.close();
+            loop->walk([](auto& handle) { handle.close(); });
+            loop->stop();
+            loop->run<uvw::Loop::Mode::ONCE>();
+        });
+    // Prepare the loop thread
+    std::thread loopThread(
+        [&]()
+        {
+            loop->run<uvw::Loop::Mode::DEFAULT>();
+            WAZUH_LOG_INFO("Loop thread finished");
         });
 
-    // Attempt to receive data until the buffer is full
-    const int maxAttempts = 500;
-    int attempts = 0;
+    // Prepare the sender thread
+    const auto clientFD = getSendFD(socketPath);
 
+    // Set the send buffer size to the same as the receive buffer size
+    const auto recvBufferSize = endpoint.getReciveBufferSize();
+    setSendBufSize(clientFD, recvBufferSize);
 
-    // Sleep until the sender thread is waiting
-    do
+    std::thread senderThread(
+        [clientFD, this, &sendedMessages, recvBufferSize, &isClientBlocked]()
+        {
+            for (std::size_t i = 0; i < numMessagesToSend; ++i)
+            {
+                std::string message = "Message " + std::to_string(i);
+                WAZUH_LOG_INFO("Sending message [{}]: {}", sendedMessages, message.substr(0, 100).c_str());
+                sendUnixDatagram(clientFD, message);
+                sendedMessages++;
+            }
+            // The queue is full, now fill the send buffer and resv buffer
+            WAZUH_LOG_INFO("Queue is full");
+            // Message to fill the recv buffer
+            const auto fullRecvBufferMessage = std::string(recvBufferSize, 'B');
+            sendUnixDatagram(clientFD, fullRecvBufferMessage);
+            sendedMessages++;
+            WAZUH_LOG_INFO("Recv buffer is full");
+            // Message to fill the send buffer
+            const auto fullBufferMessage = std::string(recvBufferSize, 'A');
+            sendUnixDatagram(clientFD, fullBufferMessage);
+            sendedMessages++;
+            WAZUH_LOG_INFO("Send buffer is full");
+
+            // Send a new message to block de client
+            const auto blockMessage = std::string {"Blocked message"};
+            WAZUH_LOG_INFO("Blocking client");
+            isClientBlocked = true;
+            sendUnixDatagram(clientFD, blockMessage);
+            sendedMessages++;
+            WAZUH_LOG_INFO("Client is unblocked");
+            isClientBlocked = false;
+            // Wait 10 to not close the socket before the client is blocked
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        });
+
+    // Wait for the sender thread to send all the messages
+    const std::size_t maxAttempts = 500;
+    std::size_t attempts = 0;
+    while (sendedMessages < numMessagesToSend)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        ASSERT_LE(attempts++, maxAttempts) << "Sender thread is not waiting for the buffer to be empty";
-    } while (!senderWaiting && processedMessages > 0);
-
-    // Resume the endpoint and wait for some time
-    endpoint.resume();
-
-    attempts = 0;
-    while (processedMessages < numMessages)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        loop->run<uvw::Loop::Mode::ONCE>();
-        ASSERT_LE(attempts++, maxAttempts) << "Not all messages were processed";
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ASSERT_LE(attempts++, maxAttempts) << "Queue is not full";
     }
-    std::cout << "Attemps: " << attempts << std::endl;
 
-    // Wait for the sender thread to finish
+    // Wait for the client to be blocked
+    attempts = 0;
+    while (!isClientBlocked)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ASSERT_LE(attempts++, maxAttempts) << "Client is not blocked";
+    }
+    // Wait 10 milliseconds to be sure that the client is blocked and not only the send buffer is full
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    ASSERT_TRUE(isClientBlocked) << "Client is not blocked";
+
+    // Unblock the queue workers
+    enableBlockQueueWorkers = false;
+    BlockWokersCV.notify_all();
+
+    // Wait for the all the messages to be processed
+    attempts = 0;
+    // 3 messages to fill the send and recv buffers and the blocked message
+    while (processedMessages < sendedMessages)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ASSERT_LE(attempts++, maxAttempts)
+            << "Not all messages were processed: " << processedMessages << " of " << sendedMessages;
+    }
+
+    // Close client
+    close(clientFD);
+    // Close the loop
+    stopHandler->send();
     senderThread.join();
-
+    loopThread.join();
 }
