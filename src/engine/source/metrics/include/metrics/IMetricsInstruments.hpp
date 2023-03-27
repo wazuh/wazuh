@@ -16,6 +16,13 @@ public:
     virtual void addValue(const T &value) = 0;
 };
 
+template <typename T>
+class iHistogram
+{
+public:
+    virtual void recordValue(const T &value) = 0;
+};
+
 } // namespace instruments
 
 } // namespace metrics_manager

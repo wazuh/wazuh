@@ -26,6 +26,27 @@ namespace instruments
         opentelemetry::nostd::unique_ptr<T> m_counter;
     };
 
+    template <typename T, typename U>
+    class Histogram : public iHistogram<U>
+    {
+    public:
+        Histogram(opentelemetry::nostd::unique_ptr<T> ptr):
+        m_histogram{std::move(ptr)}
+        {}
+
+        void recordValue(const U& value) override
+        {
+            auto context = opentelemetry::context::Context{};
+            std::map<std::string, std::string> labels;
+            auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
+
+            m_histogram->Record(value, labelkv, context);
+        }
+
+    private:
+        opentelemetry::nostd::unique_ptr<T> m_histogram;
+    };
+
 } // namespace instruments
 
 } // namespace metrics_manager
