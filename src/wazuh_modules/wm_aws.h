@@ -72,7 +72,6 @@ typedef struct wm_aws_subscriber {
     char *aws_profile;                     // AWS credentials profile
     char *iam_role_arn;                    // IAM role
     char *iam_role_duration;               // IAM role session duration
-    char *regions;                         // CSV of regions to parse
     struct wm_aws_subscriber *next;        // Pointer to next
 } wm_aws_subscriber;
 

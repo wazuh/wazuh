@@ -297,7 +297,6 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->aws_profile) cJSON_AddStringToObject(subscriber,"aws_profile",iter->aws_profile);
             if (iter->iam_role_arn) cJSON_AddStringToObject(subscriber,"iam_role_arn",iter->iam_role_arn);
             if (iter->iam_role_duration) cJSON_AddStringToObject(subscriber, "iam_role_duration",iter->iam_role_duration);
-            if (iter->regions) cJSON_AddStringToObject(subscriber,"regions",iter->regions);
             cJSON_AddItemToArray(arr_subscribers,subscriber);
         }
         if (cJSON_GetArraySize(arr_subscribers) > 0) {
@@ -755,10 +754,6 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
     if (exec_subscriber->iam_role_duration){
         wm_strcat(&command, "--iam_role_duration", ' ');
         wm_strcat(&command, exec_subscriber->iam_role_duration, ' ');
-    }
-    if (exec_subscriber->regions) {
-        wm_strcat(&command, "--regions", ' ');
-        wm_strcat(&command, exec_subscriber->regions, ' ');
     }
 
     if (isDebug()) {
