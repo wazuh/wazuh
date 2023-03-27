@@ -18,6 +18,9 @@ namespace metrics_manager
 
 using OTSDKMeterProvider = opentelemetry::sdk::metrics::MeterProvider;
 
+namespace OTMetrics = opentelemetry::metrics;
+namespace OTstd = opentelemetry::nostd;
+
 class MetricsScope : public IMetricsScope
 {
 public:
@@ -26,23 +29,57 @@ public:
 
     json::Json getAllMetrics();
     
-    std::shared_ptr<instruments::iCounter<double>> getCounterDouble(const std::string& name) override;
-    std::shared_ptr<instruments::iCounter<uint64_t>> getCounterInteger(const std::string& name) override;
-    std::shared_ptr<instruments::iCounter<double>> getUpDownCounterDouble(const std::string& name) override;
-    std::shared_ptr<instruments::iCounter<int64_t>> getUpDownCounterInteger(const std::string& name) override;
-    std::shared_ptr<instruments::iHistogram<double>> getHistogramDouble(const std::string& name) override;
-    std::shared_ptr<instruments::iHistogram<uint64_t>> getHistogramInteger(const std::string& name) override;
+    std::shared_ptr<iCounter<double>>
+        getCounterDouble(const std::string& name) override;
+
+    std::shared_ptr<iCounter<uint64_t>>
+        getCounterInteger(const std::string& name) override;
+
+    std::shared_ptr<iCounter<double>>
+        getUpDownCounterDouble(const std::string& name) override;
+
+    std::shared_ptr<iCounter<int64_t>>
+        getUpDownCounterInteger(const std::string& name) override;
+
+    std::shared_ptr<iHistogram<double>> 
+        getHistogramDouble(const std::string& name) override;
+
+    std::shared_ptr<iHistogram<uint64_t>>
+        getHistogramInteger(const std::string& name) override;
 
 private:
     std::shared_ptr<DataHub> m_dataHub;
     std::shared_ptr<OTSDKMeterProvider> m_meterProvider;
 
-    InstrumentCollection<instruments::Counter<opentelemetry::metrics::Counter<double>, double>, opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<double>>> m_collection_counter_double;
-    InstrumentCollection<instruments::Counter<opentelemetry::metrics::Counter<uint64_t>, uint64_t>, opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Counter<uint64_t>>> m_collection_counter_integer;
-    InstrumentCollection<instruments::Counter<opentelemetry::metrics::UpDownCounter<double>, double>, opentelemetry::nostd::unique_ptr<opentelemetry::metrics::UpDownCounter<double>>> m_collection_updowncounter_double;
-    InstrumentCollection<instruments::Counter<opentelemetry::metrics::UpDownCounter<int64_t>, int64_t>, opentelemetry::nostd::unique_ptr<opentelemetry::metrics::UpDownCounter<int64_t>>> m_collection_updowncounter_integer;
-    InstrumentCollection<instruments::Histogram<opentelemetry::metrics::Histogram<double>, double>, opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Histogram<double>>> m_collection_histogram_double;
-    InstrumentCollection<instruments::Histogram<opentelemetry::metrics::Histogram<uint64_t>, uint64_t>, opentelemetry::nostd::unique_ptr<opentelemetry::metrics::Histogram<uint64_t>>> m_collection_histogram_integer;
+    InstrumentCollection<
+        Counter< OTMetrics::Counter<double>, double >, 
+        OTstd::unique_ptr< OTMetrics::Counter<double> >
+    > m_collection_counter_double;
+
+    InstrumentCollection<
+        Counter< OTMetrics::Counter<uint64_t>, uint64_t >,
+        OTstd::unique_ptr< OTMetrics::Counter<uint64_t> >
+    > m_collection_counter_integer;
+
+    InstrumentCollection<
+        Counter< OTMetrics::UpDownCounter<double>, double >,
+        OTstd::unique_ptr< OTMetrics::UpDownCounter<double> > 
+    > m_collection_updowncounter_double;
+
+    InstrumentCollection<
+        Counter< OTMetrics::UpDownCounter<int64_t>, int64_t >,
+        OTstd::unique_ptr< OTMetrics::UpDownCounter<int64_t> >
+    > m_collection_updowncounter_integer;
+
+    InstrumentCollection<
+        Histogram< OTMetrics::Histogram<double>, double >,
+        OTstd::unique_ptr< OTMetrics::Histogram<double> >
+    > m_collection_histogram_double;
+
+    InstrumentCollection<
+        Histogram< OTMetrics::Histogram<uint64_t>, uint64_t>,
+        OTstd::unique_ptr< OTMetrics::Histogram<uint64_t> >
+    > m_collection_histogram_integer;
 };
 
 } // namespace metrics_manager
