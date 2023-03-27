@@ -150,6 +150,7 @@ ifeq (${CHECK_ARCHLINUX},YES)
 endif
 else
 ifeq (${uname_S},AIX)
+		MAKE=gmake
 		DEFINES+=-DAIX -D__unix
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
@@ -784,13 +785,13 @@ win32/libgcc_s_sjlj-1.dll: $(wildcard /usr/lib/gcc/i686-w64-mingw32/*-posix/libg
 #### External ######
 ####################
 
-ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.a
+ZLIB_LIB    = $(EXTERNAL_ZLIB)libz.a
 OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.a
 CRYPTO_LIB 	= $(EXTERNAL_OPENSSL)libcrypto.a
-LIBPLIST_LIB = $(EXTERNAL_LIBPLIST)/bin/lib/libplist-2.0.a
+LIBPLIST_LIB = $(EXTERNAL_LIBPLIST)bin/lib/libplist-2.0.a
 SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
-PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
+PROCPS_LIB  = $(EXTERNAL_PROCPS)libproc.a
 DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-18.1.a
 LIBALPM_LIB  = $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
 LIBARCHIVE_LIB  = $(EXTERNAL_LIBARCHIVE).libs/libarchive.a
@@ -807,12 +808,14 @@ RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
-# Adding libcurl only on Windows, Linux and MacOS
+# Adding libcurl only on Windows, Linux, MacOS and AIX
 ifeq (${TARGET},winagent)
 	EXTERNAL_LIBS += $(LIBCURL_LIB)
 else ifeq (${uname_S},Linux)
 	EXTERNAL_LIBS += $(LIBCURL_LIB)
 else ifeq (${uname_S},Darwin)
+	EXTERNAL_LIBS += $(LIBCURL_LIB)
+else ifeq (${uname_S},AIX)
 	EXTERNAL_LIBS += $(LIBCURL_LIB)
 endif
 
@@ -884,6 +887,9 @@ else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
 else
+ifeq (${uname_S},AIX)
+	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure aix64-gcc && ./config && ${MAKE} build_libs
+else
 ifeq (${uname_S},SunOS)
 ifeq ($(uname_M),i86pc)
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-x86-gcc && ${MAKE} build_libs
@@ -892,6 +898,7 @@ else
 endif
 else
 	cd ${EXTERNAL_OPENSSL} && ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
+endif
 endif
 endif
 endif
@@ -916,6 +923,9 @@ ifeq (${TARGET},winagent)
 	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
 else
 	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure && ${MAKE} libz.a
+endif
+ifeq (${uname_S},AIX)
+	mv ${EXTERNAL_ZLIB}/compress.o ${EXTERNAL_ZLIB}/compress2.o
 endif
 
 ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
@@ -988,7 +998,11 @@ $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2 --without-libpsl --without-brotli
 else
+ifeq (${uname_S},AIX)
+    cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --disable-shared --without-libidn2
+else
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --without-libidn2
+endif
 endif
 endif
 endif
@@ -1630,10 +1644,15 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 endif
 else
 ifneq (,$(filter ${uname_S},AIX HP-UX))
+ifeq (${uname_S},AIX)
+EXT_LIBS := libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a libbz2.a libcurl.a
+else
+EXT_LIBS := libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a
+endif
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	mkdir -p libwazuhext;
 	find external/ -name \*.a -exec cp {} libwazuhext/ \;
-	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
+	-for lib in $(EXT_LIBS); do \
 		ar -x libwazuhext/$$lib; \
 		mv *.o libwazuhext/; \
 	done
