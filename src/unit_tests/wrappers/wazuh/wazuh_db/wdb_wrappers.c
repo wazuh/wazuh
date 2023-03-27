@@ -108,6 +108,7 @@ cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt) {
 }
 
 cJSON * __wrap_wdb_exec_stmt_sized(__attribute__((unused)) sqlite3_stmt *stmt,
+                                   __attribute__((unused)) wdb_t *wdb,
                                    size_t max_size,
                                    int* status,
                                    bool column_mode) {

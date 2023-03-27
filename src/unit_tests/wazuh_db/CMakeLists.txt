@@ -87,7 +87,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
 
 list(APPEND wdb_tests_names "test_wdb_global")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_int \
-                            -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,wdb_exec_stmt_sized -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_text \
+                            -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,wdb_exec_stmt_sized -Wl,--wrap,wdb_step -Wl,--wrap,wdb_step1 -Wl,--wrap,sqlite3_bind_text \
                             -Wl,--wrap,sqlite3_bind_parameter_index -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int \
                             -Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,wdb_get_global_group_hash -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_finalize_all_statements \
                             -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,w_get_timestamp -Wl,--wrap,wdb_exec_stmt_silent -Wl,--wrap,w_compress_gzfile \

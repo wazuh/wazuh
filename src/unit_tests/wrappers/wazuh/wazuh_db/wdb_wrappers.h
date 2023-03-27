@@ -49,7 +49,7 @@ int __wrap_wdb_syscheck_save2(wdb_t *wdb, const char *payload);
 
 cJSON * __wrap_wdb_exec_stmt(sqlite3_stmt *stmt);
 
-cJSON * __wrap_wdb_exec_stmt_sized(sqlite3_stmt *stmt, size_t max_size, int* status, bool column_mode);
+cJSON * __wrap_wdb_exec_stmt_sized(sqlite3_stmt *stmt, wdb_t *wdb, size_t max_size, int* status, bool column_mode);
 
 int __wrap_wdbc_parse_result(char *result, char **payload);
 
