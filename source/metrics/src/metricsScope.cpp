@@ -37,7 +37,7 @@ json::Json MetricsScope::getAllMetrics()
     return m_dataHub->getAllResources();
 }
 
-std::shared_ptr<instruments::iCounter<double>> MetricsScope::getCounterDouble(const std::string& name)
+std::shared_ptr<iCounter<double>> MetricsScope::getCounterDouble(const std::string& name)
 {
     auto retValue = m_collection_counter_double.getInstrument(
         name, [&]() {
@@ -49,7 +49,7 @@ std::shared_ptr<instruments::iCounter<double>> MetricsScope::getCounterDouble(co
     return retValue;
 }
 
-std::shared_ptr<instruments::iCounter<uint64_t>> MetricsScope::getCounterInteger(const std::string& name)
+std::shared_ptr<iCounter<uint64_t>> MetricsScope::getCounterInteger(const std::string& name)
 {
     auto retValue = m_collection_counter_integer.getInstrument(
         name, [&]() {
@@ -61,7 +61,7 @@ std::shared_ptr<instruments::iCounter<uint64_t>> MetricsScope::getCounterInteger
     return retValue;
 }
 
-std::shared_ptr<instruments::iCounter<double>> MetricsScope::getUpDownCounterDouble(const std::string& name)
+std::shared_ptr<iCounter<double>> MetricsScope::getUpDownCounterDouble(const std::string& name)
 {
     auto retValue = m_collection_updowncounter_double.getInstrument(
         name, [&]() {
@@ -73,7 +73,7 @@ std::shared_ptr<instruments::iCounter<double>> MetricsScope::getUpDownCounterDou
     return retValue;
 }
 
-std::shared_ptr<instruments::iCounter<int64_t>> MetricsScope::getUpDownCounterInteger(const std::string& name)
+std::shared_ptr<iCounter<int64_t>> MetricsScope::getUpDownCounterInteger(const std::string& name)
 {
     auto retValue = m_collection_updowncounter_integer.getInstrument(
         name, [&]() {
@@ -85,7 +85,7 @@ std::shared_ptr<instruments::iCounter<int64_t>> MetricsScope::getUpDownCounterIn
     return retValue;
 }
 
-std::shared_ptr<instruments::iHistogram<double>> MetricsScope::getHistogramDouble(const std::string& name)
+std::shared_ptr<iHistogram<double>> MetricsScope::getHistogramDouble(const std::string& name)
 {
     auto retValue = m_collection_histogram_double.getInstrument(
         name, [&]() {
@@ -97,7 +97,7 @@ std::shared_ptr<instruments::iHistogram<double>> MetricsScope::getHistogramDoubl
     return retValue;
 }
 
-std::shared_ptr<instruments::iHistogram<uint64_t>> MetricsScope::getHistogramInteger(const std::string& name)
+std::shared_ptr<iHistogram<uint64_t>> MetricsScope::getHistogramInteger(const std::string& name)
 {
     auto retValue = m_collection_histogram_integer.getInstrument(
         name, [&]() {
