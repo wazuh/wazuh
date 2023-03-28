@@ -109,7 +109,7 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config) {
             mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to obtain access token: '%s'", response->status_code);
         }
         else if (response->max_size_reached){
-            mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'");
+            mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
         }
         else{
             cJSON* response_body = NULL;
@@ -134,6 +134,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
     char startup_timestamp[OS_SIZE_32];
     char last_scan_timestamp[OS_SIZE_32];
     struct tm time_struct = { .tm_sec = 0 };
+    curl_response* response;
 
     for(int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
         
@@ -153,8 +154,35 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
             ms_graph->resources[resource_num],
             ms_graph->resources[resource_num].relationships[relationship_num],
             ms_graph->only_future_events ? startup_timestamp : last_scan_timestamp);
+            mtdebug1("Microsoft Graph API Log URL: '%s'", url);
 
-            wurl_http_get(url, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+            response = wurl_http_get(url, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+
+            if(response){
+                if(response->status_code != 200){
+                    mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to get relationship '%s' logs: '%s'",
+                    ms_graph->resources[resource_num].relationships[relationship_num],
+                    response->status_code);
+                }
+                else if (response->max_size_reached){
+                    mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to get relationship '%s' logs. Consider increasing the value of 'curl_max_size'.",
+                    ms_graph->resources[resource_num].relationships[relationship_num]);
+                }
+                else{
+                    cJSON* response_body = NULL;
+                    if(response_body = cJSON_Parse(response->body), !response_body){
+                        mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse relationship '%s' JSON body.", ms_graph->resources[resource_num].relationships[relationship_num]);
+                    }
+                    else{
+                        // TODO: Send logs to Wazuh manager
+                        cJSON_Delete(response_body);
+                        wurl_free_response(response);
+                    }
+                }
+            }
+            else{
+                mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
+            }
         }
     }
 }
