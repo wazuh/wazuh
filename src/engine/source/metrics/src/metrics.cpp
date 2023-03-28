@@ -616,17 +616,26 @@ void Metrics::setEnableInstrument(const std::string& instrumentName, bool state)
     throw std::runtime_error {"The Instrument " + instrumentName + " has not been created."};
 }
 
-std::ostringstream Metrics::getInstrumentsList()
+std::variant<std::string, base::Error> Metrics::getInstrumentsList()
 {
-    std::ostringstream outputList;
+    json::Json content;
+    content.setArray();
+
+    if (m_instrumentState.empty())
+    {
+        return base::Error {fmt::format("There is no instrument defined.")};
+    }
 
     for (auto& [key, val] : m_instrumentState)
     {
-        auto aux = key.second == true ? "enable" : "disable";
-        outputList << "\t" << key.first << ", " << aux << ", " << val << std::endl;
+        std::ostringstream output;
+        auto status = key.second == true ? "enable" : "disable";
+        output << "{\"name\":\"" << key.first << "\",\"status\":\"" << status << "\",\"type\":\"" << val << "\"}";
+        json::Json element(output.str().c_str());
+        content.appendJson(element);
     }
 
-    return outputList;
+    return content.prettyStr();
 }
 
 void Metrics::generateCounterToTesting()

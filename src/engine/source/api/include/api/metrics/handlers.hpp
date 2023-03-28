@@ -27,12 +27,12 @@ api::Handler metricsGetCmd();
 */
 api::Handler metricsEnableCmd();
 
-// /**
-//  * @brief List instruments.
-//  *
-//  * @return [api::CommandFn] Return the list of instruments.
-//  */
-// api::CommandFn metricsListCmd();
+/**
+ * @brief List instruments.
+ *
+ * @return [api::CommandFn] Return the list of instruments.
+ */
+api::Handler metricsList();
 
 /**
 * @brief Generate a test instrument.

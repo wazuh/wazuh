@@ -55,7 +55,7 @@ void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::str
  *
  * @param request The request.
  */
-//void runListInstruments(const std::string& socketPath);
+void runListInstruments(std::shared_ptr<apiclnt::Client> client);
 
 /**
  * @brief Run the command test.
