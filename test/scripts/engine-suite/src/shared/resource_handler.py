@@ -169,3 +169,6 @@ class ResourceHandler:
                 for entry in path.iterdir():
                     if entry.is_file():
                         function(entry)
+
+    def current_dir_name(self) -> str:
+        return str(Path.cwd().name)
