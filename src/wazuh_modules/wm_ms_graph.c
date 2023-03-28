@@ -99,10 +99,10 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config) {
     curl_response* response;
 
     memset(url, '\0', OS_SIZE_8192);
-    snprintf(url, OS_SIZE_8192 - 1, auth_config.tenant_id);
+    snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_URL, auth_config.tenant_id);
     mtdebug1("Microsoft Graph API Access Token URL: '%s'", url);
     memset(payload, '\0', OS_SIZE_8192);
-    snprintf(payload, OS_SIZE_8192 - 1, auth_config.client_id, auth_config.secret_value);
+    snprintf(payload, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, auth_config.client_id, auth_config.secret_value);
     response = wurl_http_request(WURL_POST_METHOD, "Content-Type: application/x-www-form-urlencoded", url, payload, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     if(response){
         if(response->status_code != 200){
