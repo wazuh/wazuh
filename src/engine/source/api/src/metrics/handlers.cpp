@@ -139,7 +139,7 @@ api::Handler metricsTestCmd()
         {
             return std::move(std::get<api::wpResponse>(res));
         }
-        
+
         Metrics::instance().generateCounterToTesting();
 
         ResponseType eResponse;
@@ -149,14 +149,40 @@ api::Handler metricsTestCmd()
     };
 }
 
-// api::Handler metricsListCmd()
-// {
-//     return [](api::wpRequest wRequest) -> api::wpResponse
-//     {
-//         auto result = Metrics::instance().getInstrumentsList();
-//         return api::WazuhResponse(result.str());
-//     };
-// }
+api::Handler metricsList()
+{
+    return [](api::wpRequest wRequest) -> api::wpResponse
+    {
+        using RequestType = eMetrics::List_Request;
+        using ResponseType = eMetrics::List_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        // Validate the params request
+        const auto& eRequest = std::get<RequestType>(res);
+        auto result = Metrics::instance().getInstrumentsList();
+        ResponseType eResponse;
+
+        if (std::holds_alternative<base::Error>(result))
+        {
+            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(result).message);
+        }
+
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+
+        const auto aux = std::get<std::string>(result);
+        const auto protoVal = eMessage::eMessageFromJson<google::protobuf::Value>(aux);
+        const auto json_value = std::get<google::protobuf::Value>(protoVal);
+        eResponse.mutable_value()->CopyFrom(json_value);
+
+        return ::api::adapter::toWazuhResponse(eResponse);
+    };
+}
 
 void registerHandlers(std::shared_ptr<api::Registry> registry)
 {
@@ -165,7 +191,7 @@ void registerHandlers(std::shared_ptr<api::Registry> registry)
         registry->registerHandler("metrics/dump", metricsDumpCmd());
         registry->registerHandler("metrics/get", metricsGetCmd());
         registry->registerHandler("metrics/enable", metricsEnableCmd());
-        // registry->registerCommand("list_metrics", metricsListCmd());
+        registry->registerHandler("metrics/list", metricsList());
         registry->registerHandler("metrics/test", metricsTestCmd());
     }
     catch (const std::exception& e)
