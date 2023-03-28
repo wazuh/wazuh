@@ -11,6 +11,7 @@
 #include <cmds/test.hpp>
 #include <cmds/apiExcept.hpp>
 #include <cmds/metrics.hpp>
+#include <cmds/integration.hpp>
 
 namespace
 {
@@ -45,6 +46,7 @@ int main(int argc, char* argv[])
     cmd::config::configure(app);
     cmd::router::configure(app);
     cmd::metrics::configure(app);
+    cmd::integration::configure(app);
 
     try
     {
