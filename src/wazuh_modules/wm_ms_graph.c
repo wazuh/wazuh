@@ -181,7 +181,10 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                 }
             }
             else{
-                mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
+                mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to get relationship '%s' from resource '%s' on API version '%s'.",
+                ms_graph->resources[resource_num].relationships[relationship_num],
+                ms_graph->resources[resource_num],
+                ms_graph->version);
             }
         }
     }
