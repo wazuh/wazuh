@@ -1,4 +1,4 @@
-#include "environment.hpp"
+#include "policy.hpp"
 
 #include "registry.hpp"
 namespace builder
@@ -29,7 +29,7 @@ Asset::Type getAssetType(const std::string& name)
     }
 }
 
-void Environment::buildGraph(const std::vector<std::shared_ptr<Asset>>& assets, const std::string& graphName)
+void Policy::buildGraph(const std::vector<std::shared_ptr<Asset>>& assets, const std::string& graphName)
 {
     auto graphPos = std::find_if(
         m_graphs.begin(), m_graphs.end(), [&graphName](const auto& graph) { return std::get<0>(graph) == graphName; });
@@ -52,7 +52,7 @@ void Environment::buildGraph(const std::vector<std::shared_ptr<Asset>>& assets, 
     }
 }
 
-void Environment::addFilters(const std::string& graphName)
+void Policy::addFilters(const std::string& graphName)
 {
     auto graphPos = std::find_if(
         m_graphs.begin(), m_graphs.end(), [&graphName](const auto& graph) { return std::get<0>(graph) == graphName; });
@@ -73,7 +73,7 @@ void Environment::addFilters(const std::string& graphName)
 }
 
 std::unordered_map<std::string, std::vector<std::shared_ptr<Asset>>>
-Environment::getManifestAssets(const json::Json& jsonDefinition,
+Policy::getManifestAssets(const json::Json& jsonDefinition,
                                std::shared_ptr<const store::IStoreRead> storeRead,
                                std::shared_ptr<internals::Registry> registry)
 {
@@ -142,22 +142,22 @@ Environment::getManifestAssets(const json::Json& jsonDefinition,
     return assets;
 }
 
-std::string Environment::name() const
+std::string Policy::name() const
 {
     return m_name;
 }
 
-std::unordered_map<std::string, std::shared_ptr<Asset>>& Environment::assets()
+std::unordered_map<std::string, std::shared_ptr<Asset>>& Policy::assets()
 {
     return m_assets;
 }
 
-const std::unordered_map<std::string, std::shared_ptr<Asset>>& Environment::assets() const
+const std::unordered_map<std::string, std::shared_ptr<Asset>>& Policy::assets() const
 {
     return m_assets;
 }
 
-std::string Environment::getGraphivzStr()
+std::string Policy::getGraphivzStr()
 {
     std::stringstream ss;
     ss << "digraph G {" << std::endl;
@@ -218,7 +218,7 @@ std::string Environment::getGraphivzStr()
     return ss.str();
 }
 
-base::Expression Environment::getExpression() const
+base::Expression Policy::getExpression() const
 {
     // Expression of the environment, expression to be returned.
     // All subgraphs are added to this expression.

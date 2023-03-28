@@ -13,7 +13,7 @@
 #include <utils/getExceptionStack.hpp>
 
 #include "asset.hpp"
-#include "environment.hpp"
+#include "policy.hpp"
 #include "registry.hpp"
 
 namespace builder
@@ -32,18 +32,18 @@ public:
     {
     }
 
-    Environment buildPolicy(const base::Name& name) const
+    Policy buildPolicy(const base::Name& name) const
     {
         auto envJson = m_storeRead->get(name);
         if (std::holds_alternative<base::Error>(envJson))
         {
-            throw std::runtime_error(fmt::format("Engine builder: Environment '{}' could not be obtained from the "
+            throw std::runtime_error(fmt::format("Engine builder: Policy '{}' could not be obtained from the "
                                                  "store: {}.",
                                                  name.fullName(),
                                                  std::get<base::Error>(envJson).message));
         }
 
-        Environment environment {std::get<json::Json>(envJson), m_storeRead, m_registry};
+        Policy environment {std::get<json::Json>(envJson), m_storeRead, m_registry};
 
         return environment;
     }
@@ -73,7 +73,7 @@ public:
     {
         try
         {
-            Environment env {json, m_storeRead, m_registry};
+            Policy env {json, m_storeRead, m_registry};
             env.getExpression();
         }
         catch (const std::exception& e)
@@ -88,7 +88,7 @@ public:
     {
         try
         {
-            Environment::getManifestAssets(json, m_storeRead, m_registry);
+            Policy::getManifestAssets(json, m_storeRead, m_registry);
         }
         catch (const std::exception& e)
         {

@@ -1,6 +1,6 @@
 add_library(router STATIC
-    src/runtimeEnvironment.cpp
-    src/environmentManager.cpp
+    src/runtimePolicy.cpp
+    src/policyManager.cpp
     src/router.cpp
     src/route.cpp
 )

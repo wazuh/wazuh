@@ -1,1 +1,1 @@
-[{"name":"allow_all_C3","priority":1,"filter":"filter/allow_all_C3/0","target":"policy/env_C3/0"},{"name":"allow_all_A1","priority":50,"filter":"filter/allow_all_A1/0","target":"policy/env_A1/0"},{"name":"allow_all_B2","priority":202,"filter":"filter/allow_all_B2/0","target":"policy/env_B2/0"}]
+[{"name":"allow_all","priority":1,"filter":"filter/allow_all/0","target":"policy/env_2/0"},{"name":"e_wazuh_queue","priority":2,"filter":"filter/e_wazuh_queue/0","target":"policy/env_1/0"}]

@@ -44,7 +44,7 @@ Asset::Type getAssetType(const std::string& name);
  * - All assests (decoders, rules, outputs, filters) of the environment stored in a map.
  * - Each asset subgraph (decoders, rules, outputs) stored in a map of graphs.
  */
-class Environment
+class Policy
 {
 private:
     std::string m_name;
@@ -121,18 +121,18 @@ private:
     }
 
 public:
-    Environment() = default;
+    Policy() = default;
 
     // TODO: Remove injected catalog dependencies ?
     /**
-     * @brief Construct a new Environment object
+     * @brief Construct a new Policy object
      *
      * @param jsonDefinition Json definition of the environment.
      * @param storeRead Store read interface.
      * @param registry Registry interface.
      * @throws std::runtime_error if the environment cannot be built.
      */
-    Environment(const json::Json& jsonDefinition,
+    Policy(const json::Json& jsonDefinition,
                 std::shared_ptr<const store::IStoreRead> storeRead,
                 std::shared_ptr<internals::Registry> registry)
 
@@ -141,7 +141,7 @@ public:
         auto nameOpt = jsonDefinition.getString("/name");
         if (!nameOpt)
         {
-            throw std::runtime_error("Environment name is not a string");
+            throw std::runtime_error("Policy name is not a string");
         }
         m_name = nameOpt.value();
 
@@ -198,7 +198,7 @@ public:
         // We need at least one graph to build the environment.
         if (assets.empty())
         {
-            throw std::runtime_error("Environment needs at least one asset (decoder, rule or output) to build a graph");
+            throw std::runtime_error("Policy needs at least one asset (decoder, rule or output) to build a graph");
         }
 
         if (assets.count(DECODERS) > 0)

@@ -110,10 +110,10 @@ add_executable(asset_test
 gtest_discover_tests(asset_test)
 
 # Environment test
-add_executable(environment_test
-  ${BUILDER_TEST_SOURCE_DIR}/environment_test.cpp
+add_executable(policy_test
+  ${BUILDER_TEST_SOURCE_DIR}/policy_test.cpp
 )
-gtest_discover_tests(environment_test)
+gtest_discover_tests(policy_test)
 
 add_executable(baseHelper_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/baseHelper_test.cpp
