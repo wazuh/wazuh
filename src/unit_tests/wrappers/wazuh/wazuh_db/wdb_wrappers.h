@@ -101,4 +101,6 @@ int __wrap_wdb_update_last_vacuum_data(__attribute__((unused))wdb_t* wdb, __attr
 
 int __wrap_wdb_get_db_free_pages_percentage(__attribute__((unused))wdb_t * wdb);
 
+int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, __attribute__((unused)) wdb_t *wdb, int peer);
+
 #endif

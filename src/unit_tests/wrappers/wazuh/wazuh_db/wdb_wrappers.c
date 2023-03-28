@@ -272,7 +272,7 @@ int __wrap_wdb_exec_stmt_silent(__attribute__((unused)) sqlite3_stmt* stmt) {
     return mock();
 }
 
-int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, int peer) {
+int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, __attribute__((unused)) wdb_t *wdb, int peer) {
     check_expected(peer);
     return mock();
 }
