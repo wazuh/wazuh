@@ -29,7 +29,7 @@ normalize:
     - log.opcode: info
 
     # Add categorization fields
-    - event:  +kvdb_get_merge/win_sysmon_categories/$event.code
+    - event:  +kvdb_get_merge/sysmon_categories/$event.code
 
     - rule.name: $~windows.Event.EventData.RuleName
     - event.Hashes: $~windows.Event.EventData.Hash
