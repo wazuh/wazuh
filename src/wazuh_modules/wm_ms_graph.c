@@ -25,6 +25,8 @@ void wm_ms_graph_cleanup();
 cJSON wm_ms_graph_dump(wm_ms_graph* ms_graph);
 
 int queue_fd; // Socket ID
+time_t startup_time;
+time_t last_scan;
 
 const wm_context WM_MS_GRAPH_CONTEXT = {
     .name = MS_GRAPH_WM_NAME,
@@ -41,6 +43,7 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
     char* timestamp = NULL;
 
     wm_ms_graph_setup(ms_graph);
+    startup_time = time(NULL);
     mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
 
     while(FOREVER()){
@@ -64,6 +67,7 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
         }
         mtinfo(WM_MS_GRAPH_LOGTAG, "Starting scan of tenant '%s'", ms_graph->auth_config.tenant_id);
         wm_ms_graph_scan_relationships(ms_graph);
+        last_scan = time(NULL);
 
     }
     return NULL;
@@ -126,7 +130,33 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config) {
 }
 
 void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
+    char url[OS_SIZE_8192];
+    char startup_timestamp[OS_SIZE_32];
+    char last_scan_timestamp[OS_SIZE_32];
+    struct tm time_struct = { .tm_sec = 0 };
 
+    for(int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
+        
+        for(int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
+
+            memset(startup_timestamp, '\0', OS_SIZE_32);
+            gmtime_r(&startup_time, &time_struct);
+            strftime(startup_timestamp, sizeof(startup_timestamp), "%Y-%m-%dT%H:%M:%SZ", &time_struct);
+
+            memset(last_scan_timestamp, '\0', OS_SIZE_32);
+            gmtime_r(&last_scan, &time_struct);
+            strftime(last_scan_timestamp, sizeof(last_scan_timestamp), "%Y-%m-%dT%H:%M:%SZ", &time_struct);
+
+            memset(url, '\0', OS_SIZE_8192);
+            snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
+            ms_graph->version,
+            ms_graph->resources[resource_num],
+            ms_graph->resources[resource_num].relationships[relationship_num],
+            ms_graph->only_future_events ? startup_timestamp : last_scan_timestamp);
+
+            wurl_http_get(url, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+        }
+    }
 }
 
 void wm_ms_graph_check() {
