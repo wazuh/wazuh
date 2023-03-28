@@ -16,7 +16,7 @@ void initLogging(void)
 {
     // Logging setup
     logging::LoggingConfig logConfig;
-    logConfig.logLevel = spdlog::level::off;
+    logConfig.logLevel = "off";
     logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
     logging::loggingInit(logConfig);
 }
