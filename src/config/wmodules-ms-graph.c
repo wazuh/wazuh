@@ -174,7 +174,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					if(sizeof(children[j]->content) > 0){
 						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources++].name);
 						// Check if power of 2
-						if (ms_graph->num_resources != 0 && !(ms_graph->num_resources & (ms_graph->num_resources - 1))) {
+						if (ms_graph->num_resources > 1 && !(ms_graph->num_resources & (ms_graph->num_resources - 1))) {
 							os_realloc(ms_graph->resources, ms_graph->num_resources * 2, ms_graph->resources);
 						}
 					}
@@ -187,7 +187,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					if(sizeof(children[j]->content) > 0){
 						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources - 1].relationships[ms_graph->resources->num_relationships++]);
 						// Check if power of 2
-						if (ms_graph->resources->num_relationships != 0 && !(ms_graph->resources->num_relationships & (ms_graph->resources->num_relationships - 1))) {
+						if (ms_graph->resources->num_relationships > 1 && !(ms_graph->resources->num_relationships & (ms_graph->resources->num_relationships - 1))) {
 							os_realloc(ms_graph->resources->relationships, ms_graph->resources->num_relationships * 2, ms_graph->resources->relationships);
 						}
 					}
