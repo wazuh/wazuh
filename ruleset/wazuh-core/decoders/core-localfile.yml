@@ -25,13 +25,13 @@ normalize:
   ### Wodles ###
   # Command
   - check:
-      - wazuh.origin: +s_starts/command_
+      - wazuh.origin: +starts_with/command_
     map:
       - wazuh.source: wodle
       - event.module: $wazuh.origin
   # Aws
   - check:
-      - wazuh.origin: +s_starts/aws
+      - wazuh.origin: +starts_with/aws
     map:
       - wazuh.source: wodle
       - event.module: $wazuh.origin
@@ -39,24 +39,24 @@ normalize:
 
   ### Logcollector ###
   - check:
-      - wazuh.source: +ef_not_exists
+      - wazuh.source: +not_exists
     map:
       - wazuh.source: logcollector
   - check:
       - wazuh.source: logcollector
-      - wazuh.message: +s_starts/{
+      - wazuh.message: +starts_with/{
     logpar:
       - wazuh.message: <~json/json>
     map:
-      - event.original: +ef_rename/$~json.event.original
-      - event.module: +ef_rename/$~json.event.module
-      - event.dataset: +ef_rename/$~json.event.dataset
+      - event.original: +rename/$~json.event.original
+      - event.module: +rename/$~json.event.module
+      - event.dataset: +rename/$~json.event.dataset
 
   ### Applied to all ###
   - check:
-      - event.original: +ef_not_exists
+      - event.original: +not_exists
     map:
       - event.original: $wazuh.message
 
   - map:
-      - wazuh.decoders: +a_append/internal-localfile
+      - wazuh.decoders: +array_append/internal-localfile
