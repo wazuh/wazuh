@@ -3899,8 +3899,7 @@ def main(argv):
                                        )
                 service.get_alerts()
         elif options.subscriber:
-            asl_queue = AWSSQSQueue(access_key=options.access_key, secret_key=options.secret_key,
-                                    aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
+            asl_queue = AWSSQSQueue(aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
                                     name=options.queue)
             asl_queue.sync_events()
 
