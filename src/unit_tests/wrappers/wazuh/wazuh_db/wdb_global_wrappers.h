@@ -98,6 +98,6 @@ int __wrap_wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_
 
 int __wrap_wdb_remove_group_db(const char *name, int *sock);
 
-cJSON* __wrap_wdb_global_get_distinct_agent_multi_groups(   __attribute__((unused)) wdb_t *wdb, char *group_hash, wdbc_result* status);
+cJSON* __wrap_wdb_global_get_distinct_agent_multi_groups(   __attribute__((unused)) wdb_t *wdb, char *group_name, wdbc_result* status);
 
 #endif

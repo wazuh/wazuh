@@ -2906,7 +2906,7 @@ void test_process_multi_groups_no_groups(void **state)
 
 void test_process_multi_groups_single_group(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1\",\"group_hash\":\"ec282560\"}]");
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1\"}]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
@@ -2918,7 +2918,7 @@ void test_process_multi_groups_single_group(void **state)
 
 void test_process_multi_groups_OSHash_Add_fail(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
@@ -2940,7 +2940,7 @@ void test_process_multi_groups_OSHash_Add_fail(void **state)
 
 void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_first(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[],[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[],[{\"group\":\"group1,group2\"}]]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
@@ -2962,7 +2962,7 @@ void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_first(void **st
 
 void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_second(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}],[]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}],[]]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
@@ -2984,7 +2984,7 @@ void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_second(void **s
 
 void test_process_multi_groups_OSHash_Add_fail_multi_chunk(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}], [{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}], [{\"group\":\"group3,group4\"}]]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
@@ -3016,7 +3016,7 @@ void test_process_multi_groups_OSHash_Add_fail_multi_chunk(void **state)
 
 void test_process_multi_groups_open_fail(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
@@ -3057,7 +3057,7 @@ void test_process_multi_groups_open_fail(void **state)
 
 void test_process_multi_groups_find_multi_group_null(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
@@ -3123,7 +3123,7 @@ void test_process_multi_groups_group_changed(void **state)
 
     state[0] = multigroup->f_time;
 
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
@@ -3194,7 +3194,7 @@ void test_process_multi_groups_changed_outside(void **state)
 
     state[0] = multigroup->f_time;
 
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
@@ -3278,7 +3278,7 @@ void test_process_multi_groups_changed_outside_nocmerged(void **state)
 
     state[0] = multigroup->f_time;
 
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
     will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
