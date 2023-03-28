@@ -15,8 +15,8 @@ metadata:
         url: https://wazuh.com
         date: 2023/03/22
     references:
-      # TODO
-        - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
+        - https://documentation.wazuh.com/current/user-manual/agents/remote-upgrading/upgrading-agent.html#upgrading-agent
+        - https://documentation.wazuh.com/current/user-manual/agents/remote-upgrading/agent-upgrade-module.html
 
 sources:
   - decoder/queue-upgrade/0
@@ -24,6 +24,12 @@ sources:
 check:
   - event.original: +s_starts/{
   - agent.id: +ef_exists
+
+# Examples:
+# https://github.com/wazuh/wazuh/issues/5406
+# {"origin":{"module":"api"},"command":"upgrade","parameters":{"agents":[5,6],"wpk_repo":"packages.wazuh.com/4.x/wpk/","version":"v4.0.0","use_http":false,"force_upgrade":false}}
+# {"origin":{"module":"api"},"command":"upgrade_custom","parameters":{"agents":[20,23],"file_path":"/home/user/agent.wpk","installer":"custom-upgrade-script.sh"}}
+# {"origin":{"module":"upgrade_module"},"command":"upgrade_update_status","parameters":{"agents":[20],"error":0,"data":"Upgrade Successful","status":"Done"}}
 
 parse:
   logpar:
@@ -40,5 +46,9 @@ normalize:
       - ~tmp.send_result: +t_is_true
     map:
       - ~tmp.result: success
-      # - ~tmp: +ef_delete
+
+  # Cleanup
+  - map:
+      - ~tmp: +ef_delete
+      - ~json: +ef_delete
 
