@@ -120,7 +120,9 @@ async def print_health(config, more, filter_node):
                         f"Integrity check: {node_info['status']['last_check_integrity']['date_end_master']} | " \
                         f"Integrity sync: {node_info['status']['last_sync_integrity']['date_end_master']} | " \
                         f"Agents-info: {node_info['status']['last_sync_agentinfo']['date_end_master']} | " \
-                        f"Last keep alive: {node_info['status']['last_keep_alive']}.\n"
+                        f"Last keep alive: {node_info['status']['last_keep_alive']} | " \
+                        f"Agent-groups: {node_info['status']['last_sync_agentgroup']['date_end']} | " \
+                        f"Agent-groups full: {node_info['status']['last_sync_full_agentgroup']['date_end']}.\n"
 
             msg2 += "        Status:\n"
 
