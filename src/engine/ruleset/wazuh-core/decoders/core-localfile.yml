@@ -1,0 +1,62 @@
+name: decoder/core-localfile/0
+# module: wazuh
+
+metadata:
+  title: Localfile queue decoder
+  description: >
+    Process events that has the localfile queue in the standard OSSEC message format.
+    Handles implementation details of Wazuh, not intended for end users.
+  compatibility: Any service being tagged with the queue 49. Wodles and logcollector.
+  versions:
+    - Wazuh 4.*
+  author:
+    name: Wazuh, Inc.
+    date: 03/03/2023
+  references:
+    - https://documentation.wazuh.com/current/development/message-format.html
+
+sources:
+  - decoder/core-ossec-message/0
+
+check:
+  - wazuh.queue: 49
+
+normalize:
+  ### Wodles ###
+  # Command
+  - check:
+      - wazuh.origin: +s_starts/command_
+    map:
+      - wazuh.source: wodle
+      - event.module: $wazuh.origin
+  # Aws
+  - check:
+      - wazuh.origin: +s_starts/aws
+    map:
+      - wazuh.source: wodle
+      - event.module: $wazuh.origin
+  # TODO Rest of wodles
+
+  ### Logcollector ###
+  - check:
+      - wazuh.source: +ef_not_exists
+    map:
+      - wazuh.source: logcollector
+  - check:
+      - wazuh.source: logcollector
+      - wazuh.message: +s_starts/{
+    logpar:
+      - wazuh.message: <~json/json>
+    map:
+      - event.original: +ef_rename/$~json.event.original
+      - event.module: +ef_rename/$~json.event.module
+      - event.dataset: +ef_rename/$~json.event.dataset
+
+  ### Applied to all ###
+  - check:
+      - event.original: +ef_not_exists
+    map:
+      - event.original: $wazuh.message
+
+  - map:
+      - wazuh.decoders: +a_append/internal-localfile
