@@ -8,7 +8,20 @@
 
 namespace api::integration::handlers
 {
+/**
+ * @brief Handler for the integration add to policy endpoint.
+ *
+ * @param integration Integration to use
+ * @return api::Handler Handler for the endpoint
+ */
 api::Handler integrationAddTo(std::shared_ptr<api::integration::Integration> integration);
+
+/**
+ * @brief Handler for the integration remove from policy endpoint.
+ *
+ * @param integration Integration to use
+ * @return api::Handler Handler for the endpoint
+ */
 api::Handler integrationRemoveFrom(std::shared_ptr<api::integration::Integration> integration);
 
 /**
