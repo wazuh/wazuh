@@ -3,8 +3,8 @@
 add_executable(router_test
   ${TEST_SOURCE_DIR}/router/testAuxiliar/routerAuxiliarFunctions.cpp
   ${TEST_SOURCE_DIR}/router/router_test.cpp
-  ${TEST_SOURCE_DIR}/router/runtimeEnvironment_test.cpp
-  ${TEST_SOURCE_DIR}/router/environmentManager_test.cpp
+  ${TEST_SOURCE_DIR}/router/runtimePolicy_test.cpp
+  ${TEST_SOURCE_DIR}/router/policyManager_test.cpp
 
 
 )

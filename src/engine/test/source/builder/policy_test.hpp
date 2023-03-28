@@ -8,7 +8,7 @@
 #include <store/istore.hpp>
 #include <error.hpp>
 
-#include "builder/environment.hpp"
+#include "builder/policy.hpp"
 
 
 constexpr auto outputPath = "/tmp/file";
