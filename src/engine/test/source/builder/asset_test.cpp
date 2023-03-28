@@ -28,7 +28,7 @@ class AssetTest : public ::testing::Test
     {
         logging::LoggingConfig logConfig;
         logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-        logConfig.logLevel = spdlog::level::off;
+        logConfig.logLevel = "off";
         logging::loggingInit(logConfig);
 
         if (std::filesystem::exists(outputPath))

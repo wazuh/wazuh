@@ -43,20 +43,12 @@ void run(const Options& options)
     // Logging init
 
     logging::LoggingConfig logConfig;
-    switch (options.logLevel)
-    {
-        case 0: logConfig.logLevel = spdlog::level::debug; break;
-        case 1: logConfig.logLevel = spdlog::level::info; break;
-        case 2: logConfig.logLevel = spdlog::level::warn; break;
-        case 3: logConfig.logLevel = spdlog::level::err; break;
-        default: logConfig.logLevel = spdlog::level::info;
-    }
 
     logging::loggingInit(logConfig);
 
     LOG_DEBUG("Logging configuration: filePath='{}', logLevel='{}', header='{}', flushInterval={}ms.",
               logConfig.filePath,
-              spdlog::level::to_string_view(logConfig.logLevel),
+              logConfig.logLevel,
               logConfig.headerFormat,
               logConfig.flushInterval);
     LOG_INFO("Logging initialized");
