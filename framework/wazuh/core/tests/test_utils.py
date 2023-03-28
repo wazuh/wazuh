@@ -1826,8 +1826,7 @@ def test_get_utc_now():
 
 @pytest.mark.parametrize("configuration", [
     "<global><limits><eps><whatever>yes</whatever></eps></limits></global>",
-    "<global><logall>no</logall></global><global><limits><eps><whatever>yes</whatever></eps></limits>"
-    "</global>"
+    "<global><logall>no</logall></global><global><limits><eps><whatever>yes</whatever></eps></limits></global>"
 ])
 @pytest.mark.parametrize("limits_conf, expect_exc", [
     ({'eps': {'allow': True}}, False),
