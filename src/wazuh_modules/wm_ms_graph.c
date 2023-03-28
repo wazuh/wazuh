@@ -22,7 +22,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph);
 void wm_ms_graph_check();
 void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
 void wm_ms_graph_cleanup();
-cJSON wm_ms_graph_dump(wm_ms_graph* ms_graph);
+cJSON* wm_ms_graph_dump(wm_ms_graph* ms_graph);
 
 int queue_fd; // Socket ID
 time_t startup_time;
@@ -96,17 +96,23 @@ void wm_ms_graph_setup(wm_ms_graph* _ms_graph) {
 void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config) {
     char url[OS_SIZE_8192];
     char payload[OS_SIZE_8192];
+    char** headers = NULL;
     curl_response* response;
 
     memset(url, '\0', OS_SIZE_8192);
     snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_URL, auth_config.tenant_id);
-    mtdebug1("Microsoft Graph API Access Token URL: '%s'", url);
+    mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Access Token URL: '%s'", url);
     memset(payload, '\0', OS_SIZE_8192);
     snprintf(payload, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, auth_config.client_id, auth_config.secret_value);
-    response = wurl_http_request(WURL_POST_METHOD, "Content-Type: application/x-www-form-urlencoded", url, payload, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    os_malloc(sizeof(char*) * 2, headers);
+    os_strdup("Content-Type: application/x-www-form-urlencoded", headers[0]);
+    os_strdup("", headers[1]);
+    response = wurl_http_request(WURL_POST_METHOD, headers, url, payload, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     if(response){
         if(response->status_code != 200){
-            mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to obtain access token: '%s'", response->status_code);
+            char status_code[3 + sizeof(char)];
+            snprintf(status_code, 3, "%ld", response->status_code);
+            mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to obtain access token: '%s' - '%s'", status_code, response->body);
         }
         else if (response->max_size_reached){
             mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
@@ -127,18 +133,22 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config) {
     else{
         mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
     }
+    
+    os_free(headers);
 }
 
 void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
     char url[OS_SIZE_8192];
+    char auth_header[OS_SIZE_2048];
+    char** headers;
     char startup_timestamp[OS_SIZE_32];
     char last_scan_timestamp[OS_SIZE_32];
     struct tm time_struct = { .tm_sec = 0 };
     curl_response* response;
 
-    for(int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
+    for(unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
         
-        for(int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
+        for(unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
 
             memset(startup_timestamp, '\0', OS_SIZE_32);
             gmtime_r(&startup_time, &time_struct);
@@ -148,21 +158,30 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
             gmtime_r(&last_scan, &time_struct);
             strftime(last_scan_timestamp, sizeof(last_scan_timestamp), "%Y-%m-%dT%H:%M:%SZ", &time_struct);
 
+            memset(auth_header, '\0', OS_SIZE_2048);
+            snprintf(auth_header, OS_SIZE_2048 - 1, "Authorization: Bearer %s", ms_graph->auth_config.access_token);
+            os_malloc(sizeof(char*) * 2, headers);
+            os_strdup(auth_header, headers[0]);
+            os_strdup("", headers[1]);
+
             memset(url, '\0', OS_SIZE_8192);
             snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
             ms_graph->version,
-            ms_graph->resources[resource_num],
+            ms_graph->resources[resource_num].name,
             ms_graph->resources[resource_num].relationships[relationship_num],
             ms_graph->only_future_events ? startup_timestamp : last_scan_timestamp);
-            mtdebug1("Microsoft Graph API Log URL: '%s'", url);
+            mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Log URL: '%s'", url);
 
-            response = wurl_http_get(url, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+            response = wurl_http_request(WURL_GET_METHOD, headers, url, "", ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
 
             if(response){
                 if(response->status_code != 200){
-                    mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to get relationship '%s' logs: '%s'",
+                    char status_code[3 + sizeof(char)];
+                    snprintf(status_code, 3, "%ld", response->status_code);
+                    mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to get relationship '%s' logs: '%s' - '%s'",
                     ms_graph->resources[resource_num].relationships[relationship_num],
-                    response->status_code);
+                    status_code,
+                    response->body);
                 }
                 else if (response->max_size_reached){
                     mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to get relationship '%s' logs. Consider increasing the value of 'curl_max_size'.",
@@ -174,7 +193,12 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                         mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse relationship '%s' JSON body.", ms_graph->resources[resource_num].relationships[relationship_num]);
                     }
                     else{
-                        // TODO: Send logs to Wazuh manager
+                        cJSON *logs = NULL;
+                        logs = cJSON_Duplicate(response_body, true);
+                        logs = cJSON_CreateArray();
+                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test: '%s'", response_body);
+                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test 2: '%s'", logs);
+                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test 3: '%s'", logs[1]);
                         cJSON_Delete(response_body);
                         wurl_free_response(response);
                     }
@@ -183,11 +207,13 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
             else{
                 mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to get relationship '%s' from resource '%s' on API version '%s'.",
                 ms_graph->resources[resource_num].relationships[relationship_num],
-                ms_graph->resources[resource_num],
+                ms_graph->resources[resource_num].name,
                 ms_graph->version);
             }
         }
     }
+
+    os_free(headers);
 }
 
 void wm_ms_graph_check() {
@@ -210,7 +236,7 @@ void wm_ms_graph_cleanup() {
 
 }
 
-cJSON wm_ms_graph_dump(wm_ms_graph* ms_graph) {
+cJSON* wm_ms_graph_dump(wm_ms_graph* ms_graph) {
 
 }
 
