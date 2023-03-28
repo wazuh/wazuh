@@ -13,6 +13,7 @@
 #include <api/catalog/catalog.hpp>
 #include <api/catalog/handlers.hpp>
 #include <api/config/config.hpp>
+#include <api/integration/handlers.hpp>
 #include <api/kvdb/handlers.hpp>
 #include <api/metrics/handlers.hpp>
 #include <api/router/handlers.hpp>
@@ -219,7 +220,7 @@ void runStart(ConfHandler confManager)
         WAZUH_LOG_INFO("Router initialized.");
 
         // Register the API command
-        //server->getRegistry()->registerHandler("router", router->apiCallbacks());
+        // server->getRegistry()->registerHandler("router", router->apiCallbacks());
         api::router::handlers::registerHandlers(router, server->getRegistry());
         WAZUH_LOG_DEBUG("Router API registered.")
 
@@ -241,6 +242,11 @@ void runStart(ConfHandler confManager)
         // Register Configuration API commands
         api::config::handlers::registerHandlers(server->getRegistry(), confManager);
         WAZUH_LOG_DEBUG("Configuration manager API registered.");
+
+        // Register Integration API commands
+        auto integration = std::make_shared<api::integration::Integration>(catalog);
+        api::integration::handlers::registerHandlers(integration, server->getRegistry());
+        WAZUH_LOG_DEBUG("Integration manager API registered.");
     }
     catch (const std::exception& e)
     {
