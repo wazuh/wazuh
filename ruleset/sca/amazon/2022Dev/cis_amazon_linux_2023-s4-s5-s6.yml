@@ -1171,6 +1171,9 @@ checks:
     compliance:
       - cis: ["5.1.1"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+      - mitre_techniques: ["T1562", "T1562.001"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - 'c:systemctl is-enabled crond -> r:^\s*\t*enabled$'
@@ -1192,6 +1195,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - 'c:stat -L /etc/crontab -> r:^Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
@@ -1213,6 +1219,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - 'c:stat -L /etc/cron.hourly -> r:^Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
@@ -1234,6 +1243,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - 'c:stat -L /etc/cron.daily -> r:^Access:\s*\(0\d00/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
@@ -1255,6 +1267,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - 'c:stat -L /etc/cron.weekly -> r:^Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
@@ -1276,6 +1291,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - 'c:stat -L /etc/cron.monthly -> r:^Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
@@ -1297,6 +1315,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - 'c:stat -L /etc/cron.d -> r:^Access:\s*\(0\d00/d\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
@@ -1318,6 +1339,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - "f:/etc/cron.allow"
@@ -1341,6 +1365,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - "f:/etc/at.allow"
@@ -1368,59 +1395,23 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1098", "T1098.004", "T1543", "T1543.002"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
 
-  # 5.2.2 Ensure permissions on SSH private host key files are configured. (Automated)
-  - id: 31197
-    title: "Ensure permissions on SSH private host key files are configured."
-    description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, the possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
-    rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated."
-    remediation: "Run the following commands to set permissions, ownership, and group on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod u-x,g-wx,o-rwx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:ssh_keys {} \\;."
-    compliance:
-      - cis: ["5.2.2"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition: any
-    rules:
-      - 'c:sh -c "stat -L /etc/ssh/ssh_host_*_key" -> r:^Access:\s*\(0640/-rw-r-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/ssh_keys\)$'
-      - 'c:sh -c "stat -L /etc/ssh/ssh_host_*_key" -> r:^Access:\s*\(0\d\d0/-\w\w\w\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)$'
+  # 5.2.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
 
-  # 5.2.3 Ensure permissions on SSH public host key files are configured. (Automated)
-  - id: 31198
-    title: "Ensure permissions on SSH public host key files are configured."
-    description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
-    rationale: "If a public host key file is modified by an unauthorized user, the SSH service may be compromised."
-    remediation: "Run the following commands to set permissions and ownership on the SSH host public key files # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chmod u-x,go-wx {} \\; # find /etc/ssh -xdev -type f -name 'ssh_host_*_key.pub' -exec chown root:root {} \\;."
-    compliance:
-      - cis: ["5.2.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
-    rules:
-      - 'c:sh -c "find /etc/ssh -xdev -type f -name \"ssh_host_*_key.pub\" -exec stat {} \\;" -> r:Access:\s*\( && !r:-rw-r--r--'
+  # 5.2.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
   # 5.2.4 Ensure SSH access is limited. (Automated)
   - id: 31199
     title: "Ensure SSH access is limited."
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: o The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: o The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: o The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: o The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
-    remediation: "Edit the /etc/ssh/sshd_config file to set one or more of the parameter as follows: AllowUsers <userlist> OR AllowGroups <grouplist> OR DenyUsers <userlist> OR DenyGroups <grouplist>."
+    remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set one or more of the parameters as follows: AllowUsers <userlist> -OR- AllowGroups <grouplist> -OR- DenyUsers <userlist> -OR- DenyGroups <grouplist>."
     compliance:
       - cis: ["5.2.4"]
       - cis_csc_v8: ["3.3"]
@@ -1432,6 +1423,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
+      - mitre_techniques: ["T1021", "T1021.004"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_mitigations: ["M1018"]
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
@@ -1442,7 +1436,7 @@ checks:
     title: "Ensure SSH LogLevel is appropriate."
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
-    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel VERBOSE OR LogLevel INFO."
+    remediation: 'Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the LogLevel parameter as follows: LogLevel VERBOSE OR  LogLevel INFO Run the following command to comment out any LogLevel parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than VERBOSE or INFO: # grep -Pi ''^\\h*LogLevel\\b'' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi ''(VERBOSE|INFO)'' | while read -r l_out; do sed -ri \"/^\\s*LogLevel\\s+/s/^/# /\" \"$(awk -F: ''{print $1}'' <<< $l_out)\";done.'
     references:
       - "https://www.ssh.com/ssh/sshd_config/"
     compliance:
