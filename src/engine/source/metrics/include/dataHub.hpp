@@ -24,7 +24,7 @@ public:
     void dump();
 
     /// @brief dumps the content of m_resources to cmd
-    std::variant<json::Json, base::Error> dumpCmd();
+    std::variant<std::string, base::Error> dumpCmd();
     /// @brief get an element of m_resources to cmd
     std::variant<json::Json, base::Error> getCmd(const std::string& instrumentName);
 

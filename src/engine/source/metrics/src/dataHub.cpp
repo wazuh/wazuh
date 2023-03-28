@@ -34,7 +34,7 @@ void DataHub::dump()
     }
 }
 
-std::variant<json::Json, base::Error> DataHub::dumpCmd()
+std::variant<std::string, base::Error> DataHub::dumpCmd()
 {
     const std::lock_guard<std::mutex> lock(m_mutex);
     json::Json contentDataHub;
@@ -49,7 +49,7 @@ std::variant<json::Json, base::Error> DataHub::dumpCmd()
         contentDataHub.appendJson(r.second);
     }
 
-    return contentDataHub;
+    return contentDataHub.prettyStr();
 }
 
 std::variant<json::Json, base::Error> DataHub::getCmd(const std::string& instrumentName)
