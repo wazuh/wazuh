@@ -70,9 +70,6 @@ extern Get_RequestDefaultTypeInternal _Get_Request_default_instance_;
 class Get_Response;
 struct Get_ResponseDefaultTypeInternal;
 extern Get_ResponseDefaultTypeInternal _Get_Response_default_instance_;
-class List_Metrics;
-struct List_MetricsDefaultTypeInternal;
-extern List_MetricsDefaultTypeInternal _List_Metrics_default_instance_;
 class List_Request;
 struct List_RequestDefaultTypeInternal;
 extern List_RequestDefaultTypeInternal _List_Request_default_instance_;
@@ -97,7 +94,6 @@ template<> ::com::wazuh::api::engine::metrics::Enable_Request* Arena::CreateMayb
 template<> ::com::wazuh::api::engine::metrics::Enable_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::metrics::Enable_Response>(Arena*);
 template<> ::com::wazuh::api::engine::metrics::Get_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::metrics::Get_Request>(Arena*);
 template<> ::com::wazuh::api::engine::metrics::Get_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::metrics::Get_Response>(Arena*);
-template<> ::com::wazuh::api::engine::metrics::List_Metrics* Arena::CreateMaybeMessage<::com::wazuh::api::engine::metrics::List_Metrics>(Arena*);
 template<> ::com::wazuh::api::engine::metrics::List_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::metrics::List_Request>(Arena*);
 template<> ::com::wazuh::api::engine::metrics::List_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::metrics::List_Response>(Arena*);
 template<> ::com::wazuh::api::engine::metrics::Test_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::metrics::Test_Request>(Arena*);
@@ -698,7 +694,7 @@ class Get_Response final :
 
   enum : int {
     kErrorFieldNumber = 2,
-    kContentFieldNumber = 3,
+    kValueFieldNumber = 3,
     kStatusFieldNumber = 1,
   };
   // optional string error = 2;
@@ -719,23 +715,23 @@ class Get_Response final :
   std::string* _internal_mutable_error();
   public:
 
-  // optional string content = 3;
-  bool has_content() const;
+  // optional .google.protobuf.Value value = 3;
+  bool has_value() const;
   private:
-  bool _internal_has_content() const;
+  bool _internal_has_value() const;
   public:
-  void clear_content();
-  const std::string& content() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_content(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_content();
-  PROTOBUF_NODISCARD std::string* release_content();
-  void set_allocated_content(std::string* content);
+  void clear_value();
+  const ::PROTOBUF_NAMESPACE_ID::Value& value() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Value* release_value();
+  ::PROTOBUF_NAMESPACE_ID::Value* mutable_value();
+  void set_allocated_value(::PROTOBUF_NAMESPACE_ID::Value* value);
   private:
-  const std::string& _internal_content() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_content(const std::string& value);
-  std::string* _internal_mutable_content();
+  const ::PROTOBUF_NAMESPACE_ID::Value& _internal_value() const;
+  ::PROTOBUF_NAMESPACE_ID::Value* _internal_mutable_value();
   public:
+  void unsafe_arena_set_allocated_value(
+      ::PROTOBUF_NAMESPACE_ID::Value* value);
+  ::PROTOBUF_NAMESPACE_ID::Value* unsafe_arena_release_value();
 
   // .com.wazuh.api.engine.ReturnStatus status = 1;
   void clear_status();
@@ -757,7 +753,7 @@ class Get_Response final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
+    ::PROTOBUF_NAMESPACE_ID::Value* value_;
     int status_;
   };
   union { Impl_ _impl_; };
@@ -1245,204 +1241,6 @@ class List_Request final :
 };
 // -------------------------------------------------------------------
 
-class List_Metrics final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.metrics.List_Metrics) */ {
- public:
-  inline List_Metrics() : List_Metrics(nullptr) {}
-  ~List_Metrics() override;
-  explicit PROTOBUF_CONSTEXPR List_Metrics(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  List_Metrics(const List_Metrics& from);
-  List_Metrics(List_Metrics&& from) noexcept
-    : List_Metrics() {
-    *this = ::std::move(from);
-  }
-
-  inline List_Metrics& operator=(const List_Metrics& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline List_Metrics& operator=(List_Metrics&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const List_Metrics& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const List_Metrics* internal_default_instance() {
-    return reinterpret_cast<const List_Metrics*>(
-               &_List_Metrics_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    7;
-
-  friend void swap(List_Metrics& a, List_Metrics& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(List_Metrics* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(List_Metrics* other) {
-    if (other == this) return;
-    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  List_Metrics* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<List_Metrics>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const List_Metrics& from);
-  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const List_Metrics& from) {
-    List_Metrics::MergeImpl(*this, from);
-  }
-  private:
-  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
-  public:
-  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
-  bool IsInitialized() const final;
-
-  size_t ByteSizeLong() const final;
-  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
-  uint8_t* _InternalSerialize(
-      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
-
-  private:
-  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
-  void SharedDtor();
-  void SetCachedSize(int size) const final;
-  void InternalSwap(List_Metrics* other);
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.metrics.List_Metrics";
-  }
-  protected:
-  explicit List_Metrics(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                       bool is_message_owned = false);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  enum : int {
-    kNameFieldNumber = 1,
-    kStatusFieldNumber = 2,
-    kInstrumentTypeFieldNumber = 3,
-  };
-  // optional string name = 1;
-  bool has_name() const;
-  private:
-  bool _internal_has_name() const;
-  public:
-  void clear_name();
-  const std::string& name() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_name(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_name();
-  PROTOBUF_NODISCARD std::string* release_name();
-  void set_allocated_name(std::string* name);
-  private:
-  const std::string& _internal_name() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
-  std::string* _internal_mutable_name();
-  public:
-
-  // optional string status = 2;
-  bool has_status() const;
-  private:
-  bool _internal_has_status() const;
-  public:
-  void clear_status();
-  const std::string& status() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_status(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_status();
-  PROTOBUF_NODISCARD std::string* release_status();
-  void set_allocated_status(std::string* status);
-  private:
-  const std::string& _internal_status() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_status(const std::string& value);
-  std::string* _internal_mutable_status();
-  public:
-
-  // optional string instrumentType = 3;
-  bool has_instrumenttype() const;
-  private:
-  bool _internal_has_instrumenttype() const;
-  public:
-  void clear_instrumenttype();
-  const std::string& instrumenttype() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_instrumenttype(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_instrumenttype();
-  PROTOBUF_NODISCARD std::string* release_instrumenttype();
-  void set_allocated_instrumenttype(std::string* instrumenttype);
-  private:
-  const std::string& _internal_instrumenttype() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_instrumenttype(const std::string& value);
-  std::string* _internal_mutable_instrumenttype();
-  public:
-
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.metrics.List_Metrics)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr status_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr instrumenttype_;
-  };
-  union { Impl_ _impl_; };
-  friend struct ::TableStruct_metrics_2eproto;
-};
-// -------------------------------------------------------------------
-
 class List_Response final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.metrics.List_Response) */ {
  public:
@@ -1491,7 +1289,7 @@ class List_Response final :
                &_List_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    8;
+    7;
 
   friend void swap(List_Response& a, List_Response& b) {
     a.Swap(&b);
@@ -1564,28 +1362,10 @@ class List_Response final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kContentFieldNumber = 3,
     kErrorFieldNumber = 2,
+    kValueFieldNumber = 3,
     kStatusFieldNumber = 1,
   };
-  // repeated .com.wazuh.api.engine.metrics.List_Metrics content = 3;
-  int content_size() const;
-  private:
-  int _internal_content_size() const;
-  public:
-  void clear_content();
-  ::com::wazuh::api::engine::metrics::List_Metrics* mutable_content(int index);
-  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::metrics::List_Metrics >*
-      mutable_content();
-  private:
-  const ::com::wazuh::api::engine::metrics::List_Metrics& _internal_content(int index) const;
-  ::com::wazuh::api::engine::metrics::List_Metrics* _internal_add_content();
-  public:
-  const ::com::wazuh::api::engine::metrics::List_Metrics& content(int index) const;
-  ::com::wazuh::api::engine::metrics::List_Metrics* add_content();
-  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::metrics::List_Metrics >&
-      content() const;
-
   // optional string error = 2;
   bool has_error() const;
   private:
@@ -1603,6 +1383,24 @@ class List_Response final :
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_error(const std::string& value);
   std::string* _internal_mutable_error();
   public:
+
+  // optional .google.protobuf.Value value = 3;
+  bool has_value() const;
+  private:
+  bool _internal_has_value() const;
+  public:
+  void clear_value();
+  const ::PROTOBUF_NAMESPACE_ID::Value& value() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Value* release_value();
+  ::PROTOBUF_NAMESPACE_ID::Value* mutable_value();
+  void set_allocated_value(::PROTOBUF_NAMESPACE_ID::Value* value);
+  private:
+  const ::PROTOBUF_NAMESPACE_ID::Value& _internal_value() const;
+  ::PROTOBUF_NAMESPACE_ID::Value* _internal_mutable_value();
+  public:
+  void unsafe_arena_set_allocated_value(
+      ::PROTOBUF_NAMESPACE_ID::Value* value);
+  ::PROTOBUF_NAMESPACE_ID::Value* unsafe_arena_release_value();
 
   // .com.wazuh.api.engine.ReturnStatus status = 1;
   void clear_status();
@@ -1623,8 +1421,8 @@ class List_Response final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::metrics::List_Metrics > content_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
+    ::PROTOBUF_NAMESPACE_ID::Value* value_;
     int status_;
   };
   union { Impl_ _impl_; };
@@ -1679,7 +1477,7 @@ class Test_Request final :
                &_Test_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    9;
+    8;
 
   friend void swap(Test_Request& a, Test_Request& b) {
     a.Swap(&b);
@@ -1798,7 +1596,7 @@ class Test_Response final :
                &_Test_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    10;
+    9;
 
   friend void swap(Test_Response& a, Test_Response& b) {
     a.Swap(&b);
@@ -2297,72 +2095,91 @@ inline void Get_Response::set_allocated_error(std::string* error) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.Get_Response.error)
 }
 
-// optional string content = 3;
-inline bool Get_Response::_internal_has_content() const {
+// optional .google.protobuf.Value value = 3;
+inline bool Get_Response::_internal_has_value() const {
   bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  PROTOBUF_ASSUME(!value || _impl_.value_ != nullptr);
   return value;
 }
-inline bool Get_Response::has_content() const {
-  return _internal_has_content();
+inline bool Get_Response::has_value() const {
+  return _internal_has_value();
 }
-inline void Get_Response::clear_content() {
-  _impl_.content_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000002u;
+inline const ::PROTOBUF_NAMESPACE_ID::Value& Get_Response::_internal_value() const {
+  const ::PROTOBUF_NAMESPACE_ID::Value* p = _impl_.value_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Value&>(
+      ::PROTOBUF_NAMESPACE_ID::_Value_default_instance_);
 }
-inline const std::string& Get_Response::content() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.Get_Response.content)
-  return _internal_content();
+inline const ::PROTOBUF_NAMESPACE_ID::Value& Get_Response::value() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.Get_Response.value)
+  return _internal_value();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void Get_Response::set_content(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
- _impl_.content_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.Get_Response.content)
-}
-inline std::string* Get_Response::mutable_content() {
-  std::string* _s = _internal_mutable_content();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.Get_Response.content)
-  return _s;
-}
-inline const std::string& Get_Response::_internal_content() const {
-  return _impl_.content_.Get();
-}
-inline void Get_Response::_internal_set_content(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  _impl_.content_.Set(value, GetArenaForAllocation());
-}
-inline std::string* Get_Response::_internal_mutable_content() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  return _impl_.content_.Mutable(GetArenaForAllocation());
-}
-inline std::string* Get_Response::release_content() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.Get_Response.content)
-  if (!_internal_has_content()) {
-    return nullptr;
+inline void Get_Response::unsafe_arena_set_allocated_value(
+    ::PROTOBUF_NAMESPACE_ID::Value* value) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.value_);
   }
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  auto* p = _impl_.content_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.content_.IsDefault()) {
-    _impl_.content_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void Get_Response::set_allocated_content(std::string* content) {
-  if (content != nullptr) {
+  _impl_.value_ = value;
+  if (value) {
     _impl_._has_bits_[0] |= 0x00000002u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000002u;
   }
-  _impl_.content_.SetAllocated(content, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.content_.IsDefault()) {
-    _impl_.content_.Set("", GetArenaForAllocation());
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.metrics.Get_Response.value)
+}
+inline ::PROTOBUF_NAMESPACE_ID::Value* Get_Response::release_value() {
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.value_;
+  _impl_.value_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
   }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.Get_Response.content)
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Value* Get_Response::unsafe_arena_release_value() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.Get_Response.value)
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.value_;
+  _impl_.value_ = nullptr;
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Value* Get_Response::_internal_mutable_value() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  if (_impl_.value_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
+    _impl_.value_ = p;
+  }
+  return _impl_.value_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Value* Get_Response::mutable_value() {
+  ::PROTOBUF_NAMESPACE_ID::Value* _msg = _internal_mutable_value();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.Get_Response.value)
+  return _msg;
+}
+inline void Get_Response::set_allocated_value(::PROTOBUF_NAMESPACE_ID::Value* value) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.value_);
+  }
+  if (value) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(value));
+    if (message_arena != submessage_arena) {
+      value = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, value, submessage_arena);
+    }
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.value_ = value;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.Get_Response.value)
 }
 
 // -------------------------------------------------------------------
@@ -2631,214 +2448,6 @@ inline void Enable_Response::set_allocated_content(std::string* content) {
 
 // -------------------------------------------------------------------
 
-// List_Metrics
-
-// optional string name = 1;
-inline bool List_Metrics::_internal_has_name() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
-  return value;
-}
-inline bool List_Metrics::has_name() const {
-  return _internal_has_name();
-}
-inline void List_Metrics::clear_name() {
-  _impl_.name_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000001u;
-}
-inline const std::string& List_Metrics::name() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.List_Metrics.name)
-  return _internal_name();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void List_Metrics::set_name(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000001u;
- _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.List_Metrics.name)
-}
-inline std::string* List_Metrics::mutable_name() {
-  std::string* _s = _internal_mutable_name();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.List_Metrics.name)
-  return _s;
-}
-inline const std::string& List_Metrics::_internal_name() const {
-  return _impl_.name_.Get();
-}
-inline void List_Metrics::_internal_set_name(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.name_.Set(value, GetArenaForAllocation());
-}
-inline std::string* List_Metrics::_internal_mutable_name() {
-  _impl_._has_bits_[0] |= 0x00000001u;
-  return _impl_.name_.Mutable(GetArenaForAllocation());
-}
-inline std::string* List_Metrics::release_name() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.List_Metrics.name)
-  if (!_internal_has_name()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void List_Metrics::set_allocated_name(std::string* name) {
-  if (name != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000001u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
-  }
-  _impl_.name_.SetAllocated(name, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.List_Metrics.name)
-}
-
-// optional string status = 2;
-inline bool List_Metrics::_internal_has_status() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
-  return value;
-}
-inline bool List_Metrics::has_status() const {
-  return _internal_has_status();
-}
-inline void List_Metrics::clear_status() {
-  _impl_.status_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000002u;
-}
-inline const std::string& List_Metrics::status() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.List_Metrics.status)
-  return _internal_status();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void List_Metrics::set_status(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
- _impl_.status_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.List_Metrics.status)
-}
-inline std::string* List_Metrics::mutable_status() {
-  std::string* _s = _internal_mutable_status();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.List_Metrics.status)
-  return _s;
-}
-inline const std::string& List_Metrics::_internal_status() const {
-  return _impl_.status_.Get();
-}
-inline void List_Metrics::_internal_set_status(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  _impl_.status_.Set(value, GetArenaForAllocation());
-}
-inline std::string* List_Metrics::_internal_mutable_status() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  return _impl_.status_.Mutable(GetArenaForAllocation());
-}
-inline std::string* List_Metrics::release_status() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.List_Metrics.status)
-  if (!_internal_has_status()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  auto* p = _impl_.status_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.status_.IsDefault()) {
-    _impl_.status_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void List_Metrics::set_allocated_status(std::string* status) {
-  if (status != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000002u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
-  }
-  _impl_.status_.SetAllocated(status, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.status_.IsDefault()) {
-    _impl_.status_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.List_Metrics.status)
-}
-
-// optional string instrumentType = 3;
-inline bool List_Metrics::_internal_has_instrumenttype() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
-  return value;
-}
-inline bool List_Metrics::has_instrumenttype() const {
-  return _internal_has_instrumenttype();
-}
-inline void List_Metrics::clear_instrumenttype() {
-  _impl_.instrumenttype_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000004u;
-}
-inline const std::string& List_Metrics::instrumenttype() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.List_Metrics.instrumentType)
-  return _internal_instrumenttype();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void List_Metrics::set_instrumenttype(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000004u;
- _impl_.instrumenttype_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.List_Metrics.instrumentType)
-}
-inline std::string* List_Metrics::mutable_instrumenttype() {
-  std::string* _s = _internal_mutable_instrumenttype();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.List_Metrics.instrumentType)
-  return _s;
-}
-inline const std::string& List_Metrics::_internal_instrumenttype() const {
-  return _impl_.instrumenttype_.Get();
-}
-inline void List_Metrics::_internal_set_instrumenttype(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
-  _impl_.instrumenttype_.Set(value, GetArenaForAllocation());
-}
-inline std::string* List_Metrics::_internal_mutable_instrumenttype() {
-  _impl_._has_bits_[0] |= 0x00000004u;
-  return _impl_.instrumenttype_.Mutable(GetArenaForAllocation());
-}
-inline std::string* List_Metrics::release_instrumenttype() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.List_Metrics.instrumentType)
-  if (!_internal_has_instrumenttype()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000004u;
-  auto* p = _impl_.instrumenttype_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.instrumenttype_.IsDefault()) {
-    _impl_.instrumenttype_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void List_Metrics::set_allocated_instrumenttype(std::string* instrumenttype) {
-  if (instrumenttype != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000004u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000004u;
-  }
-  _impl_.instrumenttype_.SetAllocated(instrumenttype, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.instrumenttype_.IsDefault()) {
-    _impl_.instrumenttype_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.List_Metrics.instrumentType)
-}
-
-// -------------------------------------------------------------------
-
 // List_Response
 
 // .com.wazuh.api.engine.ReturnStatus status = 1;
@@ -2929,44 +2538,91 @@ inline void List_Response::set_allocated_error(std::string* error) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.List_Response.error)
 }
 
-// repeated .com.wazuh.api.engine.metrics.List_Metrics content = 3;
-inline int List_Response::_internal_content_size() const {
-  return _impl_.content_.size();
+// optional .google.protobuf.Value value = 3;
+inline bool List_Response::_internal_has_value() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  PROTOBUF_ASSUME(!value || _impl_.value_ != nullptr);
+  return value;
 }
-inline int List_Response::content_size() const {
-  return _internal_content_size();
+inline bool List_Response::has_value() const {
+  return _internal_has_value();
 }
-inline void List_Response::clear_content() {
-  _impl_.content_.Clear();
+inline const ::PROTOBUF_NAMESPACE_ID::Value& List_Response::_internal_value() const {
+  const ::PROTOBUF_NAMESPACE_ID::Value* p = _impl_.value_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Value&>(
+      ::PROTOBUF_NAMESPACE_ID::_Value_default_instance_);
 }
-inline ::com::wazuh::api::engine::metrics::List_Metrics* List_Response::mutable_content(int index) {
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.List_Response.content)
-  return _impl_.content_.Mutable(index);
+inline const ::PROTOBUF_NAMESPACE_ID::Value& List_Response::value() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.List_Response.value)
+  return _internal_value();
 }
-inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::metrics::List_Metrics >*
-List_Response::mutable_content() {
-  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.metrics.List_Response.content)
-  return &_impl_.content_;
+inline void List_Response::unsafe_arena_set_allocated_value(
+    ::PROTOBUF_NAMESPACE_ID::Value* value) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.value_);
+  }
+  _impl_.value_ = value;
+  if (value) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.metrics.List_Response.value)
 }
-inline const ::com::wazuh::api::engine::metrics::List_Metrics& List_Response::_internal_content(int index) const {
-  return _impl_.content_.Get(index);
+inline ::PROTOBUF_NAMESPACE_ID::Value* List_Response::release_value() {
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.value_;
+  _impl_.value_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
 }
-inline const ::com::wazuh::api::engine::metrics::List_Metrics& List_Response::content(int index) const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.List_Response.content)
-  return _internal_content(index);
+inline ::PROTOBUF_NAMESPACE_ID::Value* List_Response::unsafe_arena_release_value() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.List_Response.value)
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.value_;
+  _impl_.value_ = nullptr;
+  return temp;
 }
-inline ::com::wazuh::api::engine::metrics::List_Metrics* List_Response::_internal_add_content() {
-  return _impl_.content_.Add();
+inline ::PROTOBUF_NAMESPACE_ID::Value* List_Response::_internal_mutable_value() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  if (_impl_.value_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
+    _impl_.value_ = p;
+  }
+  return _impl_.value_;
 }
-inline ::com::wazuh::api::engine::metrics::List_Metrics* List_Response::add_content() {
-  ::com::wazuh::api::engine::metrics::List_Metrics* _add = _internal_add_content();
-  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.metrics.List_Response.content)
-  return _add;
+inline ::PROTOBUF_NAMESPACE_ID::Value* List_Response::mutable_value() {
+  ::PROTOBUF_NAMESPACE_ID::Value* _msg = _internal_mutable_value();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.List_Response.value)
+  return _msg;
 }
-inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::metrics::List_Metrics >&
-List_Response::content() const {
-  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.metrics.List_Response.content)
-  return _impl_.content_;
+inline void List_Response::set_allocated_value(::PROTOBUF_NAMESPACE_ID::Value* value) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.value_);
+  }
+  if (value) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(value));
+    if (message_arena != submessage_arena) {
+      value = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, value, submessage_arena);
+    }
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.value_ = value;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.List_Response.value)
 }
 
 // -------------------------------------------------------------------
@@ -3143,8 +2799,6 @@ Test_Response::mutable_content() {
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
-// -------------------------------------------------------------------
-
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------
