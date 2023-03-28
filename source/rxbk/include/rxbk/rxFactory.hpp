@@ -10,7 +10,7 @@
 #include <rxcpp/rx.hpp>
 
 #include "baseTypes.hpp"
-#include "builder/environment.hpp"
+#include "builder/policy.hpp"
 #include "result.hpp"
 
 namespace rx
@@ -204,7 +204,7 @@ Observable rxFactory(
     Controller& controller,
     std::function<void(const std::string&)> tracerFn = [](auto) {});
 
-Controller buildRxPipeline(const builder::Environment& environment);
+Controller buildRxPipeline(const builder::Policy& environment);
 
 Controller buildRxPipeline(base::Expression expression, const std::unordered_set<std::string>& assetNames);
 

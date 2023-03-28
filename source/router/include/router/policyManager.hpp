@@ -1,7 +1,7 @@
 #ifndef _ROUTER_ENVIRONMENT_MANAGER_HPP
 #define _ROUTER_ENVIRONMENT_MANAGER_HPP
 
-#include <router/runtimeEnvironment.hpp>
+#include <router/runtimePolicy.hpp>
 
 #include <map>
 #include <shared_mutex>

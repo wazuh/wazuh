@@ -234,7 +234,7 @@ Observable rxFactory(const Observable& input,
     }
 }
 
-Controller buildRxPipeline(const builder::Environment& environment)
+Controller buildRxPipeline(const builder::Policy& environment)
 {
     Controller controller;
     std::unordered_set<std::string> assetNames;
