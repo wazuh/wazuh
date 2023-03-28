@@ -52,14 +52,14 @@ std::variant<std::string, base::Error> DataHub::dumpCmd()
     return contentDataHub.prettyStr();
 }
 
-std::variant<json::Json, base::Error> DataHub::getCmd(const std::string& instrumentName)
+std::variant<std::string, base::Error> DataHub::getCmd(const std::string& instrumentName)
 {
     const std::lock_guard<std::mutex> lock(m_mutex);
 
     auto metric = m_resources.find(instrumentName);
     if (metric != m_resources.end())
     {
-        return metric->second;
+        return metric->second.prettyStr();
     }
 
     return base::Error {fmt::format("Instrument '{}' does not exist or wasn't loaded.", instrumentName)};

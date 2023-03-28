@@ -39,16 +39,16 @@ void runDump(std::shared_ptr<apiclnt::Client> client);
  * @param socketPath The socket.
  * @param name The instrument name.
  */
-//void runGetInstrument(const std::string& socketPath, const std::string& name);
+void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& name);
 
 /**
  * @brief Enables or disables an instrument.
  *
  * @param socketPath The socket.
  * @param name The instrument name.
- * @param enableState The desired state.
+ * @param status The desired status.
  */
-//void runEnableInstrument(const std::string& socketPath, const std::string& nameInstrument, bool enableState = true);
+void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& name, bool status);
 
 /**
  * @brief List the instruments.
@@ -62,7 +62,7 @@ void runDump(std::shared_ptr<apiclnt::Client> client);
  *
  * @param socketPath The socket.
  */
-//void runTest(const std::string& socketPath);
+void runTest(std::shared_ptr<apiclnt::Client> client);
 } // namespace cmd::metrics
 
 #endif // _CMD_METRICS_HPP
