@@ -18,8 +18,12 @@ namespace builder::internals::builders
 
 constexpr const char* WM_UPGRADE_SOCK {"/var/ossec/queue/tasks/upgrade"};
 
-
-//TODO
+/**
+ * @brief Sends upgrade confirmation throug UPGRADE_MQ socket
+ *
+ * @param definition The transformation definition.
+ * @return base::Expression The ifter with the transformation.
+ */
 base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definition);
 
 } // namespace builder::internals::builders
