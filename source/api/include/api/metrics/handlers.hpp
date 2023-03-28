@@ -13,19 +13,19 @@ namespace api::metrics::handlers
  */
 api::Handler metricsDumpCmd();
 
-// /**
-//  * @brief Get a specific instrument.
-//  *
-//  * @return [api::CommandFn] Instrument data, or error message.
-//  */
-// api::CommandFn metricsGetCmd();
+/**
+* @brief Get a specific instrument.
+*
+* @return [api::CommandFn] Instrument data, or error message.
+*/
+api::Handler metricsGetCmd();
 
-// /**
-//  * @brief Enable or disable a specific instrument.
-//  *
-//  * @return [api::CommandFn] Returns "OK" if success, otherwise error message.
-//  */
-// api::CommandFn metricsEnableCmd();
+/**
+* @brief Enable or disable a specific instrument.
+*
+* @return [api::CommandFn] Returns "OK" if success, otherwise error message.
+*/
+api::Handler metricsEnableCmd();
 
 // /**
 //  * @brief List instruments.
@@ -34,12 +34,12 @@ api::Handler metricsDumpCmd();
 //  */
 // api::CommandFn metricsListCmd();
 
-// /**
-//  * @brief Generate a test instrument.
-//  *
-//  * @return [api::CommandFn] Returns "OK".
-//  */
-// api::CommandFn metricsTestCmd();
+/**
+* @brief Generate a test instrument.
+*
+* @return [api::CommandFn] Returns "OK".
+*/
+api::Handler metricsTestCmd();
 
 /**
  * @brief Register all available Metrics commands in the API registry.

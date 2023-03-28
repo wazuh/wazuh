@@ -30,8 +30,6 @@ api::Handler metricsDumpCmd()
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        ResponseType eResponse;
-
         auto result = Metrics::instance().getDataHub()->dumpCmd();
 
         if (std::holds_alternative<base::Error>(result))
@@ -39,58 +37,117 @@ api::Handler metricsDumpCmd()
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(result).message);
         }
 
-        eResponse.set_status(eEngine::ReturnStatus::OK);
-
-        const auto aux = std::get<std::string>(result);
-        const auto protoVal = eMessage::eMessageFromJson<google::protobuf::Value>(aux);
+        const auto protoVal = eMessage::eMessageFromJson<google::protobuf::Value>(std::get<std::string>(result));
         const auto json_value = std::get<google::protobuf::Value>(protoVal);
+
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
         eResponse.mutable_value()->CopyFrom(json_value);
 
         return ::api::adapter::toWazuhResponse(eResponse);
     };
 }
 
-// api::Handler metricsGetCmd()
-// {
-//     return [](api::wpRequest wRequest) -> api::wpResponse
-//     {
-//         // Get Metric name parameter
-//         const auto [ok, response] = getNameOrError(params);
-//         if (!ok)
-//         {
-//             return api::WazuhResponse {response};
-//         }
+api::Handler metricsGetCmd()
+{
+    return [](api::wpRequest wRequest) -> api::wpResponse
+    {
+        using RequestType = eMetrics::Get_Request;
+        using ResponseType = eMetrics::Get_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
-//         auto result = Metrics::instance().getDataHub()->getCmd(response);
-//         if (std::holds_alternative<base::Error>(result))
-//         {
-//             return api::WazuhResponse {std::get<base::Error>(result).message};
-//         }
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
 
-//         return api::WazuhResponse {
-//             std::get<json::Json>(result),
-//             fmt::format("Metric successfully obtained")};
-//     };
-// }
+        // Validate the params request
+        const auto& eRequest = std::get<RequestType>(res);
+        if (!eRequest.has_name())
+        {
+            return ::api::adapter::genericError<ResponseType>("Missing /name");
+        }
 
-// api::Handler metricsEnableCmd()
-// {
-//     return [](api::wpRequest wRequest) -> api::wpResponse
-//     {
-//         auto name = params.getString("/nameInstrument");
-//         auto state = params.getBool("/enableState");
-//         try
-//         {
-//             Metrics::instance().setEnableInstrument(name.value(), state.value());
-//         }
-//         catch (const std::exception& e)
-//         {
-//             return api::WazuhResponse(e.what());
-//         }
+        auto result = Metrics::instance().getDataHub()->getCmd(eRequest.name());
+        if (std::holds_alternative<base::Error>(result))
+        {
+            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(result).message);
+        }
 
-//         return api::WazuhResponse("OK");
-//     };
-// }
+        const auto protoVal = eMessage::eMessageFromJson<google::protobuf::Value>(std::get<std::string>(result));
+        const auto json_value = std::get<google::protobuf::Value>(protoVal);
+
+        ResponseType eResponse;
+        eResponse.mutable_value()->CopyFrom(json_value);
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+
+        return ::api::adapter::toWazuhResponse(eResponse);
+    };
+}
+
+api::Handler metricsEnableCmd()
+{
+    return [](api::wpRequest wRequest) -> api::wpResponse
+    {
+        using RequestType = eMetrics::Enable_Request;
+        using ResponseType = eMetrics::Enable_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        // Validate the params request
+        const auto& eRequest = std::get<RequestType>(res);
+        auto errorMsg = !eRequest.has_name()     ? std::make_optional("Missing /name")
+                        : !eRequest.has_status() ? std::make_optional("Missing /status")
+                                                 : std::nullopt;
+        if (errorMsg.has_value())
+        {
+            return ::api::adapter::genericError<ResponseType>(errorMsg.value());
+        }
+
+        try
+        {
+            Metrics::instance().setEnableInstrument(eRequest.name(), eRequest.status());
+        }
+        catch (const std::exception& e)
+        {
+            return ::api::adapter::genericError<ResponseType>(e.what());
+        }
+
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+
+        return ::api::adapter::toWazuhResponse(eResponse);
+    };
+}
+
+api::Handler metricsTestCmd()
+{
+    return [](api::wpRequest wRequest) -> api::wpResponse
+    {
+        using RequestType = eMetrics::Test_Request;
+        using ResponseType = eMetrics::Test_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+        
+        Metrics::instance().generateCounterToTesting();
+
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+
+        return ::api::adapter::toWazuhResponse(eResponse);
+    };
+}
 
 // api::Handler metricsListCmd()
 // {
@@ -101,24 +158,15 @@ api::Handler metricsDumpCmd()
 //     };
 // }
 
-// api::Handler metricsTestCmd()
-// {
-//     return [](api::wpRequest wRequest) -> api::wpResponse
-//     {
-//         Metrics::instance().generateCounterToTesting();
-//         return api::WazuhResponse("OK");
-//     };
-// }
-
 void registerHandlers(std::shared_ptr<api::Registry> registry)
 {
     try
     {
         registry->registerHandler("metrics/dump", metricsDumpCmd());
-        // registry->registerCommand("get_metrics", metricsGetCmd());
-        // registry->registerCommand("enable_metrics", metricsEnableCmd());
+        registry->registerHandler("metrics/get", metricsGetCmd());
+        registry->registerHandler("metrics/enable", metricsEnableCmd());
         // registry->registerCommand("list_metrics", metricsListCmd());
-        // registry->registerCommand("test_metrics", metricsTestCmd());
+        registry->registerHandler("metrics/test", metricsTestCmd());
     }
     catch (const std::exception& e)
     {

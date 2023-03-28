@@ -26,7 +26,7 @@ public:
     /// @brief dumps the content of m_resources to cmd
     std::variant<std::string, base::Error> dumpCmd();
     /// @brief get an element of m_resources to cmd
-    std::variant<json::Json, base::Error> getCmd(const std::string& instrumentName);
+    std::variant<std::string, base::Error> getCmd(const std::string& instrumentName);
 
     /// @brief return instance of DataHub
     static std::shared_ptr<DataHub> get();
