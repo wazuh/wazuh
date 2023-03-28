@@ -50,9 +50,7 @@ std::optional<base::Error> Integration::addTo(const api::catalog::Resource& poli
                                           { return item.getString().value_or("") == integration.m_name.fullName(); });
         if (integrationIt == integrations.value().end())
         {
-            json::Json integrationName;
-            integrationName.setString(integration.m_name.fullName());
-            integrations.value().push_back(std::move(integrationName));
+            policyJson.appendString(integration.m_name.fullName(), "/integrations");
         }
         else
         {
