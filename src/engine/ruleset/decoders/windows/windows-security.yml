@@ -26,7 +26,7 @@ normalize:
     - event: +kvdb_get_merge/win_security_categories/$~windows.Event.System.EventID.#text
 
     # Set Logon Type
-    - winlog.logon.type: +kvdb_get/win_logon_types/$~windows.Event.EventData.LogonType
+    - winlog.logon.type: +kvdb_get/windows_logon_types/$~windows.Event.EventData.LogonType
 
     # Set User Account Control
     # NewUacValue
@@ -38,20 +38,19 @@ normalize:
     # TicketOptionsDescription - Needs bitwise operations
 
     # Set Kerberos Encryption Types
-    - event: +kvdb_get_merge/win_security_ticket_encryption_types/$~windows.Event.EventData.TicketEncryptionType
+    - event: +kvdb_get_merge/kerberos_encryption_types/$~windows.Event.EventData.TicketEncryptionType
 
     # Set Kerberos Ticket Status Codes
-    - winlog.event_data.StatusDescription: +kvdb_get_merge/win_security_kerberos_status_types/$~windows.Event.EventData.Status
+    - winlog.event_data.StatusDescription: +kvdb_get_merge/kerberos_tickets_status_codes/$~windows.Event.EventData.Status
 
     # Set Service Type and Name
     # Service related fields
     - service.name: $~windows.Event.EventData.ServiceName
-    - service.type: +kvdb_get_merge/win_security_service_types/$~windows.Event.EventData.ServiceType
 
     # Set Audit Information
     # Event sub category
-    - winlog.event_data.Category: +kvdb_get_merge/win_security_category_guids/$~windows.Event.EventData.SubcategoryGuid
-    - winlog.event_data.SubCategory: +kvdb_get_merge/win_security_subcategory_guids/$~windows.Event.EventData.SubcategoryGuid
+    - winlog.event_data.Category: +kvdb_get_merge/audit_category/$~windows.Event.EventData.SubcategoryGuid
+    - winlog.event_data.SubCategory: +kvdb_get_merge/audit_subcategory/$~windows.Event.EventData.SubcategoryGuid
 
     # Set trust type
     - winlog.trustType: +kvdb_get/win_trust_types/$~windows.Event.EventData.TdoType
@@ -69,7 +68,7 @@ normalize:
     - user.target.name: $~windows.Event.EventData.OldTargetUserName
     - user.changes.name: $~windows.Event.EventData.NewTargetUserName
     - related.user: +a_append/$~windows.Event.EventData.NewTargetUserName
-    - related.user: +a_append/$~windows.Event.EventData.OldTargetUserName 
+    - related.user: +a_append/$~windows.Event.EventData.OldTargetUserName
 
     # map helper arrays
     - ~temp.id_target_user_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
@@ -106,7 +105,7 @@ normalize:
  - check:
        - ~windows.Event.EventData.FailureReason: +ef_exists
    map:
-        - winlog.logon.failure.reason: +kvdb_get/win_failure_codes_description/$~windows.Event.EventData.FailureReason
+        - winlog.logon.failure.reason: +kvdb_get/failure_codes_descriptions/$~windows.Event.EventData.FailureReason
     # Audit Policy Changes
     # Needs for each element of an array
     #- check:
@@ -318,6 +317,72 @@ normalize:
      - winlog.event_data.ObjectServer: $~windows.Event.EventData.ObjectServer
      - winlog.event_data.ObjectName: $~windows.Event.EventData.ObjectName
 
+# Set Service Type 
+ - check:
+    - $~windows.Event.EventData.ServiceType: "0x1"
+   map:
+    - service.type: "Kernel Driver"
+
+ - check:
+    - $~windows.Event.EventData.ServiceType: "0x2"
+   map:
+    - service.type: "File System Driver"
+
+ - check:
+    - $~windows.Event.EventData.ServiceType: "0x8"
+   map:
+    - service.type: "Recognizer Driver"
+
+ - check:
+    - $~windows.Event.EventData.ServiceType: "0x10"
+   map:
+    - service.type: "Win32 Own Process"
+
+ - check:
+    - $~windows.Event.EventData.ServiceType: "0x20"
+   map:
+    - service.type: "Win32 Share Process"
+
+ - check:
+    - $~windows.Event.EventData.ServiceType: "0x110"
+   map:
+    - service.type: "Interactive Own Process"
+
+ - check:
+    - $~windows.Event.EventData.ServiceType: "0x120"
+   map:
+    - service.type: "Interactive Share Process"
+
+# Set event level
+ - check:
+    - $~windows.Event.System.Level.#text: "0"
+   map:
+    - winlog.level: "Audit"
+
+ - check:
+    - $~windows.Event.System.Level.#text: "1"
+   map:
+    - winlog.level: "Critical"
+
+ - check:
+    - $~windows.Event.System.Level.#text: "2"
+   map:
+    - winlog.level: "Error"
+
+ - check:
+    - $~windows.Event.System.Level.#text: "3"
+   map:
+    - winlog.level: "Warning"
+
+ - check:
+    - $~windows.Event.System.Level.#text: "4"
+   map:
+    - winlog.level: "Information"
+
+ - check:
+    - $~windows.Event.System.Level.#text: "5"
+   map:
+    - winlog.level: "Verbose"
 
 # Cleanup
  - map:
