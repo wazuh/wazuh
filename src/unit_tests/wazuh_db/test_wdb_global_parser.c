@@ -3962,7 +3962,7 @@ void test_wdb_parse_global_get_distinct_agent_groups_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-multi-groups");
-    expect_value(__wrap_wdb_global_get_distinct_agent_multi_groups, group_hash, NULL);
+    expect_value(__wrap_wdb_global_get_distinct_agent_multi_groups, group_name, NULL);
     will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, WDBC_OK);
     will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, group_info);
 
@@ -3988,7 +3988,7 @@ void test_wdb_parse_global_get_distinct_agent_groups_success_with_last_hash(void
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-multi-groups abcdef");
-    expect_string(__wrap_wdb_global_get_distinct_agent_multi_groups, group_hash, "abcdef");
+    expect_string(__wrap_wdb_global_get_distinct_agent_multi_groups, group_name, "abcdef");
     will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, WDBC_OK);
     will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, group_info);
 
@@ -4013,7 +4013,7 @@ void test_wdb_parse_global_get_distinct_agent_groups_result_null(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-multi-groups");
-    expect_value(__wrap_wdb_global_get_distinct_agent_multi_groups, group_hash, NULL);
+    expect_value(__wrap_wdb_global_get_distinct_agent_multi_groups, group_name, NULL);
     will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, WDBC_ERROR);
     will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, NULL);
 
@@ -4043,7 +4043,7 @@ void test_wdb_parse_global_get_distinct_agent_groups_result_null_with_last_hash(
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-distinct-multi-groups abcdef");
-    expect_string(__wrap_wdb_global_get_distinct_agent_multi_groups, group_hash, "abcdef");
+    expect_string(__wrap_wdb_global_get_distinct_agent_multi_groups, group_name, "abcdef");
     will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, WDBC_ERROR);
     will_return(__wrap_wdb_global_get_distinct_agent_multi_groups, NULL);
 

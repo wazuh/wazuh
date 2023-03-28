@@ -328,9 +328,9 @@ int __wrap_wdb_remove_group_db(const char *name,
     return mock();
 }
 
-cJSON* __wrap_wdb_global_get_distinct_agent_multi_groups(   __attribute__((unused)) wdb_t *wdb, char *group_hash,
+cJSON* __wrap_wdb_global_get_distinct_agent_multi_groups(   __attribute__((unused)) wdb_t *wdb, char *group_name,
                                                 wdbc_result* status) {
-    check_expected(group_hash);
+    check_expected(group_name);
     *status = mock();
     return mock_ptr_type(cJSON*);
 }
