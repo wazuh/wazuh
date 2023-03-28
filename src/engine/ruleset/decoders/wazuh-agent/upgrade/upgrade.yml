@@ -22,14 +22,13 @@ sources:
   - decoder/queue-upgrade/0
 
 check:
-  - event.original: +s_starts/{
-  - agent.id: +ef_exists
+  - event.original: +starts_with/{
+  - agent.id: +exists
 
 # Examples:
 # https://github.com/wazuh/wazuh/issues/5406
-# {"origin":{"module":"api"},"command":"upgrade","parameters":{"agents":[5,6],"wpk_repo":"packages.wazuh.com/4.x/wpk/","version":"v4.0.0","use_http":false,"force_upgrade":false}}
-# {"origin":{"module":"api"},"command":"upgrade_custom","parameters":{"agents":[20,23],"file_path":"/home/user/agent.wpk","installer":"custom-upgrade-script.sh"}}
-# {"origin":{"module":"upgrade_module"},"command":"upgrade_update_status","parameters":{"agents":[20],"error":0,"data":"Upgrade Successful","status":"Done"}}
+# {"command":"upgrade_update_status","parameters":{"error":0,"message":"Upgrade was successful","status":"Done"}}
+# {"command":"upgrade_update_status","parameters":{"error":2,"message":"Upgrade Failed","status":"Failed"}}
 
 parse:
   logpar:
@@ -37,18 +36,18 @@ parse:
 
 normalize:
   - check:
-      - ~json.parameters: +t_is_object
+      - ~json.parameters: +is_object
     map:
-      - ~json.parameters.agents: +a_append/$agent.id
+      - ~json.parameters.agents: +array_append/$agent.id
       - ~tmp.send_result: +upgrade_confirmation_send/$~json
 
   - check:
-      - ~tmp.send_result: +t_is_true
+      - ~tmp.send_result: +is_true
     map:
       - ~tmp.result: success
 
   # Cleanup
-  - map:
-      - ~tmp: +ef_delete
-      - ~json: +ef_delete
+  # - map:
+      # - ~tmp: +delete
+      # - ~json: +delete
 
