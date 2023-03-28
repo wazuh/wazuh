@@ -8,12 +8,6 @@ namespace base::parseEvent
 
 namespace
 {
-enum class IPVersion
-{
-    UNDEFINED,
-    IPV4,
-    IPV6
-};
 
 constexpr int LOCATION_OFFSET = 2; // Given the "q:" prefix.
 constexpr int MINIMUM_EVENT_ALLOWED_LENGTH = 4;
@@ -47,29 +41,25 @@ Event parseOssecEvent(const std::string& event)
                                              "to be right after the location"));
     }
     // Check if we have an IPv6
-    // It is assumed that, if the ip is an IPv6, it is a full format IPv6. So, the event must be at least 40 characters
-    // long + LOCATION_OFFSET + the last double dots
-    // q:<full_ipv6>:<message>
-    // And the first double dots must be at 6th position
-    if (locationIdx == 6 && event.length() > LOCATION_OFFSET + 41)
+    // It is assumed that, if the ip is an IPv6, it is a full format IPv6.
+
+    // Check the double dots at each position in the IPv6
+    auto i = locationIdx + 5;
+    auto ipv6EndPosition = i + 30;
+    for (; i < ipv6EndPosition; i += 5)
     {
-        // Check the double dots
-        auto i = 10;
-        for (; i < 43; i += 4)
+        if (':' != event[i])
         {
-            if (':' != event[i])
-            {
-                break;
-            }
-        }
-        if (i > 42)
-        {
-            locationIdx = 42;
+            break;
         }
     }
+    if (i >= ipv6EndPosition)
+    {
+        locationIdx = event.find(':', ipv6EndPosition);
+    }
 
-    parseEvent->setString(event.substr(LOCATION_OFFSET, locationIdx - LOCATION_OFFSET), "/wazuh/location");
-    parseEvent->setString(event.substr(locationIdx + 1), "/wazuh/message");
+    parseEvent->setString(event.substr(LOCATION_OFFSET, locationIdx - LOCATION_OFFSET), EVENT_LOCATION_ID);
+    parseEvent->setString(event.substr(locationIdx + 1), EVENT_MESSAGE_ID);
 
     // TODO Create event here
     return parseEvent;
