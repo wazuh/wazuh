@@ -23,8 +23,7 @@ namespace builder::internals::builders
 base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definition)
 {
     // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
+    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
@@ -32,8 +31,8 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definiti
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
 
-    std::shared_ptr<sint::unixSecureStream> socketUC {
-        std::make_shared<sint::unixSecureStream>(WM_UPGRADE_SOCK)};
+    // Socket instance
+    std::shared_ptr<sint::unixSecureStream> socketUC {std::make_shared<sint::unixSecureStream>(WM_UPGRADE_SOCK)};
 
     std::string rValue {};
     const helper::base::Parameter rightParameter {parameters[0]};
@@ -44,11 +43,8 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definiti
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const std::string failureTrace1 {
-        fmt::format("[{}] -> Failure: Query reference \"{}\" not found",
-                    name,
-                    parameters[0].m_value)};
-    const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: The query is empty", name)};
+        fmt::format("[{}] -> Failure: Message reference \"{}\" not found", name, parameters[0].m_value)};
+    const std::string failureTrace2 {fmt::format("[{}] -> Failure: The message is empty", name)};
     const std::string failureTrace3 {
         fmt::format("[{}] -> Failure: Upgrade confirmation message could not be send", name)};
     const std::string failureTrace4 {

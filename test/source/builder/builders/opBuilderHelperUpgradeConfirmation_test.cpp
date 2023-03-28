@@ -80,7 +80,8 @@ TEST(opBuilderUpgradeConfirmationTestSuite, SendAndReceivedMessage)
 
 TEST(opBuilderUpgradeConfirmationTestSuite, SendFromReference)
 {
-    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReference})};
+    auto tuple {
+        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReference})};
     auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
@@ -113,7 +114,8 @@ TEST(opBuilderUpgradeConfirmationTestSuite, SendFromReference)
 
 TEST(opBuilderUpgradeConfirmationTestSuite, SendEmptyReferencedValueError)
 {
-    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReference})};
+    auto tuple {
+        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReference})};
     auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
@@ -130,7 +132,8 @@ TEST(opBuilderUpgradeConfirmationTestSuite, SendEmptyReferencedValueError)
 
 TEST(opBuilderUpgradeConfirmationTestSuite, SendWrongReferenceError)
 {
-    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {"$NonExistentReference"})};
+    auto tuple {std::make_tuple(
+        targetField, upgradeConfirmationHelperName, std::vector<std::string> {"$NonExistentReference"})};
     auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
