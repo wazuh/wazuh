@@ -236,7 +236,7 @@ void runStart(ConfHandler confManager)
         }
 
         // Register Metrics commands
-        api::metrics::cmds::registerAllCmds(server->getRegistry());
+        api::metrics::handlers::registerHandlers(server->getRegistry());
         WAZUH_LOG_DEBUG("Metrics API registered.");
 
         // Register Configuration API commands
