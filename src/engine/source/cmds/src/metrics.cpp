@@ -47,6 +47,57 @@ void runDump(std::shared_ptr<apiclnt::Client> client)
     std::cout << std::get<std::string>(json) << std::endl;
 }
 
+void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& name)
+{
+    using RequestType = eMetrics::Get_Request;
+    using ResponseType = eMetrics::Get_Response;
+    const std::string command = "metrics/get";
+
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(name);
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print value as json
+    const auto& value = eResponse.value();
+    const auto json = eMessage::eMessageToJson<google::protobuf::Value>(value);
+    std::cout << std::get<std::string>(json) << std::endl;
+}
+
+void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& name, bool status)
+{
+    using RequestType = eMetrics::Enable_Request;
+    using ResponseType = eMetrics::Enable_Response;
+    const std::string command = "metrics/enable";
+
+    RequestType eRequest;
+    eRequest.set_name(name);
+    eRequest.set_status(status);
+    
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+}
+
+void runTest(std::shared_ptr<apiclnt::Client> client)
+{
+    using RequestType = eMetrics::Test_Request;
+    using ResponseType = eMetrics::Test_Response;
+    const std::string command = "metrics/test";
+
+    RequestType eRequest;
+    
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+}
+
 void configure(CLI::App_p app)
 {
     auto metricApp = app->add_subcommand("metrics", "Manage the engine's Metrics Module.");
@@ -62,73 +113,35 @@ void configure(CLI::App_p app)
     auto dump_subcommand = metricApp->add_subcommand(details::API_METRICS_DUMP_SUBCOMMAND, "Prints all collected metrics.");
     dump_subcommand->callback([options, client]() { runDump(client);});
 
-    // // get
-    // auto get_subcommand = metricApp->add_subcommand("get", "Print a single metric as json.");
-    // get_subcommand->add_option("Instrument name", options->instrumentName, "Name that identifies the instrument.")
-    //     ->required();
-    // get_subcommand->callback([options]() { runGetInstrument(options->socketPath, options->instrumentName); });
+    // get
+    auto get_subcommand = metricApp->add_subcommand("get", "Print a single metric as json.");
+    get_subcommand->add_option("Instrument name", options->instrumentName, "Name that identifies the instrument.")
+    ->required();
+    get_subcommand->callback([options, client]() { runGetInstrument(client, options->instrumentName); });
 
-    // // enable
-    // auto enable_subcommand = metricApp->add_subcommand("enable", "Enable or disable a specific instrument.");
-    // enable_subcommand
-    //     ->add_option(
-    //         "Instrument name", options->instrumentName, "Name of the instrument whose status will be modified.")
-    //     ->default_val("");
-    // enable_subcommand->add_option("Enable state", options->enableState, "New instrument status.")->default_val(true);
-    // enable_subcommand->callback(
-    //     [options]() { runEnableInstrument(options->socketPath, options->instrumentName, options->enableState); });
+    // enable
+    auto enable_subcommand = metricApp->add_subcommand(details::API_METRICS_ENABLE_SUBCOMMAND, "Enable or disable a specific instrument.");
+    enable_subcommand
+    ->add_option("Instrument name", options->instrumentName, "Name of the instrument whose status will be modified.")
+    ->required();
+    enable_subcommand->add_option("Enable state", options->enableState, "New instrument status.")->required();
+    enable_subcommand->callback(
+    [options, client]() { runEnableInstrument(client, options->instrumentName, options->enableState); });
 
     // // list
     // auto list_subcommand = metricApp->add_subcommand("list", "Prints name, status and instruments types.");
     // list_subcommand->callback([options]() { runListInstruments(options->socketPath); });
 
-    // // test
-    // auto test_subcommand = metricApp->add_subcommand("test", "Generate dummy metrics for testing.");
-    // test_subcommand->callback([options]() { runTest(options->socketPath); });
+    // test
+    auto test_subcommand = metricApp->add_subcommand(details::API_METRICS_TEST_SUBCOMMAND, "Generate dummy metrics for testing.");
+    test_subcommand->callback([client]() { runTest(client); });
 }
-
-
-// void runGetInstrument(const std::string& socketPath, const std::string& name)
-// {
-
-//     auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_GET_SUBCOMMAND),
-//                                          details::ORIGIN_NAME,
-//                                          details::getParameters(details::API_METRICS_GET_SUBCOMMAND, name));
-
-//     details::singleRequest(req, socketPath);
-// }
-
-// void runEnableInstrument(const std::string& socketPath, const std::string& nameInstrument, bool enableState)
-// {
-//     json::Json params;
-//     params.setObject();
-//     if (!nameInstrument.empty())
-//     {
-//         params.setString(nameInstrument, "/nameInstrument");
-//     }
-
-//     params.setBool(enableState, "/enableState");
-
-//     auto req = api::WazuhRequest::create(
-//         details::commandName(details::API_METRICS_ENABLE_SUBCOMMAND), details::ORIGIN_NAME, params);
-
-//     details::singleRequest(req, socketPath);
-// }
 
 // void runListInstruments(const std::string& socketPath)
 // {
 //     auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_LIST_SUBCOMMAND),
 //                                          details::ORIGIN_NAME,
 //                                          details::getParameters(details::API_METRICS_LIST_SUBCOMMAND));
-
-//     details::singleRequest(req, socketPath);
-// }
-
-// void runTest(const std::string& socketPath)
-// {
-//     auto req = api::WazuhRequest::create(details::commandName(details::API_METRICS_TEST_SUBCOMMAND),
-//                                          details::ORIGIN_NAME,
-//                                          details::getParameters(details::API_METRICS_TEST_SUBCOMMAND));
 
 //     details::singleRequest(req, socketPath);
 // }
