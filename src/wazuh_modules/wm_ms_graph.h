@@ -37,6 +37,7 @@ typedef struct wm_ms_graph_auth {
 	char* tenant_id;
 	char* secret_value;
 	char* access_token;
+	time_t token_expiration_time;
 } wm_ms_graph_auth;
 
 typedef struct wm_ms_graph_resource {
