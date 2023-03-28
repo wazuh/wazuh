@@ -144,9 +144,9 @@ public:
     /**
      * @brief Obtains information about the list of configured instruments.
      *
-     * @return name, state and type of the instrument.
+     * @return json or error of instrument list.
      */
-    std::ostringstream getInstrumentsList();
+    std::variant<std::string, base::Error>  getInstrumentsList();
 
     /**
      * @brief Generate dummy metrics for testing.
