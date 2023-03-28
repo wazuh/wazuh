@@ -53,7 +53,7 @@ add_library(builders OBJECT
   builders/stageBuilderOutputs.cpp
   builders/stageBuilderParse.cpp
   definitions.cpp
-  environment.cpp
+  policy.cpp
   registry.cpp
 )
 

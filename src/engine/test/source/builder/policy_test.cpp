@@ -1,11 +1,11 @@
-#include "environment_test.hpp"
+#include "policy_test.hpp"
 #include <gtest/gtest.h>
 
 #include <filesystem>
 #include <stdexcept>
 
 #include "builder/builder.hpp"
-#include "builder/environment.hpp"
+#include "builder/policy.hpp"
 #include "builder/register.hpp"
 #include "builder/registry.hpp"
 
@@ -13,7 +13,7 @@ using namespace builder;
 using namespace builder::internals;
 using namespace base;
 
-class EnvironmentTest : public ::testing::Test
+class PolicyTest : public ::testing::Test
 {
     void SetUp() override
     {
@@ -32,7 +32,7 @@ class EnvironmentTest : public ::testing::Test
     }
 };
 
-TEST_F(EnvironmentTest, GetAssetType)
+TEST_F(PolicyTest, GetAssetType)
 {
     ASSERT_EQ(getAssetType(DECODERS), Asset::Type::DECODER);
     ASSERT_EQ(getAssetType(RULES), Asset::Type::RULE);
@@ -40,32 +40,32 @@ TEST_F(EnvironmentTest, GetAssetType)
     ASSERT_EQ(getAssetType(FILTERS), Asset::Type::FILTER);
 }
 
-TEST_F(EnvironmentTest, DefaultConstructor)
+TEST_F(PolicyTest, DefaultConstructor)
 {
-    ASSERT_NO_THROW(Environment env);
+    ASSERT_NO_THROW(Policy env);
 }
 
-TEST_F(EnvironmentTest, GetName)
+TEST_F(PolicyTest, GetName)
 {
-    Environment env;
+    Policy env;
     ASSERT_NO_THROW(env.name());
 }
 
-TEST_F(EnvironmentTest, GetAssets)
+TEST_F(PolicyTest, GetAssets)
 {
-    Environment env;
+    Policy env;
     ASSERT_NO_THROW(auto& assets = env.assets());
     ASSERT_NO_THROW(const auto& assets = env.assets());
 }
 
-TEST_F(EnvironmentTest, OneDecoderEnvironment)
+TEST_F(PolicyTest, OneDecoderPolicy)
 {
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name("policy/oneDecEnv/version")));
-    ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
-    auto env = Environment(envJson, storeRead, registry);
+    ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
+    auto env = Policy(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "policy/oneDecEnv/version");
     ASSERT_EQ(env.assets().size(), 1);
     ASSERT_NO_THROW(env.getExpression());
@@ -82,14 +82,14 @@ TEST_F(EnvironmentTest, OneDecoderEnvironment)
     ASSERT_EQ(decoderExpr->getName(), "decoder/decoder1/version");
 }
 
-TEST_F(EnvironmentTest, OneRuleEnvironment)
+TEST_F(PolicyTest, OneRulePolicy)
 {
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneRuleEnv/version"}));
-    ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
-    auto env = Environment(envJson, storeRead, registry);
+    ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
+    auto env = Policy(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "policy/oneRuleEnv/version");
     ASSERT_EQ(env.assets().size(), 1);
     ASSERT_NO_THROW(env.getExpression());
@@ -106,14 +106,14 @@ TEST_F(EnvironmentTest, OneRuleEnvironment)
     ASSERT_EQ(ruleExpr->getName(), "rule/rule1/version");
 }
 
-TEST_F(EnvironmentTest, OneOutputEnvironment)
+TEST_F(PolicyTest, OneOutputPolicy)
 {
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneOutEnv/version"}));
-    ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
-    auto env = Environment(envJson, storeRead, registry);
+    ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
+    auto env = Policy(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "policy/oneOutEnv/version");
     ASSERT_EQ(env.assets().size(), 1);
     ASSERT_NO_THROW(env.getExpression());
@@ -130,42 +130,42 @@ TEST_F(EnvironmentTest, OneOutputEnvironment)
     ASSERT_EQ(outExpr->getName(), "output/output1/version");
 }
 
-TEST_F(EnvironmentTest, OneFilterEnvironment)
+TEST_F(PolicyTest, OneFilterPolicy)
 {
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneFilEnv/version"}));
-    ASSERT_THROW(Environment(envJson, storeRead, registry), std::runtime_error);
+    ASSERT_THROW(Policy(envJson, storeRead, registry), std::runtime_error);
 }
 
-TEST_F(EnvironmentTest, OrphanAsset)
+TEST_F(PolicyTest, OrphanAsset)
 {
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/orphanAssetEnv/version"}));
-    ASSERT_THROW(Environment(envJson, storeRead, registry), std::runtime_error);
+    ASSERT_THROW(Policy(envJson, storeRead, registry), std::runtime_error);
 }
 
-TEST_F(EnvironmentTest, OrphanFilter)
+TEST_F(PolicyTest, OrphanFilter)
 {
     GTEST_SKIP();
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/orphanFilterEnv/version"}));
-    ASSERT_THROW(Environment(envJson, storeRead, registry), std::runtime_error);
+    ASSERT_THROW(Policy(envJson, storeRead, registry), std::runtime_error);
 }
 
-TEST_F(EnvironmentTest, CompleteEnvironment)
+TEST_F(PolicyTest, CompletePolicy)
 {
     auto registry = std::make_shared<Registry>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/completeEnv/version"}));
-    ASSERT_NO_THROW(Environment(envJson, storeRead, registry));
-    auto env = Environment(envJson, storeRead, registry);
+    ASSERT_NO_THROW(Policy(envJson, storeRead, registry));
+    auto env = Policy(envJson, storeRead, registry);
     ASSERT_EQ(env.name(), "policy/completeEnv/version");
     ASSERT_EQ(env.assets().size(), 11);
     ASSERT_NO_THROW(env.getExpression());
