@@ -17,7 +17,7 @@
 static wm_ms_graph* ms_graph;
 void* wm_ms_graph_main(wm_ms_graph* ms_graph);
 void wm_ms_graph_setup(wm_ms_graph* ms_graph);
-void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config);
+void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config);
 void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph);
 void wm_ms_graph_check();
 void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
@@ -38,11 +38,35 @@ const wm_context WM_MS_GRAPH_CONTEXT = {
 
 
 void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
-    
+    char* timestamp = NULL;
+
     wm_ms_graph_setup(ms_graph);
+    mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
 
+    while(FOREVER()){
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(ms_graph->scan_config), WM_MS_GRAPH_LOGTAG, ms_graph->run_on_start);
 
+        if(ms_graph->state.next_time == 0){
+            ms_graph->state.next_time = ms_graph->scan_config.time_start + time_sleep;
+        }
 
+        if (time_sleep) {
+            const int next_scan_time = sched_get_next_scan_time(ms_graph->scan_config);
+            timestamp = w_get_timestamp(next_scan_time);
+            mtdebug2(WM_MS_GRAPH_LOGTAG, "Waiting until: %s", timestamp);
+            os_free(timestamp);
+            w_sleep_until(next_scan_time);
+        }
+
+        if(!ms_graph->auth_config.access_token || time(NULL) >= ms_graph->auth_config.token_expiration_time){
+            mtinfo(WM_MS_GRAPH_LOGTAG, "Obtaining access token.");
+            wm_ms_graph_get_access_token(ms_graph->auth_config);
+        }
+        mtinfo(WM_MS_GRAPH_LOGTAG, "Starting scan of tenant '%s'", ms_graph->auth_config.tenant_id);
+        wm_ms_graph_scan_relationships(ms_graph);
+
+    }
+    return NULL;
 }
 
 void wm_ms_graph_setup(wm_ms_graph* _ms_graph) {
@@ -65,16 +89,39 @@ void wm_ms_graph_setup(wm_ms_graph* _ms_graph) {
 
 }
 
-void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config) {
+void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config) {
+    char url[OS_SIZE_8192];
+    char payload[OS_SIZE_8192];
     curl_response* response;
 
-    //TODO: Handle the expiration timer for the access token
-    response = wurl_http_request(WURL_POST_METHOD, "Content-Type: application/x-www-form-urlencoded", WM_MS_GRAPH_ACCESS_TOKEN_URL, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    if(response->status_code != 200){
-        //TODO
+    memset(url, '\0', OS_SIZE_8192);
+    snprintf(url, OS_SIZE_8192 - 1, auth_config.tenant_id);
+    mtdebug1("Microsoft Graph API Access Token URL: '%s'", url);
+    memset(payload, '\0', OS_SIZE_8192);
+    snprintf(payload, OS_SIZE_8192 - 1, auth_config.client_id, auth_config.secret_value);
+    response = wurl_http_request(WURL_POST_METHOD, "Content-Type: application/x-www-form-urlencoded", url, payload, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    if(response){
+        if(response->status_code != 200){
+            mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to obtain access token: '%s'", response->status_code);
+        }
+        else if (response->max_size_reached){
+            mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'");
+        }
+        else{
+            cJSON* response_body = NULL;
+            if(response_body = cJSON_Parse(response->body), !response_body){
+                mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse access token JSON body.");
+            }
+            else{
+                os_strdup(cJSON_GetObjectItem(response_body, "access_token")->valuestring, auth_config.access_token);
+                auth_config.token_expiration_time = time(NULL) + cJSON_GetObjectItem(response_body, "expires_in")->valueint;
+                cJSON_Delete(response_body);
+                wurl_free_response(response);
+            }
+        }
     }
     else{
-        //TODO
+        mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
     }
 }
 
