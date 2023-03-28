@@ -23,4 +23,4 @@ check:
 normalize:
   - map:
       - wazuh.source: remote
-      - wazuh.decoders: +a_append/internal-rsyslog
+      - wazuh.decoders: +array_append/internal-rsyslog

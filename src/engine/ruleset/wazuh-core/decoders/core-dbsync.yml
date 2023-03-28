@@ -24,4 +24,4 @@ check:
 normalize:
   - map:
       - wazuh.source: dbsync
-      - wazuh.decoders: +a_append/internal-dbsync
+      - wazuh.decoders: +array_append/internal-dbsync
