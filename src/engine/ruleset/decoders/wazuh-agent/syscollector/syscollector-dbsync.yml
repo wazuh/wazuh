@@ -24,9 +24,9 @@ sources:
   - decoder/syscollector-base/0
 
 check:
-  - ~json.type: +s_starts/dbsync_
-  - ~json.operation: +t_is_string
-  - ~json.data: +t_is_object
+  - ~json.type: +starts_with/dbsync_
+  - ~json.operation: +is_string
+  - ~json.data: +is_object
 
 # processes
 # {"data":{"argvs":null,"checksum":"71ece4e42dd41b4b06df00e3f5c4fab33aacc1c5","cmd":null,"egroup":"root","euser":"root","fgroup":"root","name":"kworker/1:2-eve","nice":0,"nlwp":1,"pgrp":0,"pid":"4188","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","scan_time":"2023/03/10 03:27:12","session":0,"sgroup":"root","share":0,"size":0,"start_time":1678418235,"state":"R","stime":14,"suser":"root","tgid":4188,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"}
@@ -48,62 +48,62 @@ check:
 # {"data":{"scan_time":"2021/10/29 14:26:24","hotfix":"KB123456","checksum":"abcdef0123456789"}, "type":"dbsync_hotfixes","operation":"MODIFIED"}
 
 normalize:
-  - check: +ef_exists/~json.data.address OR +ef_exists/~json.data.mac OR +ef_exists/~json.data.os_version OR +ef_exists/~json.data.release OR +s_ne/~json.data.hostname/ OR +s_ne/~json.data.os_name/ OR +s_ne/~json.data.os_platform/ OR +s_ne/~json.data.sysname/
+  - check: +exists/~json.data.address OR +exists/~json.data.mac OR +exists/~json.data.os_version OR +exists/~json.data.release OR +string_not_equal/~json.data.hostname/ OR +string_not_equal/~json.data.os_name/ OR +string_not_equal/~json.data.os_platform/ OR +string_not_equal/~json.data.sysname/
     map:
       - ~do_update_kvdb: true
 
   # Avoid updating when architecture field not from osinfo
-  - check: +s_ne/~json.data.architecture/ AND +s_eq/~json.type/osinfo
+  - check: +string_not_equal/~json.data.architecture/ AND +string_equal/~json.type/osinfo
     map:
       - ~do_update_kvdb: true
 
   - map:
-      - ~json.type: +s_replace/dbsync_/
-      - ~tmp.query: +s_concat/agent /$agent.id/ dbsync /$~json.type/ /$~json.operation/ /$~json.data
+      - ~json.type: +replace/dbsync_/
+      - ~tmp.query: +concat/agent /$agent.id/ dbsync /$~json.type/ /$~json.operation/ /$~json.data
       - ~tmp.query_response: +wdb_update/$~tmp.query
-      - ~json.data.checksum: +ef_delete
+      - ~json.data.checksum: +delete
 
   - check:
-      - ~tmp.query_response: +t_is_false
+      - ~tmp.query_response: +is_false
     map:
       - ~do_update_kvdb: false
 
     # Mapping result fields to wazuh.syscollector
-  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/processes
+  - check: +is_true/~tmp.query_response AND +string_equal/~json.type/processes
     map:
       - wazuh.syscollector.process: $~json.data
 
-  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/ports
+  - check: +is_true/~tmp.query_response AND +string_equal/~json.type/ports
     map:
       - wazuh.syscollector.port: $~json.data
 
-  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/hotfixes
+  - check: +is_true/~tmp.query_response AND +string_equal/~json.type/hotfixes
     map:
       - wazuh.syscollector.hotfix: $~json.data
 
-  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/hwinfo
+  - check: +is_true/~tmp.query_response AND +string_equal/~json.type/hwinfo
     map:
       - wazuh.syscollector.hardware: $~json.data
 
-  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/network_address
+  - check: +is_true/~tmp.query_response AND +string_equal/~json.type/network_address
     map:
       - wazuh.syscollector.netinfo.addr: $~json.data
 
-  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/network_protocol
+  - check: +is_true/~tmp.query_response AND +string_equal/~json.type/network_protocol
     map:
       - wazuh.syscollector.netinfo.proto: $~json.data
 
-  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/network_iface
+  - check: +is_true/~tmp.query_response AND +string_equal/~json.type/network_iface
     map:
       - wazuh.syscollector.netinfo.iface: $~json.data
 
-  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/osinfo
+  - check: +is_true/~tmp.query_response AND +string_equal/~json.type/osinfo
     map:
       - wazuh.syscollector.os: $~json.data
 
-  - check: +t_is_true/~tmp.query_response AND +s_eq/~json.type/packages
+  - check: +is_true/~tmp.query_response AND +string_equal/~json.type/packages
     map:
       - wazuh.syscollector.program: $~json.data
 
   - map:
-      - ~tmp: +ef_delete
+      - ~tmp: +delete
