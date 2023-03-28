@@ -22,4 +22,4 @@ check:
 
 normalize:
   - map:
-      - wazuh.decoders: +a_append/internal-hostinfo
+      - wazuh.decoders: +array_append/internal-hostinfo

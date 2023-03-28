@@ -24,4 +24,4 @@ check:
 normalize:
   - map:
       - wazuh.source: wodle
-      - wazuh.decoders: +a_append/internal-ciscat
+      - wazuh.decoders: +array_append/internal-ciscat
