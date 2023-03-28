@@ -30,10 +30,10 @@ variables:
 
 checks:
   ############################################################
-  # 1.1 Filesystem Configuration
+  # 1.1 Filesystem Configuration.
   ############################################################
-  # 1.1.1.1 Ensure mounting of squashfs filesystems is disabled (Automated) - Not Implemented
-  # 1.1.1.2 Ensure mounting of udf filesystems is disabled (Automated) - Not Implemented
+  # 1.1.1.1 Ensure mounting of squashfs filesystems is disabled. (Automated) - Not Implemented
+  # 1.1.1.2 Ensure mounting of udf filesystems is disabled. (Automated) - Not Implemented
 
   # 1.1.2.1 Ensure /tmp is a separate partition. (Automated)
   - id: 31003
