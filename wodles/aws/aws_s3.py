@@ -3672,7 +3672,7 @@ def main(argv):
                 try:
                     service_type.check_region(region)
                 except ValueError:
-                    print(f"+++ WARNING: The region '{region}' is not a valid one.", 1)
+                    debug(f"+++ WARNING: The region '{region}' is not a valid one.", 1)
                     continue
 
                 debug('+++ Getting alerts from "{}" region.'.format(region), 1)
