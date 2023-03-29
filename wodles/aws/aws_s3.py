@@ -330,9 +330,6 @@ class WazuhIntegration:
         """
         args = {}
 
-        import pydevd_pycharm
-        pydevd_pycharm.settrace('172.19.0.1', port=10000, stdoutToServer=True, stderrToServer=True)
-
         if path.exists(DEFAULT_AWS_CONFIG_PATH):
             # Create boto Config object
             args['config'] = botocore.config.Config()
