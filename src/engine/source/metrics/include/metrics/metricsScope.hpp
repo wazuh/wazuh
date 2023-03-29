@@ -30,7 +30,7 @@ public:
         getCounterDouble(const std::string& name) override;
 
     std::shared_ptr<iCounter<uint64_t>>
-        getCounterInteger(const std::string& name) override;
+        getCounterUInteger(const std::string& name) override;
 
     std::shared_ptr<iCounter<double>>
         getUpDownCounterDouble(const std::string& name) override;
@@ -42,7 +42,7 @@ public:
         getHistogramDouble(const std::string& name) override;
 
     std::shared_ptr<iHistogram<uint64_t>>
-        getHistogramInteger(const std::string& name) override;
+        getHistogramUInteger(const std::string& name) override;
 
     std::shared_ptr<iGauge<int64_t>> 
         getGaugeInteger(const std::string& name, int64_t defaultValue)  override;

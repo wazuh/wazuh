@@ -7,8 +7,12 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 
+#include <metrics/metricsManager.hpp>
+using namespace metrics_manager;
+
 static constexpr char kBenchDbName[] = "bench";
-static auto kvdbManager = std::make_shared<kvdb_manager::KVDBManager>("/tmp/");
+static auto metricsManager = std::make_shared<MetricsManager>();
+static auto kvdbManager = std::make_shared<kvdb_manager::KVDBManager>("/tmp/", metricsManager);
 
 static void dbSetup(const benchmark::State& s)
 {

@@ -10,7 +10,6 @@
 #ifndef _BASE_ENDPOINT_H
 #define _BASE_ENDPOINT_H
 
-#include <metrics.hpp>
 #include <string>
 
 #include <blockingconcurrentqueue.h>

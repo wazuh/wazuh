@@ -14,7 +14,7 @@
 #include <utils/baseMacros.hpp>
 #include <utils/stringUtils.hpp>
 
-#include <metrics.hpp>
+#include <metrics/metricsManager.hpp>
 
 namespace kvdb_manager
 {
@@ -29,7 +29,7 @@ constexpr bool DONT_CREATE_IF_MISSING {false};
 
 } // namespace
 
-KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
+KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
 {
     // TODO should we read and load all the dbs inside the folder?
     // shouldn't be better to just load the configured ones at start instead?
@@ -37,10 +37,15 @@ KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath)
     // TODO Remove this when Engine is integrated in Wazuh installation
     std::filesystem::create_directories(dbStoragePath);
     m_dbStoragePath = dbStoragePath;
+
+    m_spMetricsScope = metricsManager->getMetricsScope("kvdb");
 }
 
 KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
 {
+    auto databaseCounter = m_spMetricsScope->getCounterUInteger("DatabaseCounter");
+    auto databaseInUseCounter = m_spMetricsScope->getUpDownCounterInteger("DatabaseInUseCounter");
+
     std::unique_lock lkW(m_mtx);
     const bool isLoaded = m_dbs.find(name) != m_dbs.end();
 
@@ -63,9 +68,9 @@ KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
         || KVDB::CreationStatus::OkCreated == result)
     {
         // This instrument measures the number of KVDB created
-        Metrics::instance().addCounterValue("Kvdb.DatabaseCounter", 1UL);
+        databaseCounter->addValue(1UL);
         // This instrument measures the current number of active KVDB
-        Metrics::instance().addUpDownCounterValue("Kvdb.DatabaseInUseCounter", 1L);
+        databaseInUseCounter->addValue(1L);
 
         m_dbs[name] = kvdb;
         return kvdb;
@@ -79,11 +84,14 @@ void KVDBManager::unloadDB(const std::string& name)
     std::unique_lock lkW(m_mtx);
     const bool isLoaded = m_dbs.find(name) != m_dbs.end();
 
+    auto databaseInUseCounter = m_spMetricsScope->getUpDownCounterInteger("DatabaseInUseCounter");
+
     if (isLoaded)
     {
         m_dbs.erase(name);
+
         // This instrument measures the current number of active KVDB
-        Metrics::instance().addUpDownCounterValue("Kvdb.DatabaseInUseCounter", -1L);
+        databaseInUseCounter->addValue(-1L);
     }
 }
 
@@ -374,6 +382,7 @@ bool KVDBManager::exist(const std::string& name)
 
 std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 {
+    auto databaseInUseCounter = m_spMetricsScope->getUpDownCounterInteger("DatabaseInUseCounter");
     const auto MAX_USE_COUNT = 2; // 1 for the map and 1 for getHandler
 
     auto res = getHandler(name);
@@ -400,8 +409,9 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
         if (handler.use_count() == MAX_USE_COUNT)
         {
             m_dbs.erase(name);
+            
             // This instrument measures the current number of active KVDB
-            Metrics::instance().addUpDownCounterValue("Kvdb.DatabaseInUseCounter", -1L);
+            databaseInUseCounter->addValue(-1L);
         }
         else
         {

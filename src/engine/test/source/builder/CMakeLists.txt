@@ -32,7 +32,7 @@ include_directories(
 )
 
 # TODO do this better
-link_libraries(gtest_main gtest base builders)
+link_libraries(gtest_main gtest base builders metrics)
 
 # ###################################################################################################
 # Builder targets

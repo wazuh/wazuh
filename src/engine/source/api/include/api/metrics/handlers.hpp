@@ -2,7 +2,7 @@
 #define _API_METRICS_HANDLERS_HPP
 
 #include <api/registry.hpp>
-#include "metrics.hpp"
+#include <metrics/iMetricsManagerAPI.hpp>
 
 namespace api::metrics::handlers
 {
@@ -11,7 +11,7 @@ namespace api::metrics::handlers
  *
  * @return [api::CommandFn] Dumped data, or error message.
  */
-api::Handler metricsDumpCmd();
+api::Handler metricsDumpCmd(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI);
 
 /**
 * @brief Get a specific instrument.
@@ -47,7 +47,7 @@ api::Handler metricsTestCmd();
  * @param registry API registry.
  * @throw std::runtime_error If the command registration fails for any reason.
  */
-void registerHandlers(std::shared_ptr<api::Registry> registry);
+void registerHandlers(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI, std::shared_ptr<api::Registry> registry);
 
 } // namespace api::metrics::handlers
 
