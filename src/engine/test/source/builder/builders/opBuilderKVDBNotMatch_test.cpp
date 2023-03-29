@@ -30,13 +30,13 @@ class opBuilderKVDBNotMatchTest : public ::testing::Test
 protected:
     kvdb_manager::KVDBManager& kvdbManager = kvdb_manager::KVDBManager::get();
 
-    virtual void SetUp()
+    void SetUp() override
     {
         auto varHandle = kvdbManager->getHandler("TEST_DB", true);
         ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
 
-    virtual void TearDown() { kvdbManager.unloadDB("TEST_DB"); }
+    void TearDown() override { kvdbManager.unloadDB("TEST_DB"); }
 };
 
 // Build ok

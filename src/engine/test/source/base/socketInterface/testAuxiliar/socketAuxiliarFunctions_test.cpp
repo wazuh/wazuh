@@ -10,55 +10,36 @@
 
 #include <gtest/gtest.h>
 
-#include <logging/logging.hpp>
+#include <testsCommon.hpp>
 
 #include "socketAuxiliarFunctions.hpp"
 
 // Note: server DGRAM sockets are only able to receive and clients are only able to send.
-
-void initLogging(void)
-{
-    // Logging setup
-    logging::LoggingConfig logConfig;
-    logConfig.logLevel = "off";
-    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-    logging::loggingInit(logConfig);
-}
-
 class socketAuxiliarFunctions : public ::testing::Test
 {
 
 protected:
-    virtual void SetUp()
-    {
-        initLogging();
-    }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class unixDatagramSocket : public ::testing::Test
 {
 
 protected:
-    virtual void SetUp()
-    {
-        initLogging();
-    }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class unixSecureStreamSocket : public ::testing::Test
 {
 
 protected:
-    virtual void SetUp()
-    {
-        initLogging();
-    }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 TEST_F(socketAuxiliarFunctions, StreamConnectError)

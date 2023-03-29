@@ -13,7 +13,6 @@ namespace logging
 {
 
 constexpr char DEFAULT_LOG_PATH[] {"/dev/stderr"};
-constexpr char DEFAULT_TESTS_LOG_PATH[] {"/tmp/engine_code_tests.log"};
 constexpr char DEFAULT_LOG_HEADER[] {"%Y-%m-%d %T.%e %P:%t %l: %v"};
 constexpr char DEFAULT_LOG_LEVEL[] {"info"}; ///< "trace", "debug", "info", "warning", "error", "critical", "off"
 constexpr uint32_t DEFAULT_LOG_THREADS {0};  ///< Quantity of dedicated threads, 0 means no dedicated threads
@@ -69,7 +68,7 @@ static inline void loggingInit(LoggingConfig& cfg)
     }
     catch (const spdlog::spdlog_ex& ex)
     {
-        std::cerr << "Log initialization failed: " << ex.what() << std::endl;
+        throw std::runtime_error(fmt::format("Log initialization failed: {}", ex.what()));
     }
 
     spdlog::level::level_enum level {SEVERITY_LEVEL.at(DEFAULT_LOG_LEVEL)};

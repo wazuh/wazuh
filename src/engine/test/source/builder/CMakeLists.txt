@@ -29,6 +29,7 @@ include_directories(
   ${RxCpp_SOURCE_DIR}/Rx/v2/src
   ${ENGINE_SOURCE_DIR}/wdb/src
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/
+  ${TEST_SOURCE_DIR}/base/utils/tests/
 )
 
 # TODO do this better

@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <testsCommon.hpp>
+
 static const std::filesystem::path TEST_PATH = "/tmp/fileDriver_test";
 static const base::Name TEST_NAME({"type", "name", "version"});
 static const base::Name TEST_NAME_COLLECTION(std::vector<std::string> {"type", "name"});
@@ -18,11 +20,7 @@ class FileDriverTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-        logging::loggingInit(logConfig);
+        initLogging();
 
         std::filesystem::create_directories(TEST_PATH);
     }
