@@ -924,9 +924,6 @@ ifeq (${TARGET},winagent)
 else
 	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure && ${MAKE} libz.a
 endif
-ifeq (${uname_S},AIX)
-	mv ${EXTERNAL_ZLIB}/compress.o ${EXTERNAL_ZLIB}/compress2.o
-endif
 
 ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
 
@@ -1656,6 +1653,9 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 		ar -x libwazuhext/$$lib; \
 		mv *.o libwazuhext/; \
 	done
+ifeq (${uname_S},AIX)
+	ar -p libwazuhext/libz.a compress.o > libwazuhext/compress2.o
+endif
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc
 
 else
