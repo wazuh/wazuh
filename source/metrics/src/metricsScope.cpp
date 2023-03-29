@@ -20,8 +20,8 @@ void MetricsScope::initialize()
 
     // Create Reader
     OTSDKPerodicMetricReaderOptions options;
-    options.export_interval_millis = std::chrono::milliseconds(700);
-    options.export_timeout_millis = std::chrono::milliseconds(500);
+    options.export_interval_millis = std::chrono::milliseconds(1000);
+    options.export_timeout_millis = std::chrono::milliseconds(300);
 
     std::unique_ptr<OTSDKMetricReader> metricReader(new OTSDKPerodicMetricReader(std::move(metricExporter), options));
 
@@ -49,7 +49,7 @@ std::shared_ptr<iCounter<double>> MetricsScope::getCounterDouble(const std::stri
     return retValue;
 }
 
-std::shared_ptr<iCounter<uint64_t>> MetricsScope::getCounterInteger(const std::string& name)
+std::shared_ptr<iCounter<uint64_t>> MetricsScope::getCounterUInteger(const std::string& name)
 {
     auto retValue = m_collection_counter_integer.getInstrument(
         name,
@@ -101,7 +101,7 @@ std::shared_ptr<iHistogram<double>> MetricsScope::getHistogramDouble(const std::
     return retValue;
 }
 
-std::shared_ptr<iHistogram<uint64_t>> MetricsScope::getHistogramInteger(const std::string& name)
+std::shared_ptr<iHistogram<uint64_t>> MetricsScope::getHistogramUInteger(const std::string& name)
 {
     auto retValue = m_collection_histogram_integer.getInstrument(
         name,

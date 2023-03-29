@@ -96,7 +96,7 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeTwoCounters)
 {
     auto scope0 = m_manager->getMetricsScope("scope_0");
     auto counter0 = scope0->getCounterDouble("counter_0");
-    auto counter1 = scope0->getCounterInteger("counter_1");
+    auto counter1 = scope0->getCounterUInteger("counter_1");
     counter0->addValue(5.0);
     counter1->addValue(2);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
@@ -119,7 +119,7 @@ TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
 {
     // TODO: Add significant ASSERT sentences to validate unit test
     auto scope0 = m_manager->getMetricsScope("scope_0");
-    auto histogram0 = scope0->getHistogramInteger("histogram_0");
+    auto histogram0 = scope0->getHistogramUInteger("histogram_0");
     
     for (int i=0; i<1000; i++)
     {

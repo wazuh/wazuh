@@ -217,16 +217,16 @@ EventEndpoint::EventEndpoint(
             auto strRequest = std::string {eventSocket.data.get(), eventSocket.length};
 
             // Received bytes per seconds
-            Metrics::instance().addCounterValue("Server.ReceivedBytesPerSecond", static_cast<uint64_t>(eventSocket.length));
+            //Metrics::instance().addCounterValue("Server.ReceivedBytesPerSecond", static_cast<uint64_t>(eventSocket.length));
 
             // Received events per seconds
-            Metrics::instance().addCounterValue("Server.ReceivedEventsPerSecond", 1UL);
+            //Metrics::instance().addCounterValue("Server.ReceivedEventsPerSecond", 1UL);
 
             // Total events received
-            Metrics::instance().addCounterValue("Server.TotalEventsReceived", 1UL);
+            //Metrics::instance().addCounterValue("Server.TotalEventsReceived", 1UL);
 
             // Total bytes received
-            Metrics::instance().addCounterValue("Server.TotalBytesReceived", static_cast<uint64_t>(eventSocket.length));
+            //Metrics::instance().addCounterValue("Server.TotalBytesReceived", static_cast<uint64_t>(eventSocket.length));
 
             base::Event event;
             try
@@ -257,7 +257,7 @@ EventEndpoint::EventEndpoint(
                     if (m_eventQueue->try_enqueue(event))
                     {
                         // Number of events inserted in queue
-                        Metrics::instance().addCounterValue("Server.QueuedEvents", 1UL);
+                        //Metrics::instance().addCounterValue("Server.QueuedEvents", 1UL);
 
                         break;
                     }
@@ -268,7 +268,7 @@ EventEndpoint::EventEndpoint(
                 if (attempts >= maxAttempts)
                 {
                     // Number of events that have been written to disk because queue is full
-                    Metrics::instance().addCounterValue("Server.EventsInsertedDisk", 1UL);
+                    //Metrics::instance().addCounterValue("Server.EventsInsertedDisk", 1UL);
 
                     dumpFileHandler->write(strRequest);
                 }
@@ -306,7 +306,7 @@ void EventEndpoint::configure(void)
 void EventEndpoint::run(void)
 {
     //Used Queue
-    Metrics::instance().addObservableGauge("Server.UsedQueue", callbackUsedQueue);
+    //Metrics::instance().addObservableGauge("Server.UsedQueue", callbackUsedQueue);
 
     // Size in bytes per second received
     m_loop->run<Loop::Mode::DEFAULT>();
@@ -343,6 +343,7 @@ EventEndpoint::getEventQueue(void) const
     return m_eventQueue;
 }
 
+/*
 void EventEndpoint::callbackUsedQueue(opentelemetry::metrics::ObserverResult observer_result, void *)
 {
     if (opentelemetry::nostd::holds_alternative<opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<double>>>(observer_result))
@@ -351,5 +352,6 @@ void EventEndpoint::callbackUsedQueue(opentelemetry::metrics::ObserverResult obs
       opentelemetry::nostd::get<opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<double>>>(observer_result)->Observe(value);
     }
 }
+*/
 
 } // namespace engineserver::endpoints
