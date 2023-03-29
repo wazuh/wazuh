@@ -24,8 +24,6 @@
 #include "registry.hpp"
 #include "server/wazuhStreamProtocol.hpp"
 
-#include "metrics.hpp"
-
 namespace
 {
 std::atomic<bool> gs_doRun = true;
@@ -40,9 +38,9 @@ void sigint_handler(const int signum)
 
 namespace cmd::test
 {
-void run(const Options& options)
+void run(const Options& options, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
 {
-    Metrics::instance().initMetrics("engine-metrics", "/var/ossec/engine/store/metrics/config/0");
+    //Metrics::instance().initMetrics("engine-metrics", "/var/ossec/engine/store/metrics/config/0");
     // Init logging
     logging::LoggingConfig logConfig;
     logConfig.header = "";
@@ -57,7 +55,7 @@ void run(const Options& options)
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
 
-    auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath);
+    auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath, metricsManager);
     g_exitHanlder.add([kvdb]() { kvdb->clear(); });
 
     auto fileStore = std::make_shared<store::FileDriver>(options.fileStorage);
@@ -319,7 +317,7 @@ void run(const Options& options)
     g_exitHanlder.execute();
 }
 
-void configure(CLI::App_p app)
+void configure(CLI::App_p app, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
 {
     auto options = std::make_shared<Options>();
 
@@ -376,6 +374,6 @@ void configure(CLI::App_p app)
         ->needs(debug);
 
     // Register callback
-    logtestApp->callback([options]() { run(*options); });
+    logtestApp->callback([options, metricsManager]() { run(*options, metricsManager); });
 }
 } // namespace cmd::test

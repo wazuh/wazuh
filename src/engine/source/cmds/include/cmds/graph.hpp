@@ -6,6 +6,8 @@
 
 #include <CLI/CLI.hpp>
 
+#include <metrics/iMetricsManager.hpp>
+
 namespace cmd::graph
 {
 /**
@@ -24,9 +26,9 @@ struct Options
     std::string environment;
     std::string graphOutDir;
 };
-void run(const Options& options);
+void run(const Options& options, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
 
-void configure(CLI::App_p app);
+void configure(CLI::App_p app, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
 } // namespace cmd::graph
 
 #endif // _CMD_GRAPH_HPP

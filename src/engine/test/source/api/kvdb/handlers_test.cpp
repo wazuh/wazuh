@@ -5,7 +5,10 @@
 
 #include <gtest/gtest.h>
 
+#include <metrics/metricsManager.hpp>
+
 using namespace api::kvdb::handlers;
+using namespace metrics_manager;
 
 constexpr auto DB_NAME = "TEST_DB";
 constexpr auto DB_NAME_2 = "TEST_DB_2";
@@ -87,15 +90,17 @@ class managerPost_Handler : public ::testing::Test
 
 protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<IMetricsManager> m_manager;
 
     virtual void SetUp()
     {
+        m_manager = std::make_shared<MetricsManager>();
         fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
         }
-        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
+        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR, m_manager);
         auto varHandle = kvdbManager->getHandler(DB_NAME, true);
         ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
@@ -385,15 +390,17 @@ protected:
     static constexpr auto DB_NAME_NOT_AVAILABLE = "TEST_DB_NOT_AVAILABLE";
 
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<IMetricsManager> m_manager;
 
     virtual void SetUp()
     {
+        m_manager = std::make_shared<MetricsManager>();
         fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
         }
-        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
+        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR, m_manager);
         auto varHandle = kvdbManager->getHandler(DB_NAME, true);
         ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
@@ -572,9 +579,11 @@ class managerDump_Handler : public ::testing::Test
 
 protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<IMetricsManager> m_manager;
 
     virtual void SetUp()
     {
+        m_manager = std::make_shared<MetricsManager>();
         fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
@@ -586,7 +595,7 @@ protected:
             std::filesystem::remove(FILE_PATH);
         }
 
-        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
+        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR, m_manager);
         auto varHandle = kvdbManager->getHandler(DB_NAME, true);
         ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
@@ -725,15 +734,17 @@ class dbGet_Handler : public ::testing::Test
 
 protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<IMetricsManager> m_manager;
 
     virtual void SetUp()
     {
+        m_manager = std::make_shared<MetricsManager>();
         fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
         }
-        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
+        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR, m_manager);
         kvdbManager->createFromJFile(DB_NAME);
     }
 
@@ -868,15 +879,17 @@ class dbPut_Handler : public ::testing::Test
 
 protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<IMetricsManager> m_manager;
 
     virtual void SetUp()
     {
+        m_manager = std::make_shared<MetricsManager>();
         fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
         }
-        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
+        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR, m_manager);
         kvdbManager->createFromJFile(DB_NAME);
     }
 
@@ -1036,15 +1049,17 @@ protected:
     static constexpr auto DB_NAME_DIFFERENT_START = "NOT_TEST_DB";
 
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<IMetricsManager> m_manager;
 
     virtual void SetUp()
     {
+        m_manager = std::make_shared<MetricsManager>();
         fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
         }
-        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
+        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR, m_manager);
         auto varHandle = kvdbManager->getHandler(DB_NAME, true);
         ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
@@ -1143,15 +1158,17 @@ class dbDelete_Handler : public ::testing::Test
 
 protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<IMetricsManager> m_manager;
 
     virtual void SetUp()
     {
+        m_manager = std::make_shared<MetricsManager>();
         fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
         if (std::filesystem::exists(DB_DIR))
         {
             std::filesystem::remove_all(DB_DIR);
         }
-        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
+        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR, m_manager);
         kvdbManager->createFromJFile(DB_NAME);
         kvdbManager->writeRaw(DB_NAME, KEY_A, VAL_A);
     }
@@ -1335,7 +1352,9 @@ TEST_F(dbDelete_Handler, RemoveReturnsOkWithNonExistingKeyName)
 
 TEST(kvdbAPICmdsTest, registerHandlers)
 {
-    auto kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR);
+    auto manager = std::make_shared<MetricsManager>();
+
+    auto kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR, manager);
 
     auto apiReg = std::make_shared<api::Registry>();
 

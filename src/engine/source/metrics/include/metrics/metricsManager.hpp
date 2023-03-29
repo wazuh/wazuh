@@ -1,5 +1,5 @@
-#ifndef _METRICS_H
-#define _METRICS_H
+#ifndef _METRICS_MANAGER_H
+#define _METRICS_MANAGER_H
 
 #include <memory>
 #include <mutex>
@@ -45,7 +45,7 @@ public:
     json::Json getAllMetrics() override;
 
     // API Commands
-    std::variant<json::Json, base::Error> dumpCmd() override;
+    std::variant<std::string, base::Error> dumpCmd() override;
 
 private:
 
@@ -59,4 +59,4 @@ private:
 
 } // namespace metrics_manager
 
-#endif // _METRICS_H
+#endif // _METRICS_MANAGER_H

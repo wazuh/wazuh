@@ -27,7 +27,7 @@ constexpr auto ENV_EXPR_GRAPH = "env_expr_graph.dot";
 
 namespace cmd::graph
 {
-void run(const Options& options)
+void run(const Options& options, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
 {
     // Init logging
     // TODO: add cmd to config logging level
@@ -36,7 +36,7 @@ void run(const Options& options)
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
 
-    auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath);
+    auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath, metricsManager);
     g_exitHanlder.add([kvdb]() { kvdb->clear(); });
 
     auto store = std::make_shared<store::FileDriver>(options.fileStorage);
@@ -119,7 +119,7 @@ void run(const Options& options)
     g_exitHanlder.execute();
 }
 
-void configure(CLI::App_p app)
+void configure(CLI::App_p app, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
 {
     auto options = std::make_shared<Options>();
 
@@ -148,6 +148,6 @@ void configure(CLI::App_p app)
         ->check(CLI::ExistingDirectory);
 
     // Register callback
-    graphApp->callback([options]() { run(*options); });
+    graphApp->callback([options, metricsManager]() { run(*options, metricsManager); });
 }
 } // namespace cmd::graph
