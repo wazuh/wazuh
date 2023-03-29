@@ -32,6 +32,7 @@ inline int bindUnixDatagramSocket(const std::string& path, int& bufferSize)
     }
 
     // Remove the socket file if it already exists
+    // #TODO, CHECK IF THE FILE IS A SOCKET
     unlink(path.c_str());
 
     memset(&n_us, 0, sizeof(n_us));
@@ -97,7 +98,6 @@ UnixDatagram::UnixDatagram(const std::string& address, std::function<void(std::s
     : Endpoint(address)
     , m_callback(callback)
     , m_handle(nullptr)
-    , m_currentQWSize(0)
 {
 }
 
@@ -127,7 +127,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop, const std::size_t queue
                 return;
             }
 
-            // Call the callback if is asynchronous,
+            // Call the callback if is asynchronous, (TODO: Should be decrement the size of the workers?)
             if (++m_currentQWSize >= queueWorkerSize)
 
             {
@@ -182,8 +182,8 @@ void UnixDatagram::close()
     if (isBound())
     {
         m_handle->close();
-        m_handle = nullptr;
-        m_loop = nullptr;
+        m_handle.reset();
+        m_loop.reset();
         m_running = false;
     }
 }
