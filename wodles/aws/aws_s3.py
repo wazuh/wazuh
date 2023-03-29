@@ -3556,10 +3556,11 @@ class AWSSQSQueue(WazuhIntegration):
     """
 
     def __init__(self, name: str, access_key: str = None, secret_key: str = None,
-                 aws_profile: str = None, **kwargs):
+                 aws_profile: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
         self.sqs_name = name
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                  aws_profile=aws_profile, service_name='sqs', **kwargs)
+                                  aws_profile=aws_profile, service_name='sqs', sts_endpoint=sts_endpoint,
+                                  service_endpoint=service_endpoint, **kwargs)
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
@@ -3899,7 +3900,8 @@ def main(argv):
                                        )
                 service.get_alerts()
         elif options.subscriber:
-            asl_queue = AWSSQSQueue(aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
+            asl_queue = AWSSQSQueue(aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn, sts_endpoint=options.sts_endpoint,
+                                       service_endpoint=options.service_endpoint,
                                     name=options.queue)
             asl_queue.sync_events()
 
