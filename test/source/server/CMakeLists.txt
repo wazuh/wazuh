@@ -1,6 +1,7 @@
 add_executable(server_tests
     engineServer_test.cpp
-    UnixDatagram_test.cpp
+    unixDatagram_test.cpp
+    unixStream_test.cpp
     #protocolHandler_test.cpp
 )
 

@@ -1,7 +1,7 @@
-#include <uvw.hpp>
 #ifndef _SERVER_ENDPOINT_HPP
 #define _SERVER_ENDPOINT_HPP
 
+#include <atomic>
 #include <memory>
 #include <string>
 
@@ -20,11 +20,13 @@ protected:
     std::string m_address;
     std::shared_ptr<uvw::Loop> m_loop;
     bool m_running;
+    std::atomic<std::size_t> m_currentQWSize;      ///< Current size of the queue worker
 
     Endpoint(const std::string& address)
         : m_address(address)
         , m_loop(nullptr)
         , m_running(false)
+        , m_currentQWSize(0)
     {
     }
 

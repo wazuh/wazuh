@@ -2,7 +2,7 @@
 #define _SERVER_UNIX_DATAGRAM_HPP
 
 #include <functional>
-#include <atomic>
+#include <memory>
 
 #include "endpoint.hpp"
 
@@ -14,7 +14,6 @@ private:
     std::function<void(std::string&&)> m_callback; ///< Callback function to be called when a message is received
     std::shared_ptr<uvw::UDPHandle> m_handle;      ///< Handle to the socket
     int m_bufferSize;                              ///< Size of the receive buffer
-    std::atomic<std::size_t> m_currentQWSize;      ///< Current size of the queue worker
 
 public:
     /**
