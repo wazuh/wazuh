@@ -24,18 +24,19 @@ parse:
 
 normalize:
  - map:
-   - timestamp: $~windows.Event.System.TimeCreated.@SystemTime
+   - event.start: $~windows.Event.System.TimeCreated.@SystemTime
    - event.code: $~windows.Event.System.EventID.#text
-   - event.message: $~parsed_json.Message
+   - event.id: $~windows.Event.System.EventID.#text
    - event.kind: event
    - event.provider: $~windows.Event.System.Provider.@Name
    - host.name: $~windows.Event.System.Computer.#text
    - winlog.level: +kvdb_get/win_log_level/$~windows.Event.System.Level.#text
+   - winlog.message: $~parsed_json.Message
    - winlog.channel: $~windows.Event.System.Channel.#text
    - winlog.process.pid: $~windows.Event.System.Execution.@ProcessID
    - winlog.process.thread.id: $~windows.Event.System.Execution.@ThreadID
    - winlog.record_id: $~windows.Event.System.EventRecordID.#text
-   - winlog.event_data: $~windows.Event.EventData
+   - winlog.original_event_data: $~windows.Event.EventData
 
 # Cleanup
  - map:

@@ -20,8 +20,8 @@ check: ~windows.Event.System.Channel.#text==Microsoft-Windows-PowerShell/Operati
 normalize:
  - map:
    - event.module: powershell
-   - event.category: process
-   - event.type: info
+   - event.category: [process]
+   - event.type: [info]
    - event.sequence: $~windows.Event.EventData.SequenceNumber
 
   # Process fields
@@ -66,11 +66,11 @@ normalize:
 
  - check: event.code==4105
    map:
-    - event.type: start
+    - event.type: [start]
 
  - check: event.code==4106
    map:
-    - event.type: end
+    - event.type: [end]
 
 # Cleanup
  - map:
