@@ -101,7 +101,6 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeTwoCounters)
     counter1->addValue(2);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     auto contents = m_manager->getAllMetrics();
-    std::cout << contents.prettyStr() << std::endl;
     
     auto json_scope = contents.getObject("/scope_0");
     ASSERT_TRUE(json_scope);
@@ -118,16 +117,36 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeTwoCounters)
 
 TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
 {
+    // TODO: Add significant ASSERT sentences to validate unit test
     auto scope0 = m_manager->getMetricsScope("scope_0");
     auto histogram0 = scope0->getHistogramInteger("histogram_0");
     
-    for (int i=0; i<100; i++)
+    for (int i=0; i<1000; i++)
     {
-        histogram0->recordValue(rand()%100);
+        histogram0->recordValue(rand()%10000);
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
     auto contents = m_manager->getAllMetrics();
-    std::cout << contents.prettyStr() << std::endl;
+    std::cout << contents.prettyStr() << std::endl;    
+}
+
+TEST_F(MetricsInterfaceTest, gaugeTest)
+{
+    // TODO: Add significant ASSERT sentences to validate unit test    
+    auto scope0 = m_manager->getMetricsScope("scope_0");
+    auto gauge0 = scope0->getGaugeInteger("gauge_0", 0);
+
+    for (int i=0; i<10; i++)
+    {
+        gauge0->setValue(rand()%10000);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        auto contents = m_manager->getAllMetrics();
+        std::cout << contents.prettyStr() << std::endl;    
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    auto contents = m_manager->getAllMetrics();
+    std::cout << contents.prettyStr() << std::endl;    
 }
