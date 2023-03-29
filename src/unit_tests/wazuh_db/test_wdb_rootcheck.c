@@ -65,7 +65,7 @@ void test_wdb_rootcheck_insert_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, 1);
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     will_return(__wrap_sqlite3_bind_text, 1);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
     will_return(__wrap_sqlite3_last_insert_rowid, 10);
     int ret = wdb_rootcheck_insert(wdb, &event);
 
@@ -100,7 +100,7 @@ void test_wdb_rootcheck_update_succcess(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "Test log");
     will_return(__wrap_sqlite3_bind_text, 1);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
     will_return(__wrap_sqlite3_changes, 10);
     int ret = wdb_rootcheck_update(wdb, &event);
     assert_int_equal(ret, 10);
@@ -119,7 +119,7 @@ void test_wdb_rootcheck_delete_success(void **state) {
     wdb_t *wdb  = (wdb_t *)*state;
 
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
     will_return(__wrap_sqlite3_changes, 10);
     int ret = wdb_rootcheck_delete(wdb);
     assert_int_equal(ret, 10);

@@ -156,7 +156,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_insert_task -Wl,--wrap,wdb_task
 
 list(APPEND wdb_tests_names "test_wdb_rootcheck")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
-                             -Wl,--wrap,sqlite3_last_insert_rowid -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_step \
+                             -Wl,--wrap,sqlite3_last_insert_rowid -Wl,--wrap,wdb_step -Wl,--wrap,wdb_step1 -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_step \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_syscollector")
