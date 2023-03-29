@@ -22,7 +22,7 @@ class MetricsScope : public IMetricsScope
 {
 public:
     // TODO: Add exceptions
-    void initialize();
+    void initialize(bool delta, int exporterIntervalMS, int exporterTimeoutMS);
 
     json::Json getAllMetrics();
     

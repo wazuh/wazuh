@@ -41,7 +41,7 @@ json::Json MetricsManager::getAllMetrics()
     return retValue;
 }
 
-std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string& metricsScopeName)
+std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string& metricsScopeName, bool delta, int exporterIntervalMS, int exporterTimeoutMS)
 {
     const std::lock_guard<std::mutex> lock(m_mutexScopes);
 
@@ -61,7 +61,7 @@ std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string
 
         auto& retScope = m_mapScopes[metricsScopeName];
 
-        retScope->initialize();
+        retScope->initialize(delta, exporterIntervalMS, exporterTimeoutMS);
         
         return retScope;
     }

@@ -32,7 +32,7 @@ public:
     * @param name The name of the Scope.
     * @return Handler of the Scope.
     */
-    virtual std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name) = 0;
+    virtual std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name, bool delta = false, int exporterIntervalMS = 1000, int exporterTimeoutMS = 300) = 0;
 
     /**
     * @brief Returns the names of all the scopes in the Metrics Nodule.
