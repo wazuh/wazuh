@@ -1,0 +1,30 @@
+name: Syscollector test on macOS
+
+on:
+  pull_request:
+    branches: ["*"]
+
+jobs:
+  build:
+    runs-on: macos-11
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+          architecture: x64
+      # Build wazuh agent for macOS.
+      - name: Build wazuh agent for macOS
+        run: |
+          rm -rf src/VERSION
+          make deps -C src TARGET=agent -j2
+          make -C src TARGET=agent -j2
+      - name: Install dependencies
+        run: |
+          pip install -r src/data_provider/requirements.txt
+      - name: Run tests
+        run: |
+          cd src/data_provider
+          python -m pytest qa/
