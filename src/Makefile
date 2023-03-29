@@ -1713,11 +1713,11 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
-$(WAZUHEXT_LIB): $(WAZUHEXT_DLL)
-	$(DLLTOOL) --input-def $(WAZUHEXT_LIB_DEF) --output-delaylib $@
+$(WAZUHEXT_LIB): $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF)
+	$(DLLTOOL) -D $(WAZUHEXT_DLL) --def $(WAZUHEXT_LIB_DEF) --output-delaylib $@
 
 $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
 
 
 else
@@ -1935,11 +1935,11 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHARED_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
-$(WAZUH_DLL): $(WAZUHEXT_DLL) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUH_DEF) ${OSSEC_LIBS}
+$(WAZUH_DLL) $(WAZUH_DEF) : $(WAZUHEXT_DLL) $(AR_PROGRAMS_DEPS)
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $(WAZUH_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUH_DEF) ${OSSEC_LIBS}
 
-$(WAZUH_LIB): $(WAZUH_DLL)
-	$(DLLTOOL) --input-def $(WAZUH_DEF) --output-delaylib $@
+$(WAZUH_LIB): $(WAZUH_DLL) $(WAZUH_DEF)
+	$(DLLTOOL)  -D $(WAZUH_DLL) --def $(WAZUH_DEF) --output-delaylib $@
 
 
 else
