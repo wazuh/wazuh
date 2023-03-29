@@ -663,7 +663,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Updates Agent groups full status
         self.send_full_agent_groups_status['date_start'] = start_time.strftime(DECIMALS_DATE_FORMAT)
         self.send_full_agent_groups_status['date_end'] = end_time.strftime(DECIMALS_DATE_FORMAT)
-        self.send_agent_groups_status['n_synced_chunks'] = len(local_agent_groups_information)
+        self.send_full_agent_groups_status['n_synced_chunks'] = len(local_agent_groups_information)
 
     async def send_agent_groups_information(self):
         """Function in charge of sending the group information to the worker node.
