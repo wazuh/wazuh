@@ -47,7 +47,7 @@ normalize:
       - ~tmp.result: success
 
   # Cleanup
-  # - map:
-      # - ~tmp: +delete
-      # - ~json: +delete
+  - map:
+      - ~tmp: +delete
+      - ~json: +delete
 

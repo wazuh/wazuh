@@ -46,10 +46,11 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definiti
         fmt::format("[{}] -> Failure: Message reference \"{}\" not found", name, parameters[0].m_value)};
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: The message is empty", name)};
     const std::string failureTrace3 {
-        fmt::format("[{}] -> Failure: Upgrade confirmation message could not be send", name)};
+        fmt::format("[{}] -> Failure: Upgrade confirmation message could not be sent", name)};
     const std::string failureTrace4 {
         fmt::format("[{}] -> Failure: Error trying to send upgrade confirmation message: ", name)};
-
+    const std::string failureTrace5 {
+        fmt::format("[{}] -> Failure: Message should be a JSON object: ", name)};
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(
         name,
@@ -62,20 +63,20 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definiti
             // Check if the value comes from a reference
             if (Parameter::Type::REFERENCE == rValueType)
             {
-                auto resolvedRValue {event->getString(rValue)};
-
-                if (!resolvedRValue.has_value())
+                std::string resolvedRValue;
+                //Verify that its a non-empty object
+                if(event->isObject(rValue) && event->getObject(rValue).value().size())
                 {
-                    return base::result::makeFailure(event, failureTrace1);
+                    query = event->str(rValue).value();
                 }
                 else
                 {
-                    query = resolvedRValue.value();
+                    return base::result::makeFailure(event, failureTrace5);
                 }
             }
-            else // Direct value
+            else // Direct value not allowed
             {
-                query = rValue;
+                return base::result::makeFailure(event, failureTrace1);
             }
 
             if (query.empty())
