@@ -10,14 +10,21 @@ template <typename T>
 class iCounter
 {
 public:
-    virtual void addValue(const T &value) = 0;
+    virtual void addValue(const T& value) = 0;
 };
 
 template <typename T>
 class iHistogram
 {
 public:
-    virtual void recordValue(const T &value) = 0;
+    virtual void recordValue(const T& value) = 0;
+};
+
+template <typename T>
+class iGauge
+{
+public:
+    virtual void setValue(const T& value) = 0;
 };
 
 } // namespace metrics_manager
