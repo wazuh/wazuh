@@ -1,5 +1,5 @@
-#ifndef _ENGINE_SERVER_H
-#define _ENGINE_SERVER_H
+#ifndef _SERVER_SERVER_H
+#define _SERVER_SERVER_H
 
 #include <functional>
 #include <memory>
@@ -32,4 +32,4 @@ private:
 
 } // namespace server
 
-#endif // _ENGINE_SERVER_H
+#endif // _SERVER_SERVER_H
