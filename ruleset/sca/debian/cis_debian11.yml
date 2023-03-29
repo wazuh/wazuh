@@ -1972,6 +1972,8 @@ checks:
     remediation: "Run the following command to install Uncomplicated Firewall (UFW): # apt install ufw."
     compliance:
       - cis: ["3.5.1.1"]
+      - cis_csc_v8: ["4.4", "4.5"]
+      - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
       - pci_dss_3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_4.0: ["1.2.1", "1.4.1"]
@@ -2061,7 +2063,7 @@ checks:
       - 'c:ufw status verbose -> r:Anywhere \(v6\) on lo\s*\t*ALLOW IN\s*\t*Anywhere \(v6\)'
       - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*\t*DENY IN\s*\t*::1'
       - 'c:ufw status verbose -> r:Anywhere\s*\t*ALLOW OUT\s*\t*Anywhere on lo'
-      - 'c:ufw status verbose -> r:Anywhere (v6)\s*\t*ALLOW OUT\s*\t*Anywhere (v6) on lo'
+      - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*\t*ALLOW OUT\s*\t*Anywhere \(v6\) on lo'
       - "c:systemctl is-enabled ufw.service -> r:^enabled"
 
   # 3.5.1.5 Ensure ufw outbound connections are configured (Manual) - Not Implemented
@@ -2119,6 +2121,8 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables -> r:install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ufw -> r:unknown ok not-installed|dpkg-query: no packages found matching ufw|deinstall ok config-files"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' iptables -> r:unknown ok not-installed|dpkg-query: no packages found matching iptables|deinstall ok config-files"
 
   # 3.5.2.2 Ensure ufw is uninstalled or disabled with nftables (Automated)
   - id: 29584
@@ -2138,12 +2142,35 @@ checks:
       - iso_27001-2013: ["A.13.1.1"]
       - mitre_techniques: ["T1562", "T1562.004"]
       - mitre_tactics: ["TA0005"]
-    condition: any
+    condition: all
     rules:
       - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables -> r:install ok installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ufw -> r:r:unknown ok not-installed|dpkg-query: no packages found matching ufw"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ufw -> r:unknown ok not-installed|dpkg-query: no packages found matching ufw|deinstall ok config-files"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' iptables -> r:unknown ok not-installed|dpkg-query: no packages found matching iptables|deinstall ok config-files"
 
   # 3.5.2.3 Ensure iptables are flushed with nftables (Manual) - Not Implemented
+  - id: 29681
+    title: "Ensure iptables are flushed with nftables."
+    description: "nftables is a replacement for iptables, ip6tables, ebtables and arptables."
+    rationale: "It is possible to mix iptables and nftables. However, this increases complexity and also the chance to introduce errors. For simplicity flush out all iptables rules, and ensure it is not loaded."
+    remediation: "Run the following commands to flush iptables: For iptables: # iptables -F For ip6tables: # ip6tables -F."
+    compliance:
+      - cis: ["3.5.2.2"]
+      - cis_csc_v8: ["4.4", "4.5"]
+      - cis_csc_v7: ["9.4"]
+      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
+      - pci_dss_3.2.1: ["1.1.4", "1.3.1", "1.4"]
+      - pci_dss_4.0: ["1.2.1", "1.4.1"]
+      - nist_sp_800-53: ["SC-7(5)"]
+      - soc_2: ["CC6.6"]
+      - iso_27001-2013: ["A.13.1.1"]
+      - mitre_techniques: ["T1562", "T1562.004"]
+      - mitre_tactics: ["TA0005"]
+    condition: all
+    rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables -> r:install ok installed"
+      - 'c:not sh -c "iptables -L | grep -Evi ''^chain|^target''" -> r:^\w+'
+      - 'c:not sh -c "ip6tables -L | grep -Evi ''^chain|^target''" -> r:^\w+'
 
   # 3.5.2.4 Ensure a nftables table exists (Automated)
   - id: 29585
@@ -2242,9 +2269,9 @@ checks:
       - mitre_mitigations: ["M1031", "M1037"]
     condition: all
     rules:
-      - "c:nft list ruleset -> r:hook input && r:policy drop"
-      - "c:nft list ruleset -> r:hook forward && r:policy drop"
-      - "c:nft list ruleset -> r:hook output && r:policy drop"
+      - "not c:nft list ruleset -> r:hook input && !r:policy drop"
+      - "not c:nft list ruleset -> r:hook forward && !r:policy drop"
+      - "not c:nft list ruleset -> r:hook output && !r:policy drop"
 
   # 3.5.2.9 Ensure nftables service is enabled (Automated)
   - id: 29589
@@ -2300,8 +2327,8 @@ checks:
       - mitre_mitigations: ["M1031", "M1037"]
     condition: all
     rules:
-      - "c:apt list iptables -> r:installed,automatic"
-      - "c:apt list iptables-persistent -> r:installed,automatic"
+      - "c:apt list iptables -> r:installed"
+      - "c:apt list iptables-persistent -> r:installed"
 
   # 3.5.3.1.2 Ensure nftables is not installed with iptables (Automated)
   - id: 29592
@@ -2323,8 +2350,8 @@ checks:
       - mitre_tactics: ["TA0011"]
     condition: all
     rules:
-      - "c:apt list iptables -> r:installed,automatic"
-      - "c:apt list iptables-persistent -> r:installed,automatic"
+      - "c:apt list iptables -> r:installed"
+      - "c:apt list iptables-persistent -> r:installed"
       - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nftables -> r:unknown ok not-installed|dpkg-query: no packages found matching nftables"
 
   # 3.5.3.1.3 Ensure ufw is uninstalled or disabled with iptables (Automated)
@@ -2347,7 +2374,7 @@ checks:
       - mitre_tactics: ["TA0011"]
     condition: any
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ufw -> r:unknown ok not-installed|dpkg-query: no packages found matching ufw"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' ufw -> r:unknown ok not-installed|dpkg-query: no packages found matching ufw|deinstall ok config-files"
       - "c:ufw status -> r:inactive"
       - "c:systemctl is-enabled ufw -> r:masked"
 
@@ -2451,6 +2478,7 @@ checks:
       - pci_dss_3.2.1: ["1.1.4", "1.3.1", "1.4"]
       - pci_dss_4.0: ["1.2.1", "1.4.1"]
       - nist_sp_800-53: ["SC-7(5)"]
+      - soc_2: ["CC6.6"]
       - iso_27001-2013: ["A.13.1.1"]
       - mitre_techniques: ["T1562", "T1562.004"]
       - mitre_tactics: ["TA0011"]
