@@ -164,7 +164,7 @@ void test_wdb_task_set_timeout_status_timeout_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
@@ -248,7 +248,7 @@ void test_wdb_task_set_timeout_status_timeout_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step1, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -371,7 +371,7 @@ void test_wdb_task_insert_task(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 1);
 
@@ -429,7 +429,7 @@ void test_wdb_task_insert_task_task_id_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 1);
 
@@ -524,7 +524,7 @@ void test_wdb_task_insert_task_step1_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, -1);
+    will_return(__wrap_wdb_step1, -1);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -573,7 +573,7 @@ void test_wdb_task_insert_task_cache2_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
@@ -624,7 +624,7 @@ void test_wdb_task_insert_task_step2_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 1);
 
@@ -709,7 +709,7 @@ void test_wdb_task_get_upgrade_task_status_delete_old_node_pending(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
 
     int ret = wdb_task_get_upgrade_task_status(data->wdb, agent_id, node, &status);
 
@@ -750,7 +750,7 @@ void test_wdb_task_get_upgrade_task_status_delete_old_node_pending_step_err(void
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step1, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -940,7 +940,7 @@ void test_wdb_task_update_upgrade_task_status_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
 
 
     int ret = wdb_task_update_upgrade_task_status(data->wdb, agent_id, node, status, error);
@@ -1203,7 +1203,7 @@ void test_wdb_task_update_upgrade_task_status_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step1, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -1405,7 +1405,7 @@ void test_wdb_task_cancel_upgrade_tasks_ok(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, node);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step1, SQLITE_DONE);
 
 
     int ret = wdb_task_cancel_upgrade_tasks(data->wdb, node);
@@ -1433,7 +1433,7 @@ void test_wdb_task_cancel_upgrade_tasks_step_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, node);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step1, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
