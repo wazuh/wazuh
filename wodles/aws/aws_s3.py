@@ -3118,8 +3118,8 @@ def arg_valid_date(arg_string):
         raise argparse.ArgumentTypeError("Argument not a valid date in format YYYY-MMM-DD: '{0}'.".format(arg_string))
 
 
-def arg_valid_prefix(arg_string):
-    CHARACTERS_TO_AVOID = "{}^%`[]'<>~#|"
+def arg_valid_key(arg_string):
+    CHARACTERS_TO_AVOID = "\\{}^%`[]'\"<>~#|"
     XML_CONSTRAINTS = ["&apos;", "&quot;", "&amp;", "&lt;", "&gt;", "&#13;", "&#10;"]
 
     # Validate against the naming guidelines https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html
@@ -3129,7 +3129,7 @@ def arg_valid_prefix(arg_string):
             f" Avoid to use '{CHARACTERS_TO_AVOID}' or '{''.join(XML_CONSTRAINTS)}'."
         )
 
-    if arg_string and arg_string[-1] != '/' and arg_string[-1] != "\\":
+    if arg_string and arg_string[-1] != '/':
         return '{arg_string}/'.format(arg_string=arg_string)
     return arg_string
 
@@ -3258,10 +3258,10 @@ def get_script_arguments():
                         help='AWS Account ID Alias', default='')
     parser.add_argument('-l', '--trail_prefix', dest='trail_prefix',
                         help='Log prefix for S3 key',
-                        default='', type=arg_valid_prefix)
+                        default='', type=arg_valid_key)
     parser.add_argument('-L', '--trail_suffix', dest='trail_suffix',
                         help='Log suffix for S3 key',
-                        default='', type=arg_valid_prefix)
+                        default='', type=arg_valid_key)
     parser.add_argument('-s', '--only_logs_after', dest='only_logs_after',
                         help='Only parse logs after this date - format YYYY-MMM-DD',
                         default=None, type=arg_valid_date)
@@ -3273,7 +3273,7 @@ def get_script_arguments():
                         help='Parse the log file, even if its been parsed before', default=False)
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
     parser.add_argument('-g', '--aws_log_groups', dest='aws_log_groups', help='Name of the log group to be parsed',
-                        default='', type=arg_valid_prefix)
+                        default='', type=arg_valid_key)
     parser.add_argument('-P', '--remove-log-streams', action='store_true', dest='deleteLogStreams',
                         help='Remove processed log streams from the log group', default=False)
     parser.add_argument('-df', '--discard-field', type=str, dest='discard_field', default=None,
