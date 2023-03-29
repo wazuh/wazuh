@@ -693,7 +693,7 @@ checks:
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
       - mitre_techniques: ["T1068", "T1203", "T1211", "T1212"]
-    condition: all
+    condition: any
     rules:
       - "c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs.service: No such file or directory"
       - "c:systemctl is-enabled autofs -> r:disabled"
@@ -1345,7 +1345,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/ntp.conf"
-      - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
+      - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
 
   # 2.1.4.2 Ensure ntp is configured with authorized timeserver (Manual)
@@ -1373,8 +1373,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/ntp.conf"
-      - "f:/etc/ntp.conf -> r:pool"
-      - "f:/etc/ntp.conf -> r:server"
+      - 'f:/etc/ntp.conf -> r:^\s*\t*pool'
 
   # 2.1.4.3 Ensure ntp is running as user ntp (Automated)
   - id: 29554
