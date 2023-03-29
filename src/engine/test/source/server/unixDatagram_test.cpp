@@ -160,7 +160,7 @@ TEST_F(UnixDatagramTest, QueueWorkerSizeTestAndOverflow)
     std::mutex BlockWokersMutex;
 
     // Queue of workers
-    constexpr std::size_t queueWorkerSize = 16;
+    const std::size_t queueWorkerSize = 16;
     const std::size_t numOfWorkers = 4;
 
     // Calculate the number of messages to send to block the queue workers
@@ -310,7 +310,7 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
     const std::size_t numOfWorkers = 4;
 
     // Calculate the number of messages to send to block the queue workers
-    std::atomic<std::size_t> sendedMessages = 0;   // Number of messages sended
+    std::atomic<std::size_t> sendedMessages = 0;    // Number of messages sended
     std::atomic<std::size_t> processedMessages = 0; // Number of messages processed
 
     // Prepare the endpoint
