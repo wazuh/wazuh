@@ -22,8 +22,8 @@ normalize:
  - map:
    - event.module: powershell
    - event.kind: event
-   - event.category: process
-   - event.type: info
+   - event.category: [process]
+   - event.type: [info]
    - event.sequence: $~windows.Event.EventData.SequenceNumber
 
   ## Process fields.
@@ -62,11 +62,11 @@ normalize:
 
  - check: event.code==400
    map:
-    - event.type: start
+    - event.type: [start]
 
  - check: event.code==403
    map:
-    - event.type: end
+    - event.type: [end]
 
 # Cleanup
  - map:

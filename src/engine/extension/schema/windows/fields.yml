@@ -1,12 +1,3 @@
-winlog.trustType:
-  description: >
-            The account name that was added, modified or deleted in the event.
-
-            Possible values are `TRUST_TYPE_DOWNLEVEL`, `TRUST_TYPE_UPLEVEL`,
-            `TRUST_TYPE_MIT` and `TRUST_TYPE_DCE`
-  type: keyword
-
-
 winlog.channel:
   description: >
             The name of the channel from which this record was read.
@@ -31,6 +22,13 @@ winlog.record_id:
             the next record number will be 0.
   type: keyword
 
+winlog.original_event_data:
+  description: >
+            This is a non-exhaustive list of parameters that are used in
+            Windows events.
+  type: object
+  array: true
+
 winlog.event_data.UserAccountControl:
   description: >
             List of changes in userAccountControl attribute. You will see a line of
@@ -43,9 +41,14 @@ winlog.event_data.StatusDescription:
             Kerberos Ticket Status Codes description
   type: keyword
 
-wilog.event_data.SubCategory:
+winlog.event_data.SubCategory:
   description: >
-            Audit subcategories categories
+            Audit subcategories
+  type: keyword
+
+winlog.event_data.Category:
+  description: >
+            Audit categories
   type: keyword
 
 winlog.event_data.PrivilegeList:
@@ -89,19 +92,44 @@ winlog.event_data.ObjectName:
             operation
   type: keyword
 
+winlog.level:
+  description: >
+            Log level, one of AUDIT, INFORMATIONAL, CRITICAL, ERROR, VERBOSE
+  type: keyword
+
+winlog.message:
+  description: >
+            Event messsage
+  type: keyword
+
 winlog.logon.failure.status:
   description: >
-              Logon failure status
+              The reason the logon failed. This is textual description based on
+              the value of the hexadecimal `Status` field.
   type: keyword
 
 winlog.logon.failure.sub_status:
   description: >
-              Logon failure sub status
+              Additional information about the logon failure. This is a textual
+              description based on the value of the hexidecimal `SubStatus` field.
+  type: keyword
+
+winlog.logon.failure.reason:
+  description: >
+            The reason the logon failed.
   type: keyword
 
 winlog.logon.id:
   description: >
-              Logon id
+            Logon ID that can be used to associate this logon with other events
+            related to the same logon session.
+  type: keyword
+
+winlog.logon.type:
+  description: >
+            Logon type name. This is the descriptive version of the
+            `winlog.event_data.LogonType` ordinal. This is an enrichment added
+            by the Security module.
   type: keyword
 
 winlog.trustAttribute:
@@ -156,4 +184,98 @@ winlog.user_data.BackupPath:
 winlog.user_data.Channel:
   description: >
             Windows event log channel that is being backed up.
+  type: keyword
+
+powershell.sequence:
+  description: >
+            Sequence number of the powershell execution.
+  type: long
+
+powershell.total:
+  description: >
+            Total number of messages in the sequence.
+  type: long
+
+powershell.id:
+  description: >
+            Shell Id.
+  type: keyword
+
+powershell.engine.version:
+  description: >
+            Version of the PowerShell engine version used to execute the command.
+  type: keyword
+
+powershell.engine.new_state:
+  description: >
+            New state of the PowerShell engine.
+  type: keyword
+
+powershell.provider.new_state:
+  description: >
+            New state of the PowerShell provider.
+  type: keyword
+
+powershell.provider.name:
+  description: >
+            Provider name.
+  type: keyword
+
+powershell.engine.previous_state:
+  description: >
+            Previous state of the PowerShell engine.
+  type: keyword
+
+powershell.pipeline_id:
+  description: >
+            Pipeline id.
+  type: keyword
+
+powershell.runspace_id:
+  description: >
+            Runspace id.
+  type: keyword
+
+powershell.process.executable_version:
+  description: >
+          Version of the engine hosting process executable.
+  type: keyword
+
+powershell.command.value:
+  description: >
+          The invoked command.
+  type: keyword
+
+powershell.command.path:
+  description: >
+          Path of the executed command.
+  type: keyword
+
+powershell.command.name:
+  description: >
+    Name of the executed command.
+  type: keyword
+
+powershell.command.type:
+  description: Type of the executed command.
+  type: keyword
+
+powershell.file.script_block_id:
+  description: Id of the executed script block.
+  type: keyword
+
+powershell.file.script_block_text:
+  description: Text of the executed script block.
+  type: keyword
+
+sysmon.dns.status:
+  description: Windows status code returned for the DNS query.
+  type: keyword
+
+sysmon.file.archived:
+  description: Indicates if the deleted file was archived.
+  type: keyword
+
+sysmon.file.is_executable:
+  description: Indicates if the deleted file was an executable.
   type: keyword
