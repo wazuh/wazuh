@@ -7,21 +7,22 @@ using OTSDKPerodicMetricReader = opentelemetry::sdk::metrics::PeriodicExportingM
 using OTSDKPerodicMetricReaderOptions = opentelemetry::sdk::metrics::PeriodicExportingMetricReaderOptions;
 using OTGaugeInteger = opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<int64_t>>;
 using OTGaugeDouble = opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<double>>;
-
+using OTTemporality = opentelemetry::v1::sdk::metrics::AggregationTemporality;
 namespace metrics_manager
 {
 
-void MetricsScope::initialize()
+void MetricsScope::initialize(bool delta, int exporterIntervalMS, int exporterTimeoutMS)
 {
     m_dataHub = std::make_shared<DataHub>();
 
     // Create Exporter
-    std::unique_ptr<OTSDKMetricExporter> metricExporter(new OTDataHubExporter(m_dataHub));
+    OTTemporality temporality = delta?(OTTemporality::kDelta):(OTTemporality::kCumulative);
+    std::unique_ptr<OTSDKMetricExporter> metricExporter(new OTDataHubExporter(m_dataHub, temporality));
 
     // Create Reader
     OTSDKPerodicMetricReaderOptions options;
-    options.export_interval_millis = std::chrono::milliseconds(1000);
-    options.export_timeout_millis = std::chrono::milliseconds(300);
+    options.export_interval_millis = std::chrono::milliseconds(exporterIntervalMS);
+    options.export_timeout_millis = std::chrono::milliseconds(exporterTimeoutMS);
 
     std::unique_ptr<OTSDKMetricReader> metricReader(new OTSDKPerodicMetricReader(std::move(metricExporter), options));
 

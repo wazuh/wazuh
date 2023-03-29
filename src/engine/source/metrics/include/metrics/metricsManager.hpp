@@ -22,7 +22,8 @@ public:
     /**
      * @copydoc IMetricsManager::getMetricsScope
     */
-    std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name) override;
+
+    std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name, bool delta = false, int exporterIntervalMS = 1000, int exporterTimeoutMS = 300) override;
     
     /**
      * @copydoc IMetricsManager::getScopeNames
