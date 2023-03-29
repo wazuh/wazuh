@@ -3205,7 +3205,7 @@ def arg_valid_bucket_name(arg: str) -> str:
     argparse.ArgumentTypeError
         If the bucket name is not valid.
     """
-    if not re.match(r'(?!(^xn--|.+-s3alias$))^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$', arg):
+    if not re.match(r'(?!(^xn--|.+-s3alias$|.+--ol-s3$))^[a-z0-9][a-z0-9-.]{1,61}[a-z0-9]$', arg):
         raise argparse.ArgumentTypeError(f"'{arg}' isn't a valid bucket name.")
     return arg
 
