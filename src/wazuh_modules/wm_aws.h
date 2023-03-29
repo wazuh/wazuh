@@ -72,6 +72,8 @@ typedef struct wm_aws_subscriber {
     char *aws_profile;                     // AWS credentials profile
     char *iam_role_arn;                    // IAM role
     char *iam_role_duration;               // IAM role session duration
+    char *sts_endpoint;                    // URL for the VPC endpoint to use to obtain the STS token
+    char *service_endpoint;                // URL for the endpoint to use to obtain the logs
     struct wm_aws_subscriber *next;        // Pointer to next
 } wm_aws_subscriber;
 

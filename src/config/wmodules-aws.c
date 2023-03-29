@@ -557,6 +557,16 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             free(cur_subscriber->iam_role_duration);
                             os_strdup(children[j]->content, cur_subscriber->iam_role_duration);
                         }
+                } else if (!strcmp(children[j]->element, XML_STS_ENDPOINT)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_subscriber->sts_endpoint);
+                        os_strdup(children[j]->content, cur_subscriber->sts_endpoint);
+                    }
+                } else if (!strcmp(children[j]->element, XML_SERVICE_ENDPOINT)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_subscriber->service_endpoint);
+                        os_strdup(children[j]->content, cur_subscriber->service_endpoint);
+                    }
                 } else {
                     merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
                     OS_ClearNode(children);
