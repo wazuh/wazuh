@@ -3152,13 +3152,14 @@ def arg_valid_regions(arg_string):
     final_regions = []
     regions = arg_string.split(',')
     for arg_region in regions:
-        if not re.match(r'(us(-gov)?|ap|ca|cn|eu|sa)-(central|(north|south)?(east|west)?)-\d', arg_region):
+        if not re.match(r'^([a-z]{2}(-gov)?)-([a-z]{4,7})-\d$', arg_region):
             raise argparse.ArgumentTypeError(
                 f"WARNING: The region '{arg_region}' has not a valid format.'"
             )
         if arg_region.strip():
             final_regions.append(arg_region.strip())
-    return final_regions
+
+    return list(set(final_regions))
 
 
 def arg_valid_iam_role_duration(arg_string):
