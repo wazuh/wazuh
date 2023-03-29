@@ -447,7 +447,9 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     }
                 } else if (!strcmp(children[j]->element, XML_LOG_GROUP)) {
                     if (strlen(children[j]->content) == 0) {
-                            mwarn("Empty content for tag '%s' at module '%s'.", XML_LOG_GROUP, WM_AWS_CONTEXT.name);
+                            merror("Empty content for tag '%s' at module '%s'.", XML_LOG_GROUP, WM_AWS_CONTEXT.name);
+                            OS_ClearNode(children);
+                            return OS_INVALID;
                         }
                     else if (strlen(children[j]->content) != 0) {
                         free(cur_service->aws_log_groups);
