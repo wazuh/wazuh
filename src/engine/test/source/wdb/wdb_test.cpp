@@ -3,7 +3,7 @@
 #include <thread>
 
 #include <gtest/gtest.h>
-#include <logging/logging.hpp>
+#include <testsCommon.hpp>
 
 #include "socketAuxiliarFunctions.hpp"
 
@@ -14,53 +14,44 @@ constexpr const char* TEST_PAYLOAD {"Test Query Response Payload"};
 constexpr const char* TEST_RESPONSE {"Test Response to be received"};
 constexpr const char* TEST_DUMMY_PATH {"/dummy/path"};
 
-void initLogging(void)
-{
-    // Logging setup
-    logging::LoggingConfig logConfig;
-    logConfig.logLevel = "off";
-    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-    logging::loggingInit(logConfig);
-}
-
 class wdb_connector : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class wdb_query : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class wdb_tryQuery : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class wdb_parseResult : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class wdb_tryQueryAndParseResult : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 TEST_F(wdb_connector, Init)

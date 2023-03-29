@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include <gtest/gtest.h>
+#include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
 
@@ -83,15 +84,6 @@ inline void createKeyOnlyJsonTestFile(const std::string filePath = FILE_PATH)
     }
 }
 
-void initLogging(void)
-{
-    // Logging setup
-    logging::LoggingConfig logConfig;
-    logConfig.logLevel = "off";
-    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-    logging::loggingInit(logConfig);
-}
-
 // "managerPost" tests section
 class managerPost_Handler : public ::testing::Test
 {
@@ -100,7 +92,7 @@ protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
     std::shared_ptr<IMetricsManager> m_manager;
 
-    virtual void SetUp()
+    void SetUp() override
     {
         m_manager = std::make_shared<MetricsManager>();
 
@@ -115,7 +107,7 @@ protected:
         ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
 
-    virtual void TearDown()
+    void TearDown() override
     {
         if (std::filesystem::exists(FILE_PATH))
         {
@@ -402,7 +394,7 @@ protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
     std::shared_ptr<IMetricsManager> m_manager;
 
-    virtual void SetUp()
+    void SetUp() override
     {
         m_manager = std::make_shared<MetricsManager>();
 
@@ -419,7 +411,7 @@ protected:
 
     size_t getNumberOfKVDBLoaded() { return kvdbManager->listDBs().size(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 
     api::wpRequest deleteWRequest(const std::string& kvdbName)
     {
@@ -593,7 +585,7 @@ protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
     std::shared_ptr<IMetricsManager> m_manager;
 
-    virtual void SetUp()
+    void SetUp() override
     {
         m_manager = std::make_shared<MetricsManager>();
 
@@ -614,7 +606,7 @@ protected:
         ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 
     api::wpRequest dumpWRequest(const std::string& kvdbName)
     {
@@ -750,7 +742,7 @@ protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
     std::shared_ptr<IMetricsManager> m_manager;
 
-    virtual void SetUp()
+    void SetUp() override
     {
         m_manager = std::make_shared<MetricsManager>();
 
@@ -764,7 +756,7 @@ protected:
         kvdbManager->createFromJFile(DB_NAME);
     }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 
     api::wpRequest getWRequest(const std::string& kvdbName, const std::string& keyName)
     {
@@ -897,7 +889,7 @@ protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
     std::shared_ptr<IMetricsManager> m_manager;
 
-    virtual void SetUp()
+    void SetUp() override
     {
         m_manager = std::make_shared<MetricsManager>();
 
@@ -911,7 +903,7 @@ protected:
         kvdbManager->createFromJFile(DB_NAME);
     }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 
     api::wpRequest
     insertWRequest(const std::string& kvdbName, const std::string& keyName, const std::string& keyValue = "")
@@ -1069,7 +1061,7 @@ protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
     std::shared_ptr<IMetricsManager> m_manager;
 
-    virtual void SetUp()
+    void SetUp() override
     {
         m_manager = std::make_shared<MetricsManager>();
 
@@ -1084,7 +1076,7 @@ protected:
         ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
     }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 
     api::wpRequest listWRequest(const bool& mustBeLoaded)
     {
@@ -1180,7 +1172,7 @@ protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
     std::shared_ptr<IMetricsManager> m_manager;
 
-    virtual void SetUp()
+    void SetUp() override
     {
         m_manager = std::make_shared<MetricsManager>();
 
@@ -1195,7 +1187,7 @@ protected:
         kvdbManager->writeRaw(DB_NAME, KEY_A, VAL_A);
     }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 
     api::wpRequest removeWRequest(const std::string& kvdbName, const std::string& keyName)
     {

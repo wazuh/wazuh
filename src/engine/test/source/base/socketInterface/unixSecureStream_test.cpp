@@ -8,8 +8,9 @@
 
 #include <gtest/gtest.h>
 
+#include <testsCommon.hpp>
+
 #include <utils/socketInterface/unixSecureStream.hpp>
-#include <logging/logging.hpp>
 
 #include "testAuxiliar/socketAuxiliarFunctions.hpp"
 
@@ -18,14 +19,7 @@ using namespace base::utils::socketInterface;
 class unixSecureStreamSocket : public ::testing::Test
 {
 protected:
-    void SetUp() override
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-        logging::loggingInit(logConfig);
-    }
+    void SetUp() override { initLogging(); }
 
     void TearDown() override {}
 };

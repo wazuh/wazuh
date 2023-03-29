@@ -5,76 +5,66 @@
 #include <string>
 
 #include <json/json.hpp>
-#include <logging/logging.hpp>
+#include <testsCommon.hpp>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
 using namespace std;
 using namespace json;
-
-void initLogging(void)
-{
-    // Logging setup
-    logging::LoggingConfig logConfig;
-    logConfig.logLevel = "off";
-    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-    logging::loggingInit(logConfig);
-}
-
 class JsonBase : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
-    virtual void TearDown() {}
+    void SetUp() override { initLogging(); }
+    void TearDown() override {}
 };
 
 class JsonStatic : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
-    virtual void TearDown() {}
+    void SetUp() override { initLogging(); }
+    void TearDown() override {}
 };
 
 class JsonBuildtime : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
-    virtual void TearDown() {}
+    void SetUp() override { initLogging(); }
+    void TearDown() override {}
 };
 
 class JsonRuntime : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
-    virtual void TearDown() {}
+    void SetUp() override { initLogging(); }
+    void TearDown() override {}
 };
 
 class JsonQueryTest : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
-    virtual void TearDown() {}
+    void SetUp() override { initLogging(); }
+    void TearDown() override {}
 };
 
 class JsonGettersTest : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
-    virtual void TearDown() {}
+    void SetUp() override { initLogging(); }
+    void TearDown() override {}
 };
 
 class JsonSettersTest : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
-    virtual void TearDown() {}
+    void SetUp() override { initLogging(); }
+    void TearDown() override {}
 };
 
 class getJsonTest : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
-    virtual void TearDown() {}
+    void SetUp() override { initLogging(); }
+    void TearDown() override {}
 };
 
 TEST_F(JsonBase, InitializeDefault)

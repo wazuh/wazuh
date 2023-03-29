@@ -10,23 +10,18 @@
 
 #include <metrics/metricsManager.hpp>
 #include <mocks/fakeMetric.hpp>
+#include <testsCommon.hpp>
 
 using namespace metricsManager;
 // TODO actually fake the store
 
+
 class Router : public ::testing::Test
 {
 protected:
-    virtual void SetUp()
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-        logging::loggingInit(logConfig);
-    };
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {};
+    void TearDown() override {};
 };
 
 TEST_F(Router, build_ok)

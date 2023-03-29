@@ -2,6 +2,7 @@
 
 #include <api/catalog/handlers.hpp>
 #include <gtest/gtest.h>
+#include <testsCommon.hpp>
 
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
@@ -10,16 +11,9 @@ class Handlers : public ::testing::Test
 {
 
 protected:
-    virtual void SetUp()
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-        logging::loggingInit(logConfig);
-    }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 TEST_F(Handlers, resourseGet)
