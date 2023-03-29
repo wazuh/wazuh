@@ -8,6 +8,7 @@
 #include "builder/register.hpp"
 #include "builder/registry.hpp"
 #include <json/json.hpp>
+#include <testsCommon.hpp>
 
 using namespace builder;
 using namespace builder::internals;
@@ -26,10 +27,7 @@ class AssetTest : public ::testing::Test
 {
     void SetUp() override
     {
-        logging::LoggingConfig logConfig;
-        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-        logConfig.logLevel = "off";
-        logging::loggingInit(logConfig);
+        initLogging();
 
         if (std::filesystem::exists(outputPath))
         {

@@ -9,6 +9,7 @@
 
 #include "parseEvent.hpp"
 #include "register.hpp"
+#include <testsCommon.hpp>
 
 constexpr auto env_1 = "policy/env_1/0";
 constexpr auto env_2 = "policy/env_2/0";
@@ -18,16 +19,9 @@ class RuntimeEnvironment : public ::testing::Test
 {
 
 protected:
-    virtual void SetUp()
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-        logging::loggingInit(logConfig);
-    }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 TEST_F(RuntimeEnvironment, build_ok)
@@ -73,7 +67,6 @@ TEST_F(RuntimeEnvironment, processEvent_not_built)
     ASSERT_TRUE(error.has_value());
     ASSERT_STREQ(error.value().message.c_str(), "Policy 'policy/env_1/0' is not built");
 }
-
 
 TEST_F(RuntimeEnvironment, processEvent_1_event)
 {

@@ -6,6 +6,7 @@ add_executable(cmds_test
 target_include_directories(cmds_test
     PRIVATE
     ${ENGINE_SOURCE_DIR}/cmds/src
+    ${TEST_SOURCE_DIR}/base/utils/tests
 )
 
 target_link_libraries(cmds_test gtest_main base cmds)

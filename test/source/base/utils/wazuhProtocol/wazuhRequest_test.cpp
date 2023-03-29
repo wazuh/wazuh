@@ -2,55 +2,46 @@
 
 #include <utils/wazuhProtocol/wazuhRequest.hpp>
 #include <json/json.hpp>
-#include <logging/logging.hpp>
-
-void initLogging(void)
-{
-    // Logging setup
-    logging::LoggingConfig logConfig;
-    logConfig.logLevel = "off";
-    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-    logging::loggingInit(logConfig);
-}
+#include <testsCommon.hpp>
 
 class WazuhRequest_validate : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class WazuhRequest_getCommand : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class WazuhRequest_getParameters : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class WazuhRequest_create : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class WazuhResponse : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 // A valid request
