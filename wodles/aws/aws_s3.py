@@ -26,6 +26,7 @@
 #   17 - Invalid key format
 #   18 - Invalid prefix
 #   19 - The server datetime and datetime of the AWS environment differ
+#   20 - Invalid region
 
 import argparse
 import configparser
@@ -3672,8 +3673,8 @@ def main(argv):
                 try:
                     service_type.check_region(region)
                 except ValueError:
-                    debug(f"+++ WARNING: The region '{region}' is not a valid one.", 1)
-                    continue
+                    debug(f"+++ ERROR: The region '{region}' is not a valid one.", 1)
+                    exit(20)
 
                 debug('+++ Getting alerts from "{}" region.'.format(region), 1)
                 service = service_type(reparse=options.reparse,
