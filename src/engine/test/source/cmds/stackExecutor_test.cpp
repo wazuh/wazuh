@@ -1,21 +1,15 @@
 #include <cmds/details/stackExecutor.hpp>
 
 #include <gtest/gtest.h>
+#include <testsCommon.hpp>
 
 class StackExecutor : public ::testing::Test
 {
 
 protected:
-    virtual void SetUp()
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-        logging::loggingInit(logConfig);
-    }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 TEST_F(StackExecutor, Init_empty)

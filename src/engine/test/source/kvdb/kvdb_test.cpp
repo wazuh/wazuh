@@ -8,7 +8,7 @@
 #include <pthread.h> //For barrier, not strictly necessary
 
 #include <kvdb/kvdbManager.hpp>
-#include <logging/logging.hpp>
+#include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
 using namespace metricsManager;
@@ -95,13 +95,9 @@ class KVDBTest : public ::testing::Test
 protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 
-    virtual void SetUp()
+    void SetUp() override
     {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-        logging::loggingInit(logConfig);
+        initLogging();
 
         // cleaning directory in order to start without garbage.
         if (std::filesystem::exists(KVDB_PATH))
@@ -114,7 +110,7 @@ protected:
         kvdbManager->getHandler(kTestDBName, true);
     };
 
-    virtual void TearDown()
+    void TearDown() override
     {
         kvdbManager->unloadDB(kTestDBName);
         kvdbManager->deleteDB(kTestAlternativeDBName);

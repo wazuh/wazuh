@@ -16,7 +16,7 @@
 #include <baseTypes.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
 
-#include <logging/logging.hpp>
+#include <testsCommon.hpp>
 #include <wdb/wdb.hpp>
 
 #include "opBuilderSCAdecoder.hpp"
@@ -32,15 +32,6 @@ const string targetField {"/wdb/result"};
 const string helperFunctionName {"sca_decoder"};
 const std::vector<string> commonArguments {"$event.original", "$agent.id"};
 
-void initLogging(void)
-{
-    // Logging setup
-    logging::LoggingConfig logConfig;
-    logConfig.logLevel = "off";
-    logConfig.filePath = logging::DEFAULT_TESTS_LOG_PATH;
-    logging::loggingInit(logConfig);
-}
-
 class opBuilderSCAdecoder_Functions : public ::testing::Test
 {
 protected:
@@ -49,7 +40,7 @@ protected:
     std::unordered_map<sca::field::Name, std::string> fieldSource {};
     std::unordered_map<sca::field::Name, std::string> fieldDest {};
 
-    virtual void SetUp()
+    void SetUp() override
     {
         initLogging();
 
@@ -63,47 +54,47 @@ protected:
         }
     }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class opBuilderSCAdecoderInit : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class checkTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class summaryTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class policiesTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 class dumpEndTypeDecoderSCA : public ::testing::Test
 {
 protected:
-    virtual void SetUp() { initLogging(); }
+    void SetUp() override { initLogging(); }
 
-    virtual void TearDown() {}
+    void TearDown() override {}
 };
 
 // Result true, only mandatory fields present
