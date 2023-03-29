@@ -14,9 +14,9 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 /* Manager Endpoint */
 
-api::Handler metricsDumpCmd()
+api::Handler metricsDumpCmd(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI)
 {
-    return [](api::wpRequest wRequest) -> api::wpResponse
+    return [&](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eMetrics::Dump_Request;
         using ResponseType = eMetrics::Dump_Response;
@@ -30,7 +30,7 @@ api::Handler metricsDumpCmd()
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        auto result = Metrics::instance().getDataHub()->dumpCmd();
+        auto result = metricsAPI->dumpCmd();
 
         if (std::holds_alternative<base::Error>(result))
         {
@@ -48,6 +48,7 @@ api::Handler metricsDumpCmd()
     };
 }
 
+/*
 api::Handler metricsGetCmd()
 {
     return [](api::wpRequest wRequest) -> api::wpResponse
@@ -183,16 +184,16 @@ api::Handler metricsList()
         return ::api::adapter::toWazuhResponse(eResponse);
     };
 }
-
-void registerHandlers(std::shared_ptr<api::Registry> registry)
+*/
+void registerHandlers(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI, std::shared_ptr<api::Registry> registry)
 {
     try
     {
-        registry->registerHandler("metrics/dump", metricsDumpCmd());
-        registry->registerHandler("metrics/get", metricsGetCmd());
-        registry->registerHandler("metrics/enable", metricsEnableCmd());
-        registry->registerHandler("metrics/list", metricsList());
-        registry->registerHandler("metrics/test", metricsTestCmd());
+        registry->registerHandler("metrics/dump", metricsDumpCmd(metricsAPI));
+        //registry->registerHandler("metrics/get", metricsGetCmd());
+        //registry->registerHandler("metrics/enable", metricsEnableCmd());
+        //registry->registerHandler("metrics/list", metricsList());
+        //registry->registerHandler("metrics/test", metricsTestCmd());
     }
     catch (const std::exception& e)
     {

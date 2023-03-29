@@ -10,6 +10,9 @@
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 
+#include <metrics/metricsManager.hpp>
+using namespace metrics_manager;
+
 // TODO: can we move this utility functions to headers accessible to tests and
 // benchmark?
 static std::string getRandomString(int len, bool includeSymbols = false)
@@ -99,7 +102,9 @@ protected:
         {
             std::filesystem::remove_all(KVDB_PATH);
         }
-        kvdbManager = {std::make_shared<kvdb_manager::KVDBManager>(KVDB_PATH)};
+        std::shared_ptr<IMetricsManager> m_manager = std::make_shared<MetricsManager>();
+
+        kvdbManager = {std::make_shared<kvdb_manager::KVDBManager>(KVDB_PATH, m_manager)};
         kvdbManager->getHandler(kTestDBName, true);
     };
 

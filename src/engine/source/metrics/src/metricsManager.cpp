@@ -80,7 +80,7 @@ std::vector<std::string> MetricsManager::getScopeNames()
 
 // API Commands
 
-std::variant<json::Json, base::Error> MetricsManager::dumpCmd()
+std::variant<std::string, base::Error> MetricsManager::dumpCmd()
 {
     const std::lock_guard<std::mutex> lock(m_mutexScopes);
 
@@ -89,7 +89,7 @@ std::variant<json::Json, base::Error> MetricsManager::dumpCmd()
         return base::Error {fmt::format("Metrics Module doesn't have any Instrumentation Scope implemented.")};
     }
 
-    return getAllMetrics();
+    return getAllMetrics().prettyStr();
 }
 
 } // namespace metrics_manager

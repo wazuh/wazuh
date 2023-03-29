@@ -6,6 +6,8 @@
 
 #include <CLI/CLI.hpp>
 
+#include <metrics/iMetricsManager.hpp>
+
 namespace cmd::test
 {
 
@@ -33,9 +35,9 @@ struct Options
     char protocolQueue;
     std::string protocolLocation;
 };
-void run(const Options& options);
+void run(const Options& options, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
 
-void configure(CLI::App_p app);
+void configure(CLI::App_p app, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
 } // namespace cmd::test
 
 #endif // _CMD_TEST_HPP
