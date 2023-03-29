@@ -1229,7 +1229,7 @@ checks:
   - id: 29548
     title: "Ensure chrony is running as user _chrony."
     description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service."
-    rationale: "The chronyd service should run with only the required privleges."
+    rationale: "The chronyd service should run with only the required privileges."
     remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony."
     compliance:
       - cis: ["2.1.2.2"]
@@ -1380,7 +1380,7 @@ checks:
   - id: 29554
     title: "Ensure ntp is running as user ntp."
     description: "The ntp package is installed with a dedicated user account ntp. This account is granted the access required by the ntpd daemon. Note: - If chrony or systemd-timesyncd are used, ntp should be removed and this section skipped. - This recommendation only applies if ntp is in use on the system. - Only one time synchronization method should be in use on the system."
-    rationale: "The ntpd daemon should run with only the required privlege."
+    rationale: "The ntpd daemon should run with only the required privilege."
     remediation: "Add or edit the following line in /etc/init.d/ntp: RUNASUSER=ntp. Run the following command to restart ntp.service: # systemctl restart ntp.service OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp."
     references:
       - http://www.ntp.org/
