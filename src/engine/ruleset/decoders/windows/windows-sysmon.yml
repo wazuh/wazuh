@@ -23,16 +23,12 @@ normalize:
  - map:
     - event.module: sysmon
     - event.kind: event
-    - log.channel: $~windows.Event.System.Channel.#text
-    - log.computer_name: $~windows.Event.System.Computer.#text
-    - log.event_id:  $~windows.Event.System.EventID.#text
-    - log.opcode: info
 
     # Add categorization fields
     - event:  +kvdb_get_merge/sysmon_categories/$event.code
 
     - rule.name: $~windows.Event.EventData.RuleName
-    - event.Hashes: $~windows.Event.EventData.Hash
+    - event.hash: $~windows.Event.EventData.Hash
     - ~temp.hashes: +parse_kv/$~windows.Event.EventData.Hashes/=/,/'/'
     - related.hash: $~temp.hashes
 
@@ -42,7 +38,7 @@ normalize:
     - process.pid: $~windows.Event.EventData.ProcessId
     - process.executable: $~windows.Event.EventData.Image
     - process.entity_id: $~windows.Event.EventData.SourceProcessGuid
-    - process.entity_id: $~windows.Event.EventData.SourceProcessGUID 
+    - process.entity_id: $~windows.Event.EventData.SourceProcessGUID
     - process.pid: $~windows.Event.EventData.SourceProcessId
     - process.thread.id: $~windows.Event.EventData.SourceThreadId
     - process.executable: $~windows.Event.EventData.SourceImage
