@@ -15,7 +15,8 @@ class InstrumentCollection
 public:
     std::shared_ptr<T> getInstrument(
         const std::string& name,
-        const std::function<U()> &createFunction) 
+        const std::function<U()>& createFunction,
+        const std::function<void(const std::shared_ptr<T>&)>& onCreateFunction=[](const std::shared_ptr<T>&){}) 
     {
         auto it = m_instruments.find(name);
         if (m_instruments.end() == it)
@@ -29,6 +30,8 @@ public:
                 std::make_pair<std::string, std::shared_ptr<T>>(
                     std::string(name),
                     std::move(newInstrument)));
+
+            onCreateFunction(m_instruments[name]);
         }
 
         return m_instruments[name];

@@ -18,9 +18,6 @@ namespace metrics_manager
 
 using OTSDKMeterProvider = opentelemetry::sdk::metrics::MeterProvider;
 
-namespace OTMetrics = opentelemetry::metrics;
-namespace OTstd = opentelemetry::nostd;
-
 class MetricsScope : public IMetricsScope
 {
 public:
@@ -46,6 +43,12 @@ public:
 
     std::shared_ptr<iHistogram<uint64_t>>
         getHistogramInteger(const std::string& name) override;
+
+    std::shared_ptr<iGauge<int64_t>> 
+        getGaugeInteger(const std::string& name, int64_t defaultValue)  override;
+
+    std::shared_ptr<iGauge<double>> 
+        getGaugeDouble(const std::string& name, double defaultValue)  override;
 
 private:
     std::shared_ptr<DataHub> m_dataHub;
@@ -80,6 +83,19 @@ private:
         Histogram< OTMetrics::Histogram<uint64_t>, uint64_t>,
         OTstd::unique_ptr< OTMetrics::Histogram<uint64_t> >
     > m_collection_histogram_integer;
+
+    InstrumentCollection<
+        Gauge< int64_t >,
+        OTstd::shared_ptr< OTMetrics::ObservableInstrument >
+    > m_collection_gauge_integer;
+
+    InstrumentCollection<
+        Gauge< double >,
+        OTstd::shared_ptr< OTMetrics::ObservableInstrument >
+    > m_collection_gauge_double;
+
+    static void FetcherInteger(OTMetrics::ObserverResult observer_result, void *id);
+    static void FetcherDouble(OTMetrics::ObserverResult observer_result, void *id);    
 };
 
 } // namespace metrics_manager
