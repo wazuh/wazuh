@@ -16,9 +16,9 @@ def run(args, resource_handler: rs.ResourceHandler):
     api_socket = args['api_sock']
     indexer_path = args['indexer_dir']
     fields_path = args['schema_dir']
-    modules_dir, modules = modules_get_args(args)
+    modules = modules_get_args(args)
     jproperties, jmappings, jlogpar = generate(
-        ecs_version, modules_dir, modules, resource_handler)
+        ecs_version, modules, resource_handler)
 
     # Apply changes to Engine instance
     print(f'Overriding wazuh-template.json in {indexer_path}...')

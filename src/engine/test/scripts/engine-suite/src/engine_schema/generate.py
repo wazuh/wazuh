@@ -16,7 +16,7 @@ def make_error(msg):
     exit(1)
 
 
-def generate(ecs_version: str, modules_dir: str, modules: list, resource_handler: rs.ResourceHandler) -> Tuple[dict, dict, dict]:
+def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandler) -> Tuple[dict, dict, dict]:
 
     print(f'Using target ECS version: {ecs_version}')
 
@@ -41,12 +41,11 @@ def generate(ecs_version: str, modules_dir: str, modules: list, resource_handler
     # Add modules
     for module in modules:
         print(f'Adding module {module}...')
-        path = '/'.join([modules_dir, module])
         print('Loading resources...')
-        fields_definition, logpar_overrides = resource_handler.load_module_files(
-            modules_dir, module)
+        fields_definition, logpar_overrides, module_name = resource_handler.load_module_files(
+            module)
         print('Generating field tree...')
-        module_tree = wazuh.build_field_tree(fields_definition)
+        module_tree = wazuh.build_field_tree(fields_definition, module_name)
         print('Adding logpar overrides...')
         if logpar_overrides:
             module_tree.add_logpar_overrides(logpar_overrides)

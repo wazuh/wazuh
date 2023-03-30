@@ -20,9 +20,9 @@ ECS field modules and apply changes on an engine instance through the API socket
 
     ecs_version = args['ecs_version']
     output_dir = args['output_dir']
-    modules_dir, modules = modules_get_args(args)
+    modules = modules_get_args(args)
     jproperties, jmappings, jlogpar = generate(
-        ecs_version, modules_dir, modules, resource_handler)
+        ecs_version, modules, resource_handler)
 
     # Save generated files
     print(f'Saving files to "{output_dir}"...')
