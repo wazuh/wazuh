@@ -14,7 +14,7 @@ MetricsManager::MetricsManager() :
 
 void MetricsManager::start()
 {
-    // Configure 
+    // Configure
 }
 
 bool MetricsManager::isRunning()
@@ -82,14 +82,56 @@ std::vector<std::string> MetricsManager::getScopeNames()
 
 std::variant<std::string, base::Error> MetricsManager::dumpCmd()
 {
+    {
+        const std::lock_guard<std::mutex> lock(m_mutexScopes);
+
+        if (m_mapScopes.empty())
+        {
+            return base::Error {fmt::format("Metrics Module doesn't have any Instrumentation Scope implemented.")};
+        }
+    }
+    
+    auto retValue = getAllMetrics();
+    if (retValue.isNull())
+    {
+        return "{}";
+    }
+    return retValue.prettyStr();
+}
+
+std::shared_ptr<MetricsScope> MetricsManager::getScope(const std::string& metricsScopeName)
+{
     const std::lock_guard<std::mutex> lock(m_mutexScopes);
 
-    if (m_mapScopes.empty())
+    auto it = m_mapScopes.find(metricsScopeName);
+    if (m_mapScopes.end() != it)
     {
-        return base::Error {fmt::format("Metrics Module doesn't have any Instrumentation Scope implemented.")};
+        return it->second;
+    }
+    else
+    {
+        throw std::runtime_error {"The scope " + metricsScopeName + " has not been created."};
+    }
+}
+
+void MetricsManager::enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus)
+{
+    auto scope = getScope(scopeName);
+    scope->setEnabledStatus(instrumentName, newStatus);
+}
+
+void MetricsManager::testCmd()
+{
+    static bool iterate = false;
+
+    if (!iterate)
+    {
+        m_scopeMetrics = getMetricsScope("metrics");
+        iterate = true;
     }
 
-    return getAllMetrics().prettyStr();
+    auto counterTest = m_scopeMetrics->getCounterUInteger("test");
+    counterTest->addValue(1UL);
 }
 
 } // namespace metrics_manager

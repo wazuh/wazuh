@@ -85,11 +85,11 @@ api::Handler metricsGetCmd()
 
         return ::api::adapter::toWazuhResponse(eResponse);
     };
-}
+}*/
 
-api::Handler metricsEnableCmd()
+api::Handler metricsEnableCmd(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI)
 {
-    return [](api::wpRequest wRequest) -> api::wpResponse
+    return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eMetrics::Enable_Request;
         using ResponseType = eMetrics::Enable_Response;
@@ -103,9 +103,11 @@ api::Handler metricsEnableCmd()
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        auto errorMsg = !eRequest.has_name()     ? std::make_optional("Missing /name")
-                        : !eRequest.has_status() ? std::make_optional("Missing /status")
-                                                 : std::nullopt;
+        auto errorMsg = !eRequest.has_scopename() ? std::make_optional("Missing /scope name")
+                : !eRequest.has_instrumentname() ? std::make_optional("Missing /instrument name")
+                : !eRequest.has_status() ? std::make_optional("Missing /status")
+                : std::nullopt;
+
         if (errorMsg.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
@@ -113,7 +115,8 @@ api::Handler metricsEnableCmd()
 
         try
         {
-            Metrics::instance().setEnableInstrument(eRequest.name(), eRequest.status());
+            metricsAPI->enableCmd(eRequest.scopename(), eRequest.instrumentname(), eRequest.status());
+
         }
         catch (const std::exception& e)
         {
@@ -127,9 +130,9 @@ api::Handler metricsEnableCmd()
     };
 }
 
-api::Handler metricsTestCmd()
+api::Handler metricsTestCmd(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI)
 {
-    return [](api::wpRequest wRequest) -> api::wpResponse
+    return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eMetrics::Test_Request;
         using ResponseType = eMetrics::Test_Response;
@@ -141,7 +144,7 @@ api::Handler metricsTestCmd()
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        Metrics::instance().generateCounterToTesting();
+        metricsAPI->testCmd();
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
@@ -149,7 +152,7 @@ api::Handler metricsTestCmd()
         return ::api::adapter::toWazuhResponse(eResponse);
     };
 }
-
+/*
 api::Handler metricsList()
 {
     return [](api::wpRequest wRequest) -> api::wpResponse
@@ -191,9 +194,9 @@ void registerHandlers(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>
     {
         registry->registerHandler("metrics/dump", metricsDumpCmd(metricsAPI));
         //registry->registerHandler("metrics/get", metricsGetCmd());
-        //registry->registerHandler("metrics/enable", metricsEnableCmd());
+        registry->registerHandler("metrics/enable", metricsEnableCmd(metricsAPI));
         //registry->registerHandler("metrics/list", metricsList());
-        //registry->registerHandler("metrics/test", metricsTestCmd());
+        registry->registerHandler("metrics/test", metricsTestCmd(metricsAPI));
     }
     catch (const std::exception& e)
     {
