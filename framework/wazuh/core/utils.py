@@ -885,18 +885,14 @@ def check_disabled_limits_in_conf(data):
     WazuhError(1127)
         Raised if one of the disabled limits is present in the configuration to upload.
     """
+    def check_section(section_name):
+        if re.findall(pattern=r'<global>.*<limits>.*<{0}>.*</{0}>.*</limits>.*</global>'.format(section_name),
+                      string=data, flags=re.MULTILINE | re.DOTALL | re.IGNORECASE):
+            raise WazuhError(1127, extra_message=f"global > limits > {section_name}")
+
     blocked_configurations = configuration.api_conf['upload_configuration']
-
-    xml_file = fromstring(f"<root_tag>{data}</root_tag>")
-    found_limits = []
-    for global_section in xml_file.findall("global"):
-        found_limits += [limit_section for limit_section in global_section.findall("limits") or []]
-    if len(found_limits) == 0:
-        return
-
     for disabled_limit in [conf for conf, allowed in blocked_configurations['limits'].items() if not allowed['allow']]:
-        if any([conf_limit.find(disabled_limit) for conf_limit in found_limits]):
-            raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
+        check_section(disabled_limit)
 
 
 def load_wazuh_xml(xml_path, data=None):
