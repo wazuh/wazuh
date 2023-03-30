@@ -14,6 +14,7 @@ def run(args, resource_handler: rs.ResourceHandler):
     resource_handler.create_file(f'{integration_name}/fields.yml')
     resource_handler.create_file(f'{integration_name}/logpar.yml')
     resource_handler.create_file(f'{integration_name}/documentation.yml')
+    resource_handler.create_dir(f'{integration_name}/kvdbs')
 
 def configure(subparsers):
     parser_create = subparsers.add_parser(
