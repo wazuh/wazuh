@@ -16,7 +16,7 @@ metadata:
     - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
 
 check:
-  - ~json.Event: +ef_exists
+  - ~json.Event: +exists
 
 parse:
   logpar:
@@ -30,7 +30,6 @@ normalize:
    - event.kind: event
    - event.provider: $~windows.Event.System.Provider.@Name
    - host.name: $~windows.Event.System.Computer.#text
-   - winlog.level: +kvdb_get/win_log_level/$~windows.Event.System.Level.#text
    - winlog.message: $~parsed_json.Message
    - winlog.channel: $~windows.Event.System.Channel.#text
    - winlog.process.pid: $~windows.Event.System.Execution.@ProcessID
@@ -38,6 +37,37 @@ normalize:
    - winlog.record_id: $~windows.Event.System.EventRecordID.#text
    - winlog.original_event_data: $~windows.Event.EventData
 
+# Set event level
+ - check:
+    - ~windows.Event.System.Level.#text: "0"
+   map:
+    - winlog.level: "Audit"
+
+ - check:
+    - ~windows.Event.System.Level.#text: "1"
+   map:
+    - winlog.level: "Critical"
+
+ - check:
+    - ~windows.Event.System.Level.#text: "2"
+   map:
+    - winlog.level: "Error"
+
+ - check:
+    - ~windows.Event.System.Level.#text: "3"
+   map:
+    - winlog.level: "Warning"
+
+ - check:
+    - ~windows.Event.System.Level.#text: "4"
+   map:
+    - winlog.level: "Information"
+
+ - check:
+    - ~windows.Event.System.Level.#text: "5"
+   map:
+    - winlog.level: "Verbose"
+
 # Cleanup
  - map:
-   - ~json: +ef_delete
+   - ~json: +delete
