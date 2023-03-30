@@ -390,7 +390,7 @@ class WazuhIntegration:
                                         profile_config=profile_config)
 
             except (KeyError, ValueError) as e:
-                print('Invalid key, value found in config '.format(e))
+                print('Invalid key or value found in config '.format(e))
                 sys.exit(17)
 
             debug(
