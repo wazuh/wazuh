@@ -215,4 +215,35 @@ class ResourceHandler:
                     if print_name:
                         print(f'Loading {entry.name}')
                     component = self.load_file(entry, Format.YML)
-                    self.add_catalog_file(api_socket, type[:-1], component['name'], component, Format.YML)
+                    self.add_catalog_file(
+                        api_socket, type[:-1], component['name'], component, Format.YML)
+
+    def create_kvdb(self, api_socket: str, name: str, path: str):
+        request = {'version': 1, 'command': 'kvdb.manager/post', 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'name': name, 'path': path}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(api_socket)
+            s.sendall(request_bytes)
+            data = s.recv(65507)
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        response = json.loads(resp_message)
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'Could not create {name} due to: {response["data"]["error"]}')
+
+    def recursive_create_kvdbs(self, api_socket: str, path_str: str, print_name: bool = False):
+        path = Path(path_str) / 'kvdbs'
+        if path.exists():
+            for entry in path.rglob('*'):
+                if entry.is_file():
+                    if print_name:
+                        print(f'Creating {entry.name}')
+                    self.create_kvdb(api_socket, entry.stem, str(entry))
