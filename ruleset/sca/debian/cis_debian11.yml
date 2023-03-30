@@ -2613,7 +2613,7 @@ checks:
       - mitre_mitigations: ["M1053"]
     condition: all
     rules:
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+$'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+'
 
   # 4.1.2.2 Ensure audit logs are not automatically deleted (Automated)
   - id: 29603
@@ -2633,7 +2633,7 @@ checks:
       - mitre_mitigations: ["M1053"]
     condition: all
     rules:
-      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file_action\s*\t*=\s*\t*keep_logs$'
+      - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file_action\s*\t*=\s*\t*keep_logs'
 
   # 4.1.2.3 Ensure system is disabled when audit logs are full (Automated)
   - id: 29604
@@ -2644,7 +2644,7 @@ checks:
     remediation: "Set the following parameters in /etc/audit/auditd.conf: space_left_action = email action_mail_acct = root set admin_space_left_action to either halt or single in /etc/audit/auditd.conf. Example: admin_space_left_action = halt."
     compliance:
       - cis: ["4.1.2.3"]
-      - cis_csc_v8: ["8.2, 8.3"]
+      - cis_csc_v8: ["8.2", "8.3"]
       - cis_csc_v7: ["6.4"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
@@ -2783,7 +2783,35 @@ checks:
       - "c:auditctl -l -> r:^-w && r:/etc/network/ && r:-p wa && r:-k system-locale|key=system-locale"
 
   # 4.1.3.6 Ensure use of privileged commands are collected (Automated) - Not Implemented
-  # 4.1.3.7 Ensure unsuccessful file access attempts are collected (Automated) - Not Implemented
+
+  # 4.1.3.7 Ensure unsuccessful file access attempts are collected (Automated)
+  - id: 29709
+    title: "Ensure events that modify user/group information are collected."
+    description: "Monitor for unsuccessful attempts to access files. The following parameters are associated with system calls that control files: - creation - creat. - opening - open, openat. - truncation - truncate, ftruncate. An audit log record will only be written if all of the following criteria is met for the user when trying to access a file: - a non-privileged user (auid>=UID_MIN). - is not a Daemon event (auid=4294967295/unset/-1). - if the system call returned EACCES (permission denied) or EPERM (some other permanent error associated with the specific system call)."
+    rationale: "Failed attempts to open, create or truncate files could be an indication that an individual or process is trying to gain unauthorized access to the system."
+    remediation: 'Create audit rules: Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor unsuccessful file access attempts. 64 Bit systems Example: #{ UID_MIN=$(awk ''/^\s*UID_MIN/{print $2}'' /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EACCES -F auid>=${UID_MIN} -F auid!=unset -k access -a always,exit -F arch=b64 -S creat,open,openat,truncate,ftruncate -F exit=-EPERM -F auid>=${UID_MIN} -F auid!=unset -k access -a always,exit -F arch=b32 -S creat,open,openat,truncate,ftruncate -F exit=-EACCES -F auid>=${UID_MIN} -F auid!=unset -k access -a always,exit -F arch=b32 -S creat,open,openat,truncate,ftruncate -F exit=-EPERM -F auid>=${UID_MIN} -F auid!=unset -k access " >> /etc/audit/rules.d/50-access.rules || printf "ERROR: Variable ''UID_MIN'' is unset.\n" } Load audit rules: Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi. 32 Bit systems: Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    compliance:
+      - cis: ["4.1.3.7"]
+      - cis_csc_v8: ["8.5"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+      - soc_2: ["CC5.2", "CC7.2"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && -S && creat && open && openat && truncate && ftruncate && -F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && -S && creat && open && openat && truncate && ftruncate && -F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && -S && creat && open && openat && truncate && ftruncate && -F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && -S && creat && open && openat && truncate && ftruncate && -F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && -S && creat && open && openat && truncate && ftruncate && -F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && -S && creat && open && openat && truncate && ftruncate && -F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && -S && creat && open && openat && truncate && ftruncate && -F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && -S && creat && open && openat && truncate && ftruncate && -F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k access|key=access'
 
   # 4.1.3.8 Ensure events that modify user/group information are collected (Automated)
   - id: 29609
@@ -2818,6 +2846,38 @@ checks:
       - "c:auditctl -l -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity"
 
   # 4.1.3.9 Ensure discretionary access control permission modification events are collected (Automated) - Not Implemented
+  - id: 29609
+    title: "Ensure events that modify user/group information are collected."
+    description: 'Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The following commands and system calls effect the permissions, ownership and various attributes of files: chmod, fchmod, fchmodat, chown, fchown, fchownat, lchown, setxattr, lsetxattr, fsetxattr, removexattr, lremovexattr, fremovexattr. In all cases, an audit record will only be written for non-system user ids and will ignore Daemon events. All audit records will be tagged with the identifier "perm_mod".'
+    rationale: "Monitoring for changes in file attributes could alert a system administrator to activity that could indicate intruder activity or policy violation."
+    remediation: 'Create audit rules: Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor discretionary access control permission modification events. 64 Bit systems: Example: #{ UID_MIN=$(awk ''/^\s*UID_MIN/{print $2}'' /etc/login.defs) [ -n "${UID_MIN}" ] && printf " -a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b32 -S lchown,fchown,chown,fchownat -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod -a always,exit -F arch=b32 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=${UID_MIN} -F auid!=unset -F key=perm_mod " >> /etc/audit/rules.d/50-perm_mod.rules || printf "ERROR: Variable ''UID_MIN'' is unset.\n" } Load audit rules: Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep "enabled") =~ "2" ]]; then printf "Reboot required to load rules\n"; fi. 32 Bit systems Follow the same procedures as for 64 bit systems and ignore any entries with b64.'
+    compliance:
+      - cis: ["4.1.3.8"]
+      - cis_csc_v8: ["8.5"]
+      - cis_csc_v7: ["5.5"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+      - soc_2: ["CC5.2", "CC7.2"]
+      - iso_27001-2013: ["A.12.1.2"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1022"]
+    condition: all
+    rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a always,exit && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_mod|key=perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a always,exit && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_mod|key=perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a always,exit && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_mod|key=perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a always,exit && r:-F arch=b32 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset  && r:-k perm_mod|key=perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a always,exit && r:-F arch=b64 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset  && r:-k perm_mod|key=perm_mod'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a always,exit && r:-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset  && r:-k perm_mod|key=perm_mod'
+      - 'c:auditctl -l -> r:^-a always,exit && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_mod|key=perm_mod'
+      - 'c:auditctl -l -> r:^-a always,exit && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_mod|key=perm_mod'
+      - 'c:auditctl -l -> r:^-a always,exit && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_mod|key=perm_mod'
+      - 'c:auditctl -l -> r:^-a always,exit && r:-F arch=b32 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset  && r:-k perm_mod|key=perm_mod'
+      - 'c:auditctl -l -> r:^-a always,exit && r:-F arch=b64 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset  && r:-k perm_mod|key=perm_mod'
+      - 'c:auditctl -l -> r:^-a always,exit && r:-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset  && r:-k perm_mod|key=perm_mod'
 
   # 4.1.3.10 Ensure successful file system mounts are collected (Automated)
   - id: 29610
