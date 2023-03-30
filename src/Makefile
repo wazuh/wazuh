@@ -1257,7 +1257,12 @@ endif
 ####################
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 WAZUH_LIB = libwazuhshared.$(SHARED)
-BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
+
+ifeq (${uname_S},AIX)
+	BUILD_LIBS = ./libwazuhext/libcurl.a libwazuh.a $(WAZUHEXT_LIB)
+else
+	BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
+endif
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
@@ -1651,7 +1656,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	find external/ -name \*.a -exec cp {} libwazuhext/ \;
 	-for lib in $(EXT_LIBS); do \
 		ar -x libwazuhext/$$lib; \
-		mv *.o libwazuhext/; \
+		mv *.o libwazuhext; \
 	done
 ifeq (${uname_S},AIX)
 	ar -p libwazuhext/libz.a compress.o > libwazuhext/compress2.o

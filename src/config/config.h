@@ -40,7 +40,7 @@
 typedef enum needed_tags {
     JSONOUT_OUTPUT = 0,
     ALERTS_LOG,
-    LOGALL,
+    LOGALL_EX,
     LOGALL_JSON
 } NeededTags;
 
