@@ -11,6 +11,7 @@
     1. [Debugging main with gdb](#debug)
 1. [Documentation generation](#docxygen)
 1. [Building manually](#buildmanual)
+1. [License](#license)
 
 <a name="structure"></a>
 ## Project structure
@@ -192,3 +193,7 @@ To run tests:
 cd build
 make test
 ```
+<a name="license"></a>
+## License
+Wazuh Engine is distributed under the AGPLv3 license. See [LICENSE](https://github.com/wazuh/wazuh/blob/11334-dev-new-wazuh-engine/src/engine/LICENSE) and [COPYING](https://github.com/wazuh/wazuh/blob/11334-dev-new-wazuh-engine/src/engine/COPYING) for more details.
+
