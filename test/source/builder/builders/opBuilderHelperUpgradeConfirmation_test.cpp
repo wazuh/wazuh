@@ -26,7 +26,7 @@ const std::string messageReferenceObject {"$fieldReferenceObject"};
 
 TEST(opBuilderUpgradeConfirmationTestSuite, Build)
 {
-    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {"query params"})};
+    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
 
     ASSERT_NO_THROW(opBuilderHelperSendUpgradeConfirmation(tuple));
 }
@@ -46,21 +46,10 @@ TEST(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithMoreParameters)
     ASSERT_THROW(opBuilderHelperSendUpgradeConfirmation(tuple), std::runtime_error);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, SendMessageFromValue)
+TEST(opBuilderUpgradeConfirmationTestSuite, ErrorBuildMessageNotReference)
 {
     auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {testMessage})};
-    auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
-
-    auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
-    ASSERT_GT(serverSocketFD, 0);
-
-    auto event {std::make_shared<json::Json>(R"({})")};
-    auto result {op(event)};
-
-    ASSERT_FALSE(result);
-
-    close(serverSocketFD);
-    unlink(WM_UPGRADE_SOCK);
+    ASSERT_THROW(opBuilderHelperSendUpgradeConfirmation(tuple), std::runtime_error);
 }
 
 TEST(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceString)
