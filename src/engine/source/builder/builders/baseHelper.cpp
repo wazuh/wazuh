@@ -64,12 +64,6 @@ std::vector<Parameter> processParameters(const std::string name,
                                                "Json pointer path: {}",
                                                parameter,
                                                e.what()));
-
-                               throw(std::runtime_error(
-                                   fmt::format("Cannot format parameter \"{}\" to Json "
-                                               "pointer path: {}",
-                                               parameter,
-                                               e.what())));
                            }
                            return {Parameter::Type::REFERENCE, pointerPath};
                        }
