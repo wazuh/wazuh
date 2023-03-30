@@ -209,14 +209,14 @@ async def test_remove_group(print_mock):
             AffectedItems.called = True
 
     def forward_function(func, f_kwargs):
-        return AffectedItems(affected_items=[{'testing': ['a', 'b']}], failed_items={'a': 'b'})
+        return AffectedItems(affected_items=['testing'], failed_items={'a': 'b'})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         with patch('scripts.agent_groups.get_stdin', return_value='y') as get_stdin_mock:
             await agent_groups.remove_group(group_id='testing')
             forward_mock.has_calls(call(func=agent.delete_groups, f_kwargs={'group_list': ['testing']}))
             get_stdin_mock.assert_has_calls([call("Do you want to remove the 'testing' group? [y/N]: ")])
-            print_mock.assert_has_calls([call('Group testing removed.\nAffected agents: a, b.')])
+            print_mock.assert_has_calls([call('Group testing removed.')])
             print_mock.reset_mock()
             get_stdin_mock.reset_mock()
 

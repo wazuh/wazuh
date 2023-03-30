@@ -98,7 +98,7 @@ All notable changes to this project will be documented in this file.
 - Deprecate status field in SCA. ([#15853](https://github.com/wazuh/wazuh/pull/15853))
 - Agent group guessing (based on configuration hash) now writes the new group directly on the master node. ([#16066](https://github.com/wazuh/wazuh/pull/16066))
 - Added delete on cascade of belongs table entries when a group is deleted. ([#16098](https://github.com/wazuh/wazuh/issues/16098))
-
+- Changed `agent_groups` CLI output so affected agents are not printed when deleting a group. ([#16499](https://github.com/wazuh/wazuh/pull/16499))
 
 #### Fixed
 
