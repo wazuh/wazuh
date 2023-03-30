@@ -104,7 +104,6 @@ class ResourceHandler:
         self._write_file(pure_path, content, format)
 
     def update_catalog_file(self, path: str, name: str, content: dict, format: Format):
-        # TODO Update once API refactored is implemented
         raw_message = ''
         format_str = ''
         if format is Format.JSON:
@@ -116,8 +115,8 @@ class ResourceHandler:
         else:
             raise Exception(f'Format not supported in update catalog {name}')
 
-        request = {'version': 1, 'command': 'put_catalog', 'origin': {
-            'name': 'engine-schema', 'module': 'engine-schema'}, 'parameters': {'name': name, 'content': raw_message, 'format': format_str}}
+        request = {'version': 1, 'command': 'catalog.resource/put', 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'name': name, 'content': raw_message, 'format': format_str}}
         request_raw = json.dumps(request)
         request_bytes = len(request_raw).to_bytes(4, 'little')
         request_bytes += request_raw.encode('utf-8')
@@ -132,9 +131,41 @@ class ResourceHandler:
         resp_message = data[4:resp_size+4].decode('UTF-8')
 
         response = json.loads(resp_message)
-        if response['message'] != 'OK':
+        if response['data']['status'] != 'ok':
             raise Exception(
-                f'Could not update {name} due to: {response["message"]}')
+                f'Could not create {name} due to: {response["data"]["error"]}')
+
+    def add_catalog_file(self, path: str, type: str, name: str, content: dict, format: Format):
+        raw_message = ''
+        format_str = ''
+        if format is Format.JSON:
+            raw_message = json.dumps(content)
+            format_str = 'json'
+        elif format is Format.YML:
+            raw_message = yaml.dump(content, Dumper=Dumper)
+            format_str = 'yaml'
+        else:
+            raise Exception(f'Format not supported in update catalog {name}')
+
+        request = {'version': 1, 'command': 'catalog.resource/post', 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'type': type, 'name': name, 'content': raw_message, 'format': format_str}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(path)
+            s.sendall(request_bytes)
+            data = s.recv(65507)
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        response = json.loads(resp_message)
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'Could not create {name} due to: {response["data"]["error"]}')
 
     def save_plain_text_file(self, path_str: str, name: str, content: str):
         path = Path(path_str)
@@ -172,3 +203,16 @@ class ResourceHandler:
 
     def current_dir_name(self) -> str:
         return str(Path.cwd().name)
+
+    def cwd(self) -> str:
+        return str(Path.cwd())
+
+    def recursive_load_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
+        path = Path(path_str) / type
+        if path.exists():
+            for entry in path.rglob('*'):
+                if entry.is_file():
+                    if print_name:
+                        print(f'Loading {entry.name}')
+                    component = self.load_file(entry, Format.YML)
+                    self.add_catalog_file(api_socket, type[:-1], component['name'], component, Format.YML)
