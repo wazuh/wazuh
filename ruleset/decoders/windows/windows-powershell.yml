@@ -16,7 +16,7 @@ metadata:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
 
 check:
-  - ~windows.Event.System.Channel.#text: +s_eq/Windows PowerShell
+  - ~windows.Event.System.Channel.#text: +string_equal/Windows PowerShell
 
 normalize:
  - map:
@@ -32,10 +32,10 @@ normalize:
    - process.title: $~windows.Event.EventData.HostName
 
   ## User fields.
-   - ~temp.user_parts: +s_to_array/$~windows.Event.EventData.UserId/\
+   - ~temp.user_parts: +split/$~windows.Event.EventData.UserId/\
    - user.domain: $~temp.user_parts.0
    - user.name: $~temp.user_parts.1
-   - related.user: +a_append/user.name
+   - related.user: +array_append/user.name
 
   ## PowerShell fields.
    - powershell.engine.new_state: $~windows.Event.EventData.NewEngineState
@@ -70,5 +70,5 @@ normalize:
 
 # Cleanup
  - map:
-   - ~temp: +ef_delete
-   - ~windows: +ef_delete
+   - ~temp: +delete
+   - ~windows: +delete

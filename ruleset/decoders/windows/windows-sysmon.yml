@@ -29,7 +29,7 @@ normalize:
 
     - rule.name: $~windows.Event.EventData.RuleName
     - event.hash: $~windows.Event.EventData.Hash
-    - ~temp.hashes: +parse_kv/$~windows.Event.EventData.Hashes/=/,/'/'
+    - ~temp.hashes: +parse_key_value/$~windows.Event.EventData.Hashes/=/,/'/'
     - related.hash: $~temp.hashes
 
 
@@ -53,10 +53,10 @@ normalize:
     - process.name: $~temp.file_data.name
     - ~temp.file_data: +parse_file/$process.parent.executable
     - process.parent.name: $~temp.file_data.name
-    #- process.args: +r_ext/$process.command_line/("[^"]+"|[^\s"]+) # ideally with a regex to array
-    - process.args: '+s_to_array/$process.command_line/ '
+    #- process.args: +regex_extract/$process.command_line/("[^"]+"|[^\s"]+) # ideally with a regex to array
+    - process.args: '+split/$process.command_line/ '
     # - process.args_count
-    - process.parent.args: '+s_to_array/$process.parent.command_line/ '
+    - process.parent.args: '+split/$process.parent.command_line/ '
     #- process.parent.args_count
 
 
@@ -87,7 +87,7 @@ normalize:
 
   ## User fields
     - user.id: $~windows.Event.System.Security.@UserID
-    - ~temp.user_parts: +s_to_array/$~windows.Event.EventData.User/\
+    - ~temp.user_parts: +split/$~windows.Event.EventData.User/\
     - user.domain: $~temp.user_parts.0
     - user.name: $~temp.user_parts.1
 
@@ -99,7 +99,7 @@ normalize:
 
   ## Related fields
     - related.user: $user.name
-    - related.ip: +a_append/$~windows.Event.EventData.NewTargetUserName
+    - related.ip: +array_append/$~windows.Event.EventData.NewTargetUserName
 
 
  - check: event.code==255
@@ -110,7 +110,7 @@ normalize:
    map:
     - message: $~windows.Event.EventData.Type
 
- - check: +s_ne/event.code/7
+ - check: +string_not_equal/event.code/7
    map:
    - process.pe.original_file_name: $~windows.Event.EventData.OriginalFileName
    - process.pe.company: $~windows.Event.EventData.Company
@@ -170,36 +170,36 @@ normalize:
  - check: event.code==12 OR event.code==13  OR event.code==14
    map:
     - registry.path: $~windows.Event.EventData.TargetObject
-    - ~temp.registry.array: +s_to_array/$registry.path/\/
+    - ~temp.registry.array: +split/$registry.path/\/
     - registry.hive: $~temp.registry.array.0
-    - ~temp.registry.array.0: +ef_delete
-    - registry.key: +s_from_array/$~temp.registry.array/\\
-    - registry.value: +r_ext/$registry.path/^.*\\\\(.*)$
+    - ~temp.registry.array.0: +delete
+    - registry.key: +join/$~temp.registry.array/\\
+    - registry.value: +regex_extract/$registry.path/^.*\\\\(.*)$
     # This could be better than what is done in line 181:
     # - ~temp.is_binary_data: +r_match/~windows.Event.EventData.Details/^Binary Data/
 
- - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/QWORD
+ - check: (event.code==12 OR event.code==13  OR event.code==14) AND +starts_with/~windows.Event.EventData.Details/QWORD
    map:
     - registry.data.type: SZ_QWORD
-    - registry.data.strings: +r_ext/$~windows.Event.EventData.Details/^QWORD\s*\((0x[0-9A-F]+-0x[0-9A-F]+)\)
+    - registry.data.strings: +regex_extract/$~windows.Event.EventData.Details/^QWORD\s*\((0x[0-9A-F]+-0x[0-9A-F]+)\)
 
- - check: (event.code==12 OR event.code==13  OR event.code==14) AND +s_starts/~windows.Event.EventData.Details/DWORD
+ - check: (event.code==12 OR event.code==13  OR event.code==14) AND +starts_with/~windows.Event.EventData.Details/DWORD
    map:
     - registry.data.type: SZ_DWORD
-    - ~temp.value: +r_ext/$~windows.Event.EventData.Details/DWORD \((0x[0-9A-F]{8})\)
-    - registry.data.strings: +s_hex_to_num/$~temp.value
+    - ~temp.value: +regex_extract/$~windows.Event.EventData.Details/DWORD \((0x[0-9A-F]{8})\)
+    - registry.data.strings: +hex_to_number/$~temp.value
 
  - check:
-    - ~windows.Event.EventData.Details: +s_starts/Binary Data
+    - ~windows.Event.EventData.Details: +starts_with/Binary Data
    map:
     - ~temp.is_binary_data: True
 
- - check:  (event.code==12 OR event.code==13  OR event.code==14) AND +t_is_true/~temp.is_binary_data
+ - check:  (event.code==12 OR event.code==13  OR event.code==14) AND +is_true/~temp.is_binary_data
    map:
     - registry.data.type: REG_BINARY
     - registry.data.strings: $~windows.Event.EventData.Details
 
 # Cleanup
  - map:
-   - ~temp: +ef_delete
-   - ~windows: +ef_delete
+   - ~temp: +delete
+   - ~windows: +delete
