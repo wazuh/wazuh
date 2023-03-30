@@ -17,16 +17,26 @@ class Endpoint
 {
 
 protected:
-    std::string m_address;
-    std::shared_ptr<uvw::Loop> m_loop;
-    bool m_running;
-    std::atomic<std::size_t> m_currentQWSize;      ///< Current size of the queue worker
+    std::string m_address;             ///< Endpoint address.
+    std::shared_ptr<uvw::Loop> m_loop; ///< Loop to bind endpoint.
+    bool m_running;                    ///< If endpoint is running.
+    const std::size_t m_taskQueueSize; ///< Size of of the queue of tasks to be processed by the thread pool. If 0, the
+                                       ///< callback is called synchronously.
+    /** @brief Current size of the queue of tasks to be processed by the thread pool */
+    std::atomic<std::size_t> m_currentTaskQueueSize;
 
-    Endpoint(const std::string& address)
+    /**
+     * @brief Construct a new Endpoint object.
+     *
+     * @param address Endpoint address.
+     * @param taskQueueSize Size of the queue worker. If 0, the callback is called synchronously.
+     */
+    Endpoint(const std::string& address, const std::size_t taskQueueSize)
         : m_address(address)
         , m_loop(nullptr)
         , m_running(false)
-        , m_currentQWSize(0)
+        , m_currentTaskQueueSize(0)
+        , m_taskQueueSize(taskQueueSize)
     {
     }
 
@@ -38,13 +48,13 @@ public:
     virtual ~Endpoint() {};
 
     /**
-     * @brief Configure and bind endpoint.
+     * @brief Bind endpoint to loop.
      *
-     * @param loop (std::shared_ptr<uvw::Loop>) Loop to bind endpoint.
-     * @param queueWorkerSize (std::size_t) Size of the queue worker. If 0, the callback is called synchronously.
-     * @throw (std::runtime_error) If endpoint is already bound or endpoint can't be bound.
+     * Bind endpoint to loop. Endpoint must be closed before binding.
+     * @param loop Loop to bind endpoint.
+     * @throw std::runtime_error If endpoint is already bound.
      */
-    virtual void bind(std::shared_ptr<uvw::Loop> loop, const  std::size_t queueWorkerSize = 0) = 0;
+    virtual void bind(std::shared_ptr<uvw::Loop> loop) = 0;
 
     /**
      * @brief Close and liberate all resources used by endpoint.
@@ -53,11 +63,25 @@ public:
     virtual void close(void) = 0;
 
     /**
-     * @brief Get the Address object.
+     * @brief Get the Address
      *
-     * @return (std::string) Endpoint address.
+     * @return Endpoint address.
      */
     std::string getAddress() const { return m_address; }
+
+    /**
+     * @brief Get the Task Queue Size
+     *
+     * @return Size of the queue worker. If 0, the callback is called synchronously.
+     */
+    std::size_t gettaskQueueSize() const { return m_taskQueueSize; }
+
+    /**
+     * @brief Get the Current Task Queue Size
+     *
+     * @return Current size of the queue of tasks to be processed by the thread pool.
+     */
+    const std::size_t getCurrenttaskQueueSize() const { return m_currentTaskQueueSize; }
 
     /**
      * @brief if endpoint is bound.
@@ -81,7 +105,6 @@ public:
      * This Method is not thread safe and must be called from the same thread that loop is running.
      */
     virtual bool resume() = 0;
-
 };
 
 } // namespace engineserver

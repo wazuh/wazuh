@@ -151,7 +151,7 @@ TEST_F(UnixDatagramTest, PauseResumeReceiveData)
     endpoint.close();
 }
 
-TEST_F(UnixDatagramTest, QueueWorkerSizeTestAndOverflow)
+TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
 {
 
     // Variables to block all the queue workers
@@ -160,12 +160,12 @@ TEST_F(UnixDatagramTest, QueueWorkerSizeTestAndOverflow)
     std::mutex BlockWokersMutex;
 
     // Queue of workers
-    const std::size_t queueWorkerSize = 16;
+    const std::size_t taskQueueSize = 16;
     const std::size_t numOfWorkers = 4;
 
     // Calculate the number of messages to send to block the queue workers
     const std::size_t numMessagesToSend =
-        numOfWorkers + queueWorkerSize; // 4 messages to block the 4 workers and the queue size to full the queue
+        numOfWorkers + taskQueueSize; // 4 messages to block the 4 workers and the queue size to full the queue
     std::atomic<std::size_t> sendedMessages = 0;   // Number of messages sended
     std::atomic<std::size_t> processedMessages(0); // Number of messages processed
     std::atomic<bool> isClientBlocked = false;     // Flag to indicate that the client is blocked
@@ -190,9 +190,10 @@ TEST_F(UnixDatagramTest, QueueWorkerSizeTestAndOverflow)
                               processedMessages++;
                               WAZUH_LOG_INFO(
                                   "Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
-                          });
+                          },
+                          taskQueueSize);
 
-    ASSERT_NO_THROW(endpoint.bind(loop, queueWorkerSize));
+    ASSERT_NO_THROW(endpoint.bind(loop));
     ASSERT_TRUE(endpoint.isBound());
     ASSERT_TRUE(endpoint.resume());
 
@@ -306,7 +307,7 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
     std::mutex BlockWokersMutex;
 
     // Queue of workers
-    constexpr std::size_t queueWorkerSize = 16;
+    constexpr std::size_t taskQueueSize = 16;
     const std::size_t numOfWorkers = 4;
 
     // Calculate the number of messages to send to block the queue workers
@@ -333,9 +334,10 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
                               processedMessages++;
                               WAZUH_LOG_INFO(
                                   "Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
-                          });
+                          },
+                          taskQueueSize);
 
-    ASSERT_NO_THROW(endpoint.bind(loop, queueWorkerSize));
+    ASSERT_NO_THROW(endpoint.bind(loop));
     ASSERT_TRUE(endpoint.isBound());
     ASSERT_TRUE(endpoint.resume());
 
@@ -360,7 +362,7 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
 
     // Send messages to block the queue workers
     const auto clientFD = getSendFD(socketPath);
-    for (std::size_t i = 0; i < queueWorkerSize; ++i)
+    for (std::size_t i = 0; i < taskQueueSize; ++i)
     {
         std::string message = "Message " + std::to_string(i);
         WAZUH_LOG_INFO("Sending message [{}]: {}", sendedMessages, message.substr(0, 100).c_str());
