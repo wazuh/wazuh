@@ -41,6 +41,12 @@ winlog.event_data.StatusDescription:
             Kerberos Ticket Status Codes description
   type: keyword
 
+
+winlog.event_data.TicketEncryptionTypeDescription:
+  description: >
+            Kerberos Encryption Types
+  type: keyword
+
 winlog.event_data.SubCategory:
   description: >
             Audit subcategories
