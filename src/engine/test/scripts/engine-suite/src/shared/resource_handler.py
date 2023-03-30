@@ -85,8 +85,8 @@ class ResourceHandler:
         path = Path(path_str)
         return self._load_file(path, format)
 
-    def load_module_files(self, root_dir: str, module_name: str) -> Tuple[dict, dict]:
-        module_path = Path(root_dir)/module_name
+    def load_module_files(self, module_path_str: str) -> Tuple[dict, dict]:
+        module_path = Path(module_path_str)
         fields_definition = self._load_file(
             module_path/'fields.yml', Format.YML)
         logpar_overrides = None
@@ -94,7 +94,7 @@ class ResourceHandler:
         if logpar_path.exists():
             logpar_overrides = self._load_file(logpar_path, Format.JSON)
 
-        return fields_definition, logpar_overrides
+        return fields_definition, logpar_overrides, module_path.name
 
     def save_file(self, path_str: str, name: str, content: dict, format: Format):
         path = Path(path_str)
