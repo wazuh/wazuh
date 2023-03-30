@@ -76,8 +76,6 @@ int local_start()
         debug_level--;
     }
 
-    enable_dll_verification();
-
     if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
     {
         sysinfo_free_result_ptr = so_get_function_sym(sysinfo_module, "sysinfo_free_result");

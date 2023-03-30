@@ -13,11 +13,16 @@
 #include "../error_messages/error_messages.h"
 #include <errno.h>
 #define OSSEC_CONFIG_TMP  ".tmp.ossec.conf"
-
+#include "dll_load_notify.h"
 
 /* Enable Syscheck */
 int main(int argc, char **argv)
 {
+#ifdef WIN32
+    // This must be always the first instruction
+    enable_dll_verification();
+#endif
+
     char *status;
     const char *(xml_syscheck_status[]) = {"ossec_config", "syscheck", "disabled", NULL};
 

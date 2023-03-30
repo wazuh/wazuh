@@ -16,9 +16,9 @@
 #include <dirent.h>
 #include <time.h>
 #include <windows.h>
+#include "dll_load_notify.h"
 
 #include "os_regex/os_regex.h"
-
 
 #define OSSECCONF   "ossec.conf"
 #define OS_MAXSTR   1024
@@ -180,6 +180,9 @@ int config_iis(char *name, char *file, char *vfile)
 /* Setup Windows after install */
 int main(int argc, char **argv)
 {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     int i = 0;
     time_t tm;
     struct tm tm_result = { .tm_sec = 0 };

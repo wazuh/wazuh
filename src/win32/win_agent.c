@@ -20,6 +20,7 @@
 #include "os_execd/execd.h"
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
+#include "dll_load_notify.h"
 
 #ifndef ARGV0
 #define ARGV0 "wazuh-agent"
@@ -41,6 +42,9 @@ void agent_help()
 
 int main(int argc, char **argv)
 {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     char *tmpstr;
     char mypath[OS_MAXSTR + 1];
     char myfinalpath[OS_MAXSTR + 1];

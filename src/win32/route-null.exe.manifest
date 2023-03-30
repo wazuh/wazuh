@@ -1,3 +1,9 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
  <description>Route Null</description>
+ <file name="wsock32.dll" loadFrom="%windir%\System32\wsock32.dll"></file>
+ <file name="msasn1.dll" loadFrom="%windir%\System32\msasn1.dll"></file>
+ <file name="cryptsp.dll" loadFrom="%windir%\System32\cryptsp.dll"></file>
+ <file name="cryptbase.dll" loadFrom="%windir%\System32\cryptbase.dll"></file>
+ <file name="cryptnet.dll" loadFrom="%windir%\System32\cryptnet.dll"></file>
+ <file name="iphlpapi.dll" loadFrom="%windir%\System32\iphlpapi.dll"></file>
 </assembly>

@@ -10,11 +10,15 @@
 #ifdef WIN32
 
 #include "active_responses.h"
+#include "dll_load_notify.h"
 
 #define RULE_NAME "WAZUH ACTIVE RESPONSE BLOCKED IP"
 #define NETSH "C:\\Windows\\System32\\netsh.exe"
 
 int main (int argc, char **argv) {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     (void)argc;
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;

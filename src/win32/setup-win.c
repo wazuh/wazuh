@@ -9,11 +9,14 @@
  */
 
 #include "setup-shared.h"
-
+#include "dll_load_notify.h"
 
 /* Set up Windows after installation */
 int main(int argc, char **argv)
 {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     /* Set the name */
     OS_SetName(ARGV0);
 
