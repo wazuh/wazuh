@@ -1,7 +1,7 @@
 from engine_schema.field import Field, FieldTree, IndexerType
 
 
-def _entry_to_field(entry_name: str, entry_value: dict) -> Field:
+def _entry_to_field(module_name: str, entry_name: str, entry_value: dict) -> Field:
     indexer_type = IndexerType.from_str(entry_value['type'])
     description = entry_value["description"]
     array = False if 'array' not in entry_value else entry_value['array']
@@ -11,12 +11,12 @@ def _entry_to_field(entry_name: str, entry_value: dict) -> Field:
     if 'ignore_above' in entry_value:
         indexer_details = {'ignore_above': entry_value['ignore_above']}
 
-    return Field('ecs', entry_name, description, indexer_type, array, indexer_details)
+    return Field(module_name, entry_name, description, indexer_type, array, indexer_details)
 
 
-def build_field_tree(yaml_definition: dict) -> FieldTree:
+def build_field_tree(yaml_definition: dict, module_name: str) -> FieldTree:
     fieldTree = FieldTree()
     for name_path, entry in yaml_definition.items():
-        fieldTree.add_field(name_path, _entry_to_field(name_path, entry))
+        fieldTree.add_field(name_path, _entry_to_field(module_name, name_path, entry))
 
     return fieldTree
