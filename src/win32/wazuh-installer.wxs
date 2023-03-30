@@ -63,7 +63,8 @@
             <RegistrySearch Id="WazuhInstallDirProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhInstallDir" />
         </Property>
 
-        <CustomAction Id="LaunchUI" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]win32ui.exe" Return="asyncNoWait" />
+        <Property Id="WixShellExecTarget" Value="[APPLICATIONFOLDER]win32ui.exe" />
+        <CustomAction Id="LaunchUI" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
 
         <Property Id="OSSECINSTALLED">
             <RegistrySearch Id="OssecInstalled" Type="raw" Root="HKLM" Key="System\CurrentControlSet\Services\OssecSvc" Name="DisplayName" />
