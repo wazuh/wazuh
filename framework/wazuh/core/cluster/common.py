@@ -499,7 +499,7 @@ class Handler(asyncio.Protocol):
                 break
             parsed = self.msg_parse()
 
-    async def send_request(self, command: bytes, data: bytes) -> Union[exception.WazuhClusterError, Any]:
+    async def send_request(self, command: bytes, data: bytes) -> Any:
         """Send a request to peer and wait for the response to be received and processed.
 
         Parameters
