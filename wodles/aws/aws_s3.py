@@ -103,7 +103,7 @@ def set_profile_dict_config(boto_config: dict,profile:str, profile_config):
     Parameters
     ----------
     boto_config: dict
-        The config dictionary where the Boto Config will be set.8
+        The config dictionary where the Boto Config will be set.
 
     profile : str
         The AWS profile name to use for the configuration.
