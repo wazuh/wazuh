@@ -2,10 +2,10 @@
 
 freezegun==0.3.15
 py==1.11.0
-pykwalify==1.8.0
-pytest==7.0.1
+pykwalify==1.7.0
+pytest==5.4.3
 pytest-aiohttp==0.3.0
 pytest-asyncio==0.15.1
 pytest-html==2.1.1
 pytest-trio==0.7.0
-tavern==2.0.6
+tavern==1.2.2
