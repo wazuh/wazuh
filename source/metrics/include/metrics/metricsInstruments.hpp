@@ -25,7 +25,10 @@ public:
 
     void addValue(const U& value) override
     {
-        m_counter->Add(value);
+        if (iInstrument::m_status)
+        {
+            m_counter->Add(value);
+        }
     }
 private:
     OTstd::unique_ptr<T> m_counter;
@@ -46,7 +49,10 @@ public:
         std::map<std::string, std::string> labels;
         auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
 
-        m_histogram->Record(value, labelkv, context);
+        if (iInstrument::m_status)
+        {
+            m_histogram->Record(value, labelkv, context);
+        }
     }
 private:
     OTstd::unique_ptr<T> m_histogram;
@@ -81,8 +87,11 @@ public:
 
     void setValue(const U& value) override 
     {
-        const std::lock_guard<std::mutex> lock(m_mutex);        
-        m_value = value;
+        const std::lock_guard<std::mutex> lock(m_mutex);     
+        if (iInstrument::m_status)
+        {
+            m_value = value;
+        }
     }
 
     ~Gauge() 

@@ -49,6 +49,8 @@ public:
 
     std::shared_ptr<iGauge<double>> 
         getGaugeDouble(const std::string& name, double defaultValue)  override;
+    
+    void setEnabledStatus(const std::string& instrumentName, bool newStatus);
 
 private:
     std::shared_ptr<DataHub> m_dataHub;
@@ -94,6 +96,7 @@ private:
         OTstd::shared_ptr< OTMetrics::ObservableInstrument >
     > m_collection_gauge_double;
 
+    std::unordered_map<std::string, std::shared_ptr<iInstrument>> m_namesMap;
     static void FetcherInteger(OTMetrics::ObserverResult observer_result, void *id);
     static void FetcherDouble(OTMetrics::ObserverResult observer_result, void *id);    
 };

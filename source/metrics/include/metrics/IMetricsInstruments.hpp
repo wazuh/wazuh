@@ -6,22 +6,33 @@
 namespace metrics_manager 
 {
 
+class iInstrument
+{
+public:
+    virtual void setEnabledStatus(bool newStatus)
+    {
+        m_status = newStatus;
+    }
+
+    bool m_status = true;
+};
+
 template <typename T>
-class iCounter
+class iCounter : public iInstrument
 {
 public:
     virtual void addValue(const T& value) = 0;
 };
 
 template <typename T>
-class iHistogram
+class iHistogram : public iInstrument
 {
 public:
     virtual void recordValue(const T& value) = 0;
 };
 
 template <typename T>
-class iGauge
+class iGauge : public iInstrument
 {
 public:
     virtual void setValue(const T& value) = 0;

@@ -47,6 +47,13 @@ std::shared_ptr<iCounter<double>> MetricsScope::getCounterDouble(const std::stri
             return meter->CreateDoubleCounter(name);
         }
     );
+
+    auto it = m_namesMap.find(name);
+    if (it == m_namesMap.end())
+    {
+        m_namesMap.insert(std::make_pair(name, retValue));
+    }
+
     return retValue;
 }
 
@@ -60,6 +67,13 @@ std::shared_ptr<iCounter<uint64_t>> MetricsScope::getCounterUInteger(const std::
             return meter->CreateUInt64Counter(name);
         }
     );
+
+    auto it = m_namesMap.find(name);
+    if (it == m_namesMap.end())
+    {
+        m_namesMap.insert(std::make_pair(name, retValue));
+    }
+
     return retValue;
 }
 
@@ -73,6 +87,13 @@ std::shared_ptr<iCounter<double>> MetricsScope::getUpDownCounterDouble(const std
             return meter->CreateDoubleUpDownCounter(name);
         }
     );
+
+    auto it = m_namesMap.find(name);
+    if (it == m_namesMap.end())
+    {
+        m_namesMap.insert(std::make_pair(name, retValue));
+    }
+
     return retValue;
 }
 
@@ -86,6 +107,13 @@ std::shared_ptr<iCounter<int64_t>> MetricsScope::getUpDownCounterInteger(const s
             return meter->CreateInt64UpDownCounter(name);
         }
     );
+
+    auto it = m_namesMap.find(name);
+    if (it == m_namesMap.end())
+    {
+        m_namesMap.insert(std::make_pair(name, retValue));
+    }
+
     return retValue;
 }
 
@@ -99,6 +127,13 @@ std::shared_ptr<iHistogram<double>> MetricsScope::getHistogramDouble(const std::
             return meter->CreateDoubleHistogram(name);
         }
     );
+
+    auto it = m_namesMap.find(name);
+    if (it == m_namesMap.end())
+    {
+        m_namesMap.insert(std::make_pair(name, retValue));
+    }
+
     return retValue;
 }
 
@@ -111,6 +146,13 @@ std::shared_ptr<iHistogram<uint64_t>> MetricsScope::getHistogramUInteger(const s
             auto meter = m_meterProvider->GetMeter(name);
             return meter->CreateUInt64Histogram(name);
         });
+
+    auto it = m_namesMap.find(name);
+    if (it == m_namesMap.end())
+    {
+        m_namesMap.insert(std::make_pair(name, retValue));
+    }
+
     return retValue;
 }
 
@@ -130,6 +172,12 @@ std::shared_ptr<iGauge<int64_t>> MetricsScope::getGaugeInteger(const std::string
         }
     );
 
+    auto it = m_namesMap.find(name);
+    if (it == m_namesMap.end())
+    {
+        m_namesMap.insert(std::make_pair(name, retValue));
+    }
+
     return retValue;
 }
 
@@ -148,6 +196,12 @@ std::shared_ptr<iGauge<double>> MetricsScope::getGaugeDouble(const std::string& 
             gauge->AddCallback(MetricsScope::FetcherDouble, static_cast<void*>(gauge.get()), defaultValue);
         }
     );
+
+    auto it = m_namesMap.find(name);
+    if (it == m_namesMap.end())
+    {
+        m_namesMap.insert(std::make_pair(name, retValue));
+    }
 
     return retValue;
 }
@@ -170,6 +224,19 @@ void MetricsScope::FetcherDouble(opentelemetry::metrics::ObserverResult observer
         Gauge<double>* gauge = (Gauge<double>*)id;
         double value = gauge->readValue();
         opentelemetry::nostd::get<OTGaugeDouble>(observer_result)->Observe(value);
+    }
+}
+
+void MetricsScope::setEnabledStatus(const std::string& instrumentName, bool newStatus)
+{
+    auto it = m_namesMap.find(instrumentName);
+    if (it != m_namesMap.end())
+    {
+        m_namesMap[instrumentName]->setEnabledStatus(newStatus);
+    }
+    else
+    {
+        throw std::runtime_error {"The instrument " + instrumentName + " has not been created."};
     }
 }
 
