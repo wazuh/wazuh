@@ -1,7 +1,7 @@
 name: decoder/windows-powershell-operational/0
 
 sources:
-  - decoder/windows_event_decoder/0
+  - decoder/windows-event-decoder/0
 
 metadata:
   description: Decoder for Windows Powershell Operational events
