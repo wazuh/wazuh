@@ -35,8 +35,8 @@ CPMAddPackage(
 add_library(server STATIC
     ${ENGINE_SERVER_SOURCE_DIR}/engineServer.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/endpoint.cpp
-    ${ENGINE_SERVER_SOURCE_DIR}/unixDatagram.cpp
-    ${ENGINE_SERVER_SOURCE_DIR}/unixStream.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/unixDatagram.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/unixStream.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/protocolHandler.cpp
 )
 

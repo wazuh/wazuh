@@ -1,10 +1,10 @@
-#ifndef _SERVER_UNIX_DATAGRAM_HPP
-#define _SERVER_UNIX_DATAGRAM_HPP
+#ifndef _SERVER_ENDPOINT_UNIX_DATAGRAM_HPP
+#define _SERVER_ENDPOINT_UNIX_DATAGRAM_HPP
 
 #include <functional>
 #include <memory>
 
-#include "endpoint.hpp"
+#include <server/endpoint.hpp>
 
 namespace engineserver::endpoint
 {
@@ -84,4 +84,4 @@ public:
     int getReciveBufferSize(void) { return m_bufferSize; };
 };
 } // namespace engineserver::endpoint
-#endif // _SERVER_UNIX_DATAGRAM_HPP
+#endif // _SERVER_ENDPOINT_UNIX_DATAGRAM_HPP

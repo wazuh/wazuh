@@ -14,7 +14,7 @@
 #include <uvw.hpp>
 
 #include <server/protocolHandler.hpp>
-#include <server/unixStream.hpp>
+#include <server/endpoints/unixStream.hpp>
 
 using namespace engineserver;
 using namespace engineserver::endpoint;
