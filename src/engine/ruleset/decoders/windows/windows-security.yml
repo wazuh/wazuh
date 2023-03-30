@@ -25,9 +25,6 @@ normalize:
     # Set categorization fields
     - event.id: +kvdb_get_merge/win_security_categories/$~windows.Event.System.EventID.#text
 
-    # Set Logon Type
-    - winlog.logon.type: +kvdb_get/windows_logon_types/$~windows.Event.EventData.LogonType
-
     # Set User Account Control
     # NewUacValue
     # Correct implementation needs bitwise operations - Opting to use raw value
@@ -36,9 +33,6 @@ normalize:
 
     # Set Kerberos Ticket Options
     # TicketOptionsDescription - Needs bitwise operations
-
-    # Set Kerberos Encryption Types
-    - event: +kvdb_get_merge/kerberos_encryption_types/$~windows.Event.EventData.TicketEncryptionType
 
     # Set Kerberos Ticket Status Codes
     - winlog.event_data.StatusDescription: +kvdb_get_merge/kerberos_tickets_status_codes/$~windows.Event.EventData.Status
@@ -51,12 +45,6 @@ normalize:
     # Event sub category
     - winlog.event_data.Category: +kvdb_get_merge/audit_category/$~windows.Event.EventData.SubcategoryGuid
     - winlog.event_data.SubCategory: +kvdb_get_merge/audit_subcategory/$~windows.Event.EventData.SubcategoryGuid
-
-    # Set trust type
-    - winlog.trustType: +kvdb_get/win_trust_types/$~windows.Event.EventData.TdoType
-
-    # Set Trust Direction
-    - winlog.trustDirection: +kvdb_get/win_trust_direction/$~windows.Event.EventData.TdoDirection
 
     # Set Trust Attributes
     - winlog.trustAttribute: +kvdb_get/win_trust_attribute/$~windows.Event.EventData.TdoAttributes
@@ -383,6 +371,130 @@ normalize:
     - ~windows.Event.System.Level.#text: "5"
    map:
     - winlog.level: "Verbose"
+
+  # Set Kerberos Encryption Types
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x1"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "DES-CBC-CRC"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x3"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "DES-CBC-MD5"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x11"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "AES128-CTS-HMAC-SHA1-96"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x12"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "AES256-CTS-HMAC-SHA1-96"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x17"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "RC4-HMAC"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x18"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "RC4-HMAC-EXP"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0xffffffff"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "FAIL"
+
+# Set Trust Direction
+ - check:
+    - ~windows.Event.EventData.TdoDirection: "0"
+   map:
+    - winlog.trustDirection: "TRUST_DIRECTION_DISABLED"
+
+ - check:
+    - ~windows.Event.EventData.TdoDirection: "1"
+   map:
+    - winlog.trustDirection: "TRUST_DIRECTION_INBOUND"
+
+ - check:
+    - ~windows.Event.EventData.TdoDirection: "2"
+   map:
+    - winlog.trustDirection: "TRUST_DIRECTION_OUTBOUND"
+
+ - check:
+    - ~windows.Event.EventData.TdoDirection: "3"
+   map:
+    - winlog.trustDirection: "TRUST_DIRECTION_BIDIRECTIONAL"
+
+# Set trust type
+ - check:
+    - ~windows.Event.EventData.TdoType: "1"
+   map:
+    - winlog.trustType: "TRUST_TYPE_DOWNLEVEL"
+
+ - check:
+    - ~windows.Event.EventData.TdoType: "2"
+   map:
+    - winlog.trustType: "TRUST_TYPE_UPLEVEL"
+
+ - check:
+    - ~windows.Event.EventData.TdoType: "3"
+   map:
+    - winlog.trustType: "TRUST_TYPE_MIT"
+
+ - check:
+    - ~windows.Event.EventData.TdoType: "4"
+   map:
+    - winlog.trustType: "TRUST_TYPE_DCE"
+
+# Set Logon Type
+ - check:
+    - ~windows.Event.EventData.LogonType: "2"
+   map:
+    - winlog.logon.type: "Interactive"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "3"
+   map:
+    - winlog.logon.type: "Network"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "4"
+   map:
+    - winlog.logon.type: "Batch"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "5"
+   map:
+    - winlog.logon.type: "Service"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "7"
+   map:
+    - winlog.logon.type: "Unlock"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "8"
+   map:
+    - winlog.logon.type: "NetworkCleartext"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "9"
+   map:
+    - winlog.logon.type: "NewCredentials"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "10"
+   map:
+    - winlog.logon.type: "RemoteInteractive"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "11"
+   map:
+    - winlog.logon.type: "CachedInteractive"
 
 # Cleanup
  - map:
