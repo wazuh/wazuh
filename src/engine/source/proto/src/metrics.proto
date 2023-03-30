@@ -33,7 +33,8 @@ message Dump_Response
  **************************************************/
 message Get_Request
 {
-    optional string name = 1; // Metric name
+    optional string scopeName = 1;      // Metric scope name
+    optional string instrumentName = 2; // Metric instrument name
 }
 
 message Get_Response
@@ -50,8 +51,9 @@ message Get_Response
  **************************************************/
 message Enable_Request
 {
-    optional string name = 1; // Metric name
-    optional bool status = 2; // Action
+    optional string scopeName = 1;      // Metric scope name
+    optional string instrumentName = 2; // Metric instrument name
+    optional bool status = 3;           // Action
 }
 
 message Enable_Response

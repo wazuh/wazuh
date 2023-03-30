@@ -56,7 +56,8 @@ PROTOBUF_CONSTEXPR Get_Request::Get_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
+  , /*decltype(_impl_.scopename_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.instrumentname_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
 struct Get_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR Get_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -86,7 +87,8 @@ PROTOBUF_CONSTEXPR Enable_Request::Enable_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.scopename_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.instrumentname_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.status_)*/false} {}
 struct Enable_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR Enable_RequestDefaultTypeInternal()
@@ -201,8 +203,10 @@ const uint32_t TableStruct_metrics_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Get_Request, _impl_.name_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Get_Request, _impl_.scopename_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Get_Request, _impl_.instrumentname_),
   0,
+  1,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Get_Response, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Get_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -221,10 +225,12 @@ const uint32_t TableStruct_metrics_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Enable_Request, _impl_.name_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Enable_Request, _impl_.scopename_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Enable_Request, _impl_.instrumentname_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Enable_Request, _impl_.status_),
   0,
   1,
+  2,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Enable_Response, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::metrics::Enable_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -277,14 +283,14 @@ const uint32_t TableStruct_metrics_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::com::wazuh::api::engine::metrics::Dump_Request)},
   { 6, 15, -1, sizeof(::com::wazuh::api::engine::metrics::Dump_Response)},
-  { 18, 25, -1, sizeof(::com::wazuh::api::engine::metrics::Get_Request)},
-  { 26, 35, -1, sizeof(::com::wazuh::api::engine::metrics::Get_Response)},
-  { 38, 46, -1, sizeof(::com::wazuh::api::engine::metrics::Enable_Request)},
-  { 48, 57, -1, sizeof(::com::wazuh::api::engine::metrics::Enable_Response)},
-  { 60, -1, -1, sizeof(::com::wazuh::api::engine::metrics::List_Request)},
-  { 66, 75, -1, sizeof(::com::wazuh::api::engine::metrics::List_Response)},
-  { 78, -1, -1, sizeof(::com::wazuh::api::engine::metrics::Test_Request)},
-  { 84, 93, -1, sizeof(::com::wazuh::api::engine::metrics::Test_Response)},
+  { 18, 26, -1, sizeof(::com::wazuh::api::engine::metrics::Get_Request)},
+  { 28, 37, -1, sizeof(::com::wazuh::api::engine::metrics::Get_Response)},
+  { 40, 49, -1, sizeof(::com::wazuh::api::engine::metrics::Enable_Request)},
+  { 52, 61, -1, sizeof(::com::wazuh::api::engine::metrics::Enable_Response)},
+  { 64, -1, -1, sizeof(::com::wazuh::api::engine::metrics::List_Request)},
+  { 70, 79, -1, sizeof(::com::wazuh::api::engine::metrics::List_Response)},
+  { 82, -1, -1, sizeof(::com::wazuh::api::engine::metrics::Test_Request)},
+  { 88, 97, -1, sizeof(::com::wazuh::api::engine::metrics::Test_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -307,25 +313,28 @@ const char descriptor_table_protodef_metrics_2eproto[] PROTOBUF_SECTION_VARIABLE
   "nse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.engi"
   "ne.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022*\n\005v"
   "alue\030\003 \001(\0132\026.google.protobuf.ValueH\001\210\001\001B"
-  "\010\n\006_errorB\010\n\006_value\")\n\013Get_Request\022\021\n\004na"
-  "me\030\001 \001(\tH\000\210\001\001B\007\n\005_name\"\226\001\n\014Get_Response\022"
-  "2\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.R"
-  "eturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022*\n\005value"
-  "\030\003 \001(\0132\026.google.protobuf.ValueH\001\210\001\001B\010\n\006_"
-  "errorB\010\n\006_value\"L\n\016Enable_Request\022\021\n\004nam"
-  "e\030\001 \001(\tH\000\210\001\001\022\023\n\006status\030\002 \001(\010H\001\210\001\001B\007\n\005_na"
-  "meB\t\n\007_status\"\205\001\n\017Enable_Response\0222\n\006sta"
-  "tus\030\001 \001(\0162\".com.wazuh.api.engine.ReturnS"
-  "tatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\024\n\007content\030\003 \001"
-  "(\tH\001\210\001\001B\010\n\006_errorB\n\n\010_content\"\016\n\014List_Re"
-  "quest\"\227\001\n\rList_Response\0222\n\006status\030\001 \001(\0162"
-  "\".com.wazuh.api.engine.ReturnStatus\022\022\n\005e"
-  "rror\030\002 \001(\tH\000\210\001\001\022*\n\005value\030\003 \001(\0132\026.google."
-  "protobuf.ValueH\001\210\001\001B\010\n\006_errorB\010\n\006_value\""
-  "\016\n\014Test_Request\"r\n\rTest_Response\0222\n\006stat"
-  "us\030\001 \001(\0162\".com.wazuh.api.engine.ReturnSt"
-  "atus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\017\n\007content\030\003 \003("
-  "\tB\010\n\006_errorb\006proto3"
+  "\010\n\006_errorB\010\n\006_value\"c\n\013Get_Request\022\026\n\tsc"
+  "opeName\030\001 \001(\tH\000\210\001\001\022\033\n\016instrumentName\030\002 \001"
+  "(\tH\001\210\001\001B\014\n\n_scopeNameB\021\n\017_instrumentName"
+  "\"\226\001\n\014Get_Response\0222\n\006status\030\001 \001(\0162\".com."
+  "wazuh.api.engine.ReturnStatus\022\022\n\005error\030\002"
+  " \001(\tH\000\210\001\001\022*\n\005value\030\003 \001(\0132\026.google.protob"
+  "uf.ValueH\001\210\001\001B\010\n\006_errorB\010\n\006_value\"\206\001\n\016En"
+  "able_Request\022\026\n\tscopeName\030\001 \001(\tH\000\210\001\001\022\033\n\016"
+  "instrumentName\030\002 \001(\tH\001\210\001\001\022\023\n\006status\030\003 \001("
+  "\010H\002\210\001\001B\014\n\n_scopeNameB\021\n\017_instrumentNameB"
+  "\t\n\007_status\"\205\001\n\017Enable_Response\0222\n\006status"
+  "\030\001 \001(\0162\".com.wazuh.api.engine.ReturnStat"
+  "us\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\024\n\007content\030\003 \001(\tH"
+  "\001\210\001\001B\010\n\006_errorB\n\n\010_content\"\016\n\014List_Reque"
+  "st\"\227\001\n\rList_Response\0222\n\006status\030\001 \001(\0162\".c"
+  "om.wazuh.api.engine.ReturnStatus\022\022\n\005erro"
+  "r\030\002 \001(\tH\000\210\001\001\022*\n\005value\030\003 \001(\0132\026.google.pro"
+  "tobuf.ValueH\001\210\001\001B\010\n\006_errorB\010\n\006_value\"\016\n\014"
+  "Test_Request\"r\n\rTest_Response\0222\n\006status\030"
+  "\001 \001(\0162\".com.wazuh.api.engine.ReturnStatu"
+  "s\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\017\n\007content\030\003 \003(\tB\010"
+  "\n\006_errorb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_metrics_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -333,7 +342,7 @@ static const ::_pbi::DescriptorTable* const descriptor_table_metrics_2eproto_dep
 };
 static ::_pbi::once_flag descriptor_table_metrics_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_metrics_2eproto = {
-    false, false, 979, descriptor_table_protodef_metrics_2eproto,
+    false, false, 1096, descriptor_table_protodef_metrics_2eproto,
     "metrics.proto",
     &descriptor_table_metrics_2eproto_once, descriptor_table_metrics_2eproto_deps, 2, 10,
     schemas, file_default_instances, TableStruct_metrics_2eproto::offsets,
@@ -704,8 +713,11 @@ void Dump_Response::InternalSwap(Dump_Response* other) {
 class Get_Request::_Internal {
  public:
   using HasBits = decltype(std::declval<Get_Request>()._impl_._has_bits_);
-  static void set_has_name(HasBits* has_bits) {
+  static void set_has_scopename(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
+  }
+  static void set_has_instrumentname(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
   }
 };
 
@@ -721,15 +733,24 @@ Get_Request::Get_Request(const Get_Request& from)
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.name_){}};
+    , decltype(_impl_.scopename_){}
+    , decltype(_impl_.instrumentname_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.name_.InitDefault();
+  _impl_.scopename_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.name_.Set("", GetArenaForAllocation());
+    _impl_.scopename_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (from._internal_has_name()) {
-    _this->_impl_.name_.Set(from._internal_name(), 
+  if (from._internal_has_scopename()) {
+    _this->_impl_.scopename_.Set(from._internal_scopename(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.instrumentname_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.instrumentname_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_instrumentname()) {
+    _this->_impl_.instrumentname_.Set(from._internal_instrumentname(), 
       _this->GetArenaForAllocation());
   }
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.metrics.Get_Request)
@@ -742,11 +763,16 @@ inline void Get_Request::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.name_){}
+    , decltype(_impl_.scopename_){}
+    , decltype(_impl_.instrumentname_){}
   };
-  _impl_.name_.InitDefault();
+  _impl_.scopename_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.name_.Set("", GetArenaForAllocation());
+    _impl_.scopename_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.instrumentname_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.instrumentname_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -761,7 +787,8 @@ Get_Request::~Get_Request() {
 
 inline void Get_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.name_.Destroy();
+  _impl_.scopename_.Destroy();
+  _impl_.instrumentname_.Destroy();
 }
 
 void Get_Request::SetCachedSize(int size) const {
@@ -775,8 +802,13 @@ void Get_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    _impl_.name_.ClearNonDefaultToEmpty();
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.scopename_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.instrumentname_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
@@ -789,13 +821,23 @@ const char* Get_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* c
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // optional string name = 1;
+      // optional string scopeName = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
-          auto str = _internal_mutable_name();
+          auto str = _internal_mutable_scopename();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.metrics.Get_Request.name"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.metrics.Get_Request.scopeName"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string instrumentName = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_instrumentname();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.metrics.Get_Request.instrumentName"));
         } else
           goto handle_unusual;
         continue;
@@ -829,14 +871,24 @@ uint8_t* Get_Request::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // optional string name = 1;
-  if (_internal_has_name()) {
+  // optional string scopeName = 1;
+  if (_internal_has_scopename()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_name().data(), static_cast<int>(this->_internal_name().length()),
+      this->_internal_scopename().data(), static_cast<int>(this->_internal_scopename().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.metrics.Get_Request.name");
+      "com.wazuh.api.engine.metrics.Get_Request.scopeName");
     target = stream->WriteStringMaybeAliased(
-        1, this->_internal_name(), target);
+        1, this->_internal_scopename(), target);
+  }
+
+  // optional string instrumentName = 2;
+  if (_internal_has_instrumentname()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_instrumentname().data(), static_cast<int>(this->_internal_instrumentname().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.metrics.Get_Request.instrumentName");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_instrumentname(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -855,14 +907,23 @@ size_t Get_Request::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // optional string name = 1;
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_name());
-  }
+  if (cached_has_bits & 0x00000003u) {
+    // optional string scopeName = 1;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_scopename());
+    }
 
+    // optional string instrumentName = 2;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_instrumentname());
+    }
+
+  }
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -881,8 +942,14 @@ void Get_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PR
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (from._internal_has_name()) {
-    _this->_internal_set_name(from._internal_name());
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_set_scopename(from._internal_scopename());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_instrumentname(from._internal_instrumentname());
+    }
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -905,8 +972,12 @@ void Get_Request::InternalSwap(Get_Request* other) {
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.name_, lhs_arena,
-      &other->_impl_.name_, rhs_arena
+      &_impl_.scopename_, lhs_arena,
+      &other->_impl_.scopename_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.instrumentname_, lhs_arena,
+      &other->_impl_.instrumentname_, rhs_arena
   );
 }
 
@@ -1228,11 +1299,14 @@ void Get_Response::InternalSwap(Get_Response* other) {
 class Enable_Request::_Internal {
  public:
   using HasBits = decltype(std::declval<Enable_Request>()._impl_._has_bits_);
-  static void set_has_name(HasBits* has_bits) {
+  static void set_has_scopename(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
-  static void set_has_status(HasBits* has_bits) {
+  static void set_has_instrumentname(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
+  }
+  static void set_has_status(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
   }
 };
 
@@ -1248,16 +1322,25 @@ Enable_Request::Enable_Request(const Enable_Request& from)
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.name_){}
+    , decltype(_impl_.scopename_){}
+    , decltype(_impl_.instrumentname_){}
     , decltype(_impl_.status_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.name_.InitDefault();
+  _impl_.scopename_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.name_.Set("", GetArenaForAllocation());
+    _impl_.scopename_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (from._internal_has_name()) {
-    _this->_impl_.name_.Set(from._internal_name(), 
+  if (from._internal_has_scopename()) {
+    _this->_impl_.scopename_.Set(from._internal_scopename(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.instrumentname_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.instrumentname_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_instrumentname()) {
+    _this->_impl_.instrumentname_.Set(from._internal_instrumentname(), 
       _this->GetArenaForAllocation());
   }
   _this->_impl_.status_ = from._impl_.status_;
@@ -1271,12 +1354,17 @@ inline void Enable_Request::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.name_){}
+    , decltype(_impl_.scopename_){}
+    , decltype(_impl_.instrumentname_){}
     , decltype(_impl_.status_){false}
   };
-  _impl_.name_.InitDefault();
+  _impl_.scopename_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.name_.Set("", GetArenaForAllocation());
+    _impl_.scopename_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.instrumentname_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.instrumentname_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -1291,7 +1379,8 @@ Enable_Request::~Enable_Request() {
 
 inline void Enable_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.name_.Destroy();
+  _impl_.scopename_.Destroy();
+  _impl_.instrumentname_.Destroy();
 }
 
 void Enable_Request::SetCachedSize(int size) const {
@@ -1305,8 +1394,13 @@ void Enable_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    _impl_.name_.ClearNonDefaultToEmpty();
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.scopename_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.instrumentname_.ClearNonDefaultToEmpty();
+    }
   }
   _impl_.status_ = false;
   _impl_._has_bits_.Clear();
@@ -1320,19 +1414,29 @@ const char* Enable_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // optional string name = 1;
+      // optional string scopeName = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
-          auto str = _internal_mutable_name();
+          auto str = _internal_mutable_scopename();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.metrics.Enable_Request.name"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.metrics.Enable_Request.scopeName"));
         } else
           goto handle_unusual;
         continue;
-      // optional bool status = 2;
+      // optional string instrumentName = 2;
       case 2:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_instrumentname();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.metrics.Enable_Request.instrumentName"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional bool status = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
           _Internal::set_has_status(&has_bits);
           _impl_.status_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
@@ -1369,20 +1473,30 @@ uint8_t* Enable_Request::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // optional string name = 1;
-  if (_internal_has_name()) {
+  // optional string scopeName = 1;
+  if (_internal_has_scopename()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_name().data(), static_cast<int>(this->_internal_name().length()),
+      this->_internal_scopename().data(), static_cast<int>(this->_internal_scopename().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.metrics.Enable_Request.name");
+      "com.wazuh.api.engine.metrics.Enable_Request.scopeName");
     target = stream->WriteStringMaybeAliased(
-        1, this->_internal_name(), target);
+        1, this->_internal_scopename(), target);
   }
 
-  // optional bool status = 2;
+  // optional string instrumentName = 2;
+  if (_internal_has_instrumentname()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_instrumentname().data(), static_cast<int>(this->_internal_instrumentname().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.metrics.Enable_Request.instrumentName");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_instrumentname(), target);
+  }
+
+  // optional bool status = 3;
   if (_internal_has_status()) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteBoolToArray(2, this->_internal_status(), target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(3, this->_internal_status(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1402,16 +1516,23 @@ size_t Enable_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
-    // optional string name = 1;
+  if (cached_has_bits & 0x00000007u) {
+    // optional string scopeName = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-          this->_internal_name());
+          this->_internal_scopename());
     }
 
-    // optional bool status = 2;
+    // optional string instrumentName = 2;
     if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_instrumentname());
+    }
+
+    // optional bool status = 3;
+    if (cached_has_bits & 0x00000004u) {
       total_size += 1 + 1;
     }
 
@@ -1435,11 +1556,14 @@ void Enable_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const :
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_name(from._internal_name());
+      _this->_internal_set_scopename(from._internal_scopename());
     }
     if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_instrumentname(from._internal_instrumentname());
+    }
+    if (cached_has_bits & 0x00000004u) {
       _this->_impl_.status_ = from._impl_.status_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
@@ -1465,8 +1589,12 @@ void Enable_Request::InternalSwap(Enable_Request* other) {
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.name_, lhs_arena,
-      &other->_impl_.name_, rhs_arena
+      &_impl_.scopename_, lhs_arena,
+      &other->_impl_.scopename_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.instrumentname_, lhs_arena,
+      &other->_impl_.instrumentname_, rhs_arena
   );
   swap(_impl_.status_, other->_impl_.status_);
 }
