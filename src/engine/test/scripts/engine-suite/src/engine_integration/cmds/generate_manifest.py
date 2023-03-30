@@ -11,7 +11,7 @@ def get_asset_names_fn(resource_handler: rs.ResourceHandler, results: list):
 
 def run(args, resource_handler: rs.ResourceHandler):
     manifest = {}
-    manifest['name'] = resource_handler.current_dir_name()
+    manifest['name'] = f'integration/{resource_handler.current_dir_name()}/0'
 
     # Gets a list of the names of each asset type
     decoders = []
