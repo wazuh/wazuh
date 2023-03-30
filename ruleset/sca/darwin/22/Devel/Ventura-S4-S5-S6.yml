@@ -1,0 +1,457 @@
+# Security Configuration Assessment
+# CIS Checks for Apple macOS 13.x Ventura
+# Copyright (C) 2023, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# SCA policy for Apple macOS 13.x Ventura based on Center for Internet Security Apple macOS 13.x Ventura Benchmark v1.0.0 - 11-14-2022
+
+policy:
+  id: "cis_macOS_13"
+  file: "cis_apple_macOS_13.x.yml"
+  name: "SCA policy for Apple macOS 13.x Ventura based on CIS benchmark for Apple macOS 13.x Ventura. 11-14-2022"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Apple macOS 13.x. This guide was tested against Apple macOS 13.x."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check Apple macOS version."
+  description: "Requirements for running the SCA scan against Apple macOS 13.x Ventura."
+  condition: any
+  rules:
+    - 'c:sw_vers -> r:^ProductVersion:\t*\s*13\p'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*13\p'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*13\p'
+
+checks:
+  ##########################################################################
+  # 4 Network Configurations
+  ##########################################################################
+
+  # 4.1 Ensure Bonjour Advertising Services Is Disabled (Automated)
+  - id: 30038
+    title: "Ensure Bonjour Advertising Services Is Disabled."
+    description: "Bonjour is an auto-discovery mechanism for TCP/IP devices which enumerate devices and services within a local subnet. DNS on macOS is integrated with Bonjour and should not be turned off, but the Bonjour advertising service can be disabled."
+    rationale: "Bonjour can simplify device discovery from an internal rogue or compromised host. An attacker could use Bonjour's multicast DNS feature to discover a vulnerable or poorly-configured service or additional information to aid a targeted attack. Implementing this control disables the continuous broadcasting of 'I'm here!' messages. Typical end-user endpoints should not have to advertise services to other computers. This setting does not stop the computer from sending out service discovery messages when looking for services on an internal subnet, if the computer is looking for a printer or server and using service discovery. To block all Bonjour traffic except to approved devices, the pf or other firewall would be needed."
+    impact: "Some applications, like Final Cut Studio and AirPort Base Station management, may not operate properly if the mDNSResponder is turned off."
+    remediation: "Terminal Method: Run the following command to disable Bonjour Advertising services: $ /usr/bin/sudo /usr/bin/defaults write /Library/Preferences/com.apple.mDNSResponder.plist NoMulticastAdvertisements -bool true. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mDNSResponder 2. The key to include is NoMulticastAdvertisements."
+    compliance:
+      - cis: ["4.1"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230", "AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SI-4", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5", "2.2"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1", "1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: any
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.mDNSResponder'').objectForKey(''NoMulticastAdvertisements'')" -> r:^1$'
+
+  # 4.2 Ensure HTTP Server Is Disabled (Automated)
+  - id: 30039
+    title: "Ensure HTTP Server Is Disabled."
+    description: "macOS used to have a graphical front-end to the embedded Apache web server in the Operating System. Personal web sharing could be enabled to allow someone on another computer to download files or information from the user's computer. Personal web sharing from a user endpoint has long been considered questionable, and Apple has removed that capability from the GUI. Apache, however, is still part of the Operating System and can be easily turned on to share files and provide remote connectivity to an end-user computer. Web sharing should only be done through hardened web servers and appropriate cloud services."
+    rationale: "Web serving should not be done from a user desktop. Dedicated webservers or appropriate cloud storage should be used. Open ports make it easier to exploit the computer."
+    impact: "The web server is both a point of attack for the system and a means for unauthorized file transfers."
+    remediation: "Run the following command to disable the HTTP server services: $ sudo /usr/bin/sudo /bin/launchctl unload -w /System/Library/LaunchDaemons/org.apache.httpd.plist"
+    references:
+      - https://www.stigviewer.com/stig/apple_macos_11_big_sur/2021-06-16/finding/V-230793
+    compliance:
+      - cis: ["4.2"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230", "AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SI-4", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5", "2.2"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1", "1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:sh -c "launchctl list | grep -c org.apache.httpd" -> r:^0$'
+
+  # 4.3 Ensure NFS Server Is Disabled (Automated)
+  - id: 30040
+    title: "Ensure NFS Server Is Disabled."
+    description: "macOS can act as an NFS fileserver. NFS sharing could be enabled to allow someone on another computer to mount shares and gain access to information from the user's computer. File sharing from a user endpoint has long been considered questionable, and Apple has removed that capability from the GUI. NFSD is still part of the Operating System and can be easily turned on to export shares and provide remote connectivity to an end-user computer. The etc/exports file contains the list of NFS shared directories. If the file exists, it is likely that NFS sharing has been enabled in the past or may be available periodically. As an additional check, the audit verifies that there is no /etc/exports file."
+    rationale: "File serving should not be done from a user desktop. Dedicated servers should be used. Open ports make it easier to exploit the computer."
+    impact: "The nfs server is both a point of attack for the system and a means for unauthorized file transfers."
+    remediation: "Run the following command to disable the nfsd fileserver services: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.nfsd , Remove the exported Directory listing: $ /usr/bin/sudo /bin/rm /etc/exports"
+    compliance:
+      - cis: ["4.3"]
+      - cis_csc_v8: ["4.1", "4.8"]
+      - cis_csc_v7: ["5.1", "9.2"]
+      - cmmc_v2.0: ["AC.1.002", "CM.2.061", "SC.3.180", "CM.3.068", "SC.5.230", "AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.8.1.3", "A.13.1.3", "A.14.2.5"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+      - nist_sp_800-53: ["AU-2", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "IA-6", "SI-4", "SC-20", "SC-21", "CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5", "2.2"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1", "1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - 'c:sh -c "launchctl list | grep -c com.apple.nfsd" -> r:^0$'
+      - "not f:/etc/exports"
+
+  ##########################################################################
+  # 5 System Access, Authentication and Authorization
+  ##########################################################################
+
+  # 5.1 File System Permissions and Access Controls
+
+  # 5.1.1 Ensure Home Folders Are Secure (Automated) - Not Implemented
+
+  # 5.1.2 Ensure System Integrity Protection Status (SIP) Is Enabled (Automated)
+  - id: 30041
+    title: "Ensure System Integrity Protection Status (SIP) Is Enabled."
+    description: "System Integrity Protection is a security feature introduced in OS X 10.11 El Capitan. System Integrity Protection restricts access to System domain locations and restricts runtime attachment to system processes. Any attempt to inspect or attach to a system process will fail. Kernel Extensions are now restricted to /Library/Extensions and are required to be signed with a Developer ID."
+    rationale: "Running without System Integrity Protection on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by SIP."
+    impact: "System binaries and processes could become compromised."
+    remediation: "Perform the following steps to enable System Integrity Protection: 1. Reboot into the Recovery Partition (reboot and hold down Command (⌘) + R) 2. Select Utilities 3. Select Terminal 4. Run the following command: $ /usr/bin/sudo /usr/bin/csrutil enable Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect. 5. Reboot the computer. Note: You should research why the system had SIP disabled. It might be a better option to erase the Mac and reinstall the operating system. That is at your discretion. Note: You cannot enable System Integrity Protection from the booted operating system. If the remediation is attempted in the booted OS and not the Recovery Partition the output will give the error csrutil: failed to modify system integrity configuration. This tool needs to be executed from the Recovery OS."
+    references:
+      - https://developer.apple.com/documentation/security/disabling_and_enabling_system_integrity_protection
+      - https://support.apple.com/en-us/HT204899
+    compliance:
+      - cis: ["5.1.2"]
+      - cis_csc_v8: ["2.3", "2.6", "10.5"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - pci_dss_3.2.1: ["1.4"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "12.3.4"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-7(2)", "CM-8(3)", "CM-10", "SI-16"]
+      - soc_2: ["CC5.2", "CC6.8", "CC7.1"]
+      - mitre_techniques: ["T1191", "T1092", "T1175", "T1173", "T1519", "T1052", "T1210", "T1133", "T1118", "T1171", "T1170", "T1046", "T1137", "T1086", "T1164", "T1121", "T1076", "T1091", "T1180", "T1064", "T1184", "T1221", "T1127", "T1028"]
+    condition: all
+    rules:
+      - "c:csrutil status -> r:^System Integrity Protection status: enabled."
+
+  # 5.1.3 Ensure Apple Mobile File Integrity (AMFI) Is Enabled (Automated)
+  - id: 30042
+    title: "Ensure Apple Mobile File Integrity (AMFI) Is Enabled."
+    description: "Apple Mobile File Integrity (AMFI) was first released in macOS 10.12. The daemon and service block attempts to run unsigned code. AMFI uses lanchd, code signatures, certificates, entitlements, and provisioning profiles to create a filtered entitlement dictionary for an app. AMFI is the macOS kernel module that enforces code-signing and library validation."
+    rationale: "Apple Mobile File Integrity validates that application code is validated."
+    impact: "Applications could be compromised with malicious code."
+    remediation: "Run the following command to enable the Apple Mobile File Integrity service: $ /usr/bin/sudo /usr/sbin/nvram boot-args=''"
+    references:
+      - https://eclecticlight.co/2018/12/29/amfi-checking-file-integrity-on-your-mac/
+      - https://github.com/usnistgov/macos_security/issues/39
+      - https://github.com/usnistgov/macos_security/issues/40
+      - https://www.naut.ca/blog/2020/11/13/forbidden-commands-to-liberate-macos/
+    compliance:
+      - cis: ["5.1.3"]
+      - cis_csc_v8: ["2.3", "2.6"]
+      - cis_csc_v7: ["2.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.9", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "12.3.4"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-7(2)", "CM-8(3)", "CM-10"]
+      - soc_2: ["CC5.2", "CC7.1"]
+      - mitre_techniques: ["T1191", "T1092", "T1175", "T1173", "T1519", "T1052", "T1210", "T1133", "T1118", "T1171", "T1170", "T1046", "T1137", "T1086", "T1164", "T1121", "T1076", "T1091", "T1180", "T1064", "T1184", "T1221", "T1127", "T1028"]
+    condition: all
+    rules:
+      - 'c:sh -c "nvram -p | grep -c \"amfi_get_out_of_my_way=1\"" -> r:^0$'
+
+  # 5.1.4 Ensure Sealed System Volume (SSV) Is Enabled (Automated)
+  - id: 30043
+    title: "Ensure Sealed System Volume (SSV) Is Enabled."
+    description: "Sealed System Volume is a security feature introduced in macOS 11.0 Big Sur. During system installation, a SHA-256 cryptographic hash is calculated for all immutable system files and stored in a Merkle tree which itself is hashed as the Seal. Both are stored in the metadata of the snapshot created of the System volume. The seal is verified by the boot loader at startup. macOS will not boot if system files have been tampered with. If validation fails, the user will be instructed to reinstall the operating system. During read operations for files located in the Sealed System Volume, a hash is calculated and compared to the value stored in the Merkle tree."
+    rationale: "Running without Sealed System Volume on a production system could run the risk of Apple software that integrates directly with macOS being modified."
+    impact: "Apple Software that integrates with the operating system could become compromised."
+    remediation: "If SSV has been disabled, assume that the operating system has been compromised. Back up any files, and do a clean install to a known good Operating System."
+    references:
+      - https://developer.apple.com/news/?id=3xpv8r2m
+      - https://eclecticlight.co/2020/11/30/is-big-surs-system-volume-sealed/
+      - https://eclecticlight.co/2020/06/25/big-surs-signed-system-volume-added-security-protection/
+      - https://support.apple.com/guide/security/signed-system-volume-security-secd698747c9/web
+    compliance:
+      - cis: ["5.1.4"]
+      - cis_csc_v8: ["3.6", "3.11"]
+      - cis_csc_v7: ["13.6", "14.8"]
+      - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
+      - iso_27001-2013: ["A.6.2.1", "A.10.1.1"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
+      - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
+      - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+      - nist_sp_800-53: ["SC-28", "SC-28(1)"]
+      - soc_2: ["CC6.1"]
+      - mitre_techniques: ["T1527", "T1119", "T1530", "T1114", "T1070", "T1208", "T1040", "T1145", "T1492", "T1493", "T1072"]
+    condition: all
+    rules:
+      - "c:csrutil authenticated-root status -> r:^Authenticated Root status: enabled"
+
+  # 5.1.5 Ensure Appropriate Permissions Are Enabled for System Wide Applications (Automated) - Not implemented
+  # 5.1.6 Ensure No World Writable Files Exist in the System Folder (Automated) - Not implemented
+  # 5.1.7 Ensure No World Writable Files Exist in the Library Folder (Automated) - Not implemented
+
+  # 5.2 Password Management
+
+  # 5.2.1 Ensure Password Account Lockout Threshold Is Configured (Automated)
+  - id: 30044
+    title: "Ensure Password Account Lockout Threshold Is Configured."
+    description: "The account lockout threshold specifies the amount of times a user can enter an incorrect password before a lockout will occur. Ensure that a lockout threshold is part of the password policy on the computer."
+    rationale: "The account lockout feature mitigates brute-force password attacks on the system."
+    impact: "The number of incorrect log on attempts should be reasonably small to minimize the possibility of a successful password attack, while allowing for honest errors made during a normal user log on. The locked account will auto-unlock after a few minutes when bad password attempts stop. The computer will accept the still-valid password if remembered or recovered."
+    remediation: "Terminal Method: Run the following command to set the maximum number of failed login attempts to less than or equal to 5: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'maxFailedLoginAttempts=<value≤5>' Note: When the account lockout threshold is set with pwpolicy, it will also set a reset value to policyAttributeMinutesUntilFailedAuthenticationReset that defaults to 1 minute. You can change this value with the command: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'policyAttributeMinutesUntilFailedAuthenticationReset=<value in minutes>' example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'maxFailedLoginAttempts=5' /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'policyAttributeMinutesUntilFailedAuthenticationReset=10' Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is maxFailedAttempts 3. The key must be set to <integer><value≤5></integer> Note: When setting the lockout threshold with a mobile configuration profile there is no default reset to the lockout. To set the reset value use the key autoEnableInSeconds and set the key to <integer><value in seconds></integer>. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release."
+    references:
+      - CIS Password Policy - https://workbench.cisecurity.org/communities/113
+    compliance:
+      - cis: ["5.2.1"]
+      - cis_csc_v8: ["6.2"]
+      - cis_csc_v7: ["16.7"]
+      - cmmc_v2.0: ["AC.L1-3.1.1"]
+      - iso_27001-2013: ["A.9.2.6"]
+      - hipaa: ["164.308(a)(3)(ii)(C)"]
+      - pci_dss_3.2.1: ["8.1.3"]
+      - pci_dss_4.0: ["8.2.4", "8.2.5"]
+      - nist_sp_800-53: ["AC-2(1)"]
+      - soc_2: ["CC6.2", "CC6.3"]
+      - mitre_techniques: ["T1134", "T1197", "T1538", "T1530", "T1213", "T1089", "T1157", "T1044", "T1484", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1031", "T1050", "T1075", "T1097", "T1034", "T1163", "T1076", "T1021", "T1053", "T1489", "T1051", "T1023", "T1165", "T1528", "T1501", "T1072", "T1537", "T1078", "T1047", "T1084", "T1004"]
+    condition: all
+    rules:
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare < 6'
+
+  # 5.2.2 Ensure Password Minimum Length Is Configured (Automated)
+  - id: 30045
+    title: "Ensure Password Minimum Length Is Configured."
+    description: "A minimum password length is the fewest number of characters a password can contain to meet a system's requirements. Ensure that a minimum of a 15-character password is part of the password policy on the computer. Where the confidentiality of encrypted information in FileVault is more of a concern, requiring a longer password or passphrase may be sufficient rather than imposing additional complexity requirements that may be self-defeating."
+    rationale: "Information systems that are not protected with strong password schemes including passwords of minimum length provide a greater opportunity for attackers to crack the password and gain access to the system."
+    impact: "Short passwords can be easily attacked."
+    remediation: "Terminal Method: Run the following command to set the password length to greater than or equal to 15: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'minChars=<value≥15>' example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'minChars=15' Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is minLength 3. The key must be set to <integer><value≥15></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release."
+    compliance:
+      - cis: ["5.2.2"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+    condition: all
+    rules:
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minChars=(\d+) compare > 14'
+
+  # 5.2.3 Ensure Complex Password Must Contain Alphabetic Characters Is Configured (Manual) - Not Implemented
+  # 5.2.4 Ensure Complex Password Must Contain Numeric Character Is Configured (Manual) - Not Implemented
+  # 5.2.5 Ensure Complex Password Must Contain Special Character Is Configured (Manual) - Not Implemented
+  # 5.2.6 Ensure Complex Password Must Contain Uppercase and Lowercase Characters Is Configured (Manual) - Not Implemented
+
+  # 5.2.7 Ensure Password Age Is Configured (Automated)
+  - id: 30046
+    title: "Ensure Password Age Is Configured."
+    description: "Over time, passwords can be captured by third parties through mistakes, phishing attacks, third-party breaches, or merely brute-force attacks. To reduce the risk of exposure and to decrease the incentives of password reuse (passwords that are not forced to be changed periodically generally are not ever changed), users should reset passwords periodically. This control uses 365 days as the acceptable value. Some organizations may be more or less restrictive. This control mainly exists to mitigate against password reuse of the macOS account password in other realms that may be more prone to compromise. Attackers take advantage of exposed information to attack other accounts."
+    rationale: "Passwords should be changed periodically to reduce exposure."
+    impact: "Required password changes will lead to some locked computers requiring admin assistance."
+    remediation: "Terminal Method: Run the following command to require that passwords expire after at most 365 days: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'maxMinutesUntilChangePassword=<value≤525600>' example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'maxMinutesUntilChangePassword=43200' Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is maxPINAgeInDays 3. The key must be set to <integer><value≥365></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release."
+    compliance:
+      - cis: ["5.2.7"]
+      - cis_csc_v8: ["5.3"]
+      - cis_csc_v7: ["16.9"]
+      - cmmc_v2.0: ["IA.L2-3.5.6"]
+      - pci_dss_3.2.1: ["8.1.4"]
+      - pci_dss_4.0: ["8.3.7"]
+      - nist_sp_800-53: ["AC-2(3)"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078", "T1134", "T1197", "T1538", "T1089", "T1157", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1075", "T1097", "T1163", "T1021", "T1489", "T1051", "T1023", "T1165", "T1501", "T1072", "T1537", "T1047", "T1084", "T1004"]
+    condition: all
+    rules:
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxMinutesUntilChangePassword=(\d+) compare < 525601'
+
+  # 5.2.8 Ensure Password History Is Configured (Automated)
+  - id: 30047
+    title: "Ensure Password History Is Configured."
+    description: "Over time, passwords can be captured by third parties through mistakes, phishing attacks, third-party breaches, or merely brute-force attacks. To reduce the risk of exposure and to decrease the incentives of password reuse (passwords that are not forced to be changed periodically generally are not ever changed), users must reset passwords periodically. This control ensures that previous passwords are not reused immediately by keeping a history of previous password hashes. Ensure that password history checks are part of the password policy on the computer. This control checks whether a new password is different than the previous 15. The latest NIST guidance based on exploit research referenced in this section details how one of the greatest risks is password exposure rather than password cracking. Passwords should be changed to a new unique value whenever a password might have been exposed to anyone other than the account holder. Attackers have maintained persistent control based on predictable password change patterns and substantially different patterns should be used in case of a leak."
+    rationale: "Old passwords should not be reused."
+    impact: "Required password changes will lead to some locked computers requiring admin assistance."
+    remediation: "Terminal Method: Run the following command to require that the password must to be different from at least the last 15 passwords: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'usingHistory=<value≥15>' example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy 'usingHistory=15' Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is pinHistory 3. The key must be set to <integer><value≥15></integer> Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release."
+    compliance:
+      - cis: ["5.2.8"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+      - mitre_techniques: ["T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1501", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+    condition: all
+    rules:
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:usingHistory=(\d+) compare > 14'
+
+  # 5.3 Encryption
+
+  # 5.3.1 Ensure all user storage APFS volumes are encrypted (Manual) - Not Implemented
+  # 5.3.2 Ensure all user storage CoreStorage volumes are encrypted (Manual) - Not Implemented
+
+  # 5.4 Ensure the Sudo Timeout Period Is Set to Zero (Automated)
+  - id: 30048
+    title: "Ensure the Sudo Timeout Period Is Set to Zero."
+    description: "The sudo command allows the user to run programs as the root user. Working as the root user allows the user an extremely high level of configurability within the system. This control, along with the control to use a separate timestamp for each tty, limits the window where an unauthorized user, process, or attacker could utilize legitimate credentials that are valid for longer than required."
+    rationale: "The sudo command stays logged in as the root user for five minutes before timing out and re-requesting a password. This five-minute window should be eliminated since it leaves the system extremely vulnerable. This is especially true if an exploit were to gain access to the system, since they would be able to make changes as a root user."
+    impact: "This control has a serious impact where users often have to use sudo. It is even more of an impact where users have to use sudo multiple times in quick succession as part of normal work processes. Organizations with that common use case will likely find this control too onerous and are better to accept the risk of not requiring a 0 grace period. In some ways the use of sudo -s, which is undesirable, is better than a long grace period since that use does change the hash to show that it is a root shell rather than a normal shell where sudo commands will be implemented without a password."
+    remediation: "Terminal Method: Run the following command to edit the sudo settings: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/<configuration file name>. Note: Unlike other Unix and/or Linux distros, macOS will ignore configuration files in the sudoers.d folder that contain a . so do not add a file extension to the configuration file. Add the line Defaults timestamp_timeout=0 to the configuration file. If /etc/sudoers.d/ is not owned by root or in the wheel group, run the following to change ownership and group: $ /usr/bin/sudo /usr/sbin/chown -R root:wheel /etc/security/sudoers.d/."
+    compliance:
+      - cis: ["5.4"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      - iso_27001-2013: ["A.8.1.3"]
+      - hipaa: ["164.312(a)(2)(iii)"]
+      - pci_dss_3.2.1: ["8.1.8"]
+      - pci_dss_4.0: ["8.2.8"]
+      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
+      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+    condition: all
+    rules:
+      - 'c:sh -c "sudo -V | grep -c \"Authentication timestamp timeout: 0.0 minutes\"" -> r:^1'
+      - "c:stat /etc/sudoers.d -> r:root wheel"
+
+  # 5.5 Ensure a Separate Timestamp Is Enabled for Each User/tty Combo (Automated)
+  - id: 30049
+    title: "Ensure a Separate Timestamp Is Enabled for Each User/tty Combo."
+    description: "Using tty tickets ensures that a user must enter the sudo password in each Terminal session. With sudo versions 1.8 and higher, introduced in 10.12, the default value is to have tty tickets for each interface so that root access is limited to a specific terminal. The default configuration can be overwritten or not configured correctly on earlier versions of macOS."
+    rationale: "In combination with removing the sudo timeout grace period, a further mitigation should be in place to reduce the possibility of a background process using elevated rights when a user elevates to root in an explicit context or tty. Additional mitigation should be in place to reduce the risk of privilege escalation of background processes."
+    impact: "This control should have no user impact. Developers or installers may have issues if background processes are spawned with different interfaces than where sudo was executed."
+    remediation: "Run the following command to edit the sudo settings: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/<configuration file name>. example: $ /usr/bin/sudo /usr/sbin/visudo -f /etc/sudoers.d/10_cissudoconfiguration ; Note: Unlike other Unix and/or Linux distros, macOS will ignore configuration files in the sudoers.d folder that contain a . so do not add a file extension to the configuration file. Add the line Defaults timestamp_type=tty to the configuration file. Note: The Defaults timestamp_type=tty line can be added to an existing configuration file or a new one. That will depend on your organization's preference and works either way. Default Value: If no value is set, the default value of tty_tickets enabled will be used."
+    references:
+      - https://github.com/jorangreef/sudo-prompt/issues/33
+    compliance:
+      - cis: ["5.5"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      - iso_27001-2013: ["A.8.1.3"]
+      - hipaa: ["164.312(a)(2)(iii)"]
+      - pci_dss_3.2.1: ["8.1.8"]
+      - pci_dss_4.0: ["8.2.8"]
+      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
+      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+    condition: all
+    rules:
+      - 'c:sh -c "sudo -V | grep -c \"Type of authentication timestamp record: tty\"" -> r:^1'
+
+  # 5.6 Ensure the "root" Account Is Disabled (Automated)
+  - id: 30050
+    title: "Ensure the 'root' Account Is Disabled."
+    description: "The root account is a superuser account that has access privileges to perform any actions and read/write to any file on the computer. With some versions of Linux, the system administrator may commonly use the root account to perform administrative functions."
+    rationale: "Enabling and using the root account puts the system at risk since any successful exploit or mistake while the root account is in use could have unlimited access privileges within the system. Using the sudo command allows users to perform functions as a root user while limiting and password protecting the access privileges. By default the root account is not enabled on a macOS computer. An administrator can escalate privileges using the sudo command (use -s or -i to get a root shell)."
+    impact: "Some legacy POSIX software might expect an available root account."
+    remediation: "Graphical Method: Perform the following steps to ensure that the root user is disabled: 1. Open /System/Library/CoreServices/Applications/Directory Utility 2. Click the lock icon to unlock the service 3. Click Edit in the menu bar 4. Click Disable Root User. Terminal Method: Run the following command to disable the root user: $ /usr/bin/sudo /usr/sbin/dsenableroot -d ; username = root ; user password:"
+    compliance:
+      - cis: ["5.6"]
+      - cis_csc_v8: ["5.4"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
+      - iso_27001-2013: ["A.9.2.3"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
+      - soc_2: ["CC6.1", "CC6.3"]
+      - mitre_techniques: ["T1176", "T1501", "T1134", "T1098", "T1017", "T1067", "T1088", "T1175", "T1136", "T1003", "T1214", "T1190", "T1210", "T1495", "T1525", "T1208", "T1215", "T1075", "T1097", "T1086", "T1055", "T1076", "T1053", "T1505", "T1035", "T1051", "T1218", "T1184", "T1169", "T1206", "T1019", "T1072", "T1078", "T1100", "T1077", "T1047", "T1084", "T1028"]
+    condition: all
+    rules:
+      - "c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority"
+
+  # 5.7 Ensure an Administrator Account Cannot Login to Another User's Active and Locked Session (Automated)
+  - id: 30051
+    title: "Ensure an Administrator Account Cannot Login to Another User's Active and Locked Session."
+    description: "macOS has a privilege that can be granted to any user that will allow that user to unlock active user's sessions."
+    rationale: "Disabling the administrator's and/or user's ability to log into another user's active and locked session prevents unauthorized persons from viewing potentially sensitive and/or personal information."
+    impact: "While Fast user switching is a workaround for some lab environments, especially where there is even less of an expectation of privacy, this setting change may impact some maintenance workflows."
+    remediation: "Run the following command to disable a user logging into another user's active and/or locked session: $ /usr/bin/sudo /usr/bin/security authorizationdb write system.login.screensaver use-login-window-ui YES (0)"
+    references:
+      - https://derflounder.wordpress.com/2014/02/16/managing-the-authorization-database-in-os-x-mavericks/
+      - https://www.jamf.com/jamf-nation/discussions/18195/system-login-screensaver
+    compliance:
+      - cis: ["5.7"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      - iso_27001-2013: ["A.8.1.3"]
+      - hipaa: ["164.312(a)(2)(iii)"]
+      - pci_dss_3.2.1: ["8.1.8"]
+      - pci_dss_4.0: ["8.2.8"]
+      - nist_sp_800-53: ["AC-2(5)", "AC-11", "AC-11(1)", "AC-12"]
+      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
+    condition: all
+    rules:
+      - 'c:sh -c "security authorizationdb read system.login.screensaver | grep -c ''use-login-window-ui''" -> r:^1$'
+
+  # 5.8 Ensure a Login Window Banner Exists (Automated)
+  - id: 30052
+    title: "Ensure a Login Window Banner Exists."
+    description: "A Login window banner warning informs the user that the system is reserved for authorized use only. It enforces an acknowledgment by the user that they have been informed of the use policy in the banner if required. The system recognizes either the .txt and the .rtf formats."
+    rationale: "An access warning may reduce a casual attacker's tendency to target the system. Access warnings may also aid in the prosecution of an attacker by evincing the attacker's knowledge of the system's private status, acceptable use policy, and authorization requirements."
+    impact: "Users will have to click on the window with the Login text before logging into the computer."
+    remediation: "Run the following commands to create or edit the login window text and set the proper permissions: Edit (or create) a PolicyBanner.txt or PolicyBanner.rtf file, in the /Library/Security/ folder, to include the required login window banner text. Perform the following to set permissions on the policy banner file: $ /usr/bin/sudo /usr/sbin/chown o+r /Library/Security/PolicyBanner.txt , $ /usr/bin/sudo /usr/sbin/chown o+r /Library/Security/PolicyBanner.rtf Note: If your organization uses an .rtfd file to set the policy banner, run $ /usr/bin/sudo /usr/sbin/chown -R o+rx /Library/Security/PolicyBanner.rtfd to update the permissions."
+    references:
+      - https://support.apple.com/en-au/HT202277
+    compliance:
+      - cis: ["5.8"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+    condition: all
+    rules:
+      - "d:/Library/Security -> r:^PolicyBanner"
+
+  # 5.9 Ensure Legacy EFI Is Valid and Updating (Automated) - Not implemented
+
+  # 5.10 Ensure the Guest Home Folder Does Not Exist (Automated)
+  - id: 30053
+    title: "Ensure the Guest Home Folder Does Not Exist."
+    description: "In the previous two controls, the guest account login has been disabled and sharing to guests has been disabled, as well. There is no need for the legacy Guest home folder to remain in the file system. When normal user accounts are removed, you have the option to archive it, leave it in place, or delete. In the case of the guest folder, the folder remains in place without a GUI option to remove it. If at some point in the future a Guest account is needed, it will be re-created. The presence of the Guest home folder can cause automated audits to fail when looking for compliant settings within all User folders, as well. Rather than ignoring the folder's continued existence, it is best removed."
+    rationale: "The Guest home folders are unneeded after the Guest account is disabled and could be used inappropriately."
+    impact: "The Guest account should not be necessary after it is disabled, and it will be automatically re-created if the Guest account is re-enabled."
+    remediation: "Run the following command to remove the Guest user home folder: $ /usr/bin/sudo /bin/rm -R /Users/Guest"
+    compliance:
+      - cis: ["5.10"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.8.1.3", "A.14.2.5"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
+      - mitre_techniques: ["T1110", "T1003", "T1081", "T1097", "T1178", "T1072", "T1067", "T1495", "T1019", "T1177", "T1485", "T1486", "T1491", "T1488", "T1487", "T1490", "T1146", "T1148", "T1015", "T1133", "T1200", "T1076", "T1051", "T1176", "T1501", "T1087", "T1098", "T1139", "T1197", "T1092", "T1136", "T1011", "T1147", "T1130", "T1174", "T1053", "T1166", "T1206", "T1503", "T1214", "T1187", "T1208", "T1142", "T1075", "T1201", "T1145", "T1184", "T1537", "T1078", "T1077", "T1134", "T1017", "T1088", "T1175", "T1190", "T1210", "T1525", "T1215", "T1086", "T1055", "T1505", "T1035", "T1218", "T1169", "T1100", "T1047", "T1084", "T1028", "T1156", "T1196", "T1530", "T1089", "T1073", "T1157", "T1054", "T1070", "T1037", "T1036", "T1096", "T1034", "T1150", "T1504", "T1494", "T1489", "T1198", "T1165", "T1492", "T1080", "T1209", "T1112", "T1058", "T1173", "T1137", "T1539", "T1535", "T1506", "T1138", "T1044", "T1199"]
+    condition: all
+    rules:
+      - "not d:/Users/Guest"
+
+  ##########################################################################
+  # 6 Applications
+  ##########################################################################
+
+  # 6.1 Finder
+
+  # 6.1.1 Ensure Show All Filename Extensions Setting is Enabled (Automated) - Not implemented
+
+  # 6.2 Mail
+
+  # 6.2.1 Ensure Protect Mail Activity in Mail Is Enabled (Manual) - Not Implemented
+
+  # 6.3 Safari
+
+  # 6.3.1 Ensure Automatic Opening of Safe Files in Safari Is Disabled (Automated) - Not implemented
+  # 6.3.2 Audit History and Remove History Items (Manual) - Not implemented
+  # 6.3.3 Ensure Warn When Visiting A Fraudulent Website in Safari Is Enabled (Automated) - Not implemented
+  # 6.3.4 Ensure Prevent Cross-site Tracking in Safari Is Enabled (Automated) - Not implemented
+  # 6.3.5 Audit Hide IP Address in Safari Setting (Manual) - Not implemented
+  # 6.3.6 Ensure Advertising Privacy Protection in Safari Is Enabled (Automated) - Not implemented
+  # 6.3.7 Ensure Show Full Website Address in Safari Is Enabled (Automated) - Not implemented
+
+  # 6.4 Terminal
+
+  # 6.4.1 Ensure Secure Keyboard Entry Terminal.app Is Enabled (Automated) - Not implemented
