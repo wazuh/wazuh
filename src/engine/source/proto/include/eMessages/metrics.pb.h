@@ -535,24 +535,43 @@ class Get_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kNameFieldNumber = 1,
+    kScopeNameFieldNumber = 1,
+    kInstrumentNameFieldNumber = 2,
   };
-  // optional string name = 1;
-  bool has_name() const;
+  // optional string scopeName = 1;
+  bool has_scopename() const;
   private:
-  bool _internal_has_name() const;
+  bool _internal_has_scopename() const;
   public:
-  void clear_name();
-  const std::string& name() const;
+  void clear_scopename();
+  const std::string& scopename() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_name(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_name();
-  PROTOBUF_NODISCARD std::string* release_name();
-  void set_allocated_name(std::string* name);
+  void set_scopename(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_scopename();
+  PROTOBUF_NODISCARD std::string* release_scopename();
+  void set_allocated_scopename(std::string* scopename);
   private:
-  const std::string& _internal_name() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
-  std::string* _internal_mutable_name();
+  const std::string& _internal_scopename() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_scopename(const std::string& value);
+  std::string* _internal_mutable_scopename();
+  public:
+
+  // optional string instrumentName = 2;
+  bool has_instrumentname() const;
+  private:
+  bool _internal_has_instrumentname() const;
+  public:
+  void clear_instrumentname();
+  const std::string& instrumentname() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_instrumentname(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_instrumentname();
+  PROTOBUF_NODISCARD std::string* release_instrumentname();
+  void set_allocated_instrumentname(std::string* instrumentname);
+  private:
+  const std::string& _internal_instrumentname() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_instrumentname(const std::string& value);
+  std::string* _internal_mutable_instrumentname();
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.metrics.Get_Request)
@@ -565,7 +584,8 @@ class Get_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr scopename_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr instrumentname_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_metrics_2eproto;
@@ -882,28 +902,47 @@ class Enable_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kNameFieldNumber = 1,
-    kStatusFieldNumber = 2,
+    kScopeNameFieldNumber = 1,
+    kInstrumentNameFieldNumber = 2,
+    kStatusFieldNumber = 3,
   };
-  // optional string name = 1;
-  bool has_name() const;
+  // optional string scopeName = 1;
+  bool has_scopename() const;
   private:
-  bool _internal_has_name() const;
+  bool _internal_has_scopename() const;
   public:
-  void clear_name();
-  const std::string& name() const;
+  void clear_scopename();
+  const std::string& scopename() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_name(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_name();
-  PROTOBUF_NODISCARD std::string* release_name();
-  void set_allocated_name(std::string* name);
+  void set_scopename(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_scopename();
+  PROTOBUF_NODISCARD std::string* release_scopename();
+  void set_allocated_scopename(std::string* scopename);
   private:
-  const std::string& _internal_name() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_name(const std::string& value);
-  std::string* _internal_mutable_name();
+  const std::string& _internal_scopename() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_scopename(const std::string& value);
+  std::string* _internal_mutable_scopename();
   public:
 
-  // optional bool status = 2;
+  // optional string instrumentName = 2;
+  bool has_instrumentname() const;
+  private:
+  bool _internal_has_instrumentname() const;
+  public:
+  void clear_instrumentname();
+  const std::string& instrumentname() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_instrumentname(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_instrumentname();
+  PROTOBUF_NODISCARD std::string* release_instrumentname();
+  void set_allocated_instrumentname(std::string* instrumentname);
+  private:
+  const std::string& _internal_instrumentname() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_instrumentname(const std::string& value);
+  std::string* _internal_mutable_instrumentname();
+  public:
+
+  // optional bool status = 3;
   bool has_status() const;
   private:
   bool _internal_has_status() const;
@@ -926,7 +965,8 @@ class Enable_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr scopename_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr instrumentname_;
     bool status_;
   };
   union { Impl_ _impl_; };
@@ -1935,72 +1975,140 @@ inline void Dump_Response::set_allocated_value(::PROTOBUF_NAMESPACE_ID::Value* v
 
 // Get_Request
 
-// optional string name = 1;
-inline bool Get_Request::_internal_has_name() const {
+// optional string scopeName = 1;
+inline bool Get_Request::_internal_has_scopename() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool Get_Request::has_name() const {
-  return _internal_has_name();
+inline bool Get_Request::has_scopename() const {
+  return _internal_has_scopename();
 }
-inline void Get_Request::clear_name() {
-  _impl_.name_.ClearToEmpty();
+inline void Get_Request::clear_scopename() {
+  _impl_.scopename_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& Get_Request::name() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.Get_Request.name)
-  return _internal_name();
+inline const std::string& Get_Request::scopename() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.Get_Request.scopeName)
+  return _internal_scopename();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void Get_Request::set_name(ArgT0&& arg0, ArgT... args) {
+void Get_Request::set_scopename(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000001u;
- _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.Get_Request.name)
+ _impl_.scopename_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.Get_Request.scopeName)
 }
-inline std::string* Get_Request::mutable_name() {
-  std::string* _s = _internal_mutable_name();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.Get_Request.name)
+inline std::string* Get_Request::mutable_scopename() {
+  std::string* _s = _internal_mutable_scopename();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.Get_Request.scopeName)
   return _s;
 }
-inline const std::string& Get_Request::_internal_name() const {
-  return _impl_.name_.Get();
+inline const std::string& Get_Request::_internal_scopename() const {
+  return _impl_.scopename_.Get();
 }
-inline void Get_Request::_internal_set_name(const std::string& value) {
+inline void Get_Request::_internal_set_scopename(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.name_.Set(value, GetArenaForAllocation());
+  _impl_.scopename_.Set(value, GetArenaForAllocation());
 }
-inline std::string* Get_Request::_internal_mutable_name() {
+inline std::string* Get_Request::_internal_mutable_scopename() {
   _impl_._has_bits_[0] |= 0x00000001u;
-  return _impl_.name_.Mutable(GetArenaForAllocation());
+  return _impl_.scopename_.Mutable(GetArenaForAllocation());
 }
-inline std::string* Get_Request::release_name() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.Get_Request.name)
-  if (!_internal_has_name()) {
+inline std::string* Get_Request::release_scopename() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.Get_Request.scopeName)
+  if (!_internal_has_scopename()) {
     return nullptr;
   }
   _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
+  auto* p = _impl_.scopename_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.scopename_.IsDefault()) {
+    _impl_.scopename_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void Get_Request::set_allocated_name(std::string* name) {
-  if (name != nullptr) {
+inline void Get_Request::set_allocated_scopename(std::string* scopename) {
+  if (scopename != nullptr) {
     _impl_._has_bits_[0] |= 0x00000001u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000001u;
   }
-  _impl_.name_.SetAllocated(name, GetArenaForAllocation());
+  _impl_.scopename_.SetAllocated(scopename, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.scopename_.IsDefault()) {
+    _impl_.scopename_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.Get_Request.name)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.Get_Request.scopeName)
+}
+
+// optional string instrumentName = 2;
+inline bool Get_Request::_internal_has_instrumentname() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool Get_Request::has_instrumentname() const {
+  return _internal_has_instrumentname();
+}
+inline void Get_Request::clear_instrumentname() {
+  _impl_.instrumentname_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline const std::string& Get_Request::instrumentname() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.Get_Request.instrumentName)
+  return _internal_instrumentname();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void Get_Request::set_instrumentname(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.instrumentname_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.Get_Request.instrumentName)
+}
+inline std::string* Get_Request::mutable_instrumentname() {
+  std::string* _s = _internal_mutable_instrumentname();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.Get_Request.instrumentName)
+  return _s;
+}
+inline const std::string& Get_Request::_internal_instrumentname() const {
+  return _impl_.instrumentname_.Get();
+}
+inline void Get_Request::_internal_set_instrumentname(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.instrumentname_.Set(value, GetArenaForAllocation());
+}
+inline std::string* Get_Request::_internal_mutable_instrumentname() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.instrumentname_.Mutable(GetArenaForAllocation());
+}
+inline std::string* Get_Request::release_instrumentname() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.Get_Request.instrumentName)
+  if (!_internal_has_instrumentname()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.instrumentname_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.instrumentname_.IsDefault()) {
+    _impl_.instrumentname_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void Get_Request::set_allocated_instrumentname(std::string* instrumentname) {
+  if (instrumentname != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.instrumentname_.SetAllocated(instrumentname, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.instrumentname_.IsDefault()) {
+    _impl_.instrumentname_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.Get_Request.instrumentName)
 }
 
 // -------------------------------------------------------------------
@@ -2186,77 +2294,145 @@ inline void Get_Response::set_allocated_value(::PROTOBUF_NAMESPACE_ID::Value* va
 
 // Enable_Request
 
-// optional string name = 1;
-inline bool Enable_Request::_internal_has_name() const {
+// optional string scopeName = 1;
+inline bool Enable_Request::_internal_has_scopename() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool Enable_Request::has_name() const {
-  return _internal_has_name();
+inline bool Enable_Request::has_scopename() const {
+  return _internal_has_scopename();
 }
-inline void Enable_Request::clear_name() {
-  _impl_.name_.ClearToEmpty();
+inline void Enable_Request::clear_scopename() {
+  _impl_.scopename_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& Enable_Request::name() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.Enable_Request.name)
-  return _internal_name();
+inline const std::string& Enable_Request::scopename() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.Enable_Request.scopeName)
+  return _internal_scopename();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void Enable_Request::set_name(ArgT0&& arg0, ArgT... args) {
+void Enable_Request::set_scopename(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000001u;
- _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.Enable_Request.name)
+ _impl_.scopename_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.Enable_Request.scopeName)
 }
-inline std::string* Enable_Request::mutable_name() {
-  std::string* _s = _internal_mutable_name();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.Enable_Request.name)
+inline std::string* Enable_Request::mutable_scopename() {
+  std::string* _s = _internal_mutable_scopename();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.Enable_Request.scopeName)
   return _s;
 }
-inline const std::string& Enable_Request::_internal_name() const {
-  return _impl_.name_.Get();
+inline const std::string& Enable_Request::_internal_scopename() const {
+  return _impl_.scopename_.Get();
 }
-inline void Enable_Request::_internal_set_name(const std::string& value) {
+inline void Enable_Request::_internal_set_scopename(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.name_.Set(value, GetArenaForAllocation());
+  _impl_.scopename_.Set(value, GetArenaForAllocation());
 }
-inline std::string* Enable_Request::_internal_mutable_name() {
+inline std::string* Enable_Request::_internal_mutable_scopename() {
   _impl_._has_bits_[0] |= 0x00000001u;
-  return _impl_.name_.Mutable(GetArenaForAllocation());
+  return _impl_.scopename_.Mutable(GetArenaForAllocation());
 }
-inline std::string* Enable_Request::release_name() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.Enable_Request.name)
-  if (!_internal_has_name()) {
+inline std::string* Enable_Request::release_scopename() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.Enable_Request.scopeName)
+  if (!_internal_has_scopename()) {
     return nullptr;
   }
   _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
+  auto* p = _impl_.scopename_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.scopename_.IsDefault()) {
+    _impl_.scopename_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void Enable_Request::set_allocated_name(std::string* name) {
-  if (name != nullptr) {
+inline void Enable_Request::set_allocated_scopename(std::string* scopename) {
+  if (scopename != nullptr) {
     _impl_._has_bits_[0] |= 0x00000001u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000001u;
   }
-  _impl_.name_.SetAllocated(name, GetArenaForAllocation());
+  _impl_.scopename_.SetAllocated(scopename, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
+  if (_impl_.scopename_.IsDefault()) {
+    _impl_.scopename_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.Enable_Request.name)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.Enable_Request.scopeName)
 }
 
-// optional bool status = 2;
-inline bool Enable_Request::_internal_has_status() const {
+// optional string instrumentName = 2;
+inline bool Enable_Request::_internal_has_instrumentname() const {
   bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool Enable_Request::has_instrumentname() const {
+  return _internal_has_instrumentname();
+}
+inline void Enable_Request::clear_instrumentname() {
+  _impl_.instrumentname_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline const std::string& Enable_Request::instrumentname() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.metrics.Enable_Request.instrumentName)
+  return _internal_instrumentname();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void Enable_Request::set_instrumentname(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.instrumentname_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.metrics.Enable_Request.instrumentName)
+}
+inline std::string* Enable_Request::mutable_instrumentname() {
+  std::string* _s = _internal_mutable_instrumentname();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.metrics.Enable_Request.instrumentName)
+  return _s;
+}
+inline const std::string& Enable_Request::_internal_instrumentname() const {
+  return _impl_.instrumentname_.Get();
+}
+inline void Enable_Request::_internal_set_instrumentname(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.instrumentname_.Set(value, GetArenaForAllocation());
+}
+inline std::string* Enable_Request::_internal_mutable_instrumentname() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.instrumentname_.Mutable(GetArenaForAllocation());
+}
+inline std::string* Enable_Request::release_instrumentname() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.metrics.Enable_Request.instrumentName)
+  if (!_internal_has_instrumentname()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.instrumentname_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.instrumentname_.IsDefault()) {
+    _impl_.instrumentname_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void Enable_Request::set_allocated_instrumentname(std::string* instrumentname) {
+  if (instrumentname != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.instrumentname_.SetAllocated(instrumentname, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.instrumentname_.IsDefault()) {
+    _impl_.instrumentname_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.metrics.Enable_Request.instrumentName)
+}
+
+// optional bool status = 3;
+inline bool Enable_Request::_internal_has_status() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   return value;
 }
 inline bool Enable_Request::has_status() const {
@@ -2264,7 +2440,7 @@ inline bool Enable_Request::has_status() const {
 }
 inline void Enable_Request::clear_status() {
   _impl_.status_ = false;
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_._has_bits_[0] &= ~0x00000004u;
 }
 inline bool Enable_Request::_internal_status() const {
   return _impl_.status_;
@@ -2274,7 +2450,7 @@ inline bool Enable_Request::status() const {
   return _internal_status();
 }
 inline void Enable_Request::_internal_set_status(bool value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_._has_bits_[0] |= 0x00000004u;
   _impl_.status_ = value;
 }
 inline void Enable_Request::set_status(bool value) {
