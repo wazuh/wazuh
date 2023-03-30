@@ -11,10 +11,7 @@
 #ifndef EXPRESSION_H_
 #define EXPRESSION_H_
 #define PCRE2_CODE_UNIT_WIDTH 8
-// The delay load of libpcre2 for windows needs this declaration
-#ifdef WIN32
-#define PCRE2_EXP_DECL extern __declspec(dllexport)
-#endif
+
 #include "external/libpcre2/include/pcre2.h"
 #include "os_regex/os_regex.h"
 

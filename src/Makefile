@@ -298,11 +298,13 @@ endif # SunOS
 endif # AIX
 endif # Linux
 else
+	    # There is a bug in the delay load mechanism for MinGW 32-bits executables (https://www.sourceware.org/bugzilla/show_bug.cgi?id=22676)
+		# The workaround is to remove the __declspec(dllimport) from the function declaration in the executables (https://www.sourceware.org/bugzilla/show_bug.cgi?id=14339)
 		SHARED=dll
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
-		OSSEC_CFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread
-		OSSEC_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread
-		AR_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread
+		OSSEC_CFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
+		OSSEC_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
+		AR_LDFLAGS+=-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
 		PRECOMPILED_OS:=windows
 endif # winagent
 
@@ -2449,10 +2451,8 @@ win32/setup-syscheck.exe: win32/setup_syscheck_resource.o win32/setup-syscheck.o
 win32/setup-iis.exe: win32/setup_iis_resource.o win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-# This executable has the "mwindows" flag so libwazuhext.dll will be used instead of libwazuh.lib
-
 win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o} libwazuh.a libwazuhext.dll ${OSSEC_LIBS} -mwindows -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
 
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
