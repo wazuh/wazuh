@@ -28,6 +28,8 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definiti
     auto parameters {helper::base::processParameters(name, raw_parameters)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(name, parameters, 1);
+    // Assert expected parameter type reference
+    helper::base::checkParameterType(name, parameters[0], Parameter::Type::REFERENCE);
     // Format name for the tracer
     name = helper::base::formatHelperName(name, targetField, parameters);
 
@@ -36,14 +38,13 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definiti
 
     std::string rValue {};
     const helper::base::Parameter rightParameter {parameters[0]};
-    const auto rValueType {rightParameter.m_type};
     rValue = rightParameter.m_value;
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const std::string failureTrace1 {
-        fmt::format("[{}] -> Failure: Message reference \"{}\" not found", name, parameters[0].m_value)};
+        fmt::format("[{}] -> Failure: Message reference '{}' not found", name, parameters[0].m_value)};
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: The message is empty", name)};
     const std::string failureTrace3 {
         fmt::format("[{}] -> Failure: Upgrade confirmation message could not be sent", name)};
@@ -60,26 +61,16 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definiti
             std::string query {};
             bool messageSent {false};
 
-            // Check if the value comes from a reference
-            if (Parameter::Type::REFERENCE == rValueType)
-            {
-                std::string resolvedRValue;
-                //Verify that its a non-empty object
-                if(event->isObject(rValue) && event->getObject(rValue).value().size())
-                {
-                    query = event->str(rValue).value();
-                }
-                else
-                {
-                    return base::result::makeFailure(event, failureTrace5);
-                }
-            }
-            else // Direct value not allowed
-            {
-                return base::result::makeFailure(event, failureTrace1);
-            }
+            std::string resolvedRValue;
 
-            if (query.empty())
+            if(!event->isObject(rValue))
+            {
+                return base::result::makeFailure(event, failureTrace5);
+            }
+            query = event->str(rValue).value();
+
+            //Verify that its a non-empty object
+            if (query.empty() || query == "{}")
             {
                 return base::result::makeFailure(event, failureTrace2);
             }

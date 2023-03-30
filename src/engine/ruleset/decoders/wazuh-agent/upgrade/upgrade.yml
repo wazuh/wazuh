@@ -38,13 +38,14 @@ normalize:
   - check:
       - ~json.parameters: +is_object
     map:
-      - ~json.parameters.agents: +array_append/$agent.id
+      - ~tmp.agent_id_int: +parse_long/$agent.id
+      - ~json.parameters.agents: +array_append/$~tmp.agent_id_int
       - ~tmp.send_result: +upgrade_confirmation_send/$~json
 
   - check:
       - ~tmp.send_result: +is_true
     map:
-      - ~tmp.result: success
+      - event.outcome: success
 
   # Cleanup
   - map:
