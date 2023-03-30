@@ -1,5 +1,5 @@
-#ifndef _SERVER_UNIX_STREAM_HPP
-#define _SERVER_UNIX_STREAM_HPP
+#ifndef _SERVER_ENDPOINT_UNIX_STREAM_HPP
+#define _SERVER_ENDPOINT_UNIX_STREAM_HPP
 
 #include <atomic>
 #include <functional>
@@ -103,4 +103,4 @@ public:
     bool resume(void) override;
 };
 } // namespace engineserver::endpoint
-#endif // _SERVER_UNIX_STREAM_HPP
+#endif // _SERVER_ENDPOINT_UNIX_STREAM_HPP
