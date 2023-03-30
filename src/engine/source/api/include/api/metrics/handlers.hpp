@@ -25,7 +25,7 @@ api::Handler metricsGetCmd();
 *
 * @return [api::CommandFn] Returns "OK" if success, otherwise error message.
 */
-api::Handler metricsEnableCmd();
+api::Handler metricsEnableCmd(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI);
 
 /**
  * @brief List instruments.
@@ -39,7 +39,7 @@ api::Handler metricsList();
 *
 * @return [api::CommandFn] Returns "OK".
 */
-api::Handler metricsTestCmd();
+api::Handler metricsTestCmd(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI);
 
 /**
  * @brief Register all available Metrics commands in the API registry.

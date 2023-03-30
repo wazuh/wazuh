@@ -48,6 +48,25 @@ public:
     // API Commands
     std::variant<std::string, base::Error> dumpCmd() override;
 
+    /**
+     * @copydoc iMetricsManagerAPI::enableCmd
+    */
+    void enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) override;
+
+    /**
+     * @copydoc iMetricsManagerAPI::testCmd
+    */
+    void testCmd() override;
+
+private:
+
+    /**
+     * @brief Get the Metrics Scope object
+     * 
+     * @param metricsScopeName 
+     * @return std::shared_ptr<MetricsScope> 
+     */
+    std::shared_ptr<MetricsScope> getScope(const std::string& metricsScopeName);
 private:
 
     /// @brief Instrumentation scopes across the application.
@@ -56,6 +75,8 @@ private:
     bool m_statusRunning;
 
     std::mutex m_mutexScopes;
+
+    std::shared_ptr<metrics_manager::IMetricsScope>  m_scopeMetrics;
 };
 
 } // namespace metrics_manager

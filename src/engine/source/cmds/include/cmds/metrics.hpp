@@ -48,7 +48,7 @@ void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string
  * @param name The instrument name.
  * @param status The desired status.
  */
-void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& name, bool status);
+void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& scopeName, const std::string& instrumentName, bool status);
 
 /**
  * @brief List the instruments.

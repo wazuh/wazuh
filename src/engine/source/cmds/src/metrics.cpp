@@ -18,6 +18,7 @@ struct Options
 {
     std::string apiEndpoint;
     std::string instrumentName;
+    std::string scopeName;
     bool enableState;
 };
 
@@ -48,6 +49,7 @@ void runDump(std::shared_ptr<apiclnt::Client> client)
     std::cout << std::get<std::string>(json) << std::endl;
 }
 
+
 void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& name)
 {
     using RequestType = eMetrics::Get_Request;
@@ -56,7 +58,7 @@ void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string
 
     // Prepare the request
     RequestType eRequest;
-    eRequest.set_name(name);
+    //eRequest.set_name(name);
 
     // Call the API
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -69,14 +71,15 @@ void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string
     std::cout << std::get<std::string>(json) << std::endl;
 }
 
-void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& name, bool status)
+void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& scopeName, const std::string& instrumentName, bool status)
 {
     using RequestType = eMetrics::Enable_Request;
     using ResponseType = eMetrics::Enable_Response;
     const std::string command = "metrics/enable";
 
     RequestType eRequest;
-    eRequest.set_name(name);
+    eRequest.set_instrumentname(instrumentName);
+    eRequest.set_scopename(scopeName);
     eRequest.set_status(status);
 
     // Call the API
@@ -141,12 +144,14 @@ void configure(CLI::App_p app)
 
     // enable
     auto enable_subcommand = metricApp->add_subcommand(details::API_METRICS_ENABLE_SUBCOMMAND, "Enable or disable a specific instrument.");
+    enable_subcommand->add_option("Scope name", options->scopeName, "Name of the scope whose status will be modified.")
+    ->required();
     enable_subcommand
     ->add_option("Instrument name", options->instrumentName, "Name of the instrument whose status will be modified.")
     ->required();
     enable_subcommand->add_option("Enable state", options->enableState, "New instrument status.")->required();
     enable_subcommand->callback(
-    [options, client]() { runEnableInstrument(client, options->instrumentName, options->enableState); });
+    [options, client]() { runEnableInstrument(client, options->scopeName, options->instrumentName, options->enableState); });
 
     // list
     auto list_subcommand = metricApp->add_subcommand(details::API_METRICS_LIST_SUBCOMMAND, "Prints name, status and instruments types.");
