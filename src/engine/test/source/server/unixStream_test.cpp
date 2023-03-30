@@ -156,7 +156,7 @@ protected:
         SharedCounter m_proccessdMessages = std::make_shared<std::atomic<std::size_t>>(0);
         SharedCounter m_conexions = std::make_shared<std::atomic<std::size_t>>(0);
         m_factory = std::make_shared<TestProtocolHandlerFactory>(m_proccessdMessages, m_conexions);
-        std::string m_socketPath = "/tmp/unix_stream_test.sock";
+        m_socketPath = "/tmp/unix_stream_test.sock";
     }
 
     void TearDown() override { unlink(m_socketPath.c_str()); }
@@ -405,20 +405,20 @@ TEST_F(UnixStreamTest, QueueWorker_SameClient)
 {
 
     // Queue of workers
-    const std::size_t queueWorkerSize = 16;
+    const std::size_t taskQueueSize = 16;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath, m_factory);
-    server.bind(m_loop, queueWorkerSize);
+    UnixStream server(m_socketPath, m_factory, taskQueueSize);
+    server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
 
     // Create and connect Unix domain socket client
     int clientSockfd = createUnixSocketClient(m_socketPath);
 
-    // Send messages queueWorkerSize messages to the server
+    // Send messages taskQueueSize messages to the server
     std::string expectedResponse {};
-    for (std::size_t i = 0; i < queueWorkerSize; ++i)
+    for (std::size_t i = 0; i < taskQueueSize; ++i)
     {
         std::string message = "Hello, World! ";
         message += std::to_string(i);
@@ -430,7 +430,7 @@ TEST_F(UnixStreamTest, QueueWorker_SameClient)
 
     // Wait for the messages to be processed
     auto attempts = 0;
-    while (*(m_factory->m_processedMessages) < queueWorkerSize)
+    while (*(m_factory->m_processedMessages) < taskQueueSize)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         ASSERT_LT(attempts++, maxAttempts) << "Messages not processed";
@@ -473,14 +473,14 @@ TEST_F(UnixStreamTest, QueueWorker_multiplesClient)
 {
 
     // Queue of workers
-    const std::size_t queueWorkerSize = 16;
+    const std::size_t taskQueueSize = 16;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath, m_factory);
-    server.bind(m_loop, queueWorkerSize);
+    UnixStream server(m_socketPath, m_factory, taskQueueSize);
+    server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
-    const auto clients = queueWorkerSize;
+    const auto clients = taskQueueSize;
 
     // Create and connect Unix domain socket client
     std::vector<int> clientSockets;
@@ -494,7 +494,7 @@ TEST_F(UnixStreamTest, QueueWorker_multiplesClient)
         messages.push_back(std::move(message));
     }
 
-    // Send messages queueWorkerSize messages to the server
+    // Send messages taskQueueSize messages to the server
     for (int i = 0; i < clients; ++i)
     {
         auto res = send(clientSockets[i], messages[i].c_str(), messages[i].size(), 0);
@@ -554,11 +554,11 @@ TEST_F(UnixStreamTest, QueueWorker_multiplesClient)
 
 
 
-TEST_F(UnixStreamTest, QueueWorkerSizeTestAndOverflow)
+TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
 {
 
     // Queue of workers
-    const std::size_t queueWorkerSize = 4;
+    const std::size_t taskQueueSize = 4;
     const std::size_t numOfWorkers = 4;
 
     // Calculate the number of messages to send
@@ -566,8 +566,8 @@ TEST_F(UnixStreamTest, QueueWorkerSizeTestAndOverflow)
     std::size_t busyMessage = 0;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath, m_factory, 3600000);
-    server.bind(m_loop, queueWorkerSize);
+    UnixStream server(m_socketPath, m_factory, taskQueueSize);
+    server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
 
@@ -577,7 +577,7 @@ TEST_F(UnixStreamTest, QueueWorkerSizeTestAndOverflow)
     *m_factory->enableBlockQueueWorkers = true;
     std::string expectedProcessedMessages = "";
     // Fill the queue of workers
-    for (std::size_t i = 0; i < queueWorkerSize; ++i)
+    for (std::size_t i = 0; i < taskQueueSize; ++i)
     {
         std::string message = "Hello, World! message -> ";
         message += std::to_string(i);
