@@ -40,7 +40,6 @@ namespace cmd::test
 {
 void run(const Options& options, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
 {
-    //Metrics::instance().initMetrics("engine-metrics", "/var/ossec/engine/store/metrics/config/0");
     // Init logging
     logging::LoggingConfig logConfig;
     logConfig.header = "";
