@@ -23,4 +23,4 @@ check:
 normalize:
   - map:
       - wazuh.source: wodle
-      - wazuh.decoders: +array_append/internal-syscollector
+      - wazuh.decoders: +array_append/core-syscollector

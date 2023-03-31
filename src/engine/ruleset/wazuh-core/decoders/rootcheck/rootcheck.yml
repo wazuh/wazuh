@@ -1,20 +1,22 @@
 name: decoder/rootcheck/0
 
 metadata:
-    module: wazuh-agent/rootcheck/rootcheck
-    title: Rootcheck Decoder
-    description: >
-        Decodes rootcheck events
-    compatibility: >
-        This decoder has been tested on Wazuh version 4.3.9
-    author:
-        name: Wazuh, Inc.
-        email: info@wazuh.com
-        url: https://wazuh.com
-        date: 2022/11/08
-    references:
-        - https://documentation.wazuh.com/current/user-manual/capabilities/policy-monitoring/rootcheck/index.html
-        - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/rootcheck.html
+  module: wazuh-agent/rootcheck/rootcheck
+  title: Rootcheck Decoder
+  description: >
+    Decodes rootcheck events
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3.9
+  author:
+    name: Wazuh, Inc.
+    email: info@wazuh.com
+    url: https://wazuh.com
+    date: 2022/11/08
+  references:
+    - https://documentation.wazuh.com/current/user-manual/capabilities/policy-monitoring/rootcheck/index.html
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/rootcheck.html
+  versions:
+    -
 
 sources:
   - decoder/core-rootcheck/0

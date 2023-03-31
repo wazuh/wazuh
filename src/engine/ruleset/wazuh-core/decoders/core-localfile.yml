@@ -59,4 +59,4 @@ normalize:
       - event.original: $wazuh.message
 
   - map:
-      - wazuh.decoders: +array_append/internal-localfile
+      - wazuh.decoders: +array_append/core-localfile

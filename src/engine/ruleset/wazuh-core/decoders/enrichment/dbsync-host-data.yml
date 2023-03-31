@@ -12,6 +12,8 @@ metadata:
     date: 2023/01/02
   references:
     - https://github.com/wazuh/wazuh/issues/15500
+  versions:
+    - ""
 
 sources:
   - decoder/dbsync/0
@@ -34,7 +36,7 @@ normalize:
       - host.os.type: +downcase/$~json.data.attributes.sysname
       - host.os.version: $~json.data.attributes.os_version
   - check:
-      - $~json.data.attributes.os_display_version: +exists
+      - ~json.data.attributes.os_display_version: +exists
     map:
       - host.os.type: windows
 

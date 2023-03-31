@@ -5,23 +5,24 @@ sources:
   - decoder/fim/0
 
 metadata:
-    module: wazuh-agent/fim/fim-event
-    title: FIM Decoder event
-    description: >
-        Decodes FIM messages
-    compatibility: >
-        This decoder has been tested on Wazuh version 4.3.
-    author:
-        name: Wazuh, Inc.
-        url: https://wazuh.com
-        date: 2022/11/08
-    references:
-        - https://documentation.wazuh.com/current/proof-of-concept-guide/poc-file-integrity-monitoring.html
-        - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
-        - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html
-        - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#fim-entry
-        - https://github.com/wazuh/wazuh/issues/13521
-
+  module: wazuh-agent/fim/fim-event
+  title: FIM Decoder event
+  description: >
+    Decodes FIM messages
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3.
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2022/11/08
+  references:
+    - https://documentation.wazuh.com/current/proof-of-concept-guide/poc-file-integrity-monitoring.html
+    - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#fim-entry
+    - https://github.com/wazuh/wazuh/issues/13521
+  versions:
+    - ""
 check:
   - ~json.type: +string_equal/event
   - ~json.data.path: +is_string
