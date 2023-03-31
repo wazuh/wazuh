@@ -47,7 +47,7 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
     mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
 
     while(FOREVER()){
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(ms_graph->scan_config), WM_MS_GRAPH_LOGTAG, ms_graph->run_on_start);
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(&ms_graph->scan_config, WM_MS_GRAPH_LOGTAG, ms_graph->run_on_start);
 
         if(ms_graph->state.next_time == 0){
             ms_graph->state.next_time = ms_graph->scan_config.time_start + time_sleep;
@@ -85,7 +85,7 @@ void wm_ms_graph_setup(wm_ms_graph* _ms_graph) {
     queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
-        mterror(WM_AZURE_LOGTAG, "Unable to connect to Message Queue. Exiting...");
+        mterror(WM_MS_GRAPH_LOGTAG, "Unable to connect to Message Queue. Exiting...");
         pthread_exit(NULL);
     }
 
@@ -196,9 +196,9 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                         cJSON *logs = NULL;
                         logs = cJSON_Duplicate(response_body, true);
                         logs = cJSON_CreateArray();
-                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test: '%s'", response_body);
-                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test 2: '%s'", logs);
-                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test 3: '%s'", logs[1]);
+                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test: '%s'", response_body->valuestring);
+                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test 2: '%s'", logs->valuestring);
+                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test 3: '%s'", logs[1].valuestring);
                         cJSON_Delete(response_body);
                         wurl_free_response(response);
                     }
@@ -230,6 +230,23 @@ void wm_ms_graph_check() {
 
 void wm_ms_graph_destroy(wm_ms_graph* ms_graph) {
 
+    for(int resource = 0; resource < ms_graph->num_resources; resource++){
+        for(int relationship = 0; relationship < ms_graph->resources[resource].num_relationships; relationship++){
+            os_free(ms_graph->resources[resource].relationships[relationship]);
+        }
+        os_free(ms_graph->resources[resource].name);
+        os_free(ms_graph->resources[resource].relationships);
+    }
+    os_free(ms_graph->resources);
+
+    os_free(ms_graph->auth_config.tenant_id);
+    os_free(ms_graph->auth_config.client_id);
+    os_free(ms_graph->auth_config.secret_value);
+    os_free(ms_graph->auth_config.access_token);
+
+    os_free(ms_graph->version);
+
+    os_free(ms_graph);
 }
 
 void wm_ms_graph_cleanup() {
