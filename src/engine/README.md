@@ -195,5 +195,4 @@ make test
 ```
 <a name="license"></a>
 ## License
-Wazuh Engine is distributed under the AGPLv3 license. See [LICENSE](https://github.com/wazuh/wazuh/blob/11334-dev-new-wazuh-engine/src/engine/LICENSE) and [COPYING](https://github.com/wazuh/wazuh/blob/11334-dev-new-wazuh-engine/src/engine/COPYING) for more details.
-
+Wazuh Engine is distributed under the AGPLv3 license. See [LICENSE-engine](LICENSE-engine) and [COPYING-engine](COPYING-engine) for more details.
