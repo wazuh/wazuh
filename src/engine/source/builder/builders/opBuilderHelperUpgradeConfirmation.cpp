@@ -19,7 +19,7 @@ using helper::base::Parameter;
 namespace builder::internals::builders
 {
 
-// field: +upgrade_confirmation_send/ar_message
+// field: +send_upgrade_confirmation/ar_message
 base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definition)
 {
     // Extract parameters from any
@@ -70,7 +70,7 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definiti
             query = event->str(rValue).value();
 
             //Verify that its a non-empty object
-            if (query.empty() || query == "{}")
+            if (query.empty() || "{}" == query)
             {
                 return base::result::makeFailure(event, failureTrace2);
             }
