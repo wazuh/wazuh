@@ -250,7 +250,8 @@ void wm_ms_graph_destroy(wm_ms_graph* ms_graph) {
 }
 
 void wm_ms_graph_cleanup() {
-
+    close(queue_fd);
+    mtinfo(WM_MS_GRAPH_LOGTAG, "Module shutdown.");
 }
 
 cJSON* wm_ms_graph_dump(wm_ms_graph* ms_graph) {
