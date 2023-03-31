@@ -5,7 +5,7 @@ add_executable(catalog_test
 )
 
 target_include_directories(catalog_test
-  PRIVATE ${TEST_SOURCE_DIR}/base/utils/tests
+  PRIVATE ${TEST_SOURCE_DIR}/common
 )
 
 target_link_libraries(catalog_test gtest_main api)

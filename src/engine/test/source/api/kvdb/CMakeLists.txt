@@ -3,7 +3,7 @@ add_executable(kvdb_handler_test
 )
 
 target_include_directories(kvdb_handler_test
-  PRIVATE ${TEST_SOURCE_DIR}/base/utils/tests
+  PRIVATE ${TEST_SOURCE_DIR}/common
 )
 
 target_link_libraries(kvdb_handler_test gtest_main api kvdb)

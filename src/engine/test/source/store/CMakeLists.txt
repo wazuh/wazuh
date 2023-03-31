@@ -4,7 +4,7 @@ add_executable(store_test
 
 target_include_directories(store_test
   PRIVATE
-  ${TEST_SOURCE_DIR}/base/utils/tests
+  ${TEST_SOURCE_DIR}/common
 )
 
 target_link_libraries(store_test gtest_main store::fileDriver)
