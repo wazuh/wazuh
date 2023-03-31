@@ -25,7 +25,7 @@
 #   17 - Invalid key format
 #   18 - Invalid prefix
 #   19 - The server datetime and datetime of the AWS environment differ
-#   20 - Matching regions error
+#   20 - Profile not found
 
 import argparse
 import configparser
@@ -117,15 +117,17 @@ def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dic
         The user config dict containing the profile configuration.
     """
     # Set s3 config
-    if f'{profile}.s2' in str(profile_config):
+    if f'{profile}.s3' in str(profile_config):
         s3_config = {
-            "max_concurrent_requests": int(profile_config.get(f'{profile}.s2.max_concurrent_requests', 10)),
-            "max_queue_size": int(profile_config.get(f'{profile}.s2.max_queue_size', 10)),
-            "multipart_threshold": profile_config.get(f'{profile}.s2.multipart_threshold', '8MB'),
-            "multipart_chunksize": profile_config.get(f'{profile}.s2.multipart_chunksize', '8MB'),
-            "max_bandwidth": profile_config.get(f'{profile}.s2.max_bandwidth'),
-            "use_accelerate_endpoint": bool(profile_config.get(f'{profile}.s2.use_accelerate_endpoint', False)),
-            "addressing_style": profile_config.get(f'{profile}.s2.addressing_style', 'auto'),
+            "max_concurrent_requests": int(profile_config.get(f'{profile}.s3.max_concurrent_requests', 10)),
+            "max_queue_size": int(profile_config.get(f'{profile}.s3.max_queue_size', 10)),
+            "multipart_threshold": profile_config.get(f'{profile}.s3.multipart_threshold', '8MB'),
+            "multipart_chunksize": profile_config.get(f'{profile}.s3.multipart_chunksize', '8MB'),
+            "max_bandwidth": profile_config.get(f'{profile}.s3.max_bandwidth'),
+            "use_accelerate_endpoint": (
+                True if profile_config.get(f'{profile}.s3.use_accelerate_endpoint') == 'true' else False
+            ),
+            "addressing_style": profile_config.get(f'{profile}.s3.addressing_style', 'auto'),
         }
         boto_config['config'].s3 = s3_config
 
@@ -142,7 +144,9 @@ def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dic
         proxies_config = {
             "ca_bundle": profile_config.get(f'{profile}.proxy.ca_bundle'),
             "client_cert": profile_config.get(f'{profile}.proxy.client_cert'),
-            "use_forwarding_for_https": bool(profile_config.get(f'{profile}.proxy.use_forwarding_for_https', False))
+            "use_forwarding_for_https": (
+                True if profile_config.get(f'{profile}.proxy.use_forwarding_for_https') == 'true' else False
+            )
         }
         boto_config['config'].proxies_config = proxies_config
 
@@ -291,7 +295,7 @@ class WazuhIntegration:
                 self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
     @staticmethod
-    def default_config(profile: str):
+    def default_config(profile: str) -> dict:
         """Sets the parameters found in user config file as a default configuration for client.
 
         This method is called when Wazuh Integration is instantiated and sets a default config using .aws/config file
@@ -319,6 +323,9 @@ class WazuhIntegration:
 
         ValueError
             ValueError when there is an error parsing config file
+
+        NoSectionError
+            configparser error when given profile does not exist in user config file
         """
         args = {}
 
@@ -332,8 +339,13 @@ class WazuhIntegration:
             # Set profile
             profile = profile if profile is not None else 'default'
 
-            # Get profile config dictionary
-            profile_config = {option: aws_config.get(profile, option) for option in aws_config.options(profile)}
+            try:
+                # Get profile config dictionary
+                profile_config = {option: aws_config.get(profile, option) for option in aws_config.options(profile)}
+
+            except configparser.NoSectionError:
+                print(f"No profile named: '{profile}' was found in the user config file")
+                sys.exit(20)
 
             # Map Primary Botocore Config parameters with profile config file
             try:
@@ -344,6 +356,10 @@ class WazuhIntegration:
                         RETRY_ATTEMPTS_KEY: int(profile_config.get(RETRY_ATTEMPTS_KEY, 10)),
                         RETRY_MODE_BOTO_KEY: profile_config.get(RETRY_MODE_CONFIG_KEY, 'standard')
                     }
+                    debug(
+                        f"Retries parameters found in user profile. Using profile '{profile}' retries configuration",
+                        2)
+
                 else:
                     # Set retry config
                     retries = {
@@ -351,7 +367,7 @@ class WazuhIntegration:
                         RETRY_MODE_BOTO_KEY: 'standard'
                     }
                     debug(
-                        "No retries configuration found in profile config generating default configuration for "
+                        "No retries configuration found in profile config. Generating default configuration for "
                         f"retries: mode: {retries['mode']} - max_attempts: {retries['max_attempts']}",
                         2)
 
@@ -371,11 +387,11 @@ class WazuhIntegration:
                 sys.exit(17)
 
             debug(
-                f'Created Config object using profile: {profile} parameters',
+                f"Created Config object using profile: '{profile}' configuration",
                 2)
 
         else:
-            # Set default config
+            # Set retries parameters to avoid a throttling exception
             args['config'] = botocore.config.Config(
                 retries={
                     RETRY_ATTEMPTS_KEY: 10,
