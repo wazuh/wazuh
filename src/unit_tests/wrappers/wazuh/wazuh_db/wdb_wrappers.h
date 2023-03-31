@@ -31,6 +31,8 @@ int  __wrap_wdb_step(sqlite3_stmt *stmt);
 
 int  __wrap_wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQueryModifyDB);
 
+int  __wrap_doRollback(__attribute__((unused)) rollback_data_t *rollback_data);
+
 int __wrap_wdb_scan_info_fim_checks_control(wdb_t* socket, const char *last_check);
 
 int __wrap_wdb_scan_info_get(wdb_t *socket, const char *module, char *field, long *output);

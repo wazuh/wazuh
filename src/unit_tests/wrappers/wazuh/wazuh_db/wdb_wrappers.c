@@ -55,6 +55,10 @@ int  __wrap_wdb_step1(__attribute__((unused)) sqlite3_stmt *stmt,
     return mock();
 }
 
+int  __wrap_doRollback(__attribute__((unused)) rollback_data_t *rollback_data) {
+    return mock();
+}
+
 int __wrap_wdb_scan_info_fim_checks_control(__attribute__((unused)) wdb_t* socket,
                                             __attribute__((unused)) const char *last_check) {
     return mock();

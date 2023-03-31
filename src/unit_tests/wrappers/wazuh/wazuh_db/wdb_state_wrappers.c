@@ -293,3 +293,11 @@ void __wrap_w_inc_global_labels_get_labels() {
 void __wrap_w_inc_global_labels_get_labels_time(__attribute__((unused))struct timeval diff) {
     function_called();
 }
+
+void __wrap_w_inc_global_rollback() {
+    function_called();
+}
+
+void __wrap_w_inc_global_rollback_time(__attribute__((unused)) struct timeval diff) {
+    function_called();
+}
