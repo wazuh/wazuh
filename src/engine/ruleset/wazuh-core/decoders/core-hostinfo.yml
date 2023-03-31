@@ -12,7 +12,7 @@ metadata:
     name: Wazuh, Inc.
     date: 07/03/2023
   references:
-    - https://documentation.wazuh.com/current/user-manual/reference/internal-options.html
+    - https://documentation.wazuh.com/current/user-manual/reference/core-options.html
 
 sources:
   - decoder/core-ossec-message/0
@@ -22,4 +22,4 @@ check:
 
 normalize:
   - map:
-      - wazuh.decoders: +array_append/internal-hostinfo
+      - wazuh.decoders: +array_append/core-hostinfo

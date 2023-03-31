@@ -23,4 +23,4 @@ check:
 normalize:
   - map:
       - wazuh.source: remote
-      - wazuh.decoders: +array_append/internal-secure
+      - wazuh.decoders: +array_append/core-secure

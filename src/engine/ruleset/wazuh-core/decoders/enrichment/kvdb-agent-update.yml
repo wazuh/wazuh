@@ -12,6 +12,8 @@ metadata:
     date: 2023/01/02
   references:
     - https://github.com/wazuh/wazuh/issues/15500
+  versions:
+    - ""
 
 sources:
   - decoder/dbsync-host-data/0
