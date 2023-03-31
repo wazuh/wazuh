@@ -58,7 +58,7 @@ void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string
 
     // Prepare the request
     RequestType eRequest;
-    //eRequest.set_name(name);
+    eRequest.set_instrumentname(name);
 
     // Call the API
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);

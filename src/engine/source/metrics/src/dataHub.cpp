@@ -31,13 +31,13 @@ void DataHub::setResource(const std::string& scope, json::Json object)
 json::Json DataHub::getAllResources()
 {
     const std::lock_guard<std::mutex> lock(m_mutex);
-    
+
     json::Json retValue;
 
     for (auto &r : m_resources) {
         retValue.set("/" + r.first, r.second);
     }
-    
+
     return retValue;
 }
 } // namespace metrics_manager
