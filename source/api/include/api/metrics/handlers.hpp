@@ -32,7 +32,7 @@ api::Handler metricsEnableCmd(const std::shared_ptr<metrics_manager::IMetricsMan
  *
  * @return [api::CommandFn] Return the list of instruments.
  */
-api::Handler metricsList();
+api::Handler metricsList(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI);
 
 /**
 * @brief Generate a test instrument.

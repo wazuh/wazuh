@@ -240,4 +240,16 @@ void MetricsScope::setEnabledStatus(const std::string& instrumentName, bool newS
     }
 }
 
+bool MetricsScope::getEnabledStatus(const std::string& instrumentName)
+{
+    auto it = m_namesMap.find(instrumentName);
+    if (it != m_namesMap.end())
+    {
+        return m_namesMap[instrumentName]->getEnabledStatus();
+    }
+    else
+    {
+        throw std::runtime_error {"The instrument " + instrumentName + " has not been created."};
+    }
+}
 } // namespace metrics_manager

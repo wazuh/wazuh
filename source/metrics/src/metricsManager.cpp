@@ -6,10 +6,10 @@
 namespace metrics_manager
 {
 
-MetricsManager::MetricsManager() : 
+MetricsManager::MetricsManager() :
     m_statusRunning{false}
 {
-    
+
 }
 
 void MetricsManager::start()
@@ -62,7 +62,7 @@ std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string
         auto& retScope = m_mapScopes[metricsScopeName];
 
         retScope->initialize(delta, exporterIntervalMS, exporterTimeoutMS);
-        
+
         return retScope;
     }
 }
@@ -90,7 +90,7 @@ std::variant<std::string, base::Error> MetricsManager::dumpCmd()
             return base::Error {fmt::format("Metrics Module doesn't have any Instrumentation Scope implemented.")};
         }
     }
-    
+
     auto retValue = getAllMetrics();
     if (retValue.isNull())
     {
@@ -132,6 +132,65 @@ void MetricsManager::testCmd()
 
     auto counterTest = m_scopeMetrics->getCounterUInteger("test");
     counterTest->addValue(1UL);
+}
+
+std::variant<std::string, base::Error> MetricsManager::listCmd()
+{
+/*
+[
+    {"scope": "kvdb", "name":"databeseCounter", "type":"counter", "status":"enable"},
+    {"scope": "kvdb", "name":"databeseCounter", "type":"counter", "status":"enable"},
+]
+*/
+    {
+        const std::lock_guard<std::mutex> lock(m_mutexScopes);
+
+        if (m_mapScopes.empty())
+        {
+            return base::Error {fmt::format("Metrics Module doesn't have any Instrumentation Scope implemented.")};
+        }
+    }
+
+    auto scopes = getAllMetrics().getObject().value();
+    json::Json result;
+
+    result.setArray();
+    // TODO: This section improve with improve the json::Json
+    for (auto& [key, value] : scopes)
+    {
+        std::string json = "";
+        auto metrics = value.getObject().value();
+
+        for (auto& [keyMetric, valueMetric] : metrics)
+        {
+            auto metricObj = valueMetric.getObject().value();
+            auto recordsPos = std::find_if(metricObj.begin(),
+                                           metricObj.end(),
+                                           [](auto tuple) { return std::get<0>(tuple) == "records"; });
+            if (metricObj.end() != recordsPos)
+            {
+                auto recordsObj = std::get<1>(*recordsPos).getArray().value();
+                for (auto& record : recordsObj)
+                {
+                    auto valuesObj = record.getObject().value();
+                    auto typePos = std::find_if(valuesObj.begin(),
+                                    metricObj.end(),
+                                    [](auto tuple) { return std::get<0>(tuple) == "type"; });
+                    if (valuesObj.end() != typePos)
+                    {
+                        auto type = std::get<1>(*typePos).getString().value();
+                        auto scope = getScope(key);
+                        auto status = scope->getEnabledStatus(keyMetric) ? "enabled" : "disabled";
+                        json = "{\"scope\":\"" + key + "\",\"name\":\"" + keyMetric + "\",\"type\":\"" + type + "\",\"status\":\"" + status + "\"}";
+                        json::Json element(json.c_str());
+                        result.appendJson(element);
+                    }
+                }
+            }
+        }
+    }
+
+    return result.str();
 }
 
 } // namespace metrics_manager

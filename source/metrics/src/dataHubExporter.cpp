@@ -44,6 +44,27 @@ std::string timeToString(opentelemetry::common::SystemTimestamp time_stamp)
 
   return std::string{date_str};
 }
+std::string getInstrumentTypeName(opentelemetry::sdk::metrics::InstrumentType type) noexcept
+{
+  switch(type)
+  {
+    case opentelemetry::sdk::metrics::InstrumentType::kCounter:
+      return "Counter";
+    case opentelemetry::sdk::metrics::InstrumentType::kHistogram:
+      return "Histogram";
+    case opentelemetry::sdk::metrics::InstrumentType::kUpDownCounter:
+      return "UpDownCounter";
+    case opentelemetry::sdk::metrics::InstrumentType::kObservableCounter:
+      return "ObservableCounter";
+    case opentelemetry::sdk::metrics::InstrumentType::kObservableGauge:
+      return "ObservableGauge";
+    case opentelemetry::sdk::metrics::InstrumentType::kObservableUpDownCounter:
+      return "ObservableUpDownCounter";
+    default:
+      return "Unknown";
+  }
+}
+
 }  // namespace
 
 OPENTELEMETRY_BEGIN_NAMESPACE
@@ -114,12 +135,14 @@ void DataHubExporter::printInstrumentationInfoMetricData(
     auto instrumentName = record.instrument_descriptor.name_;
     auto description    = record.instrument_descriptor.description_;
     auto unit           = record.instrument_descriptor.unit_;
+    auto type           = getInstrumentTypeName(record.instrument_descriptor.type_);
 
     jRecord.setString(startTime, "/start_time" );
     jRecord.setString(endTime, "/start_time" );
     jRecord.setString(instrumentName, "/instrument_name" );
     jRecord.setString(description, "/instrument_description" );
     jRecord.setString(unit, "/unit" );
+    jRecord.setString(type, "/type" );
 
     json::Json jAttributes;
 
