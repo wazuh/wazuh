@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "wazuh-environments.json",
-    "title": "Schema for Wazuh environments",
+    "$id": "wazuh-policy.json",
+    "title": "Schema for Wazuh policies",
     "type": "object",
     "minProperties": 2,
     "required": [
@@ -11,7 +11,7 @@
     "properties": {
         "name": {
             "type": "string",
-            "description": "Name of the environment, short and concise name to identify this asset",
+            "description": "Name of the policy, short and concise name to identify this asset",
             "pattern": "^[^/]+/[^/]+/[^/]+$"
         },
         "decoders":{

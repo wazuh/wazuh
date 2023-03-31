@@ -115,8 +115,8 @@ Vagrant.configure("2") do |config|
         cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-logpar-types.json $ENGINE_DIR/store/schema/wazuh-logpar-types/0
         mkdir $ENGINE_DIR/store/schema/wazuh-asset
         cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-asset.json $ENGINE_DIR/store/schema/wazuh-asset/0
-        mkdir $ENGINE_DIR/store/schema/wazuh-environment
-        cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-environment.json $ENGINE_DIR/store/schema/wazuh-environment/0
+        mkdir $ENGINE_DIR/store/schema/wazuh-policy
+        cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-policy.json $ENGINE_DIR/store/schema/wazuh-policy/0
 
         echo "--- Enabling the engine ---"
         cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
