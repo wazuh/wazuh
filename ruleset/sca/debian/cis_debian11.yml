@@ -830,7 +830,6 @@ checks:
       - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
       - iso_27001-2013: ["A.9.4.3"]
-      - nist_sp_800-53: ["IA-5 (1)"]
       - mitre_techniques: ["T1548"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
@@ -3837,7 +3836,7 @@ checks:
     rules:
       - "f:/etc/cron.allow"
       - "not f:/etc/cron.deny"
-      - 'c:stat -Lc "%n %#a %u %U %g %G" /etc/cron.allow -> r:/etc/cron.allow 640 0 root 0 root'
+      - 'c:stat -Lc "%n %#a %u %U %g %G" /etc/cron.allow -> r:/etc/cron.allow 0640 0 root 0 root'
 
   # 5.1.9 Ensure at is restricted to authorized users (Automated)
   - id: 29650
