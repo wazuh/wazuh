@@ -55,7 +55,7 @@ struct Options
     std::string fileStorage;
     int logLevel;
     std::string logOutput;
-    std::vector<std::string> environment;
+    std::vector<std::string> policy;
     bool forceRouterArg;
     std::string floodFilePath;
 };
@@ -90,21 +90,21 @@ void runStart(ConfHandler confManager)
     // Store config
     const auto fileStorage = confManager->get<std::string>("server.store_path");
 
-    // Start environment
-    const auto environment = confManager->get<std::vector<std::string>>("server.start.environment");
-    const auto routeName = environment[0];
+    // Start policy
+    const auto policy = confManager->get<std::vector<std::string>>("server.start.policy");
+    const auto routeName = policy[0];
     int routePriority;
     try
     {
-        routePriority = std::stoi(environment[1]);
+        routePriority = std::stoi(policy[1]);
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Invalid route priority '{}'", environment[1]);
+        WAZUH_LOG_ERROR("Invalid route priority '{}'", policy[1]);
         exit(EXIT_FAILURE); // TODO Change whens add the LOG_CRITICAL / LOG_FATAL
     }
-    const auto routeFilter = environment[2];
-    const auto routeEnvironment = environment[3];
+    const auto routeFilter = policy[2];
+    const auto routePolicy = policy[3];
     const auto forceRouterArg = confManager->get<bool>("server.start.force_router_arg");
 
     // Set Crt+C handler
@@ -206,7 +206,7 @@ void runStart(ConfHandler confManager)
             store,
             builder,
             fmt::format("schema{}wazuh-asset{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S),
-            fmt::format("schema{}wazuh-environment{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)};
+            fmt::format("schema{}wazuh-policy{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)};
 
         catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
         WAZUH_LOG_INFO("Catalog initialized.");
@@ -227,12 +227,12 @@ void runStart(ConfHandler confManager)
         // If the router table is empty or the force flag is passed, load from the command line
         if (router->getRouteTable().empty())
         {
-            router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
+            router->addRoute(routeName, routePriority, routeFilter, routePolicy);
         }
         else if (forceRouterArg)
         {
             router->clear();
-            router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
+            router->addRoute(routeName, routePriority, routeFilter, routePolicy);
         }
 
         // Register Metrics commands
@@ -298,7 +298,7 @@ void configure(CLI::App_p app)
         ->envname(ENGINE_API_SOCK_ENV);
     // Threads
     serverApp
-        ->add_option("--threads", options->threads, "Sets the number of threads to be used by the engine environment.")
+        ->add_option("--threads", options->threads, "Sets the number of threads to be used by the engine policy.")
         ->default_val(ENGINE_THREADS)
         ->check(CLI::PositiveNumber)
         ->envname(ENGINE_THREADS_ENV);
@@ -335,9 +335,9 @@ void configure(CLI::App_p app)
     // Start subcommand
     auto startApp = serverApp->add_subcommand("start", "Start a Wazuh engine instance");
     startApp
-        ->add_option("--environment",
-                     options->environment,
-                     "Sets the environment to be used the first time an engine instance is started.")
+        ->add_option("--policy",
+                     options->policy,
+                     "Sets the policy to be used the first time an engine instance is started.")
         ->default_val(ENGINE_ENVIRONMENT)
         ->expected(4)
         ->delimiter(':')
