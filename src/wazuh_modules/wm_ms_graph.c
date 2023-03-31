@@ -255,7 +255,78 @@ void wm_ms_graph_cleanup() {
 }
 
 cJSON* wm_ms_graph_dump(wm_ms_graph* ms_graph) {
+    cJSON* root = cJSON_CreateObject();
+    cJSON* ms_graph_info = cJSON_CreateObject();
+    cJSON* ms_graph_auth = cJSON_CreateObject();
 
+    if(ms_graph->enabled){
+        cJSON_AddStringToObject(ms_graph_info, "enabled", "yes");
+    }
+    else{
+        cJSON_AddStringToObject(ms_graph_info, "enabled", "no");
+    }
+    if(ms_graph->only_future_events){
+        cJSON_AddStringToObject(ms_graph_info, "only_future_events", "yes");
+    }
+    else{
+        cJSON_AddStringToObject(ms_graph_info, "only_future_events", "no");
+    }
+    if(ms_graph->curl_max_size){
+        cJSON_AddNumberToObject(ms_graph_info, "curl_max_size", ms_graph->curl_max_size);
+    }
+    if(ms_graph->run_on_start){
+        cJSON_AddStringToObject(ms_graph_info, "run_on_start", "yes");
+    }
+    else{
+        cJSON_AddStringToObject(ms_graph_info, "run_on_start", "no");
+    }
+    if(ms_graph->version){
+        cJSON_AddStringToObject(ms_graph_info, "version", ms_graph->version);
+    }
+    sched_scan_dump(&ms_graph->scan_config, ms_graph_info);
+
+    if(ms_graph->auth_config.client_id){
+        cJSON_AddStringToObject(ms_graph_auth, "client_id", ms_graph->auth_config.client_id);
+    }
+    if(ms_graph->auth_config.tenant_id){
+        cJSON_AddStringToObject(ms_graph_auth, "tenant_id", ms_graph->auth_config.tenant_id);
+    }
+    if(ms_graph->auth_config.secret_value){
+        cJSON_AddStringToObject(ms_graph_auth, "secret_value", ms_graph->auth_config.secret_value);
+    }
+    cJSON_AddItemToObject(ms_graph_info, "api_auth", ms_graph_auth);
+
+    if(ms_graph->resources){
+        cJSON* resource_array = cJSON_CreateArray();
+        for(int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
+            cJSON* resource = cJSON_CreateObject();
+            if(ms_graph->resources[resource_num].name){
+                cJSON_AddStringToObject(ms_graph_auth, "name", ms_graph->resources[resource_num].name);
+            }
+            else{
+                cJSON_free(resource);
+                continue;
+            }
+            if(ms_graph->resources[resource_num].relationships){
+                for(int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
+                    if(ms_graph->resources[resource_num].relationships[relationship_num]){
+                        cJSON_AddStringToObject(resource, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
+                    }
+                }
+            }
+            cJSON_AddItemToArray(resource_array, resource);
+        }
+        if(cJSON_GetArraySize(resource_array) > 0){
+            cJSON_AddItemToObject(ms_graph_info, "resources", resource_array);
+        }
+        else{
+            cJSON_free(resource_array);
+        }
+    }
+
+    cJSON_AddItemToObject(root, "ms_graph", ms_graph_info);
+
+    return root;
 }
 
 #endif // WIN32 || defined __linux__ || defined __MACH__
