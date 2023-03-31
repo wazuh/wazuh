@@ -1,7 +1,42 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.4.0]
+## [v4.4.1]
+
+### Manager
+
+#### Changed
+
+- Improve WazuhDB performance by avoiding synchronization of existing agent keys and removing deprecated agent databases from var/db/agents. ([#15883](https://github.com/wazuh/wazuh/pull/15883))
+
+#### Fixed
+
+- Reverted the addition of some mapping fields in Wazuh template causing a bug with expanded search. ([#16546](https://github.com/wazuh/wazuh/pull/16546))
+
+### RESTful API
+
+#### Changed
+
+- Changed API limits protection to allow uploading new configuration files if `limit` is not modified. ([#16541](https://github.com/wazuh/wazuh/pull/16541))
+
+### Ruleset 
+
+#### Added
+
+- Added Debian Linux 11 SCA policy. ([#16017](https://github.com/wazuh/wazuh/pull/16017))
+
+#### Changed
+
+- SCA policy for Red Hat Enterprise Linux 9 rework. ([#16016](https://github.com/wazuh/wazuh/pull/16016)) 
+
+### Other
+
+#### Changed
+
+- Update embedded Python interpreter to 3.9.16. ([#16472](https://github.com/wazuh/wazuh/issues/16472))
+- Update setuptools to 65.5.1. ([#16492)](https://github.com/wazuh/wazuh/pull/16492))
+
+## [v4.4.0] - 2023-03-28
 
 ### Manager
 
@@ -156,7 +191,6 @@ All notable changes to this project will be documented in this file.
 - Fixed GCP integration module error messages. ([#15584](https://github.com/wazuh/wazuh/pull/15584))
 - Fixed an error that prevented the agent on Windows from stopping correctly. ([#15575](https://github.com/wazuh/wazuh/pull/15575))
 - Fixed Azure integration credentials link. ([#16140](https://github.com/wazuh/wazuh/pull/16140))
-
 
 #### Removed
 
