@@ -32,9 +32,16 @@ void MetricsScope::initialize(bool delta, int exporterIntervalMS, int exporterTi
     m_meterProvider->AddMetricReader(std::move(metricReader));
 }
 
-json::Json MetricsScope::getAllMetrics()
+json::Json MetricsScope::getAllMetrics(const std::string& metricsInstrumentName)
 {
-    return m_dataHub->getAllResources();
+    if (metricsInstrumentName.empty())
+    {
+        return m_dataHub->getAllResources();
+    }
+    else
+    {
+        return m_dataHub->getResource(metricsInstrumentName);
+    }
 }
 
 std::shared_ptr<iCounter<double>> MetricsScope::getCounterDouble(const std::string& name)

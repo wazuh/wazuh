@@ -48,10 +48,10 @@ api::Handler metricsDumpCmd(const std::shared_ptr<metrics_manager::IMetricsManag
     };
 }
 
-/*
-api::Handler metricsGetCmd()
+
+api::Handler metricsGetCmd(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI)
 {
-    return [](api::wpRequest wRequest) -> api::wpResponse
+    return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eMetrics::Get_Request;
         using ResponseType = eMetrics::Get_Response;
@@ -65,12 +65,16 @@ api::Handler metricsGetCmd()
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        if (!eRequest.has_name())
+        auto errorMsg = !eRequest.has_scopename() ? std::make_optional("Missing /scope name")
+                : !eRequest.has_instrumentname() ? std::make_optional("Missing /instrument name")
+                : std::nullopt;
+
+        if (errorMsg.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>("Missing /name");
+            return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
 
-        auto result = Metrics::instance().getDataHub()->getCmd(eRequest.name());
+        auto result = metricsAPI->getCmd(eRequest.scopename(), eRequest.instrumentname());
         if (std::holds_alternative<base::Error>(result))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(result).message);
@@ -85,7 +89,7 @@ api::Handler metricsGetCmd()
 
         return ::api::adapter::toWazuhResponse(eResponse);
     };
-}*/
+}
 
 api::Handler metricsEnableCmd(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI)
 {
@@ -194,7 +198,7 @@ void registerHandlers(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>
     try
     {
         registry->registerHandler("metrics/dump", metricsDumpCmd(metricsAPI));
-        //registry->registerHandler("metrics/get", metricsGetCmd());
+        registry->registerHandler("metrics/get", metricsGetCmd(metricsAPI));
         registry->registerHandler("metrics/enable", metricsEnableCmd(metricsAPI));
         registry->registerHandler("metrics/test", metricsTestCmd(metricsAPI));
         registry->registerHandler("metrics/list", metricsList(metricsAPI));
