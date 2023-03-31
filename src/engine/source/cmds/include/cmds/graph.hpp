@@ -21,7 +21,7 @@ struct Options
 {
     std::string kvdbPath;
     std::string fileStorage;
-    std::string environment;
+    std::string policy;
     std::string graphOutDir;
 };
 void run(const Options& options);
