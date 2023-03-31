@@ -105,7 +105,21 @@ void runListInstruments(std::shared_ptr<apiclnt::Client> client)
     // Print value as json
     const auto& value = eResponse.value();
     const auto json = eMessage::eMessageToJson<google::protobuf::Value>(value);
-    std::cout << std::get<std::string>(json) << std::endl;
+
+    auto jsonStr = std::get<std::string>(json);
+    json::Json jsonObj(jsonStr.c_str());
+    auto jsonArray = jsonObj.getArray().value();
+    std::string result = "";
+    for (auto& element : jsonArray)
+    {
+        auto scopeValue = element.getString("/scope").value();
+        auto nameValue = element.getString("/name").value();
+        auto typeValue = element.getString("/type").value();
+        auto statusValue = element.getString("/status").value();
+        result += " " + scopeValue + "." + nameValue + "," + typeValue + "," + statusValue + "\n";
+    }
+
+    std::cout << result << std::endl;
 }
 
 void runTest(std::shared_ptr<apiclnt::Client> client)
