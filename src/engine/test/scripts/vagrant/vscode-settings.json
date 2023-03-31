@@ -18,8 +18,8 @@
             "*/filters/*/*/*.yml",
             "*/filters/*/*/*/*.yml"
         ],
-        "./ruleset/schemas/wazuh-environments.json": [
-            "*/environments/*.yml"
+        "./ruleset/schemas/wazuh-policy.json": [
+            "*/policies/*.yml"
         ]
     },
     "files.insertFinalNewline": true
