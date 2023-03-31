@@ -18,6 +18,8 @@
 #include <sys/time.h>
 #include <ctime>
 
+#include <metrics/iMetricsManager.hpp>
+
 static const struct Option
 {
     rocksdb::ReadOptions read;
@@ -669,6 +671,7 @@ KVDB::KVDB()
 
 KVDB::CreationStatus KVDB::init(bool createIfMissing, bool errorIfExists, const std::shared_ptr<metrics_manager::IMetricsScope>& metricsScope)
 {
+    m_spMetricsScope = metricsScope;
     return mImpl->init(createIfMissing, errorIfExists);
 }
 
@@ -701,7 +704,8 @@ bool KVDB::write(const std::string& key,
                  const std::string& columnName)
 {
     // This instrument measures the number of writes in KVDB
-    //Metrics::instance().addCounterValue("Kvdb.WritesCounter", 1UL);
+    auto writesCounter = m_spMetricsScope->getCounterUInteger("WritesCounter");
+    writesCounter->addValue(1UL);
     return mImpl->write(key, value, columnName);
 }
 
@@ -709,7 +713,8 @@ std::variant<std::string, base::Error> KVDB::read(const std::string& key,
                                       const std::string& columnName)
 {
     // This instrument measures the number of reads in KVDB
-    //Metrics::instance().addCounterValue("Kvdb.ReadsCounter", 1UL);
+    auto readsCounter = m_spMetricsScope->getCounterUInteger("ReadsCounter");
+    readsCounter->addValue(1UL);
 
     auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -719,7 +724,8 @@ std::variant<std::string, base::Error> KVDB::read(const std::string& key,
     auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
 
     // This instrument measures the time it takes for the database to process a request and send the response in microseconds
-    //Metrics::instance().addHistogramValue("Kvdb.AccessTimeDBHistogram", static_cast<uint64_t>(microseconds));
+    auto accessTimeDBHistogram = m_spMetricsScope->getHistogramUInteger("AccessTimeDBHistogram");
+    accessTimeDBHistogram->recordValue(static_cast<uint64_t>(microseconds));
 
     return response;
 }
