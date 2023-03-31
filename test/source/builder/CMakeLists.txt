@@ -221,8 +221,8 @@ add_executable(opBuilderHelperNetInfoAddress_test
 )
 gtest_discover_tests(opBuilderHelperNetInfoAddress_test)
 
-add_executable(opBuilderHelperUpdateConfirmation_test
+add_executable(opBuilderHelperUpgradeConfirmation_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperUpgradeConfirmation_test.cpp
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
 )
-gtest_discover_tests(opBuilderHelperUpdateConfirmation_test)
+gtest_discover_tests(opBuilderHelperUpgradeConfirmation_test)

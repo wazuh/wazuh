@@ -19,7 +19,7 @@ using namespace base;
 using namespace builder::internals::builders;
 
 const std::string targetField {"/result"};
-const std::string upgradeConfirmationHelperName {"upgrade_confirmation_send"};
+const std::string upgradeConfirmationHelperName {"send_upgrade_confirmation"};
 const std::string testMessage {"{\"fieldReference\":\"test String Sent\"}"};
 const std::string messageReferenceString {"$fieldReference"};
 const std::string messageReferenceObject {"$fieldReferenceObject"};
