@@ -1992,22 +1992,32 @@ components:
               properties:
                 last_keep_alive:
                   type: string
-                last_sync_agent_groups:
-                  type: object
-                  properties:
-                    date_start_master:
-                      type: string
-                    date_end_master:
-                      type: string
-                    total_agentgroups:
-                      type: integer
-                      format: int32
                 last_sync_agentinfo:
                   type: object
                   properties:
                     date_start_master:
                       type: string
                     date_end_master:
+                      type: string
+                    n_synced_chunks:
+                      type: integer
+                      format: int32
+                last_sync_agentgroup:
+                  type: object
+                  properties:
+                    date_start:
+                      type: string
+                    date_end:
+                      type: string
+                    n_synced_chunks:
+                      type: integer
+                      format: int32
+                last_sync_full_agentgroup:
+                  type: object
+                  properties:
+                    date_start:
+                      type: string
+                    date_end:
                       type: string
                     n_synced_chunks:
                       type: integer
@@ -9608,6 +9618,14 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
+                        last_sync_agentgroup:
+                            date_start: 2021-05-27T10:48:54.086973Z
+                            date_end: 2021-05-27T10:49:52.075794Z
+                            n_synced_chunks: 1
+                        last_sync_full_agentgroup:
+                            date_start: 2021-05-27T10:52:48.038573Z
+                            date_end: 2021-05-27T10:53:23.057795Z
+                            n_synced_chunks: 2
                         last_sync_agentinfo:
                           date_start_master: 2021-05-27T10:50:49.174463Z
                           date_end_master: 2021-05-27T10:50:49.175921Z
@@ -9635,6 +9653,14 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
+                        last_sync_agentgroup:
+                          date_start: 2021-05-27T10:48:54.086973Z
+                          date_end: 2021-05-27T10:49:52.075794Z
+                          n_synced_chunks: 1
+                        last_sync_full_agentgroup:
+                          date_start: 2021-05-27T10:52:48.038573Z
+                          date_end: 2021-05-27T10:53:23.057795Z
+                          n_synced_chunks: 2
                         last_sync_agentinfo:
                           date_start_master: 2021-05-27T10:50:48.832800Z
                           date_end_master: 2021-05-27T10:50:48.833854Z
