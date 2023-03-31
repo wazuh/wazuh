@@ -12,6 +12,8 @@ metadata:
     date: 2023/01/02
   references:
     - https://github.com/wazuh/wazuh/issues/15500
+  versions:
+    - ""
 
 sources:
   - decoder/syscollector-dbsync/0
@@ -52,4 +54,3 @@ normalize:
   - check: +not_exists/host.ip AND +exists/~json.data.address AND +exists/~json.data.iface
     map:
       - host.ip: +array_append/$~json.data.address
-

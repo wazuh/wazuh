@@ -1,24 +1,24 @@
 name: decoder/syscollector-dbsync/0
 
 metadata:
-    module: wazuh-agent/syscollector/syscollector-dbsync
-    title: Syscollector Decoder event for dbsync
-    description: >
-        Third stage filter of syscollector event decoder with type "dbsync_"
-        if succes will query to wdb and map on "wazuh.syscollector..."
-        -> only for wazuh managers with version 4.4 and above.
-    versions:
-      - "4.4.0"
-    compatibility: >
-        This decoder has been tested on Wazuh version 4.4.
-    author:
-        name: Wazuh, Inc.
-        url: https://wazuh.com
-        date: 2023/03/08
-    references:
-        - https://documentation.wazuh.com/current/user-manual/capabilities/syscollector.html#using-syscollector-information-to-trigger-alerts
-        - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
-        - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#syscollector-tables
+  module: wazuh-agent/syscollector/syscollector-dbsync
+  title: Syscollector Decoder event for dbsync
+  description: >
+    Third stage filter of syscollector event decoder with type "dbsync_"
+    if succes will query to wdb and map on "wazuh.syscollector..."
+    -> only for wazuh managers with version 4.4 and above.
+  versions:
+    - "4.4.0"
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.4.
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2023/03/08
+  references:
+    - https://documentation.wazuh.com/current/user-manual/capabilities/syscollector.html#using-syscollector-information-to-trigger-alerts
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#syscollector-tables
 
 sources:
   - decoder/syscollector-base/0

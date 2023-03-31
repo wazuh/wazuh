@@ -25,4 +25,4 @@ check:
 normalize:
   - map:
       - wazuh.source: sca
-      - wazuh.decoders: +array_append/internal-sca
+      - wazuh.decoders: +array_append/core-sca

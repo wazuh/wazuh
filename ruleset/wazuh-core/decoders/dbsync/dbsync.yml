@@ -12,6 +12,8 @@ metadata:
     date: 2022/11/08
   references:
     - https://github.com/wazuh/wazuh/issues/13521
+  versions:
+    - ""
 
 sources:
   - decoder/core-dbsync/0

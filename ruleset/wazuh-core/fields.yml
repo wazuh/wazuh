@@ -1,6 +1,31 @@
 wazuh.queue:
-  description: 'Queue part of the OSSEC message format'
+  description: Queue part of the OSSEC message format
   type: long
+
+wazuh.location:
+  description: Location part of the OSSEC message format
+  type: text
+
+wazuh.message:
+  description: Message part of the OSSEC message format
+  type: text
+
+wazuh.origin:
+  description: Origin part of the OSSEC message format
+  type: keyword
+
+wazuh.registered_ip:
+  description: Registered IP part of the OSSEC message format
+  type: keyword
+
+wazuh.decoders:
+  description: Trace of the decoders used to decode the event in order
+  type: keyword
+  array: true
+
+wazuh.source:
+  description: Source that ingested the event
+  type: keyword
 
 wazuh.syscollector.hardware:
   description: 'Object that contains the hardware fields from a syscollector event'
@@ -36,4 +61,8 @@ wazuh.syscollector.process:
 
 wazuh.syscollector.program:
   description: 'Object that contains the program fields from a syscollector event'
+  type: object
+
+wazuh.rootcheck:
+  description: 'Object that contains the rootcheck fields from a rootcheck event'
   type: object

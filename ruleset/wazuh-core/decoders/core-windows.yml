@@ -24,4 +24,4 @@ check:
 normalize:
   - map:
       - wazuh.source: logcollector
-      - wazuh.decoders: +array_append/internal-windows
+      - wazuh.decoders: +array_append/core-windows
