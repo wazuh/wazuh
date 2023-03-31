@@ -161,8 +161,8 @@ static void registerBuilders(std::shared_ptr<Registry> registry, const dependenc
     registry->registerBuilder(builders::opBuilderSpecificHLPBetweenParse, "helper.parse_between");
     registry->registerBuilder(builders::opBuilderSpecificHLPAlphanumericParse, "helper.parse_alphanumeric");
 
-    // Update Confirmation
-    registry->registerBuilder(builders::opBuilderHelperSendUpgradeConfirmation, "helper.upgrade_confirmation_send");
+    // Upgrade Confirmation
+    registry->registerBuilder(builders::opBuilderHelperSendUpgradeConfirmation, "helper.send_upgrade_confirmation");
 }
 } // namespace builder::internals
 

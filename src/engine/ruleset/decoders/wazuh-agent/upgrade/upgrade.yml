@@ -21,10 +21,6 @@ metadata:
 sources:
   - decoder/queue-upgrade/0
 
-check:
-  - event.original: +starts_with/{
-  - agent.id: +exists
-
 # Examples:
 # https://github.com/wazuh/wazuh/issues/5406
 # {"command":"upgrade_update_status","parameters":{"error":0,"message":"Upgrade was successful","status":"Done"}}
@@ -40,7 +36,7 @@ normalize:
     map:
       - ~tmp.agent_id_int: +parse_long/$agent.id
       - ~json.parameters.agents: +array_append/$~tmp.agent_id_int
-      - ~tmp.send_result: +upgrade_confirmation_send/$~json
+      - ~tmp.send_result: +send_upgrade_confirmation/$~json
 
   - check:
       - ~tmp.send_result: +is_true
