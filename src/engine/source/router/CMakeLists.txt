@@ -14,6 +14,7 @@ target_link_libraries(router
     base
     json
     store::istore
+    metrics
 )
 
 target_include_directories(router

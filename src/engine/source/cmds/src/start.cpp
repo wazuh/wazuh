@@ -211,7 +211,7 @@ void runStart(ConfHandler confManager, const std::shared_ptr<metrics_manager::IM
         api::catalog::handlers::registerHandlers(catalog, server->getRegistry());
         WAZUH_LOG_DEBUG("Catalog API registered.")
 
-        router = std::make_shared<router::Router>(builder, store, threads);
+        router = std::make_shared<router::Router>(builder, store, metricsManager, threads);
         router->run(server->getEventQueue());
         g_exitHanlder.add([router]() { router->stop(); });
         WAZUH_LOG_INFO("Router initialized.");
