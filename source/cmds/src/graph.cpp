@@ -22,8 +22,8 @@
 namespace
 {
 cmd::details::StackExecutor g_exitHanlder {};
-constexpr auto ENV_GRAPH = "env_graph.dot";
-constexpr auto ENV_EXPR_GRAPH = "env_expr_graph.dot";
+constexpr auto POLICY_GRAPH = "policy_graph.dot";
+constexpr auto POLICY_EXPR_GRAPH = "policy_expr_graph.dot";
 } // namespace
 
 namespace cmd::graph
@@ -70,51 +70,51 @@ void run(const Options& options)
     }
 
     builder::Builder _builder(store, registry);
-    decltype(_builder.buildPolicy({options.environment})) env;
+    decltype(_builder.buildPolicy({options.policy})) policy;
     try
     {
-        env = _builder.buildPolicy({options.environment});
+        policy = _builder.buildPolicy({options.policy});
     }
     catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR("Engine \"graph\" command: An error occurred while building the "
-                        "environment: \"{}\"",
+                        "policy: \"{}\"",
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
     }
 
-    base::Expression envExpression;
+    base::Expression policyExpression;
     try
     {
-        envExpression = env.getExpression();
+        policyExpression = policy.getExpression();
     }
     catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR("Engine \"graph\" command: An error occurred while building the "
-                        "environment expression: {}",
+                        "policy expression: {}",
                         utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
     }
 
     // Save both graphs
-    std::filesystem::path envGraph {options.graphOutDir};
-    envGraph.append(ENV_GRAPH);
+    std::filesystem::path policyGraph {options.graphOutDir};
+    policyGraph.append(POLICY_GRAPH);
 
-    std::filesystem::path envExprGraph {options.graphOutDir};
-    envExprGraph.append(ENV_EXPR_GRAPH);
+    std::filesystem::path policyExprGraph {options.graphOutDir};
+    policyExprGraph.append(POLICY_EXPR_GRAPH);
 
     std::ofstream graphFile;
 
-    graphFile.open(envGraph.string());
-    graphFile << env.getGraphivzStr();
-    std::cout << std::endl << "Environment graph saved to " << envGraph.string() << std::endl;
+    graphFile.open(policyGraph.string());
+    graphFile << policy.getGraphivzStr();
+    std::cout << std::endl << "Policy graph saved to " << policyGraph.string() << std::endl;
     graphFile.close();
 
-    graphFile.open(envExprGraph.string());
-    graphFile << base::toGraphvizStr(envExpression);
-    std::cout << "Environment expression graph saved to " << envExprGraph.string() << std::endl;
+    graphFile.open(policyExprGraph.string());
+    graphFile << base::toGraphvizStr(policyExpression);
+    std::cout << "Policy expression graph saved to " << policyExprGraph.string() << std::endl;
     graphFile.close();
 
     g_exitHanlder.execute();
@@ -124,7 +124,7 @@ void configure(CLI::App_p app)
 {
     auto options = std::make_shared<Options>();
 
-    auto graphApp = app->add_subcommand("graph", "Generate a dot description of an environment.");
+    auto graphApp = app->add_subcommand("graph", "Generate a dot description of a policy.");
 
     // KVDB path
     graphApp->add_option("-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
@@ -140,7 +140,7 @@ void configure(CLI::App_p app)
         ->check(CLI::ExistingDirectory);
 
     // Environment
-    graphApp->add_option("--environment", options->environment, "Name of the environment to be used.")
+    graphApp->add_option("--policy", options->policy, "Name of the policy to be used.")
         ->default_val(ENGINE_ENVIRONMENT_TEST);
 
     // Graph dir
