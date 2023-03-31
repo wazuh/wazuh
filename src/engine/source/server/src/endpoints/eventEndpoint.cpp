@@ -170,16 +170,27 @@ static inline int bindUnixDatagramSocket(const char* path)
     return (socketFd);
 }
 
-std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> EventEndpoint::m_eventQueue;
 EventEndpoint::EventEndpoint(
     const std::string& path,
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> eventQueue,
+    std::shared_ptr<metrics_manager::IMetricsScope> metricsScope,
+    std::shared_ptr<metrics_manager::IMetricsScope> metricsScopeDelta,
     std::optional<std::string> pathFloodedFile)
     : BaseEndpoint {path}
+    , m_eventQueue {eventQueue}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<DatagramSocketHandle>()}
+    , m_spMetricsScope {metricsScope}
+    , m_spMetricsScopeDelta {metricsScopeDelta}
 {
-    m_eventQueue = eventQueue;
+    auto receivedBytesPerSecond = m_spMetricsScopeDelta->getCounterUInteger("ReceivedBytesPerSecond");
+    auto receivedEventsPerSecond = m_spMetricsScopeDelta->getCounterUInteger("ReceivedEventsPerSecond");
+    auto totalEventsReceived = m_spMetricsScope->getCounterUInteger("TotalEventsReceived");
+    auto totalBytesReceived = m_spMetricsScope->getCounterUInteger("TotalBytesReceived");
+    auto queuedEvents = m_spMetricsScope->getCounterUInteger("queuedEvents");
+    auto eventsInsertedDisk = m_spMetricsScope->getCounterUInteger("EventsInsertedDisk");
+    auto usedQueue = m_spMetricsScope->getGaugeDouble("UsedQueue", 0);
+
     m_handle->on<ErrorEvent>(
         [this](const ErrorEvent& event, DatagramSocketHandle& datagramSocketHandle)
         {
@@ -212,21 +223,26 @@ EventEndpoint::EventEndpoint(
     }
 
     m_handle->on<DatagramSocketEvent>(
-        [this, dumpFileHandler, isFloodedFileEnabled](const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
+        [this, totalEventsReceived, totalBytesReceived, queuedEvents, eventsInsertedDisk,
+        receivedBytesPerSecond, receivedEventsPerSecond, dumpFileHandler, isFloodedFileEnabled, usedQueue]
+        (const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
         {
             auto strRequest = std::string {eventSocket.data.get(), eventSocket.length};
 
             // Received bytes per seconds
-            //Metrics::instance().addCounterValue("Server.ReceivedBytesPerSecond", static_cast<uint64_t>(eventSocket.length));
+            receivedBytesPerSecond->addValue(static_cast<uint64_t>(eventSocket.length));
 
             // Received events per seconds
-            //Metrics::instance().addCounterValue("Server.ReceivedEventsPerSecond", 1UL);
+            receivedEventsPerSecond->addValue(1UL);
 
             // Total events received
-            //Metrics::instance().addCounterValue("Server.TotalEventsReceived", 1UL);
+            totalEventsReceived->addValue(1UL);
 
             // Total bytes received
-            //Metrics::instance().addCounterValue("Server.TotalBytesReceived", static_cast<uint64_t>(eventSocket.length));
+            totalBytesReceived->addValue(static_cast<uint64_t>(eventSocket.length));
+
+            //Used Queue
+            usedQueue->setValue(m_eventQueue->size_approx());
 
             base::Event event;
             try
@@ -257,7 +273,7 @@ EventEndpoint::EventEndpoint(
                     if (m_eventQueue->try_enqueue(event))
                     {
                         // Number of events inserted in queue
-                        //Metrics::instance().addCounterValue("Server.QueuedEvents", 1UL);
+                        queuedEvents->addValue(1UL);
 
                         break;
                     }
@@ -268,7 +284,7 @@ EventEndpoint::EventEndpoint(
                 if (attempts >= maxAttempts)
                 {
                     // Number of events that have been written to disk because queue is full
-                    //Metrics::instance().addCounterValue("Server.EventsInsertedDisk", 1UL);
+                    eventsInsertedDisk->addValue(1UL);
 
                     dumpFileHandler->write(strRequest);
                 }
@@ -305,9 +321,6 @@ void EventEndpoint::configure(void)
 
 void EventEndpoint::run(void)
 {
-    //Used Queue
-    //Metrics::instance().addObservableGauge("Server.UsedQueue", callbackUsedQueue);
-
     // Size in bytes per second received
     m_loop->run<Loop::Mode::DEFAULT>();
 }
@@ -342,16 +355,5 @@ EventEndpoint::getEventQueue(void) const
 {
     return m_eventQueue;
 }
-
-/*
-void EventEndpoint::callbackUsedQueue(opentelemetry::metrics::ObserverResult observer_result, void *)
-{
-    if (opentelemetry::nostd::holds_alternative<opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<double>>>(observer_result))
-    {
-      double value = static_cast<double>(m_eventQueue->size_approx() / cmd::ENGINE_QUEUE_SIZE);
-      opentelemetry::nostd::get<opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<double>>>(observer_result)->Observe(value);
-    }
-}
-*/
 
 } // namespace engineserver::endpoints

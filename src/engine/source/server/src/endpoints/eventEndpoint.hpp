@@ -15,6 +15,8 @@
 #include "baseEndpoint.hpp"
 #include <baseTypes.hpp>
 
+#include <metrics/iMetricsScope.hpp>
+
 namespace engineserver::endpoints
 {
 
@@ -34,7 +36,7 @@ private:
 
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<DatagramSocketHandle> m_handle;
-    static std::shared_ptr<concurrentQueue> m_eventQueue;
+    std::shared_ptr<concurrentQueue> m_eventQueue;
 
 public:
     /**
@@ -45,6 +47,8 @@ public:
      */
     explicit EventEndpoint(const std::string& path,
                            std::shared_ptr<concurrentQueue> eventQueue,
+                           std::shared_ptr<metrics_manager::IMetricsScope> metricsScope,
+                           std::shared_ptr<metrics_manager::IMetricsScope> metricsScopeDelta,
                            std::optional<std::string> pathFloodedFile = std::nullopt);
 
     ~EventEndpoint();
@@ -56,6 +60,9 @@ public:
     void close(void);
 
     std::shared_ptr<concurrentQueue> getEventQueue() const;
+
+    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScope;
+    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScopeDelta;
 };
 
 } // namespace engineserver::endpoints

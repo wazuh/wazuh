@@ -156,7 +156,7 @@ void runStart(ConfHandler confManager, const std::shared_ptr<metrics_manager::IM
         // TODO Add the option to configure the flooded file
         // TODO Change the default buffer size to a multiple of 1024
         server =
-            std::make_shared<engineserver::EngineServer>(apiEndpoint, nullptr, eventEndpoint, floodFile, bufferSize);
+            std::make_shared<engineserver::EngineServer>(apiEndpoint, nullptr, eventEndpoint, floodFile, bufferSize, metricsManager);
         g_exitHanlder.add([server]() { server->close(); });
         WAZUH_LOG_DEBUG("Server configured.");
 

@@ -58,6 +58,9 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
 
     auto protocolHandler = std::make_shared<WazuhStreamProtocol>();
 
+    auto connectedSockets = m_spMetricsScope->getUpDownCounterInteger("ConnectedSockets");
+    auto totalConnections = m_spMetricsScope->getCounterUInteger("TotalConnections");
+
     timer->on<TimerEvent>(
         [client](const auto&, auto& handler)
         {
@@ -142,10 +145,10 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
         });
 
     client->on<CloseEvent>(
-        [](const CloseEvent& event, PipeHandle& client)
+        [connectedSockets](const CloseEvent& event, PipeHandle& client)
         {
             // Connected Sockets
-            //Metrics::instance().addUpDownCounterValue("Server.ConnectedSockets", -1L);
+            connectedSockets->addValue(-1L);
 
             WAZUH_LOG_INFO("Engine API endpoint: Connection closed of client ({}).",
                            client.peer());
@@ -155,10 +158,10 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
     WAZUH_LOG_INFO("Engine API endpoint: Client accepted: {}", client->peer());
 
     // Connected Sockets
-    //Metrics::instance().addUpDownCounterValue("Server.ConnectedSockets", 1L);
+    connectedSockets->addValue(1L);
 
     // Total Connections
-    //Metrics::instance().addCounterValue("Server.TotalConnections", 1UL);
+    totalConnections->addValue(1UL);
 
     timer->start(TimerHandle::Time {CONNECTION_TIMEOUT_MSEC},
                  TimerHandle::Time {CONNECTION_TIMEOUT_MSEC});
@@ -167,11 +170,13 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
 }
 
 APIEndpoint::APIEndpoint(const std::string& config,
-                         std::shared_ptr<api::Registry> registry)
+                         std::shared_ptr<api::Registry> registry,
+                         std::shared_ptr<metrics_manager::IMetricsScope> metricsScope)
     : BaseEndpoint {config}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<PipeHandle>()}
     , m_registry {registry}
+    , m_spMetricsScope {metricsScope}
 {
     m_handle->on<ErrorEvent>(
         [](const ErrorEvent& event, PipeHandle& handle)
