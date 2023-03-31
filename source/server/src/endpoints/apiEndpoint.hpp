@@ -15,6 +15,7 @@
 #include <api/api.hpp>
 
 #include "baseEndpoint.hpp"
+#include <metrics/iMetricsScope.hpp>
 
 namespace engineserver::endpoints
 {
@@ -40,7 +41,8 @@ public:
      * @param Registry with all available API calls.
      */
     explicit APIEndpoint(const std::string& config,
-                         std::shared_ptr<api::Registry> registry);
+                         std::shared_ptr<api::Registry> registry,
+                         std::shared_ptr<metrics_manager::IMetricsScope> metricsScope);
     ~APIEndpoint();
 
     void run() override;
@@ -50,6 +52,8 @@ public:
     void close() override;
 
     std::shared_ptr<api::Registry> getRegistry() const;
+
+    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScope;
 };
 
 } // namespace engineserver::endpoints
