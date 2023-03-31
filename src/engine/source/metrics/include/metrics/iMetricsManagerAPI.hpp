@@ -15,19 +15,20 @@ public:
     virtual std::variant<std::string, base::Error> dumpCmd() = 0;
 
     /**
-     * @brief 
-     * 
-     * @param scopeName 
-     * @param instrumentName 
-     * @param newStatus 
+     * @brief
+     *
+     * @param scopeName
+     * @param instrumentName
+     * @param newStatus
      */
     virtual void enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) = 0;
 
     /**
-     * @brief 
-     * 
+     * @brief
+     *
      */
     virtual void testCmd() = 0;
+    virtual std::variant<std::string, base::Error> listCmd() = 0;
 };
 
 }

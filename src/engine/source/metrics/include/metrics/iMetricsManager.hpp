@@ -21,12 +21,12 @@ public:
 
     /**
      * @brief Returns if the Metrics Manager is running or not.
-     * @return Running status. 
+     * @return Running status.
     */
     virtual bool isRunning() = 0;
 
     /**
-    * @brief Gets a Metrics Scope Handler given it's name. 
+    * @brief Gets a Metrics Scope Handler given it's name.
     * If it doesn't exists, the Manager creates a new one.
     * If it does already exists, the Manager returns the Handler.
     * @param name The name of the Scope.

@@ -152,10 +152,11 @@ api::Handler metricsTestCmd(const std::shared_ptr<metrics_manager::IMetricsManag
         return ::api::adapter::toWazuhResponse(eResponse);
     };
 }
-/*
-api::Handler metricsList()
+
+api::Handler metricsList(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI)
 {
-    return [](api::wpRequest wRequest) -> api::wpResponse
+    std::variant<std::string, base::Error> result;
+    return [&](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eMetrics::List_Request;
         using ResponseType = eMetrics::List_Response;
@@ -169,7 +170,7 @@ api::Handler metricsList()
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        auto result = Metrics::instance().getInstrumentsList();
+        auto result = metricsAPI->listCmd();
         ResponseType eResponse;
 
         if (std::holds_alternative<base::Error>(result))
@@ -187,7 +188,7 @@ api::Handler metricsList()
         return ::api::adapter::toWazuhResponse(eResponse);
     };
 }
-*/
+
 void registerHandlers(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI, std::shared_ptr<api::Registry> registry)
 {
     try
@@ -195,8 +196,8 @@ void registerHandlers(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>
         registry->registerHandler("metrics/dump", metricsDumpCmd(metricsAPI));
         //registry->registerHandler("metrics/get", metricsGetCmd());
         registry->registerHandler("metrics/enable", metricsEnableCmd(metricsAPI));
-        //registry->registerHandler("metrics/list", metricsList());
         registry->registerHandler("metrics/test", metricsTestCmd(metricsAPI));
+        registry->registerHandler("metrics/list", metricsList(metricsAPI));
     }
     catch (const std::exception& e)
     {

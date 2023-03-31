@@ -24,7 +24,7 @@ public:
     */
 
     std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name, bool delta = false, int exporterIntervalMS = 1000, int exporterTimeoutMS = 300) override;
-    
+
     /**
      * @copydoc IMetricsManager::getScopeNames
     */
@@ -35,7 +35,7 @@ public:
     */
     void start() override;
 
-    /** 
+    /**
      * @copydoc IMetricsManager::isRunning
     */
     bool isRunning() override;
@@ -62,11 +62,13 @@ private:
 
     /**
      * @brief Get the Metrics Scope object
-     * 
-     * @param metricsScopeName 
-     * @return std::shared_ptr<MetricsScope> 
+     *
+     * @param metricsScopeName
+     * @return std::shared_ptr<MetricsScope>
      */
     std::shared_ptr<MetricsScope> getScope(const std::string& metricsScopeName);
+    std::variant<std::string, base::Error> listCmd() override;
+
 private:
 
     /// @brief Instrumentation scopes across the application.
