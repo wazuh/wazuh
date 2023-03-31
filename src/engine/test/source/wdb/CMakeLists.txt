@@ -7,7 +7,7 @@ target_include_directories(wdb_test
     PRIVATE
     ${ENGINE_SOURCE_DIR}/wdb/src
     ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/
-    ${TEST_SOURCE_DIR}/base/utils/tests
+    ${TEST_SOURCE_DIR}/common
 )
 
 target_link_libraries(wdb_test gtest_main base wdb)
