@@ -50,7 +50,7 @@ void runDump(std::shared_ptr<apiclnt::Client> client)
 }
 
 
-void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& name)
+void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& scopeName, const std::string& instrumentName)
 {
     using RequestType = eMetrics::Get_Request;
     using ResponseType = eMetrics::Get_Response;
@@ -58,7 +58,8 @@ void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string
 
     // Prepare the request
     RequestType eRequest;
-    eRequest.set_instrumentname(name);
+    eRequest.set_instrumentname(instrumentName);
+    eRequest.set_scopename(scopeName);
 
     // Call the API
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -138,9 +139,11 @@ void configure(CLI::App_p app)
 
     // get
     auto get_subcommand = metricApp->add_subcommand("get", "Print a single metric as json.");
+    get_subcommand->add_option("Scope name", options->scopeName, "Name of the scope whose status will be modified.")
+    ->required();
     get_subcommand->add_option("Instrument name", options->instrumentName, "Name that identifies the instrument.")
     ->required();
-    get_subcommand->callback([options, client]() { runGetInstrument(client, options->instrumentName); });
+    get_subcommand->callback([options, client]() { runGetInstrument(client, options->scopeName, options->instrumentName); });
 
     // enable
     auto enable_subcommand = metricApp->add_subcommand(details::API_METRICS_ENABLE_SUBCOMMAND, "Enable or disable a specific instrument.");
