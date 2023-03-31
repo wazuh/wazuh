@@ -621,29 +621,6 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
     return result;
 }
 
-int doRollback(rollback_data_t *rollback_data) {
-    int result = OS_INVALID;
-    struct timeval begin;
-    struct timeval end;
-    struct timeval diff;
-
-    if (rollback_data != NULL && rollback_data->wdb != NULL) {
-        w_inc_global_rollback();
-        gettimeofday(&begin, 0);
-        if (wdb_rollback2(rollback_data->wdb) < 0) {
-            mdebug1("Global DB Cannot rollback transaction");
-            snprintf(rollback_data->output, OS_MAXSTR + 1, "err Cannot rollback transaction");
-        } else {
-            snprintf(rollback_data->output, OS_MAXSTR + 1, "ok");
-            result = OS_SUCCESS;
-        }
-
-        gettimeofday(&end, 0);
-        timersub(&end, &begin, &diff);
-        w_inc_global_rollback_time(diff);
-    }
-    return result;
-}
 
 /* Execute statement with availability waiting */
 int wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQueryModifyDB) {
@@ -662,7 +639,7 @@ int wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQue
 
     if (result != SQLITE_DONE && result != SQLITE_ROW && theQueryModifyDB) {
         rollback_data_t rollback_data = { .wdb = wdb, .output = output };
-        result = doRollback(&rollback_data);
+        (void)doRollback(&rollback_data);
     }
 
     return result;
@@ -1913,6 +1890,7 @@ bool wdb_check_backup_enabled() {
 int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
+    bool isRollbackEnable = false;
 
     if (sqlite3_prepare_v2(wdb->db, sql_transaction, -1, &stmt, NULL)
         != SQLITE_OK) {
@@ -1920,7 +1898,7 @@ int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction) {
         return -1;
     }
 
-    if (result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) != SQLITE_DONE,
+    if (result = wdb_step1(stmt, wdb, 3, isRollbackEnable) != SQLITE_DONE,
         result) {
         mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         result = -1;
