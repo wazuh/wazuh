@@ -6,12 +6,14 @@
 #include <builder.hpp>
 
 #include <parseEvent.hpp>
+#include <metrics/metricsManager.hpp>
 
 namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
-Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads)
+Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store,
+        const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager, std::size_t threads)
     : m_mutexRoutes {}
     , m_namePriorityFilter {}
     , m_priorityRoute {}
@@ -78,6 +80,9 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
         // Add default route
         WAZUH_LOG_WARN("There is no environment loaded. Events will be written in disk once the queue is full.");
     }
+
+    m_spMetricsScope = metricsManager->getMetricsScope("router");
+    m_spMetricsScopeDelta = metricsManager->getMetricsScope("routerRate", true);
 };
 
 std::optional<base::Error>
@@ -314,6 +319,11 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
 {
     std::shared_lock lock {m_mutexRoutes};
 
+    auto receivedEventsPerSecond = m_spMetricsScopeDelta->getCounterUInteger("ReceivedEventsPerSecond");
+    auto queueConsumedEvents = m_spMetricsScope->getCounterUInteger("QueueConsumedEvents");
+    auto usedQueueHistory = m_spMetricsScope->getHistogramUInteger("UsedQueueHistory");
+    auto usedQueue = m_spMetricsScope->getGaugeInteger("UsedQueue", 0);
+
     if (m_isRunning.load())
     {
         return base::Error {"The router is already running"};
@@ -324,13 +334,25 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
         m_threads.emplace_back(
-            [this, queue, i]()
+            [this, queue, i, receivedEventsPerSecond, queueConsumedEvents, usedQueueHistory, usedQueue]()
             {
                 while (m_isRunning.load())
                 {
                     base::Event event {};
                     if (queue->wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
+                        // Events consumed from the queue
+                        queueConsumedEvents->addValue(1UL);
+
+                        // Number of events per second consumed 
+                        receivedEventsPerSecond->addValue(1UL);
+                        
+                        // Used Queue History
+                        usedQueueHistory->recordValue(static_cast<uint64_t>(queue->size_approx()));
+                        
+                        // Used Queue
+                        usedQueue->setValue(static_cast<uint64_t>(queue->size_approx()));
+                        
                         std::shared_lock lock {m_mutexRoutes};
                         for (auto& route : m_priorityRoute)
                         {

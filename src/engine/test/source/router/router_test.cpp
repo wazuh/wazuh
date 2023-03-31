@@ -8,26 +8,30 @@
 
 #include "testAuxiliar/routerAuxiliarFunctions.hpp"
 
+#include <metrics/metricsManager.hpp>
+using namespace metrics_manager;
+
 TEST(Router, build_ok)
 {
+    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
-    router::Router router(builder, store);
+    router::Router router(builder, store, manager);
 }
 // Add more test
 TEST(Router, build_fail)
 {
-
+    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
     try {
-        router::Router router(builder, store, 0);
+        router::Router router(builder, store, manager, 0);
         FAIL() << "Router: The router was created with 0 threads";
     } catch (const std::runtime_error& e) {
         ASSERT_STREQ(e.what(), "Router: The number of threads must be between 1 and 128");
@@ -36,7 +40,7 @@ TEST(Router, build_fail)
     }
 
     try {
-        router::Router router(nullptr, store, 1);
+        router::Router router(nullptr, store, manager, 1);
         FAIL() << "Router: The router was created with a null builder";
     } catch (const std::runtime_error& e) {
         ASSERT_STREQ(e.what(), "Router: Builder cannot be null");
@@ -45,7 +49,7 @@ TEST(Router, build_fail)
     }
 
     try {
-        router::Router router(builder, nullptr, 1);
+        router::Router router(builder, nullptr, manager, 1);
         FAIL() << "Router: The router was created with a null store";
     } catch (const std::runtime_error& e) {
         ASSERT_STREQ(e.what(), "Router: Store cannot be null");
@@ -56,12 +60,13 @@ TEST(Router, build_fail)
 
 TEST(Router, add_list_remove_routes)
 {
+    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
-    router::Router router(builder, store);
+    router::Router router(builder, store, manager);
 
     ASSERT_EQ(router.getRouteTable().size(), 0);
 
@@ -111,12 +116,13 @@ TEST(Router, add_list_remove_routes)
 }
 
 TEST(Router, priorityChanges) {
+    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
-    router::Router router(builder, store);
+    router::Router router(builder, store, manager);
 
     // Add a route
     auto error = router.addRoute("e_wazuh_queue", 2,"filter/e_wazuh_queue/0", "environment/env_1/0");
@@ -221,6 +227,7 @@ TEST(Router, checkRouting) {
     const auto ENV_C3 = "deco_C3";
     const auto PATH_DECODER = json::Json::formatJsonPath("~decoder");
 
+    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
@@ -229,7 +236,7 @@ TEST(Router, checkRouting) {
     // Run the router
     auto testQueue = aux::testQueue{};
 
-    router::Router router(builder, store);
+    router::Router router(builder, store, manager);
     router.run(testQueue.getQueue());
 
     /*************************************************************************************
