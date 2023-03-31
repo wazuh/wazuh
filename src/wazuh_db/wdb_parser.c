@@ -1350,10 +1350,6 @@ int wdb_parse(char * input, char * output, int peer) {
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_global_get_fragmentation_time(diff);
-        } else if (strcmp(query, "rollback") == 0) {
-            rollback_data_t rollback_data = {.wdb = wdb, .output = output};
-            result = doRollback(&rollback_data);
-
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);

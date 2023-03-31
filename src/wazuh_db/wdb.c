@@ -621,6 +621,30 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
     return result;
 }
 
+int doRollback(rollback_data_t *rollback_data) {
+    int result = OS_INVALID;
+        int result2;
+    struct timeval begin;
+    struct timeval end;
+    struct timeval diff;
+
+    if (rollback_data != NULL && rollback_data->wdb != NULL) {
+        w_inc_global_rollback();
+        gettimeofday(&begin, 0);
+        if (wdb_rollback2(rollback_data->wdb) < 0) {
+            mdebug1("Global DB Cannot rollback transaction");
+            snprintf(rollback_data->output, OS_MAXSTR + 1, "err Cannot rollback transaction");
+        } else {
+            snprintf(rollback_data->output, OS_MAXSTR + 1, "ok");
+            result = OS_SUCCESS;
+        }
+
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_global_rollback_time(diff);
+    }
+    return result;
+}
 
 /* Execute statement with availability waiting */
 int wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQueryModifyDB) {
@@ -1909,22 +1933,22 @@ int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction) {
 }
 
 int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn) {
+    if (wdb != NULL) {
+        if (((state == 1) ? wdb->transaction : !wdb->transaction)) {
+            return 0;
+        }
 
-    if (((state == 1) ? wdb->transaction : !wdb->transaction)) {
-        return 0;
-    }
+        if (wdb_ptr_any_txn != NULL) {
+            if (wdb_ptr_any_txn(wdb) == -1) {
+                return -1;
+            }
+        }
 
-    if (wdb_ptr_any_txn != NULL) {
-        if (wdb_ptr_any_txn(wdb) == -1) {
-            return -1;
+        wdb->transaction = state;
+        if (1 == state) {
+            wdb->transaction_begin_time = time(NULL);
         }
     }
-
-    wdb->transaction = state;
-    if (1 == state) {
-        wdb->transaction_begin_time = time(NULL);
-    }
-
     return 0;
 }
 
