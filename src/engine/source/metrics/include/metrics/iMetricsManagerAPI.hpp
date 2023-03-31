@@ -24,8 +24,17 @@ public:
     virtual void enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) = 0;
 
     /**
-     * @brief
-     *
+     * @brief Get the Cmd object
+     * 
+     * @param scopeName 
+     * @param instrumentName 
+     * @return std::variant<std::string, base::Error> 
+     */
+    virtual std::variant<std::string, base::Error> getCmd(const std::string& scopeName, const std::string& instrumentName) = 0;
+
+    /**
+     * @brief 
+     * 
      */
     virtual void testCmd() = 0;
     virtual std::variant<std::string, base::Error> listCmd() = 0;

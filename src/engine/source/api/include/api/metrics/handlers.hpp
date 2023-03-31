@@ -18,7 +18,7 @@ api::Handler metricsDumpCmd(const std::shared_ptr<metrics_manager::IMetricsManag
 *
 * @return [api::CommandFn] Instrument data, or error message.
 */
-api::Handler metricsGetCmd();
+api::Handler metricsGetCmd(const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsAPI);
 
 /**
 * @brief Enable or disable a specific instrument.

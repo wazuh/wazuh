@@ -49,6 +49,11 @@ public:
     std::variant<std::string, base::Error> dumpCmd() override;
 
     /**
+     * @copydoc iMetricsManagerAPI::getCmd
+    */
+    std::variant<std::string, base::Error> getCmd(const std::string& scopeName, const std::string& instrumentName) override;
+
+    /**
      * @copydoc iMetricsManagerAPI::enableCmd
     */
     void enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) override;

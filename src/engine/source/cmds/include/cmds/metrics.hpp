@@ -39,7 +39,7 @@ void runDump(std::shared_ptr<apiclnt::Client> client);
  * @param socketPath The socket.
  * @param name The instrument name.
  */
-void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& name);
+void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& scopeName, const std::string& instrumentName);
 
 /**
  * @brief Enables or disables an instrument.

@@ -120,6 +120,17 @@ void MetricsManager::enableCmd(const std::string& scopeName, const std::string& 
     scope->setEnabledStatus(instrumentName, newStatus);
 }
 
+std::variant<std::string, base::Error> MetricsManager::getCmd(const std::string& scopeName, const std::string& instrumentName)
+{
+    auto scope = getScope(scopeName);
+    auto json = scope->getAllMetrics(instrumentName);
+    if (json.isNull())
+    {
+        return "{}";
+    }
+    return json.prettyStr();
+}
+
 void MetricsManager::testCmd()
 {
     static bool iterate = false;

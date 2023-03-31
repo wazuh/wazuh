@@ -24,8 +24,8 @@ public:
     // TODO: Add exceptions
     void initialize(bool delta, int exporterIntervalMS, int exporterTimeoutMS);
 
-    json::Json getAllMetrics();
-
+    json::Json getAllMetrics(const std::string& metricsInstrumentName = "");
+    
     std::shared_ptr<iCounter<double>>
         getCounterDouble(const std::string& name) override;
 
