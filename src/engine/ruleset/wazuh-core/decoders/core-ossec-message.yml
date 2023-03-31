@@ -30,7 +30,7 @@ normalize:
 
   - map:
       - event.original: $wazuh.message
-      - wazuh.decoders: +array_append/internal-ossec-message
+      - wazuh.decoders: +array_append/core-ossec-message
 
   - check:
       - agent: +exists

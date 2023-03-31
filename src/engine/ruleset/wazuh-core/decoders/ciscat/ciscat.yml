@@ -15,6 +15,8 @@ metadata:
     references:
         - https://github.com/wazuh/wazuh/issues/13523
         - https://documentation.wazuh.com/current/user-manual/capabilities/policy-monitoring/ciscat/ciscat.html
+    versions:
+      - ""
 
 sources:
   - decoder/core-ciscat/0
@@ -90,5 +92,5 @@ normalize:
       - ~json.cis.score: "NULL"
 
   - map:
-      - _query: +concat/agent /$agent.id/ ciscat save /$~json.scan_id/|/$~json.cis.timestamp/|/$~json.cis.benchmark/|/$~json.cis.profile/|/$~json.cis.pass/|/$~json.cis.fail/|/$~json.cis.error/|/$~json.cis.notchecked/|/$~json.cis.unknown/|/$~json.cis.score
-      - _query_response: +wdb_update/$_query
+      - ~query: +concat/agent /$agent.id/ ciscat save /$~json.scan_id/|/$~json.cis.timestamp/|/$~json.cis.benchmark/|/$~json.cis.profile/|/$~json.cis.pass/|/$~json.cis.fail/|/$~json.cis.error/|/$~json.cis.notchecked/|/$~json.cis.unknown/|/$~json.cis.score
+      - ~query_response: +wdb_update/$_query

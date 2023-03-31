@@ -11,4 +11,4 @@ sources:
 
 normalize:
   - map:
-      - wazuh.decoders: +array_append/base
+      - wazuh.decoders: +array_append/integrations
