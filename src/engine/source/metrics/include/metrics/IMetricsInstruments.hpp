@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace metrics_manager 
+namespace metrics_manager
 {
 
 class iInstrument
@@ -12,6 +12,11 @@ public:
     virtual void setEnabledStatus(bool newStatus)
     {
         m_status = newStatus;
+    }
+
+    virtual bool getEnabledStatus()
+    {
+        return m_status;
     }
 
     bool m_status = true;
