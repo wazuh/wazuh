@@ -230,8 +230,8 @@ void wm_ms_graph_check() {
 
 void wm_ms_graph_destroy(wm_ms_graph* ms_graph) {
 
-    for(int resource = 0; resource < ms_graph->num_resources; resource++){
-        for(int relationship = 0; relationship < ms_graph->resources[resource].num_relationships; relationship++){
+    for(unsigned int resource = 0; resource < ms_graph->num_resources; resource++){
+        for(unsigned int relationship = 0; relationship < ms_graph->resources[resource].num_relationships; relationship++){
             os_free(ms_graph->resources[resource].relationships[relationship]);
         }
         os_free(ms_graph->resources[resource].name);
@@ -298,7 +298,7 @@ cJSON* wm_ms_graph_dump(wm_ms_graph* ms_graph) {
 
     if(ms_graph->resources){
         cJSON* resource_array = cJSON_CreateArray();
-        for(int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
+        for(unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
             cJSON* resource = cJSON_CreateObject();
             if(ms_graph->resources[resource_num].name){
                 cJSON_AddStringToObject(ms_graph_auth, "name", ms_graph->resources[resource_num].name);
@@ -308,7 +308,7 @@ cJSON* wm_ms_graph_dump(wm_ms_graph* ms_graph) {
                 continue;
             }
             if(ms_graph->resources[resource_num].relationships){
-                for(int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
+                for(unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
                     if(ms_graph->resources[resource_num].relationships[relationship_num]){
                         cJSON_AddStringToObject(resource, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
                     }
