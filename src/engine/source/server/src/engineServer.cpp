@@ -19,6 +19,7 @@
 
 #include "endpoints/apiEndpoint.hpp"
 #include "endpoints/eventEndpoint.hpp"
+#include <metrics/metricsManager.hpp>
 
 using moodycamel::BlockingConcurrentQueue;
 
@@ -31,20 +32,23 @@ EngineServer::EngineServer(const std::string& apiEndpointPath,
                            std::shared_ptr<api::Registry> registry,
                            const std::string& eventEndpointPath,
                            std::optional<std::string> pathFloodedFile,
-                           const int bufferSize)
+                           const int bufferSize,
+                           const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
 {
     try
     {
+        m_spMetricsScope = metricsManager->getMetricsScope("server");
+        m_spMetricsScopeDelta = metricsManager->getMetricsScope("serverRate", true);
         if (nullptr == registry)
         {
             registry = std::make_shared<api::Registry>();
         }
-        auto apiEndpoint = std::make_shared<APIEndpoint>(apiEndpointPath, registry);
+        auto apiEndpoint = std::make_shared<APIEndpoint>(apiEndpointPath, registry, m_spMetricsScope);
         apiEndpoint->configure();
         m_endpoints.emplace(EndpointType::API, std::move(apiEndpoint));
 
         auto eventQueue = std::make_shared<BlockingConcurrentQueue<base::Event>>(bufferSize);
-        auto eventEndpoint = std::make_shared<EventEndpoint>(eventEndpointPath, eventQueue, pathFloodedFile);
+        auto eventEndpoint = std::make_shared<EventEndpoint>(eventEndpointPath, eventQueue, m_spMetricsScope, m_spMetricsScopeDelta, pathFloodedFile);
         eventEndpoint->configure();
         m_endpoints.emplace(EndpointType::EVENT, std::move(eventEndpoint));
     }

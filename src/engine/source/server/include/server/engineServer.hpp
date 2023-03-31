@@ -19,6 +19,9 @@
 #include <baseTypes.hpp>
 #include "../../src/endpoints/baseEndpoint.hpp"
 
+#include <metrics/iMetricsManager.hpp>
+#include <metrics/iMetricsScope.hpp>
+
 /**
  * @brief Defines all related server functionality.
  *
@@ -57,7 +60,8 @@ public:
                           std::shared_ptr<api::Registry> registry,
                           const std::string& eventEndpointPath,
                           std::optional<std::string> pathFloodedFile,
-                          const int bufferSize);
+                          const int bufferSize,
+                          const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
 
     /**
      * @brief Start server.
@@ -85,6 +89,9 @@ public:
      * @return The shared pointer to the API Registry
      */
     std::shared_ptr<api::Registry> getRegistry() const;
+
+    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScope;
+    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScopeDelta;
 };
 
 } // namespace engineserver
