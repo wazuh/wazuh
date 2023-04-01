@@ -30,15 +30,14 @@ def validate_network_json(json_data):
         # Validate the JSON data against the schema
         validate(instance=json_data, schema=network_schema)
     except ValidationError as e:
+        # If the validation fails, print the error message
         pytest.fail(f"The output does not comply with the schema: {e}")
 
 
 def test_json_output():
     # Path to the shared library
-    binary_filename = "sysinfo_test_tool.exe" if platform.system(
-    ) == "Windows" else "sysinfo_test_tool"
-    binary_path_folder = "C:\\data_provider" if platform.system(
-    ) == "Windows" else "build/bin"
+    binary_filename = "sysinfo_test_tool.exe" if platform.system() == "Windows" else "sysinfo_test_tool"
+    binary_path_folder = "C:\\data_provider" if platform.system() == "Windows" else "build/bin"
     binary_path = Path(binary_path_folder, binary_filename)
 
     # Ensure the binary exists

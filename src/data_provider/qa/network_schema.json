@@ -115,7 +115,8 @@
                                 "type": "string",
                                 "enum": [
                                     "up",
-                                    "down"
+                                    "down",
+                                    "unknown"
                                 ]
                             },
                             "tx_bytes": {
@@ -154,7 +155,14 @@
                         "if": {
                             "properties": {
                                 "state": {
-                                    "const": "down"
+                                    "anyOf": [
+                                        {
+                                            "const": "unknown"
+                                        },
+                                        {
+                                            "const": "down"
+                                        }
+                                    ]
                                 }
                             }
                         },

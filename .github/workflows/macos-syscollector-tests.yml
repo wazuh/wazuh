@@ -9,11 +9,11 @@ jobs:
     runs-on: macos-11
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: 3.9
+          python-version-file: ".github/workflows/.python-version"
           architecture: x64
       # Build wazuh agent for macOS.
       - name: Build wazuh agent for macOS
@@ -23,8 +23,8 @@ jobs:
           make -C src TARGET=agent -j2
       - name: Install dependencies
         run: |
-          pip install -r src/data_provider/requirements.txt
+          pip install -r src/data_provider/qa/requirements.txt
       - name: Run tests
         run: |
           cd src/data_provider
-          python -m pytest qa/
+          python -m pytest -vv qa/

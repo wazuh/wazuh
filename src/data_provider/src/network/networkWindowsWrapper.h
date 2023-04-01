@@ -348,18 +348,18 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
         std::string MAC() const override
         {
             std::string retVal { "00:00:00:00:00:00" };
-            constexpr auto MAC_ADDRESS_LENGHT { 6 };
+            constexpr auto MAC_ADDRESS_LENGTH { 6 };
 
-            if (MAC_ADDRESS_LENGHT == m_interfaceAddress->PhysicalAddressLength)
+            if (MAC_ADDRESS_LENGTH == m_interfaceAddress->PhysicalAddressLength)
             {
                 std::stringstream ss;
 
-                for (unsigned int idx = 0; idx < MAC_ADDRESS_LENGHT; ++idx)
+                for (unsigned int idx = 0; idx < MAC_ADDRESS_LENGTH; ++idx)
                 {
                     ss << std::hex << std::setfill('0') << std::setw(2);
                     ss << static_cast<int>(static_cast<uint8_t>(m_interfaceAddress->PhysicalAddress[idx]));
 
-                    if (MAC_ADDRESS_LENGHT - 1 != idx)
+                    if (MAC_ADDRESS_LENGTH - 1 != idx)
                     {
                         ss << ":";
                     }
