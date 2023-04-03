@@ -13,7 +13,7 @@ namespace api
  * @note This class is thread-safe but the handlers must be thread-safe.
 
  */
-class API
+class Api
 {
 
 private:
@@ -21,9 +21,9 @@ private:
 
 public:
     /**
-     * @brief Construct a new API
+     * @brief Construct a new Api
      */
-    API()
+    Api()
         : m_registry(std::make_shared<api::Registry>()) {};
 
     /**

@@ -8,7 +8,7 @@
 #include <json/json.hpp>
 #include <eMessages/config.pb.h>
 
-#include <api/registry.hpp>
+#include <api/api.hpp>
 #include <api/adapter.hpp>
 
 
@@ -135,11 +135,11 @@ api::Handler runtimeSave(ConfHandler<ConfDriver> confHandler)
 }
 
 template<typename ConfDriver>
-bool registerHandlers(std::shared_ptr<api::Registry> registry, ConfHandler<ConfDriver> confHandler)
+bool registerHandlers(std::shared_ptr<api::Api> api, ConfHandler<ConfDriver> confHandler)
 {
-    return registry->registerHandler("config.runtime/get", runtimeGet(confHandler))
-           && registry->registerHandler("config.runtime/put", runtimePut(confHandler))
-           && registry->registerHandler("config.runtime/save", runtimeSave(confHandler));
+    return api->registerHandler("config.runtime/get", runtimeGet(confHandler))
+           && api->registerHandler("config.runtime/put", runtimePut(confHandler))
+           && api->registerHandler("config.runtime/save", runtimeSave(confHandler));
 }
 } // namespace api::config::handlers
 

@@ -1,12 +1,14 @@
 #ifndef _QUEUE_CONCURRENTQUEUE_HPP
 #define _QUEUE_CONCURRENTQUEUE_HPP
 
-#include <blockingconcurrentqueue.h>
-
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
 #include <iostream>
+
+#include <blockingconcurrentqueue.h>
+
+#include <logging/logging.hpp>
 
 namespace base::queue
 {
@@ -109,7 +111,7 @@ public:
         , m_floodingFile {}
     {
         // Verify if T has a toString method (for flooding the queue)
-        //static_assert(std::is_same<decltype(std::declval<T>().str()), std::string>::value,
+        // static_assert(std::is_same<decltype(std::declval<T>().str()), std::string>::value,
         //              "T must have a toString method");
 
         // Verify if the pathFloodedFile is provided
@@ -120,7 +122,14 @@ public:
             {
                 throw std::runtime_error("Error opening the flooding file: " + m_floodingFile->getError().value());
             }
-            // Flodding file is open and ready to write
+            else
+            {
+                WAZUH_LOG_INFO("The queue will be flooded in the file: {}", pathFloodedFile);
+            }
+        }
+        else
+        {
+            WAZUH_LOG_INFO("No flooding file provided, the queue will not be flooded.");
         }
         // Disable buffering for the flooding file
     }
