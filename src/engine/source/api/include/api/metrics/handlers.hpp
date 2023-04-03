@@ -9,35 +9,35 @@ namespace api::metrics::handlers
 /**
  * @brief Dumps content of instruments.
  *
- * @return [api::CommandFn] Dumped data, or error message.
+ * @return Dumped data, or error message.
  */
 api::Handler metricsDumpCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
 * @brief Get a specific instrument.
 *
-* @return [api::CommandFn] Instrument data, or error message.
+* @return Instrument data, or error message.
 */
 api::Handler metricsGetCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
 * @brief Enable or disable a specific instrument.
 *
-* @return [api::CommandFn] Returns "OK" if success, otherwise error message.
+* @return Returns "OK" if success, otherwise error message.
 */
 api::Handler metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
  * @brief List instruments.
  *
- * @return [api::CommandFn] Return the list of instruments.
+ * @return Return the list of instruments.
  */
 api::Handler metricsList(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
 * @brief Generate a test instrument.
 *
-* @return [api::CommandFn] Returns "OK".
+* @return Returns "OK".
 */
 api::Handler metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
