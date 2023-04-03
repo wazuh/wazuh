@@ -160,8 +160,5 @@ void __wrap_w_inc_global_labels_get_labels();
 
 void __wrap_w_inc_global_labels_get_labels_time(__attribute__((unused))struct timeval diff);
 
-void __wrap_w_inc_global_rollback();
-
-void __wrap_w_inc_global_rollback_time(__attribute__((unused)) struct timeval diff);
 
 #endif /* WDB_STATE_WRAPPERS_H */

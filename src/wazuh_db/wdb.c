@@ -327,6 +327,34 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
  */
 STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
 
+/* Roolback transaction */
+STATIC int wdb_rollback(wdb_t * wdb);
+
+STATIC int wdb_rollback2(wdb_t * wdb);
+
+/**
+ * @brief Execute any transaction
+ * @param [in] wdb Database to query for the table existence.
+ * @param sql_transaction
+*/
+STATIC int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction);
+
+/**
+ * @brief write the status of the transaction
+ * @param db Database to query for the table existence.
+ * @param state 1 when is Begin-transaction, 0 other transactions
+ * @param wdb_ptr_any_txn function that points to the transaction
+ * @return 0 when succeed, !=0 otherwise.
+*/
+STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
+
+/**
+ * @brief make rollback
+ * @param wdb Database to query for the table existence.
+ * @return 0 when succeed, !=0 otherwise.
+*/
+STATIC int doRollback(wdb_t * wdb);
+
 wdb_config wconfig;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
@@ -621,27 +649,23 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
     return result;
 }
 
-int doRollback(rollback_data_t *rollback_data) {
+STATIC int doRollback(wdb_t * wdb) {
     int result = OS_INVALID;
         int result2;
     struct timeval begin;
     struct timeval end;
     struct timeval diff;
 
-    if (rollback_data != NULL && rollback_data->wdb != NULL) {
-        w_inc_global_rollback();
+    if (wdb != NULL) {
         gettimeofday(&begin, 0);
-        if (wdb_rollback2(rollback_data->wdb) < 0) {
+        if (wdb_rollback2(wdb) < 0) {
             mdebug1("Global DB Cannot rollback transaction");
-            snprintf(rollback_data->output, OS_MAXSTR + 1, "err Cannot rollback transaction");
         } else {
-            snprintf(rollback_data->output, OS_MAXSTR + 1, "ok");
             result = OS_SUCCESS;
         }
 
         gettimeofday(&end, 0);
         timersub(&end, &begin, &diff);
-        w_inc_global_rollback_time(diff);
     }
     return result;
 }
@@ -662,8 +686,7 @@ int wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQue
     }
 
     if (result != SQLITE_DONE && result != SQLITE_ROW && theQueryModifyDB) {
-        rollback_data_t rollback_data = { .wdb = wdb, .output = output };
-        (void)doRollback(&rollback_data);
+        (void)doRollback(wdb);
     }
 
     return result;
@@ -693,11 +716,11 @@ int wdb_commit2(wdb_t * wdb) {
 }
 
 /* Rollback transaction */
-int wdb_rollback(wdb_t * wdb) {
+STATIC int wdb_rollback(wdb_t * wdb) {
     return wdb_any_transaction(wdb, SQL_ROLLBACK);
 }
 
-int wdb_rollback2(wdb_t * wdb) {
+STATIC int wdb_rollback2(wdb_t * wdb) {
     return wdb_write_state_transaction(wdb, 0, wdb_rollback);
 }
 
@@ -1911,10 +1934,9 @@ bool wdb_check_backup_enabled() {
     return result;
 }
 
-int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction) {
+STATIC int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
-    bool isRollbackEnable = false;
 
     if (sqlite3_prepare_v2(wdb->db, sql_transaction, -1, &stmt, NULL)
         != SQLITE_OK) {
@@ -1922,7 +1944,7 @@ int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction) {
         return -1;
     }
 
-    if (result = wdb_step1(stmt, wdb, 3, isRollbackEnable) != SQLITE_DONE,
+    if (result = wdb_step1(stmt, wdb, 3, false) != SQLITE_DONE,
         result) {
         mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         result = -1;
@@ -1932,7 +1954,7 @@ int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction) {
     return result;
 }
 
-int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn) {
+STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn) {
     if (wdb != NULL) {
         if (((state == 1) ? wdb->transaction : !wdb->transaction)) {
             return 0;

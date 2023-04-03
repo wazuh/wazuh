@@ -1087,18 +1087,6 @@ void w_inc_global_get_fragmentation();
 void w_inc_global_get_fragmentation_time(struct timeval time);
 
 /**
- * @brief Increment rollback global queries counter
- */
-void w_inc_global_rollback();
-
-/**
- * @brief Increment rollback global time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_global_rollback_time(struct timeval time);
-
-/**
  * @brief Increment task queries counter
  *
  */

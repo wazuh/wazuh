@@ -514,10 +514,6 @@ struct kv_list {
     const struct kv_list *next;
 };
 
-typedef struct rollback_data_t {
-    char * output;
-    wdb_t * wdb;
-} rollback_data_t;
 
 /**
  * @brief pointer to function for any transaction
@@ -702,9 +698,6 @@ int wdb_create_agent_db2(const char * agent_id);
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
 
-/* Insert metadata for minor and major version. Returns 0 on success or -1 on error. */
-int wdb_metadata_fill_version(sqlite3 *db);
-
 /* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
 
@@ -746,10 +739,6 @@ int wdb_begin2(wdb_t * wdb);
 /* Commit transaction */
 int wdb_commit(wdb_t * wdb);
 int wdb_commit2(wdb_t * wdb);
-
-/* Roolback transaction */
-int wdb_rollback(wdb_t * wdb);
-int wdb_rollback2(wdb_t * wdb);
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -2594,27 +2583,5 @@ cJSON* wdb_get_config();
  */
 void wdbcom_dispatch(char* request, char* output);
 
-/**
- * @brief Execute any transaction
- * @param [in] wdb Database to query for the table existence.
- * @param sql_transaction
-*/
-int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction);
-
-/**
- * @brief write the status of the transaction
- * @param db Database to query for the table existence.
- * @param state 1 when is Begin-transaction, 0 other transactions
- * @param wdb_ptr_any_txn function that points to the transaction
- * @return 0 when succeed, !=0 otherwise.
-*/
-int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
-
-/**
- * @brief make rollback
- * @param rollback_data data needed for rollback
- * @return 0 when succeed, !=0 otherwise.
-*/
-int doRollback(rollback_data_t *rollback_data);
 
 #endif
