@@ -31,6 +31,14 @@ private:
     std::shared_ptr<uvw::UDPHandle> m_handle;      ///< Handle to the socket
     int m_bufferSize;                              ///< Size of the receive buffer
 
+    /**
+     * @brief This function opens, binds and configures a Unix datagram socket.
+     *
+     * @return Returns either the file descriptor value
+     * @throw std::runtime_error if the path is too long or the socket cannot be created or bound.
+     */
+    int bindUnixDatagramSocket(int& bufferSize);
+
 public:
     /**
      * @brief Create a Unix Datagram object
