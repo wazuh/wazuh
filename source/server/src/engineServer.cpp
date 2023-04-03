@@ -37,14 +37,14 @@ EngineServer::EngineServer(const std::string& apiEndpointPath,
 {
     try
     {
-        m_spMetricsScopeApi = metricsManager->getMetricsScope("api");
-        m_spMetricsScope = metricsManager->getMetricsScope("server");
-        m_spMetricsScopeDelta = metricsManager->getMetricsScope("serverRate", true);
+        m_spMetricsScopeAPI = metricsManager->getMetricsScope("API");
+        m_spMetricsScope = metricsManager->getMetricsScope("Server");
+        m_spMetricsScopeDelta = metricsManager->getMetricsScope("ServerRate", true);
         if (nullptr == registry)
         {
             registry = std::make_shared<api::Registry>();
         }
-        auto apiEndpoint = std::make_shared<APIEndpoint>(apiEndpointPath, registry, m_spMetricsScopeApi);
+        auto apiEndpoint = std::make_shared<APIEndpoint>(apiEndpointPath, registry, m_spMetricsScopeAPI);
         apiEndpoint->configure();
         m_endpoints.emplace(EndpointType::API, std::move(apiEndpoint));
 
