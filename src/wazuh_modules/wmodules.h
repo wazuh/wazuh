@@ -190,4 +190,10 @@ size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
 int wmcom_sync(char * buffer);
 
+
+#ifdef AIX
+char *strcasestr(char *a, char *b);
+#endif
+
+
 #endif // W_MODULES
