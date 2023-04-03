@@ -11,10 +11,9 @@
 
 #include <kvdb/kvdb.hpp>
 #include <logging/logging.hpp>
+#include <metrics/metricsManager.hpp>
 #include <utils/baseMacros.hpp>
 #include <utils/stringUtils.hpp>
-
-#include <metrics/metricsManager.hpp>
 
 namespace kvdb_manager
 {

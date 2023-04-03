@@ -2,6 +2,7 @@
 #define _CMD_METRICS_HPP
 
 #include <CLI/CLI.hpp>
+
 #include <cmds/apiclnt/client.hpp>
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 
