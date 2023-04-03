@@ -167,13 +167,7 @@ typedef uint8_t u_int8_t;
 #endif /* WIN32 */
 
 #ifdef AIX
-
-//#define MSG_DONTWAIT MSG_NONBLOCK
-#ifndef MSG_DONTWAIT
-#define MSG_DONTWAIT 0x40
-#endif
-
-char *strcasestr(char *a, char *b);
+#define MSG_DONTWAIT MSG_NONBLOCK
 #endif
 
 
