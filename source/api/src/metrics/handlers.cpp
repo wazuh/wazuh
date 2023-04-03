@@ -16,7 +16,7 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 api::Handler metricsDumpCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
 {
-    return [&](api::wpRequest wRequest) -> api::wpResponse
+    return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eMetrics::Dump_Request;
         using ResponseType = eMetrics::Dump_Response;
@@ -65,9 +65,9 @@ api::Handler metricsGetCmd(const std::shared_ptr<metricsManager::IMetricsManager
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        auto errorMsg = !eRequest.has_scopename() ? std::make_optional("Missing /scope name")
-                : !eRequest.has_instrumentname() ? std::make_optional("Missing /instrument name")
-                : std::nullopt;
+        auto errorMsg = !eRequest.has_scopename()        ? std::make_optional("Missing /scope name")
+                        : !eRequest.has_instrumentname() ? std::make_optional("Missing /instrument name")
+                                                         : std::nullopt;
 
         if (errorMsg.has_value())
         {
@@ -107,10 +107,10 @@ api::Handler metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsMana
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        auto errorMsg = !eRequest.has_scopename() ? std::make_optional("Missing /scope name")
-                : !eRequest.has_instrumentname() ? std::make_optional("Missing /instrument name")
-                : !eRequest.has_status() ? std::make_optional("Missing /status")
-                : std::nullopt;
+        auto errorMsg = !eRequest.has_scopename()        ? std::make_optional("Missing /scope name")
+                        : !eRequest.has_instrumentname() ? std::make_optional("Missing /instrument name")
+                        : !eRequest.has_status()         ? std::make_optional("Missing /status")
+                                                         : std::nullopt;
 
         if (errorMsg.has_value())
         {
@@ -120,7 +120,6 @@ api::Handler metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsMana
         try
         {
             metricsAPI->enableCmd(eRequest.scopename(), eRequest.instrumentname(), eRequest.status());
-
         }
         catch (const std::exception& e)
         {
@@ -160,7 +159,7 @@ api::Handler metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsManage
 api::Handler metricsList(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
 {
     std::variant<std::string, base::Error> result;
-    return [&](api::wpRequest wRequest) -> api::wpResponse
+    return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eMetrics::List_Request;
         using ResponseType = eMetrics::List_Response;
@@ -205,8 +204,7 @@ void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>&
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(
-            fmt::format("metrics API commands could not be registered: {}", e.what()));
+        throw std::runtime_error(fmt::format("metrics API commands could not be registered: {}", e.what()));
     }
 }
 } // namespace api::metrics::handlers
