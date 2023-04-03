@@ -13,7 +13,7 @@ namespace router
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
 Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store,
-        const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager, std::size_t threads)
+        const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager, std::size_t threads)
     : m_mutexRoutes {}
     , m_namePriorityFilter {}
     , m_priorityRoute {}

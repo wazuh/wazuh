@@ -8,7 +8,7 @@
 #include <metrics/metricsManager.hpp>
 
 using namespace api::kvdb::handlers;
-using namespace metrics_manager;
+using namespace metricsManager;
 
 constexpr auto DB_NAME = "TEST_DB";
 constexpr auto DB_NAME_2 = "TEST_DB_2";

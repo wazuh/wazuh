@@ -42,7 +42,7 @@ public:
      */
     explicit APIEndpoint(const std::string& config,
                          std::shared_ptr<api::Registry> registry,
-                         std::shared_ptr<metrics_manager::IMetricsScope> metricsScope);
+                         std::shared_ptr<metricsManager::IMetricsScope> metricsScope);
     ~APIEndpoint();
 
     void run() override;
@@ -53,7 +53,7 @@ public:
 
     std::shared_ptr<api::Registry> getRegistry() const;
 
-    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScope;
+    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScope;
 };
 
 } // namespace engineserver::endpoints

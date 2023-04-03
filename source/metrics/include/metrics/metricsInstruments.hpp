@@ -7,7 +7,7 @@
 
 #include <mutex>
 
-namespace metrics_manager 
+namespace metricsManager 
 {
 
 namespace OTstd = opentelemetry::nostd;
@@ -110,6 +110,6 @@ private:
     U m_value;
 };
 
-} // namespace metrics_manager
+} // namespace metricsManager
 
 #endif // _METRICS_INSTRUMENTS_H

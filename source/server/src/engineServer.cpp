@@ -33,7 +33,7 @@ EngineServer::EngineServer(const std::string& apiEndpointPath,
                            const std::string& eventEndpointPath,
                            std::optional<std::string> pathFloodedFile,
                            const int bufferSize,
-                           const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
+                           const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
 {
     try
     {

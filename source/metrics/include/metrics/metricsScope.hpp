@@ -13,7 +13,7 @@
 #include <metrics/metricsInstruments.hpp>
 #include <metrics/instrumentCollection.hpp>
 
-namespace metrics_manager
+namespace metricsManager
 {
 
 using OTSDKMeterProvider = opentelemetry::sdk::metrics::MeterProvider;
@@ -102,6 +102,6 @@ private:
     static void FetcherDouble(OTMetrics::ObserverResult observer_result, void *id);
 };
 
-} // namespace metrics_manager
+} // namespace metricsManager
 
 #endif // _METRICS_SCOPE_H
