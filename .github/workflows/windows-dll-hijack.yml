@@ -1,0 +1,90 @@
+name: Testing DLL search order to prevent hijack
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install mingw
+        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+      - name: make deps
+        run: make -C src deps TARGET=winagent -j2
+      - name: make
+        run: make -C src TARGET=winagent -j2
+      - name: Copy libraries
+        run: |
+          mkdir -p src/shared_libraries
+          cp src/*.dll src/shared_libraries/
+          cp src/win32/*.dll src/shared_libraries/
+      - name: Upload Artifact shared_libraries
+        uses: actions/upload-artifact@v3
+        with:
+          name: shared_libraries
+          path: src/shared_libraries
+      - name: Copy executables
+        run: |
+          mkdir -p src/exe_files
+          # We exclude the installer from the test
+          find src/win32/ -regex '.*wazuh-agent-[0-9].[0-9].[0-9]\.exe$' -delete
+          cp src/win32/*.exe src/exe_files/
+      - name: Upload Artifact executables
+        uses: actions/upload-artifact@v3
+        with:
+          name: executables
+          path: src/exe_files
+      - name: Copy configuration files
+        run: |
+          mkdir -p src/configuration_files
+          cp src/win32/ossec.conf src/configuration_files/
+          cp src/win32/internal_options.conf src/configuration_files/
+      - name: Upload Artifact configuration files
+        uses: actions/upload-artifact@v3
+        with:
+          name: configuration
+          path: src/configuration_files
+  run-on-windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version"
+          architecture: x64
+      - name: Download Artifact shared_libraries
+        uses: actions/download-artifact@v3
+        with:
+          name: shared_libraries
+          path: C:\shared_libraries\
+      - name: Download Artifact executables
+        uses: actions/download-artifact@v3
+        with:
+          name: executables
+          path: C:\executables\
+      - name: Download Artifact configuration files
+        uses: actions/download-artifact@v3
+        with:
+          name: configuration
+          path: C:\configuration_files\
+      - name: Copy libraries and configuration files
+        run: |
+          copy C:\shared_libraries\*.dll C:\executables\
+          copy C:\configuration_files\*.conf C:\executables\
+      - name: Install dependencies
+        run: |
+          pip install -r src/win32/qa/requirements.txt
+      - name: Download Process Monitor
+        run: |
+          python -m wget https://download.sysinternals.com/files/ProcessMonitor.zip -o C:\ProcessMonitor.zip
+          Expand-Archive C:\ProcessMonitor.zip -DestinationPath C:\ProcessMonitor
+      - name: Run tests
+        run: |
+          cd src/win32/qa
+          python -m pytest -vvs ./
