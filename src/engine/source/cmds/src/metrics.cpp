@@ -34,7 +34,7 @@ void runDump(std::shared_ptr<apiclnt::Client> client)
 {
     using RequestType = eMetrics::Dump_Request;
     using ResponseType = eMetrics::Dump_Response;
-    const std::string command = "metrics/dump";
+    const std::string command = "metrics.manager/dump";
 
     RequestType eRequest;
 
@@ -54,7 +54,7 @@ void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string
 {
     using RequestType = eMetrics::Get_Request;
     using ResponseType = eMetrics::Get_Response;
-    const std::string command = "metrics/get";
+    const std::string command = "metrics.manager/get";
 
     // Prepare the request
     RequestType eRequest;
@@ -76,7 +76,7 @@ void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::str
 {
     using RequestType = eMetrics::Enable_Request;
     using ResponseType = eMetrics::Enable_Response;
-    const std::string command = "metrics/enable";
+    const std::string command = "metrics.manager/enable";
 
     RequestType eRequest;
     eRequest.set_instrumentname(instrumentName);
@@ -93,7 +93,7 @@ void runListInstruments(std::shared_ptr<apiclnt::Client> client)
 {
     using RequestType = eMetrics::List_Request;
     using ResponseType = eMetrics::List_Response;
-    const std::string command = "metrics/list";
+    const std::string command = "metrics.manager/list";
 
     RequestType eRequest;
 
@@ -126,7 +126,7 @@ void runTest(std::shared_ptr<apiclnt::Client> client)
 {
     using RequestType = eMetrics::Test_Request;
     using ResponseType = eMetrics::Test_Response;
-    const std::string command = "metrics/test";
+    const std::string command = "metrics.manager/test";
 
     RequestType eRequest;
 
