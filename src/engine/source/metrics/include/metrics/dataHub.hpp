@@ -1,11 +1,12 @@
 #ifndef _DATA_HUB_H
 #define _DATA_HUB_H
 
-#include <metrics/iDataHub.hpp>
-#include <json/json.hpp>
 #include <map>
 #include <mutex>
 #include <variant>
+
+#include <json/json.hpp>
+#include <metrics/iDataHub.hpp>
 
 namespace metricsManager
 {
