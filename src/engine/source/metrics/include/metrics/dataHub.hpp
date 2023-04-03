@@ -7,7 +7,7 @@
 #include <mutex>
 #include <variant>
 
-namespace metrics_manager
+namespace metricsManager
 {
 
 class DataHub : public IDataHub
@@ -29,6 +29,6 @@ private:
     std::map<std::string, json::Json> m_resources;
     std::mutex m_mutex;
 };
-} // namespace metrics_manager
+} // namespace metricsManager
 
 #endif // _DATA_HUB_H

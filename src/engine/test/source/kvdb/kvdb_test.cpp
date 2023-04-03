@@ -11,7 +11,7 @@
 #include <logging/logging.hpp>
 
 #include <metrics/metricsManager.hpp>
-using namespace metrics_manager;
+using namespace metricsManager;
 
 // TODO: can we move this utility functions to headers accessible to tests and
 // benchmark?

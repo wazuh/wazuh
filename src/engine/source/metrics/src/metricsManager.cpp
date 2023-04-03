@@ -3,7 +3,7 @@
 
 #include <logging/logging.hpp>
 
-namespace metrics_manager
+namespace metricsManager
 {
 
 MetricsManager::MetricsManager() :
@@ -204,4 +204,4 @@ std::variant<std::string, base::Error> MetricsManager::listCmd()
     return result.str();
 }
 
-} // namespace metrics_manager
+} // namespace metricsManager

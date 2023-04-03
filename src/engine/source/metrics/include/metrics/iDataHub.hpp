@@ -4,7 +4,7 @@
 #include <json/json.hpp>
 #include <string>
 
-namespace metrics_manager
+namespace metricsManager
 {
 
 class IDataHub
@@ -16,6 +16,6 @@ public:
     virtual void setResource(const std::string& scope, json::Json object) = 0;
 };
 
-} // namespace metrics_manager
+} // namespace metricsManager
 
 #endif // _I_DATA_HUB_H

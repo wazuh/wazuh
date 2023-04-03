@@ -29,7 +29,7 @@ constexpr bool DONT_CREATE_IF_MISSING {false};
 
 } // namespace
 
-KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
+KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
 {
     // TODO should we read and load all the dbs inside the folder?
     // shouldn't be better to just load the configured ones at start instead?

@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-namespace metrics_manager
+namespace metricsManager
 {
 
 class iInstrument
@@ -43,6 +43,6 @@ public:
     virtual void setValue(const T& value) = 0;
 };
 
-} // namespace metrics_manager
+} // namespace metricsManager
 
 #endif // _I_METRICS_INSTRUMENTS_H

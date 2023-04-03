@@ -187,7 +187,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
 
 APIEndpoint::APIEndpoint(const std::string& config,
                          std::shared_ptr<api::Registry> registry,
-                         std::shared_ptr<metrics_manager::IMetricsScope> metricsScope)
+                         std::shared_ptr<metricsManager::IMetricsScope> metricsScope)
     : BaseEndpoint {config}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<PipeHandle>()}

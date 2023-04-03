@@ -63,8 +63,8 @@ struct Options
 
 namespace cmd::server
 {
-void runStart(ConfHandler confManager, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager, 
-                                       const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsManagerAPI)
+void runStart(ConfHandler confManager, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager, 
+                                       const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsManagerAPI)
 {
     // Get needed configuration on main function
     const auto logLevel = confManager->get<int>("server.log_level");
@@ -262,8 +262,8 @@ void runStart(ConfHandler confManager, const std::shared_ptr<metrics_manager::IM
     g_exitHanlder.execute();
 }
 
-void configure(CLI::App_p app, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager,
-                               const std::shared_ptr<metrics_manager::IMetricsManagerAPI>& metricsManagerAPI)
+void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager,
+                               const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsManagerAPI)
 {
     auto serverApp = app->add_subcommand("server", "Start/Stop a Wazuh engine instance.");
     serverApp->require_subcommand(1);

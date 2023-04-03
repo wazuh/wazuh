@@ -9,7 +9,7 @@
 #include "testAuxiliar/routerAuxiliarFunctions.hpp"
 
 #include <metrics/metricsManager.hpp>
-using namespace metrics_manager;
+using namespace metricsManager;
 
 TEST(Router, build_ok)
 {

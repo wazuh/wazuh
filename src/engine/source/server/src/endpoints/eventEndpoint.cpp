@@ -173,8 +173,8 @@ static inline int bindUnixDatagramSocket(const char* path)
 EventEndpoint::EventEndpoint(
     const std::string& path,
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<base::Event>> eventQueue,
-    std::shared_ptr<metrics_manager::IMetricsScope> metricsScope,
-    std::shared_ptr<metrics_manager::IMetricsScope> metricsScopeDelta,
+    std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
+    std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
     std::optional<std::string> pathFloodedFile)
     : BaseEndpoint {path}
     , m_eventQueue {eventQueue}

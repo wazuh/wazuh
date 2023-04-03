@@ -26,9 +26,9 @@ struct Options
     std::string environment;
     std::string graphOutDir;
 };
-void run(const Options& options, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
+void run(const Options& options, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
 
-void configure(CLI::App_p app, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
+void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
 } // namespace cmd::graph
 
 #endif // _CMD_GRAPH_HPP

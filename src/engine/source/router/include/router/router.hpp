@@ -83,8 +83,8 @@ private:
      */
     void dumpTableToStorage();
 
-    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScope;
-    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScopeDelta;
+    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScope;
+    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScopeDelta;
 
 public:
     using Entry = std::tuple<std::string, std::size_t, std::string, std::string>; ///< Entry of the routes table (name,
@@ -98,7 +98,7 @@ public:
      * @param threads Number of threads for the pool
      */
     Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store,
-            const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager, std::size_t threads = 1);
+            const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager, std::size_t threads = 1);
 
     /**
      * @brief Get the list of route names, priority and target
