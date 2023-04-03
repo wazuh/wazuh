@@ -1,8 +1,6 @@
 #include <server/endpoints/unixStream.hpp>
 
-#include <unistd.h> // Unlink
 #include <sys/un.h>     // Unix socket datagram bind
-
 
 #include <logging/logging.hpp>
 
@@ -162,8 +160,8 @@ void UnixStream::bind(std::shared_ptr<uvw::Loop> loop)
     m_handle = m_loop->resource<uvw::PipeHandle>();
 
     // Check if the socket file exists, if so, delete it
-    // #TODO, CHECK IF THE FILE IS A SOCKET
-    unlink(m_address.c_str());
+    unlinkUnixSocket();
+
     m_handle->bind(m_address);
 
     // Server in case of error
