@@ -4,7 +4,7 @@
 #include <metrics/metricsManager.hpp>
 #include <json/json.hpp>
 
-using namespace metrics_manager;
+using namespace metricsManager;
 
 class MetricsInterfaceTest : public ::testing::Test
 {

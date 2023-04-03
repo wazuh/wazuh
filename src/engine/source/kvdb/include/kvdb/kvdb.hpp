@@ -14,7 +14,7 @@
 constexpr static const char* DEFAULT_CF_NAME {"default"};
 
 
-namespace metrics_manager
+namespace metricsManager
 {
     class IMetricsScope;
 }
@@ -54,7 +54,7 @@ public:
      * @param createIfMissing if true, creates the database when it does not exist
      * @param errorIfExists if true, it generates an error when the database does exist
      */
-    CreationStatus init(bool createIfMissing = true, bool errorIfExists = false, const std::shared_ptr<metrics_manager::IMetricsScope>& metricsScope = nullptr);
+    CreationStatus init(bool createIfMissing = true, bool errorIfExists = false, const std::shared_ptr<metricsManager::IMetricsScope>& metricsScope = nullptr);
 
     /**
      * @brief Get the db name
@@ -216,7 +216,7 @@ private:
     WAZUH_DISABLE_COPY_ASSIGN(KVDB);
     struct Impl;
     std::unique_ptr<Impl> mImpl;
-    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScope;
+    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScope;
 };
 
 #endif // _KVDB_H

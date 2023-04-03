@@ -61,7 +61,7 @@ public:
                           const std::string& eventEndpointPath,
                           std::optional<std::string> pathFloodedFile,
                           const int bufferSize,
-                          const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
+                          const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
 
     /**
      * @brief Start server.
@@ -90,9 +90,9 @@ public:
      */
     std::shared_ptr<api::Registry> getRegistry() const;
 
-    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScope;
-    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScopeDelta;
-    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScopeAPI;
+    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScope;
+    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScopeDelta;
+    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScopeAPI;
 };
 
 } // namespace engineserver
