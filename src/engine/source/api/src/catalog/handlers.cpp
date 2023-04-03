@@ -298,19 +298,17 @@ api::Handler resourceValidate(std::shared_ptr<Catalog> catalog)
     };
 }
 
-void registerHandlers(std::shared_ptr<Catalog> catalog, std::shared_ptr<api::Registry> registry)
+void registerHandlers(std::shared_ptr<Catalog> catalog, std::shared_ptr<api::Api> api)
 {
-    try
+    bool ok = api->registerHandler("catalog.resource/post", resourcePost(catalog))
+              && api->registerHandler("catalog.resource/get", resourceGet(catalog))
+              && api->registerHandler("catalog.resource/put", resourcePut(catalog))
+              && api->registerHandler("catalog.resource/delete", resourceDelete(catalog))
+              && api->registerHandler("catalog.resource/validate", resourceValidate(catalog));
+
+    if (!ok)
     {
-        registry->registerHandler("catalog.resource/post", resourcePost(catalog));
-        registry->registerHandler("catalog.resource/get", resourceGet(catalog));
-        registry->registerHandler("catalog.resource/put", resourcePut(catalog));
-        registry->registerHandler("catalog.resource/delete", resourceDelete(catalog));
-        registry->registerHandler("catalog.resource/validate", resourceValidate(catalog));
-    }
-    catch (const std::exception& e)
-    {
-        throw std::runtime_error(fmt::format("An error occurred while registering the commands: {}", e.what()));
+        throw std::runtime_error("Failed to register catalog handlers");
     }
 }
 } // namespace api::catalog::handlers

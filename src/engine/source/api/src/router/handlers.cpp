@@ -224,19 +224,22 @@ api::Handler queuePost(std::shared_ptr<::router::Router> router)
     };
 }
 
-void registerHandlers(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Registry> registry)
+void registerHandlers(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Api> api)
 {
     // Commands to manage routes
-    registry->registerHandler("router.route/get", routeGet(router));
-    registry->registerHandler("router.route/post", routePost(router));
-    registry->registerHandler("router.route/patch", routePatch(router));
-    registry->registerHandler("router.route/delete", routeDelete(router));
+    bool ok = api->registerHandler("router.route/get", routeGet(router))
+              && api->registerHandler("router.route/post", routePost(router))
+              && api->registerHandler("router.route/patch", routePatch(router))
+              && api->registerHandler("router.route/delete", routeDelete(router)) &&
+              // Commands to manage the routes table
+              api->registerHandler("router.table/get", tableGet(router)) &&
+              // Commands to manage the queue of events
+              api->registerHandler("router.queue/post", queuePost(router));
 
-    // Commands to manage the routes table
-    registry->registerHandler("router.table/get", tableGet(router));
-
-    // Commands to manage the queue of events
-    registry->registerHandler("router.queue/post", queuePost(router));
+    if (!ok)
+    {
+        throw std::runtime_error("Failed to register router handlers");
+    }
 }
 
 } // namespace api::router::handlers

@@ -562,13 +562,6 @@ TEST(Handlers, registerHandlers)
 {
     auto config = getConfig();
     auto catalog = std::make_shared<api::catalog::Catalog>(config);
-    auto apiReg = std::make_shared<api::Registry>();
-
-    ASSERT_NO_THROW(api::catalog::handlers::registerHandlers(catalog, apiReg));
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = apiReg->getHandler("catalog.resource/post"));
-    ASSERT_NO_THROW(cmd = apiReg->getHandler("catalog.resource/get"));
-    ASSERT_NO_THROW(cmd = apiReg->getHandler("catalog.resource/put"));
-    ASSERT_NO_THROW(cmd = apiReg->getHandler("catalog.resource/delete"));
-    ASSERT_NO_THROW(cmd = apiReg->getHandler("catalog.resource/validate"));
+    auto api = std::make_shared<api::Api>();
+    ASSERT_NO_THROW(api::catalog::handlers::registerHandlers(catalog, api));
 }

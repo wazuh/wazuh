@@ -3,6 +3,8 @@
 
 #include <functional>
 #include <string>
+#include <memory>
+#include <stdexcept>
 
 #include <server/protocolHandler.hpp>
 
@@ -45,8 +47,7 @@ public:
      * @param m_onMessageCallback Callback to be called when a message is received
      * @param maxPayloadSize Maximum payload size in bytes (default 10 MB)
      */
-    WStream(std::function<std::string(const std::string&)> m_onMessageCallback,
-            int maxPayloadSize = 1024 * 1024 * 10)
+    WStream(std::function<std::string(const std::string&)> m_onMessageCallback, int maxPayloadSize = 1024 * 1024 * 10)
         : m_header {}
         , m_payload {}
         , m_stage {Stage::HEADER}
@@ -98,6 +99,40 @@ public:
      */
     std::string getErrorResponse() override;
 };
+
+class WStreamFactory : public ProtocolHandlerFactory
+{
+private:
+    std::function<std::string(const std::string&)>
+        m_onMessageCallback; ///< Callback to be called when a message is received
+    int maxPayloadSize;      // 10 MB by default
+public:
+    /**
+     * @brief Construct a new WStreamFactory object
+     *
+     * @param m_onMessageCallback Callback to be called when a message is received
+     * @param maxPayloadSize Maximum payload size in bytes (default 10 MB)
+     */
+    WStreamFactory(std::function<std::string(const std::string&)> m_onMessageCallback,
+                   int maxPayloadSize = 1024 * 1024 * 10)
+        : m_onMessageCallback {m_onMessageCallback}
+        , maxPayloadSize {maxPayloadSize}
+    {
+        if (maxPayloadSize <= 0)
+        {
+            throw std::invalid_argument("maxPayloadSize must be greater than 0");
+        }
+    }
+
+    /**
+     * @copydoc ProtocolHandlerFactory::create
+     */
+    std::shared_ptr<ProtocolHandler> create() override
+    {
+        return std::make_shared<WStream>(m_onMessageCallback, maxPayloadSize);
+    }
+};
+
 } // namespace engineserver::ph
 
 #endif
