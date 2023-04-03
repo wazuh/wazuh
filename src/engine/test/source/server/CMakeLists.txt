@@ -2,7 +2,7 @@ add_executable(server_tests
     engineServer_test.cpp
     unixDatagram_test.cpp
     unixStream_test.cpp
-    #protocolHandler_test.cpp
+    protocolHandlerStream_test.cpp
 )
 
 target_include_directories(server_tests

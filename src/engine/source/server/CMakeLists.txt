@@ -38,6 +38,7 @@ add_library(server STATIC
     ${ENGINE_SERVER_SOURCE_DIR}/endpoints/unixDatagram.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/endpoints/unixStream.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/protocolHandler.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/protocolHandlers/wStream.cpp
 )
 
 #TODO do this better
