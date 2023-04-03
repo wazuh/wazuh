@@ -59,7 +59,9 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
     auto protocolHandler = std::make_shared<WazuhStreamProtocol>();
 
     auto connectedSockets = m_spMetricsScope->getUpDownCounterInteger("ConnectedSockets");
-    auto totalConnections = m_spMetricsScope->getCounterUInteger("TotalConnections");
+    auto totalConnections = m_spMetricsScope->getCounterUInteger("TotalRequest");
+    auto failedResponses = m_spMetricsScope->getCounterUInteger("TotalFailedRequest");
+    auto responseTime = m_spMetricsScope->getHistogramUInteger("ResponseTime");
 
     timer->on<TimerEvent>(
         [client](const auto&, auto& handler)
@@ -82,8 +84,9 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
         });
 
     client->on<DataEvent>(
-        [&, timer, protocolHandler](const DataEvent& event, PipeHandle& client)
+        [&, timer, protocolHandler, failedResponses, responseTime](const DataEvent& event, PipeHandle& client)
         {
+            auto startTime = std::chrono::high_resolution_clock::now();
             timer->again();
             const auto result = protocolHandler->process(event.data.get(), event.length);
 
@@ -102,26 +105,39 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
                         }
                         else
                         {
+                            // Number of failed responses
+                            failedResponses->addValue(1UL);
                             wresponse =
                                 base::utils::wazuhProtocol::WazuhResponse::invalidRequest(wrequest.error().value());
                         }
                     }
                     catch (const std::runtime_error& e)
                     {
+                        // Number of failed responses
+                        failedResponses->addValue(1UL);
                         wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidJsonRequest();
                     }
                     catch (const std::exception& e)
                     {
+                        // Number of failed responses
+                        failedResponses->addValue(1UL);
                         wresponse = base::utils::wazuhProtocol::WazuhResponse::unknownError();
                         WAZUH_LOG_ERROR("Engine API endpoint: Error with client ({}): {}", client.peer(), e.what());
                     }
 
                     auto [buffer, size] = addSecureHeader(wresponse.toString());
                     client.write(std::move(buffer), size);
+                    auto elapsedTime = std::chrono::high_resolution_clock::now() - startTime;
+                    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count();
+
+                    // Ssuccessful Response Time
+                    responseTime->recordValue(static_cast<uint64_t>(milliseconds));
                 }
             }
             else
             {
+                // Number of failed responses
+                failedResponses->addValue(1UL);
                 WAZUH_LOG_WARN(
                     "Engine API endpoint: Some data could not be processed from client "
                     "({}).",
