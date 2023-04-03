@@ -9,8 +9,9 @@
 #include <thread>
 #include <unordered_map>
 
-#include <queue/concurrentQueue.hpp>
 #include <baseTypes.hpp>
+#include <parseEvent.hpp>
+#include <queue/concurrentQueue.hpp>
 #include <store/istore.hpp>
 
 #include "policyManager.hpp"
@@ -152,6 +153,27 @@ public:
      * @return std::optional<base::Error> A error with description if the event can't be pushed
      */
     std::optional<base::Error> enqueueOssecEvent(std::string_view event);
+
+    /**
+     * @brief Push an event to the queue of the router
+     *
+     * This method is inline and does not check the router && queue status
+     * @param event
+     */
+    void fastEnqueueEvent(const std::string& eventStr)
+    {
+        base::Event event;
+        try
+        {
+            event = base::parseEvent::parseOssecEvent(eventStr);
+        }
+        catch (const std::exception& e)
+        {
+            WAZUH_LOG_WARN("Error parsing event: '{}' (discarting...)", e.what());
+            return;
+        }
+        m_queue->push(std::move(event));
+    }
 
     /**
      * @brief Delete a route from the router

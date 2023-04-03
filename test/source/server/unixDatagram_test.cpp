@@ -100,6 +100,7 @@ TEST_F(UnixDatagramTest, PauseAndResume)
 {
     UnixDatagram endpoint(socketPath, [](std::string&&) {});
     endpoint.bind(loop);
+    ASSERT_TRUE(endpoint.pause());
     ASSERT_TRUE(endpoint.resume());
     ASSERT_FALSE(endpoint.resume());
     ASSERT_TRUE(endpoint.pause());
@@ -112,7 +113,6 @@ TEST_F(UnixDatagramTest, ReceiveData)
     std::string receivedData;
     UnixDatagram endpoint(socketPath, [&](std::string&& data) { receivedData = std::move(data); });
     endpoint.bind(loop);
-    endpoint.resume();
 
     std::string message = "Hello, Unix Datagram!";
     sendUnixDatagram(socketPath, message);
@@ -195,7 +195,6 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
 
     ASSERT_NO_THROW(endpoint.bind(loop));
     ASSERT_TRUE(endpoint.isBound());
-    ASSERT_TRUE(endpoint.resume());
 
     // Prepare the loop stop handler
     auto stopHandler = loop->resource<uvw::AsyncHandle>();
@@ -339,7 +338,6 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
 
     ASSERT_NO_THROW(endpoint.bind(loop));
     ASSERT_TRUE(endpoint.isBound());
-    ASSERT_TRUE(endpoint.resume());
 
     // Prepare the loop stop handler
     auto stopHandler = loop->resource<uvw::AsyncHandle>();

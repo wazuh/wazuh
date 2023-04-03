@@ -16,3 +16,8 @@ target_include_directories(queue
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CameronQueue_SOURCE_DIR}
 )
+
+target_link_libraries(queue
+  PUBLIC
+  base # Only for the loggin
+)
