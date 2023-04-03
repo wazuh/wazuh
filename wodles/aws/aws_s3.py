@@ -26,8 +26,9 @@
 #   16 - Throttling error
 #   17 - Invalid key format
 #   18 - Invalid prefix
-#   19 - Unable to find SQS
-#   20 - Failed fetch/delete from SQS
+#   19 - The server datetime and datetime of the AWS environment differ
+#   20 - Unable to find SQS
+#   21 - Failed fetch/delete from SQS
 
 
 import argparse
@@ -61,7 +62,7 @@ import operator
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
-from time import mktime, sleep
+from time import mktime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import utils
@@ -3491,29 +3492,25 @@ class AWSSLSubscriberBucket(WazuhIntegration):
                                   aws_profile=aws_profile, service_name='s3', **kwargs)
 
     def obtain_information_from_parquet(self, bucket_path: str, parquet_path: str) -> list:
-        """
-        Fetch a parquet file from a bucket and obtain a list of the events it contains
-
+        """Fetch a parquet file from a bucket and obtain a list of the events it contains.
         Parameters
         ----------
         bucket_path : str
-            Path of the bucket to get the parquet file from
-
+            Path of the bucket to get the parquet file from.
         parquet_path : str
-            Relative path of the parquet file inside the bucket
-
+            Relative path of the parquet file inside the bucket.
         Returns
         -------
-        A list with the events contained inside the parquet file.
+        events : list
+            Events contained inside the parquet file.
         """
-
         debug(f'Processing file {parquet_path} in {bucket_path}', 2)
         events = []
         try:
             raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket_path, Key=parquet_path)['Body'].read())
         except Exception as e:
             debug(f'Could not get the parquet file {parquet_path} in {bucket_path}: {e}', 1)
-            sys.exit(20)
+            sys.exit(21)
         pfile = pq.ParquetFile(raw_parquet)
         for i in pfile.iter_batches():
             for j in i.to_pylist():
@@ -3522,19 +3519,18 @@ class AWSSLSubscriberBucket(WazuhIntegration):
         return events
 
     def process_file(self, message: dict) -> None:
-        """
-        Parse an SQS message, obtain the events associated, and send them to AnalysisD.
-
+        """Parse an SQS message, obtain the events associated, and send them to Analysisd.
+        
         Parameters
         ----------
         message : dict
-            An SQS message recieved from the queue
+            An SQS message recieved from the queue.
         """
         events_in_file = self.obtain_information_from_parquet(bucket_path=message['bucket_path'],
                                                               parquet_path=message['parquet_path'])
         for event in events_in_file:
             self.send_msg(event, dump_json=False)
-        debug(f'{len(events_in_file)} events sent to AnalysisD', 2)
+        debug(f'{len(events_in_file)} events sent to Analysisd', 2)
 
 
 class AWSSQSQueue(WazuhIntegration):
@@ -3568,12 +3564,12 @@ class AWSSQSQueue(WazuhIntegration):
         self.iam_role_arn = kwargs['iam_role_arn']
 
     def _get_sqs_url(self) -> str:
-        """
-        Get the URL of the AWS SQS queue
+        """Get the URL of the AWS SQS queue
 
         Returns
         -------
-        The URL of the AWS SQS queue
+        url : str
+            The URL of the AWS SQS queue
         """
         try:
             url = self.client.get_queue_url(QueueName=self.sqs_name,
@@ -3582,11 +3578,10 @@ class AWSSQSQueue(WazuhIntegration):
             return url
         except botocore.errorfactory.QueueDoesNotExist:
             print('ERROR: Queue does not exist, verify the given name')
-            sys.exit(19)
+            sys.exit(20)
 
     def delete_message(self, message: dict) -> None:
-        """
-        Delete message from the SQS queue.
+        """Delete message from the SQS queue.
 
         Parameters
         ----------
@@ -3598,15 +3593,15 @@ class AWSSQSQueue(WazuhIntegration):
             debug(f'Message deleted from: {self.sqs_name}', 2)
         except Exception as e:
             debug(f'ERROR: Error deleting message from SQS: {e}', 1)
-            sys.exit(20)
+            sys.exit(21)
 
     def fetch_messages(self) -> dict:
-        """
-        Retrieves one or more messages (up to 10), from the specified queue.
+        """Retrieves one or more messages (up to 10), from the specified queue.
 
         Returns
         -------
-        A dictionary with a list of messages from the SQS queue
+        dict
+        A dictionary with a list of messages from the SQS queue.
         """
         try:
             debug(f'Retrieving messages from: {self.sqs_name}', 2)
@@ -3615,15 +3610,15 @@ class AWSSQSQueue(WazuhIntegration):
                                                WaitTimeSeconds=20)
         except Exception as e:
             debug(f'ERROR: Error receiving message from SQS: {e}', 1)
-            sys.exit(20)
+            sys.exit(21)
 
     def get_messages(self) -> list:
-        """
-        Retrieve parsed messages from the SQS queue.
+        """Retrieve parsed messages from the SQS queue.
 
         Returns
         -------
-        A list of parsed messages from the SQS queue
+        messages : list
+            Parsed messages from the SQS queue.
         """
         messages = []
         sqs_raw_messages = self.fetch_messages()
@@ -3646,7 +3641,7 @@ class AWSSQSQueue(WazuhIntegration):
         asl_bucket_handler = AWSSLSubscriberBucket(aws_profile=self.profile,
                                                    iam_role_arn=self.iam_role_arn)
         messages = self.get_messages()
-        while (messages != []):
+        while messages != []:
             for message in messages:
                 asl_bucket_handler.process_file(message)
                 self.delete_message(message)
@@ -3739,7 +3734,7 @@ def get_script_arguments():
                        action='store')
     group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
                        action='store')
-    group.add_argument('-sb', '--subscriber', dest='subscriber', help='Specify the name of the subscriber',
+    group.add_argument('-sb', '--subscriber', dest='subscriber', help='Specify the type of the subscriber',
                        action='store')
     parser.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS',
                         action='store')
