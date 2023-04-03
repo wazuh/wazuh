@@ -92,7 +92,7 @@ public:
 
     std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScope;
     std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScopeDelta;
-    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScopeApi;
+    std::shared_ptr<metrics_manager::IMetricsScope> m_spMetricsScopeAPI;
 };
 
 } // namespace engineserver
