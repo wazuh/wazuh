@@ -60,7 +60,9 @@ wnotify_t * wnotify_init(int size) {
     wnotify_t * notify;
     pollset_t fd;
 
-    if (fd = pollset_create(size), fd < 0) {
+    // If the argument has a value of -1, the maximum number of file descriptors that
+    // can belong to the pollset is bound by OPEN_MAX as defined in <sys/limits.h>
+    if (fd = pollset_create(-1), fd < 0) {
         return NULL;
     }
 
