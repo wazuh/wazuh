@@ -169,6 +169,11 @@ std::variant<std::string, base::Error> MetricsManager::listCmd()
     // TODO: This section improve with improve the json::Json
     for (auto& [key, value] : scopes)
     {
+        if (value.isNull())
+        {
+            continue;
+        }
+
         std::string json = "";
         auto metrics = value.getObject().value();
 
