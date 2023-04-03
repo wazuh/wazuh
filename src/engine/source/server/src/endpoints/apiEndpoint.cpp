@@ -84,7 +84,7 @@ void APIEndpoint::connectionHandler(PipeHandle& handle)
         });
 
     client->on<DataEvent>(
-        [&, timer, protocolHandler, failedResponses, responseTime](const DataEvent& event, PipeHandle& client)
+        [this, timer, protocolHandler, failedResponses, responseTime](const DataEvent& event, PipeHandle& client)
         {
             auto startTime = std::chrono::high_resolution_clock::now();
             timer->again();
