@@ -63,7 +63,7 @@ KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
                     __func__,
                     name);
     auto kvdb = std::make_shared<KVDB>(name, m_dbStoragePath);
-    auto result = kvdb->init(createIfMissing);
+    auto result = kvdb->init(createIfMissing, false, m_spMetricsScope);
     if (KVDB::CreationStatus::OkInitialized == result
         || KVDB::CreationStatus::OkCreated == result)
     {
