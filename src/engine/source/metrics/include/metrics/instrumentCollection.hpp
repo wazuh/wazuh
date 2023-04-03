@@ -6,7 +6,7 @@
 #include <memory>
 #include <functional>
 
-namespace metrics_manager
+namespace metricsManager
 {
 
 template <typename T, typename U>

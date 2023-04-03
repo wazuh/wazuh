@@ -1,5 +1,5 @@
-#ifndef _I_METRICS_MANAGER_H
-#define _I_METRICS_MANAGER_H
+#ifndef _I_METRICSMANAGER_H
+#define _I_METRICSMANAGER_H
 
 #include <string>
 #include <unordered_map>
@@ -8,7 +8,7 @@
 
 #include <metrics/iMetricsScope.hpp>
 
-namespace metrics_manager
+namespace metricsManager
 {
 
 class IMetricsManager
@@ -47,6 +47,6 @@ public:
     virtual json::Json getAllMetrics() = 0;
 };
 
-} // namespace metrics_manager
+} // namespace metricsManager
 
-#endif // _I_METRICS_MANAGER_H
+#endif // _I_METRICSMANAGER_H

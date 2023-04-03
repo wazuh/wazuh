@@ -38,7 +38,7 @@ void sigint_handler(const int signum)
 
 namespace cmd::test
 {
-void run(const Options& options, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
+void run(const Options& options, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
 {
     // Init logging
     logging::LoggingConfig logConfig;
@@ -316,7 +316,7 @@ void run(const Options& options, const std::shared_ptr<metrics_manager::IMetrics
     g_exitHanlder.execute();
 }
 
-void configure(CLI::App_p app, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager)
+void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
 {
     auto options = std::make_shared<Options>();
 

@@ -5,7 +5,7 @@
 #include <fmt/format.h>
 #include <metrics/dataHub.hpp>
 
-namespace metrics_manager
+namespace metricsManager
 {
 
 json::Json DataHub::getResource(const std::string& scope)
@@ -40,4 +40,4 @@ json::Json DataHub::getAllResources()
 
     return retValue;
 }
-} // namespace metrics_manager
+} // namespace metricsManager

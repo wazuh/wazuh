@@ -18,7 +18,7 @@
 #include <opBuilderKVDB.hpp>
 
 #include <metrics/metricsManager.hpp>
-using namespace metrics_manager;
+using namespace metricsManager;
 
 namespace
 {

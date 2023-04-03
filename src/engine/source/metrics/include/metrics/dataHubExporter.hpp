@@ -1,5 +1,5 @@
-#ifndef __JSON_EXPORTER_H
-#define __JSON_EXPORTER_H
+#ifndef __DATAHUB_EXPORTER_H
+#define __DATAHUB_EXPORTER_H
 
 #include "opentelemetry/common/spin_lock_mutex.h"
 #include "opentelemetry/sdk/metrics/data/metric_data.h"
@@ -29,7 +29,7 @@ public:
      * the export() function will send metrics data into. The default ostream is set to
      * stdout
      */
-    explicit DataHubExporter(std::shared_ptr<metrics_manager::IDataHub> dataHub,
+    explicit DataHubExporter(std::shared_ptr<metricsManager::IDataHub> dataHub,
                           sdk::metrics::AggregationTemporality aggregation_temporality =
                               sdk::metrics::AggregationTemporality::kCumulative) noexcept;
 
@@ -63,7 +63,7 @@ public:
                       (std::chrono::microseconds::max)()) noexcept override;
 
 private:
-    std::shared_ptr<metrics_manager::IDataHub> m_dataHub;
+    std::shared_ptr<metricsManager::IDataHub> m_dataHub;
 
     bool is_shutdown_ = false;
     mutable opentelemetry::common::SpinLockMutex lock_;
@@ -84,4 +84,4 @@ private:
 } // namespace exporter
 OPENTELEMETRY_END_NAMESPACE
 
-#endif // __JSON_EXPORTER_H
+#endif // __DATAHUB_EXPORTER_H

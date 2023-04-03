@@ -35,9 +35,9 @@ struct Options
     char protocolQueue;
     std::string protocolLocation;
 };
-void run(const Options& options, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
+void run(const Options& options, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
 
-void configure(CLI::App_p app, const std::shared_ptr<metrics_manager::IMetricsManager>& metricsManager);
+void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
 } // namespace cmd::test
 
 #endif // _CMD_TEST_HPP

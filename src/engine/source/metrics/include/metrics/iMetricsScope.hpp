@@ -3,7 +3,7 @@
 
 #include <metrics/IMetricsInstruments.hpp>
 
-namespace metrics_manager 
+namespace metricsManager 
 {
 
 class IMetricsScope 
@@ -19,6 +19,6 @@ public:
     virtual std::shared_ptr<iGauge<double>> getGaugeDouble(const std::string& name, double defaultValue) = 0;
 };
 
-} // namespace metrics_manager
+} // namespace metricsManager
 
 #endif // _I_METRICS_SCOPE_H

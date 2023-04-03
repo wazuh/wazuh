@@ -73,10 +73,10 @@ namespace exporter
 namespace metrics
 {
 
-using namespace metrics_manager;
+using namespace metricsManager;
 
 DataHubExporter::DataHubExporter(
-    std::shared_ptr<metrics_manager::IDataHub> dataHub,
+    std::shared_ptr<metricsManager::IDataHub> dataHub,
     sdk::metrics::AggregationTemporality aggregation_temporality) noexcept
     : m_dataHub(dataHub), aggregation_temporality_(aggregation_temporality)
 {}

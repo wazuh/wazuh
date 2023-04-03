@@ -669,7 +669,7 @@ KVDB::KVDB()
 {
 }
 
-KVDB::CreationStatus KVDB::init(bool createIfMissing, bool errorIfExists, const std::shared_ptr<metrics_manager::IMetricsScope>& metricsScope)
+KVDB::CreationStatus KVDB::init(bool createIfMissing, bool errorIfExists, const std::shared_ptr<metricsManager::IMetricsScope>& metricsScope)
 {
     m_spMetricsScope = metricsScope;
     return mImpl->init(createIfMissing, errorIfExists);

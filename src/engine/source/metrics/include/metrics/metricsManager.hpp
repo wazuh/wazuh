@@ -1,5 +1,5 @@
-#ifndef _METRICS_MANAGER_H
-#define _METRICS_MANAGER_H
+#ifndef _METRICSMANAGER_H
+#define _METRICSMANAGER_H
 
 #include <memory>
 #include <mutex>
@@ -12,7 +12,7 @@
 #include <metrics/dataHub.hpp>
 #include <metrics/metricsScope.hpp>
 
-namespace metrics_manager
+namespace metricsManager
 {
 
 class MetricsManager : public IMetricsManager, public IMetricsManagerAPI
@@ -83,9 +83,9 @@ private:
 
     std::mutex m_mutexScopes;
 
-    std::shared_ptr<metrics_manager::IMetricsScope>  m_scopeMetrics;
+    std::shared_ptr<metricsManager::IMetricsScope>  m_scopeMetrics;
 };
 
-} // namespace metrics_manager
+} // namespace metricsManager
 
-#endif // _METRICS_MANAGER_H
+#endif // _METRICSMANAGER_H

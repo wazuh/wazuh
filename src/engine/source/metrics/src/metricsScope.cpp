@@ -8,7 +8,7 @@ using OTSDKPerodicMetricReaderOptions = opentelemetry::sdk::metrics::PeriodicExp
 using OTGaugeInteger = opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<int64_t>>;
 using OTGaugeDouble = opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<double>>;
 using OTTemporality = opentelemetry::v1::sdk::metrics::AggregationTemporality;
-namespace metrics_manager
+namespace metricsManager 
 {
 
 void MetricsScope::initialize(bool delta, int exporterIntervalMS, int exporterTimeoutMS)
@@ -259,4 +259,4 @@ bool MetricsScope::getEnabledStatus(const std::string& instrumentName)
         throw std::runtime_error {"The instrument " + instrumentName + " has not been created."};
     }
 }
-} // namespace metrics_manager
+} // namespace metricsManager 

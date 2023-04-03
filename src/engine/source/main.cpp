@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     app->set_version_flag("-v, --version", "Wazuh Engine v0.0.1");
 
     // Initialize Metrics Module
-    auto metrics = std::make_shared<metrics_manager::MetricsManager>();
+    auto metrics = std::make_shared<metricsManager::MetricsManager>();
 
     // Configure each subcommand
     cmd::server::configure(app, metrics, metrics);
