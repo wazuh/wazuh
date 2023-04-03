@@ -217,6 +217,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
     // Bind the socket
     auto socketFd = bindUnixDatagramSocket(m_address, m_bufferSize);
     m_handle->open(socketFd);
+    resume();
 }
 
 void UnixDatagram::close()

@@ -4,12 +4,11 @@
 
 #include <fmt/format.h>
 
+#include <api/adapter.hpp>
 #include <eMessages/eMessage.h>
 #include <eMessages/kvdb.pb.h>
 #include <json/json.hpp>
 #include <utils/stringUtils.hpp>
-
-#include <api/adapter.hpp>
 
 namespace api::kvdb::handlers
 {
@@ -290,24 +289,22 @@ api::Handler dbPut(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
     };
 }
 
-void registerHandlers(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager, std::shared_ptr<api::Registry> registry)
+void registerHandlers(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager, std::shared_ptr<api::Api> api)
 {
-    try // TODO: TRY ????
-    {
-        // Manager (Works on the KVDB manager, create/delete/list/dump KVDBs)
-        registry->registerHandler("kvdb.manager/post", managerPost(kvdbManager));
-        registry->registerHandler("kvdb.manager/delete", managerDelete(kvdbManager));
-        registry->registerHandler("kvdb.manager/get", managerGet(kvdbManager));
-        registry->registerHandler("kvdb.manager/dump", managerDump(kvdbManager));
 
-        // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
-        registry->registerHandler("kvdb.db/put", dbPut(kvdbManager));
-        registry->registerHandler("kvdb.db/delete", dbDelete(kvdbManager));
-        registry->registerHandler("kvdb.db/get", dbGet(kvdbManager));
-    }
-    catch (const std::exception& e)
+    //        Manager (Works on the KVDB manager, create/delete/list/dump KVDBs)
+    bool ok = api->registerHandler("kvdb.manager/post", managerPost(kvdbManager))
+              && api->registerHandler("kvdb.manager/delete", managerDelete(kvdbManager))
+              && api->registerHandler("kvdb.manager/get", managerGet(kvdbManager))
+              && api->registerHandler("kvdb.manager/dump", managerDump(kvdbManager)) &&
+              // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
+              api->registerHandler("kvdb.db/put", dbPut(kvdbManager))
+              && api->registerHandler("kvdb.db/delete", dbDelete(kvdbManager))
+              && api->registerHandler("kvdb.db/get", dbGet(kvdbManager));
+
+    if (!ok)
     {
-        throw std::runtime_error(fmt::format("KVDB API commands could not be registered: {}", e.what()));
+        throw std::runtime_error("Failed to register KVDB API handlers");
     }
 }
 } // namespace api::kvdb::handlers

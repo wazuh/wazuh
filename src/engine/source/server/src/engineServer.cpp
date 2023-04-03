@@ -32,7 +32,6 @@ EngineServer::EngineServer()
 
 EngineServer::~EngineServer() {
     this->stop();
-    this->m_loop->close();
 };
 
 void EngineServer::start()
@@ -48,6 +47,8 @@ void EngineServer::stop()
     WAZUH_LOG_INFO("Stopping the server");
     m_loop->walk([](auto& handle) { handle.close(); });
     m_loop->stop();
+    this->m_loop->close();
+    WAZUH_LOG_INFO("Server closed");
 }
 
 void EngineServer::request_stop()
@@ -58,12 +59,13 @@ void EngineServer::request_stop()
 }
 
 void EngineServer::addEndpoint(const std::string& name, std::shared_ptr<Endpoint> endpoint) {
-    WAZUH_LOG_DEBUG("Adding endpoint " + name);
+    WAZUH_LOG_DEBUG("Adding endpoint {}", name);
     // first check if the endpoint already exists
     if (m_endpoints.find(name) != m_endpoints.end()) {
-        throw std::runtime_error("Endpoint " + name + " already exists");
+        throw std::runtime_error(fmt::format("Endpoint {} already exists", name));
     }
     // add the endpoint
+    endpoint->bind(m_loop);
     m_endpoints[name] = endpoint;
 }
 } // namespace engineserver
