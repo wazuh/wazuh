@@ -11,85 +11,7 @@
 
 namespace
 {
-
 constexpr unsigned int MAX_MSG_SIZE {65536 + 512}; ///< Maximum message size (TODO: I think this should be 65507)
-
-/**
- * @brief This function opens, binds and configures a Unix datagram socket.
- * @param path Contains the absolute path to the Unix datagram socket. The path must be less than 108 bytes.
- * @return Returns either the file descriptor value
- * @throw std::runtime_error if the path is too long or the socket cannot be created or bound.
- */
-inline int bindUnixDatagramSocket(const std::string& path, int& bufferSize)
-{
-    sockaddr_un n_us;
-
-    // Check the path length
-    if (path.length() >= sizeof(n_us.sun_path))
-    {
-        auto msg = fmt::format("Path '{}' too long, maximum length is {} ", path, sizeof(n_us.sun_path));
-        throw std::runtime_error(std::move(msg));
-    }
-
-    // Remove the socket file if it already exists
-    // #TODO, CHECK IF THE FILE IS A SOCKET
-    unlink(path.c_str());
-
-    memset(&n_us, 0, sizeof(n_us));
-    n_us.sun_family = AF_UNIX;
-    strncpy(n_us.sun_path, path.c_str(), sizeof(n_us.sun_path) - 1);
-
-    const int socketFd {socket(PF_UNIX, SOCK_DGRAM, 0)};
-    if (0 > socketFd)
-    {
-        auto msg = fmt::format("Cannot create the socket '{}': {} ({})", path, strerror(errno), errno);
-        throw std::runtime_error(std::move(msg));
-    }
-
-    if (bind(socketFd, reinterpret_cast<sockaddr*>(&n_us), SUN_LEN(&n_us)) < 0)
-    {
-
-        auto msg = fmt::format("Cannot bind the socket '{}': {} ({})", path, strerror(errno), errno);
-        close(socketFd);
-        throw std::runtime_error(std::move(msg));
-    }
-
-    // Change permissions
-    if (chmod(path.c_str(), 0660) < 0) // TODO: Save the permissions in a constant
-    {
-        auto msg = fmt::format("Cannot change permissions of the socket '{}': {} ({})", path, strerror(errno), errno);
-        close(socketFd);
-        throw std::runtime_error(std::move(msg));
-    }
-
-    // Get current maximum size
-    socklen_t optlen {sizeof(bufferSize)};
-    if (-1 == getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<void*>(&bufferSize), &optlen))
-    {
-        bufferSize = 0;
-    }
-
-    // Set maximum message size
-    if (MAX_MSG_SIZE > bufferSize)
-    {
-        bufferSize = MAX_MSG_SIZE;
-        if (setsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const void*>(&bufferSize), optlen) < 0)
-        {
-            auto msg = fmt::format(
-                "Cannot set maximum message size of the socket '{}': {} ({})", path, strerror(errno), errno);
-            close(socketFd);
-            throw std::runtime_error(std::move(msg));
-        }
-    }
-
-    // Set close-on-exec
-    if (-1 == fcntl(socketFd, F_SETFD, FD_CLOEXEC))
-    {
-        WAZUH_LOG_WARN("Cannot set close-on-exec flag to socket: {} ({})", strerror(errno), errno);
-    }
-
-    return socketFd;
-}
 } // namespace
 
 namespace engineserver::endpoint
@@ -125,7 +47,16 @@ UnixDatagram::UnixDatagram(const std::string& address,
 }
 
 
-UnixDatagram::~UnixDatagram() = default;
+UnixDatagram::~UnixDatagram() {
+    if (isBound())
+    {
+        // Close
+        m_handle->close();
+        m_handle = nullptr;
+        unlink(m_address.c_str());
+
+    }
+}
 
 void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
 {
@@ -215,7 +146,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
         });
 
     // Bind the socket
-    auto socketFd = bindUnixDatagramSocket(m_address, m_bufferSize);
+    auto socketFd = bindUnixDatagramSocket(m_bufferSize);
     m_handle->open(socketFd);
     resume();
 }
@@ -251,6 +182,69 @@ bool UnixDatagram::resume()
         return true;
     }
     return false;
+}
+
+int UnixDatagram::bindUnixDatagramSocket(int& bufferSize)
+{
+    sockaddr_un n_us;
+
+    // Remove the socket file if it already exists
+    unlinkUnixSocket();
+
+    memset(&n_us, 0, sizeof(n_us));
+    n_us.sun_family = AF_UNIX;
+    strncpy(n_us.sun_path, m_address.c_str(), sizeof(n_us.sun_path) - 1);
+
+    const int socketFd {socket(PF_UNIX, SOCK_DGRAM, 0)};
+    if (0 > socketFd)
+    {
+        auto msg = fmt::format("Cannot create the socket '{}': {} ({})", m_address, strerror(errno), errno);
+        throw std::runtime_error(std::move(msg));
+    }
+
+    if (::bind(socketFd, reinterpret_cast<sockaddr*>(&n_us), SUN_LEN(&n_us)) < 0)
+    {
+
+        auto msg = fmt::format("Cannot bind the socket '{}': {} ({})", m_address, strerror(errno), errno);
+        ::close(socketFd);
+        throw std::runtime_error(std::move(msg));
+    }
+
+    // Change permissions
+    if (chmod(m_address.c_str(), 0660) < 0) // TODO: Save the permissions in a constant
+    {
+        auto msg = fmt::format("Cannot change permissions of the socket '{}': {} ({})", m_address, strerror(errno), errno);
+        ::close(socketFd);
+        throw std::runtime_error(std::move(msg));
+    }
+
+    // Get current maximum size
+    socklen_t optlen {sizeof(bufferSize)};
+    if (-1 == getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<void*>(&bufferSize), &optlen))
+    {
+        bufferSize = 0;
+    }
+
+    // Set maximum message size
+    if (MAX_MSG_SIZE > bufferSize)
+    {
+        bufferSize = MAX_MSG_SIZE;
+        if (setsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const void*>(&bufferSize), optlen) < 0)
+        {
+            auto msg = fmt::format(
+                "Cannot set maximum message size of the socket '{}': {} ({})", m_address, strerror(errno), errno);
+            ::close(socketFd);
+            throw std::runtime_error(std::move(msg));
+        }
+    }
+
+    // Set close-on-exec
+    if (-1 == fcntl(socketFd, F_SETFD, FD_CLOEXEC))
+    {
+        WAZUH_LOG_WARN("Cannot set close-on-exec flag to socket: {} ({})", strerror(errno), errno);
+    }
+
+    return socketFd;
 }
 
 } // namespace engineserver::endpoint

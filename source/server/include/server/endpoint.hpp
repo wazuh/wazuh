@@ -40,6 +40,14 @@ protected:
     {
     }
 
+    /**
+     * @brief Unlink unix socket if exists and is a socket.
+     *
+     * Do nothing if socket does not exist.
+     * @throw std::runtime_error If unlink fails.
+     */
+    void unlinkUnixSocket();
+
 public:
     /**
      * @brief Destroy the  Endpoint object, made virtual to destroy children classes.

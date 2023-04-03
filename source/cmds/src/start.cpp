@@ -176,77 +176,93 @@ void runStart(ConfHandler confManager)
             WAZUH_LOG_DEBUG("Event queue created.");
         }
 
-        kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metrics);
-        WAZUH_LOG_INFO("KVDB initialized.");
-        g_exitHanlder.add(
-            [kvdb]()
+        // KVDB
+        {
+            kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metrics);
+            WAZUH_LOG_INFO("KVDB initialized.");
+            g_exitHanlder.add(
+                [kvdb]()
+                {
+                    WAZUH_LOG_INFO("KVDB terminated.");
+                    kvdb->clear();
+                });
+
+            api::kvdb::handlers::registerHandlers(kvdb, api);
+            WAZUH_LOG_DEBUG("KVDB API registered.")
+        }
+
+        // Store
+        {
+            store = std::make_shared<store::FileDriver>(fileStorage);
+            WAZUH_LOG_INFO("Store initialized.");
+        }
+
+        // HLP
+        {
+            base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
+            auto hlpParsers = store->get(hlpConfigFileName);
+            if (std::holds_alternative<base::Error>(hlpParsers))
             {
-                WAZUH_LOG_INFO("KVDB terminated.");
-                kvdb->clear();
-            });
+                WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the "
+                                "HLP module, error: {}",
+                                hlpConfigFileName.fullName(),
+                                std::get<base::Error>(hlpParsers).message);
 
-        // Register KVDB commands
-        api::kvdb::handlers::registerHandlers(kvdb, api);
-        WAZUH_LOG_DEBUG("KVDB API registered.")
-
-        store = std::make_shared<store::FileDriver>(fileStorage);
-        WAZUH_LOG_INFO("Store initialized.");
-
-        base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
-        auto hlpParsers = store->get(hlpConfigFileName);
-        if (std::holds_alternative<base::Error>(hlpParsers))
-        {
-            WAZUH_LOG_ERROR("Could not retreive configuration file [{}] needed by the "
-                            "HLP module, error: {}",
-                            hlpConfigFileName.fullName(),
-                            std::get<base::Error>(hlpParsers).message);
-
-            g_exitHanlder.execute();
-            return;
+                g_exitHanlder.execute();
+                return;
+            }
+            logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
+            hlp::registerParsers(logpar);
+            WAZUH_LOG_INFO("HLP initialized.");
         }
-        logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
-        hlp::registerParsers(logpar);
-        WAZUH_LOG_INFO("HLP initialized.");
 
-        auto registry = std::make_shared<builder::internals::Registry>();
-        builder::internals::registerBuilders(registry, {0, logpar, kvdb});
-        WAZUH_LOG_DEBUG("Builders registered.");
-
-        builder = std::make_shared<builder::Builder>(store, registry);
-        WAZUH_LOG_INFO("Builder initialized.");
-
-        api::catalog::Config catalogConfig {
-            store,
-            builder,
-            fmt::format("schema{}wazuh-asset{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S),
-            fmt::format("schema{}wazuh-policy{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)};
-
-        catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
-        WAZUH_LOG_INFO("Catalog initialized.");
-
-        api::catalog::handlers::registerHandlers(catalog, api);
-        WAZUH_LOG_DEBUG("Catalog API registered.")
-
-        router = std::make_shared<router::Router>(builder, store, metrics, threads);
-        auto queue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(queueSize);
-
-        router->run(queue);
-        g_exitHanlder.add([router]() { router->stop(); });
-        WAZUH_LOG_INFO("Router initialized.");
-
-        // Register the API command
-        api::router::handlers::registerHandlers(router, api);
-        WAZUH_LOG_DEBUG("Router API registered.")
-
-        // If the router table is empty or the force flag is passed, load from the command line
-        if (router->getRouteTable().empty())
+        // Builder and registry
         {
-            router->addRoute(routeName, routePriority, routeFilter, routePolicy);
+            auto registry = std::make_shared<builder::internals::Registry>();
+            builder::internals::registerBuilders(registry, {0, logpar, kvdb});
+            WAZUH_LOG_DEBUG("Builders registered.");
+
+            builder = std::make_shared<builder::Builder>(store, registry);
+            WAZUH_LOG_INFO("Builder initialized.");
         }
-        else if (forceRouterArg)
+
+        // Catalog
         {
-            router->clear();
-            router->addRoute(routeName, routePriority, routeFilter, routePolicy);
+            api::catalog::Config catalogConfig {
+                store,
+                builder,
+                fmt::format("schema{}wazuh-asset{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S),
+                fmt::format("schema{}wazuh-environment{}0", base::Name::SEPARATOR_S, base::Name::SEPARATOR_S)};
+
+            catalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
+            WAZUH_LOG_INFO("Catalog initialized.");
+
+            api::catalog::handlers::registerHandlers(catalog, api);
+            WAZUH_LOG_DEBUG("Catalog API registered.")
+        }
+
+        // Router
+        {
+            router = std::make_shared<router::Router>(builder, store, metrics, threads);
+
+            router->run(eventQueue);
+            g_exitHanlder.add([router]() { router->stop(); });
+            WAZUH_LOG_INFO("Router initialized.");
+
+            // Register the API command
+            api::router::handlers::registerHandlers(router, api);
+            WAZUH_LOG_DEBUG("Router API registered.")
+
+            // If the router table is empty or the force flag is passed, load from the command line
+            if (router->getRouteTable().empty())
+            {
+                router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
+            }
+            else if (forceRouterArg)
+            {
+                router->clear();
+                router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
+            }
         }
 
         // Register Metrics commands
@@ -268,16 +284,17 @@ void runStart(ConfHandler confManager)
             g_exitHanlder.add([server]() { server->request_stop(); });
 
             // API Endpoint
-            auto apiCallback = std::bind(&api::Api::processRequest, api, std::placeholders::_1);
-            auto apiClientFactory = std::make_shared<ph::WStreamFactory>(apiCallback); // API endpoint
+            auto apiHandler = std::bind(&api::Api::processRequest, api, std::placeholders::_1);
+            auto apiClientFactory = std::make_shared<ph::WStreamFactory>(apiHandler); // API endpoint
             // TODO: Config-> 10 max tasks, 1000 ms timeout (config file)
-            auto apiEndpointConfig = std::make_shared<endpoint::UnixStream>(apiEndpoint, apiClientFactory, 10);
-            server->addEndpoint("API", apiEndpointConfig);
+            auto apiEndpointCfg = std::make_shared<endpoint::UnixStream>(apiEndpoint, apiClientFactory, 10);
+            server->addEndpoint("API", apiEndpointCfg);
 
             // Event Endpoint
-            auto eventCallback = std::bind(&router::Router::fastEnqueueEvent, router, std::placeholders::_1);
-            auto eventEndpointConfig = std::make_shared<endpoint::UnixDatagram>(eventEndpoint, eventCallback, 20);
-            server->addEndpoint("EVENT", eventEndpointConfig);
+            const auto bufferSize {static_cast<size_t>(queueSize)}; // TODO By params
+            auto eventHandler = std::bind(&router::Router::fastEnqueueEvent, router, std::placeholders::_1);
+            auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(eventEndpoint, eventHandler, bufferSize);
+            server->addEndpoint("EVENT", eventEndpointCfg);
             WAZUH_LOG_DEBUG("Server configured.");
         }
     }
