@@ -7,7 +7,6 @@
 #include <cmds/apiclnt/client.hpp>
 
 #include <json/json.hpp>
-#include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
 
 
