@@ -248,9 +248,7 @@ STATIC cJSON *wm_agent_send_task_information_worker(const cJSON *message_object)
 
     mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_SEND_CLUSTER_MESSAGE, message);
 
-    w_send_clustered_message("sendsync", message, response);
-
-    if (response[0]) {
+    if (w_send_clustered_message("sendsync", message, response) == 0 && response[0]) {
         mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_RECEIVE_MESSAGE, response);
     }
 
