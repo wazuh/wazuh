@@ -63,7 +63,7 @@ void test_wdb_task_delete_old_entries_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, timestamp);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     int ret = wdb_task_delete_old_entries(data->wdb, timestamp);
 
@@ -83,7 +83,7 @@ void test_wdb_task_delete_old_entries_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, timestamp);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, -1);
+    will_return(__wrap_wdb_step_non_select, -1);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -140,7 +140,7 @@ void test_wdb_task_set_timeout_status_timeout_ok(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -164,9 +164,9 @@ void test_wdb_task_set_timeout_status_timeout_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step_select, SQLITE_DONE);
 
     int ret = wdb_task_set_timeout_status(data->wdb, now, timeout, &next_timeout);
 
@@ -191,7 +191,7 @@ void test_wdb_task_set_timeout_status_no_timeout_ok(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -199,8 +199,7 @@ void test_wdb_task_set_timeout_status_no_timeout_ok(void **state)
     expect_value(__wrap_sqlite3_column_int, iCol, 6);
     will_return(__wrap_sqlite3_column_int, update_time);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
-
+    will_return(__wrap_wdb_step_select, SQLITE_DONE);
     int ret = wdb_task_set_timeout_status(data->wdb, now, timeout, &next_timeout);
 
     assert_int_equal(ret, 0);
@@ -224,7 +223,7 @@ void test_wdb_task_set_timeout_status_timeout_step_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -248,7 +247,7 @@ void test_wdb_task_set_timeout_status_timeout_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -275,7 +274,7 @@ void test_wdb_task_set_timeout_status_timeout_cache_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, "In progress");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -371,7 +370,7 @@ void test_wdb_task_insert_task(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 1);
 
@@ -379,7 +378,7 @@ void test_wdb_task_insert_task(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -429,7 +428,7 @@ void test_wdb_task_insert_task_task_id_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 1);
 
@@ -437,7 +436,7 @@ void test_wdb_task_insert_task_task_id_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, NULL);
@@ -524,7 +523,7 @@ void test_wdb_task_insert_task_step1_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step1, -1);
+    will_return(__wrap_wdb_step_non_select, -1);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -573,7 +572,7 @@ void test_wdb_task_insert_task_cache2_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, -1);
 
@@ -624,7 +623,7 @@ void test_wdb_task_insert_task_step2_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     will_return(__wrap_wdb_stmt_cache, 1);
 
@@ -632,7 +631,7 @@ void test_wdb_task_insert_task_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -658,7 +657,7 @@ void test_wdb_task_get_upgrade_task_status_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -692,7 +691,7 @@ void test_wdb_task_get_upgrade_task_status_delete_old_node_pending(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -709,7 +708,7 @@ void test_wdb_task_get_upgrade_task_status_delete_old_node_pending(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     int ret = wdb_task_get_upgrade_task_status(data->wdb, agent_id, node, &status);
 
@@ -733,7 +732,7 @@ void test_wdb_task_get_upgrade_task_status_delete_old_node_pending_step_err(void
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -750,7 +749,7 @@ void test_wdb_task_get_upgrade_task_status_delete_old_node_pending_step_err(void
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -777,7 +776,7 @@ void test_wdb_task_get_upgrade_task_status_delete_old_node_pending_cache_err(voi
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -814,7 +813,7 @@ void test_wdb_task_get_upgrade_task_status_no_task_id(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -841,7 +840,7 @@ void test_wdb_task_get_upgrade_task_status_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -909,7 +908,7 @@ void test_wdb_task_update_upgrade_task_status_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -940,7 +939,7 @@ void test_wdb_task_update_upgrade_task_status_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
 
     int ret = wdb_task_update_upgrade_task_status(data->wdb, agent_id, node, status, error);
@@ -966,7 +965,7 @@ void test_wdb_task_update_upgrade_task_status_old_status_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -1000,7 +999,7 @@ void test_wdb_task_update_upgrade_task_status_old_status2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -1032,7 +1031,7 @@ void test_wdb_task_update_upgrade_task_status_task_id_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -1105,7 +1104,7 @@ void test_wdb_task_update_upgrade_task_status_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -1132,7 +1131,7 @@ void test_wdb_task_update_upgrade_task_status_cache2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -1172,7 +1171,7 @@ void test_wdb_task_update_upgrade_task_status_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -1203,7 +1202,7 @@ void test_wdb_task_update_upgrade_task_status_step2_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, task_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -1278,7 +1277,7 @@ void test_wdb_task_get_upgrade_task_by_agent_id_step_err(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 
@@ -1308,7 +1307,7 @@ void test_wdb_task_get_upgrade_task_by_agent_id_no_task_id(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -1339,7 +1338,7 @@ void test_wdb_task_get_upgrade_task_by_agent_id_ok(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, 0);
 
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, task_id);
@@ -1405,7 +1404,7 @@ void test_wdb_task_cancel_upgrade_tasks_ok(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, node);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
 
     int ret = wdb_task_cancel_upgrade_tasks(data->wdb, node);
@@ -1433,7 +1432,7 @@ void test_wdb_task_cancel_upgrade_tasks_step_err(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, node);
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "(5211): SQL error: 'ERROR MESSAGE'");
 

@@ -34,6 +34,10 @@ int wdb_execute_non_select_query(wdb_t *wdb, const char *query);
 int wdb_select_from_temp_table(sqlite3 *db);
 int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
 int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, int *value);
+int wdb_step(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQueryModifyDB);
+int wdb_rollback2(wdb_t * wdb);
+int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction);
+int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
 
 extern wdb_t * db_pool_begin;
 
@@ -303,8 +307,6 @@ void test_wdb_exec_row_stmt_multi_column_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_sqlite3_step_call(SQLITE_ERROR);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     int status = 0;
@@ -434,8 +436,6 @@ void test_wdb_exec_stmt_sized_error(void **state) {
 
     //Calling wdb_exec_row_stmt
     expect_sqlite3_step_call(SQLITE_ERROR);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     int status = 0;
@@ -487,8 +487,6 @@ void test_wdb_exec_stmt_error(void **state) {
 
     //Calling wdb_exec_row_stmt
     expect_sqlite3_step_call(SQLITE_ERROR);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     cJSON* result = wdb_exec_stmt(*data->wdb->stmt, data->wdb);
@@ -913,8 +911,6 @@ void test_wdb_exec_row_stmt_single_column_sql_error(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_sqlite3_step_call(SQLITE_ERROR);
-    expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_gettimeofday);
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     cJSON *ret = wdb_exec_row_stmt_single_column(*data->wdb->stmt, data->wdb, &status);
@@ -1135,7 +1131,7 @@ void test_wdb_execute_single_int_select_query_step_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step_select(): ERROR MESSAGE");
 
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
@@ -1204,7 +1200,7 @@ void test_wdb_execute_non_select_query_step_error(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step_select(): ERROR MESSAGE");
 
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
@@ -1253,7 +1249,7 @@ void test_wdb_select_from_temp_table_step_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step_select(): ERROR MESSAGE");
 
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
@@ -1311,7 +1307,7 @@ void test_wdb_get_db_state_create_error(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step_select(): ERROR MESSAGE");
 
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
@@ -1340,7 +1336,7 @@ void test_wdb_get_db_state_truncate_error(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step_select(): ERROR MESSAGE");
 
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
@@ -1378,7 +1374,7 @@ void test_wdb_get_db_state_insert_error(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step_select(): ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error inserting into temporary table.");
@@ -1420,7 +1416,7 @@ void test_wdb_get_db_state_select_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step_select(): ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error in select from temporary table.");
@@ -1727,7 +1723,7 @@ void test_wdb_check_fragmentation_get_state_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step_select(): ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating temporary table.");
 
@@ -2161,7 +2157,7 @@ void test_wdb_check_fragmentation_get_fragmentation_after_vacuum_error(void **st
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_step_select(): ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating temporary table.");
 

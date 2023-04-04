@@ -138,7 +138,7 @@ void create_wdb_global_delete_agent_belong_success_call(int agent_id) {
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 }
 
 /**
@@ -347,7 +347,7 @@ void test_wdb_global_del_agent_labels_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -365,7 +365,7 @@ void test_wdb_global_del_agent_labels_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_del_agent_labels(data->wdb, 1);
     assert_int_equal(result, OS_SUCCESS);
@@ -487,7 +487,7 @@ void test_wdb_global_set_agent_label_step_fail(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, "test_value");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
     result = wdb_global_set_agent_label(data->wdb, 1, key, value);
@@ -512,7 +512,7 @@ void test_wdb_global_set_agent_label_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "test_value");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_set_agent_label(data->wdb, 1, key, value);
     assert_int_equal(result, OS_SUCCESS);
@@ -600,7 +600,7 @@ void test_wdb_global_set_sync_status_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 2);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -622,7 +622,7 @@ void test_wdb_global_set_sync_status_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 2);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_set_sync_status(data->wdb, 1, status);
     assert_int_equal(result, OS_SUCCESS);
@@ -766,7 +766,7 @@ void test_wdb_global_sync_agent_info_get_success(void **state)
     will_return(__wrap_wdb_exec_stmt, json_labels);
 
     // Required for wdb_global_set_sync_status()
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     // No more agents
     will_return(__wrap_wdb_exec_stmt, NULL);
@@ -824,7 +824,7 @@ void test_wdb_global_sync_agent_info_get_sync_fail(void **state)
     will_return(__wrap_wdb_exec_stmt, json_labels);
 
     // Required for wdb_global_set_sync_status()
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "Cannot set sync_status for agent 10");
@@ -945,7 +945,7 @@ void test_wdb_global_sync_agent_info_get_size_limit(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): SQL MESSAGE");
 
     // Required for wdb_global_set_sync_status()
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     // No more agents
     will_return(__wrap_wdb_exec_stmt, NULL);
@@ -980,7 +980,7 @@ void test_wdb_global_get_groups_integrity_syncreq(void **state)
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
     j_result = wdb_global_get_groups_integrity(data->wdb, NULL);
@@ -999,7 +999,7 @@ void test_wdb_global_get_groups_integrity_hash_mismatch(void **state)
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step_select, SQLITE_DONE);
     expect_string(__wrap_wdb_get_global_group_hash, hexdigest, digest);
     will_return(__wrap_wdb_get_global_group_hash, OS_INVALID);
 
@@ -1020,7 +1020,7 @@ void test_wdb_global_get_groups_integrity_synced(void **state)
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step_select, SQLITE_DONE);
     expect_string(__wrap_wdb_get_global_group_hash, hexdigest, digest);
     will_return(__wrap_wdb_get_global_group_hash, OS_SUCCESS);
 
@@ -1040,7 +1040,7 @@ void test_wdb_global_get_groups_integrity_error(void **state)
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "DB(global) sqlite3_step(): ERROR MESSAGE");
 
@@ -1764,7 +1764,7 @@ void test_wdb_global_sync_agent_info_set_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
@@ -1799,7 +1799,7 @@ void test_wdb_global_sync_agent_info_set_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_sync_agent_info_set(data->wdb, json_agent);
     __real_cJSON_Delete(json_agent);
@@ -2120,7 +2120,7 @@ void test_wdb_global_insert_agent_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, group);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -2164,7 +2164,7 @@ void test_wdb_global_insert_agent_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, group);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
 
@@ -2262,7 +2262,7 @@ void test_wdb_global_update_agent_name_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -2287,7 +2287,7 @@ void test_wdb_global_update_agent_name_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_update_agent_name(data->wdb, 1, name);
 
@@ -3764,7 +3764,7 @@ void test_wdb_global_update_agent_version_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -3861,7 +3861,7 @@ void test_wdb_global_update_agent_version_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_update_agent_version(data->wdb, agent_id, os_name, os_version, os_major,
                                             os_minor, os_codename, os_platform, os_build, os_uname, os_arch, version,
@@ -3999,7 +3999,7 @@ void test_wdb_global_update_agent_keepalive_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -4027,7 +4027,7 @@ void test_wdb_global_update_agent_keepalive_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 3);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_update_agent_keepalive(data->wdb, 1, connection_status, status);
 
@@ -4228,7 +4228,7 @@ void test_wdb_global_update_agent_connection_status_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -4262,7 +4262,7 @@ void test_wdb_global_update_agent_connection_status_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 5);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_update_agent_connection_status(data->wdb, 1, connection_status, sync_status, 0);
 
@@ -4544,7 +4544,7 @@ void test_wdb_global_delete_agent_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -4564,7 +4564,7 @@ void test_wdb_global_delete_agent_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_delete_agent(data->wdb, 1);
 
@@ -5157,7 +5157,7 @@ void test_wdb_global_insert_agent_group_step_fail(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -5177,7 +5177,7 @@ void test_wdb_global_insert_agent_group_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_insert_agent_group(data->wdb, group_name);
 
@@ -5569,7 +5569,7 @@ void test_wdb_global_insert_agent_belong_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, priority);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -5598,7 +5598,7 @@ void test_wdb_global_insert_agent_belong_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 3);
     expect_value(__wrap_sqlite3_bind_int, value, priority);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_insert_agent_belong(data->wdb, id_group, id_agent, priority);
 
@@ -5781,7 +5781,7 @@ void test_wdb_global_delete_group_step_fail(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
     expect_function_call(__wrap_cJSON_Delete);
@@ -5815,7 +5815,7 @@ void test_wdb_global_delete_group_recalculate_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     will_return(__wrap_w_is_single_node, 1);
     will_return(__wrap_w_is_single_node, 1);
@@ -5875,7 +5875,7 @@ void test_wdb_global_delete_group_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, group_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     will_return(__wrap_w_is_single_node, 0);
     will_return(__wrap_w_is_single_node, 0);
@@ -5959,7 +5959,7 @@ void test_wdb_global_delete_agent_belong_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -5979,7 +5979,7 @@ void test_wdb_global_delete_agent_belong_success(void **state)
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     result = wdb_global_delete_agent_belong(data->wdb, 1);
 
@@ -6257,7 +6257,7 @@ void test_wdb_global_get_agents_to_disconnect_ok(void **state)
         expect_value(__wrap_sqlite3_bind_int, index, 5);
         expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
         will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-        will_return(__wrap_wdb_step1, SQLITE_DONE);
+        will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     }
 
     wdbc_result status = WDBC_UNKNOWN;
@@ -6315,7 +6315,7 @@ void test_wdb_global_get_agents_to_disconnect_due(void **state)
         expect_value(__wrap_sqlite3_bind_int, index, 5);
         expect_in_range(__wrap_sqlite3_bind_int, value, 0, agents_amount);
         will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-        will_return(__wrap_wdb_step1, SQLITE_DONE);
+        will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     }
 
     wdbc_result status = WDBC_UNKNOWN;
@@ -6647,7 +6647,7 @@ void test_wdb_global_reset_agents_step_fail(void **state)
     expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -6669,7 +6669,7 @@ void test_wdb_global_reset_agents_connection_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_value(__wrap_sqlite3_bind_text, buffer, sync_status);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     int result = wdb_global_reset_agents_connection(data->wdb, sync_status);
 
@@ -7540,7 +7540,7 @@ void test_wdb_global_update_agent_groups_hash_step_failed(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 2);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -7563,7 +7563,7 @@ void test_wdb_global_update_agent_groups_hash_success(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 2);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     int result = wdb_global_update_agent_groups_hash(data->wdb, agent_id, groups_string);
 
@@ -7596,7 +7596,7 @@ void test_wdb_global_update_agent_groups_hash_groups_string_null_success(void **
     expect_value(__wrap_sqlite3_bind_int, index, 2);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     int result = wdb_global_update_agent_groups_hash(data->wdb, agent_id, NULL);
 
@@ -7678,7 +7678,7 @@ void test_wdb_global_adjust_v4_step_failed(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
 
@@ -7744,7 +7744,7 @@ void test_wdb_global_adjust_v4_success(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_ROW);
+    will_return(__wrap_wdb_step_select, SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, agent_id);
 
@@ -7770,9 +7770,10 @@ void test_wdb_global_adjust_v4_success(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 2);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_select, SQLITE_DONE);
+
 
     will_return(__wrap_wdb_commit2, OS_SUCCESS);
 
@@ -7864,7 +7865,7 @@ void test_wdb_global_assign_agent_group_success(void **state) {
         expect_value(__wrap_sqlite3_bind_int, value, actual_priority);
         actual_priority++;
         will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-        will_return(__wrap_wdb_step1, SQLITE_DONE);
+        will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     }
 
     wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, initial_priority);
@@ -8035,7 +8036,7 @@ void create_wdb_global_assign_agent_group_success_call(int agent_id, int group_i
     expect_value(__wrap_sqlite3_bind_int, index, 3);
     expect_value(__wrap_sqlite3_bind_int, value, actual_priority);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 }
 
 void test_wdb_global_unassign_agent_group_success_assign_default_group(void **state) {

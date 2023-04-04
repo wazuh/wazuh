@@ -31,7 +31,7 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
 
     sqlite3_bind_int(stmt, 1, pm_id);
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step_select(stmt)) {
         case SQLITE_ROW:
             snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 1));
             return 1;
@@ -82,7 +82,7 @@ int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description
     sqlite3_bind_text(stmt, 15, reason, -1, NULL);
     sqlite3_bind_text(stmt, 16, condition, -1, NULL);
 
-    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
+    switch (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS)) {
         case SQLITE_DONE:
             return 0;
         case SQLITE_CONSTRAINT:
@@ -119,7 +119,7 @@ int wdb_sca_policy_get_id(wdb_t * wdb, char * output) {
     int has_result = 0;
 
     while(1) {
-        switch (wdb_step(stmt)) {
+        switch (wdb_step_select(stmt)) {
             case SQLITE_ROW:
                 has_result = 1;
                 wm_strcat(&str,(const char *)sqlite3_column_text(stmt, 0),',');
@@ -162,7 +162,7 @@ int wdb_sca_policy_delete(wdb_t * wdb,char * policy_id) {
 
     sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         wdb_sca_scan_info_delete(wdb,policy_id);
         return 0;
     } else {
@@ -190,7 +190,7 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id) {
 
     sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -218,7 +218,7 @@ int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id) {
     sqlite3_bind_int(stmt, 1, scan_id);
     sqlite3_bind_text(stmt, 2, policy_id, -1, NULL);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -244,7 +244,7 @@ int wdb_sca_check_delete(wdb_t * wdb,char * policy_id) {
 
     sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -268,7 +268,7 @@ int wdb_sca_check_compliances_delete(wdb_t * wdb) {
 
     stmt = wdb->stmt[WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE];
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -292,7 +292,7 @@ int wdb_sca_check_rules_delete(wdb_t * wdb) {
 
     stmt = wdb->stmt[WDB_STMT_SCA_CHECK_RULES_DELETE];
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -319,7 +319,7 @@ int wdb_sca_scan_find(wdb_t * wdb, char *policy_id, char * output) {
 
     sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step_select(stmt)) {
         case SQLITE_ROW:
             snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s %d", sqlite3_column_text(stmt, 1),sqlite3_column_int(stmt, 2));
             return 1;
@@ -351,7 +351,7 @@ int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output) {
 
     sqlite3_bind_text(stmt, 1, id, -1, NULL);
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step_select(stmt)) {
         case SQLITE_ROW:
             snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 0));
             return 1;
@@ -382,7 +382,7 @@ int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output) {
     stmt = wdb->stmt[WDB_STMT_SCA_POLICY_SHA256];
     sqlite3_bind_text(stmt, 1, id, -1, NULL);
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step_select(stmt)) {
         case SQLITE_ROW:
             snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 0));
             return 1;
@@ -415,7 +415,7 @@ int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value) {
     sqlite3_bind_text(stmt, 2, key, -1, NULL);
     sqlite3_bind_text(stmt, 3, value, -1, NULL);
 
-    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
+    switch (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS)) {
         case SQLITE_DONE:
             return 0;
         case SQLITE_CONSTRAINT:
@@ -451,7 +451,7 @@ int wdb_sca_rules_save(wdb_t * wdb, int id_check, char *type, char *rule){
     sqlite3_bind_text(stmt, 2, type, -1, NULL);
     sqlite3_bind_text(stmt, 3, rule, -1, NULL);
 
-    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
+    switch (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS)) {
         case SQLITE_DONE:
             return 0;
         case SQLITE_CONSTRAINT:
@@ -493,7 +493,7 @@ int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char *
     sqlite3_bind_text(stmt, 5, references, -1, NULL);
     sqlite3_bind_text(stmt, 6, hash_file, -1, NULL);
 
-    if (wdb_step(stmt) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -529,7 +529,7 @@ int wdb_sca_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_i
     sqlite3_bind_int(stmt, 9, score);
     sqlite3_bind_text(stmt, 10, hash, -1, NULL);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -555,7 +555,7 @@ int wdb_sca_scan_info_update(wdb_t * wdb, char * module, int end_scan){
     sqlite3_bind_int(stmt, 1, end_scan);
     sqlite3_bind_text(stmt, 2, module, -1, NULL);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -589,7 +589,7 @@ int wdb_sca_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan
     sqlite3_bind_text(stmt, 9, hash, -1, NULL);
     sqlite3_bind_text(stmt, 10, policy_id, -1, NULL);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -620,7 +620,7 @@ int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output) {
     int has_result = 0;
 
     while(1) {
-        switch (wdb_step(stmt)) {
+        switch (wdb_step_select(stmt)) {
             case SQLITE_ROW:
                 has_result = 1;
                 wm_strcat(&str,(const char *)sqlite3_column_text(stmt, 0),':');
@@ -674,7 +674,7 @@ int wdb_sca_update(wdb_t * wdb, char * result, int id, int scan_id, char * reaso
     sqlite3_bind_text(stmt, 3, reason,-1, NULL);
     sqlite3_bind_int(stmt, 4, id);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));

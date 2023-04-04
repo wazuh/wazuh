@@ -27,9 +27,11 @@ int __wrap_wdb_fim_update_date_entry(wdb_t* socket, const char *path);
 
 int __wrap_wdb_finalize();
 
-int  __wrap_wdb_step(sqlite3_stmt *stmt);
+int  __wrap_wdb_step(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQueryModifyDB);
 
-int  __wrap_wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQueryModifyDB);
+int  __wrap_wdb_step_select(sqlite3_stmt *stmt);
+
+int  __wrap_wdb_step_non_select(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps);
 
 
 int __wrap_wdb_scan_info_fim_checks_control(wdb_t* socket, const char *last_check);

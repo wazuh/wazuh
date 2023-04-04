@@ -143,7 +143,7 @@ void _expect_wdb_fim_insert_entry2_success(sqlite3_int64 inode, const char *cons
     expect_sqlite3_bind_text_call(17, "GGGGGGGGGGGG", 1);
     expect_sqlite3_bind_text_call(15, "readonly", 1);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 }
 
 /* setup/teardown */
@@ -409,7 +409,7 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state) {
     expect_sqlite3_bind_text_call(19, NULL, 1);
     expect_sqlite3_bind_text_call(21, "/test", 1);
 
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     //expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): out of memory");
     //expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot rollback transaction");
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): out of memory");
@@ -534,7 +534,7 @@ static void test_wdb_fim_insert_entry2_registry_succesful(void **state) {
     expect_sqlite3_bind_text_call(19, NULL, 1);
     expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     ret = wdb_fim_insert_entry2(wdb, data);
 
@@ -564,7 +564,7 @@ static void test_wdb_fim_insert_entry2_registry_key_succesful(void **state) {
     expect_sqlite3_bind_text_call(19, NULL, 1);
     expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key", 1);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     ret = wdb_fim_insert_entry2(wdb, data);
 
@@ -604,7 +604,7 @@ static void test_wdb_fim_insert_entry2_registry_value_succesful(void **state) {
     expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key:testname", 1);
     expect_sqlite3_bind_text_call(20, "REG_SZ", 1);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     ret = wdb_fim_insert_entry2(wdb, data);
 
@@ -638,7 +638,7 @@ static void test_wdb_fim_insert_entry2_registry_key_succesful_v3(void **state) {
     expect_sqlite3_bind_text_call(6, "0", 1);
     expect_sqlite3_bind_text_call(10, "Administradores", 1);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     ret = wdb_fim_insert_entry2(wdb, data);
 
@@ -671,7 +671,7 @@ static void test_wdb_fim_insert_entry2_registry_value_succesful_v3(void **state)
     expect_sqlite3_bind_int_call(4, 0, 1);
     expect_sqlite3_bind_text_call(20, "REG_UNKNOWN", 1);
 
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
 
     ret = wdb_fim_insert_entry2(wdb, data);
 

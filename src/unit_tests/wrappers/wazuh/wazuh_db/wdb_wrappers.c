@@ -44,17 +44,22 @@ int __wrap_wdb_finalize() {
     return mock();
 }
 
-int  __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt) {
-    return mock();
-}
-
-int  __wrap_wdb_step1(__attribute__((unused)) sqlite3_stmt *stmt,
+int  __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt,
                       __attribute__((unused)) wdb_t * wdb,
                       __attribute__((unused)) uint16_t max_attemps,
                       __attribute__((unused)) bool theQueryModifyDB) {
     return mock();
 }
 
+int  __wrap_wdb_step_select(__attribute__((unused)) sqlite3_stmt *stmt) {
+    return mock();
+}
+
+int  __wrap_wdb_step_non_select(__attribute__((unused)) sqlite3_stmt *stmt,
+                      __attribute__((unused)) wdb_t * wdb,
+                      __attribute__((unused)) uint16_t max_attemps) {
+    return mock();
+}
 
 int __wrap_wdb_scan_info_fim_checks_control(__attribute__((unused)) wdb_t* socket,
                                             __attribute__((unused)) const char *last_check) {

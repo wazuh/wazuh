@@ -593,7 +593,7 @@ void test_wdb_parse_rootcheck_delete_ok(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = strdup("delete");
     will_return(__wrap_wdb_stmt_cache, 0);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     will_return(__wrap_sqlite3_changes, 10);
 
     ret = wdb_parse_rootcheck(data->wdb, query, data->output);
@@ -673,7 +673,7 @@ void test_wdb_parse_rootcheck_save_update_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "Test");
     will_return(__wrap_sqlite3_bind_text, 1);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     will_return(__wrap_sqlite3_changes, 10);
 
     ret = wdb_parse_rootcheck(data->wdb, query, data->output);
@@ -696,7 +696,7 @@ void test_wdb_parse_rootcheck_save_update_insert_cache_error(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "Test");
     will_return(__wrap_sqlite3_bind_text, 1);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     will_return(__wrap_sqlite3_changes, 0);
 
     will_return(__wrap_wdb_stmt_cache, -1);
@@ -724,7 +724,7 @@ void test_wdb_parse_rootcheck_save_update_insert_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "Test");
     will_return(__wrap_sqlite3_bind_text, 1);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     will_return(__wrap_sqlite3_changes, 0);
 
     will_return(__wrap_wdb_stmt_cache, 0);
@@ -740,7 +740,7 @@ void test_wdb_parse_rootcheck_save_update_insert_success(void **state)
     will_return(__wrap_sqlite3_bind_text, 1);
     expect_value(__wrap_sqlite3_bind_text, pos, 5);
     will_return(__wrap_sqlite3_bind_text, 1);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     will_return(__wrap_sqlite3_last_insert_rowid, 10);
 
     ret = wdb_parse_rootcheck(data->wdb, query, data->output);

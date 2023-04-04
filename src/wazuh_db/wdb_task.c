@@ -36,7 +36,7 @@ int wdb_task_insert_task(wdb_t* wdb, int agent_id, const char *node, const char 
     sqlite3_bind_int(stmt, 5, time(0));
     sqlite3_bind_text(stmt, 7, task_statuses[WM_TASK_PENDING], -1, NULL);
 
-    if (result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true),
+    if (result = wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS),
         result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
@@ -51,7 +51,7 @@ int wdb_task_insert_task(wdb_t* wdb, int agent_id, const char *node, const char 
 
     sqlite3_bind_int(stmt, 1, agent_id);
 
-    if (result = wdb_step(stmt), result != SQLITE_ROW) {
+    if (result = wdb_step_select(stmt), result != SQLITE_ROW) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -86,7 +86,7 @@ int wdb_task_get_upgrade_task_status(wdb_t* wdb, int agent_id, const char *node,
 
     sqlite3_bind_int(stmt, 1, agent_id);
 
-    if (result = wdb_step(stmt), result != SQLITE_ROW) {
+    if (result = wdb_step_select(stmt), result != SQLITE_ROW) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -113,7 +113,7 @@ int wdb_task_get_upgrade_task_status(wdb_t* wdb, int agent_id, const char *node,
 
         sqlite3_bind_int(stmt, 1, task_id);
 
-        if (result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true),
+        if (result = wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS),
             result != SQLITE_DONE) {
             merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
             return OS_INVALID;
@@ -154,7 +154,7 @@ int wdb_task_update_upgrade_task_status(wdb_t* wdb, int agent_id, const char *no
 
     sqlite3_bind_int(stmt, 1, agent_id);
 
-    if (result = wdb_step(stmt), result != SQLITE_ROW) {
+    if (result = wdb_step_select(stmt), result != SQLITE_ROW) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -190,7 +190,7 @@ int wdb_task_update_upgrade_task_status(wdb_t* wdb, int agent_id, const char *no
     }
     sqlite3_bind_int(stmt, 4, task_id);
 
-    if (result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true),
+    if (result = wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS),
         result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
@@ -218,7 +218,7 @@ int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node,
 
     sqlite3_bind_int(stmt, 1, agent_id);
 
-    if (result = wdb_step(stmt), result != SQLITE_ROW) {
+    if (result = wdb_step_select(stmt), result != SQLITE_ROW) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -260,7 +260,7 @@ int wdb_task_cancel_upgrade_tasks(wdb_t* wdb, const char *node) {
     sqlite3_bind_int(stmt, 1, time(0));
     sqlite3_bind_text(stmt, 2, node, -1, NULL);
 
-    if (result = wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true),
+    if (result = wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS),
         result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
@@ -288,7 +288,7 @@ int wdb_task_set_timeout_status(wdb_t* wdb, time_t now, int interval, time_t *ne
 
     sqlite3_bind_text(stmt, 1, task_statuses[WM_TASK_IN_PROGRESS], -1, NULL);
 
-    while (result = wdb_step(stmt), result == SQLITE_ROW) {
+    while (result = wdb_step_select(stmt), result == SQLITE_ROW) {
         int task_id = sqlite3_column_int(stmt, 0);
         int last_update_time = sqlite3_column_int(stmt, 6);
 
@@ -306,7 +306,7 @@ int wdb_task_set_timeout_status(wdb_t* wdb, time_t now, int interval, time_t *ne
             sqlite3_bind_int(stmt2, 2, time(0));
             sqlite3_bind_int(stmt2, 4, task_id);
 
-            if (result = wdb_step1(stmt2, wdb, WDB_NO_ATTEMPTS, true),
+            if (result = wdb_step_non_select(stmt2, wdb, WDB_NO_ATTEMPTS),
                 result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
@@ -338,7 +338,7 @@ int wdb_task_delete_old_entries(wdb_t* wdb, int timestamp) {
 
     sqlite3_bind_int(stmt, 1, timestamp);
 
-    if (result = wdb_step(stmt), result != SQLITE_DONE) {
+    if (result = wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS), result != SQLITE_DONE) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }

@@ -49,7 +49,7 @@ bool wdb_agents_find_package(wdb_t *wdb, const char* reference){
 
     sqlite3_bind_text(stmt, 1, reference, -1, NULL);
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step_select(stmt)) {
     case SQLITE_ROW:
         return TRUE;
     case SQLITE_DONE:
@@ -70,7 +70,7 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference){
     sqlite3_bind_text(stmt, 1, cve, -1, NULL);
     sqlite3_bind_text(stmt, 2, reference, -1, NULL);
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step_select(stmt)) {
     case SQLITE_ROW:
         return TRUE;
     case SQLITE_DONE:

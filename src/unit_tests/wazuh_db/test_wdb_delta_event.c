@@ -490,7 +490,7 @@ void test_wdb_upsert_dbsync_step_nok(void ** state) {
     expect_value(__wrap_sqlite3_bind_int, value, 1234);
     expect_value(__wrap_sqlite3_bind_text, pos, 7);
     expect_string(__wrap_sqlite3_bind_text, buffer, "value_4");
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     assert_false(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
     cJSON_Delete(delta);
 }
@@ -529,7 +529,7 @@ void test_wdb_upsert_dbsync_ok(void ** state) {
     expect_value(__wrap_sqlite3_bind_int, value, 1234);
     expect_value(__wrap_sqlite3_bind_text, pos, 7);
     expect_string(__wrap_sqlite3_bind_text, buffer, "value_4");
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     assert_true(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
     cJSON_Delete(delta);
 }
@@ -566,7 +566,7 @@ void test_wdb_upsert_dbsync_default_regular_field_canbenull(void ** state) {
     // Not PKs or Aux fields
     expect_value(__wrap_sqlite3_bind_int, index, 6);
     expect_value(__wrap_sqlite3_bind_int, value, 1234);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     assert_true(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
     cJSON_Delete(delta);
 }
@@ -603,7 +603,7 @@ void test_wdb_upsert_dbsync_default_regular_field_cannotbenull(void ** state) {
     // Not PKs or Aux fields
     expect_value(__wrap_sqlite3_bind_int, index, 6);
     expect_value(__wrap_sqlite3_bind_int, value, 1234);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     assert_true(wdb_upsert_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
     cJSON_Delete(delta);
 }
@@ -658,7 +658,7 @@ void test_wdb_delete_dbsync_step_nok(void ** state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "value_2");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_ERROR);
+    will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     assert_false(wdb_delete_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
     cJSON_Delete(delta);
 }
@@ -711,7 +711,7 @@ void test_wdb_delete_dbsync_ok(void ** state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "value_2");
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
-    will_return(__wrap_wdb_step1, SQLITE_DONE);
+    will_return(__wrap_wdb_step_non_select, SQLITE_DONE);
     assert_true(wdb_delete_dbsync((wdb_t *) ANY_PTR_VALUE, &TEST_TABLE, delta));
     cJSON_Delete(delta);
 }

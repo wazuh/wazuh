@@ -191,12 +191,10 @@ typedef struct _global_breakdown_t {
     uint64_t sql_queries;
     uint64_t vacuum_queries;
     uint64_t get_fragmentation_queries;
-    uint64_t rollback_queries;
     struct timeval backup_time;
     struct timeval sql_time;
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
-    struct timeval rollback_time;
     global_agent_t agent;
     global_belongs_t belongs;
     global_group_t group;

@@ -36,7 +36,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         return -1;
     }
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step_select(stmt)) {
     case SQLITE_ROW:
 
         sum.changes = (long)sqlite3_column_int64(stmt, 0);
@@ -172,7 +172,7 @@ int wdb_fim_find_entry(wdb_t * wdb, const char * path) {
 
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
 
-    switch (wdb_step(stmt)) {
+    switch (wdb_step_select(stmt)) {
     case SQLITE_ROW:
         return 1;
         break;
@@ -234,7 +234,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     sqlite3_bind_text(stmt, 15, sum->symbolic_path, -1, NULL);
     sqlite3_bind_text(stmt, 16, file, -1, NULL);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         free(unescaped_perms);
         return 0;
     } else {
@@ -480,7 +480,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         }
     }
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) != SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) != SQLITE_DONE) {
         mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         os_free(perm);
         os_free(full_path);
@@ -527,7 +527,7 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_bind_text(stmt, 14, sum->symbolic_path, -1, NULL);
     sqlite3_bind_text(stmt, 15, file, -1, NULL);
 
-    if (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         free(unescaped_perms);
         return sqlite3_changes(wdb->db);
     } else {
@@ -550,7 +550,7 @@ int wdb_fim_delete(wdb_t * wdb, const char * path) {
 
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
 
-    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
+    switch (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS)) {
     case SQLITE_ROW:
         return 0;
         break;
@@ -575,7 +575,7 @@ int wdb_fim_update_date_entry(wdb_t * wdb, const char *path) {
 
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
 
-    switch (wdb_step1(stmt, wdb, WDB_NO_ATTEMPTS, true)) {
+    switch (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS)) {
     case SQLITE_DONE:
         mdebug2("DB(%s) Updated date field for file '%s' to '%ld'", wdb->id, path, (long)time(NULL));
         return 0;
@@ -604,7 +604,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
     stmt = wdb->stmt[WDB_STMT_FIM_FIND_DATE_ENTRIES];
     sqlite3_bind_int64(stmt, 1, tscheck3);
 
-    while(result = wdb_step(stmt), result != SQLITE_DONE) {
+    while(result = wdb_step_select(stmt), result != SQLITE_DONE) {
         switch (result) {
             case SQLITE_ROW:
                 //call to delete

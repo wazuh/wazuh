@@ -720,17 +720,10 @@ int wdb_fim_clean_old_entries(wdb_t * wdb);
 /* Prepare SQL query with availability waiting */
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
 
-/**
- * @brief Execute statement with availability waiting
- * @param stmt stmt The SQL statement to be executed.
- * @param wdb Database to query for the table existence.
- * @param max_attemps maximun number of attemps to query the DB
- * @param theQueryModifyDB true for INSERT|DELETE|UPDATE|CREATE or false other cases
- * @return SQLITE errors
- */
-int wdb_step1(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps, bool theQueryModifyDB);
+/* Execute statement with availability waiting */
+int wdb_step_select(sqlite3_stmt *stmt);
+int wdb_step_non_select(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps);
 
-int wdb_step(sqlite3_stmt *stmt);
 
 /* Begin transaction */
 int wdb_begin(wdb_t * wdb);
