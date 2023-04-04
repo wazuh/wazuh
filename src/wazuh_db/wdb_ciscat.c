@@ -89,7 +89,7 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
         return 0;
     }
     else {
-        merror("at wdb_ciscat_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_ciscat_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }

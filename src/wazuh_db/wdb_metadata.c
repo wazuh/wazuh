@@ -51,7 +51,7 @@ int wdb_metadata_get_entry(wdb_t * wdb, const char *key, char *output) {
             break;
         }
         default: {
-            mdebug1("DB(%s) sqlite3_step(): %s",
+            mdebug1("DB(%s) wdb_step(): %s",
                     wdb->id,
                     sqlite3_errmsg(wdb->db));
             ret = OS_INVALID;
@@ -84,7 +84,7 @@ int wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* count) {
             ret = OS_SUCCESS;
         } break;
         default: {
-            mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         }
     }
 

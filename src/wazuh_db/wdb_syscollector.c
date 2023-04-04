@@ -128,14 +128,14 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
             return OS_SUCCESS;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("at wdb_netinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("at wdb_netinfo_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return OS_SUCCESS;
             } else {
-                merror("at wdb_netinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("at wdb_netinfo_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
         default:
-            merror("at wdb_netinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("at wdb_netinfo_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return OS_INVALID;
     }
 }
@@ -206,14 +206,14 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
             return OS_SUCCESS;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("at wdb_netproto_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return OS_SUCCESS;
             } else {
-                merror("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("at wdb_netproto_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
         default:
-            merror("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("at wdb_netproto_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return OS_INVALID;
     }
 }
@@ -277,7 +277,7 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_netaddr_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_netaddr_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -495,7 +495,7 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_osinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_osinfo_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
@@ -595,14 +595,14 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
             return OS_SUCCESS;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("at wdb_package_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return OS_SUCCESS;
             } else {
-                merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("at wdb_package_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return OS_INVALID;
             }
         default:
-            merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("at wdb_package_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return OS_INVALID;
     }
 }
@@ -630,7 +630,7 @@ int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_hotfix_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_hotfix_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -814,7 +814,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_hardware_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_hardware_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -918,7 +918,7 @@ int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_port_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_port_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -1098,7 +1098,7 @@ int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("at wdb_process_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_process_insert(): wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }

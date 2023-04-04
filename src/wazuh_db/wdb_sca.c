@@ -40,7 +40,7 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
             return 0;
             break;
         default:
-            merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
     }
 }
@@ -87,14 +87,14 @@ int wdb_sca_save(wdb_t *wdb, int id, int scan_id, char *title, char *description
             return 0;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return 0;
             } else {
-                merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return -1;
             }
         default:
-            merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
     }
 }
@@ -128,7 +128,7 @@ int wdb_sca_policy_get_id(wdb_t * wdb, char * output) {
                 goto end;
                 break;
             default:
-                merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 os_free(str);
                 return -1;
         }
@@ -166,7 +166,7 @@ int wdb_sca_policy_delete(wdb_t * wdb,char * policy_id) {
         wdb_sca_scan_info_delete(wdb,policy_id);
         return 0;
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -193,7 +193,7 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id) {
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -221,7 +221,7 @@ int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id) {
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -247,7 +247,7 @@ int wdb_sca_check_delete(wdb_t * wdb,char * policy_id) {
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -271,7 +271,7 @@ int wdb_sca_check_compliances_delete(wdb_t * wdb) {
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -295,7 +295,7 @@ int wdb_sca_check_rules_delete(wdb_t * wdb) {
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -328,7 +328,7 @@ int wdb_sca_scan_find(wdb_t * wdb, char *policy_id, char * output) {
             return 0;
             break;
         default:
-            merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
     }
 }
@@ -360,7 +360,7 @@ int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output) {
             return 0;
             break;
         default:
-            merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
     }
 }
@@ -391,7 +391,7 @@ int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output) {
             return 0;
             break;
         default:
-            merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
     }
 }
@@ -420,14 +420,14 @@ int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value) {
             return 0;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return 0;
             } else {
-                merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return -1;
             }
         default:
-            merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
     }
 }
@@ -456,14 +456,14 @@ int wdb_sca_rules_save(wdb_t * wdb, int id_check, char *type, char *rule){
             return 0;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return 0;
             } else {
-                merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 return -1;
             }
         default:
-            merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
     }
 }
@@ -496,7 +496,7 @@ int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char *
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -532,7 +532,7 @@ int wdb_sca_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_i
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return 0;
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -558,7 +558,7 @@ int wdb_sca_scan_info_update(wdb_t * wdb, char * module, int end_scan){
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -592,7 +592,7 @@ int wdb_sca_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -629,7 +629,7 @@ int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output) {
                 goto end;
                 break;
             default:
-                merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
                 os_free(str);
                 return -1;
         }
@@ -677,7 +677,7 @@ int wdb_sca_update(wdb_t * wdb, char * result, int id, int scan_id, char * reaso
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("wdb_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }

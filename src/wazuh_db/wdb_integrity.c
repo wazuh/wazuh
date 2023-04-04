@@ -87,7 +87,7 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_val
     }
 
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return;
     }
 }
@@ -312,7 +312,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
     }
 
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -334,7 +334,7 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
     sqlite3_bind_text(stmt, 4, COMPONENT_NAMES[component], -1, NULL);
 
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
@@ -354,7 +354,7 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
     sqlite3_bind_text(stmt, 5, COMPONENT_NAMES[component], -1, NULL);
 
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
@@ -380,7 +380,7 @@ void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long times
     sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
 
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
@@ -518,7 +518,7 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
     sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
 
     if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         goto end;
     }
 

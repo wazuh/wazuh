@@ -412,7 +412,7 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state) {
     will_return(__wrap_wdb_step_non_select, SQLITE_ERROR);
     //expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): out of memory");
     //expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot rollback transaction");
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): out of memory");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) wdb_step(): out of memory");
 
     ret = wdb_fim_insert_entry2(wdb, data);
 

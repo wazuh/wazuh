@@ -1229,7 +1229,7 @@ cJSON* wdb_global_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
         }
         return response;
     default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return response;
     }
 }

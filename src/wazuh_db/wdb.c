@@ -1558,7 +1558,7 @@ cJSON* wdb_exec(wdb_t* wdb, const char * sql) {
     result = wdb_exec_stmt(stmt, wdb);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
     }
 
     sqlite3_finalize(stmt);
