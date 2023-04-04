@@ -23,6 +23,7 @@
 #include "register.hpp"
 #include "registry.hpp"
 #include "server/wazuhStreamProtocol.hpp"
+#include "metrics/metricsManager.hpp"
 
 namespace
 {
@@ -38,7 +39,7 @@ void sigint_handler(const int signum)
 
 namespace cmd::test
 {
-void run(const Options& options, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
+void run(const Options& options)
 {
     // Init logging
     logging::LoggingConfig logConfig;
@@ -53,6 +54,8 @@ void run(const Options& options, const std::shared_ptr<metricsManager::IMetricsM
     }
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
+
+    std::shared_ptr<metricsManager::MetricsManager> metricsManager;
 
     auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath, metricsManager);
     g_exitHanlder.add([kvdb]() { kvdb->clear(); });
@@ -316,7 +319,7 @@ void run(const Options& options, const std::shared_ptr<metricsManager::IMetricsM
     g_exitHanlder.execute();
 }
 
-void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
+void configure(CLI::App_p app)
 {
     auto options = std::make_shared<Options>();
 
@@ -373,6 +376,6 @@ void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsMan
         ->needs(debug);
 
     // Register callback
-    logtestApp->callback([options, metricsManager]() { run(*options, metricsManager); });
+    logtestApp->callback([options]() { run(*options); });
 }
 } // namespace cmd::test
