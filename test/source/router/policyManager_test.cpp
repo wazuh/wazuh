@@ -137,7 +137,7 @@ TEST(PolicyManager, add_list_del_policy)
     auto err = manager.addPolicy("policy/env_1/0");
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    auto envs = manager.listPolicys();
+    auto envs = manager.listPolicies();
     ASSERT_EQ(envs.size(), 1);
     ASSERT_STREQ(envs[0].c_str(), "policy/env_1/0");
 
@@ -145,14 +145,14 @@ TEST(PolicyManager, add_list_del_policy)
     ASSERT_TRUE(err.has_value());
     ASSERT_STREQ(err.value().message.c_str(), "Policy 'policy/env_1/0' already exists");
 
-    envs = manager.listPolicys();
+    envs = manager.listPolicies();
     ASSERT_EQ(envs.size(), 1);
     ASSERT_STREQ(envs[0].c_str(), "policy/env_1/0");
 
     err = manager.deletePolicy("policy/env_1/0");
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    envs = manager.listPolicys();
+    envs = manager.listPolicies();
     ASSERT_EQ(envs.size(), 0);
 
     err = manager.deletePolicy("policy/env_1/0");
@@ -168,7 +168,7 @@ TEST(PolicyManager, add_list_del_policy)
     err = manager.addPolicy("policy/env_3/0");
     ASSERT_FALSE(err.has_value()) << err.value().message;
 
-    envs = manager.listPolicys();
+    envs = manager.listPolicies();
     ASSERT_EQ(envs.size(), 3);
     std::sort(envs.begin(), envs.end());
     ASSERT_STREQ(envs[0].c_str(), "policy/env_1/0");

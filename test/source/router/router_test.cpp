@@ -22,7 +22,7 @@ TEST(Router, build_ok)
 
     router::Router router(builder, store, manager);
 }
-// Add more test
+
 TEST(Router, build_fail)
 {
     std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();

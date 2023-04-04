@@ -9,23 +9,23 @@ namespace router
 std::optional<base::Error> PolicyManager::addPolicy(const std::string& name)
 {
     // Validate the runtime policy name
-    base::Name envName;
+    base::Name policyName;
     try
     {
-        envName = base::Name {name};
+        policyName = base::Name {name};
     }
     catch (const std::exception& e)
     {
         return base::Error {fmt::format("Invalid policy name: '{}'", e.what())};
     }
 
-    if (envName.parts().size() != 3)
+    if (policyName.parts().size() != 3)
     {
         return base::Error {fmt::format("Invalid policy name: '{}', the expected "
-                                        "format is: \"policy/<env-name>/<version>\"",
+                                        "format is: \"policy/<policy-name>/<version>\"",
                                         name)};
     }
-    if (envName.parts()[0] != "policy")
+    if (policyName.parts()[0] != "policy")
     {
         return base::Error {fmt::format("Invalid policy name: '{}', it should "
                                         "start with the word \"policy\"",
@@ -48,11 +48,11 @@ std::optional<base::Error> PolicyManager::addPolicy(const std::string& name)
     // Add the policy to the runtime list
     {
         std::unique_lock<std::shared_mutex> lock(m_mutex);
-        if (m_policys.find(name) != m_policys.end())
+        if (m_policies.find(name) != m_policies.end())
         {
             return base::Error {fmt::format("Policy '{}' already exists", name)};
         }
-        m_policys.insert({name, std::move(envs)});
+        m_policies.insert({name, std::move(envs)});
     }
 
     return std::nullopt;
@@ -61,13 +61,13 @@ std::optional<base::Error> PolicyManager::addPolicy(const std::string& name)
 std::optional<base::Error> PolicyManager::deletePolicy(const std::string& name)
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
-    auto it = m_policys.find(name);
-    if (it == m_policys.end())
+    auto it = m_policies.find(name);
+    if (it == m_policies.end())
     {
         return base::Error {fmt::format("Policy '{}' does not exist", name)};
     }
 
-    if (m_policys.erase(name) != 1)
+    if (m_policies.erase(name) != 1)
     {
         return base::Error {fmt::format("Policy '{}' could not be deleted", name)};
     }
@@ -75,19 +75,19 @@ std::optional<base::Error> PolicyManager::deletePolicy(const std::string& name)
     return std::nullopt;
 }
 
-void PolicyManager::delAllPolicys()
+void PolicyManager::delAllPolicies()
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
-    m_policys.clear();
+    m_policies.clear();
 }
 
-std::vector<std::string> PolicyManager::listPolicys()
+std::vector<std::string> PolicyManager::listPolicies()
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     std::vector<std::string> names = {};
-    names.reserve(m_policys.size());
+    names.reserve(m_policies.size());
     std::transform(
-        m_policys.begin(), m_policys.end(), std::back_inserter(names), [](const auto& pair) { return pair.first; });
+        m_policies.begin(), m_policies.end(), std::back_inserter(names), [](const auto& pair) { return pair.first; });
 
     return names;
 }
@@ -96,8 +96,8 @@ std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, 
 {
 
     std::shared_lock<std::shared_mutex> lock(m_mutex);
-    auto it = m_policys.find(name);
-    if (m_policys.end() == it)
+    auto it = m_policies.find(name);
+    if (m_policies.end() == it)
     {
         return base::Error {fmt::format("Policy '{}' does not exist", name)};
     }

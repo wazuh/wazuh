@@ -9,12 +9,12 @@
 namespace cmd::graph
 {
 /**
- * @brief Load and build environment to generate environment graph and environment
+ * @brief Load and build policy to generate policy graph and policy
  * expression graph.
  *
  * @param kvdbPath Path to KVDB folder.
  * @param fileStorage Path to asset folders.
- * @param environment Name of the environment to be loaded.
+ * @param policy Name of the policy to be loaded.
  * @param graphOutDir Directory where the graphs will be saved.
  */
 struct Options

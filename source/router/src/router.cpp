@@ -86,7 +86,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
 };
 
 std::optional<base::Error>
-Router::addRoute(const std::string& routeName, int priority, const std::string& filterName, const std::string& envName)
+Router::addRoute(const std::string& routeName, int priority, const std::string& filterName, const std::string& policyName)
 {
     // Validate route name
     if (routeName.empty())
@@ -99,7 +99,7 @@ Router::addRoute(const std::string& routeName, int priority, const std::string& 
         return base::Error {"Filter name cannot be empty"};
     }
     // Validate policy name
-    if (envName.empty())
+    if (policyName.empty())
     {
         return base::Error {"Policy name cannot be empty"};
     }
@@ -111,11 +111,11 @@ Router::addRoute(const std::string& routeName, int priority, const std::string& 
         for (std::size_t i = 0; i < m_numThreads; ++i)
         {
             auto filter = m_builder->buildFilter(filterName);
-            routeInstances.emplace_back(Route {routeName, filter, envName, priority});
+            routeInstances.emplace_back(Route {routeName, filter, policyName, priority});
         }
 
         // Add the policy
-        auto err = m_policyManager->addPolicy(envName);
+        auto err = m_policyManager->addPolicy(policyName);
         if (err)
         {
             return base::Error {err.value()};
@@ -139,7 +139,7 @@ Router::addRoute(const std::string& routeName, int priority, const std::string& 
             if (err)
             {
                 lock.unlock();
-                m_policyManager->deletePolicy(envName);
+                m_policyManager->deletePolicy(policyName);
                 return err;
             }
             m_namePriorityFilter.insert(std::make_pair(routeName, std::make_tuple(priority, filterName)));
@@ -172,18 +172,18 @@ void Router::removeRoute(const std::string& routeName)
         WAZUH_LOG_WARN("Router: Priority '{}' not found when removing route '{}'", priority, routeName);
         return;
     }
-    const auto envName = it2->second.front().getTarget();
+    const auto policyName = it2->second.front().getTarget();
     // Remove from maps
     m_namePriorityFilter.erase(it);
     m_priorityRoute.erase(it2);
     lock.unlock();
 
     dumpTableToStorage();
-    auto err = m_policyManager->deletePolicy(envName);
+    auto err = m_policyManager->deletePolicy(policyName);
     if (err)
     {
         // Should never happen
-        WAZUH_LOG_WARN("Router: couldn't delete policy '{}': {} ", envName, err.value().message);
+        WAZUH_LOG_WARN("Router: couldn't delete policy '{}': {} ", policyName, err.value().message);
     }
     return;
 }
@@ -200,8 +200,8 @@ std::vector<Router::Entry> Router::getRouteTable()
             const auto& name = route.first;
             const auto& priority = std::get<0>(route.second);
             const auto& filterName = std::get<1>(route.second);
-            const auto& envName = m_priorityRoute.at(priority).front().getTarget();
-            table.emplace_back(name, priority, filterName, envName);
+            const auto& policyName = m_priorityRoute.at(priority).front().getTarget();
+            table.emplace_back(name, priority, filterName, policyName);
         }
     }
     catch (const std::exception& e)
@@ -225,9 +225,9 @@ std::optional<Router::Entry> Router::getEntry(const std::string& name)
         return std::nullopt;
     }
     const auto& [priority, filterName] = it->second;
-    const auto& envName = m_priorityRoute.at(priority).front().getTarget();
+    const auto& policyName = m_priorityRoute.at(priority).front().getTarget();
 
-    return Entry {name, priority, filterName, envName};
+    return Entry {name, priority, filterName, policyName};
 }
 
 std::optional<base::Error> Router::changeRoutePriority(const std::string& name, int priority)
@@ -395,13 +395,13 @@ json::Json Router::tableToJson()
     data.setArray();
 
     const auto table = getRouteTable();
-    for (const auto& [name, priority, filterName, envName] : table)
+    for (const auto& [name, priority, filterName, policyName] : table)
     {
         json::Json entry {};
         entry.setString(name, JSON_PATH_NAME);
         entry.setInt(priority, JSON_PATH_PRIORITY);
         entry.setString(filterName, JSON_PATH_FILTER);
-        entry.setString(envName, JSON_PATH_TARGET);
+        entry.setString(policyName, JSON_PATH_TARGET);
         data.appendJson(entry);
     }
     return data;
@@ -427,7 +427,7 @@ void Router::clear()
     }
 
     dumpTableToStorage();
-    m_policyManager->delAllPolicys();
+    m_policyManager->delAllPolicies();
 }
 
 } // namespace router
