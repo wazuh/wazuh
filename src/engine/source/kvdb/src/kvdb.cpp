@@ -703,8 +703,8 @@ bool KVDB::write(const std::string& key,
                  const std::string& columnName)
 {
     // This instrument measures the number of writes in KVDB
-    auto writesCounter = m_spMetricsScope->getCounterUInteger("WritesCounter");
-    writesCounter->addValue(1UL);
+    auto databaseWrites = m_spMetricsScope->getCounterUInteger("DatabaseWrites");
+    databaseWrites->addValue(1UL);
     return mImpl->write(key, value, columnName);
 }
 
@@ -712,8 +712,8 @@ std::variant<std::string, base::Error> KVDB::read(const std::string& key,
                                       const std::string& columnName)
 {
     // This instrument measures the number of reads in KVDB
-    auto readsCounter = m_spMetricsScope->getCounterUInteger("ReadsCounter");
-    readsCounter->addValue(1UL);
+    auto databaseReads = m_spMetricsScope->getCounterUInteger("DatabaseReads");
+    databaseReads->addValue(1UL);
 
     auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -723,8 +723,8 @@ std::variant<std::string, base::Error> KVDB::read(const std::string& key,
     auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
 
     // This instrument measures the time it takes for the database to process a request and send the response in microseconds
-    auto accessTimeDBHistogram = m_spMetricsScope->getHistogramUInteger("AccessTimeDBHistogram");
-    accessTimeDBHistogram->recordValue(static_cast<uint64_t>(microseconds));
+    auto databaseAccessTime = m_spMetricsScope->getHistogramUInteger("DatabaseAccessTime");
+    databaseAccessTime->recordValue(static_cast<uint64_t>(microseconds));
 
     return response;
 }
