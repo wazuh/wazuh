@@ -204,18 +204,13 @@ nlohmann::json SysInfo::getNetworks() const
 nlohmann::json SysInfo::getPorts() const
 {
     nlohmann::json ports{};
-    std::vector<mib_item_t> items;
+    std::deque<mibItem> items;
 
     // Open /dev/arp and push into ioctl()
     int sd = PortSolarisHelper::mibOpen();
 
     if (sd != -1)
     {
-        mib2_tcpConnEntry_t* tp;
-        mib2_tcp6ConnEntry_t* tp6;
-        mib2_udpEntry_t* ud;
-        mib2_udp6Entry_t* ud6;
-
         // Get all connections available
         PortSolarisHelper::mibGetItems(sd, items);
 
@@ -226,45 +221,49 @@ nlohmann::json SysInfo::getPorts() const
         {
             if (item.group == MIB2_TCP)
             {
-                for (tp = (mib2_tcpConnEntry_t*)item.val.get();
-                        (char*)tp < (char*)item.val.get() + item.length;
-                        tp = (mib2_tcpConnEntry_t*)((char*)tp + PortSolarisHelper::tcpConnEntrySize))
+                mib2_tcpConnEntry_t* connPtr = reinterpret_cast<mib2_tcpConnEntry_t*>(item.val.get());
+                std::deque<mib2_tcpConnEntry_t> entries(connPtr, connPtr + item.length / PortSolarisHelper::tcpConnEntrySize);
+
+                for (auto entry : entries)
                 {
                     nlohmann::json port {};
-                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(tp))->buildPortData(port);
+                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(&entry))->buildPortData(port);
                     ports.push_back(port);
                 }
             }
             else if (item.group == MIB2_TCP6)
             {
-                for (tp6 = (mib2_tcp6ConnEntry_t*)item.val.get();
-                        (char*)tp6 < (char*)item.val.get() + item.length;
-                        tp6 = (mib2_tcp6ConnEntry_t*)((char*)tp6 + PortSolarisHelper::tcp6ConnEntrySize))
+                mib2_tcp6ConnEntry_t* connPtr = reinterpret_cast<mib2_tcp6ConnEntry_t*>(item.val.get());
+                std::deque<mib2_tcp6ConnEntry_t> entries(connPtr, connPtr + item.length / PortSolarisHelper::tcp6ConnEntrySize);
+
+                for (auto entry : entries)
                 {
                     nlohmann::json port {};
-                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(tp6))->buildPortData(port);
+                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(&entry))->buildPortData(port);
                     ports.push_back(port);
                 }
             }
             else if (item.group == MIB2_UDP)
             {
-                for (ud = (mib2_udpEntry_t*)item.val.get();
-                        (char*)ud < (char*)item.val.get() + item.length;
-                        ud = (mib2_udpEntry_t*)((char*)ud + PortSolarisHelper::udpEntrySize))
+                mib2_udpEntry_t* connPtr = reinterpret_cast<mib2_udpEntry_t*>(item.val.get());
+                std::deque<mib2_udpEntry_t> entries(connPtr, connPtr + item.length / PortSolarisHelper::udpEntrySize);
+
+                for (auto entry : entries)
                 {
                     nlohmann::json port {};
-                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(ud))->buildPortData(port);
+                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(&entry))->buildPortData(port);
                     ports.push_back(port);
                 }
             }
             else if (item.group == MIB2_UDP6)
             {
-                for (ud6 = (mib2_udp6Entry_t*)item.val.get();
-                        (char*)ud6 < (char*)item.val.get() + item.length;
-                        ud6 = (mib2_udp6Entry_t*)((char*)ud6 + PortSolarisHelper::udp6EntrySize))
+                mib2_udp6Entry_t* connPtr = reinterpret_cast<mib2_udp6Entry_t*>(item.val.get());
+                std::deque<mib2_udp6Entry_t> entries(connPtr, connPtr + item.length / PortSolarisHelper::udp6EntrySize);
+
+                for (auto entry : entries)
                 {
                     nlohmann::json port {};
-                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(ud6))->buildPortData(port);
+                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(&entry))->buildPortData(port);
                     ports.push_back(port);
                 }
             }

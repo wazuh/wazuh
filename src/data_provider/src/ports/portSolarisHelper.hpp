@@ -14,17 +14,17 @@
 #include <inet/mib2.h>
 #include <inet/ip.h>
 
-#include <vector>
+#include <deque>
 
 #ifndef _PORT_SOLARIS_HELPER_H
 #define _PORT_SOLARIS_HELPER_H
 
-typedef struct mib_item_s {
-	int			group;
-	int			mib_id;
-	int			length;
-	std::shared_ptr<char> val;
-} mib_item_t;
+typedef struct mibIitemSt {
+	int			            group;
+	int			            mib_id;
+	int                     length;
+	std::shared_ptr<char>   val;
+} mibItem;
 
 class PortSolarisHelper final
 {
@@ -34,9 +34,9 @@ class PortSolarisHelper final
         static int udpEntrySize;
         static int udp6EntrySize;
 
-        static void mibGetItems(int sd, std::vector<mib_item_t> &items);
+        static void mibGetItems(int sd, std::deque<mibItem> &items);
         static int mibOpen(void);
-        static void mibGetConstants(std::vector<mib_item_t>& items);
+        static void mibGetConstants(std::deque<mibItem>& items);
 };
 
 #endif //_PORT_SOLARIS_HELPER_H

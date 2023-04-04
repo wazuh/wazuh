@@ -29,13 +29,14 @@ class SysInfoSolarisPortsTest : public ::testing::Test
         void TearDown() override;
 };
 
-typedef struct mib_item_test
+// copy of mibItemSt at portSolarisHelper.hpp
+typedef struct mibItemTest
 {
-    int group;
-    int mib_id;
-    int length;
-    char    val[];
-} mib_item_t;
+    int  group;
+    int  mib_id;
+    int  length;
+    char val[]; // member adapted to get static binary data
+} mibItem;
 
 /**
  * @brief declare some missing Solaris data types

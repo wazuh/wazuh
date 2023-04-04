@@ -22,15 +22,9 @@ int PortSolarisHelper::tcp6ConnEntrySize;
 int PortSolarisHelper::udpEntrySize;
 int PortSolarisHelper::udp6EntrySize;
 
-void PortSolarisHelper::mibGetItems(int sd, std::vector<mib_item_t>& items)
+// this code was extracted and adapted of OpenSolaris netstate tool implementation
+void PortSolarisHelper::mibGetItems(int sd, std::deque<mibItem>& items)
 {
-    /*
-     * buf is an automatic for this function, so the
-     * compiler has complete control over its alignment;
-     * it is assumed this alignment is satisfactory for
-     * it to be casted to certain other struct pointers
-     * here, such as struct T_optmgmt_ack * .
-     */
     uintptr_t   buf[512 / sizeof (uintptr_t)];
     int flags;
     int getcode;
@@ -79,28 +73,28 @@ void PortSolarisHelper::mibGetItems(int sd, std::vector<mib_item_t>& items)
 
         if (getcode == -1)
         {
-            return;
+            break;
         }
 
         if (getcode == 0 && ctlbuf.len >= sizeof (struct T_optmgmt_ack) &&
                 toa->PRIM_type == T_OPTMGMT_ACK && toa->MGMT_flags == T_SUCCESS &&
                 req->len == 0)
         {
-            return;     /* this is EOD msg */
+            break;     /* this is EOD msg */
         }
 
         if (ctlbuf.len >= sizeof (struct T_error_ack) && tea->PRIM_type == T_ERROR_ACK)
         {
-            return;
+            break;
         }
 
         if (getcode != MOREDATA || ctlbuf.len < sizeof (struct T_optmgmt_ack) ||
                 toa->PRIM_type != T_OPTMGMT_ACK || toa->MGMT_flags != T_SUCCESS)
         {
-            return;
+            break;
         }
 
-        mib_item_t item
+        mibItem item
         {
             req->level,
             req->name,
@@ -120,13 +114,16 @@ void PortSolarisHelper::mibGetItems(int sd, std::vector<mib_item_t>& items)
 
         if (getcode != 0)
         {
-            return;
+            break;
         }
 
         items.push_back(item);
     }
+
+    return;
 }
 
+// this code was extracted and adapted of OpenSolaris netstate tool implementation
 int PortSolarisHelper::mibOpen(void)
 {
     int sd;
@@ -156,14 +153,13 @@ int PortSolarisHelper::mibOpen(void)
     return (sd);
 }
 
-/* Extract constant sizes */
-void PortSolarisHelper::mibGetConstants(std::vector<mib_item_t>& items)
+// this code was extracted and adapted of OpenSolaris netstate tool implementation
+void PortSolarisHelper::mibGetConstants(std::deque<mibItem>& items)
 {
-    /* 'for' loop 1: */
     for (auto& item : items)
     {
         if (item.mib_id != 0)
-            continue; /* 'for' loop 1 */
+            continue;
 
         switch (item.group)
         {
@@ -184,5 +180,5 @@ void PortSolarisHelper::mibGetConstants(std::vector<mib_item_t>& items)
                     break;
                 }
         }
-    } /* 'for' loop 1 ends */
+    }
 }

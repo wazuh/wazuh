@@ -46,7 +46,7 @@ class sysInfoPortsSolarisWrapperMock : public IPortWrapper
 TEST_F(SysInfoSolarisPortsTest, TestSuccessUDP)
 {
     nlohmann::json port{};
-    const mib_item_t* item = reinterpret_cast<const mib_item_t*>(testUDPbin.data());
+    const mibItem* item = reinterpret_cast<const mibItem*>(testUDPbin.data());
     const mib2_udpEntry_t* udpData = reinterpret_cast<const mib2_udpEntry_t*>(item->val);
     char buf[INET_ADDRSTRLEN];
 
@@ -86,7 +86,7 @@ TEST_F(SysInfoSolarisPortsTest, TestSuccessUDP)
 TEST_F(SysInfoSolarisPortsTest, TestSuccessUDP6)
 {
     nlohmann::json port{};
-    const mib_item_t* item = reinterpret_cast<const mib_item_t*>(testUDP6bin.data());
+    const mibItem* item = reinterpret_cast<const mibItem*>(testUDP6bin.data());
     const mib2_udp6Entry_t* udpData = reinterpret_cast<const mib2_udp6Entry_t*>(item->val);
     char buf[INET6_ADDRSTRLEN];
 
@@ -126,7 +126,7 @@ TEST_F(SysInfoSolarisPortsTest, TestSuccessUDP6)
 TEST_F(SysInfoSolarisPortsTest, TestSuccessTCP)
 {
     nlohmann::json port{};
-    const mib_item_t* item = reinterpret_cast<const mib_item_t*>(testTCPbin.data());
+    const mibItem* item = reinterpret_cast<const mibItem*>(testTCPbin.data());
     const mib2_tcpConnEntry_t* tcpData = reinterpret_cast<const mib2_tcpConnEntry_t*>(item->val);
     char buf[INET_ADDRSTRLEN];
 
@@ -166,7 +166,7 @@ TEST_F(SysInfoSolarisPortsTest, TestSuccessTCP)
 TEST_F(SysInfoSolarisPortsTest, TestSuccessTCP6)
 {
     nlohmann::json port{};
-    const mib_item_t* item = reinterpret_cast<const mib_item_t*>(testTCP6bin.data());
+    const mibItem* item = reinterpret_cast<const mibItem*>(testTCP6bin.data());
     const mib2_tcp6ConnEntry_t* tcpData = reinterpret_cast<const mib2_tcp6ConnEntry_t*>(item->val);
     char buf[INET6_ADDRSTRLEN];
 
@@ -209,12 +209,12 @@ TEST_F(SysInfoSolarisPortsTest, TestNotSuccess)
 
     const auto EMPTY_PORT =
         R"({"inode":0,"local_ip":"","local_port":0,"pid":0,"process":"",
-            "protocol":"tcp6","remote_ip":"","remote_port":0,"rx_queue":0,
+            "protocol":"","remote_ip":"","remote_port":0,"rx_queue":0,
             "state":"","tx_queue":0})"_json;
 
     const auto mock{std::make_shared<sysInfoPortsSolarisWrapperMock>()};
 
-    EXPECT_CALL(*mock, protocol()).Times(1).WillOnce(Return("tcp6"));
+    EXPECT_CALL(*mock, protocol()).Times(1).WillOnce(Return(""));
     EXPECT_CALL(*mock, localIp()).Times(1).WillOnce(Return(""));
     EXPECT_CALL(*mock, localPort()).Times(1).WillOnce(Return(0));
     EXPECT_CALL(*mock, remoteIP()).Times(1).WillOnce(Return(""));
