@@ -23,6 +23,9 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
     , m_threads {}
     , m_builder {builder}
 {
+    m_spMetricsScope = metricsManager->getMetricsScope("router");
+    m_spMetricsScopeDelta = metricsManager->getMetricsScope("routerRate", true);
+
     if (0 == threads || 128 < threads)
     {
         throw std::runtime_error("Router: The number of threads must be between 1 and 128");
@@ -80,9 +83,6 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
         // Add default route
         WAZUH_LOG_WARN("There is no environment loaded. Events will be written in disk once the queue is full.");
     }
-
-    m_spMetricsScope = metricsManager->getMetricsScope("router");
-    m_spMetricsScopeDelta = metricsManager->getMetricsScope("routerRate", true);
 };
 
 std::optional<base::Error>
