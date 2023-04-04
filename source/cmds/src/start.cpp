@@ -286,6 +286,9 @@ void runStart(ConfHandler confManager)
             // API Endpoint
             auto apiHandler = std::bind(&api::Api::processRequest, api, std::placeholders::_1);
             auto apiClientFactory = std::make_shared<ph::WStreamFactory>(apiHandler); // API endpoint
+            apiClientFactory->setErrorResponse(base::utils::wazuhProtocol::WazuhResponse::unknownError().toString());
+            apiClientFactory->setBusyResponse(base::utils::wazuhProtocol::WazuhResponse::busyServer().toString());
+
             // TODO: Config-> 10 max tasks, 1000 ms timeout (config file)
             auto apiEndpointCfg = std::make_shared<endpoint::UnixStream>(apiEndpoint, apiClientFactory, 10);
             server->addEndpoint("API", apiEndpointCfg);

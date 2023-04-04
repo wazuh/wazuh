@@ -15,6 +15,7 @@ enum class RESPONSE_ERROR_CODES
     INVALID_MSG_SIZE,     // The size of the message is not valid
     INVALID_REQUEST,      // The request is not valid
     COMMAND_NOT_FOUND,    // The command is not found
+    BUSY_SERVER,          // The server is busy
     INTERNAL_ERROR        // This never happens, its only for coverage, the code should never reach this point
 };
 
@@ -272,6 +273,16 @@ public:
         return WazuhResponse(json::Json(R"({})"),
                              static_cast<int>(RESPONSE_ERROR_CODES::INTERNAL_ERROR),
                              std::string {"Internal error: "} + message);
+    }
+
+    /**
+     * @brief Return a request with busy server message
+     *
+     */
+    static WazuhResponse busyServer()
+    {
+        return WazuhResponse(
+            json::Json(R"({})"), static_cast<int>(RESPONSE_ERROR_CODES::BUSY_SERVER), "Busy server, try again later");
     }
 };
 

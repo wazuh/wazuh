@@ -5,6 +5,9 @@
 #include <fcntl.h>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <mutex>
+#include <optional>
 
 #include <blockingconcurrentqueue.h>
 
@@ -18,20 +21,26 @@ constexpr int64_t WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000; ///< Timeout for the 
 /**
  * @brief Provides a wrapper for the flooding file
  *
- * @warning this class is not thread safe
+ * @warning this is thread safe for the write operation
  */
 class FloodingFile
 {
+private:
+    std::ofstream m_file; ///< File stream for the flooding file
+    std::string m_error;  ///< Error message if the file is not good
+    std::mutex m_mutex;   ///< Mutex for the write operation
+
 public:
     /**
      * @brief Construct a new FloodingFile object
      *
+     * The file will be opened in append mode, and the file pointer will be set at the end of the file.
      * @param path (const std::string&) Path to the flooding file
-     * @param flags (const std::ios::openmode) Flags for opening the file
      */
-    FloodingFile(const std::string& path)
+    explicit FloodingFile(const std::string& path)
         : m_file(path, std::ios::out | std::ios::app | std::ios::ate)
         , m_error {}
+        , m_mutex {}
     {
         if (!m_file.good())
         {
@@ -68,15 +77,12 @@ public:
     {
         if (m_file.is_open())
         {
+            std::lock_guard<std::mutex> lock {m_mutex};
             m_file << message << std::endl;
             return true;
         }
         return false;
     }
-
-private:
-    std::ofstream m_file; ///< File stream for the flooding file
-    std::string m_error;  ///< Error message if the file is not good
 };
 
 /**
@@ -93,8 +99,8 @@ template<typename T>
 class ConcurrentQueue
 {
 private:
-    moodycamel::BlockingConcurrentQueue<T> m_queue; ///< The queue itself.
-    std::optional<FloodingFile> m_floodingFile;     ///< The flooding file.
+    moodycamel::BlockingConcurrentQueue<T> m_queue {}; ///< The queue itself.
+    std::shared_ptr<FloodingFile> m_floodingFile;      ///< The flooding file.
 
 public:
     /**
@@ -108,16 +114,16 @@ public:
      */
     explicit ConcurrentQueue(const std::size_t capacity, const std::string& pathFloodedFile = {})
         : m_queue {moodycamel::BlockingConcurrentQueue<T>(capacity)}
-        , m_floodingFile {}
+        , m_floodingFile {nullptr}
     {
         // Verify if T has a toString method (for flooding the queue)
-        // static_assert(std::is_same<decltype(std::declval<T>().str()), std::string>::value,
-        //              "T must have a toString method");
+        static_assert(std::is_same<decltype(std::declval<T>()->str()), std::string>::value,
+                      "T must have a toString method");
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
         {
-            m_floodingFile = FloodingFile(pathFloodedFile);
+            m_floodingFile = std::make_shared<FloodingFile>(pathFloodedFile);
             if (m_floodingFile->getError())
             {
                 throw std::runtime_error("Error opening the flooding file: " + m_floodingFile->getError().value());
@@ -155,22 +161,18 @@ public:
         }
         else
         {
-            std::size_t attempts {0};
-            const std::size_t maxAttempts {3}; // Shoul be a macro?
-            for (; attempts < maxAttempts; ++attempts)
+            const std::size_t maxAttempts {3}; // TODO Shoul be a macro with the time in ms?
+            for (std::size_t attempts {0}; attempts < maxAttempts; ++attempts)
             {
                 if (m_queue.try_enqueue(std::move(element)))
                 {
-                    break;
+                    return;
                 }
                 // TODO: Benchmarks to find the best value.... (0.1ms)
                 // 3.3K events per second (In the worst case)
                 std::this_thread::sleep_for(std::chrono::microseconds(100));
             }
-            if (attempts >= maxAttempts)
-            {
-                m_floodingFile->write(element->str());
-            }
+            m_floodingFile->write(element->str());
         }
     }
 

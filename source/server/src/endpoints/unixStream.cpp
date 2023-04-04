@@ -19,7 +19,7 @@ std::shared_ptr<uvw::TimerHandle> createTimer(std::shared_ptr<uvw::Loop> loop, s
 
     // Timeout, close the client
     timer->on<uvw::TimerEvent>(
-        [client, timer](const uvw::TimerEvent&, uvw::TimerHandle& _timerRef)
+        [client, timer](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
         {
             WAZUH_LOG_DEBUG("Client timeout, close connection.");
             if (!client->closing())
@@ -30,7 +30,7 @@ std::shared_ptr<uvw::TimerHandle> createTimer(std::shared_ptr<uvw::Loop> loop, s
         });
 
     timer->on<uvw::ErrorEvent>(
-        [timer](const uvw::ErrorEvent& error, uvw::TimerHandle& _timerRef)
+        [timer](const uvw::ErrorEvent& error, uvw::TimerHandle& timerRef)
         {
             WAZUH_LOG_ERROR("Timer error: {}", error.what());
             timer->close();
@@ -110,7 +110,7 @@ UnixStream::UnixStream(const std::string& address,
     : Endpoint(address, taskQueueSize)
     , m_handle(nullptr)
     , m_timeout(timeout)
-    , m_factory(factory)
+    , m_factory(std::move(factory))
 {
     if (m_timeout == 0)
     {
@@ -135,7 +135,7 @@ UnixStream::UnixStream(const std::string& address,
     if (address.length() >= sizeof(sockaddr_un::sun_path))
     {
         auto msg = fmt::format("Path '{}' too long, maximum length is {} ", address, sizeof(sockaddr_un::sun_path));
-        throw std::runtime_error(std::move(msg));
+        throw std::runtime_error(msg);
     }
 
     if (m_address[0] != '/')
@@ -242,7 +242,7 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
     // Create 1 protocol handler per client
     auto protocolHandler = m_factory->create();
     client->on<uvw::DataEvent>(
-        [this, timer, client, protocolHandler](const uvw::DataEvent& data, uvw::PipeHandle& _clienRef)
+        [this, timer, client, protocolHandler](const uvw::DataEvent& data, uvw::PipeHandle& clienRef)
         {
             // Avoid use _clientRef, it's a reference to the client, but we want to use the shared_ptr
             // to avoid the client release the memory before the workers finish the processing

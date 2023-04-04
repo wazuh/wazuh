@@ -20,6 +20,7 @@ CPMAddPackage(
 # Sources - Includes
 # ###################################################################################################
 add_library(api STATIC
+    ${ENGINE_API_SOURCE_DIR}/api.cpp
     ${ENGINE_API_SOURCE_DIR}/registry.cpp
     ${ENGINE_API_SOURCE_DIR}/catalog/catalog.cpp
     ${ENGINE_API_SOURCE_DIR}/catalog/handlers.cpp
