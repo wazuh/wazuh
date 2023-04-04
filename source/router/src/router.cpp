@@ -23,8 +23,8 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
     , m_threads {}
     , m_builder {builder}
 {
-    m_spMetricsScope = metricsManager->getMetricsScope("router");
-    m_spMetricsScopeDelta = metricsManager->getMetricsScope("routerRate", true);
+    m_spMetricsScope = metricsManager->getMetricsScope("Router");
+    m_spMetricsScopeDelta = metricsManager->getMetricsScope("RouterRate", true);
 
     if (0 == threads || 128 < threads)
     {
