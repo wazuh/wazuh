@@ -19,7 +19,7 @@ metadata:
         - https://documentation.wazuh.com/current/user-manual/agents/remote-upgrading/agent-upgrade-module.html
 
 sources:
-  - decoder/queue-upgrade/0
+  - decoder/core-upgrade/0
 
 # Examples:
 # https://github.com/wazuh/wazuh/issues/5406

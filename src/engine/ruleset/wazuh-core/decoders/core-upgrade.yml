@@ -1,5 +1,5 @@
 ---
-name: decoder/queue-upgrade/0
+name: decoder/core-upgrade/0
 
 metadata:
   module: wazuh-agent/upgrade
@@ -16,7 +16,7 @@ metadata:
     - https://www.json.org
 
 sources:
-  - decoder/agent-event-enrichment/0
+  - decoder/core-ossec-message/0
 
 check:
   - wazuh.queue: 117 # UPGRADE_MQ 'u'

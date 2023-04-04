@@ -24,6 +24,8 @@ decoders:
 - decoder/fim-event/0
 - decoder/rootcheck/0
 - decoder/sca/0
+- decoder/core-upgrade/0
+- decoder/upgrade/0
 filters:
 - filter/allow-all/0
 name: integration/wazuh-core/0
