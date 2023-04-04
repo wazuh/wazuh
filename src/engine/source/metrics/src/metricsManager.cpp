@@ -137,7 +137,7 @@ void MetricsManager::testCmd()
 
     if (!iterate)
     {
-        m_scopeMetrics = getMetricsScope("metrics");
+        m_scopeMetrics = getMetricsScope("Metrics");
         iterate = true;
     }
 
