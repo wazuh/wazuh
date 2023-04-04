@@ -47,6 +47,19 @@ class BrewWrapper final : public IPackageWrapper
                     break;
                 }
             }
+
+            /* Some brew packages have the version in the name separated by a '@'
+              but we'll only remove the last occurrence if it matches with a version
+              in case there is a '@' in the package name */
+            const auto pos { m_name.rfind('@') };
+
+            if (pos != std::string::npos)
+            {
+                if (std::isdigit(m_name[pos + 1]))
+                {
+                    m_name.resize(pos);
+                }
+            }
         }
 
         ~BrewWrapper() = default;
