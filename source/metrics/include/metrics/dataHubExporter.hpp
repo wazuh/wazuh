@@ -19,67 +19,110 @@ namespace metrics
 {
 
 /**
- * The DataHubExporter exports record data through an ostream
+ * @brief Custom implementation of Stream Exporter that pushes data into DataHub Container
+ *
  */
 class DataHubExporter final : public opentelemetry::sdk::metrics::PushMetricExporter
 {
 public:
     /**
-     * Create an DataHubExporter. This constructor takes in a reference to an ostream that
-     * the export() function will send metrics data into. The default ostream is set to
-     * stdout
+     * @brief Construct a new Data Hub Exporter object
+     *
+     * @param dataHub Interface to DataHub container
+     * @param aggregation_temporality How new samples are processed with existing ones.
      */
     explicit DataHubExporter(std::shared_ptr<metricsManager::IDataHub> dataHub,
-                          sdk::metrics::AggregationTemporality aggregation_temporality =
-                              sdk::metrics::AggregationTemporality::kCumulative) noexcept;
+                             sdk::metrics::AggregationTemporality aggregation_temporality =
+                                 sdk::metrics::AggregationTemporality::kCumulative) noexcept;
 
     /**
-     * Export
-     * @param data metrics data
-     */
-    sdk::common::ExportResult
-    Export(const sdk::metrics::ResourceMetrics& data) noexcept override;
-
-    /**
-     * Get the AggregationTemporality for ostream exporter
+     * @brief Export the registered instruments samples in the provider
      *
-     * @return AggregationTemporality
+     * @param data Internal structure of OpenTelemetry containing samples
+     * @return Result of the operation in OpenTelemetry's terms.
      */
-    sdk::metrics::AggregationTemporality GetAggregationTemporality(
-        sdk::metrics::InstrumentType instrument_type) const noexcept override;
+    sdk::common::ExportResult Export(const sdk::metrics::ResourceMetrics& data) noexcept override;
 
     /**
-     * Force flush the exporter.
+     * @brief Get the Aggregation Temporality object
+     *
+     * @param instrument_type Instrument Type
+     * @return sdk::metrics::AggregationTemporality
      */
-    bool ForceFlush(std::chrono::microseconds timeout =
-                        (std::chrono::microseconds::max)()) noexcept override;
+    sdk::metrics::AggregationTemporality
+    GetAggregationTemporality(sdk::metrics::InstrumentType instrument_type) const noexcept override;
 
     /**
-     * Shut down the exporter.
-     * @param timeout an optional timeout.
-     * @return return the status of this operation
+     * @brief Force flush the stream
+     *
+     * @param timeout Timeout to wait for the flush to finish
+     * @return true If flush was done
+     * @return false If flush was timeout
      */
-    bool Shutdown(std::chrono::microseconds timeout =
-                      (std::chrono::microseconds::max)()) noexcept override;
+    bool ForceFlush(std::chrono::microseconds timeout = (std::chrono::microseconds::max)()) noexcept override;
+
+    /**
+     * @brief Shuts Down the exporter.
+     *
+     * @param timeout Timeout to wait for Shutdown.
+     * @return true If shutdown succeeded.
+     * @return false Otherwise.
+     */
+    bool Shutdown(std::chrono::microseconds timeout = (std::chrono::microseconds::max)()) noexcept override;
 
 private:
+    /**
+     * @brief Interface to Datahub Container.
+     */
     std::shared_ptr<metricsManager::IDataHub> m_dataHub;
 
+    /**
+     * @brief Control variable to flag shutdown cycle.
+     */
     bool is_shutdown_ = false;
+
+    /**
+     * @brief Synchronization Object.
+     */
     mutable opentelemetry::common::SpinLockMutex lock_;
+
+    /**
+     * @brief Aggregation Temporality that represent how new samples are processed with existing ones.
+     */
     sdk::metrics::AggregationTemporality aggregation_temporality_;
+
+    /**
+     * @brief Check if the program is in the process of shutting down.
+     */
     bool isShutdown() const noexcept;
-    void
-    printInstrumentationInfoMetricData(const sdk::metrics::ScopeMetrics& info_metrics,
-                                       const sdk::metrics::ResourceMetrics& data);
+
+    /**
+     * @brief Print instrumentation info metric data.
+     */
+    void printInstrumentationInfoMetricData(const sdk::metrics::ScopeMetrics& info_metrics,
+                                            const sdk::metrics::ResourceMetrics& data);
+
+    /**
+     * @brief Print point data in JSON format.
+     */
     void printPointData(json::Json& jsonObj, const opentelemetry::sdk::metrics::PointType& point_data);
+
+    /**
+     * @brief Print point attributes in JSON format.
+     */
     void printPointAttributes(json::Json& jsonObj,
-        const opentelemetry::sdk::metrics::PointAttributes& point_attributes);
-    void
-    printAttributes(const std::map<std::string, sdk::common::OwnedAttributeValue>& map,
-                    const std::string prefix);
+                              const opentelemetry::sdk::metrics::PointAttributes& point_attributes);
+    /**
+     * @brief Print attributes in JSON format with a prefix.
+     */
+    void printAttributes(const std::map<std::string, sdk::common::OwnedAttributeValue>& map, const std::string prefix);
+
+    /**
+     * @brief Print resources in JSON format.
+     */
     void printResources(json::Json& jsonObj, const opentelemetry::sdk::resource::Resource& resources);
 };
+
 } // namespace metrics
 } // namespace exporter
 OPENTELEMETRY_END_NAMESPACE

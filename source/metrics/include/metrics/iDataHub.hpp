@@ -7,12 +7,18 @@
 namespace metricsManager
 {
 
+/**
+ * @brief Inteface for DataHub Container
+ */
 class IDataHub
 {
 public:
-    /// @brief updates the data of the referenced object
-    /// @param scope name of the resource scope
-    /// @param object json object with updated information
+    /**
+     * @brief Updates the data of the referenced object.
+     *
+     * @param scope Name of the resource scope.
+     * @param object JSON object with updated information.
+     */
     virtual void setResource(const std::string& scope, json::Json object) = 0;
 };
 

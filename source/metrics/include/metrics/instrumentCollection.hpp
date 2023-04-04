@@ -9,6 +9,12 @@
 namespace metricsManager
 {
 
+/**
+ * @brief Collection of Instruments. Held by Metrics Scope. Deals with registration, custom factory, and indexing.
+ *
+ * @tparam T Concrete Instrument Type. Wrapper of OpenTelemetry Internals.
+ * @tparam U The OpenTelemetry Internal Instrument type.
+ */
 template <typename T, typename U>
 class InstrumentCollection
 {
@@ -38,6 +44,9 @@ public:
     }
 
 private:
+    /**
+     * @brief Mapping of concrete instruments by their respective name.
+     */
     std::map<std::string, std::shared_ptr<T>> m_instruments;
 };
 

@@ -15,14 +15,18 @@
 namespace metricsManager
 {
 
+/**
+ * @brief Metrics Module implementation. This
+ * 
+ */
 class MetricsManager : public IMetricsManager, public IMetricsManagerAPI
 {
 public:
     MetricsManager();
+
     /**
      * @copydoc IMetricsManager::getMetricsScope
     */
-
     std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name, bool delta = false, int exporterIntervalMS = 1000, int exporterTimeoutMS = 300) override;
 
     /**
@@ -63,27 +67,39 @@ public:
     */
     void testCmd() override;
 
-private:
-
     /**
-     * @brief Get the Metrics Scope object
-     *
-     * @param metricsScopeName
-     * @return std::shared_ptr<MetricsScope>
-     */
-    std::shared_ptr<MetricsScope> getScope(const std::string& metricsScopeName);
+     * @copydoc iMetricsManagerAPI::listCmd
+    */
     std::variant<std::string, base::Error> listCmd() override;
 
 private:
-
-    /// @brief Instrumentation scopes across the application.
+    /**
+     * @brief Mapping of Metric Scopes by their respective names.
+     */
     std::map<std::string, std::shared_ptr<MetricsScope>> m_mapScopes;
 
+    /**
+     * @brief Holds the Running Status of the Manager
+     */
     bool m_statusRunning;
 
+    /**
+     * @brief Synchronization Object for the Scopes Mapping
+     */
     std::mutex m_mutexScopes;
 
+    /**
+     * @brief Metrics Scope for Testing Instrument
+     */
     std::shared_ptr<metricsManager::IMetricsScope>  m_scopeMetrics;
+
+    /**
+     * @brief Get the MetricsScope object.
+     *
+     * @param metricsScopeName Name of the Scope.
+     * @return Shared Pointer to the Scope itself.
+     */
+    std::shared_ptr<MetricsScope> getScope(const std::string& metricsScopeName);
 };
 
 } // namespace metricsManager

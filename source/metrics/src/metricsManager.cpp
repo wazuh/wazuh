@@ -147,7 +147,7 @@ void MetricsManager::testCmd()
 
 std::variant<std::string, base::Error> MetricsManager::listCmd()
 {
-/*
+/* Generated Output - Json Array of Json Objects.
 [
     {"scope": "kvdb", "name":"databeseCounter", "type":"counter", "status":"enable"},
     {"scope": "kvdb", "name":"databeseCounter", "type":"counter", "status":"enable"},
