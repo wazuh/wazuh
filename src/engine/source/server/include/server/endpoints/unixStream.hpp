@@ -23,7 +23,7 @@ namespace engineserver::endpoint
  *
  * @note The thread pool is shared between all the endpoints.
  * @note Currently responses are not implemented, so the callback function must not return a string.
-*/
+ */
 class UnixStream : public Endpoint
 {
 private:
@@ -66,8 +66,25 @@ private:
                               std::shared_ptr<ProtocolHandler> protocolHandler,
                               std::string&& message);
 
-public:
+    /**
+     * @brief Configure the client to close the connection gracefully
+     *
+     * @param client Client to close
+     * @param timer Timer to close if the client closes the connection
+     */
+    void configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, std::shared_ptr<uvw::TimerHandle> timer);
 
+    /**
+     * @brief Create a Timer resource, this timer will be used to close the client connection if it doesn't send any
+     * data
+     *
+     * @param loop Loop to create the timer
+     * @param client Client to close if the timer expires
+     * @return Timer resource
+     */
+    std::shared_ptr<uvw::TimerHandle> createTimer(std::shared_ptr<uvw::PipeHandle> client);
+
+public:
     /**
      * @brief Construct a new Unix Stream object
      *

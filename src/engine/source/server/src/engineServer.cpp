@@ -10,11 +10,41 @@
 
 #include <logging/logging.hpp>
 
+namespace
+{ /**
+   * @brief Change the size of the thread pool worker of libuv (UV_THREADPOOL_SIZE)
+   *
+   * @param newSize The new size of the thread pool worker
+   * @throw std::runtime_error If the new size is invalid or if the new size could not be set.
+   */
+void changeUVTreadPoolWorkerSize(int newSize)
+{
+    // Check if the new size is valid [MAX_THREADPOOL_SIZE == 1024]
+    if (newSize < 1 || newSize > 1024)
+    {
+        throw std::runtime_error("Invalid thread pool worker size.");
+    }
+
+    // Convertir el tamaño del grupo de hilos de trabajo a una cadena
+    std::string newSizeStr = std::to_string(newSize);
+
+    // Set the new size for the thread pool worker
+    if (setenv("UV_THREADPOOL_SIZE", newSizeStr.c_str(), true) != 0)
+    {
+        throw std::runtime_error("Could not set the new thread pool worker size.");
+    }
+
+    WAZUH_LOG_DEBUG("Thread pool worker size set to {}", newSize);
+}
+} // namespace
+
 namespace engineserver
 {
 
-EngineServer::EngineServer()
+EngineServer::EngineServer(int threadPoolSize)
 {
+    // Change the size of the thread pool worker
+    changeUVTreadPoolWorkerSize(threadPoolSize);
 
     m_loop = uvw::Loop::getDefault();
     m_status = Status::STOPPED;
@@ -30,13 +60,14 @@ EngineServer::EngineServer()
     m_endpoints = std::unordered_map<std::string, std::shared_ptr<Endpoint>>();
 }
 
-EngineServer::~EngineServer() {
+EngineServer::~EngineServer()
+{
     this->stop();
 };
 
 void EngineServer::start()
 {
-    WAZUH_LOG_INFO("Starting the server");
+    WAZUH_LOG_INFO("Starting the server...");
     m_status = Status::RUNNING;
     m_loop->run<uvw::Loop::Mode::DEFAULT>();
     WAZUH_LOG_INFO("Server stopped");
@@ -58,10 +89,12 @@ void EngineServer::request_stop()
     m_stopHandle->send();
 }
 
-void EngineServer::addEndpoint(const std::string& name, std::shared_ptr<Endpoint> endpoint) {
+void EngineServer::addEndpoint(const std::string& name, std::shared_ptr<Endpoint> endpoint)
+{
     WAZUH_LOG_DEBUG("Adding endpoint {}", name);
     // first check if the endpoint already exists
-    if (m_endpoints.find(name) != m_endpoints.end()) {
+    if (m_endpoints.find(name) != m_endpoints.end())
+    {
         throw std::runtime_error(fmt::format("Endpoint {} already exists", name));
     }
     // add the endpoint

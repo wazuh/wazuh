@@ -45,9 +45,11 @@ private:
 public:
     /**
      * @brief Construct a new Engine Server object
+     * @param threadPoolSize The size of the thread pool worker. This is the number of threads that will be used
+     * to process the requests if the request is not processed in the main thread.
      *
      */
-    EngineServer();
+    EngineServer(int threadPoolSize = 1);
     ~EngineServer();
 
     /**
