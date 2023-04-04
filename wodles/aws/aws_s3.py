@@ -3487,9 +3487,12 @@ class AWSSLSubscriberBucket(WazuhIntegration):
         Region where the logs are located.
     """
 
-    def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None, **kwargs):
-        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                  aws_profile=aws_profile, service_name='s3', **kwargs)
+    def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None,
+                 service_endpoint: str = None,
+                 sts_endpoint: str = None, **kwargs):
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, aws_profile=aws_profile,
+                                  service_name='s3', service_endpoint=service_endpoint, sts_endpoint=sts_endpoint,
+                                  **kwargs)
 
     def obtain_information_from_parquet(self, bucket_path: str, parquet_path: str) -> list:
         """Fetch a parquet file from a bucket and obtain a list of the events it contains.
@@ -3562,6 +3565,10 @@ class AWSSQSQueue(WazuhIntegration):
         self.sqs_url = self._get_sqs_url()
         self.profile = aws_profile
         self.iam_role_arn = kwargs['iam_role_arn']
+        self.asl_bucket_handler = AWSSLSubscriberBucket(aws_profile=self.profile,
+                                                        iam_role_arn=self.iam_role_arn,
+                                                        service_endpoint=service_endpoint,
+                                                        sts_endpoint=sts_endpoint)
 
     def _get_sqs_url(self) -> str:
         """Get the URL of the AWS SQS queue
@@ -3638,12 +3645,10 @@ class AWSSQSQueue(WazuhIntegration):
         Get messages from the SQS queue, parse their events and send them to AnalysisD,
         and delete the  from the queue.
         """
-        asl_bucket_handler = AWSSLSubscriberBucket(aws_profile=self.profile,
-                                                   iam_role_arn=self.iam_role_arn)
         messages = self.get_messages()
-        while messages != []:
+        while messages:
             for message in messages:
-                asl_bucket_handler.process_file(message)
+                self.asl_bucket_handler.process_file(message)
                 self.delete_message(message)
             messages = self.get_messages()
 
