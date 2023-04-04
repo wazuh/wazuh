@@ -60,11 +60,11 @@ private:
      * is received and enqueued for processing by the thread pool.
      * @param client Handle to the client that sent the message
      * @param protocolHandler Protocol handler to process the message
-     * @param data Message to be processed
+     * @param message Message to be processed
      */
     void createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
-                    std::shared_ptr<ProtocolHandler> protocolHandler,
-                    std::string&& data);
+                              std::shared_ptr<ProtocolHandler> protocolHandler,
+                              std::string&& message);
 
 public:
 
