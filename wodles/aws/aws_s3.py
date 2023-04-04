@@ -312,7 +312,7 @@ class WazuhIntegration:
                 client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint,
                                              **self.connection_config)
 
-        except botocore.exceptions.ClientError as e:
+        except (botocore.exceptions.ClientError, botocore.exceptions.NoCredentialsError) as e:
             print("ERROR: Access error: {}".format(e))
             sys.exit(3)
         return client
