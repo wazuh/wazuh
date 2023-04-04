@@ -37,7 +37,7 @@ KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath, const std::
     std::filesystem::create_directories(dbStoragePath);
     m_dbStoragePath = dbStoragePath;
 
-    m_spMetricsScope = metricsManager->getMetricsScope("kvdb");
+    m_spMetricsScope = metricsManager->getMetricsScope("KVDB");
 }
 
 KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)

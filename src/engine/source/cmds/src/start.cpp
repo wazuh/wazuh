@@ -151,6 +151,8 @@ void runStart(ConfHandler confManager)
 
     try
     {
+        metrics = std::make_shared<metricsManager::MetricsManager>();
+
         const auto bufferSize {static_cast<size_t>(queueSize)};
 
         // TODO Add the option to configure the flooded file

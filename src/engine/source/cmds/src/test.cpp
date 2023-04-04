@@ -55,7 +55,7 @@ void run(const Options& options)
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
 
-    std::shared_ptr<metricsManager::MetricsManager> metricsManager;
+    auto metricsManager = std::make_shared<metricsManager::MetricsManager>();
 
     auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath, metricsManager);
     g_exitHanlder.add([kvdb]() { kvdb->clear(); });
