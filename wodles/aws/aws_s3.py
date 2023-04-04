@@ -3576,7 +3576,7 @@ class AWSSQSQueue(WazuhIntegration):
                                             QueueOwnerAWSAccountId=self.account_id)['QueueUrl']
             debug(f'The SQS queue is: {url}', 2)
             return url
-        except botocore.errorfactory.QueueDoesNotExist:
+        except botocore.exceptions.ClientError:
             print('ERROR: Queue does not exist, verify the given name')
             sys.exit(20)
 
