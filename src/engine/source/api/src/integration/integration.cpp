@@ -13,14 +13,14 @@ std::optional<base::Error> Integration::addTo(const api::catalog::Resource& poli
 
     if (integration.m_type != Resource::Type::integration)
     {
-        return base::Error {fmt::format(R"(Expected integration resource type, got "{}" for resource "{}")",
+        return base::Error {fmt::format(R"(Expected integration resource type, got '{}' for resource '{}')",
                                         Resource::typeToStr(integration.m_type),
                                         integration.m_name.fullName())};
     }
 
     if (policy.m_type != Resource::Type::policy)
     {
-        return base::Error {fmt::format(R"(Expected policy resource type, got "{}" for resource "{}")",
+        return base::Error {fmt::format(R"(Expected policy resource type, got '{}' for resource '{}')",
                                         Resource::typeToStr(policy.m_type),
                                         policy.m_name.fullName())};
     }
@@ -28,7 +28,7 @@ std::optional<base::Error> Integration::addTo(const api::catalog::Resource& poli
     auto respose = m_catalog->getResource(policy);
     if (std::holds_alternative<base::Error>(respose))
     {
-        return base::Error {fmt::format(R"(Policy "{}" could not be obtained from store: {})",
+        return base::Error {fmt::format(R"(Policy '{}' could not be obtained from store: {})",
                                         policy.m_name.fullName(),
                                         std::get<base::Error>(respose).message)};
     }
@@ -41,7 +41,7 @@ std::optional<base::Error> Integration::addTo(const api::catalog::Resource& poli
         if (!integrations)
         {
             return base::Error {
-                fmt::format(R"(Policy "{}" has an invalid integrations array)", policy.m_name.fullName())};
+                fmt::format(R"(Policy '{}' has an invalid integrations array)", policy.m_name.fullName())};
         }
 
         auto integrationIt = std::find_if(integrations.value().begin(),
@@ -54,7 +54,7 @@ std::optional<base::Error> Integration::addTo(const api::catalog::Resource& poli
         }
         else
         {
-            return base::Error {fmt::format(R"(Integration "{}" already exists in policy "{}")",
+            return base::Error {fmt::format(R"(Integration '{}' already exists in policy '{}')",
                                             integration.m_name.fullName(),
                                             policy.m_name.fullName())};
         }
@@ -64,7 +64,7 @@ std::optional<base::Error> Integration::addTo(const api::catalog::Resource& poli
         json::Json integrations;
         integrations.setArray();
         integrations.appendString(integration.m_name.fullName());
-        policyJson.set("/integrations", std::move(integrations));
+        policyJson.set("/integrations", integrations);
     }
 
     // Update
@@ -78,14 +78,14 @@ std::optional<base::Error> Integration::removeFrom(const api::catalog::Resource&
 
     if (integration.m_type != Resource::Type::integration)
     {
-        return base::Error {fmt::format(R"(Expected integration resource type, got "{}" for resource "{}")",
+        return base::Error {fmt::format(R"(Expected integration resource type, got '{}' for resource '{}')",
                                         Resource::typeToStr(integration.m_type),
                                         integration.m_name.fullName())};
     }
 
     if (policy.m_type != Resource::Type::policy)
     {
-        return base::Error {fmt::format(R"(Expected policy resource type, got "{}" for resource "{}")",
+        return base::Error {fmt::format(R"(Expected policy resource type, got '{}' for resource '{}')",
                                         Resource::typeToStr(policy.m_type),
                                         policy.m_name.fullName())};
     }
@@ -93,7 +93,7 @@ std::optional<base::Error> Integration::removeFrom(const api::catalog::Resource&
     auto respose = m_catalog->getResource(policy);
     if (std::holds_alternative<base::Error>(respose))
     {
-        return base::Error {fmt::format(R"(Policy "{}" could not be obtained from store: {})",
+        return base::Error {fmt::format(R"(Policy '{}' could not be obtained from store: {})",
                                         policy.m_name.fullName(),
                                         std::get<base::Error>(respose).message)};
     }
@@ -106,7 +106,7 @@ std::optional<base::Error> Integration::removeFrom(const api::catalog::Resource&
         if (!integrations)
         {
             return base::Error {
-                fmt::format(R"(Policy "{}" has an invalid integrations array)", policy.m_name.fullName())};
+                fmt::format(R"(Policy '{}' has an invalid integrations array)", policy.m_name.fullName())};
         }
 
         json::Json newIntegrations;
@@ -115,11 +115,11 @@ std::optional<base::Error> Integration::removeFrom(const api::catalog::Resource&
         {
             if (integrationJson.getString().value_or("") != integration.m_name.fullName())
             {
-                newIntegrations.appendJson(std::move(integrationJson));
+                newIntegrations.appendJson(integrationJson);
             }
         }
 
-        policyJson.set("/integrations", std::move(newIntegrations));
+        policyJson.set("/integrations", newIntegrations);
         // Validate the policy and update
         return m_catalog->putResource(policy, policyJson.str());
     }

@@ -1,5 +1,5 @@
-#ifndef _ENVIRONMENT_H
-#define _ENVIRONMENT_H
+#ifndef _BUILDER_POLICY_HPP
+#define _BUILDER_POLICY_HPP
 
 #include <map>
 #include <memory>
@@ -37,11 +37,11 @@ constexpr const char* const INTEGRATIONS = "integrations";
 Asset::Type getAssetType(const std::string& name);
 
 /**
- * @brief Intermediate representation of the environment.
+ * @brief Intermediate representation of the policy.
  *
- * The environment contains the following information:
- * - The name of the environment.
- * - All assests (decoders, rules, outputs, filters) of the environment stored in a map.
+ * The policy contains the following information:
+ * - The name of the policy.
+ * - All assests (decoders, rules, outputs, filters) of the policy stored in a map.
  * - Each asset subgraph (decoders, rules, outputs) stored in a map of graphs.
  */
 class Policy
@@ -104,7 +104,7 @@ private:
                 {
                     childrenNames += child + " ";
                 }
-                throw std::runtime_error(fmt::format("Error building environment \"{}\". Asset \"{}\" requested for "
+                throw std::runtime_error(fmt::format("Error building policy \"{}\". Asset \"{}\" requested for "
                                                      "parent \"{}\" which could not be found",
                                                      name,
                                                      parent,
@@ -123,14 +123,13 @@ private:
 public:
     Policy() = default;
 
-    // TODO: Remove injected catalog dependencies ?
     /**
      * @brief Construct a new Policy object
      *
-     * @param jsonDefinition Json definition of the environment.
+     * @param jsonDefinition Json definition of the policy.
      * @param storeRead Store read interface.
      * @param registry Registry interface.
-     * @throws std::runtime_error if the environment cannot be built.
+     * @throws std::runtime_error if the policy cannot be built.
      */
     Policy(const json::Json& jsonDefinition,
                 std::shared_ptr<const store::IStoreRead> storeRead,
@@ -195,7 +194,7 @@ public:
         }
 
         // Build graphs in order decoders->rules->outputs
-        // We need at least one graph to build the environment.
+        // We need at least one graph to build the policy.
         if (assets.empty())
         {
             throw std::runtime_error("Policy needs at least one asset (decoder, rule or output) to build a graph");
@@ -221,9 +220,9 @@ public:
     }
 
     /**
-     * @brief Get the name of the environment.
+     * @brief Get the name of the policy.
      *
-     * @return const std::string& Name of the environment.
+     * @return const std::string& Name of the policy.
      */
     std::string name() const;
 
@@ -249,9 +248,9 @@ public:
     std::string getGraphivzStr();
 
     /**
-     * @brief Build and Get the Expression from the environment.
+     * @brief Build and Get the Expression from the policy.
      *
-     * @return base::Expression Root expression of the environment.
+     * @return base::Expression Root expression of the policy.
      * @throws std::runtime_error If the expression cannot be built.
      */
     base::Expression getExpression() const;
@@ -264,4 +263,4 @@ public:
 
 } // namespace builder
 
-#endif // _ENVIRONMENT_H
+#endif // _BUILDER_POLICY_HPP

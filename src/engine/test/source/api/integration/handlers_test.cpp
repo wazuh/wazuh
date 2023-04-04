@@ -83,7 +83,7 @@ TEST(Handlers, policyAddIntegration_IncorrectPolicyName)
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(
-        R"({"status":"ERROR","error":"Expected policy resource type, got \"integration\" for resource \"integration/name/ok\""})");
+        R"({"status":"ERROR","error":"Expected policy resource type, got 'integration' for resource 'integration/name/ok'"})");
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -106,7 +106,7 @@ TEST(Handlers, policyAddIntegration_IncorrectIntegrationName)
     ASSERT_NO_THROW(cmd(api::wpRequest::create(rCommand, rOrigin, params)));
     auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
     const auto expectedData = json::Json(
-        R"({"status":"ERROR","error":"Expected integration resource type, got \"policy\" for resource \"policy/name/ok\""})");
+        R"({"status":"ERROR","error":"Expected integration resource type, got 'policy' for resource 'policy/name/ok'"})");
 
     // check response
     ASSERT_TRUE(response.isValid());
