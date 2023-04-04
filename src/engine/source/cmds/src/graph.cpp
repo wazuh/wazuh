@@ -17,6 +17,7 @@
 #include "defaultSettings.hpp"
 #include "register.hpp"
 #include "registry.hpp"
+#include "metrics/metricsManager.hpp"
 
 namespace
 {
@@ -27,7 +28,7 @@ constexpr auto ENV_EXPR_GRAPH = "env_expr_graph.dot";
 
 namespace cmd::graph
 {
-void run(const Options& options, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
+void run(const Options& options)
 {
     // Init logging
     // TODO: add cmd to config logging level
@@ -35,7 +36,7 @@ void run(const Options& options, const std::shared_ptr<metricsManager::IMetricsM
     logConfig.logLevel = logging::LogLevel::Debug;
     logging::loggingInit(logConfig);
     g_exitHanlder.add([]() { logging::loggingTerm(); });
-
+    std::shared_ptr<metricsManager::MetricsManager> metricsManager;
     auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath, metricsManager);
     g_exitHanlder.add([kvdb]() { kvdb->clear(); });
 
@@ -119,7 +120,7 @@ void run(const Options& options, const std::shared_ptr<metricsManager::IMetricsM
     g_exitHanlder.execute();
 }
 
-void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
+void configure(CLI::App_p app)
 {
     auto options = std::make_shared<Options>();
 
@@ -148,6 +149,6 @@ void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsMan
         ->check(CLI::ExistingDirectory);
 
     // Register callback
-    graphApp->callback([options, metricsManager]() { run(*options, metricsManager); });
+    graphApp->callback([options]() { run(*options); });
 }
 } // namespace cmd::graph

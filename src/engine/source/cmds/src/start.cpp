@@ -63,8 +63,7 @@ struct Options
 
 namespace cmd::server
 {
-void runStart(ConfHandler confManager, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager, 
-                                       const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsManagerAPI)
+void runStart(ConfHandler confManager)
 {
     // Get needed configuration on main function
     const auto logLevel = confManager->get<int>("server.log_level");
@@ -148,7 +147,8 @@ void runStart(ConfHandler confManager, const std::shared_ptr<metricsManager::IMe
     std::shared_ptr<router::Router> router;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdb_manager::KVDBManager> kvdb;
-    
+    std::shared_ptr<metricsManager::MetricsManager> metrics;
+
     try
     {
         const auto bufferSize {static_cast<size_t>(queueSize)};
@@ -156,11 +156,11 @@ void runStart(ConfHandler confManager, const std::shared_ptr<metricsManager::IMe
         // TODO Add the option to configure the flooded file
         // TODO Change the default buffer size to a multiple of 1024
         server =
-            std::make_shared<engineserver::EngineServer>(apiEndpoint, nullptr, eventEndpoint, floodFile, bufferSize, metricsManager);
+            std::make_shared<engineserver::EngineServer>(apiEndpoint, nullptr, eventEndpoint, floodFile, bufferSize, metrics);
         g_exitHanlder.add([server]() { server->close(); });
         WAZUH_LOG_DEBUG("Server configured.");
 
-        kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metricsManager);
+        kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metrics);
         WAZUH_LOG_INFO("KVDB initialized.");
         g_exitHanlder.add(
             [kvdb]()
@@ -211,7 +211,7 @@ void runStart(ConfHandler confManager, const std::shared_ptr<metricsManager::IMe
         api::catalog::handlers::registerHandlers(catalog, server->getRegistry());
         WAZUH_LOG_DEBUG("Catalog API registered.")
 
-        router = std::make_shared<router::Router>(builder, store, metricsManager, threads);
+        router = std::make_shared<router::Router>(builder, store, metrics, threads);
         router->run(server->getEventQueue());
         g_exitHanlder.add([router]() { router->stop(); });
         WAZUH_LOG_INFO("Router initialized.");
@@ -233,7 +233,7 @@ void runStart(ConfHandler confManager, const std::shared_ptr<metricsManager::IMe
         }
 
         // Register Metrics commands
-        api::metrics::handlers::registerHandlers(metricsManagerAPI, server->getRegistry());
+        api::metrics::handlers::registerHandlers(metrics, server->getRegistry());
         WAZUH_LOG_DEBUG("Metrics API registered.");
 
         // Register Configuration API commands
@@ -262,8 +262,7 @@ void runStart(ConfHandler confManager, const std::shared_ptr<metricsManager::IMe
     g_exitHanlder.execute();
 }
 
-void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager,
-                               const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsManagerAPI)
+void configure(CLI::App_p app)
 {
     auto serverApp = app->add_subcommand("server", "Start/Stop a Wazuh engine instance.");
     serverApp->require_subcommand(1);
@@ -343,10 +342,10 @@ void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsMan
 
     // Register callback
     startApp->callback(
-        [app, options, metricsManager, metricsManagerAPI]()
+        [app, options]()
         {
             auto confManager = std::make_shared<conf::IConf<conf::CliConf>>(conf::CliConf(app));
-            runStart(confManager, metricsManager, metricsManagerAPI);
+            runStart(confManager);
         });
 }
 } // namespace cmd::server

@@ -12,8 +12,6 @@
 #include <cmds/apiExcept.hpp>
 #include <cmds/metrics.hpp>
 
-#include <metrics/metricsManager.hpp>
-
 namespace
 {
 
@@ -38,13 +36,10 @@ int main(int argc, char* argv[])
     // TODO: Use cmake to set the version
     app->set_version_flag("-v, --version", "Wazuh Engine v0.0.1");
 
-    // Initialize Metrics Module
-    auto metrics = std::make_shared<metricsManager::MetricsManager>();
-
     // Configure each subcommand
-    cmd::server::configure(app, metrics, metrics);
-    cmd::test::configure(app, metrics);
-    cmd::graph::configure(app, metrics);
+    cmd::server::configure(app);
+    cmd::test::configure(app);
+    cmd::graph::configure(app);
     cmd::kvdb::configure(app);
     cmd::catalog::configure(app);
     cmd::config::configure(app);
