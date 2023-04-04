@@ -1,5 +1,5 @@
-#ifndef _I_METRICSMANAGER_API_H
-#define _I_METRICSMANAGER_API_H
+#ifndef _I_METRICS_MANAGER_API_H
+#define _I_METRICS_MANAGER_API_H
 
 #include <variant>
 
@@ -53,4 +53,4 @@ public:
 };
 
 }
-#endif // _I_METRICSMANAGER_API_H
+#endif // _I_METRICS_MANAGER_API_H

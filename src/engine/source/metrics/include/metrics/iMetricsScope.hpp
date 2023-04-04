@@ -1,7 +1,7 @@
 #ifndef _I_METRICS_SCOPE_H
 #define _I_METRICS_SCOPE_H
 
-#include <metrics/IMetricsInstruments.hpp>
+#include <metrics/iMetricsInstruments.hpp>
 
 namespace metricsManager
 {
