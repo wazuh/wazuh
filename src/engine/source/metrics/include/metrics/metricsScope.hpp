@@ -6,12 +6,11 @@
 #include "opentelemetry/sdk/metrics/meter_provider.h"
 #include "opentelemetry/sdk/metrics/export/periodic_exporting_metric_reader.h"
 
-#include <metrics/iMetricsScope.hpp>
 #include <metrics/dataHub.hpp>
 #include <metrics/dataHubExporter.hpp>
-
-#include <metrics/metricsInstruments.hpp>
+#include <metrics/iMetricsScope.hpp>
 #include <metrics/instrumentCollection.hpp>
+#include <metrics/metricsInstruments.hpp>
 
 namespace metricsManager
 {
@@ -202,10 +201,3 @@ private:
 } // namespace metricsManager
 
 #endif // _METRICS_SCOPE_H
-
-
-
-
-
-
-

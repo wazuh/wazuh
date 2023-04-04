@@ -1,5 +1,5 @@
-#ifndef __DATAHUB_EXPORTER_H
-#define __DATAHUB_EXPORTER_H
+#ifndef _METRICS_DATAHUB_EXPORTER_H
+#define _METRICS_DATAHUB_EXPORTER_H
 
 #include "opentelemetry/common/spin_lock_mutex.h"
 #include "opentelemetry/sdk/metrics/data/metric_data.h"
@@ -127,4 +127,4 @@ private:
 } // namespace exporter
 OPENTELEMETRY_END_NAMESPACE
 
-#endif // __DATAHUB_EXPORTER_H
+#endif // _METRICS_DATAHUB_EXPORTER_H
