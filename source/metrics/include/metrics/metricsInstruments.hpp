@@ -1,11 +1,13 @@
 #ifndef _METRICS_INSTRUMENTS_H
 #define _METRICS_INSTRUMENTS_H
 
-#include <metrics/IMetricsInstruments.hpp>
+#include <mutex>
+
 #include "opentelemetry/sdk/metrics/meter_provider.h"
 #include "opentelemetry/metrics/async_instruments.h"
 
-#include <mutex>
+#include <metrics/iMetricsInstruments.hpp>
+
 
 namespace metricsManager
 {

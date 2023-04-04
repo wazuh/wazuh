@@ -1,5 +1,5 @@
-#ifndef _INSTRUMENT_COLLECTION_H
-#define _INSTRUMENT_COLLECTION_H
+#ifndef _METRICS_INSTRUMENT_COLLECTION_H
+#define _METRICS_INSTRUMENT_COLLECTION_H
 
 #include <map>
 #include <string>
@@ -22,14 +22,14 @@ public:
     std::shared_ptr<T> getInstrument(
         const std::string& name,
         const std::function<U()>& createFunction,
-        const std::function<void(const std::shared_ptr<T>&)>& onCreateFunction=[](const std::shared_ptr<T>&){}) 
+        const std::function<void(const std::shared_ptr<T>&)>& onCreateFunction=[](const std::shared_ptr<T>&){})
     {
         auto it = m_instruments.find(name);
         if (m_instruments.end() == it)
         {
             auto newCounter = createFunction();
 
-            std::shared_ptr<T> newInstrument = 
+            std::shared_ptr<T> newInstrument =
                 std::make_shared<T>(std::move(newCounter));
 
             m_instruments.insert(
@@ -52,4 +52,4 @@ private:
 
 } // namespace metrics
 
-#endif // _INSTRUMENT_COLLECTION_H
+#endif // _METRICS_INSTRUMENT_COLLECTION_H

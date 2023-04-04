@@ -1,9 +1,10 @@
-#ifndef _I_METRICSMANAGER_H
-#define _I_METRICSMANAGER_H
+#ifndef _I_METRICS_MANAGER_H
+#define _I_METRICS_MANAGER_H
 
 #include <string>
-#include <unordered_map>
 #include <vector>
+#include <unordered_map>
+
 #include <json/json.hpp>
 
 #include <metrics/iMetricsScope.hpp>
@@ -49,4 +50,4 @@ public:
 
 } // namespace metricsManager
 
-#endif // _I_METRICSMANAGER_H
+#endif // _I_METRICS_MANAGER_H

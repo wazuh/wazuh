@@ -1,5 +1,5 @@
-#ifndef _METRICSMANAGER_H
-#define _METRICSMANAGER_H
+#ifndef _METRICS_MANAGER_H
+#define _METRICS_MANAGER_H
 
 #include <memory>
 #include <mutex>
@@ -17,7 +17,7 @@ namespace metricsManager
 
 /**
  * @brief Metrics Module implementation. This
- * 
+ *
  */
 class MetricsManager : public IMetricsManager, public IMetricsManagerAPI
 {
@@ -104,4 +104,4 @@ private:
 
 } // namespace metricsManager
 
-#endif // _METRICSMANAGER_H
+#endif // _METRICS_MANAGER_H
