@@ -319,8 +319,8 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
 {
     std::shared_lock lock {m_mutexRoutes};
 
-    auto receivedEventsPerSecond = m_spMetricsScopeDelta->getCounterUInteger("ReceivedEventsPerSecond");
-    auto queueConsumedEvents = m_spMetricsScope->getCounterUInteger("QueueConsumedEvents");
+    auto eventsReceivedPerSecond = m_spMetricsScopeDelta->getCounterUInteger("EventsReceivedPerSecond");
+    auto eventsConsumedQueue = m_spMetricsScope->getCounterUInteger("EventsConsumedQueue");
     auto usedQueueHistory = m_spMetricsScope->getHistogramUInteger("UsedQueueHistory");
     auto usedQueue = m_spMetricsScope->getGaugeInteger("UsedQueue", 0);
 
@@ -334,7 +334,7 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
         m_threads.emplace_back(
-            [this, queue, i, receivedEventsPerSecond, queueConsumedEvents, usedQueueHistory, usedQueue]()
+            [this, queue, i, eventsReceivedPerSecond, eventsConsumedQueue, usedQueueHistory, usedQueue]()
             {
                 while (m_isRunning.load())
                 {
@@ -342,17 +342,17 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                     if (queue->wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
                         // Events consumed from the queue
-                        queueConsumedEvents->addValue(1UL);
+                        eventsConsumedQueue->addValue(1UL);
 
-                        // Number of events per second consumed 
-                        receivedEventsPerSecond->addValue(1UL);
-                        
+                        // Number of events per second consumed
+                        eventsReceivedPerSecond->addValue(1UL);
+
                         // Used Queue History
                         usedQueueHistory->recordValue(static_cast<uint64_t>(queue->size_approx()));
-                        
+
                         // Used Queue
                         usedQueue->setValue(static_cast<uint64_t>(queue->size_approx()));
-                        
+
                         std::shared_lock lock {m_mutexRoutes};
                         for (auto& route : m_priorityRoute)
                         {

@@ -10,14 +10,14 @@ class MetricsInterfaceTest : public ::testing::Test
 {
 protected:
 
-    MetricsInterfaceTest() 
+    MetricsInterfaceTest()
     {
         m_manager = std::make_shared<MetricsManager>();
     }
 
-    ~MetricsInterfaceTest() 
+    ~MetricsInterfaceTest()
     {
-        
+
     }
 
     void TearDown() override
@@ -83,7 +83,7 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeOneCounter)
     counter0->addValue(5);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     auto contents = m_manager->getAllMetrics();
-    
+
     auto json_scope = contents.getObject("/scope_0");
     ASSERT_TRUE(json_scope);
     auto scope_0=json_scope.value()[0];
@@ -101,7 +101,7 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeTwoCounters)
     counter1->addValue(2);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     auto contents = m_manager->getAllMetrics();
-    
+
     auto json_scope = contents.getObject("/scope_0");
     ASSERT_TRUE(json_scope);
     auto scope_0=json_scope.value()[0];
@@ -120,7 +120,7 @@ TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
     // TODO: Add significant ASSERT sentences to validate unit test
     auto scope0 = m_manager->getMetricsScope("scope_0");
     auto histogram0 = scope0->getHistogramUInteger("histogram_0");
-    
+
     for (int i=0; i<1000; i++)
     {
         histogram0->recordValue(rand()%10000);
@@ -129,12 +129,12 @@ TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
     auto contents = m_manager->getAllMetrics();
-    std::cout << contents.prettyStr() << std::endl;    
+    std::cout << contents.prettyStr() << std::endl;
 }
 
 TEST_F(MetricsInterfaceTest, gaugeTest)
 {
-    // TODO: Add significant ASSERT sentences to validate unit test    
+    // TODO: Add significant ASSERT sentences to validate unit test
     auto scope0 = m_manager->getMetricsScope("scope_0");
     auto gauge0 = scope0->getGaugeInteger("gauge_0", 0);
 
@@ -143,10 +143,10 @@ TEST_F(MetricsInterfaceTest, gaugeTest)
         gauge0->setValue(rand()%10000);
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         auto contents = m_manager->getAllMetrics();
-        std::cout << contents.prettyStr() << std::endl;    
+        std::cout << contents.prettyStr() << std::endl;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
     auto contents = m_manager->getAllMetrics();
-    std::cout << contents.prettyStr() << std::endl;    
+    std::cout << contents.prettyStr() << std::endl;
 }
