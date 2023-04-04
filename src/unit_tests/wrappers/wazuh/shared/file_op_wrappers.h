@@ -63,6 +63,9 @@ void expect_FileSize(const char *path, int ret);
 int __wrap_rename_ex(const char *source, const char *destination);
 void expect_rename_ex(const char *source, const char *destination, int ret);
 
+int __wrap_mkstemp_ex(char *tmp_path);
+void expect_mkstemp_ex(char *tmp_path, int ret);
+
 float __wrap_DirSize(const char *path);
 
 int __wrap_mkdir_ex(const char *path);

@@ -15,6 +15,10 @@
 #include "sec.h"
 #include "external/cJSON/cJSON.h"
 
+#ifndef ARGV0
+#define ARGV0 "manage_agents"
+#endif
+
 /** Prototypes **/
 
 /* Read any input from the user (stdin) */

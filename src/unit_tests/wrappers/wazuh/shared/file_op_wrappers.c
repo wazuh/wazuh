@@ -154,6 +154,16 @@ void expect_rename_ex(const char *source, const char *destination, int ret) {
     will_return(__wrap_rename_ex, ret);
 }
 
+int __wrap_mkstemp_ex(char *tmp_path) {
+    check_expected(tmp_path);
+    return mock();
+}
+
+void expect_mkstemp_ex(char *tmp_path, int ret) {
+    expect_string(__wrap_mkstemp_ex, tmp_path, tmp_path);
+    will_return(__wrap_mkstemp_ex, ret);
+}
+
 float __wrap_DirSize(const char *path) {
     check_expected(path);
 
