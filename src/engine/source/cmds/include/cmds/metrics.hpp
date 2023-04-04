@@ -11,7 +11,7 @@ namespace cmd::metrics
 
 namespace details
 {
-constexpr auto ORIGIN_NAME = "engine_integrated_metrics_api";
+constexpr auto ORIGIN_NAME {"engine_integrated_metrics_api"};
 constexpr auto API_METRICS_DUMP_SUBCOMMAND {"dump"};
 constexpr auto API_METRICS_GET_SUBCOMMAND {"get"};
 constexpr auto API_METRICS_ENABLE_SUBCOMMAND {"enable"};

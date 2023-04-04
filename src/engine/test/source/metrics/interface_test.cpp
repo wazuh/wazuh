@@ -9,24 +9,13 @@ using namespace metricsManager;
 class MetricsInterfaceTest : public ::testing::Test
 {
 protected:
+    MetricsInterfaceTest() { m_manager = std::make_shared<MetricsManager>(); }
 
-    MetricsInterfaceTest()
-    {
-        m_manager = std::make_shared<MetricsManager>();
-    }
-
-    ~MetricsInterfaceTest()
-    {
-
-    }
-
-    void TearDown() override
-    {
-
-    }
-
+    ~MetricsInterfaceTest() {}
+    
+    void TearDown() override {}
+    
     std::shared_ptr<IMetricsManager> m_manager;
-
 };
 
 TEST_F(MetricsInterfaceTest, managerAvailable)
@@ -117,36 +106,40 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeTwoCounters)
 
 TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
 {
-    // TODO: Add significant ASSERT sentences to validate unit test
     auto scope0 = m_manager->getMetricsScope("scope_0");
     auto histogram0 = scope0->getHistogramUInteger("histogram_0");
 
-    for (int i=0; i<1000; i++)
+    const auto NUMBER_RECORS {1000};
+    
+    for (int i=0; i < NUMBER_RECORS; i++)
     {
         histogram0->recordValue(rand()%10000);
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    auto contents = m_manager->getAllMetrics();
-    std::cout << contents.prettyStr() << std::endl;
+    auto record = m_manager->getAllMetrics().getArray("/scope_0/histogram_0/records");
+    auto attributes = record.value()[0].getArray("/attributes");
+
+    EXPECT_EQ(attributes.value()[0].getInt("/count").value(), NUMBER_RECORS);
+    EXPECT_EQ(attributes.value()[0].getString("/type").value(), "HistogramPointData"); 
 }
 
 TEST_F(MetricsInterfaceTest, gaugeTest)
-{
-    // TODO: Add significant ASSERT sentences to validate unit test
+{   
     auto scope0 = m_manager->getMetricsScope("scope_0");
     auto gauge0 = scope0->getGaugeInteger("gauge_0", 0);
 
-    for (int i=0; i<10; i++)
-    {
-        gauge0->setValue(rand()%10000);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        auto contents = m_manager->getAllMetrics();
-        std::cout << contents.prettyStr() << std::endl;
-    }
+    const auto TEST_VALUE {10};
+
+    gauge0->setValue(TEST_VALUE);
+
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    auto contents = m_manager->getAllMetrics();
-    std::cout << contents.prettyStr() << std::endl;
+    auto record = m_manager->getAllMetrics().getArray("/scope_0/gauge_0/records");
+
+    auto attributes = record.value()[0].getArray("/attributes");
+
+    EXPECT_EQ(attributes.value()[0].getString("/type").value(), "LastValuePointData");
+    EXPECT_EQ(attributes.value()[0].getInt("/value").value(), TEST_VALUE);
 }
