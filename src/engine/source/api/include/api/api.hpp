@@ -56,9 +56,20 @@ public:
     std::string processRequest(const std::string& message)
     {
         wpResponse wresponse {};
+        json::Json jrequest {};
+
         try
         {
-            json::Json jrequest {message.c_str()};
+            jrequest = json::Json {message.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidJsonRequest();
+            return wresponse.toString();
+        }
+
+        try
+        {
             wpRequest wrequest {jrequest};
             if (wrequest.isValid())
             {
@@ -69,14 +80,10 @@ public:
                 wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidRequest(wrequest.error().value());
             }
         }
-        catch (const std::runtime_error& e)
-        {
-            wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidJsonRequest();
-        }
         catch (const std::exception& e)
         {
+            WAZUH_LOG_DEBUG("Exception in Api::processRequest: %s", e.what());
             wresponse = base::utils::wazuhProtocol::WazuhResponse::unknownError();
-            // WAZUH_LOG_ERROR("Engine API endpoint: Error with client ({}): {}", client.peer(), e.what());
         }
         return wresponse.toString();
     }

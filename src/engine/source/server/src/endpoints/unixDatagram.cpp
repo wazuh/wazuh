@@ -17,11 +17,12 @@ constexpr unsigned int MAX_MSG_SIZE {65536 + 512}; ///< Maximum message size (TO
 namespace engineserver::endpoint
 {
 UnixDatagram::UnixDatagram(const std::string& address,
-                           std::function<void(std::string&&)> callback,
+                           const std::function<void(std::string&&)>& callback,
                            const std::size_t taskQueueSize)
     : Endpoint(address, taskQueueSize)
     , m_callback(callback)
     , m_handle(nullptr)
+    , m_bufferSize(-1)
 {
     if (address.empty())
     {
@@ -31,7 +32,7 @@ UnixDatagram::UnixDatagram(const std::string& address,
     if (address.length() >= sizeof(sockaddr_un::sun_path))
     {
         auto msg = fmt::format("Path '{}' too long, maximum length is {} ", address, sizeof(sockaddr_un::sun_path));
-        throw std::runtime_error(std::move(msg));
+        throw std::runtime_error(msg);
     }
 
     if (m_address[0] != '/')
@@ -186,7 +187,7 @@ bool UnixDatagram::resume()
 
 int UnixDatagram::bindUnixDatagramSocket(int& bufferSize)
 {
-    sockaddr_un n_us;
+    sockaddr_un n_us {};
 
     // Remove the socket file if it already exists
     unlinkUnixSocket();
@@ -199,7 +200,7 @@ int UnixDatagram::bindUnixDatagramSocket(int& bufferSize)
     if (0 > socketFd)
     {
         auto msg = fmt::format("Cannot create the socket '{}': {} ({})", m_address, strerror(errno), errno);
-        throw std::runtime_error(std::move(msg));
+        throw std::runtime_error(msg);
     }
 
     if (::bind(socketFd, reinterpret_cast<sockaddr*>(&n_us), SUN_LEN(&n_us)) < 0)
@@ -207,7 +208,7 @@ int UnixDatagram::bindUnixDatagramSocket(int& bufferSize)
 
         auto msg = fmt::format("Cannot bind the socket '{}': {} ({})", m_address, strerror(errno), errno);
         ::close(socketFd);
-        throw std::runtime_error(std::move(msg));
+        throw std::runtime_error(msg);
     }
 
     // Change permissions
@@ -215,7 +216,7 @@ int UnixDatagram::bindUnixDatagramSocket(int& bufferSize)
     {
         auto msg = fmt::format("Cannot change permissions of the socket '{}': {} ({})", m_address, strerror(errno), errno);
         ::close(socketFd);
-        throw std::runtime_error(std::move(msg));
+        throw std::runtime_error(msg);
     }
 
     // Get current maximum size
@@ -234,7 +235,7 @@ int UnixDatagram::bindUnixDatagramSocket(int& bufferSize)
             auto msg = fmt::format(
                 "Cannot set maximum message size of the socket '{}': {} ({})", m_address, strerror(errno), errno);
             ::close(socketFd);
-            throw std::runtime_error(std::move(msg));
+            throw std::runtime_error(msg);
         }
     }
 

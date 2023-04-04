@@ -28,8 +28,7 @@ std::optional<std::vector<std::string>> WStream::onData(std::string_view data)
                     auto msg = fmt::format(
                         "Payload size [{} bytes] exceeded the maximum allowed [{} bytes]", m_pending, maxPayloadSize);
                     reset();
-                    throw std::runtime_error("Payload size exceeded the maximum allowed"
-                                             + std::to_string(maxPayloadSize) + " bytes");
+                    throw std::runtime_error(msg);
                 }
                 m_stage = Stage::PAYLOAD;
             }

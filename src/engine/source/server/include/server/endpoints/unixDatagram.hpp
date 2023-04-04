@@ -48,7 +48,7 @@ public:
      * @param taskQueueSize Size of the queue of tasks to be processed by the thread pool
      */
     UnixDatagram(const std::string& address,
-                 std::function<void(std::string&&)> callback,
+                 const std::function<void(std::string&&)>& callback,
                  const std::size_t taskQueueSize = 0);
 
     /**

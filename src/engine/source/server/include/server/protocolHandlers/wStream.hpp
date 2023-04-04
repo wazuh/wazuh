@@ -2,9 +2,9 @@
 #define _SERVER_PROTOCOLHANDLERS_WAZUHSTREAM_HPP
 
 #include <functional>
-#include <string>
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 #include <server/protocolHandler.hpp>
 
@@ -23,22 +23,17 @@ private:
         PAYLOAD ///< PAYLOAD stage
     };
 
-    std::string m_header;                            ///< Header buffer, stores the payload size
-    std::string m_payload;                           ///< Payload buffer, stores the payload data
-    Stage m_stage {Stage::HEADER};                   ///< Current stage
-    int m_received {0};                              ///< Number of bytes received
-    int m_pending {0};                               ///< Number of bytes pending to be received
-    constexpr static int m_headerSize {sizeof(int)}; ///< Header size in bytes
-    int maxPayloadSize;                              // 10 MB by default
-    std::function<std::string(const std::string&)>
-        m_onMessageCallback; ///< Callback to be called when a message is received
+    std::string m_header;                                               ///< Header buffer, stores the payload size
+    std::string m_payload;                                              ///< Payload buffer, stores the payload data
+    Stage m_stage {Stage::HEADER};                                      ///< Current stage
+    int m_received {0};                                                 ///< Number of bytes received
+    int m_pending {0};                                                  ///< Number of bytes pending to be received
+    constexpr static int m_headerSize {sizeof(int)};                    ///< Header size in bytes
+    int maxPayloadSize;                                                 // 10 MB by default
+    std::function<std::string(const std::string&)> m_onMessageCallback; ///< Handler called when a message is received
 
-    /**
-     * @brief Response to be sent when the server is busy
-     *
-     */
-    static const std::shared_ptr<std::string> m_busyResponse;
-    static const std::shared_ptr<std::string> m_errorResponse;
+    static const std::shared_ptr<std::string> m_busyResponse;  ///< Response when the server is busy
+    static const std::shared_ptr<std::string> m_errorResponse; ///< Response when an unexpected error occurs
 
 public:
     /**
@@ -61,6 +56,20 @@ public:
     }
 
     ~WStream() = default;
+
+    /**
+     * @brief Set the busy response
+     *
+     * @param response Response to be sent when the server is busy
+     */
+    static void setBusyResponse(const std::string& response) { *m_busyResponse = response; }
+
+    /*
+     * @brief Set the error response
+     *
+     * @param response Response to be sent when an unexpected error occurs
+     */
+    static void setErrorResponse(const std::string& response) { *m_errorResponse = response; }
 
     /**
      * @brief Reset the protocol handler to its initial state
@@ -102,10 +111,11 @@ public:
 
 class WStreamFactory : public ProtocolHandlerFactory
 {
+
 private:
-    std::function<std::string(const std::string&)>
-        m_onMessageCallback; ///< Callback to be called when a message is received
-    int maxPayloadSize;      // 10 MB by default
+    std::function<std::string(const std::string&)> m_onMessageCallback; ///< Handler called when a message is received
+    int maxPayloadSize;                                                 // 10 MB by default
+
 public:
     /**
      * @brief Construct a new WStreamFactory object
@@ -131,6 +141,16 @@ public:
     {
         return std::make_shared<WStream>(m_onMessageCallback, maxPayloadSize);
     }
+
+    /**
+     * @brief Set the busy response
+     */
+    void setBusyResponse(const std::string& response) { WStream::setBusyResponse(response); }
+
+    /**
+     * @brief Set the error response
+     */
+    void setErrorResponse(const std::string& response) { WStream::setErrorResponse(response); }
 };
 
 } // namespace engineserver::ph
