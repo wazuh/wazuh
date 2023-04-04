@@ -492,12 +492,12 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             // Create subscriber node
-            if (cur_service) {
+            if (cur_subscriber) {
                 os_calloc(1, sizeof(wm_aws_subscriber), cur_subscriber->next);
                 cur_subscriber = cur_subscriber->next;
                 mtdebug2(WM_AWS_LOGTAG, "Creating another subscriber structure");
             } else {
-                // First subscriber subscriber
+                // First subscriber
                 os_calloc(1, sizeof(wm_aws_subscriber), cur_subscriber);
                 aws_config->subscribers = cur_subscriber;
                 mtdebug2(WM_AWS_LOGTAG, "Creating first subscriber structure");
@@ -506,12 +506,12 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             // type is an attribute of the subscriber tag
             if (!strcmp(*nodes[i]->attributes, XML_SUBSCRIBER_TYPE)) {
                 if (!nodes[i]->values) {
-                    mterror(WM_AWS_LOGTAG, "Empty service type. Valid one is '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid one is '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE);
                     return OS_INVALID;
                 } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_subscriber->type);
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid one is '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid one is '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE);
                     return OS_INVALID;
                 }
             } else {
