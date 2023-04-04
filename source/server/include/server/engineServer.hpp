@@ -24,27 +24,52 @@ namespace engineserver
  */
 class EngineServer
 {
+    /**
+     * @brief The Status enum is used to keep track of the status of the server.
+     */
     enum class Status
     {
         STOPPED,
         RUNNING,
         STOPPING
     };
+
 private:
-    std::shared_ptr<uvw::Loop> m_loop;
-    Status m_status;
-    std::shared_ptr<uvw::AsyncHandle> m_stopHandle;
-    std::unordered_map<std::string, std::shared_ptr<Endpoint>> m_endpoints;
+    std::shared_ptr<uvw::Loop> m_loop; ///< The main loop of the application.
+    Status m_status; ///< The status of the server.
+    std::shared_ptr<uvw::AsyncHandle> m_stopHandle; ///< The handle used to stop the server.
+    std::unordered_map<std::string, std::shared_ptr<Endpoint>> m_endpoints; ///< The endpoints of the server.
 
     void stop();
 
 public:
+    /**
+     * @brief Construct a new Engine Server object
+     *
+     */
     EngineServer();
     ~EngineServer();
 
+    /**
+     * @brief Add an endpoint to the server.
+     *
+     * @param name (const std::string&) The name of the endpoint.
+     * @param endpoint (std::shared_ptr<Endpoint>) The endpoint to add.
+     */
     void addEndpoint(const std::string& name, std::shared_ptr<Endpoint> endpoint);
 
+    /**
+     * @brief Start the server. This method will start the main loop in blocking mode. (same thread)
+     *
+     */
     void start();
+
+    /**
+     * @brief This method will send a request to stop the server. The server will stop after the current request is
+     * processed.
+     * @note This method is thread safe and can be called from any thread, this is the recommended way to stop the
+     * server.
+     */
     void request_stop();
 
 };
