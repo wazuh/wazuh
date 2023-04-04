@@ -55,6 +55,8 @@ public:
      *
      * @param name (const std::string&) The name of the endpoint.
      * @param endpoint (std::shared_ptr<Endpoint>) The endpoint to add.
+     *
+     * @throw std::runtime_error If the endpoint name is already in use.
      */
     void addEndpoint(const std::string& name, std::shared_ptr<Endpoint> endpoint);
 
