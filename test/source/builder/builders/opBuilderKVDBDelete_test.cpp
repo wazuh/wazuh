@@ -42,9 +42,7 @@ protected:
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager =
         std::make_shared<kvdb_manager::KVDBManager>(opBuilderKVDBDeleteTest::DB_DIR, m_manager);
 
-    virtual void SetUp() {
-        
-    }
+    virtual void SetUp() {}
 
     virtual void TearDown() {}
 };
