@@ -1,5 +1,5 @@
-#ifndef _I_DATA_HUB_H
-#define _I_DATA_HUB_H
+#ifndef _I_METRICS_DATAHUB_H
+#define _I_METRICS_DATAHUB_H
 
 #include <json/json.hpp>
 #include <string>
@@ -24,4 +24,4 @@ public:
 
 } // namespace metricsManager
 
-#endif // _I_DATA_HUB_H
+#endif // _I_METRICS_DATAHUB_H

@@ -1,5 +1,5 @@
-#ifndef _DATA_HUB_H
-#define _DATA_HUB_H
+#ifndef _METRICS_DATAHUB_H
+#define _METRICS_DATAHUB_H
 
 #include <map>
 #include <mutex>
@@ -48,4 +48,4 @@ private:
 };
 } // namespace metricsManager
 
-#endif // _DATA_HUB_H
+#endif // _METRICS_DATAHUB_H
