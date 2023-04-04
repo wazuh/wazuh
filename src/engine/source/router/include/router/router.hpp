@@ -35,7 +35,7 @@ constexpr auto JSON_PATH_EVENT = "/event"; ///< Json path for the event for enqu
  *
  * The router is the main class of the router module. It manages the routes and has the logic to route the events to the
  * correct policy. Also it has the thread pool to process the events, and the policy manager to manage the
- * runtime policys (creation, destruction, and interaction).
+ * runtime policies (creation, destruction, and interaction).
  * Get the events from the queue, select the correct policy (with the route priority and conditions), and send the
  * event to the policy.
  */
@@ -93,7 +93,7 @@ public:
     /**
      * @brief Construct a new Router with the given builder, store and number of threads for the pool
      *
-     * @param builder Builder to create the policys
+     * @param builder Builder to create the policies
      * @param store Store to get/save the routes table
      * @param threads Number of threads for the pool
      */

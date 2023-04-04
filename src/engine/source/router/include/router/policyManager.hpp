@@ -1,5 +1,5 @@
-#ifndef _ROUTER_ENVIRONMENT_MANAGER_HPP
-#define _ROUTER_ENVIRONMENT_MANAGER_HPP
+#ifndef _ROUTER_POLICY_MANAGER_HPP
+#define _ROUTER_POLICY_MANAGER_HPP
 
 #include <router/runtimePolicy.hpp>
 
@@ -17,7 +17,7 @@ namespace router
 /**
  * @brief PolicyManager is responsible to manage the runtime policy,
  * Creacion, destruction, and interaction with the policy.
- * The policy manager create multiples instaces of the same policys this
+ * The policy manager create multiples instaces of the same policies this
  * allow interact to the same policy from different threads without any synchronization.
  */
 class PolicyManager
@@ -25,8 +25,8 @@ class PolicyManager
 
 private:
     /* Status */
-    std::unordered_map<std::string, std::vector<RuntimePolicy>> m_policys; ///< Map of policys
-    std::shared_mutex m_mutex; ///< Mutex to protect the policys map
+    std::unordered_map<std::string, std::vector<RuntimePolicy>> m_policies; ///< Map of policies
+    std::shared_mutex m_mutex;                                              ///< Mutex to protect the policies map
 
     /* Config */
     const std::size_t m_numInstances; ///< Number of instances of each policy
@@ -44,7 +44,7 @@ public:
      * @param maxInstances Number of instances of each policy
      */
     PolicyManager(std::shared_ptr<builder::Builder> builder, std::size_t maxInstances)
-        : m_policys {}
+        : m_policies {}
         , m_mutex {}
         , m_numInstances {maxInstances}
         , m_builder {builder}
@@ -60,7 +60,7 @@ public:
         }
     };
 
-    ~PolicyManager() { delAllPolicys(); };
+    ~PolicyManager() { delAllPolicies(); };
 
     /**
      * @brief Create a new policy
@@ -79,16 +79,16 @@ public:
     std::optional<base::Error> deletePolicy(const std::string& name);
 
     /**
-     * @brief Delete all policys
+     * @brief Delete all policies
      */
-    void delAllPolicys();
+    void delAllPolicies();
 
     /**
-     * @brief Get a list of all policys
+     * @brief Get a list of all policies
      *
      * @return std::vector<std::string>
      */
-    std::vector<std::string> listPolicys();
+    std::vector<std::string> listPolicies();
 
     /**
      * @brief Forward an event to an policy
@@ -103,8 +103,7 @@ public:
      * The lamda function of the expression is not thread safe.
      */
     std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event event);
-
 };
 } // namespace router
 
-#endif // _ROUTER_ENVIRONMENT_MANAGER_HPP
+#endif // _ROUTER_POLICY_MANAGER_HPP
