@@ -8,19 +8,14 @@
 #include <conf/cliconf.hpp>
 #include <conf/iconf.hpp>
 
-#include <metrics/iMetricsManager.hpp>
-#include <metrics/iMetricsManagerAPI.hpp>
-
 namespace cmd::server
 {
 
 using ConfHandler = std::shared_ptr<conf::IConf<conf::CliConf>>;
 
-void runStart(ConfHandler confManager, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager,
-                                       const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsManagerAPI);
+void runStart(ConfHandler confManager);
 
-void configure(CLI::App_p app, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager,
-                               const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsManagerAPI);
+void configure(CLI::App_p app);
 
 } // namespace cmd::server
 
