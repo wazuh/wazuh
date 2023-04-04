@@ -1,11 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2015-2022, Wazuh Inc.
-#
-# This program is free software; you can redistribute it
-# and/or modify it under the terms of the GNU General Public
-# License (version 2) as published by the FSF - Free Software
-# Foundation.
+
 
 # Save the working directory and change to the directory where the script is
 OLD_PWD=`pwd`
