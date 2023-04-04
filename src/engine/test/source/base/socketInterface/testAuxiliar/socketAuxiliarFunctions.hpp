@@ -1,7 +1,3 @@
-/* Copyright (C) 2015-2022, Wazuh Inc.
- * All rights reserved.
- *
- */
 #ifndef _SOCKET_AUXILIAR_FUNCTIONS_H
 #define _SOCKET_AUXILIAR_FUNCTIONS_H
 
