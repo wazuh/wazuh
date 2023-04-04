@@ -183,12 +183,12 @@ EventEndpoint::EventEndpoint(
     , m_spMetricsScope {metricsScope}
     , m_spMetricsScopeDelta {metricsScopeDelta}
 {
-    auto receivedBytesPerSecond = m_spMetricsScopeDelta->getCounterUInteger("ReceivedBytesPerSecond");
-    auto receivedEventsPerSecond = m_spMetricsScopeDelta->getCounterUInteger("ReceivedEventsPerSecond");
-    auto totalEventsReceived = m_spMetricsScope->getCounterUInteger("TotalEventsReceived");
-    auto totalBytesReceived = m_spMetricsScope->getCounterUInteger("TotalBytesReceived");
-    auto queuedEvents = m_spMetricsScope->getCounterUInteger("queuedEvents");
-    auto eventsInsertedDisk = m_spMetricsScope->getCounterUInteger("EventsInsertedDisk");
+    auto bytesReceivedPerSecond = m_spMetricsScopeDelta->getCounterUInteger("BytesReceivedPerSecond");
+    auto eventsReceivedPerSecond = m_spMetricsScopeDelta->getCounterUInteger("EventsReceivedPerSecond");
+    auto eventsReceived = m_spMetricsScope->getCounterUInteger("EventsReceived");
+    auto bytesReceived = m_spMetricsScope->getCounterUInteger("BytesReceived");
+    auto queuedEvents = m_spMetricsScope->getCounterUInteger("QueuedEvents");
+    auto dumpedEvents = m_spMetricsScope->getCounterUInteger("DumpedEvents");
     auto usedQueue = m_spMetricsScope->getGaugeDouble("UsedQueue", 0);
 
     m_handle->on<ErrorEvent>(
@@ -223,23 +223,23 @@ EventEndpoint::EventEndpoint(
     }
 
     m_handle->on<DatagramSocketEvent>(
-        [this, totalEventsReceived, totalBytesReceived, queuedEvents, eventsInsertedDisk,
-        receivedBytesPerSecond, receivedEventsPerSecond, dumpFileHandler, isFloodedFileEnabled, usedQueue]
+        [this, eventsReceived, bytesReceived, queuedEvents, dumpedEvents,
+        bytesReceivedPerSecond, eventsReceivedPerSecond, dumpFileHandler, isFloodedFileEnabled, usedQueue]
         (const DatagramSocketEvent& eventSocket, DatagramSocketHandle& handle)
         {
             auto strRequest = std::string {eventSocket.data.get(), eventSocket.length};
 
             // Received bytes per seconds
-            receivedBytesPerSecond->addValue(static_cast<uint64_t>(eventSocket.length));
+            bytesReceivedPerSecond->addValue(static_cast<uint64_t>(eventSocket.length));
 
             // Received events per seconds
-            receivedEventsPerSecond->addValue(1UL);
+            eventsReceivedPerSecond->addValue(1UL);
 
             // Total events received
-            totalEventsReceived->addValue(1UL);
+            eventsReceived->addValue(1UL);
 
             // Total bytes received
-            totalBytesReceived->addValue(static_cast<uint64_t>(eventSocket.length));
+            bytesReceived->addValue(static_cast<uint64_t>(eventSocket.length));
 
             //Used Queue
             usedQueue->setValue(m_eventQueue->size_approx());
@@ -284,7 +284,7 @@ EventEndpoint::EventEndpoint(
                 if (attempts >= maxAttempts)
                 {
                     // Number of events that have been written to disk because queue is full
-                    eventsInsertedDisk->addValue(1UL);
+                    dumpedEvents->addValue(1UL);
 
                     dumpFileHandler->write(strRequest);
                 }

@@ -42,8 +42,8 @@ KVDBManager::KVDBManager(const std::filesystem::path& dbStoragePath, const std::
 
 KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
 {
-    auto databaseCounter = m_spMetricsScope->getCounterUInteger("DatabaseCounter");
-    auto databaseInUseCounter = m_spMetricsScope->getUpDownCounterInteger("DatabaseInUseCounter");
+    auto createdDatabases = m_spMetricsScope->getCounterUInteger("CreatedDatabases");
+    auto databasesInUse = m_spMetricsScope->getUpDownCounterInteger("DatabasesInUse");
 
     std::unique_lock lkW(m_mtx);
     const bool isLoaded = m_dbs.find(name) != m_dbs.end();
@@ -67,9 +67,9 @@ KVDBHandle KVDBManager::loadDB(const std::string& name, bool createIfMissing)
         || KVDB::CreationStatus::OkCreated == result)
     {
         // This instrument measures the number of KVDB created
-        databaseCounter->addValue(1UL);
+        createdDatabases->addValue(1UL);
         // This instrument measures the current number of active KVDB
-        databaseInUseCounter->addValue(1L);
+        databasesInUse->addValue(1L);
 
         m_dbs[name] = kvdb;
         return kvdb;
@@ -83,14 +83,14 @@ void KVDBManager::unloadDB(const std::string& name)
     std::unique_lock lkW(m_mtx);
     const bool isLoaded = m_dbs.find(name) != m_dbs.end();
 
-    auto databaseInUseCounter = m_spMetricsScope->getUpDownCounterInteger("DatabaseInUseCounter");
+    auto databasesInUse = m_spMetricsScope->getUpDownCounterInteger("DatabasesInUse");
 
     if (isLoaded)
     {
         m_dbs.erase(name);
 
         // This instrument measures the current number of active KVDB
-        databaseInUseCounter->addValue(-1L);
+        databasesInUse->addValue(-1L);
     }
 }
 
@@ -381,7 +381,7 @@ bool KVDBManager::exist(const std::string& name)
 
 std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 {
-    auto databaseInUseCounter = m_spMetricsScope->getUpDownCounterInteger("DatabaseInUseCounter");
+    auto databasesInUse = m_spMetricsScope->getUpDownCounterInteger("DatabasesInUse");
     const auto MAX_USE_COUNT = 2; // 1 for the map and 1 for getHandler
 
     auto res = getHandler(name);
@@ -408,9 +408,9 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
         if (handler.use_count() == MAX_USE_COUNT)
         {
             m_dbs.erase(name);
-            
+
             // This instrument measures the current number of active KVDB
-            databaseInUseCounter->addValue(-1L);
+            databasesInUse->addValue(-1L);
         }
         else
         {
