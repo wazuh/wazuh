@@ -44,11 +44,10 @@ UnixDatagram::UnixDatagram(const std::string& address,
     {
         throw std::runtime_error("Callback must be set");
     }
-
 }
 
-
-UnixDatagram::~UnixDatagram() {
+UnixDatagram::~UnixDatagram()
+{
     if (isBound())
     {
         // Close
@@ -85,7 +84,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                 }
                 catch (const std::exception& e)
                 {
-                    WAZUH_LOG_WARN("Engine event endpoints: Error calling the callback: {}", e.what());
+                    WAZUH_LOG_WARN("[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
                 }
 
                 return;
@@ -95,7 +94,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             if (++m_currentTaskQueueSize >= m_taskQueueSize)
 
             {
-                WAZUH_LOG_WARN("Engine event endpoints: Queue is full, pause listening.");
+                WAZUH_LOG_WARN("[Endpoint: {}] Queue is full, pause listening.", m_address);
                 pause();
             }
 
@@ -111,7 +110,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                     }
                     catch (const std::exception& e)
                     {
-                        WAZUH_LOG_WARN("Engine event endpoints: Error calling the callback: {}", e.what());
+                        WAZUH_LOG_WARN("[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
                     }
                 });
 
@@ -120,15 +119,22 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                 [this](const uvw::WorkEvent&, uvw::WorkReq& work)
                 {
                     m_currentTaskQueueSize--;
-                    resume();
+                    if (resume())
+                    {
+                        WAZUH_LOG_WARN("[Endpoint: {}] Resume listening.", m_address);
+                    }
                 });
 
             workerJob->on<uvw::ErrorEvent>(
                 [this](const uvw::ErrorEvent& error, uvw::WorkReq& work)
                 {
-                    WAZUH_LOG_WARN("Engine event endpoints: Error on worker job: {} ({})", error.what(), error.code());
+                    WAZUH_LOG_WARN(
+                        "[Endpoint: {}] Error calling the callback: {}", m_address, error.what(), error.code());
                     m_currentTaskQueueSize--;
-                    resume();
+                    if (resume())
+                    {
+                        WAZUH_LOG_WARN("[Endpoint: {}] Resume listening.", m_address);
+                    }
                 });
             workerJob->queue();
         });
@@ -138,14 +144,19 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
         [this](const uvw::ErrorEvent& event, uvw::UDPHandle& handle)
         {
             // Log the error
-            WAZUH_LOG_WARN("Engine event endpoints: Event error on datagram socket "
-                           "({}): code=[{}]; name=[{}]; message=[{}].",
+            WAZUH_LOG_WARN("[Endpoint: {}] Error: code=[{}]; name=[{}]; message=[{}].",
                            m_address,
                            event.code(),
                            event.name(),
                            event.what());
         });
 
+    m_handle->on<uvw::CloseEvent>(
+        [this](const uvw::CloseEvent& event, uvw::UDPHandle& handle)
+        {
+            // Log the error
+            WAZUH_LOG_INFO("[Endpoint: {}] Closed.", m_address);
+        });
     // Bind the socket
     auto socketFd = bindUnixDatagramSocket(m_bufferSize);
     m_handle->open(socketFd);
@@ -214,7 +225,8 @@ int UnixDatagram::bindUnixDatagramSocket(int& bufferSize)
     // Change permissions
     if (chmod(m_address.c_str(), 0660) < 0) // TODO: Save the permissions in a constant
     {
-        auto msg = fmt::format("Cannot change permissions of the socket '{}': {} ({})", m_address, strerror(errno), errno);
+        auto msg =
+            fmt::format("Cannot change permissions of the socket '{}': {} ({})", m_address, strerror(errno), errno);
         ::close(socketFd);
         throw std::runtime_error(msg);
     }
@@ -242,7 +254,8 @@ int UnixDatagram::bindUnixDatagramSocket(int& bufferSize)
     // Set close-on-exec
     if (-1 == fcntl(socketFd, F_SETFD, FD_CLOEXEC))
     {
-        WAZUH_LOG_WARN("Cannot set close-on-exec flag to socket: {} ({})", strerror(errno), errno);
+        WAZUH_LOG_WARN(
+            "[Endpoint: {}] Cannot set close-on-exec flag to socket: {} ({})", m_address, strerror(errno), errno);
     }
 
     return socketFd;
