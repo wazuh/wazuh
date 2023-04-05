@@ -59,11 +59,11 @@ azure.activitylogs.event_category:
 
 azure.signinlogs.resource_id:
   type: keyword
-  description: The identifier of the resource that the user signed in to.
+  description: The identifier of the resource that the user signed in to
 
 azure.signinlogs.properties.created_at:
-description: >
-    Date and time (UTC) the sign-in was initiated.
+  description: >
+    Date and time (UTC) the sign-in was initiated
   type: keyword
 
 azure.signinlogs.properties.processing_time_ms:
@@ -118,7 +118,7 @@ azure.signinlogs.properties.conditional_access_status:
 azure.signinlogs.properties.device_detail:
   type: keyword
   array: true
-  desciption: Device detail
+  description: Device detail
 
 azure.signinlogs.properties.id:
   type: keyword
@@ -156,7 +156,7 @@ azure.signinlogs.properties.service_principal_id:
     The application identifier used for sign-in. This field is populated when you are signing in using an application.
 
 azure.signinlogs.properties.status:
-  type: keyword
+  type: object
   description: >
     Status
 
@@ -199,11 +199,6 @@ azure.signinlogs.result_type:
   type: keyword
   description: >
     Result type
-
-azure.resource.provider:
-  type: keyword
-  description: >
-    Resource type/namespace
 
 azure.auditlogs.operation_name:
   type: keyword
