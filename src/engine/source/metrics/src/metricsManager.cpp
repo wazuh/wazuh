@@ -179,30 +179,17 @@ std::variant<std::string, base::Error> MetricsManager::listCmd()
 
         for (auto& [keyMetric, valueMetric] : metrics)
         {
-            auto metricObj = valueMetric.getObject().value();
-            auto recordsPos = std::find_if(metricObj.begin(),
-                                           metricObj.end(),
-                                           [](auto tuple) { return std::get<0>(tuple) == "records"; });
-            if (metricObj.end() != recordsPos)
+            if (valueMetric.isNull())
             {
-                auto recordsObj = std::get<1>(*recordsPos).getArray().value();
-                for (auto& record : recordsObj)
-                {
-                    auto valuesObj = record.getObject().value();
-                    auto typePos = std::find_if(valuesObj.begin(),
-                                    metricObj.end(),
-                                    [](auto tuple) { return std::get<0>(tuple) == "type"; });
-                    if (valuesObj.end() != typePos)
-                    {
-                        auto type = std::get<1>(*typePos).getString().value();
-                        auto scope = getScope(key);
-                        auto status = scope->getEnabledStatus(keyMetric) ? "enabled" : "disabled";
-                        json = "{\"scope\":\"" + key + "\",\"name\":\"" + keyMetric + "\",\"type\":\"" + type + "\",\"status\":\"" + status + "\"}";
-                        json::Json element(json.c_str());
-                        result.appendJson(element);
-                    }
-                }
+                continue;
             }
+            auto recordArr = valueMetric.getArray("/records");
+            auto type = recordArr.value()[0].getString("/type").value();
+            auto scope = getScope(key);
+            auto status = scope->getEnabledStatus(keyMetric) ? "enabled" : "disabled";
+            json = "{\"scope\":\"" + key + "\",\"name\":\"" + keyMetric + "\",\"type\":\"" + type + "\",\"status\":\"" + status + "\"}";
+            json::Json element(json.c_str());
+            result.appendJson(element);
         }
     }
 
