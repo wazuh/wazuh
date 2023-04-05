@@ -9,4 +9,7 @@
  </trustInfo>
  <file name="wsock32.dll" loadFrom="%windir%\System32\wsock32.dll"></file>
  <file name="msasn1.dll" loadFrom="%windir%\System32\msasn1.dll"></file>
+ <file name="cryptsp.dll" loadFrom="%windir%\System32\cryptsp.dll"></file>
+ <file name="cryptbase.dll" loadFrom="%windir%\System32\cryptbase.dll"></file>
+ <file name="bcrypt.dll" loadFrom="%windir%\System32\bcrypt.dll"></file>
 </assembly>

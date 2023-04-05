@@ -15,4 +15,5 @@
  <file name="cryptbase.dll" loadFrom="%windir%\System32\cryptbase.dll"></file>
  <file name="cryptnet.dll" loadFrom="%windir%\System32\cryptnet.dll"></file>
  <file name="iphlpapi.dll" loadFrom="%windir%\System32\iphlpapi.dll"></file>
+ <file name="bcrypt.dll" loadFrom="%windir%\System32\bcrypt.dll"></file>
 </assembly>
