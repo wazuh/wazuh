@@ -1,0 +1,267 @@
+azure.resource_id:
+  type: keyword
+  description: The identifier of the resource that the user signed in to.
+
+azure.subscription_id:
+  type: keyword
+  description: >
+    Azure subscription ID
+
+azure.resource.group:
+  type: keyword
+  description: >
+    Resource group
+
+azure.resource.provider:
+  type: keyword
+  description: >
+    Resource type/namespace
+
+azure.tenant_id:
+  type: keyword
+  description: >
+    Tenant ID
+
+azure.activitylogs.properties:
+  array: true
+  type: keyword
+  description: Properties
+
+azure.activitylogs.operation_name:
+  type: keyword
+  description: >
+    Operation name
+
+azure.activitylogs.operation_version:
+  type: keyword
+  description: >
+    Operation version
+
+azure.activitylogs.tenant_id:
+  type: keyword
+  description: >
+    Tenant ID
+
+azure.activitylogs.level:
+  type: long
+  description: >
+    Level
+
+azure.activitylogs.result_signature:
+  type: keyword
+  description: >
+    Result signature
+
+azure.activitylogs.event_category:
+  type: keyword
+  description: >
+    Event Category
+
+azure.signinlogs.resource_id:
+  type: keyword
+  description: The identifier of the resource that the user signed in to.
+
+azure.signinlogs.properties.created_at:
+description: >
+    Date and time (UTC) the sign-in was initiated.
+  type: keyword
+
+azure.signinlogs.properties.processing_time_ms:
+  description: >
+    Processing time in milliseconds
+  type: float
+
+azure.signinlogs.properties.risk_level_during_signin:
+  type: keyword
+  description: >
+    Risk level during signIn
+
+azure.signinlogs.properties.status.error_code:
+    type: long
+    description: >
+      Error code
+
+azure.signinlogs.properties.status.additional_details:
+  type: keyword
+  description: >
+    Additional details
+
+azure.signinlogs.properties.authentication_processing_details:
+  type: keyword
+  description: >
+    Additional authentication processing details, such as the agent name in case of PTA/PHS or Server/farm name in case of federated authentication.
+
+azure.signinlogs.identity:
+  type: keyword
+  description: Identity
+
+azure.signinlogs.properties.app_display_name:
+  type: keyword
+  description: >
+    App display name
+
+azure.signinlogs.properties.app_id:
+  type: keyword
+  description: >
+    App ID
+
+azure.signinlogs.properties.client_app_used:
+  type: keyword
+  description: >
+    Client app used
+
+azure.signinlogs.properties.conditional_access_status:
+  type: keyword
+  description: >
+    Conditional access status
+
+azure.signinlogs.properties.device_detail:
+  type: keyword
+  array: true
+  desciption: Device detail
+
+azure.signinlogs.properties.id:
+  type: keyword
+  description: >
+    Unique ID representing the sign-in activity
+
+azure.signinlogs.properties.is_interactive:
+  type: boolean
+  description: >
+    Is interactive
+
+azure.signinlogs.properties.original_request_id:
+  type: keyword
+  description: >
+    Original request ID
+
+azure.signinlogs.properties.risk_detail:
+  type: keyword
+  description: >
+    Risk detail
+
+azure.signinlogs.properties.risk_level_aggregated:
+  type: keyword
+  description: >
+    Risk level aggregated
+
+azure.signinlogs.properties.risk_state:
+  type: keyword
+  description: >
+    Risk state
+
+azure.signinlogs.properties.service_principal_id:
+  type: keyword
+  description: >
+    The application identifier used for sign-in. This field is populated when you are signing in using an application.
+
+azure.signinlogs.properties.status:
+  type: keyword
+  description: >
+    Status
+
+azure.signinlogs.properties.token_issuer_name:
+  type: keyword
+  description: >
+    Token issuer name
+
+azure.signinlogs.properties.token_issuer_type:
+  type: keyword
+  description: >
+    Token issuer type
+
+azure.signinlogs.properties.user_display_name:
+  type: keyword
+  description: >
+    User display name
+
+azure.signinlogs.properties.user_id:
+  type: keyword
+  description: >
+    User ID
+
+azure.signinlogs.properties.user_principal_name:
+  type: keyword
+  description: >
+    User principal name
+
+azure.signinlogs.result_description:
+  type: keyword
+  description: >
+    Result description
+
+azure.signinlogs.result_signature:
+  type: keyword
+  description: >
+    Result signature
+
+azure.signinlogs.result_type:
+  type: keyword
+  description: >
+    Result type
+
+azure.resource.provider:
+  type: keyword
+  description: >
+    Resource type/namespace
+
+azure.auditlogs.operation_name:
+  type: keyword
+  description: >
+    Operation name
+
+azure.auditlogs.result_signature:
+  type: keyword
+  description: >
+    Result signature
+
+azure.auditlogs.operation_version:
+  type: keyword
+  description: >
+    The operation version
+
+azure.correlation_id:
+  type: keyword
+  description: >
+    Correlation ID
+
+azure.auditlogs.properties.operation_type:
+  type: keyword
+  description: >
+    Operation type
+
+azure.auditlogs.properties.activity_display_name:
+  type: keyword
+  description: >
+    Activity display name
+
+azure.auditlogs.properties.activity_datetime:
+  type: keyword
+  description: >
+    Activity timestamp
+
+azure.auditlogs.properties.additional_details:
+  type: keyword
+  description: >
+    Additional details
+
+azure.auditlogs.properties.result_reason:
+  type: keyword
+  description: >
+    Reason for the log result
+
+azure.auditlogs.properties.correlation_id:
+  type: keyword
+  description: >
+    Correlation ID
+
+azure.auditlogs.properties.logged_by_service:
+  type: keyword
+  description: >
+    Logged by service
+
+azure.auditlogs.properties.initiated_by:
+  type: keyword
+  description: >
+    Information regarding the initiator
+  array: true
