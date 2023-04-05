@@ -3526,7 +3526,7 @@ class AWSSLSubscriberBucket(WazuhIntegration):
         Parameters
         ----------
         message : dict
-            An SQS message recieved from the queue.
+            An SQS message received from the queue.
         """
         events_in_file = self.obtain_information_from_parquet(bucket_path=message['bucket_path'],
                                                               parquet_path=message['parquet_path'])
