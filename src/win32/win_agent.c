@@ -42,9 +42,6 @@ void agent_help()
 
 int main(int argc, char **argv)
 {
-    // This must be always the first instruction
-    enable_dll_verification();
-
     char *tmpstr;
     char mypath[OS_MAXSTR + 1];
     char myfinalpath[OS_MAXSTR + 1];

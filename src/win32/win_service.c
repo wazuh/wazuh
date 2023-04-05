@@ -281,9 +281,6 @@ void WinSetError()
 /* Initialize OSSEC-HIDS dispatcher */
 int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **argv)
 {
-    // This must be always the first instruction
-    enable_dll_verification();
-
     SERVICE_TABLE_ENTRY   steDispatchTable[] = {
         { g_lpszServiceName, OssecServiceStart },
         { NULL,       NULL                     }
