@@ -133,7 +133,7 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& info)
         {"BUILD_ID",         "os_build"},
         {"VERSION_CODENAME", "os_codename"}
     };
-    bool ret = parseUnixFile(KEY_MAPPING, SEPARATOR, in, info);
+    const auto ret {parseUnixFile(KEY_MAPPING, SEPARATOR, in, info)};
 
     if (ret && info.find("os_version") != info.end())
     {
