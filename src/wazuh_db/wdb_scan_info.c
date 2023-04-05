@@ -76,10 +76,10 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
 
     sqlite3_bind_int64(stmt, 1, value);
 
-    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
-        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -150,7 +150,7 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
             return 0;
             break;
         default:
-            mdebug1("DB(%s) at wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
             return -1;
     }
 }

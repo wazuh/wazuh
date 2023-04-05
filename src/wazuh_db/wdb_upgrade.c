@@ -343,7 +343,7 @@ int wdb_adjust_v4(wdb_t *wdb) {
         sqlite3_bind_text(update_stmt, 1, decoded_attrs, -1, NULL);
         sqlite3_bind_text(update_stmt, 2, file, -1, NULL);
 
-        if (wdb_step_non_select(update_stmt, wdb, WDB_NO_ATTEMPTS) != SQLITE_DONE) {
+        if (wdb_step_select(update_stmt) != SQLITE_DONE) {
             mdebug1("DB(%s) The attribute coded as %s could not be updated.", wdb->id, attrs);
         }
     }

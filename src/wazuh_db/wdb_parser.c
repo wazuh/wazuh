@@ -563,7 +563,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 sql = next;
 
                 gettimeofday(&begin, 0);
-                data = wdb_exec(wdb, sql);
+                data = wdb_exec(wdb->db, sql);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_agent_sql_time(diff);
@@ -816,7 +816,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 sql = next;
 
                 gettimeofday(&begin, 0);
-                data = wdb_exec(wdb, sql);
+                data = wdb_exec(wdb->db, sql);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_mitre_sql_time(diff);
@@ -875,7 +875,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 sql = next;
 
                 gettimeofday(&begin, 0);
-                data = wdb_exec(wdb, sql);
+                data = wdb_exec(wdb->db, sql);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_sql_time(diff);
@@ -1597,7 +1597,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 sql = next;
 
                 gettimeofday(&begin, 0);
-                data = wdb_exec(wdb, sql);
+                data = wdb_exec(wdb->db, sql);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_task_sql_time(diff);

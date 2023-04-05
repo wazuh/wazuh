@@ -69,7 +69,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         return 0;
 
     default:
-        merror("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -180,7 +180,7 @@ int wdb_fim_find_entry(wdb_t * wdb, const char * path) {
         return 0;
         break;
     default:
-        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -234,12 +234,12 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     sqlite3_bind_text(stmt, 15, sum->symbolic_path, -1, NULL);
     sqlite3_bind_text(stmt, 16, file, -1, NULL);
 
-    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb) == SQLITE_DONE) {
         free(unescaped_perms);
         return 0;
     } else {
         free(unescaped_perms);
-        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -480,8 +480,8 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         }
     }
 
-    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) != SQLITE_DONE) {
-        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    if (wdb_step_non_select(stmt, wdb) != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         os_free(perm);
         os_free(full_path);
         return -1;
@@ -527,12 +527,12 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_bind_text(stmt, 14, sum->symbolic_path, -1, NULL);
     sqlite3_bind_text(stmt, 15, file, -1, NULL);
 
-    if (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS) == SQLITE_DONE) {
+    if (wdb_step_non_select(stmt, wdb) == SQLITE_DONE) {
         free(unescaped_perms);
         return sqlite3_changes(wdb->db);
     } else {
         free(unescaped_perms);
-        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -550,7 +550,7 @@ int wdb_fim_delete(wdb_t * wdb, const char * path) {
 
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
 
-    switch (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS)) {
+    switch (wdb_step_non_select(stmt, wdb)) {
     case SQLITE_ROW:
         return 0;
         break;
@@ -558,7 +558,7 @@ int wdb_fim_delete(wdb_t * wdb, const char * path) {
         return 0;
         break;
     default:
-        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -575,12 +575,12 @@ int wdb_fim_update_date_entry(wdb_t * wdb, const char *path) {
 
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
 
-    switch (wdb_step_non_select(stmt, wdb, WDB_NO_ATTEMPTS)) {
+    switch (wdb_step_non_select(stmt, wdb)) {
     case SQLITE_DONE:
         mdebug2("DB(%s) Updated date field for file '%s' to '%ld'", wdb->id, path, (long)time(NULL));
         return 0;
     default:
-        mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -618,7 +618,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
                 }
                 break;
             default:
-                mdebug1("DB(%s) wdb_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
                 return -1;
         }
     }

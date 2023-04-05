@@ -1042,7 +1042,7 @@ void test_wdb_global_get_groups_integrity_error(void **state)
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
     will_return(__wrap_wdb_step_select, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(global) wdb_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(global) SQLite: ERROR MESSAGE");
 
     j_result = wdb_global_get_groups_integrity(data->wdb, NULL);
 

@@ -44,20 +44,12 @@ int __wrap_wdb_finalize() {
     return mock();
 }
 
-int  __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt,
-                      __attribute__((unused)) wdb_t * wdb,
-                      __attribute__((unused)) uint16_t max_attemps,
-                      __attribute__((unused)) bool theQueryModifyDB) {
-    return mock();
-}
-
 int  __wrap_wdb_step_select(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock();
 }
 
 int  __wrap_wdb_step_non_select(__attribute__((unused)) sqlite3_stmt *stmt,
-                      __attribute__((unused)) wdb_t * wdb,
-                      __attribute__((unused)) uint16_t max_attemps) {
+                      __attribute__((unused)) wdb_t * wdb) {
     return mock();
 }
 
@@ -114,7 +106,6 @@ cJSON * __wrap_wdb_exec_stmt(__attribute__((unused)) sqlite3_stmt *stmt) {
 }
 
 cJSON * __wrap_wdb_exec_stmt_sized(__attribute__((unused)) sqlite3_stmt *stmt,
-                                   __attribute__((unused)) wdb_t *wdb,
                                    size_t max_size,
                                    int* status,
                                    bool column_mode) {
@@ -274,11 +265,11 @@ sqlite3_stmt* __wrap_wdb_init_stmt_in_cache( __attribute__((unused)) wdb_t* wdb,
     return mock_ptr_type(sqlite3_stmt*);
 }
 
-int __wrap_wdb_exec_stmt_silent(__attribute__((unused)) sqlite3_stmt* stmt) {
+int __wrap_wdb_exec_stmt_silent(__attribute__((unused)) sqlite3_stmt* stmt, __attribute__((unused)) wdb_t *wdb) {
     return mock();
 }
 
-int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, __attribute__((unused)) wdb_t *wdb, int peer) {
+int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, int peer) {
     check_expected(peer);
     return mock();
 }

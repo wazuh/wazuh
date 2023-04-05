@@ -75,8 +75,6 @@ typedef enum agent_status_code_t {
 #define STMT_MULTI_COLUMN 0
 #define STMT_SINGLE_COLUMN 1
 
-#define WDB_NO_ATTEMPTS (0)
-
 /// Enumeration of agent groups sync conditions
 typedef enum wdb_groups_sync_condition_t {
         WDB_GROUP_SYNC_STATUS,      ///< Get groups by their sync status
@@ -722,8 +720,7 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
 
 /* Execute statement with availability waiting */
 int wdb_step_select(sqlite3_stmt *stmt);
-int wdb_step_non_select(sqlite3_stmt *stmt, wdb_t * wdb, uint16_t max_attemps);
-
+int wdb_step_non_select(sqlite3_stmt *stmt, wdb_t * wdb);
 
 /* Begin transaction */
 int wdb_begin(wdb_t * wdb);
@@ -899,35 +896,32 @@ void wdb_check_fragmentation();
  * @brief Function to execute one row of an SQL statement and save the result in a JSON array.
  *
  * @param [in] stmt The SQL statement to be executed.
- * @param [in] wdb Database to query for the table existence.
  * @param [out] status The status code of the statement execution. If NULL no value is written.
  * @param [in] column_mode It could be STMT_SINGLE_COLUMN if the query returns only one column,
  *                         or STMT_MULTI_COLUMN if the query returns more than one column.
  * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, wdb_t* wdb, int* status, bool column_mode);
+cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, int* status, bool column_mode);
 
 /**
  * @brief Function to execute one row of an SQL statement and save the result in a single JSON array without column name like:
  *        ["column_value_1","column_value_2", ...]. The query should return only one column in every step.
  *
  * @param [in] stmt The SQL statement to be executed.
- * @param [in] wdb Database to query for the table existence.
  * @param [out] status The status code of the statement execution. If NULL no value is written.
  * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, wdb_t* wdb, int* status);
+cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status);
 
 /**
  * @brief Function to execute one row of an SQL statement and save the result in a single JSON array with column name like:
  *        ["column_name_1":"column_value_1","column_name_2":"column_value_2", ...].
  *
  * @param [in] stmt The SQL statement to be executed.
- * @param [in] wdb Database to query for the table existence.
  * @param [out] status The status code of the statement execution. If NULL no value is written.
  * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, wdb_t* wdb, int* status);
+cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status);
 
 /**
  * @brief Function to execute an SQL statement without a response.
@@ -944,7 +938,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt, wdb_t * wdb);
  *        The result of each step will be placed in returned result while fits.
  *
  * @param [in] stmt The SQL statement to be executed.
- * @param [in] wdb Database to query for the table existence.
+ * @param [in] max_size Maximum size of the response.
  * @param [out] status The status code of the statement execution.
  *                     SQLITE_DONE means the statement is completed.
  *                     SQLITE_ROW means the statement has pending elements.
@@ -953,7 +947,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt, wdb_t * wdb);
  *                         or STMT_MULTI_COLUMN if the query returns more than one column.
  * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, wdb_t * wdb, const size_t max_size, int* status, bool column_mode);
+cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, const size_t max_size, int* status, bool column_mode);
 
 /**
  * @brief Function to execute a SQL statement and send the result via TCP socket.
@@ -963,32 +957,30 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, wdb_t * wdb, const size_t max_siz
  *        The block will timeout after the time defined in WDB_BLOCK_SEND_TIMEOUT_S.
  *
  * @param [in] stmt The SQL statement to be executed.
- * @param [in] wdb Database to query for the table existence.
  * @param [in] peer The peer where the result will be sent.
  * @return OS_SUCCESS on success.
  *         OS_INVALID on errors executing SQL statement.
  *         OS_SOCKTERR on errors handling the socket.
  *         OS_SIZELIM on error trying to fit the row response into the socket buffer.
  */
-int wdb_exec_stmt_send(sqlite3_stmt* stmt, wdb_t * wdb, int peer);
+int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
 
 /**
  * @brief Function to execute a SQL statement and save the result in a JSON array.
  *
  * @param [in] stmt The SQL statement to be executed.
- * @param [in] wdb Database to query for the table existence.
  * @return JSON array with the statement execution results. NULL On error.
  */
-cJSON* wdb_exec_stmt(sqlite3_stmt* stmt, wdb_t* wdb);
+cJSON* wdb_exec_stmt(sqlite3_stmt* stmt);
 
 /**
  * @brief Function to execute a SQL query and save the result in a JSON array.
  *
- * @param [in] wdb Database to query for the table existence.
+ * @param [in] db The SQL database to be queried.
  * @param [in] sql The SQL query.
  * @return JSON array with the query results. NULL On error.
  */
-cJSON* wdb_exec(wdb_t* wdb, const char * sql);
+cJSON* wdb_exec(sqlite3* db, const char * sql);
 
 // Execute SQL script into an database
 int wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
@@ -2575,6 +2567,5 @@ cJSON* wdb_get_config();
  * @param output the response to send
  */
 void wdbcom_dispatch(char* request, char* output);
-
 
 #endif
