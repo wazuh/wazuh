@@ -14,6 +14,8 @@
 #include <sched.h>
 #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #include <sys/sysctl.h>
+#elif defined(AIX)
+#include <unistd.h>
 #endif
 
 #ifdef WIN32
@@ -924,6 +926,14 @@ int get_nproc() {
         return cpu_cores;
     } else {
         mwarn("sysctl failed getting CPU cores: %s (%d)", strerror(errno), errno);
+        return 1;
+    }
+#elif defined(AIX)
+    int cpu_cores;
+    if (cpu_cores = sysconf(_SC_NPROCESSORS_ONLN), cpu_cores > 0){
+        return cpu_cores;
+    } else{
+        mwarn("sysconf failed getting CPU cores: %s (%d)", strerror(errno), errno);
         return 1;
     }
 #else
