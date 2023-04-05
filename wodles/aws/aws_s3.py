@@ -3483,25 +3483,24 @@ class AWSSLSubscriberBucket(WazuhIntegration):
         AWS profile.
     iam_role_arn : str
         IAM Role.
-    region : str
-        Region where the logs are located.
     """
 
     def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None,
-                 service_endpoint: str = None,
-                 sts_endpoint: str = None, **kwargs):
+                 service_endpoint: str = None, sts_endpoint: str = None, **kwargs):
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, aws_profile=aws_profile,
                                   service_name='s3', service_endpoint=service_endpoint, sts_endpoint=sts_endpoint,
                                   **kwargs)
 
     def obtain_information_from_parquet(self, bucket_path: str, parquet_path: str) -> list:
         """Fetch a parquet file from a bucket and obtain a list of the events it contains.
+
         Parameters
         ----------
         bucket_path : str
             Path of the bucket to get the parquet file from.
         parquet_path : str
             Relative path of the parquet file inside the bucket.
+
         Returns
         -------
         events : list
@@ -3608,7 +3607,7 @@ class AWSSQSQueue(WazuhIntegration):
         Returns
         -------
         dict
-        A dictionary with a list of messages from the SQS queue.
+            A dictionary with a list of messages from the SQS queue.
         """
         try:
             debug(f'Retrieving messages from: {self.sqs_name}', 2)
@@ -3642,8 +3641,7 @@ class AWSSQSQueue(WazuhIntegration):
 
     def sync_events(self) -> None:
         """
-        Get messages from the SQS queue, parse their events and send them to AnalysisD,
-        and delete the  from the queue.
+        Get messages from the SQS queue, parse their events, send them to AnalysisD, and delete them from the queue.
         """
         messages = self.get_messages()
         while messages:
