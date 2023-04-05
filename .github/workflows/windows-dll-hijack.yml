@@ -51,43 +51,43 @@ jobs:
     strategy:
           matrix:
               os: [windows-latest, windows-2019]
-      runs-on: ${{ matrix.os }}
-      needs: build
-      steps:
-        - name: Checkout Repo
-          uses: actions/checkout@v3
-        - name: Set up Python
-          uses: actions/setup-python@v4
-          with:
-            python-version-file: ".github/workflows/.python-version"
-            architecture: x64
-        - name: Download Artifact shared_libraries
-          uses: actions/download-artifact@v3
-          with:
-            name: shared_libraries
-            path: C:\shared_libraries\
-        - name: Download Artifact executables
-          uses: actions/download-artifact@v3
-          with:
-            name: executables
-            path: C:\executables\
-        - name: Download Artifact configuration files
-          uses: actions/download-artifact@v3
-          with:
-            name: configuration
-            path: C:\configuration_files\
-        - name: Copy libraries and configuration files
-          run: |
-            copy C:\shared_libraries\*.dll C:\executables\
-            copy C:\configuration_files\*.conf C:\executables\
-        - name: Install dependencies
-          run: |
-            pip install -r src/win32/qa/requirements.txt
-        - name: Download Process Monitor
-          run: |
-            python -m wget https://download.sysinternals.com/files/ProcessMonitor.zip -o C:\ProcessMonitor.zip
-            Expand-Archive C:\ProcessMonitor.zip -DestinationPath C:\ProcessMonitor
-        - name: Run tests
-          run: |
-            cd src/win32/qa
-            python -m pytest -vv ./
+    runs-on: ${{ matrix.os }}
+    needs: build
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version"
+          architecture: x64
+      - name: Download Artifact shared_libraries
+        uses: actions/download-artifact@v3
+        with:
+          name: shared_libraries
+          path: C:\shared_libraries\
+      - name: Download Artifact executables
+        uses: actions/download-artifact@v3
+        with:
+          name: executables
+          path: C:\executables\
+      - name: Download Artifact configuration files
+        uses: actions/download-artifact@v3
+        with:
+          name: configuration
+          path: C:\configuration_files\
+      - name: Copy libraries and configuration files
+        run: |
+          copy C:\shared_libraries\*.dll C:\executables\
+          copy C:\configuration_files\*.conf C:\executables\
+      - name: Install dependencies
+        run: |
+          pip install -r src/win32/qa/requirements.txt
+      - name: Download Process Monitor
+        run: |
+          python -m wget https://download.sysinternals.com/files/ProcessMonitor.zip -o C:\ProcessMonitor.zip
+          Expand-Archive C:\ProcessMonitor.zip -DestinationPath C:\ProcessMonitor
+      - name: Run tests
+        run: |
+          cd src/win32/qa
+          python -m pytest -vv ./

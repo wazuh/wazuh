@@ -188,7 +188,6 @@
                     </Component>
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
                         <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" />
-                        <File Id="AGENT_AUTH.EXE.MANIFEST" Name="agent-auth.exe.manifest" Source="agent-auth.exe.manifest" />
                     </Component>
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
@@ -250,7 +249,6 @@
                     </Component>
                     <Component Id="WIN32UI.EXE" DiskId="1" Guid="E7ACBC6F-D8A0-410B-B8D2-2AD9F5152BA0">
                         <File Id="WIN32UI.EXE" Name="win32ui.exe" Source="os_win32ui.exe"/>
-                        <File Id="WIN32UI.EXE.MANIFEST" Name="win32ui.exe.manifest" Source="win32ui.exe.manifest" />
                     </Component>
                     <Component Id="REMOVE_OLD_NSIS" Guid="3536239B-022D-4A9B-A7F8-2F64132115ED">
                         <RemoveRegistryKey Action="removeOnInstall" Key="SOFTWARE\ossec" Root="HKLM" />
