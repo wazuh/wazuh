@@ -14,7 +14,7 @@
 
 #define WM_MS_GRAPH_LOGTAG ARGV0 ":" MS_GRAPH_WM_NAME
 
-#define WM_MS_GRAPH_SCRIPT_PATH "wodles/ms-graph/ms-graph-logs"
+#define WM_MS_GRAPH_SCRIPT_PATH "wodles/ms_graph/ms-graph-logs"
 
 #define WM_MS_GRAPH_DEFAULT_ENABLED true
 #define WM_MS_GRAPH_DEFAULT_ONLY_FUTURE_EVENTS true
