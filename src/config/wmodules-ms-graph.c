@@ -94,7 +94,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			}
 		}
 		else if (!strcmp(nodes[i]->element, XML_CURL_MAX_SIZE)) {
-			ms_graph->curl_max_size = w_parse_time(nodes[i]->content);
+			ms_graph->curl_max_size = w_parse_size(nodes[i]->content);
 			// TODO: Find a good minimum size
 			if (ms_graph->curl_max_size < 1024L) {
 				merror("Module '%s' has invalid content in tag '%s': the minimum size is 1KB.", WM_MS_GRAPH_CONTEXT.name, XML_CURL_MAX_SIZE);
@@ -209,7 +209,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			}
 			OS_ClearNode(children);
 		}
-		else {
+		else if (!is_sched_tag(nodes[i]->element)) {
 			merror(XML_INVATTR, nodes[i]->element, WM_MS_GRAPH_CONTEXT.name);
 			return OS_CFGERR;
 		}
