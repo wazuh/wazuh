@@ -25,7 +25,6 @@ static void wm_ms_graph_cleanup();
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph);
 
 static int queue_fd; // Socket ID
-time_t startup_time;
 time_t last_scan;
 
 const wm_context WM_MS_GRAPH_CONTEXT = {
@@ -43,7 +42,7 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
     char* timestamp = NULL;
 
     wm_ms_graph_setup(ms_graph);
-    startup_time = time(NULL);
+    last_scan = time(NULL);
     mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
 
     while(FOREVER()){
@@ -142,7 +141,6 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
     char url[OS_SIZE_8192];
     char auth_header[OS_SIZE_2048];
     char** headers = NULL;
-    char startup_timestamp[OS_SIZE_32];
     char last_scan_timestamp[OS_SIZE_32];
     struct tm time_struct = { .tm_sec = 0 };
     curl_response* response;
@@ -151,10 +149,6 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
     for(unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
         
         for(unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++){
-
-            memset(startup_timestamp, '\0', OS_SIZE_32);
-            gmtime_r(&startup_time, &time_struct);
-            strftime(startup_timestamp, sizeof(startup_timestamp), "%Y-%m-%dT%H:%M:%SZ", &time_struct);
 
             memset(last_scan_timestamp, '\0', OS_SIZE_32);
             gmtime_r(&last_scan, &time_struct);
@@ -171,7 +165,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
             ms_graph->version,
             ms_graph->resources[resource_num].name,
             ms_graph->resources[resource_num].relationships[relationship_num],
-            ms_graph->only_future_events ? startup_timestamp : last_scan_timestamp);
+            ms_graph->only_future_events ? last_scan_timestamp : "1970-01-01T00:00:00Z");
             mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Log URL: '%s'", url);
 
             response = wurl_http_request(WURL_GET_METHOD, headers, url, "", ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
