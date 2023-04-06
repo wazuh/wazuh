@@ -32,10 +32,8 @@ static const char* XML_RESOURCE_RELATIONSHIP = "relationship";
 int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 
 	wm_ms_graph* ms_graph;
-	wm_ms_graph_resource** resources;
 
 	if (!nodes) {
-		// TODO: Implement context in wm_ms_graph.c
 		mwarn("Empty configuration found in module '%s.'", WM_MS_GRAPH_CONTEXT.name);
 		return OS_CFGERR;
 	}
@@ -47,12 +45,17 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	ms_graph->curl_max_size = WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE;
 	ms_graph->run_on_start = WM_MS_GRAPH_DEFAULT_RUN_ON_START;
 	ms_graph->version = WM_MS_GRAPH_DEFAULT_VERSION;
+
 	sched_scan_init(&(ms_graph->scan_config));
 	ms_graph->scan_config.interval = WM_DEF_INTERVAL;
-	os_malloc(sizeof(wm_ms_graph_resource) * 2, resources);
-	ms_graph->resources = resources;
+
+	ms_graph->auth_config.access_token = NULL;
+
+	os_malloc(sizeof(wm_ms_graph_resource) * 2, ms_graph->resources);
+	ms_graph->num_resources = 0;
+
 	module->context = &WM_MS_GRAPH_CONTEXT;
-	module->tag = strndup(module->context->name, 8); // "ms-graph"
+	os_strdup(module->context->name, module->tag);
 	module->data = ms_graph;
 
 	for (int i = 0; nodes[i]; i++) {
@@ -117,7 +120,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				os_strdup(nodes[i]->content, ms_graph->version);
 			}
 			else {
-				merror(XML_INVALID, XML_RUN_ON_START, WM_MS_GRAPH_CONTEXT.name);
+				mwarn(XML_INVALID, XML_RUN_ON_START, WM_MS_GRAPH_CONTEXT.name);
 				return OS_CFGERR;
 			}
 		}
@@ -129,7 +132,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			}
 			for (int j = 0; children[j]; j++) {
 				if (!strcmp(children[j]->element, XML_CLIENT_ID)) {
-					if (sizeof(children[j]->content) == 37 ) {
+					if (strlen(children[j]->content) == 36 ) {
 						os_strdup(children[j]->content, ms_graph->auth_config.client_id);
 					}
 					else {
@@ -138,7 +141,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					}
 				}
 				else if (!strcmp(children[j]->element, XML_TENANT_ID)) {
-					if (sizeof(children[j]->content) == 37) {
+					if (strlen(children[j]->content) == 36) {
 						os_strdup(children[j]->content, ms_graph->auth_config.tenant_id);
 					}
 					else {
@@ -147,7 +150,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					}
 				}
 				else if (!strcmp(children[j]->element, XML_SECRET_VALUE)) {
-					if (sizeof(children[j]->content) == 35) {
+					if (strlen(children[j]->content) == 40) {
 						os_strdup(children[j]->content, ms_graph->auth_config.secret_value);
 					}
 					else {
@@ -166,13 +169,15 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 		else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
 				OS_ClearNode(children);
-				merror(XML_INVALID, XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
+				merror(XML_INVALID, XML_RESOURCE, WM_MS_GRAPH_CONTEXT.name);
 				return OS_CFGERR;
 			}
 			for (int j = 0; children[j]; j++) {
 				if (!strcmp(children[j]->element, XML_RESOURCE_NAME)) {
-					if(sizeof(children[j]->content) > 0){
-						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources++].name);
+					if(strlen(children[j]->content) > 0){
+						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources].name);
+						os_malloc(sizeof(char*) * 2, ms_graph->resources[ms_graph->num_resources].relationships);
+						ms_graph->resources[ms_graph->num_resources++].num_relationships = 0;
 						// Check if power of 2
 						if (ms_graph->num_resources > 1 && !(ms_graph->num_resources & (ms_graph->num_resources - 1))) {
 							os_realloc(ms_graph->resources, ms_graph->num_resources * 2, ms_graph->resources);
@@ -183,8 +188,8 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 						return OS_CFGERR;
 					}
 				}
-				if(!strcmp(children[j]->element, XML_RESOURCE_RELATIONSHIP)) {
-					if(sizeof(children[j]->content) > 0){
+				else if(!strcmp(children[j]->element, XML_RESOURCE_RELATIONSHIP)) {
+					if(strlen(children[j]->content) > 0){
 						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources - 1].relationships[ms_graph->resources->num_relationships++]);
 						// Check if power of 2
 						if (ms_graph->resources->num_relationships > 1 && !(ms_graph->resources->num_relationships & (ms_graph->resources->num_relationships - 1))) {
@@ -192,7 +197,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 						}
 					}
 					else{
-						merror(XML_INVALID, XML_RESOURCE_NAME, WM_MS_GRAPH_CONTEXT.name);
+						merror(XML_INVALID, XML_RESOURCE_RELATIONSHIP, WM_MS_GRAPH_CONTEXT.name);
 						return OS_CFGERR;
 					}
 				}
