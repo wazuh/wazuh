@@ -15,16 +15,16 @@
 #include "wm_ms_graph.h"
 
 static wm_ms_graph* ms_graph;
-void* wm_ms_graph_main(wm_ms_graph* ms_graph);
-void wm_ms_graph_setup(wm_ms_graph* ms_graph);
-void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config);
-void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph);
-void wm_ms_graph_check();
-void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
-void wm_ms_graph_cleanup();
-cJSON* wm_ms_graph_dump(wm_ms_graph* ms_graph);
+static void* wm_ms_graph_main(wm_ms_graph* ms_graph);
+static void wm_ms_graph_setup(wm_ms_graph* ms_graph);
+static void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config);
+static void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph);
+static void wm_ms_graph_check();
+static void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
+static void wm_ms_graph_cleanup();
+cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph);
 
-int queue_fd; // Socket ID
+static int queue_fd; // Socket ID
 time_t startup_time;
 time_t last_scan;
 
@@ -35,7 +35,7 @@ const wm_context WM_MS_GRAPH_CONTEXT = {
     .dump = (cJSON* (*)(const void*))wm_ms_graph_dump,
     .sync = NULL,
     .stop = NULL,
-    .query = NULL
+    .query = NULL,
 };
 
 
@@ -140,7 +140,7 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config) {
 void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
     char url[OS_SIZE_8192];
     char auth_header[OS_SIZE_2048];
-    char** headers;
+    char** headers = NULL;
     char startup_timestamp[OS_SIZE_32];
     char last_scan_timestamp[OS_SIZE_32];
     struct tm time_struct = { .tm_sec = 0 };
@@ -213,7 +213,9 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
         }
     }
 
-    os_free(headers);
+    if(headers){
+        os_free(headers);
+    }
 }
 
 void wm_ms_graph_check() {
@@ -254,7 +256,7 @@ void wm_ms_graph_cleanup() {
     mtinfo(WM_MS_GRAPH_LOGTAG, "Module shutdown.");
 }
 
-cJSON* wm_ms_graph_dump(wm_ms_graph* ms_graph) {
+cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
     cJSON* root = cJSON_CreateObject();
     cJSON* ms_graph_info = cJSON_CreateObject();
     cJSON* ms_graph_auth = cJSON_CreateObject();
