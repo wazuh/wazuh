@@ -66,7 +66,6 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
         }
         mtinfo(WM_MS_GRAPH_LOGTAG, "Starting scan of tenant '%s'", ms_graph->auth_config.tenant_id);
         wm_ms_graph_scan_relationships(ms_graph);
-        last_scan = time(NULL);
 
     }
     return NULL;
@@ -177,6 +176,8 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                     ms_graph->resources[resource_num].relationships[relationship_num],
                     status_code,
                     response->body);
+                    wurl_free_response(response);
+                    goto failed;
                 }
                 else if (response->max_size_reached){
                     mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to get relationship '%s' logs. Consider increasing the value of 'curl_max_size'.",
@@ -215,7 +216,6 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                         else{
                             mtdebug2(WM_MS_GRAPH_LOGTAG, "No new logs recieved.");
                         }
-        
                         cJSON_Delete(logs);
                     }
                     else{
@@ -232,6 +232,8 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
             }
         }
     }
+    last_scan = time(NULL);
+    failed:
     if(headers){
         os_free(headers);
     }
