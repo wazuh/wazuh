@@ -17,7 +17,7 @@
 static wm_ms_graph* ms_graph;
 static void* wm_ms_graph_main(wm_ms_graph* ms_graph);
 static void wm_ms_graph_setup(wm_ms_graph* ms_graph);
-static void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config);
+static void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config);
 static void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph);
 static void wm_ms_graph_check();
 static void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
@@ -56,14 +56,14 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
         if (time_sleep) {
             const int next_scan_time = sched_get_next_scan_time(ms_graph->scan_config);
             timestamp = w_get_timestamp(next_scan_time);
-            mtdebug2(WM_MS_GRAPH_LOGTAG, "Waiting until: %s", timestamp);
+            mtdebug1(WM_MS_GRAPH_LOGTAG, "Waiting until: %s", timestamp);
             os_free(timestamp);
             w_sleep_until(next_scan_time);
         }
 
         if(!ms_graph->auth_config.access_token || time(NULL) >= ms_graph->auth_config.token_expiration_time){
             mtinfo(WM_MS_GRAPH_LOGTAG, "Obtaining access token.");
-            wm_ms_graph_get_access_token(ms_graph->auth_config);
+            wm_ms_graph_get_access_token(&ms_graph->auth_config);
         }
         mtinfo(WM_MS_GRAPH_LOGTAG, "Starting scan of tenant '%s'", ms_graph->auth_config.tenant_id);
         wm_ms_graph_scan_relationships(ms_graph);
@@ -93,42 +93,43 @@ void wm_ms_graph_setup(wm_ms_graph* _ms_graph) {
 
 }
 
-void wm_ms_graph_get_access_token(wm_ms_graph_auth auth_config) {
+void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config) {
     char url[OS_SIZE_8192];
     char payload[OS_SIZE_8192];
     char** headers = NULL;
     curl_response* response;
 
     memset(url, '\0', OS_SIZE_8192);
-    snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_URL, auth_config.tenant_id);
+    snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_URL, auth_config->tenant_id);
     mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Access Token URL: '%s'", url);
     memset(payload, '\0', OS_SIZE_8192);
-    snprintf(payload, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, auth_config.client_id, auth_config.secret_value);
+    snprintf(payload, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, auth_config->client_id, auth_config->secret_value);
     os_malloc(sizeof(char*) * 2, headers);
     os_strdup("Content-Type: application/x-www-form-urlencoded", headers[0]);
-    os_strdup("", headers[1]);
+    headers[1] = NULL;
+
     response = wurl_http_request(WURL_POST_METHOD, headers, url, payload, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     if(response){
         if(response->status_code != 200){
-            char status_code[3 + sizeof(char)];
-            snprintf(status_code, 3, "%ld", response->status_code);
-            mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to obtain access token: '%s' - '%s'", status_code, response->body);
+            char status_code[4];
+            snprintf(status_code, 4, "%ld", response->status_code);
+            mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to obtain access token: Status code was '%s' & response was '%s'", status_code, response->body);
         }
         else if (response->max_size_reached){
             mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
         }
         else{
             cJSON* response_body = NULL;
-            if(response_body = cJSON_Parse(response->body), !response_body){
-                mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse access token JSON body.");
+            if(response_body = cJSON_Parse(response->body), response_body){
+                os_strdup(cJSON_GetObjectItem(response_body, "access_token")->valuestring, auth_config->access_token);
+                auth_config->token_expiration_time = time(NULL) + cJSON_GetObjectItem(response_body, "expires_in")->valueint;
+                cJSON_Delete(response_body);
             }
             else{
-                os_strdup(cJSON_GetObjectItem(response_body, "access_token")->valuestring, auth_config.access_token);
-                auth_config.token_expiration_time = time(NULL) + cJSON_GetObjectItem(response_body, "expires_in")->valueint;
-                cJSON_Delete(response_body);
-                wurl_free_response(response);
+                mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse access token JSON body.");
             }
         }
+        wurl_free_response(response);
     }
     else{
         mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
@@ -145,6 +146,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
     char last_scan_timestamp[OS_SIZE_32];
     struct tm time_struct = { .tm_sec = 0 };
     curl_response* response;
+    char* payload;
 
     for(unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++){
         
@@ -162,7 +164,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
             snprintf(auth_header, OS_SIZE_2048 - 1, "Authorization: Bearer %s", ms_graph->auth_config.access_token);
             os_malloc(sizeof(char*) * 2, headers);
             os_strdup(auth_header, headers[0]);
-            os_strdup("", headers[1]);
+            headers[1] = NULL;
 
             memset(url, '\0', OS_SIZE_8192);
             snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
@@ -173,12 +175,11 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
             mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Log URL: '%s'", url);
 
             response = wurl_http_request(WURL_GET_METHOD, headers, url, "", ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-
             if(response){
                 if(response->status_code != 200){
-                    char status_code[3 + sizeof(char)];
-                    snprintf(status_code, 3, "%ld", response->status_code);
-                    mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to get relationship '%s' logs: '%s' - '%s'",
+                    char status_code[4];
+                    snprintf(status_code, 4, "%ld", response->status_code);
+                    mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to get relationship '%s' logs: Status code was '%s' & response was '%s'",
                     ms_graph->resources[resource_num].relationships[relationship_num],
                     status_code,
                     response->body);
@@ -188,21 +189,46 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                     ms_graph->resources[resource_num].relationships[relationship_num]);
                 }
                 else{
-                    cJSON* response_body = NULL;
-                    if(response_body = cJSON_Parse(response->body), !response_body){
-                        mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse relationship '%s' JSON body.", ms_graph->resources[resource_num].relationships[relationship_num]);
+                    cJSON* logs = NULL;
+                    if(logs = cJSON_Parse(response->body), logs){
+                        logs = cJSON_GetObjectItem(logs, "value");
+                        int num_logs = cJSON_GetArraySize(logs);
+                        if(num_logs > 0){
+                            for(int log_index = 0; log_index < num_logs; log_index++){
+                                cJSON* log = NULL;
+                                if(log = cJSON_GetArrayItem(logs, log_index), log){
+                                    cJSON* full_log = cJSON_CreateObject();
+
+                                    cJSON_AddStringToObject(full_log, "integration", WM_MS_GRAPH_CONTEXT.name);
+                                    cJSON_AddStringToObject(full_log, "resource", ms_graph->resources[resource_num].name);
+                                    cJSON_AddStringToObject(full_log, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
+                                    cJSON_AddItemToObject(full_log, "ms_graph", cJSON_Duplicate(log, true));
+
+                                    os_strdup(cJSON_PrintUnformatted(full_log), payload);
+                                    mtdebug2(WM_MS_GRAPH_LOGTAG, "Sending log: '%s'", payload);
+                                    if (wm_sendmsg(1000000 / wm_max_eps, queue_fd, payload, WM_MS_GRAPH_CONTEXT.name, LOCALFILE_MQ) < 0) {
+                                        mterror(WM_MS_GRAPH_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                                    }
+
+                                    os_free(payload);
+                                    cJSON_Delete(full_log);
+                                }
+                                else{
+                                mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse log array into singular log.");
+                                }
+                            }
+                        }
+                        else{
+                            mtdebug2(WM_MS_GRAPH_LOGTAG, "No new logs recieved.");
+                        }
+        
+                        cJSON_Delete(logs);
                     }
                     else{
-                        cJSON *logs = NULL;
-                        logs = cJSON_Duplicate(response_body, true);
-                        logs = cJSON_CreateArray();
-                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test: '%s'", response_body->valuestring);
-                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test 2: '%s'", logs->valuestring);
-                        mtinfo(WM_MS_GRAPH_LOGTAG, "Test 3: '%s'", logs[1].valuestring);
-                        cJSON_Delete(response_body);
-                        wurl_free_response(response);
+                        mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse relationship '%s' JSON body.", ms_graph->resources[resource_num].relationships[relationship_num]);
                     }
                 }
+                wurl_free_response(response);
             }
             else{
                 mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to get relationship '%s' from resource '%s' on API version '%s'.",
@@ -212,7 +238,6 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
             }
         }
     }
-
     if(headers){
         os_free(headers);
     }
