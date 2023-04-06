@@ -129,6 +129,14 @@ int Read_Github(const OS_XML *xml, xml_node *node, void *d1);
  * @param d1 office365 configuration structure
  */
 int Read_Office365(const OS_XML *xml, xml_node *node, void *d1);
+
+/**
+ * @brief Read the configuration for MS Graph module
+ * @param xml XML object
+ * @param node XML node to analyze
+ * @param d1 ms_graph configuration structure
+ */
+int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1);
 #endif
 
 /**
