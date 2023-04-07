@@ -141,12 +141,11 @@ then
 
     # Clear the alert file
     echo -n > $BT_OUTPUT
-    ./main start --event_endpoint /var/ossec/queue/sockets/queue      \
-                --api_endpoint /var/ossec/queue/sockets/engine-api    \
-                --threads ${ENGINE_N_THREADS}                         \
-                --file_storage ../ruleset/store                       \
-                --kvdb_path /var/ossec/etc/kvdb/                      \
-                --environment environment/wazuh/0 &
+    ./main start --event_socket /var/ossec/queue/sockets/queue      \
+                --api_socket /var/ossec/queue/sockets/engine-api    \
+                --router_threads ${ENGINE_N_THREADS}                \
+                --file_storage ../ruleset/store                     \
+                --kvdb_path /var/ossec/etc/kvdb/ &
 
     ENGINE_PID=$!
 
