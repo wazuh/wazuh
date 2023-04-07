@@ -11,7 +11,7 @@ namespace
 struct Options
 {
     std::string name;
-    std::string apiEndpoint;
+    std::string serverApiSock;
     std::string value;
     std::string path;
 };
@@ -88,10 +88,10 @@ void configure(CLI::App_p app)
 
     // Shared options
     // Endpoint
-    configApp->add_option("-a, --api_socket", options->apiEndpoint, "Sets the API server socket address.")
-        ->default_val(ENGINE_API_SOCK)
+    configApp->add_option("-a, --api_socket", options->serverApiSock, "Sets the API server socket address.")
+        ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
-    const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
+    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
 
     auto get_subcommand =
         configApp->add_subcommand("get",
