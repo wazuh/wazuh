@@ -10,7 +10,7 @@ namespace
 {
 struct Options
 {
-    std::string apiEndpoint;
+    std::string serverApiSock;
     std::string name;
     std::string filterName;
     int priority {};
@@ -152,10 +152,10 @@ void configure(CLI::App_p app)
     auto options = std::make_shared<Options>();
 
     // Endpoint
-    routerApp->add_option("-a, --api_socket", options->apiEndpoint, "Sets the API server socket address.")
-        ->default_val(ENGINE_API_SOCK)
+    routerApp->add_option("-a, --api_socket", options->serverApiSock, "Sets the API server socket address.")
+        ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
-    const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
+    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
 
     // Get
     auto getSubcommand = routerApp->add_subcommand(

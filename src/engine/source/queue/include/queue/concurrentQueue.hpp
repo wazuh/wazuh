@@ -101,6 +101,8 @@ class ConcurrentQueue
 private:
     moodycamel::BlockingConcurrentQueue<T> m_queue {}; ///< The queue itself.
     std::shared_ptr<FloodingFile> m_floodingFile;      ///< The flooding file.
+    std::size_t m_maxAttempts;            ///< The maximum number of attempts to push an element to the queue.
+    std::chrono::microseconds m_waitTime; ///< The time to wait for the queue to be not full.
 
 public:
     /**
@@ -108,21 +110,47 @@ public:
      *
      * @param capacity The capacity of the queue. (Approximate)
      * @param pathFloodedFile The path to the file where the queue will be flooded.
+     * @param maxAttempts The maximum number of attempts to push an element to the queue. (ignored if pathFloodedFile is
+     * not provided)
+     * @param waitTime The time to wait for the queue to be not full. (ignored if pathFloodedFile is not provided)
      *
+     * @throw std::runtime_error if the capacity is less than or equal to 0
+     * @throw std::runtime_error if the pathFloodedFile is provided and the maxAttempts is less than or equal to 0
+     * @throw std::runtime_error if the pathFloodedFile is provided and the waitTime is less than or equal to 0
      * @note If the pathFloodedFile is not provided, the queue will not be flooded,and the
      * push method will block until there is space in the queue.
      */
-    explicit ConcurrentQueue(const std::size_t capacity, const std::string& pathFloodedFile = {})
-        : m_queue {moodycamel::BlockingConcurrentQueue<T>(capacity)}
-        , m_floodingFile {nullptr}
+    explicit ConcurrentQueue(const int capacity,
+                             const std::string& pathFloodedFile = {},
+                             const int maxAttempts = -1,
+                             const int waitTime = -1)
+        : m_floodingFile {nullptr}
     {
         // Verify if T has a toString method (for flooding the queue)
         static_assert(std::is_same<decltype(std::declval<T>()->str()), std::string>::value,
-                      "T must have a toString method");
+                      "T must have a ->str() method");
+
+        if (capacity <= 0)
+        {
+            throw std::runtime_error("The capacity of the queue must be greater than 0");
+        }
+        m_queue = moodycamel::BlockingConcurrentQueue<T>(capacity);
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
         {
+            if (maxAttempts <= 0)
+            {
+                throw std::runtime_error("The maximum number of attempts must be greater than 0");
+            }
+            m_waitTime = std::chrono::microseconds(waitTime);
+
+            if (waitTime <= 0)
+            {
+                throw std::runtime_error("The wait time must be greater than 0");
+            }
+            m_maxAttempts = maxAttempts;
+
             m_floodingFile = std::make_shared<FloodingFile>(pathFloodedFile);
             if (m_floodingFile->getError())
             {
@@ -161,16 +189,13 @@ public:
         }
         else
         {
-            const std::size_t maxAttempts {3}; // TODO Shoul be a macro with the time in ms?
-            for (std::size_t attempts {0}; attempts < maxAttempts; ++attempts)
+            for (std::size_t attempts {0}; attempts < m_maxAttempts; ++attempts)
             {
                 if (m_queue.try_enqueue(std::move(element)))
                 {
                     return;
                 }
-                // TODO: Benchmarks to find the best value.... (0.1ms)
-                // 3.3K events per second (In the worst case)
-                std::this_thread::sleep_for(std::chrono::microseconds(100));
+                std::this_thread::sleep_for(m_waitTime);
             }
             m_floodingFile->write(element->str());
         }

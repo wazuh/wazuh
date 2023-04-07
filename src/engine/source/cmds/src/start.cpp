@@ -50,17 +50,29 @@ void sigint_handler(const int signum)
 
 struct Options
 {
-    std::string kvdbPath;
-    std::string eventEndpoint;
-    std::string apiEndpoint;
-    int queueSize;
-    int threads;
+    // Server
+    int serverThreads;
+    std::string serverEventSock;
+    int serverEventQueueSize;
+    std::string serverApiSock;
+    int serverApiQueueSize;
+    int serverApiTimeout;
+    // Store
     std::string fileStorage;
+    // KVDB
+    std::string kvdbPath;
+    // Router
+    std::vector<std::string> policy;
+    int routerThreads;
+    bool forceRouterArg;
+    // Queue
+    int queueSize;
+    std::string queueFloodFile;
+    int queueFloodAttempts;
+    int queueFloodSleep;
+    // Loggin
     int logLevel;
     std::string logOutput;
-    std::vector<std::string> policy;
-    bool forceRouterArg;
-    std::string floodFilePath;
 };
 
 } // namespace
@@ -70,23 +82,34 @@ namespace cmd::server
 void runStart(ConfHandler confManager)
 {
     // Get needed configuration on main function
-    const auto logLevel = confManager->get<int>("server.log_level");
-    const auto logOutput = confManager->get<std::string>("server.log_output");
     const auto confPath = confManager->get<std::string>("config");
 
-    // TODO: Use this value to configure the thread pool and add the router threads
-    const auto threads = confManager->get<int>("server.threads");
+    // Log config
+    const auto logLevel = confManager->get<int>("server.log_level");
+    const auto logOutput = confManager->get<std::string>("server.log_output");
+
     // Server config
-    const auto queueSize = confManager->get<int>("server.queue_size");
-    const auto eventEndpoint = confManager->get<std::string>("server.event_socket");
-    const auto apiEndpoint = confManager->get<std::string>("server.api_socket");
-    const auto floodFilePath = confManager->get<std::string>("server.flood_file");
+    const auto serverThreads = confManager->get<int>("server.server_threads");
+    const auto serverEventSock = confManager->get<std::string>("server.event_socket");
+    const auto serverEventQueueSize = confManager->get<int>("server.event_queue_tasks");
+    const auto serverApiSock = confManager->get<std::string>("server.api_socket");
+    const auto serverApiQueueSize = confManager->get<int>("server.api_queue_tasks");
+    const auto serverApiTimeout = confManager->get<int>("server.api_timeout");
+
+    // Store config
+    const auto fileStorage = confManager->get<std::string>("server.store_path");
 
     // KVDB config
     const auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
 
-    // Store config
-    const auto fileStorage = confManager->get<std::string>("server.store_path");
+    // Router Config
+    const auto routerThreads = confManager->get<int>("server.router_threads");
+
+    // Queue config
+    const auto queueSize = confManager->get<int>("server.queue_size");
+    const auto queueFloodFile = confManager->get<std::string>("server.queue_flood_file");
+    const auto queueFloodAttempts = confManager->get<int>("server.queue_flood_attempts");
+    const auto queueFloodSleep = confManager->get<int>("server.queue_flood_sleep");
 
     // Start policy
     const auto policy = confManager->get<std::vector<std::string>>("server.start.policy");
@@ -171,8 +194,8 @@ void runStart(ConfHandler confManager)
 
         // Queue
         {
-            const auto bufferSize {static_cast<size_t>(queueSize)};
-            eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(queueSize, floodFilePath);
+            eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(
+                queueSize, queueFloodFile, queueFloodAttempts, queueFloodSleep);
             WAZUH_LOG_DEBUG("Event queue created.");
         }
 
@@ -243,7 +266,7 @@ void runStart(ConfHandler confManager)
 
         // Router
         {
-            router = std::make_shared<router::Router>(builder, store, metrics, threads);
+            router = std::make_shared<router::Router>(builder, store, metrics, routerThreads);
 
             router->run(eventQueue);
             g_exitHanlder.add([router]() { router->stop(); });
@@ -289,14 +312,14 @@ void runStart(ConfHandler confManager)
             apiClientFactory->setErrorResponse(base::utils::wazuhProtocol::WazuhResponse::unknownError().toString());
             apiClientFactory->setBusyResponse(base::utils::wazuhProtocol::WazuhResponse::busyServer().toString());
 
-            // TODO: Config-> 10 max tasks, 1000 ms timeout (config file)
-            auto apiEndpointCfg = std::make_shared<endpoint::UnixStream>(apiEndpoint, apiClientFactory, 10);
+            auto apiEndpointCfg = std::make_shared<endpoint::UnixStream>(
+                serverApiSock, apiClientFactory, serverApiQueueSize, serverApiTimeout);
             server->addEndpoint("API", apiEndpointCfg);
 
             // Event Endpoint
-            const auto bufferSize {static_cast<size_t>(queueSize)}; // TODO By params
             auto eventHandler = std::bind(&router::Router::fastEnqueueEvent, router, std::placeholders::_1);
-            auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(eventEndpoint, eventHandler, bufferSize);
+            auto eventEndpointCfg =
+                std::make_shared<endpoint::UnixDatagram>(serverEventSock, eventHandler, serverEventQueueSize);
             server->addEndpoint("EVENT", eventEndpointCfg);
             WAZUH_LOG_DEBUG("Server configured.");
         }
@@ -329,47 +352,51 @@ void configure(CLI::App_p app)
     serverApp->require_subcommand(1);
     auto options = std::make_shared<Options>();
 
-    // Log level
+    // Loggin module
     serverApp
         ->add_option(
             "--log_level", options->logLevel, "Sets the logging level: 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
         ->default_val(ENGINE_LOG_LEVEL)
         ->check(CLI::Range(0, 3))
         ->envname(ENGINE_LOG_LEVEL_ENV);
-    // Log output
+
     serverApp->add_option("--log_output", options->logOutput, "Sets the logging output")
         ->default_val(ENGINE_LOG_OUTPUT)
         ->envname(ENGINE_LOG_OUTPUT_ENV);
 
-    // Server
-    // Endpoints
-    serverApp->add_option("--event_socket", options->eventEndpoint, "Sets the events server socket address.")
-        ->default_val(ENGINE_EVENT_SOCK)
-        ->envname(ENGINE_EVENT_SOCK_ENV);
-    serverApp->add_option("--api_socket", options->apiEndpoint, "Sets the API server socket address.")
-        ->default_val(ENGINE_API_SOCK)
-        ->envname(ENGINE_API_SOCK_ENV);
-    // Threads
-    serverApp->add_option("--threads", options->threads, "Sets the number of threads to be used by the engine policy.")
-        ->default_val(ENGINE_THREADS)
-        ->check(CLI::PositiveNumber)
-        ->envname(ENGINE_THREADS_ENV);
-    // Queue size
+    // Server module
     serverApp
-        ->add_option(
-            "--queue_size", options->queueSize, "Sets the number of events that can be queued to be processed.")
-        ->default_val(ENGINE_QUEUE_SIZE)
-        ->check(CLI::PositiveNumber)
-        ->envname(ENGINE_QUEUE_SIZE_ENV);
-    // Flood file
+        ->add_option("--server_threads", options->serverThreads, "Sets the number of threads for server worker pool.")
+        ->default_val(ENGINE_SRV_PULL_THREADS)
+        ->check(CLI::Range(1, 128))
+        ->envname(ENGINE_SRV_PULL_THREADS_ENV);
+    serverApp->add_option("--event_socket", options->serverEventSock, "Sets the events server socket address.")
+        ->default_val(ENGINE_SRV_EVENT_SOCK)
+        ->envname(ENGINE_SRV_EVENT_SOCK_ENV);
     serverApp
-        ->add_option(
-            "--flood_file", options->floodFilePath, "Sets the path to the file where the flood events will be stored.")
-        ->default_val(ENGINE_FLOOD_FILE)
-        ->envname(ENGINE_FLOOD_FILE_ENV);
+        ->add_option("--event_queue_tasks",
+                     options->serverEventQueueSize,
+                     "Sets the size of the event task queue of the server (0 = disable, process asynchonously).")
+        ->default_val(ENGINE_SRV_EVENT_QUEUE_TASK)
+        ->check(CLI::NonNegativeNumber)
+        ->envname(ENGINE_SRV_EVENT_QUEUE_TASK_ENV);
+    serverApp->add_option("--api_socket", options->serverApiSock, "Sets the API server socket address.")
+        ->default_val(ENGINE_SRV_API_SOCK)
+        ->envname(ENGINE_SRV_API_SOCK_ENV);
+    serverApp
+        ->add_option("--api_queue_tasks",
+                     options->serverApiQueueSize,
+                     "Sets the size of the API task queue of the server. (0 = disable, process asynchonously).")
+        ->default_val(ENGINE_SRV_API_QUEUE_TASK)
+        ->check(CLI::NonNegativeNumber)
+        ->envname(ENGINE_SRV_API_QUEUE_TASK_ENV);
+    serverApp
+        ->add_option("--api_timeout", options->serverApiTimeout, "Sets the timeout for the API socket in miliseconds.")
+        ->default_val(ENGINE_SRV_API_TIMEOUT)
+        ->check(CLI::NonNegativeNumber)
+        ->envname(ENGINE_SRV_API_TIMEOUT_ENV);
 
-    // Store
-    // Path
+    // Store Module
     serverApp
         ->add_option(
             "--store_path", options->fileStorage, "Sets the path to the folder where the assets are located (store).")
@@ -377,14 +404,52 @@ void configure(CLI::App_p app)
         ->check(CLI::ExistingDirectory)
         ->envname(ENGINE_STORE_PATH_ENV);
 
-    // KVDB
-    // Path
+    // KVDB Module
     serverApp->add_option("--kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
         ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory)
         ->envname(ENGINE_KVDB_PATH_ENV);
 
+    // Router module
+    serverApp
+        ->add_option("--router_threads", options->routerThreads, "Sets the number of threads to be used by the router.")
+        ->default_val(ENGINE_ROUTER_THREADS)
+        ->check(CLI::PositiveNumber)
+        ->envname(ENGINE_ROUTER_THREADS_ENV);
+
+    // Queue module
+    serverApp
+        ->add_option(
+            "--queue_size", options->queueSize, "Sets the number of events that can be queued to be processed.")
+        ->default_val(ENGINE_QUEUE_SIZE)
+        ->check(CLI::PositiveNumber)
+        ->envname(ENGINE_QUEUE_SIZE_ENV);
+
+    serverApp
+        ->add_option("--queue_flood_file",
+                     options->queueFloodFile,
+                     "Sets the path to the file where the flood events will be stored.")
+        ->default_val(ENGINE_QUEUE_FLOOD_FILE)
+        ->envname(ENGINE_QUEUE_FLOOD_FILE_ENV);
+
+    serverApp
+        ->add_option("--queue_flood_attempts",
+                     options->queueFloodAttempts,
+                     "Sets the number of attempts to try to push an event to the queue.")
+        ->default_val(ENGINE_QUEUE_FLOOD_ATTEMPTS)
+        ->check(CLI::PositiveNumber)
+        ->envname(ENGINE_QUEUE_FLOOD_ATTEMPTS_ENV);
+
+    serverApp
+        ->add_option("--queue_flood_sleep",
+                     options->queueFloodSleep,
+                     "Sets the number of microseconds to sleep between attempts to push an event to the queue.")
+        ->default_val(ENGINE_QUEUE_FLOOD_SLEEP)
+        ->check(CLI::PositiveNumber)
+        ->envname(ENGINE_QUEUE_FLOOD_SLEEP_ENV);
+
     // Start subcommand
+    // Router module
     auto startApp = serverApp->add_subcommand("start", "Start a Wazuh engine instance");
     startApp
         ->add_option(

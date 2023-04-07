@@ -29,7 +29,7 @@ namespace
 
 struct Options
 {
-    std::string apiEndpoint;
+    std::string serverApiSock;
     std::string format;
     int logLevel {};
     std::string name;
@@ -372,10 +372,10 @@ void configure(CLI::App_p app)
 
     // Shared options
     // Endpoint
-    catalogApp->add_option("-a, --api_socket", options->apiEndpoint, "Sets the API server socket address.")
-        ->default_val(ENGINE_API_SOCK)
+    catalogApp->add_option("-a, --api_socket", options->serverApiSock, "Sets the API server socket address.")
+        ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
-    const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
+    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
 
     // format
     catalogApp->add_option("-f, --format", options->format, "Sets the format of the input/output.")
