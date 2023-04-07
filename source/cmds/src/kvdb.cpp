@@ -10,7 +10,7 @@ namespace
 {
 struct Options
 {
-    std::string apiEndpoint;
+    std::string serverApiSock;
     bool loaded {false};
     std::string kvdbName;
     std::string kvdbInputFilePath;
@@ -203,8 +203,8 @@ void configure(CLI::App_p app)
     auto options = std::make_shared<Options>();
 
     // Endpoint
-    kvdbApp->add_option("-a, --api_socket", options->apiEndpoint, "engine api address")->default_val(ENGINE_API_SOCK);
-    const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
+    kvdbApp->add_option("-a, --api_socket", options->serverApiSock, "engine api address")->default_val(ENGINE_SRV_API_SOCK);
+    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
 
     // KVDB list subcommand
     auto list_subcommand = kvdbApp->add_subcommand(details::API_KVDB_LIST_SUBCOMMAND, "List all KVDB availables.");

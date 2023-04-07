@@ -77,7 +77,7 @@ TEST(ConcurrentQueueTest, FloodsWhenFull)
     std::string flood_file = "floodfile.txt";
     // 32 is the size of one block in the queue, for 1 producer and 1 consumer thread
     // the queue has 1 block, so it will flood after 32 pushes
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(32, flood_file);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(32, flood_file, 3, 500);
 
     for (int i = 0; i < 35; i++)
     {
