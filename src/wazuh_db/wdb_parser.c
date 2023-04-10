@@ -2142,12 +2142,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             return OS_INVALID;
         }
 
-        if (!scan_id->valueint) {
-            mdebug1("Malformed JSON: field 'id' must be a number");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            return OS_INVALID;
-        }
-
         if (policy_id = cJSON_GetObjectItem(event, "policy_id"), !policy_id) {
             mdebug1("Malformed JSON: field 'policy_id' not found");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
