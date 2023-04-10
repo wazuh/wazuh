@@ -6,7 +6,7 @@ $Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion
 $Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
 
 # Select powershell
-if ((Get-WmiObject Win32_OperatingSystem).OSArchitecture -eq "64-bit" -And [System.IntPtr]::Size -eq 4) {
+if (Test-Path "$env:windir\sysnative") {
     write-output "$(Get-Date -format u) Sysnative Powershell will be used to access the registry." >> .\upgrade\upgrade.log
     Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 } else {
