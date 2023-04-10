@@ -261,11 +261,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.process_sync_error_from_worker(data)
         elif command == b'syn_w_g_e':
             logger = self.task_loggers['Agent-groups send']
-            start_time = datetime.strptime(self.send_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT).timestamp()
+            start_time = self.send_agent_groups_status['date_start'].timestamp()
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_wgc_e':
             logger = self.task_loggers['Agent-groups send full']
-            start_time = datetime.strptime(self.send_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT).timestamp()
+            start_time = self.send_agent_groups_status['date_start'].timestamp()
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_w_g_err':
             logger = self.task_loggers['Agent-groups send']
