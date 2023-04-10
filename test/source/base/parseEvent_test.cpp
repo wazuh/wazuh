@@ -10,7 +10,7 @@ constexpr char TEST_AGENT_NAME[] {"testAgentName"};
 constexpr char TEST_AGENT_REGISTEREDIP_TXT[] {"testTxtIP"};
 constexpr char TEST_ORIGINAL_ROUTE[] {"/test/Route"};
 constexpr char TEST_IPV4[] {"1.205.0.44"};
-constexpr char TEST_EXTENDED_IPV6[] {"ABCD:EFG0:1234:5678:0009:00AB:00C6:0D7B"};
+constexpr char TEST_EXTENDED_IPV6[] {R"(ABCD|:EFG0|:1234|:5678|:0009|:00AB|:00C6|:0D7B)"};
 constexpr char TEST_ORIGINAL_LOG[] {"Testing -> log : containing ([)] symbols."};
 
 #define GTEST_CASE "[ USE CASE ] "
