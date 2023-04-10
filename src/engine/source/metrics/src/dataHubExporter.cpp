@@ -120,7 +120,6 @@ void DataHubExporter::printInstrumentationInfoMetricData(
 
   json::Json jMetricData;
 
-  jMetricData.setString(scopeName, "/scope");
   jMetricData.setString(schemaUrl, "/schema");
   jMetricData.setString(version, "/version");
 
