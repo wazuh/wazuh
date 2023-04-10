@@ -71,12 +71,10 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeOneCounter)
     auto counter0 = scope0->getCounterDouble("counter_0");
     counter0->addValue(5);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    auto contents = m_manager->getAllMetrics();
 
-    auto json_scope = contents.getObject("/scope_0");
-    ASSERT_TRUE(json_scope);
-    auto scope_0=json_scope.value()[0];
-    auto name=std::get<1>(scope_0).getString("/scope");
+    auto record = m_manager->getAllMetrics().getArray("/scope_0/counter_0/records");
+    auto name = record.value()[0].getString("/instrument_name");
+
     ASSERT_TRUE(name);
     ASSERT_EQ(name, "counter_0");
 }
@@ -89,19 +87,18 @@ TEST_F(MetricsInterfaceTest, getAllMetricsOneScopeTwoCounters)
     counter0->addValue(5.0);
     counter1->addValue(2);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    auto contents = m_manager->getAllMetrics();
 
-    auto json_scope = contents.getObject("/scope_0");
-    ASSERT_TRUE(json_scope);
-    auto scope_0=json_scope.value()[0];
-    auto name=std::get<1>(scope_0).getString("/scope");
+    auto record = m_manager->getAllMetrics().getArray("/scope_0/counter_0/records");
+    auto name = record.value()[0].getString("/instrument_name");
+
     ASSERT_TRUE(name);
     ASSERT_EQ(name, "counter_0");
 
-    auto scope_1=json_scope.value()[1];
-    auto name2=std::get<1>(scope_1).getString("/scope");
-    ASSERT_TRUE(name2);
-    ASSERT_EQ(name2, "counter_1");
+    record = m_manager->getAllMetrics().getArray("/scope_0/counter_1/records");
+    name = record.value()[0].getString("/instrument_name");
+
+    ASSERT_TRUE(name);
+    ASSERT_EQ(name, "counter_1");
 }
 
 TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
