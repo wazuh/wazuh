@@ -439,6 +439,14 @@ endif
 endif
 endif
 
+ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread-1.dll))
+	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
+else
+ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
+	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
+endif
+endif
+
 endif #winagent
 
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
@@ -787,7 +795,7 @@ ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
-winagent: external ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
+winagent: external win32/libwinpthread-1.dll ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
@@ -817,6 +825,8 @@ win32/sysinfo: $(WAZUHEXT_LIB)
 win32/syscollector: win32/shared_modules win32/sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 
+win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
+	cp $< $@
 
 ####################
 #### External ######
@@ -2624,7 +2634,6 @@ clean-windows:
 	rm -f libwazuh.a
 	rm -f libwazuhshared.*
 	rm -f libwazuhext.*
-
 	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
@@ -2644,6 +2653,7 @@ clean-windows:
 	rm -f win32/icon.o win32/resource.o
 	rm -f ${WINDOWS_BINS}
 	rm -f win32/wazuh-agent-*.exe
+	rm -f win32/libwinpthread-1.dll
 	rm -f win32/*.o
 	rm -f win32/VERSION
 	rm -f win32/REVISION

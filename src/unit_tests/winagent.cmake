@@ -26,6 +26,12 @@ if(NOT SYSINFO)
   message(FATAL_ERROR "libsysinfo not found in ${SRC_FOLDER}/data_provider/build/bin Aborting...")
 endif()
 
+# Win32 pthread library
+find_library(PTHREAD NAMES libwinpthread-1.dll HINTS "${SRC_FOLDER}/win32")
+if(NOT PTHREAD)
+  message(FATAL_ERROR "libwinpthread-1.dll not found in ${SRC_FOLDER}/win32 Aborting...")
+endif()
+
 # Static cmocka
 find_library(STATIC_CMOCKA NAMES libcmocka.a libcmocka-static.a HINTS "/usr/i686-w64-mingw32/sys-root/mingw/lib/" "/usr/i686-w64-mingw32/lib/")
 if(NOT STATIC_CMOCKA)
@@ -72,12 +78,12 @@ set_target_properties(
   LINKER_LANGUAGE C
 )
 
-target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT}  ${SYSINFO} ${STATIC_CMOCKA} SYSCHECK_O wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 wintrust)
+target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${SYSINFO} ${STATIC_CMOCKA} SYSCHECK_O wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 wintrust)
 
 # Set tests dependencies
 # Use --start-group and --end-group to handle circular dependencies
-set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
-set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -Wl,-Bdynamic ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
+set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} ${SYSINFO} DEPENDENCIES_O -Wl,--end-group ${PTHREAD} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(client-agent)
 add_subdirectory(wazuh_modules)
