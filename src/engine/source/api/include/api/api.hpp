@@ -44,12 +44,6 @@ public:
      *
      * Process a request as a string and return the response as a string, this
      * method is thread-safe and verify the request before calling the handler.
-     * #TODO: add the correct description to the errors
-     * #TODO: Test
-     * Errors:
-     * - If the request is invalid, the response will be an error message.
-     * - If the handler throws an exception, the response will be an error message.
-     * - If the handler is not registered, the response will be an error message.
      * @param message Request message
      * @return std::string Response message
      */
