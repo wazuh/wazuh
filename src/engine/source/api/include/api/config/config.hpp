@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <optional>
+#include <exception>
 
 #include <conf/iconf.hpp>
 #include <json/json.hpp>
@@ -135,11 +136,16 @@ api::Handler runtimeSave(ConfHandler<ConfDriver> confHandler)
 }
 
 template<typename ConfDriver>
-bool registerHandlers(std::shared_ptr<api::Api> api, ConfHandler<ConfDriver> confHandler)
+void registerHandlers(std::shared_ptr<api::Api> api, ConfHandler<ConfDriver> confHandler)
 {
-    return api->registerHandler("config.runtime/get", runtimeGet(confHandler))
+    bool ok = api->registerHandler("config.runtime/get", runtimeGet(confHandler))
            && api->registerHandler("config.runtime/put", runtimePut(confHandler))
            && api->registerHandler("config.runtime/save", runtimeSave(confHandler));
+
+    if (!ok)
+    {
+        throw std::runtime_error("Failed to register config handlers");
+    }
 }
 } // namespace api::config::handlers
 
