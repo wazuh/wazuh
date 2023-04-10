@@ -1,6 +1,7 @@
 add_executable(api_test
     registry_test.cpp
     adapter_test.cpp
+    api_test.cpp
 )
 
 target_link_libraries(api_test gtest_main base api)
