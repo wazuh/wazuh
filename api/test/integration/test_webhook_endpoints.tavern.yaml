@@ -1,0 +1,133 @@
+---
+test_name: Valid RBAC permission
+
+stages:
+
+  - name: POST /events with valid RBAC
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/events"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2}
+        ]
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+---
+test_name: Invalid RBAC permission
+
+stages:
+
+  - name: POST /events with invalid RBAC
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/events"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2}
+        ]
+    response:
+      status_code: 403
+      json:
+        error: 4000
+
+---
+test_name: Send bulk with one event
+
+stages:
+
+  - name: POST /events with one event
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/events"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        events: [
+          {"foo": 1},
+        ]
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+---
+test_name: Send bulk with multiple events
+
+stages:
+
+  - name: POST /events with multiple events
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/events"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2},
+          {"gaz": 3},
+        ]
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+
+---
+test_name: Invalid request
+
+stages:
+
+  - name: POST /events with invalid body
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/events"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        [
+          {"foo": 1},
+          {"bar": 2}
+        ]
+    response:
+      status_code: 400
+      json:
+        error: 0
+
+
+---
+test_name: Send bulk greater than max size allowed
+
+stages:
+
+  - name: POST /events with invalid size
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/events"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2}
+        ]
+    response:
+      status_code: 400
+      json:
+        error: 0
