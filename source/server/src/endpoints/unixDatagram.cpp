@@ -17,7 +17,7 @@ constexpr unsigned int MAX_MSG_SIZE {65536 + 512}; ///< Maximum message size (TO
 namespace engineserver::endpoint
 {
 UnixDatagram::UnixDatagram(const std::string& address,
-                           const std::function<void(std::string&&)>& callback,
+                           const std::function<void(const std::string&)>& callback,
                            const std::size_t taskQueueSize)
     : Endpoint(address, taskQueueSize)
     , m_callback(callback)
@@ -80,7 +80,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             {
                 try
                 {
-                    m_callback(std::move(data));
+                    m_callback(data);
                 }
                 catch (const std::exception& e)
                 {
@@ -99,14 +99,13 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             }
 
             // Create a job to the worker thread
-            // TODO: Check if this is the best way to pass the data to the worker thread
             std::shared_ptr<std::string> dataPtr {std::make_shared<std::string>(std::move(data))};
             auto workerJob = m_loop->resource<uvw::WorkReq>(
                 [this, dataPtr]()
                 {
                     try
                     {
-                        m_callback(std::move(*dataPtr));
+                        m_callback(*dataPtr);
                     }
                     catch (const std::exception& e)
                     {
