@@ -1556,7 +1556,7 @@ static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *
     if(scan_id) {
         char value[OS_SIZE_128];
 
-        if(scan_id->valueint < 0){
+        if(scan_id->valueint >= 0){
             sprintf(value, "%d", scan_id->valueint);
         } else if (scan_id->valuedouble) {
              sprintf(value, "%lf", scan_id->valuedouble);
@@ -1690,7 +1690,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
     if(scan_id) {
         char value[OS_SIZE_128];
 
-        if(scan_id->valueint < 0){
+        if(scan_id->valueint >= 0){
             sprintf(value, "%d", scan_id->valueint);
         } else if (scan_id->valuedouble) {
             sprintf(value, "%lf", scan_id->valuedouble);
