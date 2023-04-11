@@ -72,6 +72,7 @@ typedef struct _modules_t {
     uint64_t gcp;
     uint64_t github;
     uint64_t office365;
+    uint64_t ms_graph;
     uint64_t oscap;
     uint64_t osquery;
     uint64_t rootcheck;
@@ -231,6 +232,11 @@ void w_inc_modules_github_decoded_events(const char *agent_id);
 void w_inc_modules_office365_decoded_events(const char *agent_id);
 
 /**
+ * @brief Increment modules ms-graph decoded events counter
+ */
+void w_inc_modules_ms_graph_decoded_events(const char *agent_id);
+
+/**
  * @brief Increment modules oscap decoded events counter
  */
 void w_inc_modules_oscap_decoded_events(const char *agent_id);
@@ -369,6 +375,11 @@ void w_inc_modules_github_dropped_events();
  * @brief Increment modules office365 dropped events counter
  */
 void w_inc_modules_office365_dropped_events();
+
+/**
+ * @brief Increment modules ms-graph dropped events counter
+ */
+void w_inc_modules_ms_graph_dropped_events();
 
 /**
  * @brief Increment modules oscap dropped events counter
