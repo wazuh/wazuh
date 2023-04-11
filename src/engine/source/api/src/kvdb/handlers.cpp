@@ -293,14 +293,14 @@ void registerHandlers(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager, st
 {
 
     //        Manager (Works on the KVDB manager, create/delete/list/dump KVDBs)
-    bool ok = api->registerHandler("kvdb.manager/post", managerPost(kvdbManager))
-              && api->registerHandler("kvdb.manager/delete", managerDelete(kvdbManager))
-              && api->registerHandler("kvdb.manager/get", managerGet(kvdbManager))
-              && api->registerHandler("kvdb.manager/dump", managerDump(kvdbManager)) &&
-              // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
-              api->registerHandler("kvdb.db/put", dbPut(kvdbManager))
-              && api->registerHandler("kvdb.db/delete", dbDelete(kvdbManager))
-              && api->registerHandler("kvdb.db/get", dbGet(kvdbManager));
+    const bool ok = api->registerHandler("kvdb.manager/post", managerPost(kvdbManager))
+                    && api->registerHandler("kvdb.manager/delete", managerDelete(kvdbManager))
+                    && api->registerHandler("kvdb.manager/get", managerGet(kvdbManager))
+                    && api->registerHandler("kvdb.manager/dump", managerDump(kvdbManager)) &&
+                    // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
+                    api->registerHandler("kvdb.db/put", dbPut(kvdbManager))
+                    && api->registerHandler("kvdb.db/delete", dbDelete(kvdbManager))
+                    && api->registerHandler("kvdb.db/get", dbGet(kvdbManager));
 
     if (!ok)
     {
