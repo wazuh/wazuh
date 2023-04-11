@@ -1243,7 +1243,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '008'
+        agents_list: '005'
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
@@ -1251,7 +1251,7 @@ stages:
       json:
         data:
           affected_items:
-            - agent: '008'
+            - agent: '005'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
