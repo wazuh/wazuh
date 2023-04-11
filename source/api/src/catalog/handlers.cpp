@@ -300,11 +300,11 @@ api::Handler resourceValidate(std::shared_ptr<Catalog> catalog)
 
 void registerHandlers(std::shared_ptr<Catalog> catalog, std::shared_ptr<api::Api> api)
 {
-    bool ok = api->registerHandler("catalog.resource/post", resourcePost(catalog))
-              && api->registerHandler("catalog.resource/get", resourceGet(catalog))
-              && api->registerHandler("catalog.resource/put", resourcePut(catalog))
-              && api->registerHandler("catalog.resource/delete", resourceDelete(catalog))
-              && api->registerHandler("catalog.resource/validate", resourceValidate(catalog));
+    const bool ok = api->registerHandler("catalog.resource/post", resourcePost(catalog))
+                    && api->registerHandler("catalog.resource/get", resourceGet(catalog))
+                    && api->registerHandler("catalog.resource/put", resourcePut(catalog))
+                    && api->registerHandler("catalog.resource/delete", resourceDelete(catalog))
+                    && api->registerHandler("catalog.resource/validate", resourceValidate(catalog));
 
     if (!ok)
     {

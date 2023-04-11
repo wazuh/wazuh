@@ -16,7 +16,7 @@ UnixStream::UnixStream(const std::string& address,
     , m_timeout(timeout)
     , m_factory(std::move(factory))
 {
-    if (m_timeout == 0)
+    if (0 == m_timeout)
     {
         throw std::runtime_error("Timeout must be greater than 0");
     }
