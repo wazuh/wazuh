@@ -81,6 +81,9 @@ ssize_t __wrap_recv(__attribute__((unused))int __fd, __attribute__((unused))void
         char text[BUFFERSIZE];
         strcpy(text, "err --------");
         void *buffertext = &text;
+        // Set the payload buffer size to simulate the cluster message format
+        size_t payload_size = 9;
+        *(uint32_t *)(__buf+4) = wnet_order_big(payload_size);
         memcpy((char*)__buf+8, (char*)buffertext, 12);
     }
 
