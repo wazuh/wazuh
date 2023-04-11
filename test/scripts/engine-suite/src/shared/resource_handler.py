@@ -131,7 +131,7 @@ class ResourceHandler:
         resp_message = data[4:resp_size+4].decode('UTF-8')
 
         response = json.loads(resp_message)
-        if response['data']['status'] != 'ok':
+        if response['data']['status'] != 'OK':
             raise Exception(
                 f'Could not create {name} due to: {response["data"]["error"]}')
 
