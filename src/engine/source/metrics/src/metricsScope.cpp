@@ -203,9 +203,15 @@ void MetricsScope::FetcherDouble(opentelemetry::metrics::ObserverResult observer
     }
 }
 
-void MetricsScope::setEnabledStatus(const std::string& instrumentName, bool newStatus)
+bool MetricsScope::setEnabledStatus(const std::string& instrumentName, bool newStatus)
 {
-    getInstrument(instrumentName)->setEnabledStatus(newStatus);
+    auto instrument = getInstrument(instrumentName);
+    if (instrument == nullptr)
+    {
+        return false;
+    }
+    instrument->setEnabledStatus(newStatus);
+    return true;
 }
 
 bool MetricsScope::getEnabledStatus(const std::string& instrumentName)
@@ -231,7 +237,7 @@ std::shared_ptr<Instrument> MetricsScope::getInstrument(const std::string& name)
     }
     else
     {
-        throw std::runtime_error {"The instrument " + name + " has not been created."};
+        return nullptr;
     }
 }
 
