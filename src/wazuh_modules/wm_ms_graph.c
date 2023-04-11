@@ -245,9 +245,17 @@ void wm_ms_graph_check() {
         mtinfo(WM_MS_GRAPH_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }
-    else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0 || ms_graph->resources[0].num_relationships == 0){
+    else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0){
         mtwarn(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
         pthread_exit(NULL);
+    }
+    else {
+        for(int resource = 0; resource < ms_graph->num_resources; resource++){
+            if(ms_graph->resources[resource].num_relationships == 0){
+                mtwarn(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+                pthread_exit(NULL);
+            }
+        }
     }
 }
 
