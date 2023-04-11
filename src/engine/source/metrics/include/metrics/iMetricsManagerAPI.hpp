@@ -26,8 +26,9 @@ public:
      * @param scopeName Name of the Scope.
      * @param instrumentName Name of the Instrument.
      * @param newStatus The new status. True Enabled. False Disabled.
+     * @return The Error code.
      */
-    virtual void enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) = 0;
+    virtual std::optional<base::Error> enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) = 0;
 
     /**
      * @brief Implements the GET command, which retrieves instrument data based on scope and instrument names.

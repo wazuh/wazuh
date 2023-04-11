@@ -85,8 +85,9 @@ public:
      *
      * @param instrumentName The name of the instrument.
      * @param newStatus The new enabled status.
+     * @return Operation succeeded.
      */
-    void setEnabledStatus(const std::string& instrumentName, bool newStatus);
+    bool setEnabledStatus(const std::string& instrumentName, bool newStatus);
 
     /**
      * @brief Gets the enabled status of the specified instrument.
