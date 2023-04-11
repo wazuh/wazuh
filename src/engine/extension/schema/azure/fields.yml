@@ -1,4 +1,4 @@
-azure.resource_id:
+azure.resource.id:
   type: keyword
   description: The identifier of the resource that the user signed in to.
 
@@ -155,7 +155,7 @@ azure.signinlogs.properties.service_principal_id:
   description: >
     The application identifier used for sign-in. This field is populated when you are signing in using an application.
 
-azure.signinlogs.properties.status:
+azure.signinlogs.properties.parsed_status:
   type: object
   description: >
     Status
