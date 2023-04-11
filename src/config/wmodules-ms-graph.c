@@ -77,7 +77,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				ms_graph->enabled = false;
 			}
 			else {
-				merror(XML_INVALID, XML_ENABLED, WM_MS_GRAPH_CONTEXT.name);
+				merror(XML_VALUEERR, XML_ENABLED, nodes[i]->content);
 				return OS_CFGERR;
 			}
 		}
@@ -89,7 +89,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				ms_graph->only_future_events = false;
 			}
 			else {
-				merror(XML_INVALID, XML_ONLY_FUTURE_EVENTS, WM_MS_GRAPH_CONTEXT.name);
+				merror(XML_VALUEERR, XML_ONLY_FUTURE_EVENTS, nodes[i]->content);
 				return OS_CFGERR;
 			}
 		}
@@ -108,7 +108,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				ms_graph->run_on_start = false;
 			}
 			else {
-				merror(XML_INVALID, XML_RUN_ON_START, WM_MS_GRAPH_CONTEXT.name);
+				merror(XML_VALUEERR, XML_RUN_ON_START, nodes[i]->content);
 				return OS_CFGERR;
 			}
 		}
@@ -117,14 +117,14 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				os_strdup(nodes[i]->content, ms_graph->version);
 			}
 			else {
-				mwarn(XML_INVALID, XML_RUN_ON_START, WM_MS_GRAPH_CONTEXT.name);
+				mwarn(XML_VALUEERR, XML_RUN_ON_START, nodes[i]->content);
 				return OS_CFGERR;
 			}
 		}
 		else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
 				OS_ClearNode(children);
-				merror(XML_INVALID, XML_API_AUTH, WM_MS_GRAPH_CONTEXT.name);
+				merror(XML_VALUEERR, XML_API_AUTH, nodes[i]->content);
 				return OS_CFGERR;
 			}
 			for (int j = 0; children[j]; j++) {
@@ -133,7 +133,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 						os_strdup(children[j]->content, ms_graph->auth_config.client_id);
 					}
 					else {
-						merror(XML_INVALID, XML_CLIENT_ID, WM_MS_GRAPH_CONTEXT.name);
+						merror(XML_VALUEERR, XML_CLIENT_ID, children[j]->content);
 						return OS_CFGERR;
 					}
 				}
@@ -142,7 +142,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 						os_strdup(children[j]->content, ms_graph->auth_config.tenant_id);
 					}
 					else {
-						merror(XML_INVALID, XML_TENANT_ID, WM_MS_GRAPH_CONTEXT.name);
+						merror(XML_VALUEERR, XML_TENANT_ID, children[j]->content);
 						return OS_CFGERR;
 					}
 				}
@@ -151,13 +151,13 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 						os_strdup(children[j]->content, ms_graph->auth_config.secret_value);
 					}
 					else {
-						merror(XML_INVALID, XML_SECRET_VALUE, WM_MS_GRAPH_CONTEXT.name);
+						merror(XML_VALUEERR, XML_SECRET_VALUE, children[j]->content);
 						return OS_CFGERR;
 					}
 				}
 				else {
 					OS_ClearNode(children);
-					merror(XML_INVATTR, children[i]->element, WM_MS_GRAPH_CONTEXT.name);
+					merror(XML_INVATTR, children[j]->element, WM_MS_GRAPH_CONTEXT.name);
 					return OS_CFGERR;
 				}
 			}
@@ -166,7 +166,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 		else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
 				OS_ClearNode(children);
-				merror(XML_INVALID, XML_RESOURCE, WM_MS_GRAPH_CONTEXT.name);
+				merror(XML_VALUEERR, XML_RESOURCE, nodes[i]->content);
 				return OS_CFGERR;
 			}
 			for (int j = 0; children[j]; j++) {
@@ -181,7 +181,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 						}
 					}
 					else{
-						merror(XML_INVALID, XML_RESOURCE_NAME, WM_MS_GRAPH_CONTEXT.name);
+						merror(XML_VALUEERR, XML_RESOURCE_NAME, children[j]->content);
 						return OS_CFGERR;
 					}
 				}
@@ -194,13 +194,13 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 						}
 					}
 					else{
-						merror(XML_INVALID, XML_RESOURCE_RELATIONSHIP, WM_MS_GRAPH_CONTEXT.name);
+						merror(XML_VALUEERR, XML_RESOURCE_RELATIONSHIP, children[j]->content);
 						return OS_CFGERR;
 					}
 				}
 				else {
 					OS_ClearNode(children);
-					merror(XML_INVATTR, children[i]->element, WM_MS_GRAPH_CONTEXT.name);
+					merror(XML_INVATTR, children[j]->element, WM_MS_GRAPH_CONTEXT.name);
 					return OS_CFGERR;
 				}
 			}
@@ -213,6 +213,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	}
 
     if (sched_scan_read(&(ms_graph->scan_config), nodes, module->context->name) != 0) {
+		merror("Unable to read scheduling configuration for module '%s'.", WM_MS_GRAPH_CONTEXT.name);
         return OS_INVALID;
     }
 
