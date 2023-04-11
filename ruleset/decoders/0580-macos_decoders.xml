@@ -2,9 +2,15 @@
  <program_name>tccd</program_name>
 </decoder>
 
-<decoder name="macOS_tccd_update">
+<decoder name="macOS_tccd_update_event">
   <parent>macOS_tccd</parent>
   <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to (\S+) at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
+  <order>service, application, status, time</order>
+</decoder>
+
+<decoder name="macOS_tccd_update_event_system">
+  <parent>macOS_tccd</parent>
+  <regex>[com.apple.TCC:access] Update Access Record: (\S+) for (\S+) to (\S+) \(System Set\) \(v1\) at \d+ \p\d+-\d+-\d+ (\d+:\d+:\d+) +\d+\p</regex>
   <order>service, application, status, time</order>
 </decoder>
 
