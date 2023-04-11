@@ -102,7 +102,7 @@ typedef struct w_logtest_session_t {
     time_t acm_purge_ts;                    ///< Counter of the time interval of last purge. Option accumulate
     regex_matching decoder_match;           ///< Used for decoding phase
     regex_matching rule_match;              ///< Used for rules matching phase
-    u_int8_t logbylevel;                    ///< Custom severity level for generate alerts 
+    u_int8_t logbylevel;                    ///< Custom severity level for generate alerts
 
 } w_logtest_session_t;
 
@@ -150,7 +150,7 @@ int w_logtest_init_parameters();
  * Listen and treat connections with clients
  *
  */
-void *w_logtest_clients_handler();
+void *w_logtest_clients_handler(w_logtest_connection_t * connection);
 
 /**
  * @brief Process client's request
@@ -346,7 +346,7 @@ char * w_logtest_generate_error_response(char * msg);
 
 /**
  * @brief Load the list of ruleset files and the minimum level to generate an alert in `ruleset_config`.
- * 
+ *
  * @param ruleset_config Structure for storing the configuration
  * @param list_msg list of \ref os_analysisd_log_msg_t for store messages
  * @return true on success, otherwise return false
@@ -355,7 +355,7 @@ bool w_logtest_ruleset_load(_Config * ruleset_config, OSList * list_msg);
 
 /**
  * @brief Read the list of ruleset files and the minimum level to generate an alert in `ruleset_config`.
- * 
+ *
  * @param xml Main XML
  * @param conf_section_nodes xml array of configuration sections
  * @param ruleset_config Structure for storing the configuration
@@ -366,7 +366,7 @@ bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _C
 
 /**
  * @brief Frees ruleset config
- * 
+ *
  * @param ruleset_config List files of ruleset
  */
 void w_logtest_ruleset_free_config(_Config * ruleset_config);
