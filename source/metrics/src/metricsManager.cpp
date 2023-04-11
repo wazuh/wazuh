@@ -110,23 +110,38 @@ std::shared_ptr<MetricsScope> MetricsManager::getScope(const std::string& metric
     }
     else
     {
-        throw std::runtime_error {"The scope " + metricsScopeName + " has not been created."};
+        return nullptr;
     }
 }
 
-void MetricsManager::enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus)
+std::optional<base::Error> MetricsManager::enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus)
 {
     auto scope = getScope(scopeName);
-    scope->setEnabledStatus(instrumentName, newStatus);
+    if (scope == nullptr)
+    {
+        return base::Error {fmt::format("The {} scope has not been created.", scopeName)};
+    }
+    auto succeeded = scope->setEnabledStatus(instrumentName, newStatus);
+    if (!succeeded)
+    {
+        return base::Error {fmt::format("The {} scope does not have {} instrument.", scopeName, instrumentName)};
+    }
+
+    return std::nullopt;
 }
 
 std::variant<std::string, base::Error> MetricsManager::getCmd(const std::string& scopeName, const std::string& instrumentName)
 {
     auto scope = getScope(scopeName);
+    if (scope == nullptr)
+    {
+        return base::Error {fmt::format("The {} scope has not been created.", scopeName)};
+    }
+
     auto json = scope->getAllMetrics(instrumentName);
     if (json.isNull())
     {
-        return "{}";
+        return base::Error {fmt::format("The {} scope does not have {} instrument.", scopeName, instrumentName)};
     }
     return json.prettyStr();
 }

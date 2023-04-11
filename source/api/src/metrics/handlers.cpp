@@ -117,13 +117,10 @@ api::Handler metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsMana
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
 
-        try
+        auto resultError = metricsAPI->enableCmd(eRequest.scopename(), eRequest.instrumentname(), eRequest.status());
+        if (resultError)
         {
-            metricsAPI->enableCmd(eRequest.scopename(), eRequest.instrumentname(), eRequest.status());
-        }
-        catch (const std::exception& e)
-        {
-            return ::api::adapter::genericError<ResponseType>(e.what());
+            return ::api::adapter::genericError<ResponseType>(resultError.value().message);
         }
 
         ResponseType eResponse;

@@ -60,7 +60,7 @@ public:
     /**
      * @copydoc iMetricsManagerAPI::enableCmd
     */
-    void enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) override;
+    std::optional<base::Error> enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) override;
 
     /**
      * @copydoc iMetricsManagerAPI::testCmd
