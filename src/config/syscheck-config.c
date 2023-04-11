@@ -1850,7 +1850,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             } else if (strcmp(node[i]->content, "no") == 0) {
                 syscheck->disabled = 0;
             } else {
-                mwarn(XML_VALUEERR "%d", node[i]->element, node[i]->content,__LINE__);
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         }
