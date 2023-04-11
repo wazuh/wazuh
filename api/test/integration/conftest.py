@@ -2,16 +2,30 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
+import threading
 import time
 from base64 import b64encode
+from pathlib import Path
+from typing import Literal
 
 import _pytest.fixtures
+import psutil
 import pytest
 import requests
 import urllib3
 import yaml
 from py.xml import html
+
+WEBHOOK_HEADER = ''
+ANALYSISD_DAEMON = 'wazuh-analysisd'
+WAZUH_PATH = Path('/var/ossec')
+SOCKET_PATH = Path(WAZUH_PATH, 'queue/sockets/queue')
+ANALYSISD_DAEMON_PATH = Path(WAZUH_PATH, 'bin', ANALYSISD_DAEMON)
+START_ACTION = 'start'
+STOP_ACTION = 'stop'
+ACTIONS = Literal['start', 'stop']
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(current_path, 'env')
@@ -537,3 +551,64 @@ def pytest_html_results_summary(prefix, summary, postfix):
                 HTMLStyle.td(v['error']),
             ])
         ) for k, v in results.items()])])
+
+
+class SocketHandler:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.socket = self.bind()
+
+    def bind(self):
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        sock.bind(str(self.path))
+
+        return sock
+
+    def shutdown(self):
+        self.socket.close()
+        self.remove(self.path)
+
+    def monitor(self, events: list, header: str = WEBHOOK_HEADER):
+        while True:
+            if self.socket.recv is not None:
+                data, _ = self.socket.recvfrom(1024)
+                if data.startswith(header.encode()):
+                    print(data)  # TODO: Remove this line
+                    events.append(data)
+
+    @staticmethod
+    def remove(path: Path):
+        if path.exists():
+            path.unlink()
+
+
+def _analysisd_manager(action: ACTIONS) -> None:
+    if action == START_ACTION:
+        subprocess.check_call([ANALYSISD_DAEMON_PATH])
+    elif action == STOP_ACTION:
+        try:
+            process = next(i for i in psutil.process_iter() if i.name() == ANALYSISD_DAEMON)
+            process.kill()
+        except StopIteration:
+            # Process already stopped
+            pass
+        finally:
+            SocketHandler.remove(SOCKET_PATH)
+
+
+@pytest.fixture(name="check_forwarded_events")
+def fixture_check_forwarded_events(*args, **kwargs):
+    """Check the number of forwarded events to analysisd."""
+
+    _analysisd_manager(STOP_ACTION)
+    events = []
+    socket_handler = SocketHandler(path=SOCKET_PATH)
+
+    thread = threading.Thread(target=socket_handler.monitor, args=[events, '1:Wazuh-AWS:'])
+    thread.daemon = True
+    thread.start()
+
+    yield events
+
+    socket_handler.shutdown()
+    _analysisd_manager(START_ACTION)
