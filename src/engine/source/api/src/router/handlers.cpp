@@ -227,14 +227,14 @@ api::Handler queuePost(std::shared_ptr<::router::Router> router)
 void registerHandlers(std::shared_ptr<::router::Router> router, std::shared_ptr<api::Api> api)
 {
     // Commands to manage routes
-    bool ok = api->registerHandler("router.route/get", routeGet(router))
-              && api->registerHandler("router.route/post", routePost(router))
-              && api->registerHandler("router.route/patch", routePatch(router))
-              && api->registerHandler("router.route/delete", routeDelete(router)) &&
-              // Commands to manage the routes table
-              api->registerHandler("router.table/get", tableGet(router)) &&
-              // Commands to manage the queue of events
-              api->registerHandler("router.queue/post", queuePost(router));
+    const bool ok = api->registerHandler("router.route/get", routeGet(router))
+                    && api->registerHandler("router.route/post", routePost(router))
+                    && api->registerHandler("router.route/patch", routePatch(router))
+                    && api->registerHandler("router.route/delete", routeDelete(router)) &&
+                    // Commands to manage the routes table
+                    api->registerHandler("router.table/get", tableGet(router)) &&
+                    // Commands to manage the queue of events
+                    api->registerHandler("router.queue/post", queuePost(router));
 
     if (!ok)
     {
