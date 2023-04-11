@@ -27,7 +27,7 @@ namespace engineserver::endpoint
 class UnixDatagram : public Endpoint
 {
 private:
-    std::function<void(std::string&&)> m_callback; ///< Callback function to be called when a message is received
+    std::function<void(std::string&)> m_callback; ///< Callback function to be called when a message is received
     std::shared_ptr<uvw::UDPHandle> m_handle;      ///< Handle to the socket
     int m_bufferSize;                              ///< Size of the receive buffer
 
@@ -48,7 +48,7 @@ public:
      * @param taskQueueSize Size of the queue of tasks to be processed by the thread pool
      */
     UnixDatagram(const std::string& address,
-                 const std::function<void(std::string&&)>& callback,
+                 const std::function<void(const std::string&)>& callback,
                  const std::size_t taskQueueSize = 0);
 
     /**
@@ -61,7 +61,7 @@ public:
      * #TODO: Not implemented yet
      */
     UnixDatagram(const std::string& address,
-                 std::function<std::string(std::string&&)> callback,
+                 std::function<std::string(const std::string&)> callback,
                  const std::size_t taskQueueSize = 0);
     ~UnixDatagram();
 
