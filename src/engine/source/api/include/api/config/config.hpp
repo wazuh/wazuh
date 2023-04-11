@@ -138,9 +138,9 @@ api::Handler runtimeSave(ConfHandler<ConfDriver> confHandler)
 template<typename ConfDriver>
 void registerHandlers(std::shared_ptr<api::Api> api, ConfHandler<ConfDriver> confHandler)
 {
-    bool ok = api->registerHandler("config.runtime/get", runtimeGet(confHandler))
-           && api->registerHandler("config.runtime/put", runtimePut(confHandler))
-           && api->registerHandler("config.runtime/save", runtimeSave(confHandler));
+    const bool ok = api->registerHandler("config.runtime/get", runtimeGet(confHandler))
+                    && api->registerHandler("config.runtime/put", runtimePut(confHandler))
+                    && api->registerHandler("config.runtime/save", runtimeSave(confHandler));
 
     if (!ok)
     {
