@@ -88,7 +88,7 @@ protected:
 
 TEST_F(UnixDatagramTest, BindAndClose)
 {
-    UnixDatagram endpoint(socketPath, [](std::string&&) {});
+    UnixDatagram endpoint(socketPath, [](const std::string&) {});
     ASSERT_FALSE(endpoint.isBound());
     ASSERT_NO_THROW(endpoint.bind(loop));
     ASSERT_TRUE(endpoint.isBound());
@@ -98,7 +98,7 @@ TEST_F(UnixDatagramTest, BindAndClose)
 
 TEST_F(UnixDatagramTest, PauseAndResume)
 {
-    UnixDatagram endpoint(socketPath, [](std::string&&) {});
+    UnixDatagram endpoint(socketPath, [](const std::string&) {});
     endpoint.bind(loop);
     ASSERT_TRUE(endpoint.pause());
     ASSERT_TRUE(endpoint.resume());
@@ -111,7 +111,7 @@ TEST_F(UnixDatagramTest, PauseAndResume)
 TEST_F(UnixDatagramTest, ReceiveData)
 {
     std::string receivedData;
-    UnixDatagram endpoint(socketPath, [&](std::string&& data) { receivedData = std::move(data); });
+    UnixDatagram endpoint(socketPath, [&](const std::string& data) { receivedData = std::move(data); });
     endpoint.bind(loop);
 
     std::string message = "Hello, Unix Datagram!";
@@ -126,7 +126,7 @@ TEST_F(UnixDatagramTest, ReceiveData)
 TEST_F(UnixDatagramTest, PauseResumeReceiveData)
 {
     std::atomic<bool> receivedData(false);
-    UnixDatagram endpoint(socketPath, [&](std::string&& data) { receivedData = true; });
+    UnixDatagram endpoint(socketPath, [&](const std::string& data) { receivedData = true; });
     endpoint.bind(loop);
     // Pause the endpoint and wait for some time
     endpoint.pause();
@@ -172,7 +172,7 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
 
     // Prepare the endpoint
     UnixDatagram endpoint(socketPath,
-                          [&](std::string&& data)
+                          [&](const std::string& data)
                           {
                               if (enableBlockQueueWorkers)
                               {
@@ -315,7 +315,7 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
 
     // Prepare the endpoint
     UnixDatagram endpoint(socketPath,
-                          [&](std::string&& data)
+                          [&](const std::string& data)
                           {
                               if (enableBlockQueueWorkers)
                               {
