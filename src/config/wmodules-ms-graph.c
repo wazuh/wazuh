@@ -49,6 +49,9 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	sched_scan_init(&(ms_graph->scan_config));
 	ms_graph->scan_config.interval = WM_DEF_INTERVAL;
 
+	ms_graph->auth_config.client_id = NULL;
+	ms_graph->auth_config.tenant_id = NULL;
+	ms_graph->auth_config.secret_value = NULL;
 	ms_graph->auth_config.access_token = NULL;
 
 	os_malloc(sizeof(wm_ms_graph_resource) * 2, ms_graph->resources);
@@ -162,6 +165,20 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				}
 			}
 			OS_ClearNode(children);
+
+			if(!ms_graph->auth_config.client_id){
+				merror(XML_NO_ELEM, XML_CLIENT_ID);
+				return OS_NOTFOUND; // OS_MISVALUE?
+			}
+			else if (!ms_graph->auth_config.tenant_id){
+				merror(XML_NO_ELEM, XML_TENANT_ID);
+				return OS_NOTFOUND; // OS_MISVALUE?
+			}
+			else if (!ms_graph->auth_config.secret_value){
+				merror(XML_NO_ELEM, XML_SECRET_VALUE);
+				return OS_NOTFOUND; // OS_MISVALUE?
+			}
+
 		}
 		else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
@@ -169,9 +186,11 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				merror(XML_VALUEERR, XML_RESOURCE, nodes[i]->content);
 				return OS_CFGERR;
 			}
+			bool name_set = false;
 			for (int j = 0; children[j]; j++) {
 				if (!strcmp(children[j]->element, XML_RESOURCE_NAME)) {
 					if(strlen(children[j]->content) > 0){
+						name_set = true;
 						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources].name);
 						os_malloc(sizeof(char*) * 2, ms_graph->resources[ms_graph->num_resources].relationships);
 						ms_graph->resources[ms_graph->num_resources++].num_relationships = 0;
@@ -205,6 +224,15 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				}
 			}
 			OS_ClearNode(children);
+
+			if(!name_set){
+				merror(XML_NO_ELEM, XML_RESOURCE_NAME);
+				return OS_NOTFOUND; // OS_MISVALUE?
+			}
+			else if (ms_graph->resources[ms_graph->num_resources - 1].num_relationships == 0){
+				merror(XML_NO_ELEM, XML_RESOURCE_RELATIONSHIP);
+				return OS_NOTFOUND; // OS_MISVALUE?
+			}
 		}
 		else if (!is_sched_tag(nodes[i]->element)) {
 			merror(XML_INVATTR, nodes[i]->element, WM_MS_GRAPH_CONTEXT.name);
@@ -216,6 +244,16 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 		merror("Unable to read scheduling configuration for module '%s'.", WM_MS_GRAPH_CONTEXT.name);
         return OS_INVALID;
     }
+	
+	if(!ms_graph->auth_config.client_id && !ms_graph->auth_config.tenant_id && !ms_graph->auth_config.secret_value){
+		merror(XML_NO_ELEM, XML_API_AUTH);
+		return OS_NOTFOUND; // OS_MISVALUE?
+	}
+
+	if(ms_graph->num_resources == 0){
+		merror(XML_NO_ELEM, XML_RESOURCE);
+		return OS_NOTFOUND; // OS_MISVALUE?
+	}
 
 	return OS_SUCCESS;
 }
