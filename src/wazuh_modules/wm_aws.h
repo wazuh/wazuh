@@ -63,13 +63,13 @@ typedef struct wm_aws_service {
     unsigned int remove_log_streams:1;  // Remove the log stream from the log group
     char *sts_endpoint;                 // URL for the VPC endpoint to use to obtain the STS token
     char *service_endpoint;             // URL for the endpoint to use to obtain the logs
-    struct wm_aws_service *next;     // Pointer to next
+    struct wm_aws_service *next;        // Pointer to next
 } wm_aws_service;
 
 typedef struct wm_aws_subscriber {
     char *type;                            // String defining subscriber type.
     char *sqs_name;                        // String defining SQS name
-    char *aws_external_id;                     // AWS credentials profile
+    char *external_id;                     // AWS external ID
     char *iam_role_arn;                    // IAM role
     char *iam_role_duration;               // IAM role session duration
     char *sts_endpoint;                    // URL for the VPC endpoint to use to obtain the STS token

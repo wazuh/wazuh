@@ -100,13 +100,13 @@ class WazuhIntegration:
     :param region: Region of service
     :param bucket: Bucket name to extract logs from
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
-    :param aws_external_id: AWS external ID for IAM Role assumption
+    :param external_id: AWS external ID for IAM Role assumption
     """
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name=None, region=None, bucket=None, discard_field=None,
                  discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
-                 aws_external_id=None):
+                 external_id=None):
         # SQL queries
         self.sql_find_table_names = """
                             SELECT
@@ -186,7 +186,7 @@ class WazuhIntegration:
                                       sts_endpoint=sts_endpoint,
                                       service_endpoint=service_endpoint,
                                       iam_role_duration=iam_role_duration,
-                                      aws_external_id=aws_external_id
+                                      external_id=external_id
                                       )
         if hasattr(self, 'db_name'):  # If db_name is present, the subclass is not part of the SecLake process
             # db_name is an instance variable of subclass
@@ -271,7 +271,7 @@ class WazuhIntegration:
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name,
                    bucket, region=None,
-                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None, aws_external_id=None):
+                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None, external_id=None):
 
         conn_args = {}
 
@@ -301,8 +301,8 @@ class WazuhIntegration:
 
                 assume_role_kwargs = {'RoleArn': iam_role_arn,
                                       'RoleSessionName': 'WazuhLogParsing'}
-                if aws_external_id:
-                    assume_role_kwargs['ExternalId'] = aws_external_id
+                if external_id:
+                    assume_role_kwargs['ExternalId'] = external_id
 
                 if iam_role_duration is not None:
                     assume_role_kwargs['DurationSeconds'] = iam_role_duration
@@ -3559,16 +3559,16 @@ class AWSSQSQueue(WazuhIntegration):
     """
 
     def __init__(self, name: str, aws_profile: str, access_key: str = None, secret_key: str = None,
-                 aws_external_id: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
+                 external_id: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
         self.sqs_name = name
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                  aws_profile=aws_profile, aws_external_id=aws_external_id, service_name='sqs', sts_endpoint=sts_endpoint,
+                                  aws_profile=aws_profile, external_id=external_id, service_name='sqs', sts_endpoint=sts_endpoint,
                                   service_endpoint=service_endpoint, **kwargs)
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
         self.iam_role_arn = kwargs['iam_role_arn']
-        self.asl_bucket_handler = AWSSLSubscriberBucket(aws_external_id=aws_external_id,
+        self.asl_bucket_handler = AWSSLSubscriberBucket(external_id=external_id,
                                                         iam_role_arn=self.iam_role_arn,
                                                         service_endpoint=service_endpoint,
                                                         sts_endpoint=sts_endpoint)
@@ -3763,7 +3763,7 @@ def get_script_arguments():
                         help='Remove processed files from the AWS S3 bucket', default=False)
     parser.add_argument('-p', '--aws_profile', dest='aws_profile', help='The name of credential profile to use',
                         default=None)
-    parser.add_argument('-x', '--aws_external_id', dest='aws_external_id', help='The name of the External ID to use',
+    parser.add_argument('-x', '--external_id', dest='external_id', help='The name of the External ID to use',
                         default=None)
     parser.add_argument('-i', '--iam_role_arn', dest='iam_role_arn',
                         help='ARN of IAM role to assume for access to S3 bucket',
@@ -3905,7 +3905,7 @@ def main(argv):
                                        )
                 service.get_alerts()
         elif options.subscriber:
-            asl_queue = AWSSQSQueue(aws_external_id=options.aws_external_id, iam_role_arn=options.iam_role_arn,
+            asl_queue = AWSSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
                                     sts_endpoint=options.sts_endpoint,
                                     service_endpoint=options.service_endpoint,
                                     aws_profile=options.aws_profile,
