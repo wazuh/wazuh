@@ -32,8 +32,8 @@
   
   <rule id="89603" level="3">
     <decoded_as>macOS_loginwindow</decoded_as>
-    <match>screenIsLocked</match>
-    <description>Screen locked.</description>
+    <regex type="pcre2">sendBSDNotification: \w+.\w+.\w+.screenIsLocked</regex>
+    <description>Screen locked with userID:$(userID)</description>
     <mitre>
       <id>T1078</id>
     </mitre>
