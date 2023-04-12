@@ -189,15 +189,15 @@ api::Handler metricsList(const std::shared_ptr<metricsManager::IMetricsManagerAP
     };
 }
 
-void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI, std::shared_ptr<api::Registry> registry)
+void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI, std::shared_ptr<api::Api> api)
 {
     try
     {
-        registry->registerHandler("metrics.manager/dump", metricsDumpCmd(metricsAPI));
-        registry->registerHandler("metrics.manager/get", metricsGetCmd(metricsAPI));
-        registry->registerHandler("metrics.manager/enable", metricsEnableCmd(metricsAPI));
-        registry->registerHandler("metrics.manager/test", metricsTestCmd(metricsAPI));
-        registry->registerHandler("metrics.manager/list", metricsList(metricsAPI));
+        api->registerHandler("metrics.manager/dump", metricsDumpCmd(metricsAPI));
+        api->registerHandler("metrics.manager/get", metricsGetCmd(metricsAPI));
+        api->registerHandler("metrics.manager/enable", metricsEnableCmd(metricsAPI));
+        api->registerHandler("metrics.manager/test", metricsTestCmd(metricsAPI));
+        api->registerHandler("metrics.manager/list", metricsList(metricsAPI));
     }
     catch (const std::exception& e)
     {

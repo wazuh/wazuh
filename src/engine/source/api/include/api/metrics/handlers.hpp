@@ -1,7 +1,7 @@
 #ifndef _API_METRICS_HANDLERS_HPP
 #define _API_METRICS_HANDLERS_HPP
 
-#include <api/registry.hpp>
+#include <api/api.hpp>
 #include <metrics/iMetricsManagerAPI.hpp>
 
 namespace api::metrics::handlers
@@ -47,7 +47,7 @@ api::Handler metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsManage
  * @param registry API registry.
  * @throw std::runtime_error If the command registration fails for any reason.
  */
-void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI, std::shared_ptr<api::Registry> registry);
+void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI, std::shared_ptr<api::Api> api);
 
 } // namespace api::metrics::handlers
 

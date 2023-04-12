@@ -22,7 +22,6 @@
 #include "defaultSettings.hpp"
 #include "register.hpp"
 #include "registry.hpp"
-#include "server/wazuhStreamProtocol.hpp"
 #include "metrics/metricsManager.hpp"
 
 namespace
@@ -356,7 +355,7 @@ void configure(CLI::App_p app)
         ->add_option("-l, --log_level",
                      options->logLevel,
                      "Sets the logging level. 0 = Debug, 1 = Info, 2 = Warning, 3 = Error.")
-        ->default_val(ENGINE_LOG_LEVEL)
+        ->default_val(logging::LogLevel::Error)
         ->check(CLI::Range(0, 3));
 
     // Debug levels

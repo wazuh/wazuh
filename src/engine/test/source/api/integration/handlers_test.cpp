@@ -141,10 +141,7 @@ TEST(Handlers, integrationRemoveFrom)
 TEST(Handlers, registerHandlers)
 {
     auto integration = std::make_shared<api::integration::Integration>(getIntegration());
-    auto apiReg = std::make_shared<api::Registry>();
+    auto api = std::make_shared<api::Api>();
 
-    ASSERT_NO_THROW(api::integration::handlers::registerHandlers(integration, apiReg));
-    api::Handler cmd;
-    ASSERT_NO_THROW(cmd = apiReg->getHandler("integration.policy/add_to"));
-    ASSERT_NO_THROW(cmd = apiReg->getHandler("integration.policy/remove_from"));
+    ASSERT_NO_THROW(api::integration::handlers::registerHandlers(integration, api));
 }

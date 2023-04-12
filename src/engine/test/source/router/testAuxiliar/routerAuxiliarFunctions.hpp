@@ -1,13 +1,14 @@
 #ifndef _ROUTER_AUX_FUNCTIONS_H
 #define _ROUTER_AUX_FUNCTIONS_H
 
-
-#include <queue/concurrentQueue.hpp>
 #include <parseEvent.hpp>
+#include <queue/concurrentQueue.hpp>
 
 #include "utils/stringUtils.hpp"
 #include <builder.hpp>
 #include <registry.hpp>
+
+#include <mocks/fakeMetric.hpp>
 
 namespace aux
 {
@@ -27,7 +28,8 @@ struct testQueue
     {
         if (m_eventQueue == nullptr)
         {
-            m_eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(100);
+            m_eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(
+                100, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
         }
         return m_eventQueue;
     }

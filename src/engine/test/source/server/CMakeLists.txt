@@ -10,5 +10,5 @@ target_include_directories(server_tests
     ${uvw_SOURCE_DIR}/src/
 )
 
-target_link_libraries(server_tests gtest engine_test_main server uv_a)
+target_link_libraries(server_tests gtest engine_test_main server uv_a test_mocks)
 gtest_discover_tests(server_tests)

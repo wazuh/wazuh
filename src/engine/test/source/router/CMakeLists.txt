@@ -8,7 +8,7 @@ add_executable(router_test
 
 
 )
-target_link_libraries(router_test engine_test_main base router builders rxbk store::fileDriver)
+target_link_libraries(router_test engine_test_main base router builders rxbk store::fileDriver test_mocks)
 gtest_discover_tests(router_test)
 
 # Runtime environment test

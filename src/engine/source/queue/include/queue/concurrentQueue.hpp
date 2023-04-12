@@ -12,6 +12,8 @@
 #include <blockingconcurrentqueue.h>
 
 #include <logging/logging.hpp>
+#include <metrics/iMetricsManager.hpp>
+#include <metrics/iMetricsScope.hpp>
 
 namespace base::queue
 {
@@ -99,19 +101,35 @@ template<typename T>
 class ConcurrentQueue
 {
 private:
+    struct Metrics
+    {
+        std::shared_ptr<metricsManager::IMetricsScope> m_metricsScope;  ///< Metrics scope for the queue
+        std::shared_ptr<metricsManager::iCounter<int64_t>> m_used;       ///< Counter for the used queue
+        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_queued;   ///< Counter for the queued events
+        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_flooded;  ///< Counter for the flooded events
+        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_consumed; ///< Counter for the consumed events
+
+        std::shared_ptr<metricsManager::IMetricsScope> m_metricsScopeDelta;  ///< Metrics scope for the queue
+        std::shared_ptr<metricsManager::iCounter<uint64_t>> m_consumendPerSecond;       ///< Counter for the used queue
+    };
+
     moodycamel::BlockingConcurrentQueue<T> m_queue {}; ///< The queue itself.
     std::shared_ptr<FloodingFile> m_floodingFile;      ///< The flooding file.
     std::size_t m_maxAttempts;            ///< The maximum number of attempts to push an element to the queue.
     std::chrono::microseconds m_waitTime; ///< The time to wait for the queue to be not full.
+
+    Metrics m_metrics; ///< Metrics for the queue
 
 public:
     /**
      * @brief Construct a new Concurrent Queue object
      *
      * @param capacity The capacity of the queue. (Approximate)
+     * @param metricsManager The metrics manager to use for the queue.
+     * @param metricsScopeName The name of the metrics scope for the queue.
      * @param pathFloodedFile The path to the file where the queue will be flooded.
-     * @param maxAttempts The maximum number of attempts to push an element to the queue. (ignored if pathFloodedFile is
-     * not provided)
+     * @param maxAttempts The maximum number of attempts to push an element to the queue. (ignored if
+     * pathFloodedFile is not provided)
      * @param waitTime The time to wait for the queue to be not full. (ignored if pathFloodedFile is not provided)
      *
      * @throw std::runtime_error if the capacity is less than or equal to 0
@@ -121,6 +139,8 @@ public:
      * push method will block until there is space in the queue.
      */
     explicit ConcurrentQueue(const int capacity,
+                             std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
+                             std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
                              const std::string& pathFloodedFile = {},
                              const int maxAttempts = -1,
                              const int waitTime = -1)
@@ -165,7 +185,15 @@ public:
         {
             WAZUH_LOG_INFO("No flooding file provided, the queue will not be flooded.");
         }
-        // Disable buffering for the flooding file
+
+        m_metrics.m_metricsScope =  std::move(metricsScope);
+        m_metrics.m_queued = m_metrics.m_metricsScope->getCounterUInteger("QueuedEvents");
+        m_metrics.m_used = m_metrics.m_metricsScope->getUpDownCounterInteger("UsedQueue");
+        m_metrics.m_consumed = m_metrics.m_metricsScope->getCounterUInteger("ConsumedEvents");
+        m_metrics.m_flooded = m_metrics.m_metricsScope->getCounterUInteger("FloodedEvents");
+
+        m_metrics.m_metricsScopeDelta = std::move(metricsScopeDelta);
+        m_metrics.m_consumendPerSecond = m_metrics.m_metricsScopeDelta->getCounterUInteger("ConsumedEventsPerSecond");
     }
 
     /**
@@ -186,6 +214,8 @@ public:
                 // of 5 because we are saturating the queue and we don't want to.
                 std::this_thread::sleep_for(std::chrono::microseconds(500));
             }
+            m_metrics.m_queued->addValue(1UL);
+            m_metrics.m_used->addValue(1);
         }
         else
         {
@@ -193,11 +223,14 @@ public:
             {
                 if (m_queue.try_enqueue(std::move(element)))
                 {
+                    m_metrics.m_queued->addValue(1UL);
+                    m_metrics.m_used->addValue(1UL);
                     return;
                 }
                 std::this_thread::sleep_for(m_waitTime);
             }
             m_floodingFile->write(element->str());
+            m_metrics.m_flooded->addValue(1UL);
         }
     }
 
@@ -215,7 +248,15 @@ public:
      */
     bool waitPop(T& element, int64_t timeout = WAIT_DEQUEUE_TIMEOUT_USEC)
     {
-        return m_queue.wait_dequeue_timed(element, timeout);
+        auto result = m_queue.wait_dequeue_timed(element, timeout);
+        if (result)
+        {
+            m_metrics.m_consumed->addValue(1UL);
+            m_metrics.m_used->addValue(-1);
+            m_metrics.m_consumendPerSecond->addValue(1UL);
+        }
+
+        return result;
     }
 
     /**
