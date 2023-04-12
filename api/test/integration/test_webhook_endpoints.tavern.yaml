@@ -1,5 +1,5 @@
 ---
-test_name: Valid RBAC permission
+test_name: valid_RBAC_permission
 
 stages:
 
@@ -21,7 +21,7 @@ stages:
         error: 0
 
 ---
-test_name: Invalid RBAC permission
+test_name: invalid_RBAC_permission
 
 stages:
 
@@ -43,7 +43,11 @@ stages:
         error: 4000
 
 ---
-test_name: Send bulk with one event
+test_name: send_bulk_with_one_event
+
+marks:
+  - usefixtures:
+      - forwarded_events
 
 stages:
 
@@ -59,12 +63,21 @@ stages:
           {"foo": 1},
         ]
     response:
+      verify_response_with:
+        - function: tavern_utils:assert_forwarded_events
+          extra_kwargs:
+            forwarded_events: "{forwarded_events}"
+            expected_events: 1
       status_code: 200
       json:
         error: 0
 
 ---
-test_name: Send bulk with multiple events
+test_name: send_bulk_with_multiple_events
+
+marks:
+  - usefixtures:
+      - forwarded_events
 
 stages:
 
@@ -82,13 +95,18 @@ stages:
           {"gaz": 3},
         ]
     response:
+      verify_response_with:
+        - function: tavern_utils:assert_forwarded_events
+          extra_kwargs:
+            forwarded_events: "{forwarded_events}"
+            expected_events: 3
       status_code: 200
       json:
         error: 0
 
 
 ---
-test_name: Invalid request
+test_name: invalid_request
 
 stages:
 
@@ -111,7 +129,7 @@ stages:
 
 
 ---
-test_name: Send bulk greater than max size allowed
+test_name: send_bulk_greater_than_max_size_allowed
 
 stages:
 
