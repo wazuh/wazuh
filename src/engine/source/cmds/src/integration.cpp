@@ -67,7 +67,7 @@ void configure(CLI::App_p app)
     // Shared options
     // Endpoint
     integrationApp->add_option("-a, --api_socket", options->apiEndpoint, "Sets the API server socket address.")
-        ->default_val(ENGINE_API_SOCK)
+        ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
     const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
 

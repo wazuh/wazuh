@@ -17,9 +17,6 @@
 #include "policyManager.hpp"
 #include "route.hpp"
 
-#include <metrics/iMetricsManager.hpp>
-#include <metrics/iMetricsScope.hpp>
-
 namespace router
 {
 constexpr auto ROUTES_TABLE_NAME = "internal/router_table/0"; ///< Name of the routes table in the store
@@ -83,9 +80,6 @@ private:
      */
     void dumpTableToStorage();
 
-    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScope;
-    std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScopeDelta;
-
 public:
     using Entry = std::tuple<std::string, std::size_t, std::string, std::string>; ///< Entry of the routes table (name,
                                                                                   ///< priority, filter, target)
@@ -97,8 +91,7 @@ public:
      * @param store Store to get/save the routes table
      * @param threads Number of threads for the pool
      */
-    Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store,
-            const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager, std::size_t threads = 1);
+    Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads = 1);
 
     /**
      * @brief Get the list of route names, priority and target
@@ -144,7 +137,7 @@ public:
      * @param event event to push to the queue
      * @return std::optional<base::Error> A error with description if the event can't be pushed
      */
-    std::optional<base::Error> enqueueEvent(base::Event event);
+    std::optional<base::Error> enqueueEvent(base::Event&& event);
 
     /**
      * @brief Push an event to the queue of the router

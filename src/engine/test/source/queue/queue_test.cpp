@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 
+#include <mocks/fakeMetric.hpp>
 #include <queue/concurrentQueue.hpp>
 
 using namespace base::queue;
@@ -48,19 +49,27 @@ TEST(FloodingFileTest, CannotOpenFile)
 
 TEST(ConcurrentQueueTest, CanConstruct)
 {
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2);
+    auto metricManager = std::make_shared<FakeMetricManager>();
+
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(
+        2, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     ASSERT_TRUE(cq.empty());
     ASSERT_EQ(cq.size(), 0);
 }
 
 TEST(ConcurrentQueueTest, errorConstructor)
 {
-    ASSERT_THROW(ConcurrentQueue<std::shared_ptr<Dummy>> cq(1, "/nonexistent_dir/nonexistent_file.txt"), std::runtime_error);
+    ASSERT_THROW(ConcurrentQueue<std::shared_ptr<Dummy>> cq(1,
+                                                            std::make_shared<FakeMetricScope>(),
+                                                            std::make_shared<FakeMetricScope>(),
+                                                            "/nonexistent_dir/nonexistent_file.txt"),
+                 std::runtime_error);
 }
 
 TEST(ConcurrentQueueTest, CanPushAndPop)
 {
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(
+        2, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     ASSERT_TRUE(cq.empty());
     cq.push(std::make_shared<Dummy>(1));
     ASSERT_FALSE(cq.empty());
@@ -77,7 +86,8 @@ TEST(ConcurrentQueueTest, FloodsWhenFull)
     std::string flood_file = "floodfile.txt";
     // 32 is the size of one block in the queue, for 1 producer and 1 consumer thread
     // the queue has 1 block, so it will flood after 32 pushes
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(32, flood_file, 3, 500);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(
+        32, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>(), flood_file, 3, 500);
 
     for (int i = 0; i < 35; i++)
     {
@@ -102,8 +112,9 @@ TEST(ConcurrentQueueTest, FloodsWhenFull)
 
 TEST(ConcurrentQueueTest, Timeout)
 {
-    ConcurrentQueue<std::shared_ptr<Dummy>> cq(2);
-    auto d = std::make_shared<Dummy> (0);
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(
+        2, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
+    auto d = std::make_shared<Dummy>(0);
     ASSERT_FALSE(cq.waitPop(d, 0));
     ASSERT_EQ(d->value, 0);
 }

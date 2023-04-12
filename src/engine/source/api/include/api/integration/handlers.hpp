@@ -4,7 +4,7 @@
 #include <memory>
 
 #include <api/integration/integration.hpp>
-#include <api/registry.hpp>
+#include <api/api.hpp>
 
 namespace api::integration::handlers
 {
@@ -33,7 +33,7 @@ api::Handler integrationRemoveFrom(std::shared_ptr<api::integration::Integration
  * point
  */
 void registerHandlers(std::shared_ptr<api::integration::Integration> integration,
-                      std::shared_ptr<api::Registry> registry);
+                      std::shared_ptr<api::Api> api);
 } // namespace api::integration::handlers
 
 #endif // _API_INTEGRATION_HANDLERS_HPP

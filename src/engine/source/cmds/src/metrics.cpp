@@ -9,7 +9,6 @@
 #include <json/json.hpp>
 #include <metrics/metricsManager.hpp>
 
-
 namespace
 {
 
@@ -23,7 +22,7 @@ struct Options
 
 } // namespace
 
-namespace  cmd::metrics
+namespace cmd::metrics
 {
 
 namespace eMetrics = ::com::wazuh::api::engine::metrics;
@@ -48,8 +47,9 @@ void runDump(std::shared_ptr<apiclnt::Client> client)
     std::cout << std::get<std::string>(json) << std::endl;
 }
 
-
-void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& scopeName, const std::string& instrumentName)
+void runGetInstrument(std::shared_ptr<apiclnt::Client> client,
+                      const std::string& scopeName,
+                      const std::string& instrumentName)
 {
     using RequestType = eMetrics::Get_Request;
     using ResponseType = eMetrics::Get_Response;
@@ -71,7 +71,10 @@ void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string
     std::cout << std::get<std::string>(json) << std::endl;
 }
 
-void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& scopeName, const std::string& instrumentName, bool status)
+void runEnableInstrument(std::shared_ptr<apiclnt::Client> client,
+                         const std::string& scopeName,
+                         const std::string& instrumentName,
+                         bool status)
 {
     using RequestType = eMetrics::Enable_Request;
     using ResponseType = eMetrics::Enable_Response;
@@ -142,39 +145,47 @@ void configure(CLI::App_p app)
     auto options = std::make_shared<Options>();
 
     // Endpoint
-    metricApp->add_option("-a, --api_socket", options->apiEndpoint, "engine api address")->default_val(ENGINE_API_SOCK);
+    metricApp->add_option("-a, --api_socket", options->apiEndpoint, "engine api address")
+        ->default_val(ENGINE_SRV_API_SOCK);
     const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
 
     // metrics subcommands
     // dump
-    auto dump_subcommand = metricApp->add_subcommand(details::API_METRICS_DUMP_SUBCOMMAND, "Prints all collected metrics.");
-    dump_subcommand->callback([options, client]() { runDump(client);});
+    auto dump_subcommand =
+        metricApp->add_subcommand(details::API_METRICS_DUMP_SUBCOMMAND, "Prints all collected metrics.");
+    dump_subcommand->callback([options, client]() { runDump(client); });
 
     // get
     auto get_subcommand = metricApp->add_subcommand("get", "Print a single metric as json.");
     get_subcommand->add_option("Scope name", options->scopeName, "Name of the scope whose status will be modified.")
-    ->required();
+        ->required();
     get_subcommand->add_option("Instrument name", options->instrumentName, "Name that identifies the instrument.")
-    ->required();
-    get_subcommand->callback([options, client]() { runGetInstrument(client, options->scopeName, options->instrumentName); });
+        ->required();
+    get_subcommand->callback([options, client]()
+                             { runGetInstrument(client, options->scopeName, options->instrumentName); });
 
     // enable
-    auto enable_subcommand = metricApp->add_subcommand(details::API_METRICS_ENABLE_SUBCOMMAND, "Enable or disable a specific instrument.");
+    auto enable_subcommand =
+        metricApp->add_subcommand(details::API_METRICS_ENABLE_SUBCOMMAND, "Enable or disable a specific instrument.");
     enable_subcommand->add_option("Scope name", options->scopeName, "Name of the scope whose status will be modified.")
-    ->required();
+        ->required();
     enable_subcommand
-    ->add_option("Instrument name", options->instrumentName, "Name of the instrument whose status will be modified.")
-    ->required();
+        ->add_option(
+            "Instrument name", options->instrumentName, "Name of the instrument whose status will be modified.")
+        ->required();
     enable_subcommand->add_option("Enable state", options->enableState, "New instrument status.")->required();
     enable_subcommand->callback(
-    [options, client]() { runEnableInstrument(client, options->scopeName, options->instrumentName, options->enableState); });
+        [options, client]()
+        { runEnableInstrument(client, options->scopeName, options->instrumentName, options->enableState); });
 
     // list
-    auto list_subcommand = metricApp->add_subcommand(details::API_METRICS_LIST_SUBCOMMAND, "Prints name, status and instruments types.");
+    auto list_subcommand =
+        metricApp->add_subcommand(details::API_METRICS_LIST_SUBCOMMAND, "Prints name, status and instruments types.");
     list_subcommand->callback([options, client]() { runListInstruments(client); });
 
     // test
-    auto test_subcommand = metricApp->add_subcommand(details::API_METRICS_TEST_SUBCOMMAND, "Generate dummy metrics for testing.");
+    auto test_subcommand =
+        metricApp->add_subcommand(details::API_METRICS_TEST_SUBCOMMAND, "Generate dummy metrics for testing.");
     test_subcommand->callback([client]() { runTest(client); });
 }
 

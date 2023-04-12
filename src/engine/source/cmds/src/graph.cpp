@@ -15,9 +15,10 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "builder.hpp"
 #include "defaultSettings.hpp"
+#include "metrics/metricsManager.hpp"
 #include "register.hpp"
 #include "registry.hpp"
-#include "metrics/metricsManager.hpp"
+#include "utils.hpp"
 
 namespace
 {
@@ -31,11 +32,18 @@ namespace cmd::graph
 void run(const Options& options)
 {
     // Init logging
-    // TODO: add cmd to config logging level
     logging::LoggingConfig logConfig;
-    logConfig.logLevel = logging::LogLevel::Debug;
+    logConfig.header = "";
+    switch (options.logLevel)
+    {
+        case 0: logConfig.logLevel = logging::LogLevel::Debug; break;
+        case 1: logConfig.logLevel = logging::LogLevel::Info; break;
+        case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
+        case 3: logConfig.logLevel = logging::LogLevel::Error; break;
+        default: logging::LogLevel::Error;
+    }
     logging::loggingInit(logConfig);
-    g_exitHanlder.add([]() { logging::loggingTerm(); });
+
     auto metricsManager = std::make_shared<metricsManager::MetricsManager>();
     auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath, metricsManager);
     g_exitHanlder.add([kvdb]() { kvdb->clear(); });
@@ -45,16 +53,13 @@ void run(const Options& options)
     auto hlpParsers = store->get(hlpConfigFileName);
     if (std::holds_alternative<base::Error>(hlpParsers))
     {
-        WAZUH_LOG_ERROR("Engine \"graph\" command: Configuration file \"{}\" needed by the "
-                        "parsing module could not be obtained: {}",
-                        hlpConfigFileName.fullName(),
-                        std::get<base::Error>(hlpParsers).message);
-        g_exitHanlder.execute();
-        return;
+        auto msg = fmt::format("Unable to load Wazuh Logpar schema from store because {}",
+                               std::get<base::Error>(hlpParsers).message);
+        throw ClientException(msg, ClientException::Type::PATH_ERROR);
     }
     auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
     hlp::registerParsers(logpar);
-    WAZUH_LOG_INFO("HLP initialized");
+
     auto registry = std::make_shared<builder::internals::Registry>();
     try
     {
@@ -62,11 +67,8 @@ void run(const Options& options)
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Engine \"graph\" command: An error occurred while registering "
-                        "the builders: {}",
-                        utils::getExceptionStack(e));
-        g_exitHanlder.execute();
-        return;
+        auto msg = fmt::format("Error registering builders because {}", e.what());
+        throw ClientException(msg, ClientException::Type::INVALID_ARGUMENT);
     }
 
     builder::Builder _builder(store, registry);
@@ -77,10 +79,13 @@ void run(const Options& options)
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Engine \"graph\" command: An error occurred while building the "
-                        "policy: \"{}\"",
-                        utils::getExceptionStack(e));
-        g_exitHanlder.execute();
+        auto msg = fmt::format("Error building the policy because {}", e.what());
+        throw ClientException(msg, ClientException::Type::INVALID_ARGUMENT);
+    }
+
+    if (std::string("policy").compare({options.graph}) == 0)
+    {
+        std::cout << policy.getGraphivzStr();
         return;
     }
 
@@ -91,31 +96,11 @@ void run(const Options& options)
     }
     catch (const std::exception& e)
     {
-        WAZUH_LOG_ERROR("Engine \"graph\" command: An error occurred while building the "
-                        "policy expression: {}",
-                        utils::getExceptionStack(e));
-        g_exitHanlder.execute();
-        return;
+        auto msg = fmt::format("Error getting the policy expression because {]", e.what());
+        throw ClientException(msg, ClientException::Type::INVALID_ARGUMENT);
     }
 
-    // Save both graphs
-    std::filesystem::path policyGraph {options.graphOutDir};
-    policyGraph.append(POLICY_GRAPH);
-
-    std::filesystem::path policyExprGraph {options.graphOutDir};
-    policyExprGraph.append(POLICY_EXPR_GRAPH);
-
-    std::ofstream graphFile;
-
-    graphFile.open(policyGraph.string());
-    graphFile << policy.getGraphivzStr();
-    std::cout << std::endl << "Policy graph saved to " << policyGraph.string() << std::endl;
-    graphFile.close();
-
-    graphFile.open(policyExprGraph.string());
-    graphFile << base::toGraphvizStr(policyExpression);
-    std::cout << "Policy expression graph saved to " << policyExprGraph.string() << std::endl;
-    graphFile.close();
+    std::cout << base::toGraphvizStr(policyExpression);
 
     g_exitHanlder.execute();
 }
@@ -126,9 +111,17 @@ void configure(CLI::App_p app)
 
     auto graphApp = app->add_subcommand("graph", "Generate a dot description of a policy.");
 
+    // Log level
+    graphApp
+        ->add_option("-l, --log_level",
+                     options->logLevel,
+                     "Sets the logging level. 0 = Debug, 1 = Info, 2 = Warning, 3 = Error.")
+        ->default_val(logging::LogLevel::Error)
+        ->check(CLI::Range(0, 3));
+
     // KVDB path
     graphApp->add_option("-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
-        ->default_val(ENGINE_KVDB_PATH)
+        ->default_val(ENGINE_KVDB_TEST_PATH)
         ->check(CLI::ExistingDirectory);
 
     // File storage
@@ -144,9 +137,9 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_ENVIRONMENT_TEST);
 
     // Graph dir
-    graphApp->add_option("-o, --output_dir", options->graphOutDir, "Directory to save the graph files.")
-        ->default_val("./")
-        ->check(CLI::ExistingDirectory);
+    graphApp
+        ->add_option("-g, --graph", options->graph, "Graph. Choose between [policy, expressions]. Defaults to policy.")
+        ->default_val("policy");
 
     // Register callback
     graphApp->callback([options]() { run(*options); });

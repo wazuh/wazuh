@@ -3,12 +3,15 @@
 #include <sys/un.h> // Unix socket datagram bind
 
 #include <logging/logging.hpp>
+#include <timer.hpp>
 
 namespace engineserver::endpoint
 {
 
 UnixStream::UnixStream(const std::string& address,
                        std::shared_ptr<ProtocolHandlerFactory> factory,
+                       std::shared_ptr<metricsManager::IMetricsScope> metricsScope,
+                       std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
                        const std::size_t taskQueueSize,
                        std::size_t timeout)
     : Endpoint(address, taskQueueSize)
@@ -46,6 +49,18 @@ UnixStream::UnixStream(const std::string& address,
     {
         throw std::runtime_error("Address must start with '/'");
     }
+
+    m_metric.m_metricsScope = std::move(metricsScope);
+    m_metric.m_totalRequest = m_metric.m_metricsScope->getCounterUInteger("TotalRequest");
+    m_metric.m_responseTime = m_metric.m_metricsScope->getHistogramUInteger("ResponseTime");
+    m_metric.m_queueSize = m_metric.m_metricsScope->getHistogramUInteger("QueueSize");
+    m_metric.m_connectedClients = m_metric.m_metricsScope->getUpDownCounterInteger("ConnectedClients");
+    m_metric.m_serverBusy = m_metric.m_metricsScope->getCounterUInteger("ServerBusy");
+
+    m_metric.m_metricsScopeDelta = std::move(metricsScopeDelta);
+    m_metric.m_requestPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("RequestPerSecond");
+
+
 }
 
 UnixStream::~UnixStream()
@@ -91,6 +106,7 @@ void UnixStream::bind(std::shared_ptr<uvw::Loop> loop)
             auto client = createClient();
             handle.accept(*client);
             client->read();
+            m_metric.m_connectedClients->addValue(1L);
         });
 
     // Listen for incoming connections
@@ -177,6 +193,9 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
             }
 
             // Send each message to the queue worker
+            m_metric.m_totalRequest->addValue(result->size());
+            m_metric.m_requestPerSecond->addValue(result->size());
+
             processMessages(client, protocolHandler, std::move(result.value()));
         });
 
@@ -194,6 +213,7 @@ void UnixStream::processMessages(std::shared_ptr<uvw::PipeHandle> client,
         // No queue worker, process the message in the main thread
         if (0 == m_taskQueueSize)
         {
+            auto responseTimer = base::chrono::Timer();
             auto response = std::make_shared<std::string>();
             try
             {
@@ -205,15 +225,24 @@ void UnixStream::processMessages(std::shared_ptr<uvw::PipeHandle> client,
                 *response = protocolHandler->getErrorResponse();
             }
             auto [buffer, size] = protocolHandler->streamToSend(std::move(response));
+
             client->write(std::move(buffer), size);
+
+            auto elapsedTime = responseTimer.elapsed<std::chrono::milliseconds>();
+            m_metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
             continue;
         }
         // Send the message to the queue worker (#TODO: Should be add the size of the worker?)
         if (m_currentTaskQueueSize >= m_taskQueueSize)
         {
+            auto responseTimer = base::chrono::Timer();
             WAZUH_LOG_DEBUG("[Endpoint: {}] endpoint: No queue worker available, disarting...", m_address);
             auto [buffer, size] = protocolHandler->getBusyResponse();
             client->write(std::move(buffer), size);
+
+            auto elapsedTime = responseTimer.elapsed<std::chrono::milliseconds>();
+            m_metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
+            m_metric.m_serverBusy->addValue(1L);
             continue;
         }
 
@@ -225,7 +254,7 @@ void UnixStream::createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
                                       std::shared_ptr<ProtocolHandler> protocolHandler,
                                       std::string&& message)
 {
-
+    auto responseTimer = std::make_shared<base::chrono::Timer>();
     auto response = std::make_shared<std::string>();
     ++m_currentTaskQueueSize;
 
@@ -250,14 +279,15 @@ void UnixStream::createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
         {
             WAZUH_LOG_ERROR("[Endpoint: {}] endpoint: Error processing message: {}", m_address, error.what());
             --m_currentTaskQueueSize;
+            m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
         });
 
     // On finish
     work->on<uvw::WorkEvent>(
-        [this, client, response, protocolHandler](const uvw::WorkEvent&, uvw::WorkReq& work)
+        [this, client, response, protocolHandler, responseTimer](const uvw::WorkEvent&, uvw::WorkReq& work)
         {
             --m_currentTaskQueueSize;
-
+            m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
             // Check if client is closed
             if (client->closing())
             {
@@ -268,9 +298,12 @@ void UnixStream::createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
             // Send the response
             auto [buffer, size] = protocolHandler->streamToSend(response);
             client->write(std::move(buffer), size);
+            auto elapsedTime = responseTimer->elapsed<std::chrono::milliseconds>();
+            m_metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
         });
 
     work->queue();
+    m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
 }
 
 std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::shared_ptr<uvw::PipeHandle> client)
@@ -305,9 +338,9 @@ std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::shared_ptr<uvw::P
 void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, std::shared_ptr<uvw::TimerHandle> timer)
 {
 
-    auto gracefullEnd = [timer, client]()
+    auto gracefullEnd = [timer, client, this]()
     {
-        if (timer && !timer->closing())
+        if (!timer->closing())
         {
             timer->stop();
             timer->close();
@@ -315,6 +348,7 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, s
         if (!client->closing())
         {
             client->close();
+            m_metric.m_connectedClients->addValue(-1L);
         }
     };
 
