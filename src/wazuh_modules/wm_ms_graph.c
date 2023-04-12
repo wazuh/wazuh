@@ -250,7 +250,7 @@ void wm_ms_graph_check() {
         pthread_exit(NULL);
     }
     else {
-        for(int resource = 0; resource < ms_graph->num_resources; resource++){
+        for(unsigned int resource = 0; resource < ms_graph->num_resources; resource++){
             if(ms_graph->resources[resource].num_relationships == 0){
                 mtwarn(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
                 pthread_exit(NULL);
