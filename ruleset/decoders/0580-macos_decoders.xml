@@ -20,8 +20,8 @@
 
 <decoder name="macOS_loginwindow">
   <parent>macOS_loginwindow</parent>
-  <regex>[com.apple.loginwindow.logging:Standard] -[.+] | \w+: \w+.\w+.\w+.(\w+), with userID:(\d+)||loginIsComplete</regex>
-  <order>data, userID</order>
+  <regex>[com.apple.loginwindow.logging:Standard] -[.+] | \w+: \w+.\w+.\w+.\w+, with userID:(\d+)||loginIsComplete</regex>
+  <order>userID</order>
 </decoder>
 
 <decoder name="macOS_screensharingd">
