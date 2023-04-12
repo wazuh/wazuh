@@ -28,7 +28,7 @@
   <program_name>screensharingd</program_name>
 </decoder>
   
-<decoder name="macOS_screensharingd_authentication">
+<decoder name="macOS_screensharingd">
   <parent>macOS_screensharingd</parent>
   <regex>Authentication: (\S+) :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
   <order>action, dstuser, ip_address, type</order>
@@ -38,13 +38,13 @@
   <program_name>securityd</program_name>
 </decoder>
 
-<decoder name="macOS_securityd_session_created">
+<decoder name="macOS_securityd">
   <parent>macOS_securityd_process</parent>
   <regex>[com.apple.securityd:SecServer] \S+ Session \d+ created, uid:-(\d+) sessionId:(\d+)</regex>
   <order>uid, sessionId</order>
 </decoder>
 
-<decoder name="macOS_securityd_session_destroyed">
+<decoder name="macOS_securityd">
   <parent>macOS_securityd_process</parent>
   <regex>[com.apple.securityd:SecServer] \S+ Session (\d+) destroyed</regex>
   <order>sessionId</order>
