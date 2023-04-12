@@ -2142,6 +2142,12 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             return OS_INVALID;
         }
 
+        if (!cJSON_IsNumber(scan_id)) {
+            mdebug1("Malformed JSON: field 'id' must be a number");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return OS_INVALID;
+        }
+
         if (scan_id->valueint < 0) {
             mdebug1("Malformed JSON: field 'id' cannot be negative");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);

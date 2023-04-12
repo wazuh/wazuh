@@ -958,6 +958,11 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!cJSON_IsNumber(pm_scan_id)){
+        merror("Malformed JSON: field 'scan_id' must be a number.");
+        return;
+    }
+
     if(pm_scan_id->valueint < 0) {
         merror("Malformed JSON: field 'scan_id' cannot be negative.");
         return;
