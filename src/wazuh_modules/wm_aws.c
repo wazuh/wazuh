@@ -191,11 +191,6 @@ void* wm_aws_main(wm_aws *aws_config) {
                 wm_strcat(&log_info, "unknown_queue", ' ');
             }
 
-            if (cur_subscriber->aws_profile) {
-                wm_strcat(&log_info, ", Profile:", '\0');
-                wm_strcat(&log_info, cur_subscriber->aws_profile, ' ');
-            }
-
             wm_strcat(&log_info, ")", '\0');
 
             mtinfo(WM_AWS_LOGTAG, "%s", log_info);
