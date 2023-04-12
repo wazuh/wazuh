@@ -1,7 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.4.1]
+## [v4.4.2]
+
+
+## [v4.4.1] - 2023-04-12
 
 ### Manager
 
@@ -19,7 +22,7 @@ All notable changes to this project will be documented in this file.
 
 - Changed API limits protection to allow uploading new configuration files if `limit` is not modified. ([#16541](https://github.com/wazuh/wazuh/pull/16541))
 
-### Ruleset 
+### Ruleset
 
 #### Added
 
@@ -27,14 +30,14 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- SCA policy for Red Hat Enterprise Linux 9 rework. ([#16016](https://github.com/wazuh/wazuh/pull/16016)) 
+- SCA policy for Red Hat Enterprise Linux 9 rework. ([#16016](https://github.com/wazuh/wazuh/pull/16016))
 
 ### Other
 
 #### Changed
 
 - Update embedded Python interpreter to 3.9.16. ([#16472](https://github.com/wazuh/wazuh/issues/16472))
-- Update setuptools to 65.5.1. ([#16492)](https://github.com/wazuh/wazuh/pull/16492))
+- Update setuptools to 65.5.1. ([#16492](https://github.com/wazuh/wazuh/pull/16492))
 
 ## [v4.4.0] - 2023-03-28
 
