@@ -37,6 +37,7 @@ target_link_libraries(engine_test_main
 
 include(GoogleTest)
 
+add_subdirectory(${TEST_SOURCE_DIR}/mocks)
 add_subdirectory(${TEST_SOURCE_DIR}/api)
 add_subdirectory(${TEST_SOURCE_DIR}/base)
 add_subdirectory(${TEST_SOURCE_DIR}/builder)

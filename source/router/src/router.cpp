@@ -6,14 +6,12 @@
 #include <builder.hpp>
 
 #include <parseEvent.hpp>
-#include <metrics/metricsManager.hpp>
 
 namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
-Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store,
-        const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager, std::size_t threads)
+Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads)
     : m_mutexRoutes {}
     , m_namePriorityFilter {}
     , m_priorityRoute {}
@@ -23,8 +21,6 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
     , m_threads {}
     , m_builder {builder}
 {
-    m_spMetricsScope = metricsManager->getMetricsScope("Router");
-    m_spMetricsScopeDelta = metricsManager->getMetricsScope("RouterRate", true);
 
     if (0 == threads || 128 < threads)
     {
@@ -185,7 +181,6 @@ void Router::removeRoute(const std::string& routeName)
         // Should never happen
         WAZUH_LOG_WARN("Router: couldn't delete policy '{}': {} ", policyName, err.value().message);
     }
-    return;
 }
 
 std::vector<Router::Entry> Router::getRouteTable()
@@ -281,7 +276,7 @@ std::optional<base::Error> Router::changeRoutePriority(const std::string& name, 
     return std::nullopt;
 }
 
-std::optional<base::Error> Router::enqueueEvent(base::Event event)
+std::optional<base::Error> Router::enqueueEvent(base::Event&& event)
 {
     if (!m_isRunning.load() || !m_queue)
     {
@@ -298,7 +293,7 @@ std::optional<base::Error> Router::enqueueOssecEvent(std::string_view event)
     try
     {
         base::Event ev = base::parseEvent::parseOssecEvent(event.data());
-        err = enqueueEvent(ev);
+        err = enqueueEvent(std::move(ev));
     }
     catch (const std::exception& e)
     {
@@ -316,11 +311,6 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
 {
     std::shared_lock lock {m_mutexRoutes};
 
-    auto eventsReceivedPerSecond = m_spMetricsScopeDelta->getCounterUInteger("EventsReceivedPerSecond");
-    auto eventsConsumedQueue = m_spMetricsScope->getCounterUInteger("EventsConsumedQueue");
-    auto usedQueueHistory = m_spMetricsScope->getHistogramUInteger("UsedQueueHistory");
-    auto usedQueue = m_spMetricsScope->getGaugeInteger("UsedQueue", 0);
-
     if (m_isRunning.load())
     {
         return base::Error {"The router is already running"};
@@ -331,25 +321,13 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
         m_threads.emplace_back(
-            [this, queue, i, eventsReceivedPerSecond, eventsConsumedQueue, usedQueueHistory, usedQueue]()
+            [this, queue, i]()
             {
                 while (m_isRunning.load())
                 {
                     base::Event event {};
                     if (queue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
-                        // Events consumed from the queue
-                        eventsConsumedQueue->addValue(1UL);
-
-                        // Number of events per second consumed
-                        eventsReceivedPerSecond->addValue(1UL);
-
-                        // Used Queue History
-                        usedQueueHistory->recordValue(static_cast<uint64_t>(queue->size_approx()));
-
-                        // Used Queue
-                        usedQueue->setValue(static_cast<uint64_t>(queue->size_approx()));
-
                         std::shared_lock lock {m_mutexRoutes};
                         for (auto& route : m_priorityRoute)
                         {

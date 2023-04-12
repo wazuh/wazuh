@@ -171,20 +171,11 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdb_manager::KVDBManager> kvdb;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
+    std::shared_ptr<base::queue::ConcurrentQueue<base::Event>> eventQueue;
 
     try
     {
         metrics = std::make_shared<metricsManager::MetricsManager>();
-
-        const auto bufferSize {static_cast<size_t>(queueSize)};
-
-        // TODO Add the option to configure the flooded file
-        // TODO Change the default buffer size to a multiple of 1024
-        server = std::make_shared<engineserver::EngineServer>(
-            apiEndpoint, nullptr, eventEndpoint, floodFile, bufferSize, metrics);
-        g_exitHanlder.add([server]() { server->close(); });
-        WAZUH_LOG_DEBUG("Server configured.");
-        std::shared_ptr<base::queue::ConcurrentQueue<base::Event>> eventQueue;
 
         // API
         {
@@ -194,8 +185,11 @@ void runStart(ConfHandler confManager)
 
         // Queue
         {
+            // Create the scope here
+            auto EventScope = metrics->getMetricsScope("EventQueue");
+            auto EventScopeDelta = metrics->getMetricsScope("EventQueueDelta");
             eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(
-                queueSize, queueFloodFile, queueFloodAttempts, queueFloodSleep);
+                queueSize, EventScope, EventScopeDelta, queueFloodFile, queueFloodAttempts, queueFloodSleep);
             WAZUH_LOG_DEBUG("Event queue created.");
         }
 
@@ -266,7 +260,8 @@ void runStart(ConfHandler confManager)
 
         // Router
         {
-            router = std::make_shared<router::Router>(builder, store, metrics, routerThreads);
+            // Delete router metrics
+            router = std::make_shared<router::Router>(builder, store, routerThreads);
 
             router->run(eventQueue);
             g_exitHanlder.add([router]() { router->stop(); });
@@ -279,17 +274,17 @@ void runStart(ConfHandler confManager)
             // If the router table is empty or the force flag is passed, load from the command line
             if (router->getRouteTable().empty())
             {
-                router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
+                router->addRoute(routeName, routePriority, routeFilter, routePolicy);
             }
             else if (forceRouterArg)
             {
                 router->clear();
-                router->addRoute(routeName, routePriority, routeFilter, routeEnvironment);
+                router->addRoute(routeName, routePriority, routeFilter, routePolicy);
             }
         }
 
         // Register Metrics commands
-        api::metrics::handlers::registerHandlers(metrics, server->getRegistry());
+        api::metrics::handlers::registerHandlers(metrics, api);
         WAZUH_LOG_DEBUG("Metrics API registered.");
 
         // Register Configuration API commands
@@ -298,7 +293,7 @@ void runStart(ConfHandler confManager)
 
         // Register Integration API commands
         auto integration = std::make_shared<api::integration::Integration>(catalog);
-        api::integration::handlers::registerHandlers(integration, server->getRegistry());
+        api::integration::handlers::registerHandlers(integration, api);
         WAZUH_LOG_DEBUG("Integration manager API registered.");
         // Server
         {
@@ -307,19 +302,27 @@ void runStart(ConfHandler confManager)
             g_exitHanlder.add([server]() { server->request_stop(); });
 
             // API Endpoint
+            auto apiMetricScope = metrics->getMetricsScope("endpointAPI");
+            auto apiMetricScopeDelta = metrics->getMetricsScope("endpointAPIRate", true);
             auto apiHandler = std::bind(&api::Api::processRequest, api, std::placeholders::_1);
             auto apiClientFactory = std::make_shared<ph::WStreamFactory>(apiHandler); // API endpoint
             apiClientFactory->setErrorResponse(base::utils::wazuhProtocol::WazuhResponse::unknownError().toString());
             apiClientFactory->setBusyResponse(base::utils::wazuhProtocol::WazuhResponse::busyServer().toString());
 
-            auto apiEndpointCfg = std::make_shared<endpoint::UnixStream>(
-                serverApiSock, apiClientFactory, serverApiQueueSize, serverApiTimeout);
+            auto apiEndpointCfg = std::make_shared<endpoint::UnixStream>(serverApiSock,
+                                                                         apiClientFactory,
+                                                                         apiMetricScope,
+                                                                         apiMetricScopeDelta,
+                                                                         serverApiQueueSize,
+                                                                         serverApiTimeout);
             server->addEndpoint("API", apiEndpointCfg);
 
             // Event Endpoint
+            auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
+            auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
             auto eventHandler = std::bind(&router::Router::fastEnqueueEvent, router, std::placeholders::_1);
-            auto eventEndpointCfg =
-                std::make_shared<endpoint::UnixDatagram>(serverEventSock, eventHandler, serverEventQueueSize);
+            auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(
+                serverEventSock, eventHandler, eventMetricScope, eventMetricScopeDelta, serverEventQueueSize);
             server->addEndpoint("EVENT", eventEndpointCfg);
             WAZUH_LOG_DEBUG("Server configured.");
         }

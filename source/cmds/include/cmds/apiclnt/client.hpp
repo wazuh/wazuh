@@ -70,7 +70,9 @@ public:
                 handle.close();
             });
 
-        clientHandle->once<uvw::EndEvent>([](const uvw::EndEvent&, uvw::PipeHandle& handle) { handle.close(); });
+        clientHandle->once<uvw::EndEvent>([](const uvw::EndEvent&, uvw::PipeHandle& handle) {
+
+            handle.close(); });
 
         // Stablish connection
         clientHandle->connect(m_socketPath);

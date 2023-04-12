@@ -9,70 +9,84 @@
 #include "testAuxiliar/routerAuxiliarFunctions.hpp"
 
 #include <metrics/metricsManager.hpp>
+#include <mocks/fakeMetric.hpp>
+
 using namespace metricsManager;
 // TODO actually fake the store
 
 TEST(Router, build_ok)
 {
-    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
-    router::Router router(builder, store, manager);
+    router::Router router(builder, store);
 }
 
 TEST(Router, build_fail)
 {
-    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
-    try {
-        router::Router router(builder, store, manager, 0);
+    try
+    {
+        router::Router router(builder, store, 0);
         FAIL() << "Router: The router was created with 0 threads";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         ASSERT_STREQ(e.what(), "Router: The number of threads must be between 1 and 128");
-    } catch (...) {
+    }
+    catch (...)
+    {
         FAIL() << "Router: The router was created with 0 threads";
     }
 
-    try {
-        router::Router router(nullptr, store, manager, 1);
+    try
+    {
+        router::Router router(nullptr, store, 1);
         FAIL() << "Router: The router was created with a null builder";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         ASSERT_STREQ(e.what(), "Router: Builder cannot be null");
-    } catch (...) {
+    }
+    catch (...)
+    {
         FAIL() << "Router: The router was created with a null builder";
     }
 
-    try {
-        router::Router router(builder, nullptr, manager, 1);
+    try
+    {
+        router::Router router(builder, nullptr, 1);
         FAIL() << "Router: The router was created with a null store";
-    } catch (const std::runtime_error& e) {
+    }
+    catch (const std::runtime_error& e)
+    {
         ASSERT_STREQ(e.what(), "Router: Store cannot be null");
-    } catch (...) {
+    }
+    catch (...)
+    {
         FAIL() << "Router: The router was created with a null store";
     }
 }
 
 TEST(Router, add_list_remove_routes)
 {
-    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
-    router::Router router(builder, store, manager);
+    router::Router router(builder, store);
 
     ASSERT_EQ(router.getRouteTable().size(), 0);
 
     // Add a route
-    auto error = router.addRoute("e_wazuh_queue", 2,"filter/e_wazuh_queue/0", "policy/env_1/0");
+    auto error = router.addRoute("e_wazuh_queue", 2, "filter/e_wazuh_queue/0", "policy/env_1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -80,7 +94,7 @@ TEST(Router, add_list_remove_routes)
     ASSERT_EQ(routes.size(), 1);
 
     // Add a route
-    error = router.addRoute("allow_all", 1,"filter/allow_all/0", "policy/env_2/0");
+    error = router.addRoute("allow_all", 1, "filter/allow_all/0", "policy/env_2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -116,17 +130,17 @@ TEST(Router, add_list_remove_routes)
     ASSERT_EQ(routes.size(), 0);
 }
 
-TEST(Router, priorityChanges) {
-    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
+TEST(Router, priorityChanges)
+{
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
-    router::Router router(builder, store, manager);
+    router::Router router(builder, store);
 
     // Add a route
-    auto error = router.addRoute("e_wazuh_queue", 2,"filter/e_wazuh_queue/0", "policy/env_1/0");
+    auto error = router.addRoute("e_wazuh_queue", 2, "filter/e_wazuh_queue/0", "policy/env_1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -134,7 +148,7 @@ TEST(Router, priorityChanges) {
     ASSERT_EQ(routes.size(), 1);
 
     // Add a route
-    error = router.addRoute("allow_all", 1,"filter/allow_all/0", "policy/env_2/0");
+    error = router.addRoute("allow_all", 1, "filter/allow_all/0", "policy/env_2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -170,7 +184,6 @@ TEST(Router, priorityChanges) {
     std::get<0>(list[0]) == "filter/allow_all/0";
     std::get<0>(list[1]) == "filter/e_wazuh_queue/0";
 
-
     // Change same priority
     const auto p_allow_all = 1;
     const auto p_e_wazuh_queue = 2;
@@ -193,10 +206,12 @@ TEST(Router, priorityChanges) {
     // Change negative priority
     error = router.changeRoutePriority("allow_all", -1);
     ASSERT_TRUE(error.has_value()) << error.value().message;
-    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/allow_all/0' has an invalid priority. Priority must be between 0 and 255");
+    ASSERT_STREQ(error.value().message.c_str(),
+                 "Route 'filter/allow_all/0' has an invalid priority. Priority must be between 0 and 255");
     error = router.changeRoutePriority("e_wazuh_queue", -1);
     ASSERT_TRUE(error.has_value()) << error.value().message;
-    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/e_wazuh_queue/0' has an invalid priority. Priority must be between 0 and 255");
+    ASSERT_STREQ(error.value().message.c_str(),
+                 "Route 'filter/e_wazuh_queue/0' has an invalid priority. Priority must be between 0 and 255");
 
     // Check priority
     list = router.getRouteTable();
@@ -207,48 +222,48 @@ TEST(Router, priorityChanges) {
     // Change out of range priority
     error = router.changeRoutePriority("allow_all", 256);
     ASSERT_TRUE(error.has_value()) << error.value().message;
-    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/allow_all/0' has an invalid priority. Priority must be between 0 and 255");
+    ASSERT_STREQ(error.value().message.c_str(),
+                 "Route 'filter/allow_all/0' has an invalid priority. Priority must be between 0 and 255");
     error = router.changeRoutePriority("e_wazuh_queue", 256);
     ASSERT_TRUE(error.has_value()) << error.value().message;
-    ASSERT_STREQ(error.value().message.c_str(), "Route 'filter/e_wazuh_queue/0' has an invalid priority. Priority must be between 0 and 255");
+    ASSERT_STREQ(error.value().message.c_str(),
+                 "Route 'filter/e_wazuh_queue/0' has an invalid priority. Priority must be between 0 and 255");
 
     // Check priority
     list = router.getRouteTable();
     ASSERT_EQ(list.size(), 2) << error.value().message;
     ASSERT_EQ(std::get<1>(list[0]), p_allow_all);
     ASSERT_EQ(std::get<1>(list[1]), p_e_wazuh_queue);
-
 }
 
-
-TEST(Router, checkRouting) {
-    const auto sleepTime = (const struct timespec[]){{0, 100000000L}};
+TEST(Router, checkRouting)
+{
+    const auto sleepTime = (const struct timespec[]) {{0, 100000000L}};
     const auto ENV_A1 = "deco_A1";
     const auto ENV_B2 = "deco_B2";
     const auto ENV_C3 = "deco_C3";
     const auto PATH_DECODER = json::Json::formatJsonPath("~decoder");
 
-    std::shared_ptr<IMetricsManager> manager = std::make_shared<MetricsManager>();
     auto registry = std::make_shared<builder::internals::Registry>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
     // Run the router
-    auto testQueue = aux::testQueue{};
+    auto testQueue = aux::testQueue {};
 
-    router::Router router(builder, store, manager);
+    router::Router router(builder, store);
     router.run(testQueue.getQueue());
 
     /*************************************************************************************
      *     Verify that the routes are working  before start the tests
-    *************************************************************************************/
+     *************************************************************************************/
     /* Check route 1 */
     // Create a fake message
     auto message = aux::createFakeMessage();
 
     // Add a route
-    auto error = router.addRoute("allow_all_A1", 101,"filter/allow_all_A1/0", "policy/env_A1/0");
+    auto error = router.addRoute("allow_all_A1", 101, "filter/allow_all_A1/0", "policy/env_A1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -265,7 +280,7 @@ TEST(Router, checkRouting) {
     // Create a fake message
     message = aux::createFakeMessage();
 
-    error = router.addRoute("allow_all_B2", 102,"filter/allow_all_B2/0", "policy/env_B2/0");
+    error = router.addRoute("allow_all_B2", 102, "filter/allow_all_B2/0", "policy/env_B2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -282,7 +297,7 @@ TEST(Router, checkRouting) {
     // Create a fake message
     message = aux::createFakeMessage();
 
-    error = router.addRoute("allow_all_C3", 103,"filter/allow_all_C3/0", "policy/env_C3/0");
+    error = router.addRoute("allow_all_C3", 103, "filter/allow_all_C3/0", "policy/env_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -296,21 +311,21 @@ TEST(Router, checkRouting) {
     router.removeRoute("allow_all_C3");
 
     /*************************************************************************************
-    *                  Add 3 routes and test the priority
-    *************************************************************************************/
+     *                  Add 3 routes and test the priority
+     *************************************************************************************/
     auto list = router.getRouteTable();
     ASSERT_EQ(list.size(), 0);
 
     /* Add route 1 */
-    error = router.addRoute("allow_all_A1", 101,"filter/allow_all_A1/0", "policy/env_A1/0");
+    error = router.addRoute("allow_all_A1", 101, "filter/allow_all_A1/0", "policy/env_A1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     /* Add route 2 */
-    error = router.addRoute("allow_all_B2", 102,"filter/allow_all_B2/0", "policy/env_B2/0");
+    error = router.addRoute("allow_all_B2", 102, "filter/allow_all_B2/0", "policy/env_B2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     /* Add route 3 */
-    error = router.addRoute("allow_all_C3", 103,"filter/allow_all_C3/0", "policy/env_C3/0");
+    error = router.addRoute("allow_all_C3", 103, "filter/allow_all_C3/0", "policy/env_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     list = router.getRouteTable();
@@ -403,7 +418,7 @@ TEST(Router, checkRouting) {
 
     /* Check route 1 */
     // Add route 3 in first position
-    error = router.addRoute("allow_all_C3", 1,"filter/allow_all_C3/0", "policy/env_C3/0");
+    error = router.addRoute("allow_all_C3", 1, "filter/allow_all_C3/0", "policy/env_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     list = router.getRouteTable();
@@ -421,5 +436,4 @@ TEST(Router, checkRouting) {
     ASSERT_STREQ(decoder.value().c_str(), ENV_C3) << std::get<0>(router.getRouteTable()[0]);
 
     router.stop();
-
 }
