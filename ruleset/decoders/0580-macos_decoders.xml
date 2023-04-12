@@ -39,13 +39,13 @@
 </decoder>
 
 <decoder name="macOS_securityd">
-  <parent>macOS_securityd_process</parent>
+  <parent>macOS_securityd</parent>
   <regex>[com.apple.securityd:SecServer] \S+ Session \d+ created, uid:-(\d+) sessionId:(\d+)</regex>
   <order>uid, sessionId</order>
 </decoder>
 
 <decoder name="macOS_securityd">
-  <parent>macOS_securityd_process</parent>
+  <parent>macOS_securityd</parent>
   <regex>[com.apple.securityd:SecServer] \S+ Session (\d+) destroyed</regex>
   <order>sessionId</order>
 </decoder>
