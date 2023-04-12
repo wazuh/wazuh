@@ -11,17 +11,17 @@ from pathlib import Path
 from typing import Literal
 
 import _pytest.fixtures
-import psutil
 import pytest
 import requests
 import urllib3
 import yaml
 from py.xml import html
 
-WEBHOOK_HEADER = ''
+WEBHOOK_HEADER = '1:Wazuh-Webhook:'
 ANALYSISD_DAEMON = 'wazuh-analysisd'
 WAZUH_PATH = Path('/var/ossec')
-SOCKET_PATH = Path(WAZUH_PATH, 'queue/sockets/queue')
+RELATIVE_SOCKET_PATH = Path('queue/sockets/queue')
+CONTAINER_SOCKET_PATH = Path(WAZUH_PATH, RELATIVE_SOCKET_PATH)
 ANALYSISD_DAEMON_PATH = Path(WAZUH_PATH, 'bin', ANALYSISD_DAEMON)
 START_ACTION = 'start'
 STOP_ACTION = 'stop'
@@ -31,6 +31,7 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(current_path, 'env')
 test_logs_path = os.path.join(current_path, '_test_results', 'logs')
 docker_log_path = os.path.join(test_logs_path, 'docker.log')
+HOST_SOCKET_PATH = Path(env_path, RELATIVE_SOCKET_PATH)
 results = dict()
 
 with open('common.yaml', 'r') as stream:
@@ -557,7 +558,6 @@ class SocketHandler:
             if self.socket.recv is not None:
                 data, _ = self.socket.recvfrom(1024)
                 if data.startswith(header.encode()):
-                    print(data)  # TODO: Remove this line
                     events.append(data)
 
     @staticmethod
@@ -567,28 +567,38 @@ class SocketHandler:
 
 
 def _analysisd_manager(action: ACTIONS) -> None:
-    if action == START_ACTION:
-        subprocess.check_call([ANALYSISD_DAEMON_PATH])
-    elif action == STOP_ACTION:
-        try:
-            process = next(i for i in psutil.process_iter() if i.name() == ANALYSISD_DAEMON)
-            process.kill()
-        except StopIteration:
-            # Process already stopped
-            pass
-        finally:
-            SocketHandler.remove(SOCKET_PATH)
+    os.chdir(env_path)
+    with open(docker_log_path, mode='w') as f_docker:
+        if action == START_ACTION:
+            current_process = subprocess.Popen(
+                ["docker-compose", "exec", "wazuh-master", ANALYSISD_DAEMON_PATH],
+                stdout=f_docker,
+                stderr=subprocess.STDOUT
+            )
+            current_process.wait()
+        elif action == STOP_ACTION:
+            subprocess.Popen(
+                ["docker-compose", "exec", "wazuh-master", "pkill", ANALYSISD_DAEMON],
+                stdout=f_docker,
+                stderr=subprocess.STDOUT
+            )
+            subprocess.Popen(
+                ["docker-compose", "exec", "wazuh-master", "rm", CONTAINER_SOCKET_PATH],
+                stdout=f_docker,
+                stderr=subprocess.STDOUT
+            )
+    os.chdir(current_path)
 
 
-@pytest.fixture(name="check_forwarded_events")
-def fixture_check_forwarded_events(*args, **kwargs):
+@pytest.fixture(name="forwarded_events")
+def fixture_forwarded_events(request):
     """Check the number of forwarded events to analysisd."""
 
     _analysisd_manager(STOP_ACTION)
     events = []
-    socket_handler = SocketHandler(path=SOCKET_PATH)
+    socket_handler = SocketHandler(path=HOST_SOCKET_PATH)
 
-    thread = threading.Thread(target=socket_handler.monitor, args=[events, '1:Wazuh-AWS:'])
+    thread = threading.Thread(target=socket_handler.monitor, args=[events])
     thread.daemon = True
     thread.start()
 
