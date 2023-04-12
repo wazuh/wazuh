@@ -681,7 +681,24 @@ void test_missing_relationship(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests_without_startup[] = {
-        cmocka_unit_test_setup_teardown(test_bad_tag, setup_test_read, teardown_test_read)
+        cmocka_unit_test_setup_teardown(test_bad_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_unclosed_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_hanging_close_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_enabled, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_only_future_events, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_curl_max_size, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_run_on_start, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_version, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_api_auth, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_client_id, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_client_id, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_tenant_id, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_tenant_id, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_secret_value, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_secret_value, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_resource, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_name, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_relationship, setup_test_read, teardown_test_read)
     };
     return cmocka_run_group_tests(tests_without_startup, NULL, NULL);
 }
