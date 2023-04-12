@@ -69,7 +69,7 @@ typedef struct wm_aws_service {
 typedef struct wm_aws_subscriber {
     char *type;                            // String defining subscriber type.
     char *sqs_name;                        // String defining SQS name
-    char *aws_profile;                     // AWS credentials profile
+    char *aws_external_id;                     // AWS credentials profile
     char *iam_role_arn;                    // IAM role
     char *iam_role_duration;               // IAM role session duration
     char *sts_endpoint;                    // URL for the VPC endpoint to use to obtain the STS token

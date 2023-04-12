@@ -23,6 +23,7 @@ static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_REMOVE_FORM_BUCKET = "remove_from_bucket";
 static const char *XML_SKIP_ON_ERROR = "skip_on_error";
 static const char *XML_AWS_PROFILE = "aws_profile";
+static const char *XML_AWS_EXTERNAL_ID = "aws_external_id";
 static const char *XML_IAM_ROLE_ARN = "iam_role_arn";
 static const char *XML_AWS_ORGANIZATION_ID = "aws_organization_id";
 static const char *XML_AWS_ACCOUNT_ID = "aws_account_id";
@@ -542,10 +543,10 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         free(cur_subscriber->sqs_name);
                         os_strdup(children[j]->content, cur_subscriber->sqs_name);
                     }
-                } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
+                } else if (!strcmp(children[j]->element, XML_AWS_EXTERNAL_ID)) {
                     if (strlen(children[j]->content) != 0) {
-                        free(cur_subscriber->aws_profile);
-                        os_strdup(children[j]->content, cur_subscriber->aws_profile);
+                        free(cur_subscriber->aws_external_id);
+                        os_strdup(children[j]->content, cur_subscriber->aws_external_id);
                     }
                 } else if (!strcmp(children[j]->element, XML_IAM_ROLE_ARN)) {
                     if (strlen(children[j]->content) != 0) {

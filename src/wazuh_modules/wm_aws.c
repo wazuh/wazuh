@@ -294,7 +294,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             cJSON *subscriber = cJSON_CreateObject();
             if (iter->type) cJSON_AddStringToObject(subscriber,"type",iter->type);
             if (iter->sqs_name) cJSON_AddStringToObject(subscriber,"sqs_name",iter->sqs_name);
-            if (iter->aws_profile) cJSON_AddStringToObject(subscriber,"aws_profile",iter->aws_profile);
+            if (iter->aws_external_id) cJSON_AddStringToObject(subscriber,"aws_external_id",iter->aws_external_id);
             if (iter->iam_role_arn) cJSON_AddStringToObject(subscriber,"iam_role_arn",iter->iam_role_arn);
             if (iter->iam_role_duration) cJSON_AddStringToObject(subscriber, "iam_role_duration",iter->iam_role_duration);
             if (iter->sts_endpoint) cJSON_AddStringToObject(subscriber,"sts_endpoint",iter->sts_endpoint);
@@ -745,9 +745,9 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
     wm_strcat(&command, exec_subscriber->sqs_name, ' ');
 
     // subscriber arguments
-    if (exec_subscriber->aws_profile) {
-        wm_strcat(&command, "--aws_profile", ' ');
-        wm_strcat(&command, exec_subscriber->aws_profile, ' ');
+    if (exec_subscriber->aws_external_id) {
+        wm_strcat(&command, "--aws_external_id", ' ');
+        wm_strcat(&command, exec_subscriber->aws_external_id, ' ');
     }
     if (exec_subscriber->iam_role_arn) {
         wm_strcat(&command, "--iam_role_arn", ' ');

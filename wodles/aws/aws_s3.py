@@ -83,6 +83,7 @@ DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {rel
 # Enable/disable debug mode
 debug_level = 0
 
+
 ################################################################################
 # Classes
 ################################################################################
@@ -99,11 +100,13 @@ class WazuhIntegration:
     :param region: Region of service
     :param bucket: Bucket name to extract logs from
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
+    :param aws_external_id: AWS external ID for IAM Role assumption
     """
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name=None, region=None, bucket=None, discard_field=None,
-                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
+                 aws_external_id=None):
         # SQL queries
         self.sql_find_table_names = """
                             SELECT
@@ -182,7 +185,8 @@ class WazuhIntegration:
                                       region=region,
                                       sts_endpoint=sts_endpoint,
                                       service_endpoint=service_endpoint,
-                                      iam_role_duration=iam_role_duration
+                                      iam_role_duration=iam_role_duration,
+                                      aws_external_id=aws_external_id
                                       )
         if hasattr(self, 'db_name'):  # If db_name is present, the subclass is not part of the SecLake process
             # db_name is an instance variable of subclass
@@ -256,18 +260,20 @@ class WazuhIntegration:
                     'mode': 'standard'
                 }
             )
-            debug(f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",2)
+            debug(
+                f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
+                2)
         else:
-            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',2)
+            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',
+                  2)
 
         return args
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name,
                    bucket, region=None,
-                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None, aws_external_id=None):
 
         conn_args = {}
-
 
         if access_key is not None and secret_key is not None:
             print(DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4", url=CREDENTIALS_URL))
@@ -294,8 +300,10 @@ class WazuhIntegration:
                 sts_client = boto_session.client('sts', endpoint_url=sts_endpoint, **self.connection_config)
 
                 assume_role_kwargs = {'RoleArn': iam_role_arn,
-                                      'RoleSessionName': 'WazuhLogParsing'
-                                      }
+                                      'RoleSessionName': 'WazuhLogParsing'}
+                if aws_external_id:
+                    assume_role_kwargs['ExternalId'] = aws_external_id
+
                 if iam_role_duration is not None:
                     assume_role_kwargs['DurationSeconds'] = iam_role_duration
 
@@ -813,7 +821,7 @@ class AWSBucket(WazuhIntegration):
             bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
             print(f"ERROR: Invalid type of bucket. The bucket was set up as '{get_script_arguments().type.lower()}' "
                   f"type and this bucket does not contain log files from this type. Try with other type: "
-                  f"{bucket_types - {get_script_arguments().type.lower()}}")
+                  f"{bucket_types - {get_script_arguments().type.lower()} }")
             sys.exit(12)
 
     def find_regions(self, account_id):
@@ -966,8 +974,6 @@ class AWSBucket(WazuhIntegration):
                 sys.exit(8)
         else:
             return io.TextIOWrapper(raw_object)
-
-
 
     def load_information_from_file(self, log_key):
         """
@@ -2522,7 +2528,6 @@ class AWSALBBucket(AWSLBBucket):
             return tsv_file
 
 
-
 class AWSCLBBucket(AWSLBBucket):
 
     def __init__(self, **kwargs):
@@ -3553,18 +3558,17 @@ class AWSSQSQueue(WazuhIntegration):
         IAM Role.
     """
 
-    def __init__(self, name: str, access_key: str = None, secret_key: str = None,
-                 aws_profile: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
+    def __init__(self, name: str, aws_profile: str, access_key: str = None, secret_key: str = None,
+                 aws_external_id: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
         self.sqs_name = name
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                  aws_profile=aws_profile, service_name='sqs', sts_endpoint=sts_endpoint,
+                                  aws_profile=aws_profile, aws_external_id=aws_external_id, service_name='sqs', sts_endpoint=sts_endpoint,
                                   service_endpoint=service_endpoint, **kwargs)
         self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
-        self.profile = aws_profile
         self.iam_role_arn = kwargs['iam_role_arn']
-        self.asl_bucket_handler = AWSSLSubscriberBucket(aws_profile=self.profile,
+        self.asl_bucket_handler = AWSSLSubscriberBucket(aws_external_id=aws_external_id,
                                                         iam_role_arn=self.iam_role_arn,
                                                         service_endpoint=service_endpoint,
                                                         sts_endpoint=sts_endpoint)
@@ -3727,6 +3731,7 @@ def arg_valid_iam_role_duration(arg_string):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
     return int(arg_string)
 
+
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring AWS",
@@ -3757,6 +3762,8 @@ def get_script_arguments():
     parser.add_argument('-R', '--remove', action='store_true', dest='deleteFile',
                         help='Remove processed files from the AWS S3 bucket', default=False)
     parser.add_argument('-p', '--aws_profile', dest='aws_profile', help='The name of credential profile to use',
+                        default=None)
+    parser.add_argument('-x', '--aws_external_id', dest='aws_external_id', help='The name of the External ID to use',
                         default=None)
     parser.add_argument('-i', '--iam_role_arn', dest='iam_role_arn',
                         help='ARN of IAM role to assume for access to S3 bucket',
@@ -3898,8 +3905,10 @@ def main(argv):
                                        )
                 service.get_alerts()
         elif options.subscriber:
-            asl_queue = AWSSQSQueue(aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn, sts_endpoint=options.sts_endpoint,
-                                       service_endpoint=options.service_endpoint,
+            asl_queue = AWSSQSQueue(aws_external_id=options.aws_external_id, iam_role_arn=options.iam_role_arn,
+                                    sts_endpoint=options.sts_endpoint,
+                                    service_endpoint=options.service_endpoint,
+                                    aws_profile=options.aws_profile,
                                     name=options.queue)
             asl_queue.sync_events()
 
