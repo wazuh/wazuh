@@ -584,7 +584,7 @@ STATIC cJSON *assign_group_to_agent_worker(const char *agent_id, const char *md5
 
     mdebug2("Sending message to master node: '%s'", request);
 
-    if (w_send_clustered_message("sendsync", request, response) == 0){
+    if (w_send_clustered_message("sendsync", request, response) == 0) {
         response_json = cJSON_Parse(response);
         data_json = cJSON_Duplicate(cJSON_GetObjectItem(response_json, "data"), 1);
     }

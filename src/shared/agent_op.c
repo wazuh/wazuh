@@ -614,7 +614,7 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
     int result = 0;
     int response_length = 0;
     int send_attempts = 0;
-    bool send_error;
+    bool send_error = FALSE;
 
     strcpy(sockname, CLUSTER_SOCK);
     for (send_attempts = 0; send_attempts < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++send_attempts) {
@@ -632,12 +632,9 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
                         merror("OS_RecvSecureClusterTCP(): %s", strerror(errno));
                         send_error = TRUE;
                         break;
-
                     case 0:
                         mdebug1("Empty message from local client.");
                         break;
-
-
                     case OS_MAXLEN:
                         merror("Received message > %i", OS_MAXSTR);
                         break;
@@ -645,7 +642,7 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
                     result = -1;
                 }
             }
-            else{
+            else {
                 merror("OS_SendSecureTCPCluster(): %s", strerror(errno));
                 send_error = TRUE;
                 result = -2;
