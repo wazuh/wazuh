@@ -81,15 +81,15 @@
   </rule>
   
   <rule id="89608" level="3">
-    <decoded_as>macOS_securityd_process</decoded_as>
-    <match type="pcre2">(?i)session.+created</match>
+    <decoded_as>macOS_securityd</decoded_as>
+    <match type="pcre2">(?i)session.+created, uid:(\d+)</match>
     <description>Session $(sessionId) has been created.</description>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="89609" level="3">
-    <decoded_as>macOS_securityd_process</decoded_as>
-    <match type="pcre2">(?i)session.+destroyed</match>
+    <decoded_as>macOS_securityd</decoded_as>
+    <match type="pcre2">(?i)\[com\.apple\.securityd:SecServer\].\S+ session.+destroyed</match>
     <description>Session $(sessionId) has been destroyed.</description>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
