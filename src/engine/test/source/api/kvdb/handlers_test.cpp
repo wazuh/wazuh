@@ -1206,7 +1206,7 @@ TEST_F(dbDelete_Handler, NameMissing)
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
-                                               << "Expected: " << expectedData.prettyStr() << std::endl;
+                                             << "Expected: " << expectedData.prettyStr() << std::endl;
 }
 
 TEST_F(dbDelete_Handler, NameArrayNotString)
@@ -1215,7 +1215,8 @@ TEST_F(dbDelete_Handler, NameArrayNotString)
     ASSERT_NO_THROW(cmd = dbDelete(dbDelete_Handler::kvdbManager));
     json::Json params {R"({"name":["TEST_DB_2"]})"};
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
+    const auto expectedData = json::Json {
+        R"({"status":"ERROR","error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -1320,7 +1321,8 @@ TEST_F(dbDelete_Handler, RemoveNonExistingDB)
     const auto response = cmd(removeWRequest(DB_NAME_ANOTHER, KEY_A));
 
     // check response
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Database 'ANOTHER_DB_NAME' not found or could not be loaded"})"};
+    const auto expectedData =
+        json::Json {R"({"status":"ERROR","error":"Database 'ANOTHER_DB_NAME' not found or could not be loaded"})"};
 
     // check response
     ASSERT_TRUE(response.isValid());
@@ -1350,10 +1352,8 @@ TEST_F(dbDelete_Handler, RemoveReturnsOkWithNonExistingKeyName)
 
 // registerHandlers section
 
-TEST(kvdbAPICmdsTest, registerHandlers)
+TEST_F(managerGet_Handler, registerHandlers)
 {
-    auto kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(DB_DIR, manager);
     auto api = std::make_shared<api::Api>();
-    ASSERT_NO_THROW(registerHandlers(kvdbManager, api));
-
+    ASSERT_NO_THROW(registerHandlers(managerGet_Handler::kvdbManager, api));
 }

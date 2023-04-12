@@ -8,13 +8,14 @@
 #include <typeinfo>
 #include <unistd.h>
 
+#include <condition_variable>
 #include <gtest/gtest.h>
 #include <logging/logging.hpp>
-#include <condition_variable>
 #include <uvw.hpp>
 
-#include <server/protocolHandler.hpp>
+#include <mocks/fakeMetric.hpp>
 #include <server/endpoints/unixStream.hpp>
+#include <server/protocolHandler.hpp>
 
 using namespace engineserver;
 using namespace engineserver::endpoint;
@@ -28,7 +29,6 @@ private:
     std::shared_ptr<std::atomic<bool>> enableBlockQueueWorkers;
     std::shared_ptr<std::condition_variable> BlockWokersCV;
     std::shared_ptr<std::mutex> BlockWokersMutex;
-
 
 public:
     TestProtocolHandler(SharedCounter processedMessages,
@@ -72,11 +72,11 @@ public:
         }
 
         return messages;
-
     }
 
     // Loopback
-    std::string onMessage(const std::string& message) override {
+    std::string onMessage(const std::string& message) override
+    {
         if (*enableBlockQueueWorkers)
         {
 
@@ -117,29 +117,27 @@ public:
 class TestProtocolHandlerFactory : public ProtocolHandlerFactory
 {
 public:
-
     // Variables to block all the queue workers
     std::shared_ptr<std::atomic<bool>> enableBlockQueueWorkers;
     std::shared_ptr<std::condition_variable> BlockWokersCV;
     std::shared_ptr<std::mutex> BlockWokersMutex;
-
 
     SharedCounter m_processedMessages;
     SharedCounter m_totalConexions;
     TestProtocolHandlerFactory(SharedCounter processedMessages, SharedCounter conexions)
         : m_processedMessages(processedMessages)
         , m_totalConexions(conexions)
-         {
-            enableBlockQueueWorkers = std::make_shared<std::atomic<bool>>(false);
-            BlockWokersCV = std::make_shared<std::condition_variable>();
-            BlockWokersMutex = std::make_shared<std::mutex>();
-         };
+    {
+        enableBlockQueueWorkers = std::make_shared<std::atomic<bool>>(false);
+        BlockWokersCV = std::make_shared<std::condition_variable>();
+        BlockWokersMutex = std::make_shared<std::mutex>();
+    };
     std::shared_ptr<ProtocolHandler> create() override
     {
-            auto result = std::make_shared<TestProtocolHandler>(
-                m_processedMessages, enableBlockQueueWorkers, BlockWokersCV, BlockWokersMutex);
-            (*m_totalConexions)++;
-            return result;
+        auto result = std::make_shared<TestProtocolHandler>(
+            m_processedMessages, enableBlockQueueWorkers, BlockWokersCV, BlockWokersMutex);
+        (*m_totalConexions)++;
+        return result;
     }
 };
 
@@ -161,7 +159,6 @@ protected:
 
     void TearDown() override { unlink(m_socketPath.c_str()); }
 };
-
 
 // Helper function to create and connect a Unix domain socket client
 int createUnixSocketClient(const std::string& m_socketPath)
@@ -213,17 +210,18 @@ std::tuple<std::shared_ptr<uvw::AsyncHandle>, std::thread> startLoopThread(std::
 
 TEST_F(UnixStreamTest, BindAndClose)
 {
-    UnixStream server(m_socketPath, m_factory);
+    UnixStream server(
+        m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     server.bind(m_loop);
     server.close();
     m_loop->run();
 }
 
-
 TEST_F(UnixStreamTest, EchoMessage)
 {
     // Configure UnixStream server
-    UnixStream server(m_socketPath, m_factory);
+    UnixStream server(
+        m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
 
@@ -260,7 +258,8 @@ TEST_F(UnixStreamTest, EchoMessage)
 TEST_F(UnixStreamTest, MultipleEchoMessages)
 {
     // Configure UnixStream server
-    UnixStream server(m_socketPath, m_factory);
+    UnixStream server(
+        m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
 
@@ -291,7 +290,8 @@ TEST_F(UnixStreamTest, MultipleEchoMessages)
     response.reserve(totalSize);
     attempts = 0;
     auto totalReceived = 0;
-    while (response.length() < totalSize) {
+    while (response.length() < totalSize)
+    {
         ASSERT_LT(attempts++, maxAttempts) << "Messages not received from client";
         char buffer[1024] = {};
         // Non-blocking read
@@ -328,7 +328,8 @@ TEST_F(UnixStreamTest, MultipleEchoMessages)
 TEST_F(UnixStreamTest, MultipleConnections)
 {
     // Configure UnixStream server
-    UnixStream server(m_socketPath, m_factory);
+    UnixStream server(
+        m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
 
@@ -399,8 +400,6 @@ TEST_F(UnixStreamTest, MultipleConnections)
     thread.join();
 }
 
-
-
 TEST_F(UnixStreamTest, QueueWorker_SameClient)
 {
 
@@ -408,7 +407,11 @@ TEST_F(UnixStreamTest, QueueWorker_SameClient)
     const std::size_t taskQueueSize = 16;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath, m_factory, taskQueueSize);
+    UnixStream server(m_socketPath,
+                      m_factory,
+                      std::make_shared<FakeMetricScope>(),
+                      std::make_shared<FakeMetricScope>(),
+                      taskQueueSize);
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
@@ -476,7 +479,11 @@ TEST_F(UnixStreamTest, QueueWorker_multiplesClient)
     const std::size_t taskQueueSize = 16;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath, m_factory, taskQueueSize);
+    UnixStream server(m_socketPath,
+                      m_factory,
+                      std::make_shared<FakeMetricScope>(),
+                      std::make_shared<FakeMetricScope>(),
+                      taskQueueSize);
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
@@ -517,7 +524,7 @@ TEST_F(UnixStreamTest, QueueWorker_multiplesClient)
     for (int i = 0; i < clients; ++i)
     {
         ASSERT_LT(attempts++, maxAttempts) << "Messages not received from client";
-        responses.push_back(std::string{});
+        responses.push_back(std::string {});
         while (responses[i].length() < messages[i].length())
         {
             ASSERT_LT(attempts++, maxAttempts) << "Messages not received from client";
@@ -552,8 +559,6 @@ TEST_F(UnixStreamTest, QueueWorker_multiplesClient)
     thread.join();
 }
 
-
-
 TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
 {
 
@@ -566,7 +571,11 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
     std::size_t busyMessage = 0;
 
     // Configure UnixStream server
-    UnixStream server(m_socketPath, m_factory, taskQueueSize);
+    UnixStream server(m_socketPath,
+                      m_factory,
+                      std::make_shared<FakeMetricScope>(),
+                      std::make_shared<FakeMetricScope>(),
+                      taskQueueSize);
     server.bind(m_loop);
     auto [stopHandler, thread] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
@@ -602,7 +611,8 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
         std::string response {};
         response.reserve(expectedResponse.size());
         auto attempts = 0;
-        while (response.length() < expectedResponse.size()) {
+        while (response.length() < expectedResponse.size())
+        {
             ASSERT_LT(attempts++, maxAttempts) << "Messages not received from client";
             char buffer[1024] = {};
             // Non-blocking read
@@ -647,7 +657,8 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
         std::string response {};
         response.reserve(expectedResponse.size());
         auto attempts = 0;
-        while (response.length() < expectedResponse.size()) {
+        while (response.length() < expectedResponse.size())
+        {
             ASSERT_LT(attempts++, maxAttempts) << "Messages not received from client";
             char buffer[1024] = {};
             // Non-blocking read
@@ -693,7 +704,8 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
     response.reserve(expectedProcessedMessages.size());
     attempts = 0;
 
-    while (response.length() < expectedProcessedMessages.size()) {
+    while (response.length() < expectedProcessedMessages.size())
+    {
         ASSERT_LT(attempts++, maxAttempts) << "Messages not received from client";
         char buffer[1024] = {};
         // Non-blocking read

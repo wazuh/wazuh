@@ -12,6 +12,7 @@
 #include <logging/logging.hpp>
 #include <uvw.hpp>
 
+#include <mocks/fakeMetric.hpp>
 #include <server/endpoints/unixDatagram.hpp>
 
 using namespace engineserver::endpoint;
@@ -88,7 +89,11 @@ protected:
 
 TEST_F(UnixDatagramTest, BindAndClose)
 {
-    UnixDatagram endpoint(socketPath, [](const std::string&) {});
+    UnixDatagram endpoint(
+        socketPath,
+        [](const std::string&) {},
+        std::make_shared<FakeMetricScope>(),
+        std::make_shared<FakeMetricScope>());
     ASSERT_FALSE(endpoint.isBound());
     ASSERT_NO_THROW(endpoint.bind(loop));
     ASSERT_TRUE(endpoint.isBound());
@@ -98,7 +103,11 @@ TEST_F(UnixDatagramTest, BindAndClose)
 
 TEST_F(UnixDatagramTest, PauseAndResume)
 {
-    UnixDatagram endpoint(socketPath, [](const std::string&) {});
+    UnixDatagram endpoint(
+        socketPath,
+        [](const std::string&) {},
+        std::make_shared<FakeMetricScope>(),
+        std::make_shared<FakeMetricScope>());
     endpoint.bind(loop);
     ASSERT_TRUE(endpoint.pause());
     ASSERT_TRUE(endpoint.resume());
@@ -111,7 +120,11 @@ TEST_F(UnixDatagramTest, PauseAndResume)
 TEST_F(UnixDatagramTest, ReceiveData)
 {
     std::string receivedData;
-    UnixDatagram endpoint(socketPath, [&](const std::string& data) { receivedData = std::move(data); });
+    UnixDatagram endpoint(
+        socketPath,
+        [&](const std::string& data) { receivedData = std::move(data); },
+        std::make_shared<FakeMetricScope>(),
+        std::make_shared<FakeMetricScope>());
     endpoint.bind(loop);
 
     std::string message = "Hello, Unix Datagram!";
@@ -126,7 +139,11 @@ TEST_F(UnixDatagramTest, ReceiveData)
 TEST_F(UnixDatagramTest, PauseResumeReceiveData)
 {
     std::atomic<bool> receivedData(false);
-    UnixDatagram endpoint(socketPath, [&](const std::string& data) { receivedData = true; });
+    UnixDatagram endpoint(
+        socketPath,
+        [&](const std::string& data) { receivedData = true; },
+        std::make_shared<FakeMetricScope>(),
+        std::make_shared<FakeMetricScope>());
     endpoint.bind(loop);
     // Pause the endpoint and wait for some time
     endpoint.pause();
@@ -171,27 +188,29 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
     std::atomic<bool> isClientBlocked = false;     // Flag to indicate that the client is blocked
 
     // Prepare the endpoint
-    UnixDatagram endpoint(socketPath,
-                          [&](const std::string& data)
-                          {
-                              if (enableBlockQueueWorkers)
-                              {
+    UnixDatagram endpoint(
+        socketPath,
+        [&](const std::string& data)
+        {
+            if (enableBlockQueueWorkers)
+            {
 
-                                  std::ostringstream ss;
-                                  ss << std::this_thread::get_id();
-                                  std::string idstr = ss.str();
+                std::ostringstream ss;
+                ss << std::this_thread::get_id();
+                std::string idstr = ss.str();
 
-                                  WAZUH_LOG_INFO("Block the worker id: {}", idstr);
-                                  // Block the worker
-                                  std::unique_lock<std::mutex> lock(BlockWokersMutex);
-                                  BlockWokersCV.wait(lock);
-                                  WAZUH_LOG_INFO("Unblock the worker id: {}", idstr);
-                              }
-                              processedMessages++;
-                              WAZUH_LOG_INFO(
-                                  "Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
-                          },
-                          taskQueueSize);
+                WAZUH_LOG_INFO("Block the worker id: {}", idstr);
+                // Block the worker
+                std::unique_lock<std::mutex> lock(BlockWokersMutex);
+                BlockWokersCV.wait(lock);
+                WAZUH_LOG_INFO("Unblock the worker id: {}", idstr);
+            }
+            processedMessages++;
+            WAZUH_LOG_INFO("Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
+        },
+        std::make_shared<FakeMetricScope>(),
+        std::make_shared<FakeMetricScope>(),
+        taskQueueSize);
 
     ASSERT_NO_THROW(endpoint.bind(loop));
     ASSERT_TRUE(endpoint.isBound());
@@ -314,27 +333,29 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
     std::atomic<std::size_t> processedMessages = 0; // Number of messages processed
 
     // Prepare the endpoint
-    UnixDatagram endpoint(socketPath,
-                          [&](const std::string& data)
-                          {
-                              if (enableBlockQueueWorkers)
-                              {
+    UnixDatagram endpoint(
+        socketPath,
+        [&](const std::string& data)
+        {
+            if (enableBlockQueueWorkers)
+            {
 
-                                  std::ostringstream ss;
-                                  ss << std::this_thread::get_id();
-                                  std::string idstr = ss.str();
+                std::ostringstream ss;
+                ss << std::this_thread::get_id();
+                std::string idstr = ss.str();
 
-                                  WAZUH_LOG_INFO("Block the worker id: {}", idstr);
-                                  // Block the worker
-                                  std::unique_lock<std::mutex> lock(BlockWokersMutex);
-                                  BlockWokersCV.wait(lock);
-                                  WAZUH_LOG_INFO("Unblock the worker id: {}", idstr);
-                              }
-                              processedMessages++;
-                              WAZUH_LOG_INFO(
-                                  "Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
-                          },
-                          taskQueueSize);
+                WAZUH_LOG_INFO("Block the worker id: {}", idstr);
+                // Block the worker
+                std::unique_lock<std::mutex> lock(BlockWokersMutex);
+                BlockWokersCV.wait(lock);
+                WAZUH_LOG_INFO("Unblock the worker id: {}", idstr);
+            }
+            processedMessages++;
+            WAZUH_LOG_INFO("Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
+        },
+        std::make_shared<FakeMetricScope>(),
+        std::make_shared<FakeMetricScope>(),
+        taskQueueSize);
 
     ASSERT_NO_THROW(endpoint.bind(loop));
     ASSERT_TRUE(endpoint.isBound());

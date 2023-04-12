@@ -22,7 +22,8 @@ struct Options
     std::string kvdbPath;
     std::string fileStorage;
     std::string policy;
-    std::string graphOutDir;
+    std::string graph;
+    int logLevel;
 };
 void run(const Options& options);
 

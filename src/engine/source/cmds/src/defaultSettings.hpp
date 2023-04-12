@@ -20,7 +20,7 @@ constexpr auto ENGINE_SRV_PULL_THREADS_ENV = "WZE_PULL_THREADS";
 constexpr auto ENGINE_SRV_EVENT_SOCK = "/var/ossec/queue/sockets/queue";
 constexpr auto ENGINE_SRV_EVENT_SOCK_ENV = "WZE_EVENT_SOCK";
 
-constexpr auto ENGINE_SRV_EVENT_QUEUE_TASK = 100000;
+constexpr auto ENGINE_SRV_EVENT_QUEUE_TASK = 0;
 constexpr auto ENGINE_SRV_EVENT_QUEUE_TASK_ENV = "WZE_EVENT_QUEUE_TASK";
 
 constexpr auto ENGINE_SRV_API_SOCK = "/var/ossec/queue/sockets/engine-api";

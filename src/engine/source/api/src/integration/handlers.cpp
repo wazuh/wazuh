@@ -131,9 +131,9 @@ api::Handler integrationRemoveFrom(std::shared_ptr<api::integration::Integration
 }
 
 void registerHandlers(std::shared_ptr<api::integration::Integration> integration,
-                      std::shared_ptr<api::Registry> registry)
+                      std::shared_ptr<api::Api> api)
 {
-    registry->registerHandler("integration.policy/add_to", integrationAddTo(integration));
-    registry->registerHandler("integration.policy/remove_from", integrationRemoveFrom(integration));
+    api->registerHandler("integration.policy/add_to", integrationAddTo(integration));
+    api->registerHandler("integration.policy/remove_from", integrationRemoveFrom(integration));
 }
 } // namespace api::integration::handlers

@@ -20,4 +20,5 @@ target_include_directories(queue
 target_link_libraries(queue
   PUBLIC
   base # Only for the loggin
+  metrics
 )

@@ -111,7 +111,7 @@ std::optional<base::Error> Integration::removeFrom(const api::catalog::Resource&
 
         json::Json newIntegrations;
         newIntegrations.setArray();
-        for (auto integrationJson : integrations.value())
+        for (auto& integrationJson : integrations.value())
         {
             if (integrationJson.getString().value_or("") != integration.m_name.fullName())
             {
