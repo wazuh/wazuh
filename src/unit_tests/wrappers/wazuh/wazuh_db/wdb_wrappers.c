@@ -44,11 +44,11 @@ int __wrap_wdb_finalize() {
     return mock();
 }
 
-int  __wrap_wdb_step_select(__attribute__((unused)) sqlite3_stmt *stmt) {
+int  __wrap_wdb_step_without_rollback(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock();
 }
 
-int  __wrap_wdb_step_non_select(__attribute__((unused)) sqlite3_stmt *stmt,
+int  __wrap_wdb_step_with_rollback(__attribute__((unused)) sqlite3_stmt *stmt,
                       __attribute__((unused)) wdb_t * wdb) {
     return mock();
 }

@@ -719,8 +719,8 @@ int wdb_fim_clean_old_entries(wdb_t * wdb);
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
 
 /* Execute statement with availability waiting */
-int wdb_step_select(sqlite3_stmt *stmt);
-int wdb_step_non_select(sqlite3_stmt *stmt, wdb_t * wdb);
+int wdb_step_without_rollback(sqlite3_stmt *stmt);
+int wdb_step_with_rollback(sqlite3_stmt *stmt, wdb_t * wdb);
 
 /* Begin transaction */
 int wdb_begin(wdb_t * wdb);

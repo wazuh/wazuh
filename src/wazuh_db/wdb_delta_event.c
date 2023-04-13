@@ -149,7 +149,7 @@ bool wdb_upsert_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                     ++index;
                 }
             }
-            ret_val = !has_error && SQLITE_DONE == wdb_step_non_select(stmt, wdb);
+            ret_val = !has_error && SQLITE_DONE == wdb_step_without_rollback(stmt);
         } else {
             merror(DB_CACHE_NULL_STMT);
         }
@@ -203,7 +203,7 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data) {
                     ++index;
                 }
             }
-            ret_val = !has_error && SQLITE_DONE == wdb_step_non_select(stmt, wdb);
+            ret_val = !has_error && SQLITE_DONE == wdb_step_without_rollback(stmt);
         } else {
             merror(DB_CACHE_NULL_STMT);
         }
