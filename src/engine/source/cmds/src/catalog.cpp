@@ -33,7 +33,7 @@ struct Options
 {
     std::string serverApiSock;
     std::string format;
-    int logLevel {};
+    std::string logLevel;
     std::string name;
     std::string content;
     std::string path;
@@ -387,11 +387,9 @@ void configure(CLI::App_p app)
         ->check(CLI::IsMember({"json", "yaml"}));
 
     // Log level
-    catalogApp
-        ->add_option(
-            "-l, --log_level", options->logLevel, "Sets the logging level: 0 = Debug, 1 = Info, 2 = Warning, 3 = Error")
-        ->default_val(3)
-        ->check(CLI::Range(0, 3));
+    catalogApp->add_option("-l, --log_level", options->logLevel, "Sets the logging level.")
+        ->default_val(ENGINE_LOG_LEVEL)
+        ->check(CLI::IsMember({"trace", "debug", "info", "warning", "error", "critical", "off"}));
 
     // Shared option definitions among subcommands
     auto name = "name";
