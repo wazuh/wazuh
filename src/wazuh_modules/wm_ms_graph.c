@@ -194,9 +194,9 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                                 if(log = cJSON_GetArrayItem(logs, log_index), log){
                                     cJSON* full_log = cJSON_CreateObject();
 
+                                    cJSON_AddStringToObject(log, "resource", ms_graph->resources[resource_num].name);
+                                    cJSON_AddStringToObject(log, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
                                     cJSON_AddStringToObject(full_log, "integration", WM_MS_GRAPH_CONTEXT.name);
-                                    cJSON_AddStringToObject(full_log, "resource", ms_graph->resources[resource_num].name);
-                                    cJSON_AddStringToObject(full_log, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
                                     cJSON_AddItemToObject(full_log, WM_MS_GRAPH_CONTEXT.name, cJSON_Duplicate(log, true));
 
                                     os_strdup(cJSON_PrintUnformatted(full_log), payload);
