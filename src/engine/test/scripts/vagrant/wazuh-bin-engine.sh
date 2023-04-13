@@ -6,7 +6,7 @@ ENGINE_DIR=$WAZUH_DIR/engine
 OUTPUT_FILE_PATH=/tmp/engine.log
 
 # wazuh-engine configuration parameters
-export WZE_LOG_LEVEL=0
+export WZE_LOG_LEVEL=error
 export WZE_KVDB_PATH=$WAZUH_DIR/etc/kvdb/
 export WZE_STORE_PATH=$ENGINE_DIR/store/
 export WZE_EVENT_SOCK=$WAZUH_DIR/queue/sockets/queue
