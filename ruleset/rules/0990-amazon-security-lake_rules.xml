@@ -54,7 +54,7 @@
       <id>T1098.003</id>
       <id>T1078.004</id>
     </mitre>
-    <group>asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>asl_api_operation,asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="99021" level="3" frequency="5" timeframe="120">
@@ -79,7 +79,7 @@
       <id>T1098.003</id>
       <id>T1078.004</id>
     </mitre>
-    <group>asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>asl_api_operation,asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="99023" level="3">
@@ -93,7 +93,7 @@
       <id>T1098.003</id>
       <id>T1078.004</id>
     </mitre>
-    <group>asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>asl_api_operation,asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="99024" level="3">
@@ -107,7 +107,7 @@
       <id>T1098.003</id>
       <id>T1078.004</id>
     </mitre>
-    <group>asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>asl_api_operation,asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="99025" level="3">
@@ -121,7 +121,55 @@
       <id>T1098.003</id>
       <id>T1078.004</id>
     </mitre>
-    <group>asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>asl_api_operation,asl_cloudtrail,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="99026" level="5">
+    <if_group>asl_api_operation</if_group>
+    <field name="api.operation">GetPasswordData</field>
+    <description>Credentials access: Attempt to retrieve EC2 credentials</description>
+    <mitre>
+      <id>T1530</id>
+    </mitre>
+  </rule>
+
+  <rule id="99027" level="12" frequency="15" timeframe="300">
+    <if_matched_sid>99026</if_matched_sid>
+    <description>Credentials access: Multiple attempts to retrieve EC2 credentials</description>
+    <mitre>
+      <id>T1530</id>
+    </mitre>
+  </rule>
+
+  <rule id="99028" level="12">
+    <if_group>asl_api_operation</if_group>
+    <field name="api.operation">AuthorizeSecurityGroupIngress</field>
+    <description>Security group with inbound rules allowing "Unknown cidrIp" on port "Unknown port" detected</description>
+    <mitre>
+      <id>T1562.007</id>
+      <id>T1105</id>
+      <id>T1041</id>
+    </mitre>
+  </rule>
+
+  <rule id="99029" level="12">
+    <if_group>asl_api_operation</if_group>
+    <field name="api.operation">CreateRole|UpdateAssumeRolePolicy</field>
+    <match type="pcre2">sts:AssumeRole</match>
+    <description>Possible IAM Role backdooring: IAM role granted from an external account</description>
+    <mitre>
+      <id>T1098.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="99030" level="12">
+    <if_group>asl_api_operation</if_group>
+    <field name="api.operation">PutEventSelectors</field>
+    <!-- <field name="aws.requestParameters.eventSelectors.includeManagementEvents" type="pcre2">false</field> -->
+    <description>Possible disruption of CloudTrail Logging: Management events logging disabled with an event selector</description>
+    <mitre>
+      <id>T1562.008</id>
+    </mitre>
   </rule>
 
   <!--
@@ -202,8 +250,8 @@
     <description>Amazon Security Lake - VPC - DCE/RPC connection established.</description>
     <mitre>
       <id>T1021.003</id>
-      <group>asl_vpc,</group>
     </mitre>
+    <group>asl_vpc,</group>
   </rule>
 
   <rule id="99058" level="3">
@@ -263,6 +311,14 @@
       <id>T1132.001</id>
       <id>T1071.004</id>
     </mitre>
+  </rule>
+
+  <rule id="100202" level="3">
+    <if_sid>100200</if_sid>
+    <list field="api.operation" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
+    <options>no_full_log</options>
+    <description>AWS Cloudtrail: $(api.service.name) - $(api.operation).</description>
+    <group>aws_cloudtrail,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,pci_dss_10.6.1,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 -->
 
