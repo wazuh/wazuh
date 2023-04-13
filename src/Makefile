@@ -151,7 +151,7 @@ endif
 else
 ifeq (${uname_S},AIX)
 		MAKE=gmake
-		DEFINES+=-DAIX -D__unix
+		DEFINES+=-DAIX -D__unix -D_LINUX_SOURCE_COMPAT
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread -L./lib
@@ -2499,3 +2499,11 @@ clean-windows:
 clean-config:
 	rm -f ../etc/ossec.mc
 	rm -f Config.OS
+
+
+.PHONY: see
+see:
+	$(info $(EXTERNAL_CURL))
+	$(info $(LIBCURL_LIB))
+	$(info $(WAZUHEXT_LIB))
+	$(info $(BUILD_LIBS))
