@@ -33,7 +33,7 @@
   <rule id="89603" level="3">
     <decoded_as>macOS_loginwindow</decoded_as>
     <regex type="pcre2">sendBSDNotification: \w+.\w+.\w+.screenIsLocked</regex>
-    <description>Screen locked with userID:$(userID)</description>
+    <description>Screen locked with userID:$(userID).</description>
     <mitre>
       <id>T1078</id>
     </mitre>
@@ -66,6 +66,7 @@
     <description>Attempt to connect to screen sharing with username $(dstuser) from $(ip_address) failed.</description>
     <mitre>
       <id>T1021</id>
+      <id>T1078</id>
     </mitre>
     <group>authentication_failed,gdpr_IV_35.7.d,gdpr_IV_32.2,gpg13_7.1,hipaa_164.312.b,invalid_login,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AU.6,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -75,6 +76,7 @@
     <match type="pcre2">(?i)authentication.+succeeded</match>
     <description>Attempt to connect to screen sharing with username $(dstuser) from $(ip_address) succeeded.</description>
     <mitre>
+      <id>T1021</id>
       <id>T1078</id>
     </mitre>
     <group>authentication_success,gdpr_IV_32.2,gpg13_7.1,gpg13_7.2,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
