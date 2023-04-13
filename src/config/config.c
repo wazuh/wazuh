@@ -64,7 +64,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
     const char *github = "github";                      /* GitHub Module */
     const char *office365 = "office365";                /* Office365 Module */
-    const char *ms_graph = "ms_graph";                  /* MS Graph Module */
+    const char *ms_graph = "ms-graph";                  /* MS Graph Module */
 #endif
 
     while (node[i]) {
