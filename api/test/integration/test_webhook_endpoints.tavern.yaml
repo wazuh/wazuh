@@ -149,3 +149,81 @@ stages:
       status_code: 400
       json:
         error: 0
+
+---
+test_name: send_events_under_the_eps_limit
+
+marks:
+  - usefixtures:
+      - forwarded_events
+
+stages:
+
+  - name: POST /events under the EPS limit
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/events"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2},
+          {"gaz": 3},
+          {"foo": 4},
+          {"bar": 5},
+          {"gaz": 6},
+          {"foo": 7},
+          {"bar": 8},
+          {"gaz": 9},
+          {"gaz": 10},
+        ]
+    response:
+      verify_response_with:
+        - function: tavern_utils:assert_forwarded_events
+          extra_kwargs:
+            forwarded_events: "{forwarded_events}"
+            expected_events: 10
+      status_code: 200
+      json:
+        error: 0
+
+---
+test_name: send_events_over_the_eps_limit
+
+marks:
+  - usefixtures:
+      - forwarded_events
+
+stages:
+
+  - name: POST /events over the EPS limit
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/events"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2},
+          {"gaz": 3},
+          {"foo": 4},
+          {"bar": 5},
+          {"gaz": 6},
+          {"foo": 7},
+          {"bar": 8},
+          {"gaz": 9},
+          {"gaz": 10},
+        ]
+    response:
+      verify_response_with:
+        - function: tavern_utils:assert_forwarded_events
+          extra_kwargs:
+            forwarded_events: "{forwarded_events}"
+            expected_events: 5
+      status_code: 200
+      json:
+        error: 0
