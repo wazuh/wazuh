@@ -3,7 +3,10 @@ add_executable(api_test
     adapter_test.cpp
     api_test.cpp
 )
-
+target_include_directories(api_test
+PRIVATE
+${TEST_SOURCE_DIR}/common
+)
 target_link_libraries(api_test gtest_main base api)
 gtest_discover_tests(api_test)
 

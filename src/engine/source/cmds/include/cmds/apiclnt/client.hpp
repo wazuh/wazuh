@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <uvw/pipe.hpp>
+#include <uvw/timer.hpp>
 
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <error.hpp>
@@ -16,6 +17,8 @@
 
 namespace cmd::apiclnt
 {
+
+constexpr auto DEFAULT_TIMEOUT = 1000;
 class Client
 {
 private:
@@ -43,9 +46,33 @@ public:
         std::memcpy(buffer.get() + sizeof(length), requestStr.data(), length);
         auto requestWithHeader = std::string(buffer.get(), sizeof(length) + length);
 
+        std::string error;
+        auto timer = m_loop->resource<uvw::TimerHandle>();
+
         // Stablish connection, send request and receive response
         auto clientHandle = m_loop->resource<uvw::PipeHandle>();
-        std::string error;
+
+        // Timeout, close the client
+        timer->on<uvw::TimerEvent>(
+            [clientHandle, timer, &error](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
+            {
+                if (!clientHandle->closing())
+                {
+                    clientHandle->close();
+                }
+                timer->close();
+                error = "Connection timeout";
+            });
+
+        timer->on<uvw::ErrorEvent>(
+            [timer, &error](const uvw::ErrorEvent& errorUvw, uvw::TimerHandle& timerRef)
+            {
+                timer->close();
+                error = errorUvw.what();
+            });
+
+        timer->on<uvw::CloseEvent>([](const uvw::CloseEvent&, uvw::TimerHandle& timer) {});
+
         std::string response;
         clientHandle->on<uvw::ErrorEvent>(
             [&error](const uvw::ErrorEvent& event, uvw::PipeHandle& handle)
@@ -70,12 +97,20 @@ public:
                 handle.close();
             });
 
-        clientHandle->once<uvw::EndEvent>([](const uvw::EndEvent&, uvw::PipeHandle& handle) {
+        clientHandle->once<uvw::EndEvent>([](const uvw::EndEvent&, uvw::PipeHandle& handle) { handle.close(); });
 
-            handle.close(); });
+        clientHandle->once<uvw::CloseEvent>(
+            [timer, this](const uvw::CloseEvent&, uvw::PipeHandle& handle)
+            {
+                if (!timer->closing())
+                {
+                    timer->close();
+                }
+            });
 
         // Stablish connection
         clientHandle->connect(m_socketPath);
+        timer->start(uvw::TimerHandle::Time {DEFAULT_TIMEOUT}, uvw::TimerHandle::Time {DEFAULT_TIMEOUT});
         m_loop->run();
 
         // Return response

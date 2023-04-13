@@ -14,6 +14,7 @@
 
 #include <mocks/fakeMetric.hpp>
 #include <server/endpoints/unixDatagram.hpp>
+#include <testsCommon.hpp>
 
 using namespace engineserver::endpoint;
 
@@ -23,7 +24,11 @@ protected:
     std::shared_ptr<uvw::Loop> loop;
     std::string socketPath = "/tmp/unix_datagram_test.sock";
 
-    void SetUp() override { loop = uvw::Loop::create(); }
+    void SetUp() override
+    {
+        initLogging();
+        loop = uvw::Loop::create();
+    }
 
     void TearDown() override
     {
@@ -199,14 +204,14 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
                 ss << std::this_thread::get_id();
                 std::string idstr = ss.str();
 
-                WAZUH_LOG_INFO("Block the worker id: {}", idstr);
+                LOG_INFO("Block the worker id: {}", idstr);
                 // Block the worker
                 std::unique_lock<std::mutex> lock(BlockWokersMutex);
                 BlockWokersCV.wait(lock);
-                WAZUH_LOG_INFO("Unblock the worker id: {}", idstr);
+                LOG_INFO("Unblock the worker id: {}", idstr);
             }
             processedMessages++;
-            WAZUH_LOG_INFO("Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
+            LOG_INFO("Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
         },
         std::make_shared<FakeMetricScope>(),
         std::make_shared<FakeMetricScope>(),
@@ -220,7 +225,7 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
     stopHandler->on<uvw::AsyncEvent>(
         [&](const uvw::AsyncEvent&, uvw::AsyncHandle& handle)
         {
-            WAZUH_LOG_INFO("Stopping the loop");
+            LOG_INFO("Stopping the loop");
             handle.close();
             loop->walk([](auto& handle) { handle.close(); });
             loop->stop();
@@ -231,7 +236,7 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
         [&]()
         {
             loop->run<uvw::Loop::Mode::DEFAULT>();
-            WAZUH_LOG_INFO("Loop thread finished");
+            LOG_INFO("Loop thread finished");
         });
 
     // Prepare the sender thread
@@ -247,30 +252,30 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
             for (std::size_t i = 0; i < numMessagesToSend; ++i)
             {
                 std::string message = "Message " + std::to_string(i);
-                WAZUH_LOG_INFO("Sending message [{}]: {}", sendedMessages, message.substr(0, 100).c_str());
+                LOG_INFO("Sending message [{}]: {}", sendedMessages, message.substr(0, 100).c_str());
                 sendUnixDatagram(clientFD, message);
                 sendedMessages++;
             }
             // The queue is full, now fill the send buffer and resv buffer
-            WAZUH_LOG_INFO("Queue is full");
+            LOG_INFO("Queue is full");
             // Message to fill the recv buffer
             const auto fullRecvBufferMessage = std::string(recvBufferSize, 'B');
             sendUnixDatagram(clientFD, fullRecvBufferMessage);
             sendedMessages++;
-            WAZUH_LOG_INFO("Recv buffer is full");
+            LOG_INFO("Recv buffer is full");
             // Message to fill the send buffer
             const auto fullBufferMessage = std::string(recvBufferSize, 'A');
             sendUnixDatagram(clientFD, fullBufferMessage);
             sendedMessages++;
-            WAZUH_LOG_INFO("Send buffer is full");
+            LOG_INFO("Send buffer is full");
 
             // Send a new message to block de client
             const auto blockMessage = std::string {"Blocked message"};
-            WAZUH_LOG_INFO("Blocking client");
+            LOG_INFO("Blocking client");
             isClientBlocked = true;
             sendUnixDatagram(clientFD, blockMessage);
             sendedMessages++;
-            WAZUH_LOG_INFO("Client is unblocked");
+            LOG_INFO("Client is unblocked");
             isClientBlocked = false;
         });
 
@@ -344,14 +349,14 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
                 ss << std::this_thread::get_id();
                 std::string idstr = ss.str();
 
-                WAZUH_LOG_INFO("Block the worker id: {}", idstr);
+                LOG_INFO("Block the worker id: {}", idstr);
                 // Block the worker
                 std::unique_lock<std::mutex> lock(BlockWokersMutex);
                 BlockWokersCV.wait(lock);
-                WAZUH_LOG_INFO("Unblock the worker id: {}", idstr);
+                LOG_INFO("Unblock the worker id: {}", idstr);
             }
             processedMessages++;
-            WAZUH_LOG_INFO("Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
+            LOG_INFO("Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
         },
         std::make_shared<FakeMetricScope>(),
         std::make_shared<FakeMetricScope>(),
@@ -365,7 +370,7 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
     stopHandler->on<uvw::AsyncEvent>(
         [&](const uvw::AsyncEvent&, uvw::AsyncHandle& handle)
         {
-            WAZUH_LOG_INFO("Stopping the loop");
+            LOG_INFO("Stopping the loop");
             handle.close();
             loop->walk([](auto& handle) { handle.close(); });
             loop->stop();
@@ -376,7 +381,7 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
         [&]()
         {
             loop->run<uvw::Loop::Mode::DEFAULT>();
-            WAZUH_LOG_INFO("Loop thread finished");
+            LOG_INFO("Loop thread finished");
         });
 
     // Send messages to block the queue workers
@@ -384,11 +389,11 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
     for (std::size_t i = 0; i < taskQueueSize; ++i)
     {
         std::string message = "Message " + std::to_string(i);
-        WAZUH_LOG_INFO("Sending message [{}]: {}", sendedMessages, message.substr(0, 100).c_str());
+        LOG_INFO("Sending message [{}]: {}", sendedMessages, message.substr(0, 100).c_str());
         sendUnixDatagram(clientFD, message);
         sendedMessages++;
     }
-    WAZUH_LOG_INFO("Queue is full");
+    LOG_INFO("Queue is full");
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     // Close the loop

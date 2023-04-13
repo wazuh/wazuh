@@ -12,9 +12,9 @@
 #include <hlp/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
+#include <metrics/metricsManager.hpp>
 #include <name.hpp>
 #include <rxbk/rxFactory.hpp>
-#include <server/wazuhStreamProtocol.hpp>
 #include <store/drivers/fileDriver.hpp>
 
 #include "base/parseEvent.hpp"
@@ -42,16 +42,11 @@ void run(const Options& options)
 {
     // Logging init
 
+     // Logging init
     logging::LoggingConfig logConfig;
+    logConfig.logLevel = options.logLevel;
 
     logging::loggingInit(logConfig);
-
-    LOG_DEBUG("Logging configuration: filePath='{}', logLevel='{}', header='{}', flushInterval={}ms.",
-              logConfig.filePath,
-              logConfig.logLevel,
-              logConfig.headerFormat,
-              logConfig.flushInterval);
-    LOG_INFO("Logging initialized");
 
     auto metricsManager = std::make_shared<metricsManager::MetricsManager>();
 
@@ -96,8 +91,8 @@ void run(const Options& options)
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR("Engine 'test' command: An error occurred while creating the environment '{}': {}.",
-                  options.environment,
+        LOG_ERROR("Engine 'test' command: An error occurred while creating the policy '{}': {}.",
+                  options.policy,
                   utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -105,8 +100,8 @@ void run(const Options& options)
     auto envDefinition = fileStore->get({options.policy});
     if (std::holds_alternative<base::Error>(envDefinition))
     {
-        LOG_ERROR("Engine 'test' command: An error occurred while getting the definition of the environment '{}': {}.",
-                  options.environment,
+        LOG_ERROR("Engine 'test' command: An error occurred while getting the definition of the policy '{}': {}.",
+                  options.policy,
                   std::get<base::Error>(envDefinition).message);
         g_exitHanlder.execute();
         return;
@@ -118,13 +113,13 @@ void run(const Options& options)
     struct TestDriver : store::IStoreRead
     {
         std::shared_ptr<store::FileDriver> driver;
-        json::Json testEnvironment;
+        json::Json testPolicy;
 
         std::variant<json::Json, base::Error> get(const base::Name& name) const
         {
             if ("policy" == name.parts()[0])
             {
-                return testEnvironment;
+                return testPolicy;
             }
             else
             {
@@ -134,7 +129,7 @@ void run(const Options& options)
     };
     auto _testDriver = std::make_shared<TestDriver>();
     _testDriver->driver = fileStore;
-    _testDriver->testEnvironment = envTmp;
+    _testDriver->testPolicy = envTmp;
 
     // TODO: Handle errors on construction
     builder::Builder _builder(_testDriver, registry);
@@ -145,8 +140,8 @@ void run(const Options& options)
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR("Engine 'test' command: An error occurred while building the environment '{}': {}.",
-                  options.environment,
+        LOG_ERROR("Engine 'test' command: An error occurred while building the policy '{}': {}.",
+                  options.policy,
                   utils::getExceptionStack(e));
         g_exitHanlder.execute();
         return;
@@ -329,7 +324,7 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_STORE_PATH)
         ->check(CLI::ExistingDirectory);
 
-    // Environment
+    // Policy
     logtestApp->add_option("--policy", options->policy, "Name of the policy to be used.")
         ->default_val(ENGINE_ENVIRONMENT_TEST);
 
@@ -344,12 +339,9 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_PROTOCOL_LOCATION);
 
     // Log level
-    logtestApp
-        ->add_option("-l, --log_level",
-                     options->logLevel,
-                     "Sets the logging level. 0 = Debug, 1 = Info, 2 = Warning, 3 = Error.")
-        ->default_val(logging::LogLevel::Error)
-        ->check(CLI::Range(0, 3));
+    logtestApp->add_option("-l, --log_level", options->logLevel, "Sets the logging level.")
+        ->default_val(ENGINE_LOG_LEVEL)
+        ->check(CLI::IsMember({"trace", "debug", "info", "warning", "error", "critical", "off"}));
 
     // Debug levels
     auto debug = logtestApp->add_flag("-d, --debug",
