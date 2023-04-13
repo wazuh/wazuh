@@ -1,0 +1,21 @@
+---
+test_name: send_webhook_events
+
+stages:
+
+  - name: POST /events denied
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/events"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2}
+        ]
+    response:
+      status_code: 403
+      json:
+        error: 4000
