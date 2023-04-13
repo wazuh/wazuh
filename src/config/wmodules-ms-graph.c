@@ -34,7 +34,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	wm_ms_graph* ms_graph;
 
 	if (!nodes) {
-		mwarn("Empty configuration found in module '%s.'", WM_MS_GRAPH_CONTEXT.name);
+		merror("Empty configuration found in module '%s'.", WM_MS_GRAPH_CONTEXT.name);
 		return OS_CFGERR;
 	}
 
