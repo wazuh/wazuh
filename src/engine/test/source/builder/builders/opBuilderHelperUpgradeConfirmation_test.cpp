@@ -14,6 +14,7 @@
 
 #include "opBuilderHelperUpgradeConfirmation.hpp"
 #include "socketAuxiliarFunctions.hpp"
+#include <testsCommon.hpp>
 
 using namespace base;
 using namespace builder::internals::builders;
@@ -24,21 +25,29 @@ const std::string testMessage {"{\"fieldReference\":\"test String Sent\"}"};
 const std::string messageReferenceString {"$fieldReference"};
 const std::string messageReferenceObject {"$fieldReferenceObject"};
 
-TEST(opBuilderUpgradeConfirmationTestSuite, Build)
+class opBuilderUpgradeConfirmationTestSuite : public ::testing::Test
 {
-    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
+    void SetUp() override { initLogging(); }
+
+    void TearDown() override {}
+};
+
+TEST_F(opBuilderUpgradeConfirmationTestSuite, Build)
+{
+    auto tuple {
+        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
 
     ASSERT_NO_THROW(opBuilderHelperSendUpgradeConfirmation(tuple));
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithoutParameters)
+TEST_F(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithoutParameters)
 {
     auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {})};
 
     ASSERT_THROW(opBuilderHelperSendUpgradeConfirmation(tuple), std::runtime_error);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithMoreParameters)
+TEST_F(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithMoreParameters)
 {
     auto tuple {std::make_tuple(
         targetField, upgradeConfirmationHelperName, std::vector<std::string> {"First", "Seccond", "Third"})};
@@ -46,13 +55,13 @@ TEST(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithMoreParameters)
     ASSERT_THROW(opBuilderHelperSendUpgradeConfirmation(tuple), std::runtime_error);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, ErrorBuildMessageNotReference)
+TEST_F(opBuilderUpgradeConfirmationTestSuite, ErrorBuildMessageNotReference)
 {
     auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {testMessage})};
     ASSERT_THROW(opBuilderHelperSendUpgradeConfirmation(tuple), std::runtime_error);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceString)
+TEST_F(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceString)
 {
     auto tuple {
         std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceString})};
@@ -70,7 +79,7 @@ TEST(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceString)
     unlink(WM_UPGRADE_SOCK);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceObject)
+TEST_F(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceObject)
 {
     auto tuple {
         std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
@@ -104,7 +113,7 @@ TEST(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceObject)
     unlink(WM_UPGRADE_SOCK);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, SendEmptyReferencedValueError)
+TEST_F(opBuilderUpgradeConfirmationTestSuite, SendEmptyReferencedValueError)
 {
     auto tuple {
         std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
@@ -122,7 +131,7 @@ TEST(opBuilderUpgradeConfirmationTestSuite, SendEmptyReferencedValueError)
     unlink(WM_UPGRADE_SOCK);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, SendWrongReferenceError)
+TEST_F(opBuilderUpgradeConfirmationTestSuite, SendWrongReferenceError)
 {
     auto tuple {std::make_tuple(
         targetField, upgradeConfirmationHelperName, std::vector<std::string> {"$NonExistentReference"})};
@@ -140,9 +149,10 @@ TEST(opBuilderUpgradeConfirmationTestSuite, SendWrongReferenceError)
     unlink(WM_UPGRADE_SOCK);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, EmptyObjectSent)
+TEST_F(opBuilderUpgradeConfirmationTestSuite, EmptyObjectSent)
 {
-    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
+    auto tuple {
+        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
     auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
@@ -157,9 +167,10 @@ TEST(opBuilderUpgradeConfirmationTestSuite, EmptyObjectSent)
     unlink(WM_UPGRADE_SOCK);
 }
 
-TEST(opBuilderUpgradeConfirmationTestSuite, UnsuccesfullSentMessage)
+TEST_F(opBuilderUpgradeConfirmationTestSuite, UnsuccesfullSentMessage)
 {
-    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
+    auto tuple {
+        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
     auto op {opBuilderHelperSendUpgradeConfirmation(tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     unlink(WM_UPGRADE_SOCK);

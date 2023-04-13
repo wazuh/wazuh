@@ -3,6 +3,7 @@
 
 #include <metrics/metricsManager.hpp>
 #include <json/json.hpp>
+#include <testsCommon.hpp>
 
 using namespace metricsManager;
 
@@ -12,9 +13,13 @@ protected:
     MetricsInterfaceTest() { m_manager = std::make_shared<MetricsManager>(); }
 
     ~MetricsInterfaceTest() {}
-    
+
+    void SetUp() override {
+        initLogging();
+    }
+
     void TearDown() override {}
-    
+
     std::shared_ptr<IMetricsManager> m_manager;
 };
 
@@ -107,7 +112,7 @@ TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
     auto histogram0 = scope0->getHistogramUInteger("histogram_0");
 
     const auto NUMBER_RECORS {1000};
-    
+
     for (int i=0; i < NUMBER_RECORS; i++)
     {
         histogram0->recordValue(rand()%10000);
@@ -119,11 +124,11 @@ TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
     auto attributes = record.value()[0].getArray("/attributes");
 
     EXPECT_EQ(attributes.value()[0].getInt("/count").value(), NUMBER_RECORS);
-    EXPECT_EQ(attributes.value()[0].getString("/type").value(), "HistogramPointData"); 
+    EXPECT_EQ(attributes.value()[0].getString("/type").value(), "HistogramPointData");
 }
 
 TEST_F(MetricsInterfaceTest, gaugeTest)
-{   
+{
     auto scope0 = m_manager->getMetricsScope("scope_0");
     auto gauge0 = scope0->getGaugeInteger("gauge_0", 0);
 

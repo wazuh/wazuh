@@ -87,7 +87,7 @@ void UnixStream::bind(std::shared_ptr<uvw::Loop> loop)
     m_handle->on<uvw::ErrorEvent>(
         [this](const uvw::ErrorEvent& event, uvw::PipeHandle& handle)
         {
-            WAZUH_LOG_ERROR("[Endpoint: {}] Error on socket: {} ({})", m_address, event.name(), event.what());
+            LOG_ERROR("[Endpoint: {}] Error on socket: {} ({})", m_address, event.name(), event.what());
             close();
         });
 
@@ -95,14 +95,14 @@ void UnixStream::bind(std::shared_ptr<uvw::Loop> loop)
     m_handle->on<uvw::CloseEvent>(
         [this](const uvw::CloseEvent&, uvw::PipeHandle& handle)
         {
-            WAZUH_LOG_INFO("[Endpoint: {}] Closed", m_address);
+            LOG_INFO("[Endpoint: {}] Closed", m_address);
         });
 
     // Server in case of connection
     m_handle->on<uvw::ListenEvent>(
         [this](const uvw::ListenEvent&, uvw::PipeHandle& handle)
         {
-            WAZUH_LOG_DEBUG("[Endpoint: {}] New connection", m_address);
+            LOG_DEBUG("[Endpoint: {}] New connection", m_address);
             auto client = createClient();
             handle.accept(*client);
             client->read();
@@ -168,7 +168,7 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
 
             if (timer->closing())
             {
-                WAZUH_LOG_DEBUG("[Endpoint: {}] Timer already closed, discarding data by timeout...", m_address);
+                LOG_DEBUG("[Endpoint: {}] Timer already closed, discarding data by timeout...", m_address);
                 return;
             }
             timer->again();
@@ -181,7 +181,7 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
             }
             catch (const std::exception& e)
             {
-                WAZUH_LOG_WARN("[Endpoint: {}] Error processing data, close conexion: {}", m_address, e.what());
+                LOG_WARNING("[Endpoint: {}] Error processing data, close conexion: {}", m_address, e.what());
                 timer->close();
                 client->close();
                 return;
@@ -221,7 +221,7 @@ void UnixStream::processMessages(std::shared_ptr<uvw::PipeHandle> client,
             }
             catch (const std::exception& e)
             {
-                WAZUH_LOG_WARN("[Endpoint: {}] endpoint: Error processing message [callback]: {}", m_address, e.what());
+                LOG_WARNING("[Endpoint: {}] endpoint: Error processing message [callback]: {}", m_address, e.what());
                 *response = protocolHandler->getErrorResponse();
             }
             auto [buffer, size] = protocolHandler->streamToSend(std::move(response));
@@ -236,7 +236,7 @@ void UnixStream::processMessages(std::shared_ptr<uvw::PipeHandle> client,
         if (m_currentTaskQueueSize >= m_taskQueueSize)
         {
             auto responseTimer = base::chrono::Timer();
-            WAZUH_LOG_DEBUG("[Endpoint: {}] endpoint: No queue worker available, disarting...", m_address);
+            LOG_DEBUG("[Endpoint: {}] endpoint: No queue worker available, disarting...", m_address);
             auto [buffer, size] = protocolHandler->getBusyResponse();
             client->write(std::move(buffer), size);
 
@@ -268,7 +268,7 @@ void UnixStream::createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
             }
             catch (const std::exception& e)
             {
-                WAZUH_LOG_WARN("[Endpoint: {}] endpoint: Error processing message [callback]: {}", m_address, e.what());
+                LOG_WARNING("[Endpoint: {}] endpoint: Error processing message [callback]: {}", m_address, e.what());
                 *response = protocolHandler->getErrorResponse();
             }
         });
@@ -277,7 +277,7 @@ void UnixStream::createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
     work->on<uvw::ErrorEvent>(
         [this](const uvw::ErrorEvent& error, uvw::WorkReq& worker)
         {
-            WAZUH_LOG_ERROR("[Endpoint: {}] endpoint: Error processing message: {}", m_address, error.what());
+            LOG_ERROR("[Endpoint: {}] endpoint: Error processing message: {}", m_address, error.what());
             --m_currentTaskQueueSize;
             m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
         });
@@ -291,7 +291,7 @@ void UnixStream::createAndEnqueueTask(std::shared_ptr<uvw::PipeHandle> client,
             // Check if client is closed
             if (client->closing())
             {
-                WAZUH_LOG_DEBUG("[Endpoint: {}] Client closed, discarding response", m_address);
+                LOG_DEBUG("[Endpoint: {}] Client closed, discarding response", m_address);
                 return;
             }
 
@@ -314,7 +314,7 @@ std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::shared_ptr<uvw::P
     timer->on<uvw::TimerEvent>(
         [client, timer, this](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
         {
-            WAZUH_LOG_DEBUG("[Endpoint: {}] Client timeout, close connection.", m_address);
+            LOG_DEBUG("[Endpoint: {}] Client timeout, close connection.", m_address);
             if (!client->closing())
             {
                 client->close();
@@ -325,12 +325,12 @@ std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::shared_ptr<uvw::P
     timer->on<uvw::ErrorEvent>(
         [timer, this](const uvw::ErrorEvent& error, uvw::TimerHandle& timerRef)
         {
-            WAZUH_LOG_ERROR("[Endpoint: {}] Timer error: {}", m_address, error.what()); // Never happens, just in case
+            LOG_ERROR("[Endpoint: {}] Timer error: {}", m_address, error.what()); // Never happens, just in case
             timer->close();
         });
 
     timer->on<uvw::CloseEvent>([this](const uvw::CloseEvent&, uvw::TimerHandle& timer)
-                               { WAZUH_LOG_DEBUG("[Endpoint: {}] Timer closed", m_address); });
+                               { LOG_DEBUG("[Endpoint: {}] Timer closed", m_address); });
 
     return timer;
 }
@@ -356,7 +356,7 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, s
     client->on<uvw::ErrorEvent>(
         [gracefullEnd, this](const uvw::ErrorEvent& error, uvw::PipeHandle& client)
         {
-            WAZUH_LOG_WARN("[Endpoint: {}] Client error: {}", m_address, error.what());
+            LOG_WARNING("[Endpoint: {}] Client error: {}", m_address, error.what());
             gracefullEnd();
         });
 
@@ -364,7 +364,7 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, s
     client->on<uvw::CloseEvent>(
         [gracefullEnd, this](const uvw::CloseEvent&, uvw::PipeHandle& client)
         {
-            WAZUH_LOG_DEBUG("[Endpoint: {}] Client closed connection gracefully", m_address);
+            LOG_DEBUG("[Endpoint: {}] Client closed connection gracefully", m_address);
             gracefullEnd();
         });
 
@@ -372,7 +372,7 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, s
     client->on<uvw::ShutdownEvent>(
         [gracefullEnd, this](const uvw::ShutdownEvent&, uvw::PipeHandle& client)
         {
-            WAZUH_LOG_DEBUG("[Endpoint: {}] Client shutdown connection", m_address);
+            LOG_DEBUG("[Endpoint: {}] Client shutdown connection", m_address);
             gracefullEnd();
         });
 
@@ -380,7 +380,7 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, s
     client->on<uvw::EndEvent>(
         [gracefullEnd, this](const uvw::EndEvent&, uvw::PipeHandle& client)
         {
-            WAZUH_LOG_DEBUG("[Endpoint: {}] Client disconnected gracefully", m_address);
+            LOG_DEBUG("[Endpoint: {}] Client disconnected gracefully", m_address);
             gracefullEnd();
         });
 }

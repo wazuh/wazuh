@@ -7,10 +7,10 @@ namespace cmd
  *  Server start
  ******************************************************************************/
 // Loggin module
-constexpr auto ENGINE_LOG_LEVEL = 0;
+constexpr auto ENGINE_LOG_LEVEL = "error";
 constexpr auto ENGINE_LOG_LEVEL_ENV = "WZE_LOG_LEVEL";
 
-constexpr auto ENGINE_LOG_OUTPUT = "/dev/stderr";
+constexpr auto ENGINE_LOG_OUTPUT = "";
 constexpr auto ENGINE_LOG_OUTPUT_ENV = "WZE_LOG_OUTPUT";
 
 // Server module

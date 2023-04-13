@@ -15,8 +15,8 @@
 #include <baseTypes.hpp>
 #include <json/json.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <testsCommon.hpp>
 #include <opBuilderKVDB.hpp>
+#include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
 using namespace metricsManager;
@@ -39,11 +39,15 @@ protected:
     static constexpr auto DB_REF_NAME = "$test_db_name";
     static constexpr auto DB_DIR = "/tmp/";
 
-    std::shared_ptr<IMetricsManager> m_manager = std::make_shared<MetricsManager>();
-    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager =
-        std::make_shared<kvdb_manager::KVDBManager>(opBuilderKVDBDeleteTest::DB_DIR, m_manager);
+    std::shared_ptr<IMetricsManager> m_manager;
+    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 
-    void SetUp() override { initLogging(); }
+    void SetUp() override
+    {
+        initLogging();
+        m_manager = std::make_shared<MetricsManager>();
+        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(opBuilderKVDBDeleteTest::DB_DIR, m_manager);
+    }
 
     void TearDown() override {}
 };

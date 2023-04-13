@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <api/api.hpp>
+#include <testsCommon.hpp>
 
 
 using namespace api;
@@ -19,6 +20,7 @@ protected:
     Api m_api;
 
     void SetUp() override {
+        initLogging();
         m_api.registerHandler("testCommand", testHandler);
         m_api.registerHandler("testCommandException", testHandlerExeption);
 
@@ -45,7 +47,7 @@ TEST_F(ApiTest, ProcessRequest_MalformedJson) {
 
 TEST_F(ApiTest, ProcessRequest_InvalidSchema) {
     std::string message = R"({"version":1,"command":123,"parameters":{},"origin":{"module":"wazuh-engine","name":"test_moudule"}})";
-    std::string expectedResponse = R"({"data":{},"error":4,"message":"Invalid request: The request must have a \"command\" field containing a string value"})";
+    std::string expectedResponse = R"({"data":{},"error":4,"message":"Invalid request: The request must have a 'command' field containing a string value"})";
     std::string response = m_api.processRequest(message);
 
     EXPECT_EQ(response, expectedResponse);

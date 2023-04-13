@@ -52,7 +52,7 @@ std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string
     }
     else
     {
-        WAZUH_LOG_INFO("MetricsManager: Created new scope: ({})", metricsScopeName);
+        LOG_INFO("MetricsManager: Created new scope: ({})", metricsScopeName);
 
         m_mapScopes.insert(
             std::make_pair<std::string, std::shared_ptr<MetricsScope>>(

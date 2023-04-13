@@ -4,10 +4,19 @@
 
 #include <api/catalog/catalog.hpp>
 #include <api/integration/integration.hpp>
+#include <testsCommon.hpp>
 
 #include "catalogTestShared.hpp"
 
-TEST(IntegrationTest, AddIntegrationPolicyNoIntegrations)
+class IntegrationTest : public testing::Test {
+protected:
+
+    void SetUp() override {
+        initLogging();
+    }
+};
+
+TEST_F(IntegrationTest, AddIntegrationPolicyNoIntegrations)
 {
     auto integration = getIntegration();
     std::optional<base::Error> error;
@@ -15,7 +24,7 @@ TEST(IntegrationTest, AddIntegrationPolicyNoIntegrations)
     ASSERT_FALSE(error);
 }
 
-TEST(IntegrationTest, AddIntegrationPolicy)
+TEST_F(IntegrationTest, AddIntegrationPolicy)
 {
     auto integration = getIntegration();
     std::optional<base::Error> error;
@@ -23,7 +32,7 @@ TEST(IntegrationTest, AddIntegrationPolicy)
     ASSERT_FALSE(error);
 }
 
-TEST(IntegrationTest, AddIntegrationPolicyDuplicated)
+TEST_F(IntegrationTest, AddIntegrationPolicyDuplicated)
 {
     auto integration = getIntegration();
     std::optional<base::Error> error;
@@ -31,7 +40,7 @@ TEST(IntegrationTest, AddIntegrationPolicyDuplicated)
     ASSERT_TRUE(error);
 }
 
-TEST(IntegrationTest, RemoveIntegrationPolicy)
+TEST_F(IntegrationTest, RemoveIntegrationPolicy)
 {
     auto integration = getIntegration();
     std::optional<base::Error> error;
@@ -41,7 +50,7 @@ TEST(IntegrationTest, RemoveIntegrationPolicy)
     ASSERT_FALSE(error);
 }
 
-TEST(IntegrationTest, RemoveIntegrationPolicyNoIntegrations)
+TEST_F(IntegrationTest, RemoveIntegrationPolicyNoIntegrations)
 {
     auto integration = getIntegration();
     std::optional<base::Error> error;

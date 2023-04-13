@@ -16,6 +16,7 @@
 #include <mocks/fakeMetric.hpp>
 #include <server/endpoints/unixStream.hpp>
 #include <server/protocolHandler.hpp>
+#include <testsCommon.hpp>
 
 using namespace engineserver;
 using namespace engineserver::endpoint;
@@ -84,11 +85,11 @@ public:
             ss << std::this_thread::get_id();
             std::string idstr = ss.str();
 
-            WAZUH_LOG_INFO("Block the worker id: {}", idstr);
+            LOG_INFO("Block the worker id: {}", idstr);
             // Block the worker
             std::unique_lock<std::mutex> lock(*BlockWokersMutex);
             BlockWokersCV->wait(lock);
-            WAZUH_LOG_INFO("Unblock the worker id: {}", idstr);
+            LOG_INFO("Unblock the worker id: {}", idstr);
         }
         (*m_processedMessages)++;
 
@@ -150,6 +151,7 @@ protected:
 
     void SetUp() override
     {
+        initLogging();
         m_loop = uvw::Loop::getDefault();
         SharedCounter m_proccessdMessages = std::make_shared<std::atomic<std::size_t>>(0);
         SharedCounter m_conexions = std::make_shared<std::atomic<std::size_t>>(0);
@@ -191,7 +193,7 @@ std::tuple<std::shared_ptr<uvw::AsyncHandle>, std::thread> startLoopThread(std::
     stopHandler->on<uvw::AsyncEvent>(
         [m_loop](const uvw::AsyncEvent&, uvw::AsyncHandle& handle)
         {
-            WAZUH_LOG_INFO("Stopping the loop");
+            LOG_INFO("Stopping the loop");
             handle.close();
             m_loop->walk([](auto& handle) { handle.close(); });
             m_loop->stop();
@@ -202,7 +204,7 @@ std::tuple<std::shared_ptr<uvw::AsyncHandle>, std::thread> startLoopThread(std::
         [m_loop]()
         {
             m_loop->run<uvw::Loop::Mode::DEFAULT>();
-            WAZUH_LOG_INFO("Loop thread finished");
+            LOG_INFO("Loop thread finished");
         });
 
     return {stopHandler, std::move(loopThread)};
