@@ -1,0 +1,6 @@
+---
+- actions:
+  - event:create
+  resources:
+  - "*:*:*"
+  effect: allow
