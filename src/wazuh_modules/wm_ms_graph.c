@@ -111,10 +111,10 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config) {
         if(response->status_code != 200){
             char status_code[4];
             snprintf(status_code, 4, "%ld", response->status_code);
-            mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to obtain access token: Status code was '%s' & response was '%s'", status_code, response->body);
+            mtwarn(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to obtain access token: Status code was '%s' & response was '%s'", status_code, response->body);
         }
         else if (response->max_size_reached){
-            mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
+            mtwarn(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
         }
         else{
             cJSON* response_body = NULL;
@@ -124,13 +124,13 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config) {
                 cJSON_Delete(response_body);
             }
             else{
-                mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse access token JSON body.");
+                mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse access token JSON body.");
             }
         }
         wurl_free_response(response);
     }
     else{
-        mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
+        mtwarn(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to obtain access token.");
     }
     
     os_free(headers);
@@ -172,7 +172,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                 if(response->status_code != 200){
                     char status_code[4];
                     snprintf(status_code, 4, "%ld", response->status_code);
-                    mterror(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to get relationship '%s' logs: Status code was '%s' & response was '%s'",
+                    mtwarn(WM_MS_GRAPH_LOGTAG, "Recieved unsuccessful status code when attempting to get relationship '%s' logs: Status code was '%s' & response was '%s'",
                     ms_graph->resources[resource_num].relationships[relationship_num],
                     status_code,
                     response->body);
@@ -180,7 +180,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                     goto failed;
                 }
                 else if (response->max_size_reached){
-                    mterror(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to get relationship '%s' logs. Consider increasing the value of 'curl_max_size'.",
+                    mtwarn(WM_MS_GRAPH_LOGTAG, "Reached maximum CURL size when attempting to get relationship '%s' logs. Consider increasing the value of 'curl_max_size'.",
                     ms_graph->resources[resource_num].relationships[relationship_num]);
                 }
                 else{
@@ -209,7 +209,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                                     cJSON_Delete(full_log);
                                 }
                                 else{
-                                mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse log array into singular log.");
+                                mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse log array into singular log.");
                                 }
                             }
                         }
@@ -219,13 +219,13 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
                         cJSON_Delete(logs);
                     }
                     else{
-                        mterror(WM_MS_GRAPH_LOGTAG, "Failed to parse relationship '%s' JSON body.", ms_graph->resources[resource_num].relationships[relationship_num]);
+                        mtwarn(WM_MS_GRAPH_LOGTAG, "Failed to parse relationship '%s' JSON body.", ms_graph->resources[resource_num].relationships[relationship_num]);
                     }
                 }
                 wurl_free_response(response);
             }
             else{
-                mterror(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to get relationship '%s' from resource '%s' on API version '%s'.",
+                mtwarn(WM_MS_GRAPH_LOGTAG, "No response recieved when attempting to get relationship '%s' from resource '%s' on API version '%s'.",
                 ms_graph->resources[resource_num].relationships[relationship_num],
                 ms_graph->resources[resource_num].name,
                 ms_graph->version);
@@ -246,13 +246,13 @@ void wm_ms_graph_check() {
         pthread_exit(NULL);
     }
     else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0){
-        mtwarn(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+        mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
         pthread_exit(NULL);
     }
     else {
         for(unsigned int resource = 0; resource < ms_graph->num_resources; resource++){
             if(ms_graph->resources[resource].num_relationships == 0){
-                mtwarn(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+                mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
                 pthread_exit(NULL);
             }
         }
