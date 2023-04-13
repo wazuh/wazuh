@@ -31,17 +31,10 @@ namespace cmd::graph
 {
 void run(const Options& options)
 {
-    // Init logging
+    // Logging init
     logging::LoggingConfig logConfig;
-    logConfig.header = "";
-    switch (options.logLevel)
-    {
-        case 0: logConfig.logLevel = logging::LogLevel::Debug; break;
-        case 1: logConfig.logLevel = logging::LogLevel::Info; break;
-        case 2: logConfig.logLevel = logging::LogLevel::Warn; break;
-        case 3: logConfig.logLevel = logging::LogLevel::Error; break;
-        default: logging::LogLevel::Error;
-    }
+    logConfig.logLevel = options.logLevel;
+
     logging::loggingInit(logConfig);
 
     auto metricsManager = std::make_shared<metricsManager::MetricsManager>();
@@ -112,12 +105,9 @@ void configure(CLI::App_p app)
     auto graphApp = app->add_subcommand("graph", "Generate a dot description of a policy.");
 
     // Log level
-    graphApp
-        ->add_option("-l, --log_level",
-                     options->logLevel,
-                     "Sets the logging level. 0 = Debug, 1 = Info, 2 = Warning, 3 = Error.")
-        ->default_val(logging::LogLevel::Error)
-        ->check(CLI::Range(0, 3));
+    graphApp->add_option("-l, --log_level", options->logLevel, "Sets the logging level.")
+        ->default_val(ENGINE_LOG_LEVEL)
+        ->check(CLI::IsMember({"trace", "debug", "info", "warning", "error", "critical", "off"}));
 
     // KVDB path
     graphApp->add_option("-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")

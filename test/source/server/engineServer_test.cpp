@@ -4,6 +4,8 @@
 #include <thread>
 #include <chrono>
 
+#include <testsCommon.hpp>
+
 class MockEndpoint : public engineserver::Endpoint {
 public:
     MockEndpoint(const std::string& address, const std::size_t taskQueueSize)
@@ -29,6 +31,7 @@ public:
 class EngineServerTest : public testing::Test {
 protected:
     void SetUp() override {
+        initLogging();
         server = std::make_unique<engineserver::EngineServer>();
     }
 

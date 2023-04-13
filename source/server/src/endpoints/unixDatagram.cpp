@@ -103,7 +103,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                 }
                 catch (const std::exception& e)
                 {
-                    WAZUH_LOG_WARN("[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
+                    LOG_WARNING("[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
                 }
 
                 return;
@@ -113,7 +113,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             if (++m_currentTaskQueueSize >= m_taskQueueSize)
 
             {
-                WAZUH_LOG_WARN("[Endpoint: {}] Queue is full, pause listening.", m_address);
+                LOG_WARNING("[Endpoint: {}] Queue is full, pause listening.", m_address);
                 pause();
                 // Update metric
                 m_metric.m_busyQueue->addValue(1UL);
@@ -131,7 +131,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                     }
                     catch (const std::exception& e)
                     {
-                        WAZUH_LOG_WARN("[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
+                        LOG_WARNING("[Endpoint: {}] Error calling the callback: {}", m_address, e.what());
                     }
                 });
 
@@ -142,7 +142,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                     m_currentTaskQueueSize--;
                     if (resume())
                     {
-                        WAZUH_LOG_WARN("[Endpoint: {}] Resume listening.", m_address);
+                        LOG_WARNING("[Endpoint: {}] Resume listening.", m_address);
                     }
                     m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
 
@@ -151,12 +151,12 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
             workerJob->on<uvw::ErrorEvent>(
                 [this](const uvw::ErrorEvent& error, uvw::WorkReq& work)
                 {
-                    WAZUH_LOG_WARN(
+                    LOG_WARNING(
                         "[Endpoint: {}] Error calling the callback: {}", m_address, error.what(), error.code());
                     m_currentTaskQueueSize--;
                     if (resume())
                     {
-                        WAZUH_LOG_WARN("[Endpoint: {}] Resume listening.", m_address);
+                        LOG_WARNING("[Endpoint: {}] Resume listening.", m_address);
                     }
                     m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
 
@@ -169,7 +169,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
         [this](const uvw::ErrorEvent& event, uvw::UDPHandle& handle)
         {
             // Log the error
-            WAZUH_LOG_WARN("[Endpoint: {}] Error: code=[{}]; name=[{}]; message=[{}].",
+            LOG_WARNING("[Endpoint: {}] Error: code=[{}]; name=[{}]; message=[{}].",
                            m_address,
                            event.code(),
                            event.name(),
@@ -180,7 +180,7 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
         [this](const uvw::CloseEvent& event, uvw::UDPHandle& handle)
         {
             // Log the error
-            WAZUH_LOG_INFO("[Endpoint: {}] Closed.", m_address);
+            LOG_INFO("[Endpoint: {}] Closed.", m_address);
         });
     // Bind the socket
     auto socketFd = bindUnixDatagramSocket(m_bufferSize);
@@ -279,7 +279,7 @@ int UnixDatagram::bindUnixDatagramSocket(int& bufferSize)
     // Set close-on-exec
     if (-1 == fcntl(socketFd, F_SETFD, FD_CLOEXEC))
     {
-        WAZUH_LOG_WARN(
+        LOG_WARNING(
             "[Endpoint: {}] Cannot set close-on-exec flag to socket: {} ({})", m_address, strerror(errno), errno);
     }
 

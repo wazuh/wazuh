@@ -32,10 +32,10 @@ const std::map<std::string, spdlog::level::level_enum> SEVERITY_LEVEL {{"trace",
 
 struct LoggingConfig
 {
-    const char* filePath {DEFAULT_LOG_PATH};
+    std::string filePath {DEFAULT_LOG_PATH};
     // To know more about the format parameters, please see: https://github.com/gabime/spdlog/wiki/3.-Custom-formatting
-    const char* headerFormat {DEFAULT_LOG_HEADER};
-    const char* logLevel {DEFAULT_LOG_LEVEL};
+    std::string headerFormat {DEFAULT_LOG_HEADER};
+    std::string logLevel {DEFAULT_LOG_LEVEL};
     const uint32_t flushInterval {DEFAULT_LOG_FLUSH_INTERVAL};     ///< Value in ms
     const uint32_t dedicatedThreads {DEFAULT_LOG_THREADS};         ///< 0 means no dedicated threads,
                                                                    ///< if one or more then logsQueueSize takes effect
@@ -50,7 +50,6 @@ inline auto getDefaultLogger(void)
     return defaultLogger;
 }
 
-// TODO: this is a simple, basic, implementation of how to configure the logger, this won't go to production
 static inline void loggingInit(LoggingConfig& cfg)
 {
     const bool doTruncateFile {false};
@@ -64,7 +63,14 @@ static inline void loggingInit(LoggingConfig& cfg)
         spdlog::flush_every(std::chrono::milliseconds(cfg.flushInterval));
 
         // Logger initialization ("default" is the logger name, it can be any custom name)
-        spdlog::basic_logger_mt("default", cfg.filePath, doTruncateFile);
+        if (!cfg.filePath.empty())
+        {
+            spdlog::basic_logger_mt("default", cfg.filePath, doTruncateFile);
+        }
+        else
+        {
+            auto logger = spdlog::stdout_color_mt("default");
+        }
     }
     catch (const spdlog::spdlog_ex& ex)
     {

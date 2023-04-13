@@ -18,6 +18,8 @@
 #include "utils.hpp"
 #include <cmds/apiExcept.hpp>
 #include <cmds/apiclnt/client.hpp>
+#include <logging/logging.hpp>
+
 
 namespace cmd::catalog
 {
@@ -220,6 +222,8 @@ void runLoad(std::shared_ptr<apiclnt::Client> client,
              bool recursive,
              bool abortOnError)
 {
+
+
     using RequestType = eCatalog::ResourcePost_Request;
     using ResponseType = eEngine::GenericStatus_Response;
     const std::string command = "catalog.resource/post";

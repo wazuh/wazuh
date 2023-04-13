@@ -27,7 +27,7 @@ struct Options
     std::string kvdbPath;
     std::string fileStorage;
     std::string policy;
-    int logLevel;
+    std::string logLevel;
     int debugLevel;
     std::vector<std::string> assetTrace;
     char protocolQueue;

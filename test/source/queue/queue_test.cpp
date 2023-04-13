@@ -6,6 +6,7 @@
 
 #include <mocks/fakeMetric.hpp>
 #include <queue/concurrentQueue.hpp>
+#include <testsCommon.hpp>
 
 using namespace base::queue;
 
@@ -23,6 +24,19 @@ public:
     std::string str() const { return "Dummy: " + std::to_string(value); }
 };
 
+class ConcurrentQueueTest : public ::testing::Test
+{
+protected:
+    ConcurrentQueueTest() {}
+
+    ~ConcurrentQueueTest() {}
+
+    void SetUp() override {
+        initLogging();
+    }
+
+    void TearDown() override {}
+};
 TEST(FloodingFileTest, CanOpenAndWriteToFile)
 {
     std::string filename = "testfile.txt";
@@ -47,7 +61,7 @@ TEST(FloodingFileTest, CannotOpenFile)
     ASSERT_FALSE(ff.write("This should fail"));
 }
 
-TEST(ConcurrentQueueTest, CanConstruct)
+TEST_F(ConcurrentQueueTest, CanConstruct)
 {
     auto metricManager = std::make_shared<FakeMetricManager>();
 
@@ -57,7 +71,7 @@ TEST(ConcurrentQueueTest, CanConstruct)
     ASSERT_EQ(cq.size(), 0);
 }
 
-TEST(ConcurrentQueueTest, errorConstructor)
+TEST_F(ConcurrentQueueTest, errorConstructor)
 {
     ASSERT_THROW(ConcurrentQueue<std::shared_ptr<Dummy>> cq(1,
                                                             std::make_shared<FakeMetricScope>(),
@@ -66,7 +80,7 @@ TEST(ConcurrentQueueTest, errorConstructor)
                  std::runtime_error);
 }
 
-TEST(ConcurrentQueueTest, CanPushAndPop)
+TEST_F(ConcurrentQueueTest, CanPushAndPop)
 {
     ConcurrentQueue<std::shared_ptr<Dummy>> cq(
         2, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
@@ -81,7 +95,7 @@ TEST(ConcurrentQueueTest, CanPushAndPop)
     ASSERT_EQ(cq.size(), 0);
 }
 
-TEST(ConcurrentQueueTest, FloodsWhenFull)
+TEST_F(ConcurrentQueueTest, FloodsWhenFull)
 {
     std::string flood_file = "floodfile.txt";
     // 32 is the size of one block in the queue, for 1 producer and 1 consumer thread
@@ -110,7 +124,7 @@ TEST(ConcurrentQueueTest, FloodsWhenFull)
     std::filesystem::remove(flood_file);
 }
 
-TEST(ConcurrentQueueTest, Timeout)
+TEST_F(ConcurrentQueueTest, Timeout)
 {
     ConcurrentQueue<std::shared_ptr<Dummy>> cq(
         2, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
