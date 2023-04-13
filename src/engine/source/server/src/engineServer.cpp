@@ -58,6 +58,12 @@ EngineServer::EngineServer(int threadPoolSize)
         });
 
     m_endpoints = std::unordered_map<std::string, std::shared_ptr<Endpoint>>();
+
+    m_loop->on<uvw::ErrorEvent>(
+        [](const uvw::ErrorEvent& e, uvw::Loop&)
+        {
+            LOG_ERROR("Error: {} - {}", e.name(), e.what());
+        });
 }
 
 EngineServer::~EngineServer()
@@ -78,6 +84,8 @@ void EngineServer::stop()
     LOG_INFO("Stopping the server");
     m_loop->walk([](auto& handle) { handle.close(); });
     m_loop->stop();
+    // FIXME wait for workers to finish before closing the loop
+    // This throws segfault when closing the loop
     this->m_loop->close();
     LOG_INFO("Server closed");
 }
@@ -85,7 +93,6 @@ void EngineServer::stop()
 void EngineServer::request_stop()
 {
     LOG_DEBUG("Requesting stop");
-    // Send the stop request
     m_stopHandle->send();
 }
 

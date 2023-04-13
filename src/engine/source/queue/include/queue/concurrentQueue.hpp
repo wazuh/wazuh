@@ -178,12 +178,12 @@ public:
             }
             else
             {
-                WAZUH_LOG_INFO("The queue will be flooded in the file: {}", pathFloodedFile);
+                LOG_INFO("The queue will be flooded in the file: {}", pathFloodedFile);
             }
         }
         else
         {
-            WAZUH_LOG_INFO("No flooding file provided, the queue will not be flooded.");
+            LOG_INFO("No flooding file provided, the queue will not be flooded.");
         }
 
         m_metrics.m_metricsScope =  std::move(metricsScope);

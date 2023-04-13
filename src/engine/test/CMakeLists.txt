@@ -22,8 +22,7 @@ CPMAddPackage(
 
 include(GoogleTest)
 
-#TODO: Fix server tests
-#add_subdirectory(${TEST_SOURCE_DIR}/server)
+add_subdirectory(${TEST_SOURCE_DIR}/mocks)
 add_subdirectory(${TEST_SOURCE_DIR}/api)
 add_subdirectory(${TEST_SOURCE_DIR}/base)
 add_subdirectory(${TEST_SOURCE_DIR}/builder)
@@ -40,5 +39,4 @@ add_subdirectory(${TEST_SOURCE_DIR}/store)
 add_subdirectory(${TEST_SOURCE_DIR}/metrics)
 add_subdirectory(${TEST_SOURCE_DIR}/conf)
 add_subdirectory(${TEST_SOURCE_DIR}/queue)
-# TODO Create server test
 add_subdirectory(${TEST_SOURCE_DIR}/server)

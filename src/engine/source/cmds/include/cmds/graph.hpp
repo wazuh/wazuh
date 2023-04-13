@@ -23,7 +23,7 @@ struct Options
     std::string fileStorage;
     std::string policy;
     std::string graph;
-    int logLevel;
+    std::string logLevel;
 };
 void run(const Options& options);
 
