@@ -1086,8 +1086,9 @@ async def delete_groups(request, groups_list: str = None, pretty: bool = False,
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_list_group(request, pretty: bool = False, wait_for_complete: bool = False, groups_list: str = None,
-                         offset: int = 0, limit: int = None, sort: str = None, search: str = None) -> web.Response:
+async def get_list_group(request, pretty: bool = False, wait_for_complete: bool = False,
+                        groups_list: str = None, offset: int = 0, limit: int = None,
+                        sort: str = None, search: str = None, q: str = None) -> web.Response:
     """Get groups.
 
     Returns a list containing basic information about each agent group such as number of agents belonging to the group
@@ -1111,6 +1112,8 @@ async def get_list_group(request, pretty: bool = False, wait_for_complete: bool 
         ascending or descending order.
     search : str
         Look for elements with the specified string.
+    q : str
+        Query to filter results by.
 
     Returns
     -------
@@ -1123,7 +1126,8 @@ async def get_list_group(request, pretty: bool = False, wait_for_complete: bool 
                 'group_list': groups_list,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'hash_algorithm': hash_}
+                'hash_algorithm': hash_,
+                'q': q}
     dapi = DistributedAPI(f=agent.get_agent_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -1315,7 +1319,8 @@ async def put_group_config(request, body: dict, group_id: str, pretty: bool = Fa
 
 
 async def get_group_files(request, group_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                          offset: int = 0, limit: int = None, sort: str = None, search: str = None) -> web.Response:
+                          offset: int = 0, limit: int = None, sort: str = None, search: str = None, 
+                          q: str = None) -> web.Response:
     """Get the files placed under the group directory.
 
     Parameters
@@ -1336,6 +1341,8 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
         ascending or descending order.
     search : str
         Look for elements with the specified string.
+    q : str
+        Query to filter results by.
 
     Returns
     -------
@@ -1350,7 +1357,8 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'hash_algorithm': hash_}
+                'hash_algorithm': hash_,
+                'q': q}
 
     dapi = DistributedAPI(f=agent.get_group_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

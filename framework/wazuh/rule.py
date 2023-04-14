@@ -145,7 +145,7 @@ def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_
 def get_rules_files(status: str = None, relative_dirname: str = None, filename: list = None, offset: int = 0,
                     limit: int = common.DATABASE_LIMIT, sort_by: dict = None, sort_ascending: bool = True,
                     search_text: str = None, complementary_search: bool = False,
-                    search_in_fields: list = None) -> AffectedItemsWazuhResult:
+                    search_in_fields: list = None, q: str = None) -> AffectedItemsWazuhResult:
     """Get a list of the rule files.
 
     Parameters
@@ -171,6 +171,8 @@ def get_rules_files(status: str = None, relative_dirname: str = None, filename: 
         `search_text` will be returned.
     search_in_fields : list
         Fields to search in.
+    q : str
+        Query to filter results by.
 
     Raises
     ------
@@ -206,7 +208,7 @@ def get_rules_files(status: str = None, relative_dirname: str = None, filename: 
 
     data = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, q=q)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

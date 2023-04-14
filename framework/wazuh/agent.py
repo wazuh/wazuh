@@ -551,7 +551,7 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710]})
 def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort: dict = None,
-                     search: dict = None, hash_algorithm: str = 'md5') -> AffectedItemsWazuhResult:
+                     search: dict = None, hash_algorithm: str = 'md5', q: str = None) -> AffectedItemsWazuhResult:
     """Gets the existing groups.
 
     Parameters
@@ -568,6 +568,8 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         Look for elements with the specified string. Format: {"fields": ["field1","field2"]}
     hash_algorithm : str
         hash algorithm used to get mergedsum and configsum. Default: 'md5'
+    q : str
+        Query to filter results by.
 
     Returns
     -------
@@ -588,7 +590,8 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
         rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
 
-        with WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters) as group_query:
+        with WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort,
+                                search=search, **rbac_filters, query=q) as group_query:
             query_data = group_query.run()
 
         for group in query_data['items']:
@@ -614,7 +617,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_group_files(group_list: list = None, offset: int = 0, limit: int = None, search_text: str = None,
                     search_in_fields: list = None, complementary_search: bool = False, sort_by: list = None,
-                    sort_ascending: bool = True, hash_algorithm: str = 'md5') -> WazuhResult:
+                    sort_ascending: bool = True, hash_algorithm: str = 'md5', q: str = None) -> WazuhResult:
     """Gets the group files.
 
     Parameters
@@ -637,6 +640,8 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
         First element to return.
     limit : int
         Maximum number of elements to return
+    q : str
+        Query to filter results by.
 
     Raises
     ------
@@ -681,7 +686,7 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
         data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
         data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by,
-                             sort_ascending=sort_ascending, offset=offset, limit=limit)
+                             sort_ascending=sort_ascending, offset=offset, limit=limit, q=q)
         result.affected_items = data['items']
         result.total_affected_items = data['totalItems']
     except WazuhError as e:
