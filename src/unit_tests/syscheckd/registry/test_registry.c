@@ -853,11 +853,12 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
 static void test_fim_registry_key_transaction_callback_empty_changed_attributes(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
-    fim_registry_key key;
-    key.path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
-    key.arch = ARCH_64BIT;
-    key.hash_full_path = "234567890ABCDEF1234567890ABCDEF123456111";
-    key.last_event = 12345;
+    fim_registry_key key = {
+        .path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile",
+        .arch = ARCH_64BIT,
+        .hash_full_path = "234567890ABCDEF1234567890ABCDEF123456111",
+        .last_event = 12345
+    };
     ReturnTypeCallback resultType = MODIFIED;
     const cJSON *result_json = cJSON_Parse("{\"new\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"},\"old\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}}");
     fim_key_txn_context_t user_data = {.key = &key, .evt_data = &event_data};
