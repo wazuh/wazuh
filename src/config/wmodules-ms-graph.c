@@ -209,9 +209,9 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 				else if(!strcmp(children[j]->element, XML_RESOURCE_RELATIONSHIP)) {
 					if(strlen(children[j]->content) > 0){
 						fprintf(stderr, "Adding relationship");
-						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources - 1].relationships[ms_graph->resources->num_relationships++]);
+						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources - 1].relationships[ms_graph->resources[ms_graph->num_resources - 1].num_relationships++]);
 						// Check if power of 2
-						if (ms_graph->resources->num_relationships > 1 && !(ms_graph->resources->num_relationships & (ms_graph->resources->num_relationships - 1))) {
+						if (ms_graph->resources[ms_graph->num_resources - 1].num_relationships > 1 && !(ms_graph->resources[ms_graph->num_resources - 1].num_relationships & (ms_graph->resources[ms_graph->num_resources - 1].num_relationships - 1))) {
 							fprintf(stderr, "Reallocating relationships");
 							os_realloc(ms_graph->resources[ms_graph->num_resources - 1].relationships, (ms_graph->resources->num_relationships * 2) * sizeof(char*), ms_graph->resources[ms_graph->num_resources - 1].relationships);
 						}
