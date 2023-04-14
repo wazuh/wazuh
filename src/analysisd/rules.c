@@ -1131,7 +1131,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, 
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element,
                                     xml_different_srcip) == 0 ||
                                strcmp(rule_tmp_params.rule_arr_opt[k]->element,
                                     xml_notsame_source_ip) == 0) {
@@ -2181,6 +2181,8 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
     ruleinfo_pt->internal_saving = false;
 
     ruleinfo_pt->rule_overwrite = NULL;
+
+    ruleinfo_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
     return (ruleinfo_pt);
 }
