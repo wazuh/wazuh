@@ -2,11 +2,20 @@
 
 #include <api/integration/handlers.hpp>
 #include <gtest/gtest.h>
+#include <testsCommon.hpp>
 
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
 
-TEST(Handlers, policyAddIntegration)
+class Handlers : public ::testing::Test
+{
+protected:
+    void SetUp() override { initLogging(); }
+
+    void TearDown() override {};
+};
+
+TEST_F(Handlers, policyAddIntegration)
 {
     auto integration = std::make_shared<api::integration::Integration>(getIntegration());
 
@@ -28,7 +37,7 @@ TEST(Handlers, policyAddIntegration)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST(Handlers, policyAddIntegration_MissingPolicy)
+TEST_F(Handlers, policyAddIntegration_MissingPolicy)
 {
     auto integration = std::make_shared<api::integration::Integration>(getIntegration());
 
@@ -49,7 +58,7 @@ TEST(Handlers, policyAddIntegration_MissingPolicy)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST(Handlers, policyAddIntegration_MissingIntegration)
+TEST_F(Handlers, policyAddIntegration_MissingIntegration)
 {
     auto integration = std::make_shared<api::integration::Integration>(getIntegration());
 
@@ -70,7 +79,7 @@ TEST(Handlers, policyAddIntegration_MissingIntegration)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST(Handlers, policyAddIntegration_IncorrectPolicyName)
+TEST_F(Handlers, policyAddIntegration_IncorrectPolicyName)
 {
     auto integration = std::make_shared<api::integration::Integration>(getIntegration());
 
@@ -93,7 +102,7 @@ TEST(Handlers, policyAddIntegration_IncorrectPolicyName)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST(Handlers, policyAddIntegration_IncorrectIntegrationName)
+TEST_F(Handlers, policyAddIntegration_IncorrectIntegrationName)
 {
     auto integration = std::make_shared<api::integration::Integration>(getIntegration());
 
@@ -116,7 +125,7 @@ TEST(Handlers, policyAddIntegration_IncorrectIntegrationName)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST(Handlers, integrationRemoveFrom)
+TEST_F(Handlers, integrationRemoveFrom)
 {
     auto integration = std::make_shared<api::integration::Integration>(getIntegration());
 
@@ -138,7 +147,7 @@ TEST(Handlers, integrationRemoveFrom)
                                              << "Actual: " << response.data().prettyStr() << std::endl;
 }
 
-TEST(Handlers, registerHandlers)
+TEST_F(Handlers, registerHandlers)
 {
     auto integration = std::make_shared<api::integration::Integration>(getIntegration());
     auto api = std::make_shared<api::Api>();
