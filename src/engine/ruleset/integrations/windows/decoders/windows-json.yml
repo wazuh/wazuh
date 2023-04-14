@@ -1,8 +1,5 @@
 name: decoder/windows-json/0
 
-sources:
-  - decoder/core-windows/0
-
 metadata:
   description: Partial parent decoder for Windows events
   module: Windows
