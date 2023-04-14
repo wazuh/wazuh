@@ -8306,6 +8306,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/hash'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List all groups"
@@ -8659,6 +8660,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/hash'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Get group files"
@@ -11329,6 +11331,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/filename'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Successfully got all CDB lists and the files where they are defined"
@@ -13929,6 +13932,7 @@ paths:
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Rule"
@@ -14708,6 +14712,7 @@ paths:
         - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "List of decoders files"
@@ -17280,6 +17285,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Information about user"
@@ -17545,6 +17551,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of roles"
@@ -18059,6 +18066,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of policies"
