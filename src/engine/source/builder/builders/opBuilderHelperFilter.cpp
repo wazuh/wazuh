@@ -263,9 +263,6 @@ std::function<base::result::Result<base::Event>(base::Event)> getStringCmpFuncti
     // Tracing messages
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
-    const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: Parameter \"{}\" not found", name, rightParameter.m_value)};
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
@@ -275,21 +272,56 @@ std::function<base::result::Result<base::Event>(base::Event)> getStringCmpFuncti
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        const auto lValue {event->getString(targetField)};
-        if (!lValue.has_value())
+        auto validateNumericString = [name, targetField, rightParameter](const std::optional<std::string>& str)
         {
-            return base::result::makeFailure(event, failureTrace1);
+            if (!str.has_value()) 
+            {
+                throw std::runtime_error {fmt::format("[{}] -> Failure: Target field '{}' or Parameter \"{}\" not found", name, targetField, rightParameter.m_value)};
+            }
+
+            try 
+            {
+                std::stoi(str.value());
+            } 
+            catch (const std::invalid_argument&) 
+            {
+                throw std::runtime_error {fmt::format("[{}] -> Failure: Target field '{}' or Parameter \"{}\" have no valid arguments", name, targetField, rightParameter.m_value)};
+            }
+        };
+
+        const auto lValue {event->getString(targetField)};
+        try
+        {
+            validateNumericString(lValue);
+        }
+        catch (const std::runtime_error& e)
+        {
+            return base::result::makeFailure(event, e.what());
         }
 
-        std::string resolvedValue {rValue};
+        std::string resolvedValue;
+        try
+        {
+            std::stoi(rValue);
+            resolvedValue = rValue;
+        }
+        catch (const std::invalid_argument& e)
+        {
+            return base::result::makeFailure(event, e.what());
+        }
+
         if (helper::base::Parameter::Type::REFERENCE == rValueType)
         {
             const auto resolvedRValue {event->getString(rValue)};
-            if (!resolvedRValue.has_value())
+            try
             {
-                return base::result::makeFailure(event, failureTrace2);
+                validateNumericString(resolvedRValue);
+                resolvedValue = resolvedRValue.value();
             }
-            resolvedValue = resolvedRValue.value();
+            catch (const std::runtime_error& e)
+            {
+                return base::result::makeFailure(event, e.what());
+            }
         }
 
         if (cmpFunction(lValue.value(), resolvedValue))
