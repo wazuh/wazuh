@@ -307,7 +307,7 @@ int wdb_global_del_agent_labels(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    switch (wdb_step_without_rollback(stmt)) {
+    switch (wdb_step_with_rollback(stmt, wdb)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -346,7 +346,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
         return OS_INVALID;
     }
 
-    switch (wdb_step_without_rollback(stmt)) {
+    switch (wdb_step_with_rollback(stmt, wdb)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -870,7 +870,7 @@ int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent) {
     sqlite3_bind_int(stmt, 1, id_group);
     sqlite3_bind_int(stmt, 2, id_agent);
 
-    return wdb_exec_stmt_silent(stmt, wdb);
+    return wdb_exec_stmt_silent_with_rollback(stmt, wdb);
 }
 
 cJSON* wdb_is_group_empty(wdb_t *wdb, char* group_name) {
@@ -1021,7 +1021,7 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    switch (wdb_step_without_rollback(stmt)) {
+    switch (wdb_step_with_rollback(stmt, wdb)) {
     case SQLITE_ROW:
     case SQLITE_DONE:
         return OS_SUCCESS;
@@ -1197,7 +1197,7 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
     sqlite3_bind_text(stmt, 3, sync_status, -1, NULL);
     sqlite3_bind_int(stmt, 4, id);
 
-    if (OS_SUCCESS == wdb_exec_stmt_silent(stmt, wdb)) {
+    if (OS_SUCCESS == wdb_exec_stmt_silent_with_rollback(stmt, wdb)) {
         return WDBC_OK;
     }
     else {

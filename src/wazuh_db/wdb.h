@@ -933,6 +933,15 @@ cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status);
 int wdb_exec_stmt_silent(sqlite3_stmt* stmt, wdb_t * wdb);
 
 /**
+ * @brief Function to execute an SQL statement without a responsea and to be able to rollback.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @param [in] wdb Database to query for the table existence.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_exec_stmt_silent_with_rollback(sqlite3_stmt* stmt, wdb_t * wdb);
+
+/**
  * @brief Function to execute a SQL statement and save the result in a JSON array limited by size.
  *        Each step of the statement will be printed to know the size.
  *        The result of each step will be placed in returned result while fits.

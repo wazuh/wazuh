@@ -1325,6 +1325,18 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt, wdb_t * wdb) {
     }
 }
 
+int wdb_exec_stmt_silent_with_rollback(sqlite3_stmt* stmt, wdb_t * wdb) {
+    switch (wdb_step_with_rollback(stmt, wdb)) {
+    case SQLITE_ROW:
+    case SQLITE_DONE:
+        return OS_SUCCESS;
+        break;
+    default:
+        mdebug1("SQL statement execution failed");
+        return OS_INVALID;
+    }
+}
+
 cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, int* status, bool column_mode) {
     if (STMT_SINGLE_COLUMN == column_mode) {
         return wdb_exec_row_stmt_single_column(stmt, status);

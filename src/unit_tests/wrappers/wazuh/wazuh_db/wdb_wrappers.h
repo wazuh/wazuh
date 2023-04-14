@@ -81,6 +81,8 @@ sqlite3_stmt* __wrap_wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index
 
 int __wrap_wdb_exec_stmt_silent(sqlite3_stmt* stmt, wdb_t * wdb);
 
+int __wrap_wdb_exec_stmt_silent_with_rollback(sqlite3_stmt* stmt, wdb_t *wdb);
+
 sqlite3_stmt * __wrap_wdb_get_cache_stmt(wdb_t * wdb, char const *query);
 
 cJSON *__wrap_wdb_get_internal_config();
