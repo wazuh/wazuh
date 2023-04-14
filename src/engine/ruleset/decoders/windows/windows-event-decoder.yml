@@ -1,7 +1,7 @@
 name: decoder/windows-event-decoder/0
 
 sources:
-  - decoder/json/0
+  - decoder/windows-json/0
 
 metadata:
   description: Parent decoder for Windows events
