@@ -9,6 +9,7 @@
 #include "syntax.hpp"
 #include <json/json.hpp>
 #include <logicExpression/logicExpression.hpp>
+#include <regex>
 
 namespace
 {
@@ -79,15 +80,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
         std::string field;
         std::string value;
 
-        // Term to json def
-        if (term.find("==") != std::string::npos)
-        {
-            auto pos = term.find("==");
-            field = term.substr(0, pos);
-            value = term.substr(pos + 2);
-        }
-        // TODO: handle rest of operators
-        else if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
+        if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
         {
             auto pos1 = term.find("/");
             auto pos2 = [&]()
@@ -102,6 +95,31 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
 
             field = term.substr(pos1 + 1, pos2 - pos1 - 1);
             value = term.substr(0, pos1) + term.substr(pos2);
+        }
+        else
+        {
+            std::string pattern = R"([<>]=?|==)";  // pattern looking for '<', '>' o '<=' o '>=' o '=='
+            std::regex re(pattern);
+            std::smatch match;
+
+            if (std::regex_search(term, match, re))
+            {
+                std::string operador = match[0];
+                auto pos = term.find(operador);
+                field = term.substr(0, pos);
+                auto operando = term.substr(pos + operador.length());
+                if (operador == "==") 
+                {
+                    value = operando;
+                }
+                else
+                {
+                    value = std::string("+string_") + ((operador == "<=") ? "less_or_equal/"    :
+                                                    (operador == ">=") ? "greater_or_equal/" :
+                                                    (operador == "<")  ? "less/" : "greater/") 
+                                                    + operando;
+                }
+            }
         }
 
         json::Json valueJson;
