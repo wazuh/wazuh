@@ -1,0 +1,50 @@
+---
+logcollector:
+  - windowsEventChannel:
+    - '{"Message":"The Windows Error Reporting Service service entered the stopped state.","Event":"<Event xmlns=''http://schemas.microsoft.com/win/2004/08/events/event''><System><Provider Name=''Service Control Manager'' Guid=''{555908d1-a6d7-4695-8e1e-26931d2012f4}'' EventSourceName=''Service Control Manager''/><EventID Qualifiers=''16384''>7036</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime=''2023-04-14T16:44:06.487987300Z''/><EventRecordID>3497</EventRecordID><Correlation/><Execution ProcessID=''500'' ThreadID=''2980''/><Channel>System</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name=''param1''>Windows Error Reporting Service</Data><Data Name=''param2''>stopped</Data><Binary>5700650072005300760063002F0031000000</Binary></EventData></Event>"}'
+  - windowsEventLog:
+    - '2023 Apr 14 12:42:06 WinEvtLog: Security: AUDIT_SUCCESS(4624): Microsoft-Windows-Security-Auditing: SYSTEM: NT AUTHORITY: WIN-IV0BOSRBARR: An account was successfully logged on. Subject:  Security ID:  S-1-5-18  Account Name:  WIN-IV0BOSRBARR$  Account Domain:  WORKGROUP  Logon ID:  0x3e7  Logon Type:   5  New Logon:  Security ID:  S-1-5-18  Account Name:  SYSTEM  Account Domain:  NT AUTHORITY  Logon ID:  0x3e7  Logon GUID:  {00000000-0000-0000-0000-000000000000}  Process Information:  Process ID:  0x1f4  Process Name:  C:\\Windows\\System32\\services.exe  Network Information:  Workstation Name:   Source Network Address: -  Source Port:  -  Detailed Authentication Information:  Logon Process:  Advapi    Authentication Package: Negotiate  Transited Services: -  Package Name (NTLM only): -  Key Length:  0  This event is generated when a logon session is created. It is generated on the computer that was accessed.'
+  - aws-ebs:
+  - auditd:
+    # Scape single quote:
+    - 'type=TEST_GROUP msg=audit(1610903123.444:555): pid=2940 uid=0 auid=1000 ses=14 msg="op=adding group to /etc/group id=1004 exe=''/usr/sbin/groupadd'' hostname=ubuntu-bionic addr=127.0.0.1 terminal=pts/2 res=success"'
+  - f5:
+  - fortinet:
+  - nginx:
+  - postgresql:
+  - redis:
+  - sonicWall:
+  - sophos:
+external-modules:
+  - github:
+  - office_365:
+  - aws-s3:
+  - aws-cloudtrail:
+  - open-scap:
+  - cis-cat:
+    - '{"type":"scan_info","scan_id":1886296483,"cis":{"benchmark":"CIS Ubuntu Linux 16.04 LTS Benchmark","profile":"xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server","hostname":"10-206-u20-agent4","timestamp":"2022-09-16T15:09:53.048Z","pass":90,"fail":93,"error":0,"unknown":1,"notchecked":36,"score":"49.5%"}}'
+  - osquery:
+  - virustotal:
+  - docker-listener:
+  - Azure:
+internal-modules:
+  - dbsync:
+  - hstinfo:
+  - fim:
+  - rootcheck:
+  - sca:
+  - syscollector:
+    - '{"data":{"argvs":null,"checksum":"71ece4e42dd41b4b06df00e3f5c4fab33aacc1c5","cmd":null,"egroup":"root","euser":"root","fgroup":"root","name":"kworker/1:2-eve","nice":0,"nlwp":1,"pgrp":0,"pid":"4188","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","scan_time":"2023/03/10 03:27:12","session":0,"sgroup":"root","share":0,"size":0,"start_time":1678418235,"state":"R","stime":14,"suser":"root","tgid":4188,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"}'
+    # - '{"data":{"architecture":"x86_64","checksum":"1678418832385321534","hostname":"vm-centos8","os_major":"8","os_minor":"3","os_name":"Centos Linux","os_patch":"2011","os_platform":"centos","os_version":"8.3.2011","release":"4.18.0-240.1.1.el8_3.x86_64","scan_time":"2023/03/10 03:27:12","sysname":"Linux","version":"#1 SMP Thu Nov 19 17:20:08 UTC 2020"},"operation":"MODIFIED","type":"dbsync_osinfo"}'
+    # - '{"data":{"board_serial":"0","checksum":"f7605acc23c70cbb76290a45d956dbab27f5eebc","cpu_cores":2,"cpu_mhz":2371.0,"cpu_name":"AMD Ryzen 5 4500U with Radeon Graphics","ram_free":1691948,"ram_total":2024444,"ram_usage":17,"scan_time":"2023/03/10 03:37:16"},"operation":"MODIFIED","type":"dbsync_hwinfo"}'
+    # - '{"data":{"checksum":"631a5cbb816346c903708bbc14cbc50597272601","inode":26875,"item_id":"fffd4d8c20cacb413ae6c1f39a3a52389375701d","local_ip":"10.0.2.15","local_port":68,"pid":0,"process":null,"protocol":"udp","remote_ip":"10.0.2.2","remote_port":67,"rx_queue":0,"scan_time":"2023/03/14 12:41:19","state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"}'
+    # - '{"data":{"architecture":"x86_64","checksum":"0d7e29ef72b657c96512b43efa6637ad0431b2e5","description":"Tool to analyse BIOS DMI data","format":"rpm","groups":"Unspecified","install_time":"1607103514","item_id":"bbb009a26c1b5bc26c093e9fbcd9b01d0fd227d4","location":null,"multiarch":null,"name":"dmidecode","priority":null,"scan_time":"2023/03/14 15:09:43","size":222289,"source":null,"vendor":"CentOS","version":"1:3.2-6.el8"},"operation":"DELETED","type":"dbsync_packages"}'
+    # - '{"data":{"adapter":null,"checksum":"052a00a969cb2d54a97890b20ea9af156b74d42d","item_id":"d4aa8b01955e438235d586585492f3f5edceec1b","mac":"52:54:00:27:8b:50","mtu":1500,"name":"eth0","rx_bytes":510595,"rx_dropped":0,"rx_errors":0,"rx_packets":4522,"scan_time":"2023/03/10 03:27:12","state":"up","tx_bytes":616053,"tx_dropped":0,"tx_errors":0,"tx_packets":4186,"type":"ethernet"},"operation":"MODIFIED","type":"dbsync_network_iface"}'
+    # - '{"data":{"address":"fe80::a00:27ff:fe0d:a1e5","broadcast":null,"checksum":"7bdb80f090fb4aa51756a4fd0382a1b08ee3e0be","dhcp":"unknown","iface":"eth1","item_id":"4a53b37f2fb0d3ef21c7ff8b5e1b9072b578b82f","metric":null,"netmask":"ffff:ffff:ffff:ffff::","proto":1,"scan_time":"2023/03/14 15:32:01"},"operation":"INSERTED","type":"dbsync_network_address"}'
+    # - '{"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"}'
+    # - '{"data":{"scan_time":"2021/10/29 14:26:24","hotfix":"KB123456","checksum":"abcdef0123456789"}, "type":"dbsync_hotfixes","operation":"MODIFIED"}'
+  - upgrade:
+    - '{"command":"upgrade_update_status","parameters":{"error":0,"message":"Upgrade was successful","status":"Done"}}'
+    - '{"command":"upgrade_update_status","parameters":{"error":2,"message":"Upgrade Failed","status":"Failed"}}'
+remote-syslog:
+...
