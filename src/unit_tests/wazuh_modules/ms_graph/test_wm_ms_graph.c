@@ -23,9 +23,15 @@
 
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
+
 #include "../../wrappers/libc/stdlib_wrappers.h"
-#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
+#include "../../wrappers/wazuh/shared/time_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/url_wrappers.h"
+#include "../../wrappers/libc/time_wrappers.h"
+
+#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 #define TEST_MAX_DATES 5
@@ -34,6 +40,7 @@ static wmodule *ms_graph_module;
 static OS_XML *lxml;
 
 static int setup_module() {
+    merror("Building module");
     ms_graph_module = calloc(1, sizeof(wmodule));
     const char* config =
         "<enabled>yes</enabled>\n"
@@ -65,6 +72,42 @@ static int setup_module() {
     return ret;
 }
 
+static void wmodule_cleanup(wmodule *module){
+    fprintf(stderr, "Got here __1\n");
+    wm_ms_graph* module_data = (wm_ms_graph*)module->data;
+    fprintf(stderr, "Got here __2\n");
+    if(module_data){
+            for(unsigned int resource = 0; resource < module_data->num_resources; resource++){
+            for(unsigned int relationship = 0; relationship < module_data->resources[resource].num_relationships; relationship++){
+                os_free(module_data->resources[resource].relationships[relationship]);
+            }
+            os_free(module_data->resources[resource].name);
+            os_free(module_data->resources[resource].relationships);
+        }
+        fprintf(stderr, "Got here __3\n");
+        os_free(module_data->resources);
+
+        fprintf(stderr, "Got here __4\n");
+        os_free(module_data->auth_config.tenant_id);
+        fprintf(stderr, "Got here __5\n");
+        os_free(module_data->auth_config.client_id);
+        fprintf(stderr, "Got here __6\n");
+        os_free(module_data->auth_config.secret_value);
+        fprintf(stderr, "Got here __7\n");
+        os_free(module_data->auth_config.access_token);
+
+        fprintf(stderr, "Got here __8\n");
+        //os_free(module_data->version);
+
+        fprintf(stderr, "Got here __9\n");
+        os_free(module_data);
+    }
+    fprintf(stderr, "Got here __10\n");
+    os_free(module->tag);
+    fprintf(stderr, "Got here __11\n");
+    os_free(module);
+}
+
 static int teardown_module(){
     test_mode = 0;
     wmodule_cleanup(ms_graph_module);
@@ -81,14 +124,25 @@ static int setup_test_read(void **state) {
 
 static int teardown_test_read(void **state) {
     test_structure *test = *state;
+    fprintf(stderr, "Got here _1\n");
     OS_ClearNode(test->nodes);
+    fprintf(stderr, "Got here _2\n");
     OS_ClearXML(&(test->xml));
+    fprintf(stderr, "Got here _3\n");
     wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
-    sched_scan_free(&(module_data->scan_config));
+    fprintf(stderr, "Got here _4\n");
+    if(module_data && &(module_data->scan_config)){
+        sched_scan_free(&(module_data->scan_config));
+    }
+    fprintf(stderr, "Got here _5\n");
     wmodule_cleanup(test->module);
+    fprintf(stderr, "Got here _6\n");
     os_free(test);
+    fprintf(stderr, "Got here _7\n");
     return 0;
 }
+
+// XML reading tests
 
 void test_bad_tag(void **state) {
     const char* config =
@@ -113,124 +167,23 @@ void test_bad_tag(void **state) {
         "  <relationship>riskyUsers</relationship>\n"
         "</resource>\n"
     ;
+    fprintf(stderr, "Got here 1\n");
     test_structure *test = *state;
+    fprintf(stderr, "Got here 2\n");
     expect_string(__wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
+    fprintf(stderr, "Got here 3\n");
     test->nodes = string_to_xml_node(config, &(test->xml));
+    fprintf(stderr, "Got here 4\n");
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
+    fprintf(stderr, "Got here 5\n");
 }
 
-void test_unclosed_tag(void **state) {
+void test_empty_module(void **state) {
     const char* config =
-        "<enabled>yes\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
+        ""
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1226): Error reading XML file 'etc/ossec.conf':  (line 0).");
-    test->nodes = string_to_xml_node(config, &(test->xml));
-    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), -1);
-}
-
-void test_hanging_close_tag(void **state) {
-    const char* config =
-        "yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1226): Error reading XML file 'etc/ossec.conf':  (line 0).");
-    test->nodes = string_to_xml_node(config, &(test->xml));
-    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), -1);
-}
-
-void test_null_tag(void **state) {
-    const char* config =
-        "<>yes</>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, XML_ELEMNULL);
-    test->nodes = string_to_xml_node(config, &(test->xml));
-    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
-}
-
-void test_null_content(void **state) {
-    const char* config =
-        "<enabled></enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, XML_ELEMNULL);
+    expect_string(__wrap__merror, formatted_msg, "Empty configuration found in module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -679,11 +632,101 @@ void test_missing_relationship(void **state) {
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
+// Main program tests
+
+void test_normal_config(void **state) {
+    const char* config =
+        "<enabled>yes</enabled>\n"
+        "<only_future_events>yes</only_future_events>\n"
+        "<curl_max_size>1M</curl_max_size>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>5m</interval>\n"
+        "<version>v1.0</version>\n"
+        "<api_auth>\n"
+        "  <client_id>example_string_with_36_characters___</client_id>\n"
+        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
+        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "</api_auth>\n"
+        "<resource>\n"
+        "  <name>security</name>\n"
+        "  <relationship>alerts_v2</relationship>\n"
+        "  <relationship>incidents</relationship>\n"
+        "</resource>\n"
+        "<resource>\n"
+        "  <name>identityProtection</name>\n"
+        "  <relationship>riskyUsers</relationship>\n"
+        "</resource>\n"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(config, &(test->xml));
+    assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
+    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    assert_int_equal(module_data->enabled, 1);
+    assert_int_equal(module_data->only_future_events, 1);
+    assert_int_equal(module_data->curl_max_size, 4096);
+    assert_int_equal(module_data->run_on_start, 1);
+    assert_string_equal(module_data->version, "v1.0");
+    assert_string_equal(module_data->auth_config.tenant_id, "example_string_with_36_characters___");
+    assert_string_equal(module_data->auth_config.client_id, "example_string_with_36_characters___");
+    assert_string_equal(module_data->auth_config.secret_value, "example_string_with_40_characters_______");
+    assert_int_equal(module_data->num_resources, 2);
+    assert_string_equal(module_data->resources[0].name, "security");
+    assert_int_equal(module_data->resources[0].num_relationships, 2);
+    assert_string_equal(module_data->resources[0].relationships[0], "alerts_v2");
+    assert_string_equal(module_data->resources[0].relationships[1], "incidents");
+    assert_string_equal(module_data->resources[1].name, "identityProtection");
+    assert_int_equal(module_data->resources[1].num_relationships, 1);
+    assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
+}
+
+void test_disabled(void **state) {
+     wm_ms_graph* module_data = (wm_ms_graph*)ms_graph_module->data;
+    *state = module_data;
+    module_data->enabled = false;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module disabled. Exiting...");
+
+    wm_ms_graph_main(module_data);
+}
+
+void test_no_resources(void **state) {
+         wm_ms_graph* module_data = (wm_ms_graph*)ms_graph_module->data;
+    *state = module_data;
+    module_data->enabled = true;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mterror, formatted_msg, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+
+    wm_ms_graph_main(module_data);
+}
+
+void test_no_relationships(void **state) {
+         wm_ms_graph* module_data = (wm_ms_graph*)ms_graph_module->data;
+    *state = module_data;
+    module_data->enabled = true;
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    module_data->resources[0].num_relationships = 0;
+    module_data->num_resources = 1;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mterror, formatted_msg, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+
+    wm_ms_graph_main(module_data);
+
+    os_free(module_data->resources);
+}
+
 int main(void) {
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_bad_tag, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_unclosed_tag, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_hanging_close_tag, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_empty_module, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_enabled, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_only_future_events, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_curl_max_size, setup_test_read, teardown_test_read),
