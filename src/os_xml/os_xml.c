@@ -324,8 +324,9 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
                     _xml_ungetc(c, _lxml);
                 }
                 location = 0;
-                /* Line ending characters are escaped for linux, windows and mac */
-            } else if (c == ' ' || c == '\n' || c == '\r\n' || c == '\r') {
+                /* _R_CONFE is scaped in cases when the tag is <tagname />
+                Space and line ending characters are escaped for linux, windows and mac */
+            } else if (c == _R_CONFE || isspace(c) || c == '\n' || c == '\r') {
                 continue;
             } else {
                 xml_error(_lxml, "XMLERR: Syntax error: '%c'", c);

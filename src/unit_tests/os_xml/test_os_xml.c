@@ -216,6 +216,22 @@ void test_simple_nodes4(void **state) {
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
+void test_simple_nodes5(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *parse_str = "<root/{>";
+
+    create_xml_file(parse_str, data->xml_file_name, 256);
+    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), OS_INVALID);
+}
+
+void test_simple_nodes6(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *parse_str = "{\"body\": {\"<ossec_config></ossec_config>\"}}";
+
+    create_xml_file(parse_str, data->xml_file_name, 256);
+    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), OS_INVALID);
+}
+
 void test_multiple_nodes(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *parse_str = "<root1></root1>""<root2></root2>""<root3/>";
@@ -1047,6 +1063,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_simple_nodes2, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_simple_nodes3, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_simple_nodes4, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_simple_nodes5, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_simple_nodes6, test_setup, test_teardown),
 
         // Multiple XML nodes test
         cmocka_unit_test_setup_teardown(test_multiple_nodes, test_setup, test_teardown),
