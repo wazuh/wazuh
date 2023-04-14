@@ -44,7 +44,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	ms_graph->only_future_events = WM_MS_GRAPH_DEFAULT_ONLY_FUTURE_EVENTS;
 	ms_graph->curl_max_size = WM_MS_GRAPH_DEFAULT_CURL_MAX_SIZE;
 	ms_graph->run_on_start = WM_MS_GRAPH_DEFAULT_RUN_ON_START;
-	ms_graph->version = WM_MS_GRAPH_DEFAULT_VERSION;
+	os_strdup(WM_MS_GRAPH_DEFAULT_VERSION, ms_graph->version);
 
 	sched_scan_init(&(ms_graph->scan_config));
 	ms_graph->scan_config.interval = WM_DEF_INTERVAL;
@@ -117,6 +117,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 		}
 		else if (!strcmp(nodes[i]->element, XML_VERSION)) {
 			if (!strcmp(nodes[i]->content, "v1.0") || !strcmp(nodes[i]->content, "beta")) {
+				os_free(ms_graph->version);
 				os_strdup(nodes[i]->content, ms_graph->version);
 			}
 			else {
