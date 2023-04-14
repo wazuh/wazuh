@@ -1,7 +1,7 @@
-name: decoder/queue-windows/0
+name: decoder/windows-json/0
 
 sources:
-  - decoder/agent-event-enrichment/0
+  - decoder/core-windows/0
 
 metadata:
   description: Partial parent decoder for Windows events
@@ -15,5 +15,12 @@ metadata:
   references:
     - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
 
+sources:
+  - decoder/queue-windows/0
+
 check:
-  - wazuh.queue: 102 # eventchannel ‘f’
+  - event.original: +starts_with/{
+
+parse:
+  logpar:
+    - event.original: <~json/json>
