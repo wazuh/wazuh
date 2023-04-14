@@ -9,7 +9,7 @@
                 "attributes": "10",
                 "checksum": "a2fbef8f81af27155dcee5e3927ff6243593b91a",
                 "dev": 2456,
-                "gid": 0,
+                "gid": "0",
                 "group_name": "root",
                 "hash_md5": "4b531524aa13c8a54614100b570b3dc7",
                 "hash_sha1": "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
@@ -23,7 +23,7 @@
                 "perm": "-rw-rw-r--",
                 "scanned": 1,
                 "size": 4925,
-                "uid": 0,
+                "uid": "0",
                 "user_name": "fakeUser"
             }
         ]
