@@ -45,11 +45,18 @@ void getRpmInfoLegacy(std::function<void(nlohmann::json&)> callback);
 void getDpkgInfo(const std::string& libPath, std::function<void(nlohmann::json&)> callback);
 
 /**
+ * @brief Fills a JSON object with all available apk-related information
+ * @param libPath Path to apk's database directory
+ * @param callback Callback to be called for every single element being found
+ */
+void getApkInfo(const std::string& libPath, std::function<void(nlohmann::json&)> callback);
+
+
+/**
  * @brief Fills a JSON object with all available snap-related information
  * @param callback Callback to be called for every single element being found
  */
 void getSnapInfo(std::function<void(nlohmann::json&)> callback);
-
 
 // Exception template
 template <LinuxType linuxType>
@@ -87,11 +94,15 @@ class FactoryPackagesCreator<LinuxType::STANDARD> final
                 getRpmInfo(callback);
             }
 
+            if (Utils::existsDir(APK_PATH))
+            {
+                getApkInfo(APK_DB_PATH, callback);
+            }
+
             if (Utils::existsDir(SNAP_PATH))
             {
                 getSnapInfo(callback);
             }
-
         }
 };
 

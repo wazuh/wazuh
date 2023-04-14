@@ -135,88 +135,78 @@ namespace PackageLinuxHelper
         return ret;
     }
 
-
     static nlohmann::json parseSnap(const nlohmann::json& info)
     {
         nlohmann::json ret;
 
         std::string name;
         std::string version;
-        std::string vendor;
-        std::string install_time;
-        std::string location;
-        std::string architecture;
-        std::string groups;
-        std::string description;
-        std::string priority;
-        std::string multiarch;
-        std::string source;
-        std::string format;
-        int         size = 0;
+        std::string vendor       { UNKNOWN_VALUE };
+        std::string install_time { UNKNOWN_VALUE };
+        std::string description  { UNKNOWN_VALUE };
+        int         size         { 0 };
+        bool        hasName      { false };
+        bool        hasVersion   { false };
 
-        bool        hasName    = false;
-        bool        hasVersion = false;
-
-        // TODO: Dismiss record if name or version are not present. 
-
-        if (info.contains("name")) 
+        if (info.contains("name"))
         {
             name = info.at("name");
-            
-            if (name.length()) 
+
+            if (name.length())
             {
                 hasName = true;
             }
-        } 
+        }
 
-        if (info.contains("version")) 
+        if (info.contains("version"))
         {
             version = info.at("version");
 
-            if (version.length()) 
+            if (version.length())
             {
                 hasVersion = true;
             }
         }
 
-        if (!(hasVersion && hasName)) {
+        if (!(hasVersion && hasName))
+        {
             ret.clear();
             return ret;
         }
 
-        if (info.contains("publisher")) 
+        if (info.contains("publisher"))
         {
-            auto &publisher = info.at("publisher");
-            
-            if (publisher.contains("display-name")) 
+            auto& publisher = info.at("publisher");
+
+            if (publisher.contains("display-name"))
             {
                 vendor = publisher.at("display-name");
             }
         }
 
-        if (info.contains("install-date")) 
+        if (info.contains("install-date"))
         {
             install_time = info.at("install-date");
         }
 
-        if (info.contains("summary")) 
+        if (info.contains("summary"))
         {
             description = info.at("summary");
         }
 
-        if (info.contains("installed-size")) 
+        if (info.contains("installed-size"))
         {
-            auto &data = info.at("installed-size");
+            auto& data = info.at("installed-size");
 
-            if (data.is_number()) 
+            if (data.is_number())
             {
                 size = data.get<int>();
-            } 
-            else if (data.is_string()) 
+            }
+            else if (data.is_string())
             {
                 auto stringData = data.get_ref<const std::string&>();
 
-                if (stringData.length()) 
+                if (stringData.length())
                 {
                     size = std::stoi( stringData );
                 }
@@ -236,7 +226,7 @@ namespace PackageLinuxHelper
         ret["priority"]         = UNKNOWN_VALUE;
         ret["multiarch"]        = UNKNOWN_VALUE;
         ret["architecture"]     = UNKNOWN_VALUE;
-        ret["groups"]            = UNKNOWN_VALUE;
+        ret["groups"]           = UNKNOWN_VALUE;
 
         return ret;
     }
