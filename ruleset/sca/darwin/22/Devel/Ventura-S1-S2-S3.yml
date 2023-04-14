@@ -930,8 +930,8 @@ checks:
       - soc_2: ["A1.1"]
     condition: all
     rules:
-      - 'c:grep -i ttl= /etc/asl/com.apple.install -> n:^\s*ttl=(\d+) compare > 364'
-      - 'not c:grep -i all_max= /etc/asl/com.apple.install -> r:^\s*all_max='
+      - 'f:/etc/asl/com.apple.install -> n:^\s*ttl=(\d+) compare > 364'
+      - 'not f:/etc/asl/com.apple.install -> r:^\s*all_max='
 
   # 3.4 Ensure Security Auditing Retention Is Enabled. (Automated)
   - id: 31063
