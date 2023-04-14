@@ -14,6 +14,12 @@
 #include "wmodules.h"
 #include "wm_ms_graph.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#define gmtime_r(x, y)
+#else
+#define gmtime_r(x, y) gmtime_s(y, x)
+#endif
+
 static wm_ms_graph* ms_graph;
 static void* wm_ms_graph_main(wm_ms_graph* ms_graph);
 static void wm_ms_graph_setup(wm_ms_graph* ms_graph);
