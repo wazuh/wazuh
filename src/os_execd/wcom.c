@@ -337,6 +337,7 @@ size_t wcom_check_manager_config(char **output) {
 
     if (OS_ReadXML(cfg, &xml_check) < 0) {
         snprintf(response_string, 0, "Error reading %s file", cfg);
+        response_retval = EXECVE_ERROR;
     } else {
         OS_ClearXML(&xml_check);
 
