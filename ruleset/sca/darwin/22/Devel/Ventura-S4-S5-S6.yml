@@ -76,7 +76,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -c org.apache.httpd" -> r:^0$'
+      - "not c:launchctl list -> r:org.apache.httpd"
 
   # 4.3 Ensure NFS Server Is Disabled. (Automated)
   - id: 31069
@@ -98,7 +98,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -c com.apple.nfsd" -> r:^0$'
+      - "not c:launchctl list -> r:com.apple.nfsd"
       - "not f:/etc/exports"
 
   ##########################################################################
@@ -106,6 +106,27 @@ checks:
   ##########################################################################
 
   # 5.1 File System Permissions and Access Controls
+  - id: 31070
+    title: "Ensure Home Folders Are Secure."
+    description: 'By default, macOS allows all valid users into the top level of every other user''s home folder and restricts access to the Apple default folders within. Another user on the same system can see you have a "Documents" folder but cannot see inside it. This configuration does work for personal file sharing but can expose user files to standard accounts on the system. The best parallel for Enterprise environments is that everyone who has a Dropbox account can see everything that is at the top level but can''t see your pictures. Similarly with macOS, users can see into every new Directory that is created because of the default permissions. Home folders should be restricted to access only by the user. Sharing should be used on dedicated servers or cloud instances that are managing access controls. Some environments may encounter problems if execute rights are removed as well as read and write. Either no access or execute only for group or others is acceptable.'
+    rationale: "Allowing all users to view the top level of all networked users' home folder may not be desirable since it may lead to the revelation of sensitive information."
+    impact: 'If implemented, users will not be able to use the "Public" folders in other users'' home folders. "Public" folders with appropriate permissions would need to be set up in the /Shared folder.'
+    remediation: "Terminal Method: For each user, run the following command to secure all home folders: $ /usr/bin/sudo /bin/chmod -R og-rwx /Users/<username> Alternately, run the following command if there needs to be executable access for a home folder: $ /usr/bin/sudo /bin/chmod -R og-rw /Users/<username> example: $ /usr/bin/sudo /bin/chmod -R og-rw /Users/thirduser/ $ /usr/bin/sudo /bin/chmod -R og-rwx /Users/fourthuser/ # /bin/ls -l /Users/ total 0 drwxr-xr-x+ 12 Guest _guest 384 24 Jul 13:42 Guest drwxrwxrwt 4 root wheel 128 22 Jul 11:00 Shared drwx--x--x+ 18 firstuser staff 576 10 Aug 14:36 firstuser drwx--x--x+ 15 seconduser staff 480 10 Aug 09:16 seconduser drwx--x--x+ 11 thirduser staff 352 10 Aug 14:53 thirduser drwx------+ 11 fourthuser staff 352 10 Aug 14:53 fourthuser."
+    compliance:
+      - cis: ["5.1.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: any
+    rules:
+      - 'not c:sh -c "ls -l /Users | grep -v total" -> !r:^drwx------ && !r:^drwx--x--x'
 
   # 5.1.1 Ensure Home Folders Are Secure. (Automated) - Not Implemented
 
@@ -158,7 +179,7 @@ checks:
       - mitre_techniques: ["T1191", "T1092", "T1175", "T1173", "T1519", "T1052", "T1210", "T1133", "T1118", "T1171", "T1170", "T1046", "T1137", "T1086", "T1164", "T1121", "T1076", "T1091", "T1180", "T1064", "T1184", "T1221", "T1127", "T1028"]
     condition: all
     rules:
-      - 'c:sh -c "nvram -p | grep -c \"amfi_get_out_of_my_way=1\"" -> r:^0$'
+      - "not c:nvram -p -> r:amfi_get_out_of_my_way=1"
 
   # 5.1.4 Ensure Sealed System Volume (SSV) Is Enabled. (Automated)
   - id: 31073
@@ -239,10 +260,69 @@ checks:
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minChars=(\d+) compare > 14'
 
-  # 5.2.3 Ensure Complex Password Must Contain Alphabetic Characters Is Configured (Manual) - Not Implemented
-  # 5.2.4 Ensure Complex Password Must Contain Numeric Character Is Configured (Manual) - Not Implemented
+  # 5.2.3 Ensure Complex Password Must Contain Alphabetic Characters Is Configured. (Manual)
+  - id: 31079
+    title: "Ensure Complex Password Must Contain Alphabetic Characters Is Configured."
+    description: "Complex passwords contain one character from each of the following classes: English uppercase letters, English lowercase letters, Westernized Arabic numerals, and non-alphanumeric characters. Ensure that an Alphabetic character is part of the password policy on the computer."
+    rationale: "The more complex a password, the more resistant it will be against persons seeking unauthorized access to a system."
+    impact: "Password policy should be in effect to reduce the risk of exposed services being compromised easily through dictionary attacks or other social engineering attempts."
+    remediation: 'Terminal Method: Run the following command to set the that passwords must contain at least one letter: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy - setaccountpolicies "requiresAlpha=<value>=1>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresAlpha=1" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is requireAlphanumeric 3. The key must be set to <true/> Note: This profile sets a requirement of both an alphabetical and a numeric character. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
+    compliance:
+      - cis: ["5.2.3"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: any
+    rules:
+      - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
+      - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumLetters " -> n:>(\d+)< compare >= 1'
+
+  # 5.2.4 Ensure Complex Password Must Contain Numeric Character Is Configured. (Manual)
+  - id: 31080
+    title: "Ensure Complex Password Must Contain Numeric Character Is Configured."
+    description: "Complex passwords contain one character from each of the following classes: English uppercase letters, English lowercase letters, Westernized Arabic numerals, and non-alphanumeric characters. Ensure that a number or numeric value is part of the password policy on the computer."
+    rationale: "The more complex a password, the more resistant it will be against persons seeking unauthorized access to a system."
+    impact: "Password policy should be in effect to reduce the risk of exposed services being compromised easily through dictionary attacks or other social engineering attempts."
+    remediation: 'Terminal Method: Run the following command to set passwords to require at least one number: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy - setaccountpolicies "requiresNumeric=<value>=1>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresNumeric=2" Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.mobiledevice.passwordpolicy 2. The key to include is requireAlphanumeric 3. The key must be set to <true/> Note: This profile sets a requirement of both an alphabetical and a numeric character. Note: The profile method is the preferred method for setting password policy since - setglobalpolicy in pwpolicy is deprecated and will likely be removed in a future macOS release.'
+    compliance:
+      - cis: ["5.2.4"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: any
+    rules:
+      - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
+      - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumNumericCharacters " -> n:>(\d+)< compare >= 1'
+
   # 5.2.5 Ensure Complex Password Must Contain Special Character Is Configured (Manual) - Not Implemented
-  # 5.2.6 Ensure Complex Password Must Contain Uppercase and Lowercase Characters Is Configured (Manual) - Not Implemented
+
+  # 5.2.6 Ensure Complex Password Must Contain Uppercase and Lowercase Characters Is Configured (Manual)
+  - id: 31082
+    title: "Ensure Complex Password Must Contain Uppercase and Lowercase Characters Is Configured."
+    description: "Complex passwords contain one character from each of the following classes: English uppercase letters, English lowercase letters, Westernized Arabic numerals, and non-alphanumeric characters. Ensure that both uppercase and lowercase letters are part of the password policy on the computer."
+    rationale: "The more complex a password, the more resistant it will be against persons seeking unauthorized access to a system."
+    impact: "Password policy should be in effect to reduce the risk of exposed services being compromised easily through dictionary attacks or other social engineering attempts."
+    remediation: 'Terminal Method: Run the following command to set passwords to require at upper and lower case letter: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresMixedCase=<value>=1>" example: $ /usr/bin/sudo /usr/bin/pwpolicy -n /Local/Default -setglobalpolicy "requiresMixedCase=1".'
+    compliance:
+      - cis: ["5.2.6"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: any
+    rules:
+      - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumMixedCaseCharacters " -> n:>(\d+)< compare >= 1'
 
   # 5.2.7 Ensure Password Age Is Configured. (Automated)
   - id: 31083
@@ -254,11 +334,13 @@ checks:
     compliance:
       - cis: ["5.2.7"]
       - cis_csc_v8: ["5.3"]
-      - cis_csc_v7: ["45"]
+      - cis_csc_v7: ["16.9"]
       - cmmc_v2.0: ["IA.L2-3.5.6"]
       - nist_sp_800-53: ["AC-2(3)"]
       - pci_dss_3.2.1: ["8.1.4"]
       - pci_dss_4.0: ["8.3.7"]
+      - mitre_techniques: ["T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078", "T1134", "T1197", "T1538", "T1089", "T1157", "T1054", "T1159", "T1160", "T1152", "T1168", "T1162", "T1185", "T1050", "T1075", "T1097", "T1163", "T1021", "T1489", "T1051", "T1023", "T1165", "T1501", "T1072", "T1537", "T1047", "T1084", "T1004"]
+      - pci_dss_v3.2.1: ["8.1.4"]
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxMinutesUntilChangePassword=(\d+) compare < 525601'
@@ -298,15 +380,17 @@ checks:
     compliance:
       - cis: ["5.4"]
       - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["15"]
+      - cis_csc_v7: ["16.11"]
       - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
       - hipaa: ["164.312(a)(2)(iii)"]
       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
+      - iso_27001-2013: ["A.8.1.3"]
       - pci_dss_3.2.1: ["8.1.8"]
       - pci_dss_4.0: ["8.2.8"]
+      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
-      - 'c:sh -c "sudo -V | grep -c \"Authentication timestamp timeout: 0.0 minutes\"" -> r:^1'
+      - "c:sudo -V -> r:Authentication timestamp timeout: 0.0 minutes"
       - "c:stat /etc/sudoers.d -> r:root wheel"
 
   # 5.5 Ensure a Separate Timestamp Is Enabled for Each User/tty Combo. (Automated)
@@ -321,15 +405,17 @@ checks:
     compliance:
       - cis: ["5.5"]
       - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["15"]
+      - cis_csc_v7: ["16.11"]
       - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
       - hipaa: ["164.312(a)(2)(iii)"]
       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
+      - iso_27001-2013: ["A.8.1.3"]
       - pci_dss_3.2.1: ["8.1.8"]
       - pci_dss_4.0: ["8.2.8"]
+      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
-      - 'c:sh -c "sudo -V | grep -c \"Type of authentication timestamp record: tty\"" -> r:^1'
+      - 'c:sh -c "sudo -V -> r:Type of authentication timestamp record: tty'
 
   # 5.6 Ensure the "root" Account Is Disabled. (Automated)
   - id: 31089
@@ -365,15 +451,17 @@ checks:
     compliance:
       - cis: ["5.7"]
       - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["15"]
+      - cis_csc_v7: ["16.11"]
       - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
       - hipaa: ["164.312(a)(2)(iii)"]
       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
+      - iso_27001-2013: ["A.9.2.3"]
       - pci_dss_3.2.1: ["8.1.8"]
       - pci_dss_4.0: ["8.2.8"]
+      - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
-      - 'c:sh -c "security authorizationdb read system.login.screensaver | grep -c ''use-login-window-ui''" -> r:^1$'
+      - "c:security authorizationdb read system.login.screensaver -> r:use-login-window-ui"
 
   # 5.8 Ensure a Login Window Banner Exists. (Automated)
   - id: 31091
@@ -398,6 +486,7 @@ checks:
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
+      - 'c:stat -f %A /Library/Security/PolicyBanner.* -> r:\d\d4'
 
   # 5.9 Ensure Legacy EFI Is Valid and Updating (Automated) - Not implemented
 
