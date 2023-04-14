@@ -55,7 +55,7 @@ checks:
       - "not c:lsmod -> r:squashfs"
       - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*squashfs'
 
-# 1.1.1.2 Ensure mounting of udf filesystems is disabled. (Automated)
+  # 1.1.1.2 Ensure mounting of udf filesystems is disabled. (Automated)
 
   - id: 31001
     title: "Ensure mounting of udf filesystems is disabled."
@@ -80,3 +80,1324 @@ checks:
       - "c:modprobe -n -v udf -> r:install /bin/false|Module udf not found"
       - "not c:lsmod -> r:udf"
       - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*udf'
+
+  # 1.1.2.1 Ensure /tmp is a separate partition. (Automated)
+
+  - id: 31002
+    title: "Ensure /tmp is a separate partition."
+    description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
+    rationale: "Making /tmp its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
+    impact: "By design files saved to /tmp should have no expectation of surviving a reboot of the system. tmpfs is ram based and all files stored to tmpfs will be lost when the system is rebooted. If files need to be persistent through a reboot, they should be saved to /var/tmp not /tmp. Running out of /tmp space is a problem regardless of what kind of filesystem lies under it, but in a configuration where /tmp is not a separate file system it will essentially have the whole disk available, as the default installation only creates a single / partition. On the other hand, a RAM-based /tmp (as with tmpfs) will almost certainly be much smaller, which can lead to applications filling up the filesystem much more easily. Another alternative is to create a dedicated partition for /tmp from a separate volume or disk. One of the downsides of a disk-based dedicated partition is that it will be slower than tmpfs which is RAM-based."
+    remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options: tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 tmpfs /tmp 0 Example of using a volume or disk with specific mount options. The source location of the volume or disk will vary depending on your environment. <device> /tmp <fstype> defaults,nodev,nosuid,noexec 0 0."
+    references:
+      - "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/"
+      - "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
+    compliance:
+      - cis: ["1.1.2.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1499", "T1499.001"]
+      - nist_sp_800-53: ["CM-7"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /tmp -> r:^/tmp\s'
+      - "c:systemctl is-enabled tmp.mount -> r:enabled|static|generated"
+
+  # 1.1.2.2 Ensure nodev option set on /tmp partition. (Automated)
+
+  - id: 31003
+    title: "Ensure nodev option set on /tmp partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /tmp."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
+    compliance:
+      - cis: ["1.1.2.2"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1200"]
+      - nist_sp_800-53: ["CM-7"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /tmp -> r:^/tmp\s && r:nodev'
+
+  # 1.1.2.3 Ensure noexec option set on /tmp partition. (Automated)
+
+  - id: 31004
+    title: "Ensure noexec option set on /tmp partition."
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
+    compliance:
+      - cis: ["1.1.2.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1204", "T1204.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /tmp -> r:^/tmp\s && r:noexec'
+
+  # 1.1.2.4 Ensure nosuid option set on /tmp partition. (Automated)
+
+  - id: 31005
+    title: "Ensure nosuid option set on /tmp partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
+    compliance:
+      - cis: ["1.1.2.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1548", "T1548.001"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /tmp -> r:^/tmp\s && r:nosuid'
+
+  # 1.1.3.1 Ensure separate partition exists for /var. (Automated)
+
+  - id: 31006
+    title: "Ensure separate partition exists for /var."
+    description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
+    rationale: "The reasoning for mounting /var on a separate partition is as follows. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    references:
+      - "http://tldp.org/HOWTO/LVM-HOWTO/"
+    compliance:
+      - cis: ["1.1.3.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1499", "T1499.001"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var -> r:^/var\s'
+
+  # 1.1.3.2 Ensure nodev option set on /var partition. (Automated)
+
+  - id: 31007
+    title: "Ensure nodev option set on /var partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /var filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var with the configured options: # mount -o remount /var."
+    compliance:
+      - cis: ["1.1.3.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1200"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var -> r:^/var\s && r:nodev'
+
+  # 1.1.3.3 Ensure nosuid option set on /var partition. (Automated)
+
+  - id: 31008
+    title: "Ensure nosuid option set on /var partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /var filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var with the configured options: # mount -o remount /var."
+    compliance:
+      - cis: ["1.1.3.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1548", "T1548.001"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var -> r:^/var\s && r:noexec'
+
+  # 1.1.4.1 Ensure separate partition exists for /var/tmp. (Automated)
+
+  - id: 31009
+    title: "Ensure separate partition exists for /var/tmp."
+    description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications. Temporary files residing in /var/tmp are to be preserved between reboots."
+    rationale: "The reasoning for mounting /var/tmp on a separate partition is as follows. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var/tmp directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/tmp and cause potential disruption to daemons as the disk is full. Fine grained control over the mount Configuring /var/tmp as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limits an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var/tmp may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard-link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    references:
+      - "http://tldp.org/HOWTO/LVM-HOWTO/"
+    compliance:
+      - cis: ["1.1.4.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1499", "T1499.001"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/tmp -> r:^/var/tmp\s'
+
+  # 1.1.4.2 Ensure noexec option set on /var/tmp partition. (Automated)
+
+  - id: 31010
+    title: "Ensure noexec option set on /var/tmp partition."
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp."
+    compliance:
+      - cis: ["1.1.4.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1204", "T1204.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/tmp -> r:^/var/tmp\s && r:noexec'
+
+  # 1.1.4.3 Ensure nosuid option set on /var/tmp partition. (Automated)
+
+  - id: 31011
+    title: "Ensure nosuid option set on /var/tmp partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /var/tmp."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp."
+    compliance:
+      - cis: ["1.1.4.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1548", "T1548.001"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/tmp -> r:^/var/tmp\s && r:noexec && r:nosuid'
+
+  # 1.1.4.4 Ensure nodev option set on /var/tmp partition. (Automated)
+
+  - id: 31012
+    title: "Ensure nodev option set on /var/tmp partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/tmp."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp."
+    compliance:
+      - cis: ["1.1.4.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1499", "T1499.001"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/tmp -> r:^/var/tmp\s && r:nodev'
+
+  # 1.1.5.1 Ensure separate partition exists for /var/log. (Automated)
+
+  - id: 31013
+    title: "Ensure separate partition exists for /var/log."
+    description: "The /var/log directory is used by system services to store log data."
+    rationale: "The reasoning for mounting /var/log on a separate partition is as follows. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var/log directory contains log files which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. Fine grained control over the mount Configuring /var/log as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attackers ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection of log data As /var/log contains log files, care should be taken to ensure the security and integrity of the data and mount point."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    references:
+      - "http://tldp.org/HOWTO/LVM-HOWTO/"
+    compliance:
+      - cis: ["1.1.5.1"]
+      - cis_csc_v8: ["8.3"]
+      - cis_csc_v7: ["6.4"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_techniques: ["T0005", "T1499", "T1499.001"]
+      - pci_dss_3.2.1: ["10.7"]
+      - soc_2: ["A1.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/log -> r:^/var/log\s'
+
+  # 1.1.5.2 Ensure nodev option set on /var/log partition. (Automated)
+
+  - id: 31014
+    title: "Ensure nodev option set on /var/log partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /var/log filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
+    compliance:
+      - cis: ["1.1.5.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1038"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1200"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/log -> r:^/var/log\s && r:nodev'
+
+  # 1.1.5.3 Ensure noexec option set on /var/log partition. (Automated)
+
+  - id: 31015
+    title: "Ensure noexec option set on /var/log partition."
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot run executable binaries from /var/log."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
+    compliance:
+      - cis: ["1.1.5.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1204", "T1204.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/log -> r:^/var/log\s && r:noexec'
+
+  # 1.1.5.4 Ensure nosuid option set on /var/log partition. (Automated)
+
+  - id: 31016
+    title: "Ensure nosuid option set on /var/log partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot create setuid files in /var/log."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
+    compliance:
+      - cis: ["1.1.5.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1548", "T1548.001"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/log -> r:^/var/log\s && r:nosuid'
+
+  # 1.1.6.1 Ensure separate partition exists for /var/log/audit. (Automated)
+
+  - id: 31017
+    title: "Ensure separate partition exists for /var/log/audit."
+    description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
+    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follows. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var/log/audit directory contains the audit.log file which can grow quite large, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var/log/audit and cause auditd to trigger it's space_left_action as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var/log/audit as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker's ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection of audit data As /var/log/audit contains audit logs, care should be taken to ensure the security and integrity of the data and mount point."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    references:
+      - "http://tldp.org/HOWTO/LVM-HOWTO/"
+    compliance:
+      - cis: ["1.1.6.1"]
+      - cis_csc_v8: ["8.3"]
+      - cis_csc_v7: ["6.4"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1499", "T1499.001"]
+      - pci_dss_3.2.1: ["10.7"]
+      - soc_2: ["A1.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/log/audit -> r:^/var/log/audit\s'
+
+  # 1.1.6.2 Ensure noexec option set on /var/log/audit partition. (Automated)
+
+  - id: 31018
+    title: "Ensure noexec option set on /var/log/audit partition."
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Since the /var/log/audit filesystem is only intended for audit logs, set this option to ensure that users cannot run executable binaries from /var/log/audit."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit."
+    compliance:
+      - cis: ["1.1.6.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1204", "T1204.002"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/log/audit -> r:^/var/log/audit\s && r:noexec'
+
+  # 1.1.6.3 Ensure nodev option set on /var/log/audit partition. (Automated)
+
+  - id: 31019
+    title: "Ensure nodev option set on /var/log/audit partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /var/log/audit filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log/audit."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log/audit partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit."
+    compliance:
+      - cis: ["1.1.6.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1200"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/log/audit -> r:^/var/log/audit\s && r:nodev'
+
+  # 1.1.6.4 Ensure nosuid option set on /var/log/audit partition. (Automated)
+
+  - id: 31020
+    title: "Ensure nosuid option set on /var/log/audit partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /var/log/audit filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var/log/audit."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log/audit partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit."
+    compliance:
+      - cis: ["1.1.6.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1548", "T1548.001"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/log/audit -> r:^/var/log/audit\s && r:nosuid'
+
+  # 1.1.7.1 Ensure separate partition exists for /home. (Automated)
+
+  - id: 31021
+    title: "Ensure separate partition exists for /home."
+    description: "The /home directory is used to support disk storage needs of local users."
+    rationale: "The reasoning for mounting /home on a separate partition is as follows. Protection from resource exhaustion The default installation only creates a single / partition. Since the /home directory contains user generated data, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /home and impact all local users. Fine grained control over the mount Configuring /home as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker's ability to create exploits on the system. In the case of /home options such as usrquota/grpquota may be considered to limit the impact that users can have on each other with regards to disk resource exhaustion. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection of user data As /home contains user data, care should be taken to ensure the security and integrity of the data and mount point."
+    impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    references:
+      - "http://tldp.org/HOWTO/LVM-HOWTO/"
+    compliance:
+      - cis: ["1.1.7.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1038"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1499", "T1499.001"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /home -> r:^/home\s'
+
+  # 1.1.7.2 Ensure nodev option set on /home partition. (Automated)
+
+  - id: 31022
+    title: "Ensure nodev option set on /home partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /home filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /home with the configured options: # mount -o remount /home."
+    compliance:
+      - cis: ["1.1.7.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1038"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1200"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /home -> r:^/home\s && r:nodev'
+
+  # 1.1.7.3 Ensure nosuid option set on /home partition. (Automated)
+
+  - id: 31023
+    title: "Ensure nosuid option set on /home partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /home filesystem is only intended for user file storage, set this option to ensure that users cannot create setuid files in /home."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /home with the configured options: # mount -o remount /home."
+    compliance:
+      - cis: ["1.1.7.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1548", "T1548.001"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /home -> r:^/home\s && r:nosuid'
+
+  # 1.1.8.1 Ensure /dev/shm is a separate partition. (Automated)
+
+  - id: 31024
+    title: "Ensure /dev/shm is a separate partition."
+    description: "The /dev/shm directory is a world-writable directory that can function as shared memory that facilitates inter process communication (IPC)."
+    rationale: "Making /dev/shm its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /dev/shm useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by mounting tmpfs to /dev/shm."
+    impact: "Since the /dev/shm directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. /dev/shm utilizing tmpfs can be resized using the size={size} parameter in the relevant entry in /etc/fstab."
+    remediation: "For specific configuration requirements of the /dev/shm mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options: tmpfs /dev/shm defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 tmpfs."
+    references:
+      - "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/"
+      - "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
+    compliance:
+      - cis: ["1.1.8.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1499", "T1499.001"]
+      - nist_sp_800-53: ["CM-7"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+
+  # 1.1.8.2 Ensure nodev option set on /dev/shm partition. (Automated)
+
+  - id: 31025
+    title: "Ensure nodev option set on /dev/shm partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm."
+    compliance:
+      - cis: ["1.1.8.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1200"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /dev/shm -> r:^/dev/shm\s && r:nodev'
+
+  # 1.1.8.3 Ensure noexec option set on /dev/shm partition. (Automated)
+
+  - id: 31026
+    title: "Ensure noexec option set on /dev/shm partition."
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. Example: <device> /dev/shm <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /dev/shm with the configured options: # mount -o remount /dev/shm NOTE It is recommended to use tmpfs as the device/filesystem type as /dev/shm is used as shared memory space by applications."
+    compliance:
+      - cis: ["1.1.8.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1204", "T1204.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /dev/shm -> r:^/dev/shm\s && r:noexec'
+
+  # 1.1.8.4 Ensure nosuid option set on /dev/shm partition. (Automated)
+
+  - id: 31027
+    title: "Ensure nosuid option set on /dev/shm partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm."
+    compliance:
+      - cis: ["1.1.8.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1038"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1548", "T1548.001"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /dev/shm -> r:^/dev/shm\s && r:nosuid'
+
+  # 1.1.9 Disable USB Storage. (Automated)
+
+  - id: 31028
+    title: "Disable USB Storage."
+    description: "USB storage provides a means to transfer and store files ensuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
+    rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
+    remediation: "Run the following script to disable usb-storage: #!/usr/bin/env bash { l_mname=\"usb-storage\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$(tr '-' '_' <<< \"$l_mname\")\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
+    compliance:
+      - cis: ["1.1.9"]
+      - cis_csc_v8: ["10.3"]
+      - cis_csc_v7: ["13.7"]
+      - cmmc_v2.0: ["MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.8.3.1"]
+      - mitre_mitigations: ["M1034"]
+      - mitre_tactics: ["TA0001", "TA0010"]
+      - mitre_techniques: ["T1091"]
+      - nist_sp_800-53: ["SC-18(4)"]
+    condition: all
+    rules:
+      - "c:modprobe -n -v usb-storage -> r:^install /bin/true"
+      - "not c:lsmod -> r:^usb-storage"
+
+  # 1.2.1 Ensure GPG keys are configured. (Manual) - Not Implemented
+
+  # 1.2.2 Ensure gpgcheck is globally activated. (Automated)
+
+  - id: 31030
+    title: "Ensure gpgcheck is globally activated."
+    description: "The gpgcheck option, found in the main section of the /etc/dnf/dnf.conf and individual /etc/yum.repos.d/* files, determines if an RPM package's signature is checked prior to its installation."
+    rationale: "It is important to ensure that an RPM's package signature is always checked prior to installation to ensure that the software is obtained from a trusted source."
+    remediation: "Edit /etc/dnf/dnf.conf and set gpgcheck=1 in the [main] section. Example: # sed -i 's/^gpgcheck\\s*=\\s*.*/gpgcheck=1/' /etc/dnf/dnf.conf Edit any failing files in /etc/yum.repos.d/* and set all instances starting with gpgcheck to 1. Example: # find /etc/yum.repos.d/ -name \"*.repo\" -exec echo \"Checking:\" {} \\; -exec sed -i 's/^gpgcheck\\s*=\\s*.*/gpgcheck=1/' {} \\;."
+    compliance:
+      - cis: ["1.2.2"]
+      - cis_csc_v8: ["7.3"]
+      - cis_csc_v7: ["3.4"]
+      - cmmc_v2.0: ["SI.L1-3.14.1"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1195", "T1195.001"]
+      - nist_sp_800-53: ["SI-2"]
+      - pci_dss_3.2.1: ["6.2"]
+      - soc_2: ["CC7.1"]
+    condition: all
+    rules:
+      - 'f:/etc/dnf/dnf.conf -> r:^\s*gpgcheck\s*=\s*1'
+      - 'not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck\s*=\s*0'
+
+  # 1.2.3 Ensure package manager repositories are configured. (Manual) - Not Implemented
+
+  # 1.2.4 Ensure repo_gpgcheck is globally activated. (Manual) - Not Implemented
+
+  # 1.3.1 Ensure AIDE is installed. (Automated)
+
+  - id: 31033
+    title: "Ensure AIDE is installed."
+    description: "Advanced Intrusion Detection Environment (AIDE) is a intrusion detection tool that uses predefined rules to check the integrity of files and directories in the Linux operating system. AIDE has its own database to check the integrity of files and directories. AIDE takes a snapshot of files and directories including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
+    rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
+    remediation: "Run the following command to install AIDE: # dnf install aide Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: Run the following commands: # aide --init # mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz."
+    references:
+      - "http://aide.sourceforge.net/stable/manual.html"
+    compliance:
+      - cis: ["1.3.1"]
+      - cis_csc_v8: ["3.14"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AC.L2-3.1.7"]
+      - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_techniques: ["T1565", "T1565.001"]
+      - nist_sp_800-53: ["AU-2"]
+      - pci_dss_3.2.1: ["10.2.1", "11.5"]
+      - pci_dss_4.0: ["10.2.1", "10.2.1.1"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - "c:rpm -q aide -> r:aide-"
+
+  # 1.3.2 Ensure filesystem integrity is regularly checked. (Automated)
+
+  - id: 31034
+    title: "Ensure filesystem integrity is regularly checked."
+    description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
+    rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
+    remediation: "If cron will be used to schedule and run aide check Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check OR if aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service and add the following lines: [Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/sbin/aide --check [Install] WantedBy=multi-user.target Create or edit the file /etc/systemd/system/aidecheck.timer and add the following lines: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer."
+    references:
+      - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service"
+      - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer"
+    compliance:
+      - cis: ["1.3.2"]
+      - cis_csc_v8: ["3.14"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AC.L2-3.1.7"]
+      - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_techniques: ["T1036", "T1036.005"]
+      - nist_sp_800-53: ["AU-2"]
+      - pci_dss_3.2.1: ["10.2.1", "11.5"]
+      - pci_dss_4.0: ["10.2.1", "10.2.1.1"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled aidecheck.service -> r:^enable"
+      - "c:systemctl is-enabled aidecheck.timer -> r:^enable"
+      - "c:systemctl status aidecheck.service -> r:active"
+
+  # 1.3.3 Ensure cryptographic mechanisms are used to protect the integrity of audit tools. (Automated)
+
+  - id: 31035
+    title: "Ensure cryptographic mechanisms are used to protect the integrity of audit tools."
+    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
+    rationale: "Protecting the integrity of the tools used for auditing purposes is a critical step toward ensuring the integrity of audit information. Audit information includes all information (e.g., audit records, audit settings, and audit reports) needed to successfully audit information system activity. Attackers may replace the audit tools or inject code into the existing tools with the purpose of providing the capability to hide or erase system activity from the audit logs. Audit tools should be cryptographically signed in order to provide the capability to identify when the audit tools have been modified, manipulated, or replaced. An example is a checksum hash of the file or files."
+    remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide.conf.d/ directory or to /etc/aide.conf to protect the integrity of the audit tools: # Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512."
+    compliance:
+      - cis: ["1.3.3"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+    condition:
+    rules:
+
+  # 1.4.1 Ensure bootloader password is set. (Automated)
+
+  - id: 31036
+    title: "Ensure bootloader password is set."
+    description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
+    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
+    impact: 'If password protection is enabled, only the designated superuser can edit a Grub 2 menu item by pressing "e" or access the GRUB 2 command line by pressing "c" If GRUB 2 is set up to boot automatically to a password-protected menu entry the user has no option to back out of the password prompt to select another menu entry. Holding the SHIFT key will not display the menu in this case. The user must enter the correct username and password. If unable, the configuration files will have to be edited via the LiveCD or other means to fix the problem.'
+    remediation: "Create an encrypted password with grub2-setpassword: # grub2-setpassword Enter password: <password> Confirm password: <password>."
+    compliance:
+      - cis: ["1.4.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1046"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_techniques: ["T1542"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*set superusers'
+      - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*password'
+
+  # 1.4.2 Ensure permissions on bootloader config are configured. (Automated)
+
+  - id: 31037
+    title: "Ensure permissions on bootloader config are configured."
+    description: "The grub files contain information on boot settings and passwords for unlocking boot options."
+    rationale: "Setting the permissions to read and write for root only prevents non-root users from seeing the boot parameters or changing them. Non-root users who read the boot parameters may be able to identify weaknesses in security upon boot and be able to exploit them."
+    remediation: "Run the following commands to set ownership and permissions on your grub configuration files: Run the following command to set ownership and permissions on grub.cfg: # chown root:root /boot/grub2/grub.cfg # chmod og-rwx /boot/grub2/grub.cfg Run the following command to set ownership and permissions on grubenv: # chown root:root /boot/grub2/grubenv # chmod u-x,og-rwx /boot/grub2/grubenv Run the following command to set ownership and permissions on user.cfg: # chown root:root /boot/grub2/user.cfg # chmod u-x,og-rwx /boot/grub2/user.cfg Note: This may require a re-boot to enable the change."
+    compliance:
+      - cis: ["1.4.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005", "TA0007"]
+      - mitre_techniques: ["T1542"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat -L /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 1.5.1 Ensure core dump storage is disabled. (Automated)
+
+  - id: 31038
+    title: "Ensure core dump storage is disabled."
+    description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
+    rationale: "A core dump includes a memory image taken at the time the operating system terminates an application. The memory image could contain sensitive data and is generally useful only for developers trying to debug problems."
+    remediation: "Edit /etc/systemd/coredump.conf and edit or add the following line: Storage=none."
+    references:
+      - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
+    compliance:
+      - cis: ["1.5.1"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1005"]
+    condition: all
+    rules:
+      - 'f:/etc/systemd/coredump.conf -> r:^\s*Storage\s*=\s*none'
+
+  # 1.5.2 Ensure core dump backtraces are disabled. (Automated)
+
+  - id: 31039
+    title: "Ensure core dump backtraces are disabled."
+    description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
+    rationale: "A core dump includes a memory image taken at the time the operating system terminates an application. The memory image could contain sensitive data and is generally useful only for developers trying to debug problems, increasing the risk to the system."
+    remediation: "Edit or add the following line in /etc/systemd/coredump.conf: ProcessSizeMax=0."
+    references:
+      - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
+    compliance:
+      - cis: ["1.5.2"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1005"]
+      - nist_sp_800-53: ["CM-6b"]
+    condition: all
+    rules:
+      - 'f:/etc/systemd/coredump.conf -> r:^\s*ProcessSizeMax\s*=\s*0'
+
+  # 1.5.3 Ensure address space layout randomization (ASLR) is enabled. (Automated) - Not Implemented
+
+  # 1.6.1.1 Ensure SELinux is installed. (Automated)
+
+  - id: 31041
+    title: "Ensure SELinux is installed."
+    description: "SELinux provides Mandatory Access Control."
+    rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
+    remediation: "Run the following command to install SELinux: # dnf install libselinux."
+    compliance:
+      - cis: ["1.6.1.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1026"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_techniques: ["T1068"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - "c:rpm -q libselinux -> r:^libselinux-"
+
+  # 1.6.1.2 Ensure SELinux is not disabled in bootloader configuration. (Automated)
+
+  - id: 31042
+    title: "Ensure SELinux is not disabled in bootloader configuration."
+    description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
+    rationale: "SELinux must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
+    impact: "Files created while SELinux is disabled are not labeled at all. This behavior causes problems when changing to enforcing mode because files are labeled incorrectly or are not labeled at all. To prevent incorrectly labeled and unlabeled files from causing problems, file systems are automatically relabeled when changing from the disabled state to permissive or enforcing mode. This can be a long running process that should be accounted for as it may extend downtime during initial re-boot."
+    remediation: "Run the following command to remove the selinux=0 and enforcing=0 parameters: grubby --update-kernel ALL --remove-args \"selinux=0 enforcing=0\" Run the following command to remove the selinux=0 and enforcing=0 parameters if they were created by the deprecated grub2-mkconfig command: # grep -Prsq -- '\\h*([^#\\n\\r]+\\h+)?kernelopts=([^#\\n\\r]+\\h+)?(selinux|enforcing)=0\\b' /boot/grub2 /boot/efi && grub2-mkconfig -o \"$(grep -Prl -- '\\h*([^#\\n\\r]+\\h+)?kernelopts=([^#\\n\\r]+\\h+)?(selinux|enforcing)=0\\b' /boot/grub2 /boot/efi)\"."
+    compliance:
+      - cis: ["1.6.1.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1026"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_techniques: ["T1068"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: none
+    rules:
+      - 'f:/boot/grub2/grubenv -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
+      - 'f:/boot/grub2/grub.cfg -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
+
+  # 1.6.1.3 Ensure SELinux policy is configured. (Automated)
+
+  - id: 31043
+    title: "Ensure SELinux policy is configured."
+    description: "Configure SELinux to meet or exceed the default targeted policy, which constrains daemons and system software only."
+    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that at least the default recommendations are met."
+    remediation: "Edit the /etc/selinux/config file to set the SELINUXTYPE parameter: SELINUXTYPE=targeted."
+    compliance:
+      - cis: ["1.6.1.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1068"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:sestatus -> r:^Loaded policy name:\s+targeted$|^Loaded policy name:\s+mls$'
+      - 'f:/etc/selinux/config -> r:^\s*SELINUXTYPE\s*=\s*targeted|^\s*SELINUXTYPE\s*=\s*mls'
+
+  # 1.6.1.4 Ensure the SELinux mode is not disabled. (Automated)
+
+  - id: 31044
+    title: "Ensure the SELinux mode is not disabled."
+    description: "SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t."
+    rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
+    remediation: "Run one of the following commands to set SELinux's running mode: To set SELinux mode to Enforcing: # setenforce 1 OR To set SELinux mode to Permissive: # setenforce 0 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing OR For Permissive mode: SELINUX=permissive."
+    references:
+      - "https://access.redhat.com/documentation/en-"
+    compliance:
+      - cis: ["1.6.1.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1026"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - "c:getenforce -> r:^Enforcing$|^Permissive$"
+      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing|\s*SELINUX\s*=\s*permisive'
+
+  # 1.6.1.5 Ensure the SELinux mode is enforcing. (Automated)
+
+  - id: 31045
+    title: "Ensure the SELinux mode is enforcing."
+    description: "SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t."
+    rationale: "Running SELinux in disabled mode the system not only avoids enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Running SELinux in Permissive mode, though helpful for developing SELinux policy, only logs access denial entries, but does not deny any operations."
+    remediation: "Run the following command to set SELinux's running mode: # setenforce 1 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing."
+    references:
+      - "https://access.redhat.com/documentation/en-"
+    compliance:
+      - cis: ["1.6.1.5"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - "c:getenforce -> r:^Enforcing$"
+      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
+
+  # 1.6.1.6 Ensure no unconfined services exist. (Automated)
+  - id: 31049
+    title: "Ensure no unconfined services exist."
+    description: "Unconfined processes run in unconfined domains."
+    rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules - it does not replace them."
+    remediation: "Investigate any unconfined processes found during the audit action. They may need to have an existing security context assigned to them or a policy built for them."
+    compliance:
+      - cis: ["1.6.1.6"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - "not c:ps -eZ -> r:unconfined_service_t"
+
+  # 1.6.1.7 Ensure SETroubleshoot is not installed. (Automated)
+
+  - id: 31047
+    title: "Ensure SETroubleshoot is not installed."
+    description: "The SETroubleshoot service notifies desktop users of SELinux denials through a user-friendly interface. The service provides important information around configuration errors, unauthorized intrusions, and other potential errors."
+    rationale: "The SETroubleshoot service is an unnecessary daemon to have running on a server, especially if X Windows is disabled."
+    remediation: "Run the following command to uninstall setroubleshoot: # dnf remove setroubleshoot."
+    compliance:
+      - cis: ["1.6.1.7"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1543", "T1543.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "not c:rpm -qa setroubleshoot -> r:^setroubleshoot"
+
+  # 1.6.1.8 Ensure the MCS Translation Service (mcstrans) is not installed. (Automated)
+
+  - id: 31048
+    title: "Ensure the MCS Translation Service (mcstrans) is not installed."
+    description: "The mcstransd daemon provides category label information to client processes requesting information. The label translations are defined in /etc/selinux/targeted/setrans.conf."
+    rationale: "Since this service is not used very often, remove it to reduce the amount of potentially vulnerable code running on the system."
+    remediation: "Run the following command to uninstall mcstrans: # dnf remove mcstrans."
+    compliance:
+      - cis: ["1.6.1.8"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1543", "T1543.002"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "not c:rpm -qa mcstrans -> r:mcstrans"
+
+  # 1.7.1 Ensure message of the day is configured properly. (Automated)
+
+  - id: 31049
+    title: "Ensure message of the day is configured properly."
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd."
+    compliance:
+      - cis: ["1.7.1"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1082", "T1592", "T1592.004"]
+    condition: all
+    rules:
+      - "not f:/etc/mod"
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|alma'
+
+  # 1.7.2 Ensure local login warning banner is configured properly. (Automated)
+
+  - id: 31050
+    title: "Ensure local login warning banner is configured properly."
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version - or the operating system's name."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
+    compliance:
+      - cis: ["1.7.2"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1082", "T1592", "T1592.004"]
+    condition: any
+    rules:
+      - "not f:/etc/issue"
+      - 'not f:/etc/issue -> r:\\v|\\r|\\m|\\s|alma'
+
+  # 1.7.3 Ensure remote login warning banner is configured properly. (Automated)
+
+  - id: 31051
+    title: "Ensure remote login warning banner is configured properly."
+    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
+    compliance:
+      - cis: ["1.7.3"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
+    condition: any
+    rules:
+      - "not f:/etc/issue.net"
+      - 'not f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|alma'
+
+  # 1.7.4 Ensure permissions on /etc/motd are configured. (Automated)
+
+  - id: 31052
+    title: "Ensure permissions on /etc/motd are configured."
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
+    rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root /etc/motd # chmod u-x,go-wx /etc/motd."
+    compliance:
+      - cis: ["1.7.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1222", "T1222.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 1.7.5 Ensure permissions on /etc/issue are configured. (Automated)
+
+  - id: 31053
+    title: "Ensure permissions on /etc/issue are configured."
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
+    rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root /etc/issue # chmod u-x,go-wx /etc/issue."
+    compliance:
+      - cis: ["1.7.5"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1222", "T1222.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 1.7.6 Ensure permissions on /etc/issue.net are configured. (Automated)
+
+  - id: 31054
+    title: "Ensure permissions on /etc/issue.net are configured."
+    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
+    rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root /etc/issue.net # chmod u-x,go-wx /etc/issue.net."
+    compliance:
+      - cis: ["1.7.6"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1222", "T1222.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
+  # 1.8.1 Ensure GNOME Display Manager is removed. (Automated)
+
+  - id: 31055
+    title: "Ensure GNOME Display Manager is removed."
+    description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
+    rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
+    impact: "Removing the GNOME Display manager will remove the Graphical User Interface (GUI) from the system."
+    remediation: "Run the following command to remove the gdm package # dnf remove gdm."
+    references:
+      - "https://wiki.gnome.org/Projects/GDM"
+    compliance:
+      - cis: ["1.8.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_tactics: ["TA0002"]
+      - mitre_techniques: ["T1543", "T1543.002"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "f:rpm -q gdm -> r:is not installed"
+
+  # 1.8.2 Ensure GDM login banner is configured. (Automated)
+
+  - id: 31056
+    title: "Ensure GDM login banner is configured."
+    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
+    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
+    remediation: "Run the following script to verify that the banner message is enabled and set: #!/usr/bin/env bash { l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done if [ -n \"$l_pkgoutput\" ]; then l_gdmprofile=\"gdm\" # Set this to desired profile name IaW Local site policy l_bmessage=\"'Authorized uses only. All activity may be monitored and reported'\" # Set to desired banner message if [ ! -f \"/etc/dconf/profile/$l_gdmprofile\" ]; then echo \"Creating profile \\\"$l_gdmprofile\\\"\" echo -e \"user-db:user\\nsystem-db:$l_gdmprofile\\nfile- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults\" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d \"/etc/dconf/db/$l_gdmprofile.d/\" ]; then echo \"Creating dconf database directory \\\"/etc/dconf/db/$l_gdmprofile.d/\\\"\" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\\h*banner-message-enable\\h*=\\h*true\\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo \"creating gdm keyfile for machine-wide settings\" if ! grep -Piq -- '^\\h*banner-message-enable\\h*=\\h*' /etc/dconf/db/$l_gdmprofile.d/*; then l_kfile=\"/etc/dconf/db/$l_gdmprofile.d/01-banner-message\" echo -e \"\\n[org/gnome/login-screen]\\nbanner-message-enable=true\" >> \"$l_kfile\" else l_kfile=\"$(grep -Pil -- '^\\h*banner-message-enable\\h*=\\h*' /etc/dconf/db/$l_gdmprofile.d/*)\" ! grep -Pq '^\\h*\\[org\\/gnome\\/login-screen\\]' \"$l_kfile\" && sed -ri '/^\\s*banner- message-enable/ i\\[org/gnome/login-screen]' \"$l_kfile\" ! grep -Pq '^\\h*banner-message-enable\\h*=\\h*true\\b' \"$l_kfile\" && sed -ri 's/^\\s*(banner-message-enable\\s*=\\s*)(\\S+)(\\s*.*$)/\\1true \\3//' \"$l_kfile\" # sed -ri '/^\\s*\\[org\\/gnome\\/login-screen\\]/ a\\\\nbanner-message-enable=true' \"$l_kfile\" fi fi if ! grep -Piq \"^\\h*banner-message-text=[\\'\\\"]+\\S+\" \"$l_kfile\"; then sed -ri \"/^\\s*banner-message-enable/ a\\banner-message-text=$l_bmessage\" \"$l_kfile\" fi dconf update else echo -e \"\\n\\n - GNOME Desktop Manager isn't installed\\n - Recommendation is Not Applicable\\n - No remediation required\\n\" fi } Note: - There is no character limit for the banner message. gnome-shell autodetects longer stretches of text and enters two column mode. - The banner message cannot be read from an external file. OR Run the following command to remove the gdm package: # dnf remove gdm."
+    references:
+      - "https://help.gnome.org/admin/system-admin-guide/stable/login-banner.html.en"
+    compliance:
+      - cis: ["1.8.2"]
+      - mitre_tactics: ["TA0007"]
+    condition: all
+    rules:
+      - "f:/etc/dconf/profile/gdm"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user"
+      - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
+      - "f:/etc/dconf/profile/gdm -> r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-enable=true'
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-text='
+
+  # 1.8.3 Ensure GDM disable-user-list option is enabled. (Automated)
+
+  - id: 31057
+    title: "Ensure GDM disable-user-list option is enabled."
+    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems. The disable-user-list option controls if a list of users is displayed on the login screen."
+    rationale: "Displaying the user list eliminates half of the Userid/Password equation that an unauthorized person would need to log on."
+    remediation: "Run the following script to enable the disable-user-list option: Note: the l_gdm_profile variable in the script can be changed if a different profile name is desired in accordance with local site policy. #!/usr/bin/env bash { l_gdmprofile=\"gdm\" if [ ! -f \"/etc/dconf/profile/$l_gdmprofile\" ]; then echo \"Creating profile \\\"$l_gdmprofile\\\"\" echo -e \"user-db:user\\nsystem-db:$l_gdmprofile\\nfile- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults\" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d \"/etc/dconf/db/$l_gdmprofile.d/\" ]; then echo \"Creating dconf database directory \\\"/etc/dconf/db/$l_gdmprofile.d/\\\"\" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\\h*disable-user-list\\h*=\\h*true\\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo \"creating gdm keyfile for machine-wide settings\" if ! grep -Piq -- '^\\h*\\[org\\/gnome\\/login-screen\\]' /etc/dconf/db/$l_gdmprofile.d/*; then echo -e \"\\n[org/gnome/login-screen]\\n# Do not show the user list\\ndisable-user-list=true\" >> /etc/dconf/db/$l_gdmprofile.d/00-login- screen else sed -ri '/^\\s*\\[org\\/gnome\\/login-screen\\]/ a\\# Do not show the user list\\ndisable-user-list=true' $(grep -Pil -- '^\\h*\\[org\\/gnome\\/login- screen\\]' /etc/dconf/db/$l_gdmprofile.d/*) fi fi dconf update } Note: When the user profile is created or changed, the user will need to log out and log in again before the changes will be applied. OR Run the following command to remove the GNOME package: # dnf remove gdm."
+    references:
+      - "https://help.gnome.org/admin/system-admin-guide/stable/login-userlist-"
+    compliance:
+      - cis: ["1.8.3"]
+      - mitre_mitigations: ["M1028"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1087", "T1087.001", "T1087.002"]
+    condition: all
+    rules:
+      - "f:/etc/dconf/profile/gdm"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user"
+      - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
+      - "f:/etc/dconf/profile/gdm -> r:file-db:/usr/share/gdm/greeter-dconf-defaults"
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-enable=true'
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-text='
+      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:disable-user-list=true'
+
+  # 1.8.4 Ensure GDM screen locks when the user is idle. (Automated)
+
+  - id: 31058
+    title: "Ensure GDM screen locks when the user is idle."
+    description: "GNOME Desktop Manager can make the screen lock automatically whenever the user is idle for some amount of time. - idle-delay=uint32 {n} - Number of seconds of inactivity before the screen goes blank - lock-delay=uint32 {n} - Number of seconds after the screen is blank before locking the screen Example key file: # Specify the dconf path [org/gnome/desktop/session] # Number of seconds of inactivity before the screen goes blank # Set to 0 seconds if you want to deactivate the screensaver. idle-delay=uint32 900 # Specify the dconf path [org/gnome/desktop/screensaver] # Number of seconds after the screen is blank before locking the screen lock-delay=uint32 5."
+    rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended."
+    remediation: "Create or edit a file in the /etc/dconf/profile/ and verify it includes the following: user-db:user system-db:{NAME_OF_DCONF_DATABASE} Note: local is the name of a dconf database used in the examples. Example: # echo -e '\\nuser-db:user\\nsystem-db:local' >> /etc/dconf/profile/user Create the directory /etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/ if it doesn't already exist: Example: # mkdir /etc/dconf/db/local.d Create the key file `/etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/{FILE_NAME} to provide information for the {NAME_OF_DCONF_DATABASE} database: Example script: #!/usr/bin/env bash { l_key_file=\"/etc/dconf/db/local.d/00-screensaver\" l_idmv=\"900\" # Set max value for idle-delay in seconds (between 1 and 900) l_ldmv=\"5\" # Set max value for lock-delay in seconds (between 0 and 5) { echo '# Specify the dconf path' echo '[org/gnome/desktop/session]' echo '' echo '# Number of seconds of inactivity before the screen goes blank' echo '# Set to 0 seconds if you want to deactivate the screensaver.' echo \"idle-delay=uint32 $l_idmv\" echo '' echo '# Specify the dconf path' echo '[org/gnome/desktop/screensaver]' echo '' echo '# Number of seconds after the screen is blank before locking the screen' echo \"lock-delay=uint32 $l_ldmv\" } > \"$l_key_file\" } Note: You must include the uint32 along with the integer key values as shown. Run the following command to update the system databases: # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
+    references:
+      - "https://help.gnome.org/admin/system-admin-guide/stable/desktop-"
+    compliance:
+      - cis: ["1.8.4"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["15"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      - hipaa: ["164.312(a)(2)(iii)"]
+      - mitre_tactics: ["TA0027"]
+      - mitre_techniques: ["T1461"]
+      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
+      - pci_dss_3.2.1: ["8.1.8"]
+      - pci_dss_4.0: ["8.2.8"]
+    condition: all
+    rules:
+      - "f:/etc/dconf/profile/gdm"
+      - "f:/etc/dconf/profile/gdm -> r:user-db:user"
+      - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
+      - 'd:/etc/dconf/db/local.d -> r:\.+ -> r:lock-delay=uint32'
+
+  # 1.8.5 Ensure GDM screen locks cannot be overridden. (Automated) - Not Implemented
+
+  # 1.8.6 Ensure GDM automatic mounting of removable media is disabled. (Automated)
+
+  - id: 31060
+    title: "Ensure GDM automatic mounting of removable media is disabled."
+    description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user."
+    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
+    impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
+    remediation: "Run the following script to disable automatic mounting of media for all GNOME users: #!/usr/bin/env bash { l_pkgoutput=\"\" l_gpname=\"local\" # Set to desired dconf profile name (default is local) # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then echo -e \"$l_pkgoutput\" # Look for existing settings and set variables if they exist l_kfile=\"$(grep -Prils -- '^\\h*automount\\b' /etc/dconf/db/*.d)\" l_kfile2=\"$(grep -Prils -- '^\\h*automount-open\\b' /etc/dconf/db/*.d)\" # Set profile name based on dconf db directory ({PROFILE_NAME}.d) if [ -f \"$l_kfile\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" elif [ -f \"$l_kfile2\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile2\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" fi # check for consistency (Clean up configuration if needed) if [ -f \"$l_kfile\" ] && [ \"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" != \"$l_gpname\" ]; then sed -ri \"/^\\s*automount\\s*=/s/^/# /\" \"$l_kfile\" l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media-automount\" fi if [ -f \"$l_kfile2\" ] && [ \"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile2\")\" != \"$l_gpname\" ]; then sed -ri \"/^\\s*automount-open\\s*=/s/^/# /\" \"$l_kfile2\" fi [ -z \"$l_kfile\" ] && l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media- automount\" # Check if profile file exists if grep -Pq -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*; then echo -e \"\\n - dconf database profile exists in: \\\"$(grep -Pl -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*)\\\"\" else if [ ! -f \"/etc/dconf/profile/user\" ]; then l_gpfile=\"/etc/dconf/profile/user\" else l_gpfile=\"/etc/dconf/profile/user2\" fi echo -e \" - creating dconf database profile\" { echo -e \"\\nuser-db:user\" echo \"system-db:$l_gpname\" } >> \"$l_gpfile\" fi # create dconf directory if it doesn't exists l_gpdir=\"/etc/dconf/db/$l_gpname.d\" if [ -d \"$l_gpdir\" ]; then echo \" - The dconf database directory \\\"$l_gpdir\\\" exists\" else echo \" - creating dconf database directory \\\"$l_gpdir\\\"\" mkdir \"$l_gpdir\" fi # check automount-open setting if grep -Pqs -- '^\\h*automount-open\\h*=\\h*false\\b' \"$l_kfile\"; then echo \" - \\\"automount-open\\\" is set to false in: \\\"$l_kfile\\\"\" else echo \" - creating \\\"automount-open\\\" entry in \\\"$l_kfile\\\"\" ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautomount-open=false' \"$l_kfile\" fi # check automount setting if grep -Pqs -- '^\\h*automount\\h*=\\h*false\\b' \"$l_kfile\"; then echo \" - \\\"automount\\\" is set to false in: \\\"$l_kfile\\\"\" else echo \" - creating \\\"automount\\\" entry in \\\"$l_kfile\\\"\" ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautomount=false' \"$l_kfile\" fi # update dconf database dconf update else echo -e \"\\n - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi } OR Run the following command to uninstall the GNOME desktop Manager package: # dnf remove gdm."
+    references:
+      - "https://access.redhat.com/solutions/20107"
+    compliance:
+      - cis: ["1.8.6"]
+      - cis_csc_v8: ["10.3"]
+      - cis_csc_v7: ["8.5"]
+      - cmmc_v2.0: ["MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.12.2.1"]
+      - mitre_mitigations: ["M1042"]
+      - mitre_tactics: ["TA0001", "TA0008"]
+      - mitre_techniques: ["T1091"]
+    condition: all
+    rules:
+      - "c:gsettings get org.gnome.desktop.media-handling automount -> r:^false"
+
+  # 1.8.7 Ensure GDM disabling automatic mounting of removable media is not overridden. (Automated) - ToDo
+
+
+  # 1.8.8 Ensure GDM autorun-never is enabled. (Automated) - ToDo
+
