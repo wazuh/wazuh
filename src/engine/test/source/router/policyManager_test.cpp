@@ -8,14 +8,23 @@
 #include "register.hpp"
 
 #include "testAuxiliar/routerAuxiliarFunctions.hpp"
+#include <testsCommon.hpp>
 
-TEST(PolicyManager, instance_ok)
+class PolicyManager : public ::testing::Test
+{
+protected:
+    void SetUp() override { initLogging(); }
+
+    void TearDown() override {};
+};
+
+TEST_F(PolicyManager, instance_ok)
 {
     auto builder = aux::getFakeBuilder();
     ASSERT_NO_THROW(router::PolicyManager(builder, 1));
 }
 
-TEST(PolicyManager, instance_fail_null_builder)
+TEST_F(PolicyManager, instance_fail_null_builder)
 {
     try
     {
@@ -32,7 +41,7 @@ TEST(PolicyManager, instance_fail_null_builder)
     }
 }
 
-TEST(PolicyManager, zero_instances)
+TEST_F(PolicyManager, zero_instances)
 {
     auto builder = aux::getFakeBuilder();
     try
@@ -50,7 +59,7 @@ TEST(PolicyManager, zero_instances)
     }
 }
 
-TEST(PolicyManager, policyFlow)
+TEST_F(PolicyManager, policyFlow)
 {
     auto builder = aux::getFakeBuilder();
     auto numOfInstances = 10;
@@ -122,7 +131,7 @@ TEST(PolicyManager, policyFlow)
     }
 }
 
-TEST(PolicyManager, addPolicy_fail)
+TEST_F(PolicyManager, addPolicy_fail)
 {
     auto builder = aux::getFakeBuilder();
     auto manager = router::PolicyManager(builder, 1);
@@ -130,7 +139,7 @@ TEST(PolicyManager, addPolicy_fail)
     ASSERT_TRUE(err.has_value());
 }
 
-TEST(PolicyManager, add_list_del_policy)
+TEST_F(PolicyManager, add_list_del_policy)
 {
     auto builder = aux::getFakeBuilder();
     auto manager = router::PolicyManager(builder, 1);
