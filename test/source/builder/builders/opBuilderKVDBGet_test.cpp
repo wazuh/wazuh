@@ -26,13 +26,15 @@ protected:
     static constexpr auto DB_NAME = "TEST_DB";
     static constexpr auto DB_DIR = "/tmp/";
 
-    std::shared_ptr<IMetricsManager> m_manager = std::make_shared<MetricsManager>();
-    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager =
-        std::make_shared<kvdb_manager::KVDBManager>(opBuilderKVDBGetTest::DB_DIR, m_manager);
+    std::shared_ptr<IMetricsManager> m_manager;
+    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 
     void SetUp() override
     {
         initLogging();
+
+        m_manager = std::make_shared<MetricsManager>();
+        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(opBuilderKVDBGetTest::DB_DIR, m_manager);
 
         auto res = kvdbManager->getHandler(DB_NAME, true);
         if (auto err = std::get_if<base::Error>(&res))
