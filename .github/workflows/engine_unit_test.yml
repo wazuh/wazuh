@@ -1,0 +1,52 @@
+name: Engine Unit Test
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on pull request events but only for the engine base branch
+  pull_request:
+    types:
+      - ready_for_review
+      - synchronize
+    branches:
+      - 11334-dev-new-wazuh-engine
+    paths:
+      - 'src/engine/**'
+
+  # Allows to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  #cancel-in-progress: true
+
+env:
+  BUILD_TYPE: Release
+  ENGINE_DIR: ${{github.workspace}}/src/engine
+
+jobs:
+  build:
+    name: Engine Unit Test
+
+    # Runs only if the PR status is different to Draft
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.workflow }}-${{ runner.os }}
+
+    - name: Configure CMake
+      run: cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -S ${{env.ENGINE_DIR}} -B ${{env.ENGINE_DIR}}/build
+
+    - name: Build
+      run: cmake --build ${{env.ENGINE_DIR}}/build --config ${{env.BUILD_TYPE}} --target all -j2
+
+    - name: Unit Test
+      working-directory: ${{env.ENGINE_DIR}}/build
+      run: ctest -C ${{env.BUILD_TYPE}} -T test --output-on-failure
+
