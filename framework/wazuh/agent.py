@@ -614,7 +614,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_group_files(group_list: list = None, offset: int = 0, limit: int = None, search_text: str = None,
                     search_in_fields: list = None, complementary_search: bool = False, sort_by: list = None,
-                    sort_ascending: bool = True, hash_algorithm: str = 'md5') -> WazuhResult:
+                    sort_ascending: bool = True, hash_algorithm: str = 'md5', select: str = None) -> WazuhResult:
     """Gets the group files.
 
     Parameters
@@ -637,6 +637,8 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
         First element to return.
     limit : int
         Maximum number of elements to return
+    select : str
+        Select which fields to return (separated by comma).
 
     Raises
     ------
@@ -681,7 +683,7 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
         data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
         data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by,
-                             sort_ascending=sort_ascending, offset=offset, limit=limit)
+                             sort_ascending=sort_ascending, offset=offset, limit=limit, select=select)
         result.affected_items = data['items']
         result.total_affected_items = data['totalItems']
     except WazuhError as e:

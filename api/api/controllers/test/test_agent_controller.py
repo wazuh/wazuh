@@ -899,7 +899,8 @@ async def test_get_group_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                 'sort_ascending': True,
                 'search_text': None,
                 'complementary_search': None,
-                'hash_algorithm': hash_
+                'hash_algorithm': hash_,
+                'select': None
                 }
     mock_dapi.assert_called_once_with(f=agent.get_group_files,
                                       f_kwargs=mock_remove.return_value,

@@ -8659,6 +8659,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/hash'
+        - $ref: '#/components/parameters/select'
       responses:
         '200':
           description: "Get group files"
@@ -11057,6 +11058,7 @@ paths:
         - $ref: '#/components/parameters/tag'
         - $ref: '#/components/parameters/log_level'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
       responses:
         '200':
           description: "Wazuh node logs"
@@ -12693,6 +12695,7 @@ paths:
         - $ref: '#/components/parameters/tag'
         - $ref: '#/components/parameters/log_level'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
       responses:
         '200':
           description: "Wazuh logs"
@@ -13929,6 +13932,7 @@ paths:
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/select'
       responses:
         '200':
           description: "Rule"
@@ -14708,6 +14712,7 @@ paths:
         - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/select'
       responses:
         '200':
           description: "List of decoders files"

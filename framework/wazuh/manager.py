@@ -48,7 +48,7 @@ def get_status() -> AffectedItemsWazuhResult:
 def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
               sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
-              q: str = '') -> AffectedItemsWazuhResult:
+              q: str = '', select: str = None) -> AffectedItemsWazuhResult:
     """Get logs from ossec.log.
 
     Parameters
@@ -73,6 +73,8 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
         Fields to search in.
     q : str
         Query to filter results by.
+    select : str
+        Select which fields to return (separated by comma).
 
     Returns
     -------
@@ -95,7 +97,8 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
 
     data = process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by,
-                         sort_ascending=sort_ascending, offset=offset, limit=limit, q=query)
+                         sort_ascending=sort_ascending, offset=offset, limit=limit, q=query,
+                         select=select)
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
 
