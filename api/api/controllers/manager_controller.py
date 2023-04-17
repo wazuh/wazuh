@@ -336,7 +336,7 @@ async def get_stats_remoted(request, pretty: bool = False, wait_for_complete: bo
 
 async def get_log(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                   sort: str = None, search: str = None, tag: str = None, level: str = None,
-                  q: str = None) -> web.Response:
+                  q: str = None, select: str = None) -> web.Response:
     """Get manager's or local_node's last 2000 wazuh log entries.
 
     Parameters
@@ -361,6 +361,8 @@ async def get_log(request, pretty: bool = False, wait_for_complete: bool = False
         Filters by log level.
     q : str
         Query to filter agents by.
+    select : str
+        Select which fields to return (separated by comma).
 
     Returns
     -------
@@ -375,7 +377,8 @@ async def get_log(request, pretty: bool = False, wait_for_complete: bool = False
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'tag': tag,
                 'level': level,
-                'q': q}
+                'q': q,
+                'select': select}
 
     dapi = DistributedAPI(f=manager.ossec_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

@@ -141,7 +141,8 @@ async def test_get_rules_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                 'status': None,
                 'filename': None,
                 'relative_dirname': None,
-                'q': None
+                'q': None,
+                'select': None
                 }
     mock_dapi.assert_called_once_with(f=rule_framework.get_rules_files,
                                       f_kwargs=mock_remove.return_value,

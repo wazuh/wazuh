@@ -89,7 +89,8 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
 
 async def get_decoders_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = None, sort: str = None, search: str = None, filename: str = None,
-                             relative_dirname: str = None, status: str = None, q: str = None) -> web.Response:
+                             relative_dirname: str = None, status: str = None, q: str = None,
+                             select: str = None) -> web.Response:
     """Get all decoders' files.
 
     Returns information about all decoders' files used in Wazuh.
@@ -121,6 +122,8 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
         Filters by status.
     q : str
         Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+    select : str
+        Select which fields to return (separated by comma).
 
     Returns
     -------
@@ -136,7 +139,8 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
                 'filename': filename,
                 'relative_dirname': relative_dirname,
                 'status': status,
-                'q': q}
+                'q': q,
+                'select': select}
 
     dapi = DistributedAPI(f=decoder_framework.get_decoders_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

@@ -1320,7 +1320,7 @@ async def put_group_config(request, body: dict, group_id: str, pretty: bool = Fa
 
 async def get_group_files(request, group_id: str, pretty: bool = False, wait_for_complete: bool = False,
                           offset: int = 0, limit: int = None, sort: str = None, search: str = None, 
-                          q: str = None) -> web.Response:
+                          q: str = None, select: str = None) -> web.Response:
     """Get the files placed under the group directory.
 
     Parameters
@@ -1343,6 +1343,8 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
         Look for elements with the specified string.
     q : str
         Query to filter results by.
+    select : str
+        Select which fields to return (separated by comma).
 
     Returns
     -------
@@ -1358,7 +1360,8 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'hash_algorithm': hash_,
-                'q': q}
+                'q': q,
+                'select': select}
 
     dapi = DistributedAPI(f=agent.get_group_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
