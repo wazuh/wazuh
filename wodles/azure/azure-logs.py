@@ -367,7 +367,7 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
             filter_value = f"TimeGenerated > {max_str}"
 
     query = f"{args.la_query} | order by TimeGenerated asc | where {filter_value} "
-    logging.info(f"Log Analytics: The search starts for query: '{query}'")
+    logging.debug(f"Log Analytics: The search starts for query: '{query}'")
     return {"query": query}
 
 
@@ -391,6 +391,7 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
         If the response for the request is not 200 OK.
     """
     logging.info("Log Analytics: Sending a request to the Log Analytics API.")
+    logging.debug(f"Log Analytics request - URL: {url} - Params: {body} - Headers: {headers}")
     response = get(url, params=body, headers=headers)
     if response.status_code == 200:
         try:
@@ -410,6 +411,7 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
         except KeyError as e:
             logging.error(f"Error: It was not possible to obtain the columns and rows from the event: '{e}'.")
     else:
+        logging.error(f"Error with Log Analytics request: {response.json()}")
         response.raise_for_status()
 
 
@@ -457,6 +459,7 @@ def iter_log_analytics_events(columns: list, rows: list):
         for c in range(0, len(columns)):
             event[columns[c]['name']] = row[c]
         logging.info("Log Analytics: Sending event by socket.")
+        logging.debug(f"Event send to socket: {event}")
         send_message(dumps(event))
 
 
@@ -563,6 +566,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
     HTTPError
         If the response for the request is not 200 OK.
     """
+    logging.debug(f"Graph request - URL: {url} - Headers: {headers}")
     response = get(url=url, headers=headers)
 
     if response.status_code == 200:
@@ -586,11 +590,13 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
         next_url = response_json.get('@odata.nextLink')
 
         if next_url:
+            logging.debug(f"Iterating to next url: {next_url}")
             get_graph_events(url=next_url, headers=headers, md5_hash=md5_hash)
     elif response.status_code == 400:
         logging.error(f"Bad Request for url: {response.url}")
         logging.error(f"Ensure the URL is valid and there is data available for the specified datetime.")
     else:
+        logging.error(f"Error with Graph request: {response.json()}")
         response.raise_for_status()
 
 
@@ -642,6 +648,7 @@ def start_storage():
     # Restore the default max retry value
     block_blob_service.retry = old_retry_value
     logging.info("Storage: Authenticated.")
+    logging.debug(f"Containers to work with: {containers}")
 
     # Get the blobs
     for container in containers:
@@ -743,6 +750,7 @@ def get_blobs(
                             if args.storage_tag:
                                 log_record['azure_storage_tag'] = args.storage_tag
                             logging.info("Storage: Sending event by socket.")
+                            logging.debug(f"Message send to the the socket: {log_record}")
                             send_message(dumps(log_record))
                 # Process the data as plain text
                 else:
@@ -765,6 +773,7 @@ def get_blobs(
 
         # Continue until no marker is returned
         if blobs.next_marker:
+            logging.debug(f"Iteration to next marker: {blobs.next_marker}")
             get_blobs(container_name=container_name, blob_service=blob_service, next_marker=blobs.next_marker,
                       min_datetime=min_datetime, max_datetime=max_datetime, desired_datetime=desired_datetime,
                       md5_hash=md5_hash)
