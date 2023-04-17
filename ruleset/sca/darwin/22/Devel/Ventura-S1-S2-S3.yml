@@ -652,13 +652,34 @@ checks:
       - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
       - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
-    condition: any
+    condition: all
     rules:
       - "c:fdesetup status -> r:^FileVault is On"
       - 'c:osascript -l JavaScript -e "osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''dontAllowFDEDisable'')" -> r:^0$'
 
   # 2.6.6 Audit Lockdown Mode (Manual) - Not Implemented
-  # 2.6.7 Ensure an Administrator Password Is Required to Access System-Wide Preferences (Manual) - Not Implemented
+  # 2.6.7 Ensure an Administrator Password Is Required to Access System-Wide Preferences. (Manual)
+  - id: 31042
+    title: "Ensure an Administrator Password Is Required to Access System-Wide Preferences."
+    description: "System Preferences controls system and user settings on a macOS Computer. System Preferences allows the user to tailor their experience on the computer as well as allowing the System Administrator to configure global security settings. Some of the settings should only be altered by the person responsible for the computer."
+    rationale: "By requiring a password to unlock system-wide System Preferences, the risk is mitigated of a user changing configurations that affect the entire system and requires an admin user to re-authenticate to make changes."
+    impact: "Users will need to enter their password to unlock some additional preference panes that are unlocked by default like Network, Startup and Printers & Scanners."
+    remediation: "Graphical Method: Perform the following steps to verify that an administrator password is required to access system-wide preferences: 1. Open System Settings 2. Select Privacy & Security 3. Select Advanced 4. Set Require an administrator password to access system-wide settings to enabled. Terminal Method: The authorizationdb settings cannot be written to directly, so the plist must be exported out to temporary file. Changes can be made to the temporary plist, then imported back into the authorizationdb settings. Run the following commands to enable that an administrator password is required to access system-wide preferences: $ /usr/bin/sudo /usr/bin/security authorizationdb read system.preferences > /tmp/system.preferences.plist YES (0) $ /usr/bin/sudo /usr/bin/defaults write /tmp/system.preferences.plist shared -bool false $ /usr/bin/sudo /usr/bin/security authorizationdb write system.preferences < /tmp/system.preferences.plist YES (0)."
+    compliance:
+      - cis: ["2.6.7"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_3.2.1: ["11.5", "2.2"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:>false<"
+
   # 2.7 Desktop & Dock
   # 2.7.1 Ensure Screen Saver Corners Are Secure (Automated) - Not implemented
   # 2.8 Displays
@@ -685,7 +706,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sh -c "pmset -g custom | grep powernap | grep -c 1" -> r:^0$'
+      - 'not c:sh -c "pmset -g custom" -> r:powernap\s*\t*1'
 
   # 2.9.2 Ensure Wake for Network Access Is Disabled. (Automated)
   - id: 31046
@@ -713,7 +734,29 @@ checks:
   # 2.9.3 Ensure the OS is not Activate When Resuming from Sleep (Automated) - Not Implemented
   # 2.10 Lock Screen
   # 2.10.1 Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled (Automated) - Not implemented
-  # 2.10.2 Ensure a Password is Required to Wake the Computer From Sleep or Screen Saver Is Enabled (Automated) - Not Implemented
+  # 2.10.2 Ensure a Password is Required to Wake the Computer From Sleep or Screen Saver Is Enabled. (Automated)
+  - id: 31049
+    title: "Ensure a Password is Required to Wake the Computer From Sleep or Screen Saver Is Enabled."
+    description: "Sleep and screen saver modes are low power modes that reduce electrical consumption while the system is not in use."
+    rationale: "Prompting for a password when waking from sleep or screen saver mode mitigates the threat of an unauthorized person gaining access to a system in the user's absence."
+    impact: "Without a screenlock in place anyone with physical access to the computer would be logged in and able to use the active user's session."
+    remediation: "Graphical Method: Perform the following steps to enable a password for unlock after a screen saver begins or after sleep: 1. Open System Settings 2. Select Lock Screen 3. Set Require password after screensaver begins or display is turned off to either After 0 seconds or After 5 seconds Terminal Method: Run the following command to require a password to unlock the computer after the screen saver engages or the computer sleeps: $ /usr/bin/sudo /usr/sbin/sysadminctl -screenLock immediate -password <administrator password> or $ /usr/bin/sudo /usr/sbin/sysadminctl -screenLock 5 seconds -password <administrator password> Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.screensaver 2. The key to include is askForPassword 3. The key must be set to <true/> 4. The key to also include is askForPasswordDelay 5. The key must be set to <integer><0,5></integer>."
+    references:
+      - "https://blog.kolide.com/screensaver-security-on-macos-10-13-is-broken-"
+      - "https://github.com/rtrouton/profiles/blob/master/SetDefaultScreensaver/SetDefaul"
+    compliance:
+      - cis: ["2.10.2"]
+      - cis_csc_v8: ["4.7"]
+      - cis_csc_v7: ["4.2"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - pci_dss_3.2.1: ["2.1", "2.1.1"]
+      - pci_dss_4.0: ["2.2.2", "2.3.1"]
+      - soc_2: ["CC6.3"]
+    condition: all
+    rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.screensaver'').objectForKey(''askForPassword'')" -> n:^(\d+)$ compare == 1'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.screensaver'').objectForKey(''askForPasswordDelay'')" -> n:^(\d+)$ compare <= 5'
 
   # 2.10.3 Ensure a Custom Message for the Login Screen Is Enabled. (Automated)
   - id: 31050
@@ -779,9 +822,28 @@ checks:
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:^0$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:\w+'
 
   # 2.11 Touch ID & Password (Login Password)
-  # 2.11.1 Ensure Users' Accounts Do Not Have a Password Hint (Automated) - Not Implemented
+  # 2.11.1 Ensure Users' Accounts Do Not Have a Password Hint. (Automated)
+  - id: 31053
+    title: "Ensure Users' Accounts Do Not Have a Password Hint."
+    description: "Password hints help the user recall their passwords for various systems and/or accounts. In most cases, password hints are simple and closely related to the user's password."
+    rationale: "Password hints that are closely related to the user's password are a security vulnerability, especially in the social media age. Unauthorized users are more likely to guess a user's password if there is a password hint. The password hint is very susceptible to social engineering attacks and information exposure on social media networks."
+    remediation: "Graphical Method: Perform the following steps to remove a user's password hint: 1. Open System Settings 2. Select Touch ID & Passwords (or Login Password on non-Touch ID Macs) 3. Select Change... 4. Change the password and ensure that no text is entered in the Password hint box Note: This will only change the currently logged-in user's password, and not any others that are not compliant on the Mac. Use the terminal method if multiple users are not in compliance. Terminal Method: Run the following command to remove a user's password hint: $ /usr/bin/sudo /usr/bin/dscl . -list /Users hint . -delete /Users/<username> hint example: $ /usr/bin/sudo /usr/bin/dscl . -list /Users hint . -delete /Users/firstuser hint $ /usr/bin/sudo /usr/bin/dscl . -list /Users hint . -delete /Users/seconduser hint."
+    compliance:
+      - cis: ["2.11.1"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - mitre_techniques: ["T1003", "T1017", "T1019", "T1028", "T1035", "T1047", "T1051", "T1053", "T1055", "T1067", "T1072", "T1075", "T1076", "T1077", "T1078", "T1084", "T1086", "T1088", "T1097", "T1098", "T1100", "T1134", "T1136", "T1169", "T1175", "T1184", "T1190", "T1206", "T1208", "T1210", "T1214", "T1215", "T1218", "T1495", "T1501", "T1505", "T1525"]
+      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: none
+    rules:
+      - 'not c:dscl . -list /Users hint -> r:^\w*$'
+
   # 2.11.2 Audit Touch ID and Wallet & Apple Pay Settings (Manual) - Not Implemented
   # 2.12 Users & Groups
 
@@ -952,14 +1014,14 @@ checks:
       - soc_2: ["A1.1"]
     condition: any
     rules:
-      - "f:/etc/security/audit_control -> n:^expire-after\\.*(\\d+)s compare >= 5184000"
-      - "f:/etc/security/audit_control -> n:^expire-after\\.*(\\d+)h compare >= 1440"
-      - "f:/etc/security/audit_control -> n:^expire-after\\.*(\\d+)d compare >= 60"
-      - "f:/etc/security/audit_control -> n:^expire-after\\.*(\\d+)y compare >= 1"
-      - "f:/etc/security/audit_control -> n:^expire-after\\.*(\\d+)b compare >= 5368709120"
-      - "f:/etc/security/audit_control -> n:^expire-after\\.*(\\d+)k compare >= 5242880"
-      - "f:/etc/security/audit_control -> n:^expire-after\\.*(\\d+)m compare >= 5120"
-      - "f:/etc/security/audit_control -> n:^expire-after\\.*(\\d+)g compare >= 5"
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)s OR \d+\w compare => 5184000'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)h OR \d+\w compare => 1440'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)d OR \d+\w compare => 60'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)y OR \d+\w compare => 1'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)b compare => 5368709120'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)k compare => 5242880'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)m compare => 5120'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)g compare => 5'
 
   # 3.5 Ensure Access to Audit Records Is Controlled (Automated) - Not implemented
   # 3.6 Ensure Firewall Logging Is Enabled and Configured (Automated) - Not implemented
