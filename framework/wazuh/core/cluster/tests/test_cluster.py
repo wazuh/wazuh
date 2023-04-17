@@ -14,6 +14,9 @@ from unittest.mock import MagicMock, mock_open, patch, call, ANY
 import pytest
 from wazuh.core import common
 from wazuh.core.utils import get_date_from_timestamp
+import asyncio
+from uvloop import EventLoopPolicy, Loop
+from concurrent.futures import ProcessPoolExecutor
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -30,6 +33,14 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.exception import WazuhError, WazuhInternalError
 
 agent_groups = b"default,windows-servers"
+
+@pytest.fixture(scope="session")
+def event_loop() -> Loop:
+    asyncio.set_event_loop_policy(EventLoopPolicy())
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 # Valid configurations
 default_cluster_configuration = {
@@ -586,30 +597,16 @@ def test_unmerge_info():
 
 
 @pytest.mark.asyncio
-async def test_run_in_pool():
+async def test_run_in_pool(event_loop):
     """Test if the function is running in a process pool if it exists."""
 
     def mock_callable(*args, **kwargs):
         """Mock function."""
         return "Mock callable"
 
-    class LoopMock:
-        """Mock class."""
-
-        @staticmethod
-        def partial(f, *args, **kwargs):
-            """Mock function."""
-            return "callable mock"
-
-        @staticmethod
-        async def run_in_executor(pool, partial=partial):
-            """Mock method."""
-            return None
-
-    # Test the first condition
     with patch('wazuh.core.cluster.cluster.wait_for', return_value="OK") as wait_for_mock:
-        assert await cluster.run_in_pool(LoopMock, LoopMock, mock_callable, None) == wait_for_mock.return_value
+        assert await cluster.run_in_pool(event_loop, ProcessPoolExecutor(max_workers=1), mock_callable, None) == wait_for_mock.return_value
         wait_for_mock.assert_called_once()
 
     # Test the second condition
-    assert await cluster.run_in_pool(LoopMock, None, mock_callable, None) == "Mock callable"
+    assert await cluster.run_in_pool(event_loop, None, mock_callable, None) == "Mock callable"
