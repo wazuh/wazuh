@@ -11,6 +11,9 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 from freezegun import freeze_time
 
+import tracemalloc
+tracemalloc.start()
+
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
@@ -22,6 +25,8 @@ with patch('wazuh.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         import wazuh.core.cluster.client as client
         from wazuh import WazuhException
+
+from wazuh.core.exception import WazuhClusterError
 
 fernet_key = "00000000000000000000000000000000"
 
@@ -185,60 +190,63 @@ def test_ac_init():
 
 
 def test_ac_connection_result():
-    """Check that once an asyncio.Future object is received, a connection is established if no problems were found, or
-    closed if and Exception was received."""
+    """Check that once an asyncio.Future object is received, a
+       first - connection is established if no problems were found, or
+       second - closed if and Exception was received."""
 
-    class MultipleMock:
-        def __init__(self):
-            self.result_output = None
-
+    class CloseMock:
         def close(self):
             pass
 
-        def result(self):
-            return self.result_output
-
-    m_mock = MultipleMock()
-
     # Check first condition
     with patch.object(logging.getLogger('wazuh'), "error") as logger_mock:
-        m_mock.result_output = [WazuhException(1001)]
-        abstract_client.transport = m_mock
+        abstract_client.transport = CloseMock()
 
-        with patch.object(MultipleMock, "close") as close_mock:
-            abstract_client.connection_result(m_mock)
-            logger_mock.assert_called_once_with(f"Could not connect to master: {WazuhException(1001)}.")
+        with patch.object(abstract_client.transport, "close") as close_mock:
+            future = asyncio.Future()
+            future.set_exception(WazuhClusterError(3020))
+            abstract_client.connection_result(future)
+            logger_mock.assert_called_once_with(f"Could not connect to master: {str(WazuhClusterError(3020))}.")
             close_mock.assert_called_once()
 
     # Check second condition
     with patch.object(logging.getLogger('wazuh'), "info") as logger_mock:
-        m_mock.result_output = ["OK"]
-        abstract_client.transport = m_mock
-
-        abstract_client.connection_result(m_mock)
+        abstract_client.transport = CloseMock()
+        future = asyncio.Future()
+        future.set_result(['OK'])
+        abstract_client.connection_result(future)
         logger_mock.assert_called_once_with("Successfully connected to master.")
         assert abstract_client.connected is True
 
+@pytest.mark.asyncio
+async def test_ac_connection_made():
+    """Check that the process of connection to the manager is correctly performed.
 
-@patch('asyncio.gather')
-def test_ac_connection_made(gather_mock):
-    """Check that the process of connection to the manager is correctly performed."""
+        1. asyncio.gather must call send_request(b'hello', self.client_data) coroutine
+        2. The done_callback of the future returned by asyncio.gatheris set to 
+           connection_made inside connection_made
+        3. In connection_result function, a message to the log is written
+           and abstract_client.connected is set to True
 
-    class TaskMock:
+    """
+    async def check_connected(abs_cli):
+        # coroutine to wait for connected set to True
+        while not abs_cli.connected:
+            await asyncio.sleep(0.01)
 
-        def __init__(self):
-            pass
+    msg = abstract_client.msg_build(b'return', 1, b'ok')
 
-        def add_done_callback(self, param=None):
-            pass
-
-    gather_mock.return_value = TaskMock()
-
-    with patch.object(TaskMock, "add_done_callback") as add_done_callback_mock:
-        abstract_client.connection_made("transport")
-        gather_mock.assert_called_once()
-        add_done_callback_mock.assert_called_once()
-
+    with patch.object(abstract_client, 'send_request', return_value=msg) as g_mock:
+        with patch.object(abstract_client.logger, 'info') as log_mock:
+            abstract_client.connection_made(asyncio.Transport())
+            
+            # wait that abstract_client.connected is set to True for 10 seconds
+            await asyncio.wait_for(check_connected(abstract_client), 10)
+            g_mock.assert_awaited_once_with(command=b'hello', data=abstract_client.client_data)
+ 
+            # check assertions
+            log_mock.assert_called_with("Successfully connected to master.")
+            assert abstract_client.connected is True
 
 @patch('wazuh.core.cluster.client.AbstractClient._cancel_all_tasks')
 def test_ac_connection_lost(cancel_tasks_mock):
@@ -264,7 +272,6 @@ def test_ac_connection_lost(cancel_tasks_mock):
         logger_mock.assert_called_once_with(f"Connection closed due to an unhandled error: {WazuhException(1001)}\n",
                                             exc_info=False)
 
-
 def test_ac_cancel_all_tasks():
     """Check whether all tasks are being properly closed."""
 
@@ -282,7 +289,6 @@ def test_ac_cancel_all_tasks():
             abstract_client._cancel_all_tasks()
             all_tasks_mock.assert_called_once()
             cancel_mock.assert_called_once()
-
 
 def test_ac_process_response():
     """Check the response the clients receive depending on the input command."""
