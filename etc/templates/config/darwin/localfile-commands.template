@@ -1,6 +1,6 @@
   <localfile>
     <log_format>full_command</log_format>
-    <command>netstat -an | grep -e "tcp" -e "udp" | sed -E 's/([[:alnum:]]*)\ *[[:digit:]]*\ *[[:digit:]]*\ *(.*)\.([0-9\*]*)\ +([0-9\.\*]+).+/\1 \2 == \3 == \4/' | sort -k 4 -g | sed 's/ == \(.*\) ==/.\1/'| uniq</command>
+    <command>netstat -an | awk '{if ((/^(tcp|udp)/) && ($4 != "*.*") && ($5 == "*.*")) {print $1" "$4" "$5}}' | sort -u</command>
     <alias>netstat listening ports</alias>
     <frequency>360</frequency>
   </localfile>
