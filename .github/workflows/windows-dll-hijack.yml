@@ -16,21 +16,11 @@ jobs:
         run: make -C src deps TARGET=winagent -j2
       - name: make
         run: make -C src TARGET=winagent -j2
-      - name: Copy libraries
-        run: |
-          mkdir -p src/shared_libraries
-          cp src/*.dll src/shared_libraries/
-          cp src/win32/*.dll src/shared_libraries/
-      - name: Upload Artifact shared_libraries
-        uses: actions/upload-artifact@v3
-        with:
-          name: shared_libraries
-          path: src/shared_libraries
       - name: Copy executables
         run: |
           mkdir -p src/exe_files
           # We exclude the installer from the test
-          find src/win32/ -regex '.*wazuh-agent-[0-9].[0-9].[0-9]\.exe$' -delete
+          find src/win32/ -regex '.*wazuh-agent-[0-9]+.[0-9]+.[0-9]+\.exe$' -delete
           cp src/win32/*.exe src/exe_files/
       - name: Upload Artifact executables
         uses: actions/upload-artifact@v3
@@ -40,7 +30,10 @@ jobs:
       - name: Copy configuration files
         run: |
           mkdir -p src/configuration_files
+          # We want to test if the logging calls an external library
+          sed -i 's+<log_format>plain</log_format>+<log_format>plain,json</log_format>+g' src/win32/ossec.conf
           cp src/win32/ossec.conf src/configuration_files/
+          sed -i 's+windows.debug=0+windows.debug=2+g' etc/internal_options.conf
           cp src/win32/internal_options.conf src/configuration_files/
       - name: Upload Artifact configuration files
         uses: actions/upload-artifact@v3
@@ -61,11 +54,6 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
-      - name: Download Artifact shared_libraries
-        uses: actions/download-artifact@v3
-        with:
-          name: shared_libraries
-          path: C:\shared_libraries\
       - name: Download Artifact executables
         uses: actions/download-artifact@v3
         with:
@@ -76,9 +64,8 @@ jobs:
         with:
           name: configuration
           path: C:\configuration_files\
-      - name: Copy libraries and configuration files
+      - name: Copy configuration files
         run: |
-          copy C:\shared_libraries\*.dll C:\executables\
           copy C:\configuration_files\*.conf C:\executables\
       - name: Install dependencies
         run: |
@@ -90,4 +77,5 @@ jobs:
       - name: Run tests
         run: |
           cd src/win32/qa
+          Copy-Item *.pmc C:\executables\
           python -m pytest -vv ./

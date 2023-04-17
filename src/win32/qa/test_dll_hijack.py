@@ -40,7 +40,7 @@ def generate_csv_logs(exe_path):
 
         for command in commands_wait:
             print(f"Running '{command}'")
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=f"{EXE_PATH}")
             try:
                 stdout, stderr = process.communicate(timeout=EXE_TIMEOUT)
             except subprocess.TimeoutExpired:
