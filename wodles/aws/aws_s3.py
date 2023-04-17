@@ -216,10 +216,10 @@ class WazuhIntegration:
                 # insert wazuh version value
                 self.db_connector.execute(self.sql_insert_version_metadata, {'wazuh_version': self.wazuh_version})
                 self.db_connector.commit()
-                # delete old tables if its exist
+                # delete old tables i|f its exist
                 self.delete_deprecated_tables()
         except Exception as e:
-            print('ERROR: Error creating metadata table: {}'.format(e))
+            error('Error creating metadata table: {}'.format(e))
             sys.exit(5)
 
     def delete_deprecated_tables(self):
@@ -300,7 +300,7 @@ class WazuhIntegration:
                                              **self.connection_config)
 
         except botocore.exceptions.ClientError as e:
-            print("ERROR: Access error: {}".format(e))
+            error("Access error: {}".format(e))
             sys.exit(3)
         return client
 
@@ -319,7 +319,7 @@ class WazuhIntegration:
             sts_client = boto_session.client(service_name='sts', **self.connection_config)
 
         except Exception as e:
-            print("Error getting STS client: {}".format(e))
+            error("Error getting STS client: {}".format(e))
             sys.exit(3)
 
         return sts_client
@@ -341,18 +341,18 @@ class WazuhIntegration:
             s.close()
         except socket.error as e:
             if e.errno == 111:
-                print("ERROR: Wazuh must be running.")
+                error("Wazuh must be running.")
                 sys.exit(11)
             elif e.errno == 90:
-                print("ERROR: Message too long to send to Wazuh.  Skipping message...")
+                error("Message too long to send to Wazuh.  Skipping message...")
                 debug(
                     '+++ ERROR: Message longer than buffer socket for Wazuh.  Consider increasing rmem_max  Skipping message...',
                     1)
             else:
-                print("ERROR: Error sending message to wazuh: {}".format(e))
+                error("Error sending message to wazuh: {}".format(e))
                 sys.exit(13)
         except Exception as e:
-            print("ERROR: Error sending message to wazuh: {}".format(e))
+            error("Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
     def create_table(self, sql_create_table):
@@ -363,7 +363,7 @@ class WazuhIntegration:
             debug('+++ Table does not exist; create', 1)
             self.db_connector.execute(sql_create_table)
         except Exception as e:
-            print("ERROR: Unable to create SQLite DB: {}".format(e))
+            error("Unable to create SQLite DB: {}".format(e))
             sys.exit(6)
 
     def init_db(self, sql_create_table):
@@ -373,7 +373,7 @@ class WazuhIntegration:
         try:
             tables = set(map(operator.itemgetter(0), self.db_connector.execute(self.sql_find_table_names)))
         except Exception as e:
-            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
+            error("Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
         # if table does not exist, create a new table
         if self.db_table_name not in tables:
@@ -661,7 +661,7 @@ class AWSBucket(WazuhIntegration):
                     'aws_region': aws_region,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
+            error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
         """
@@ -737,15 +737,15 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
-                debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_account_ids")}.', 2)
+                error(f'{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_account_ids")}.')
                 sys.exit(16)
             else:
-                debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
+                error(f'The "find_account_ids" request failed: {err}')
                 sys.exit(1)
 
         except KeyError:
-            print(
-                f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of the logs for the bucket "
+            error(
+                f"No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of the logs for the bucket "
                 f"type '{get_script_arguments().type.lower()}'")
             sys.exit(18)
 
@@ -763,10 +763,10 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
-                debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_regions")}. ', 2)
+                error(f'{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_regions")}. ')
                 sys.exit(16)
             else:
-                debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
+                error(f'The "find_account_ids" request failed: {err}')
                 sys.exit(1)
 
     def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter=''):
@@ -857,7 +857,7 @@ class AWSBucket(WazuhIntegration):
             gzip_file.seek(0)
             return gzip_file
         except (gzip.BadGzipFile, zlib.error, TypeError):
-            print(f'ERROR: invalid gzip file received.')
+            error(f'Invalid gzip file received.')
             if not self.skip_on_error:
                 sys.exit(8)
 
@@ -879,7 +879,7 @@ class AWSBucket(WazuhIntegration):
             zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
             return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
         except zipfile.BadZipFile:
-            print('ERROR: invalid zip file received.')
+            error('Invalid zip file received.')
         if not self.skip_on_error:
             sys.exit(8)
 
@@ -898,7 +898,7 @@ class AWSBucket(WazuhIntegration):
         elif log_key[-4:] == '.zip':
             return self._decompress_zip(raw_object)
         elif log_key[-7:] == '.snappy':
-            print(f"ERROR: couldn't decompress the {log_key} file, snappy compression is not supported.")
+            error(f"Couldn't decompress the {log_key} file, snappy compression is not supported.")
             if not self.skip_on_error:
                 sys.exit(8)
         else:
@@ -928,7 +928,7 @@ class AWSBucket(WazuhIntegration):
                 except:
                     debug("++ Failed to send message to Wazuh", 1)
             else:
-                print("ERROR: {}".format(error_txt))
+                error("Error getting log file {}".format(error_txt))
                 sys.exit(error_code)
 
         try:
@@ -938,7 +938,7 @@ class AWSBucket(WazuhIntegration):
         except (ValueError, csv.Error) as e:
             exception_handler("Failed to parse file {}: {}".format(log_key, e), 9)
         except Exception as e:
-            exception_handler("Unkown error reading/parsing file {}: {}".format(log_key, e), 1)
+            exception_handler("Unknown error reading/parsing file {}: {}".format(log_key, e), 1)
 
     def iter_bucket(self, account_id, regions):
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
@@ -1057,20 +1057,18 @@ class AWSBucket(WazuhIntegration):
 
         except botocore.exceptions.ClientError as err:
             if err.response['Error']['Code'] == 'ThrottlingException':
-                debug('Error: The "iter_files_in_bucket" request was denied due to request throttling. If the problem '
+                error('The "iter_files_in_bucket" request was denied due to request throttling. If the problem '
                       'persists check the following link to learn how to use the Retry configuration to avoid it: '
-                      f'{RETRY_CONFIGURATION_URL}', 2)
+                      f'{RETRY_CONFIGURATION_URL}')
                 sys.exit(16)
             else:
-                debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
+                error(f'The "iter_files_in_bucket" request failed: {err}')
                 sys.exit(1)
 
         except Exception as err:
             if hasattr(err, 'message'):
-                debug(f"+++ Unexpected error: {err.message}", 2)
-            else:
-                debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+                error("Error msg when iterating objects in bucket: {}".format(err.message))
+            error(f"Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def check_bucket(self):
@@ -1100,10 +1098,10 @@ class AWSBucket(WazuhIntegration):
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
 
-            print(f"ERROR: {error_message}")
+            error(f"Client error checking bucket data: {error_message}, with code {error_code}")
             exit(exit_number)
         except botocore.exceptions.EndpointConnectionError as e:
-            print(f"ERROR: {str(e)}")
+            print(f"Endpoint error when checking bucket data: {str(e)}")
             exit(15)
 
 
@@ -1324,7 +1322,7 @@ class AWSConfigBucket(AWSLogsBucket):
             parsed_date = re.sub(self._leading_zero_regex, r'/\g<num>', date)
             return marker.replace(date, parsed_date)
         except AttributeError:
-            print(f"ERROR: There was an error while trying to extract a date from the marker '{marker}'")
+            error(f"There was an error while trying to extract a date from the marker '{marker}'")
             sys.exit(16)
 
     def marker_only_logs_after(self, aws_region: str, aws_account_id: str) -> str:
@@ -1487,15 +1485,13 @@ class AWSConfigBucket(AWSLogsBucket):
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
 
         except botocore.exceptions.ClientError as err:
-            debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
+            error(f'ERROR: The "iter_files_in_bucket" request failed: {err}')
             sys.exit(16)
 
         except Exception as err:
             if hasattr(err, 'message'):
-                debug("+++ Unexpected error: {}".format(err.message), 2)
-            else:
-                debug("+++ Unexpected error: {}".format(err), 2)
-            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
+                error("Error msg when iterating objects in bucket: {}".format(err.message))
+            error("Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
 
     def reformat_msg(self, event):
@@ -1725,7 +1721,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         try:
             ec2_client = boto_session.client(service_name='ec2', **self.connection_config)
         except Exception as e:
-            print("Error getting EC2 client: {}".format(e))
+            error("Error getting EC2 client: {}".format(e))
             sys.exit(3)
 
         return ec2_client
@@ -1834,7 +1830,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     'flow_log_id': flow_log_id,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
+            error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
@@ -1955,10 +1951,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         except Exception as err:
             if hasattr(err, 'message'):
-                debug("+++ Unexpected error: {}".format(err.message), 2)
-            else:
-                debug("+++ Unexpected error: {}".format(err), 2)
-            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
+                error("Error msg when iterating objects in bucket: {}".format(err.message))
+            error("Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
 
     def mark_complete(self, aws_account_id, aws_region, log_file, flow_log_id):
@@ -2115,7 +2109,8 @@ class AWSCustomBucket(AWSBucket):
                 return [dict(x, source='vpc') for x in tsv_file]
 
     def get_creation_date(self, log_file):
-        # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
+        # The Amazon S3 object name follows the
+        # pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
         name_regex = re.match(r".*(\d\d\d\d[\/\-]\d\d[\/\-]\d\d).*", log_file['Key'])
         if name_regex is None:
             return int(log_file['LastModified'].strftime('%Y%m%d'))
@@ -2210,7 +2205,7 @@ class AWSCustomBucket(AWSBucket):
                     'aws_account_id': aws_account_id if aws_account_id else self.aws_account_id,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")
+            error(f"Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")
 
 
 class AWSGuardDutyBucket(AWSCustomBucket):
@@ -2231,10 +2226,8 @@ class AWSGuardDutyBucket(AWSCustomBucket):
                                                                 Delimiter='/', MaxKeys=1)
         except Exception as err:
             if hasattr(err, 'message'):
-                debug(f"+++ Unexpected error: {err.message}", 2)
-            else:
-                debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+                error("Error msg when iterating objects in bucket: {}".format(err.message))
+            error(f"Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def get_service_prefix(self, account_id):
@@ -2328,7 +2321,7 @@ class CiscoUmbrella(AWSCustomBucket):
                               'destination_port', 'categories'
                               )
             else:
-                print("ERROR: Only 'dnslogs', 'proxylogs' or 'iplogs' are allowed for Cisco Umbrella")
+                error("Only 'dnslogs', 'proxylogs' or 'iplogs' are allowed for Cisco Umbrella")
                 exit(12)
             csv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=',')
 
@@ -2387,7 +2380,7 @@ class AWSWAFBucket(AWSCustomBucket):
                         content.append(event)
 
                 except json.JSONDecodeError:
-                    print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
+                    error("Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
                     if not self.skip_on_error:
                         sys.exit(9)
 
@@ -2563,7 +2556,7 @@ class AWSServerAccess(AWSCustomBucket):
                                   "skipping it.", 1)
                             continue
                         else:
-                            print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the a valid format.")
+                            error(f"The filename of {bucket_file['Key']} doesn't have the a valid format.")
                             sys.exit(17)
 
                     if not self._same_prefix(match_start, aws_account_id, aws_region):
@@ -2599,7 +2592,7 @@ class AWSServerAccess(AWSCustomBucket):
                 debug(f"+++ Unexpected error: {err.message}", 2)
             else:
                 debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            error(f"Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def marker_only_logs_after(self, aws_region: str, aws_account_id: str) -> str:
@@ -3139,7 +3132,7 @@ class AWSCloudWatchLogs(AWSService):
             debug('Removing log stream "{}" from log group "{}"'.format(log_group, log_stream), 1)
             self.client.delete_log_stream(logGroupName=log_group, logStreamName=log_stream)
         except botocore.exceptions.ClientError as err:
-            debug(f'ERROR: The "remove_aws_log_stream" request failed: {err}', 1)
+            error(f'The "remove_aws_log_stream" request failed: {err}')
             sys.exit(16)
         except Exception:
             debug('Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group), 0)
@@ -3371,9 +3364,10 @@ class AWSCloudWatchLogs(AWSService):
                 debug('No log streams were found for log group "{}"'.format(log_group), 1)
 
         except botocore.exceptions.EndpointConnectionError as e:
-            print(f'ERROR: {str(e)}')
+            print(f'Endpoint error: {str(e)}')
+            sys.exit(15)
         except botocore.exceptions.ClientError as err:
-            debug(f'ERROR: The "get_log_streams" request failed: {err}', 1)
+            error(f'The "get_log_streams" request failed: {err}')
             sys.exit(16)
         except Exception:
             debug(
@@ -3427,6 +3421,10 @@ def handler(signal, frame):
 def debug(msg, msg_level):
     if debug_level >= msg_level:
         print('DEBUG: {debug_msg}'.format(debug_msg=msg))
+
+
+def error(msg):
+    print('ERROR: {error_msg}'.format(error_msg=msg))
 
 
 def arg_valid_date(arg_string):
@@ -3617,7 +3615,8 @@ def main(argv):
             elif options.type.lower() == 'server_access':
                 bucket_type = AWSServerAccess
             else:
-                raise Exception("Invalid type of bucket")
+                raise Exception(f"Invalid type of bucket passed: {options.logBucker}")
+            debug(f"Initializing class {bucket_type.__name__} for handling bucket of type {options.logBucket}", 1)
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
                                  secret_key=options.secret_key,
                                  profile=options.aws_profile,
@@ -3646,7 +3645,7 @@ def main(argv):
             elif options.service.lower() == 'cloudwatchlogs':
                 service_type = AWSCloudWatchLogs
             else:
-                raise Exception("Invalid type of service")
+                raise Exception(f"Invalid type of service passed: {options.service}")
 
             if not options.regions:
                 aws_config = get_aws_config_params()
@@ -3663,6 +3662,7 @@ def main(argv):
 
             for region in options.regions:
                 debug('+++ Getting alerts from "{}" region.'.format(region), 1)
+                debug(f"Initializing class {service_type.__name__} for handling service of type {options.service}", 1)
                 service = service_type(reparse=options.reparse,
                                        access_key=options.access_key,
                                        secret_key=options.secret_key,
