@@ -1,17 +1,26 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import logging
 import sys
+import asyncio
 from datetime import timedelta
-from unittest.mock import patch, call
+from unittest.mock import patch, call, MagicMock
+from uvloop import EventLoopPolicy, Loop
 
 import pytest
 
 import scripts.cluster_control as cluster_control
+import tracemalloc
+tracemalloc.start()
 
+@pytest.fixture(scope="session")
+def event_loop() -> Loop:
+    asyncio.set_event_loop_policy(EventLoopPolicy())
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 @patch('builtins.map')
 @patch('builtins.print')
@@ -232,16 +241,17 @@ def test_usage(basename_mock, print_mock):
     basename_mock.assert_called_once_with(sys.argv[0])
 
 
-@patch('sys.exit')
-@patch('asyncio.run')
+@pytest.mark.asyncio
+@patch('scripts.cluster_control.sys.exit')
+@patch('scripts.cluster_control.asyncio.run')
 @patch('logging.error')
 @patch('logging.basicConfig')
 @patch('argparse.ArgumentParser')
 @patch('wazuh.core.cluster.cluster.check_cluster_config')
 @patch('wazuh.core.cluster.utils.read_config', return_value='')
 @patch('wazuh.core.cluster.utils.get_cluster_status', return_value={'enabled': 'no', 'running': 'yes'})
-def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, parser_mock, logging_mock,
-              logging_error_mock, asyncio_run_mock, exit_mock):
+async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, parser_mock, logging_mock,
+              logging_error_mock, asyncio_run_mock: MagicMock, exit_mock, event_loop):
     """Test the main function."""
 
     class ArgsMock:
@@ -289,6 +299,10 @@ def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, p
         def print_help(self):
             self.called = True
 
+    def run_mock(*args, **kwargs):
+        asyncio.gather(args[0])
+
+    asyncio_run_mock.side_effect = run_mock
     parser_mock.return_value = ParserMock()
     args_mock = ArgsMock()
     exclusive_mock = ExclusiveMock()
@@ -299,11 +313,10 @@ def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, p
         logging_error_mock.assert_has_calls([call('Cluster is not running.'), call('Wrong arguments.')])
         usage_mock.assert_called_once_with()
         exit_mock.assert_called_with(1)
-
-        exit_mock.reset_mock()
         read_config_mock.assert_called_once_with()
         check_cluster_config.assert_called_once_with(config=read_config_mock.return_value)
         logging_mock.assert_called_once_with(level=logging.ERROR, format='%(levelname)s: %(message)s')
+        exit_mock.reset_mock()
 
         # Here we will check if the expected parameters were not modified
         assert parser_mock.return_value.storage == [
