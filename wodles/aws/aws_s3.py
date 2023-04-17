@@ -3367,8 +3367,9 @@ def arg_valid_regions(arg_string):
             )
         if arg_region.strip():
             final_regions.append(arg_region.strip())
-
-    return list(set(final_regions))
+    final_regions = list(set(final_regions))
+    final_regions.sort()
+    return final_regions
 
 
 def arg_valid_iam_role_duration(arg_string):
