@@ -3323,7 +3323,7 @@ def arg_valid_date(arg_string):
         raise argparse.ArgumentTypeError("Argument not a valid date in format YYYY-MMM-DD: '{0}'.".format(arg_string))
 
 
-def arg_valid_key(arg_string):
+def arg_valid_key(arg_string, append_slash=True):
     CHARACTERS_TO_AVOID = "\\{}^%`[]'\"<>~#|"
     XML_CONSTRAINTS = ["&apos;", "&quot;", "&amp;", "&lt;", "&gt;", "&#13;", "&#10;"]
 
@@ -3334,9 +3334,13 @@ def arg_valid_key(arg_string):
             f" Avoid to use '{CHARACTERS_TO_AVOID}' or '{''.join(XML_CONSTRAINTS)}'."
         )
 
-    if arg_string and arg_string[-1] != '/':
+    if append_slash and arg_string and arg_string[-1] != '/':
         return '{arg_string}/'.format(arg_string=arg_string)
     return arg_string
+
+
+def aws_logs_groups_valid_key(arg_string):
+    return arg_valid_key(arg_string, append_slash=False)
 
 
 def arg_valid_accountid(arg_string):
@@ -3485,7 +3489,7 @@ def get_script_arguments():
                         help='Parse the log file, even if its been parsed before', default=False)
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
     parser.add_argument('-g', '--aws_log_groups', dest='aws_log_groups', help='Name of the log group to be parsed',
-                        default='', type=arg_valid_key)
+                        default='', type=aws_logs_groups_valid_key)
     parser.add_argument('-P', '--remove-log-streams', action='store_true', dest='deleteLogStreams',
                         help='Remove processed log streams from the log group', default=False)
     parser.add_argument('-df', '--discard-field', type=str, dest='discard_field', default=None,
