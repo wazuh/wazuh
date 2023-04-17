@@ -1,0 +1,5 @@
+<localfile>
+  <location>macos</location>
+  <log_format>macos</log_format>
+  <query type="trace,log,activity" level="info">(process == "sudo") or (process == "sshd") or (process == "tccd") or (message contains "SessionAgentNotificationCenter") or (process == "screensharingd" and message contains "Authentication") or (process == "securityd" and eventMessage contains "Session" and subsystem == "com.apple.securityd")</query>
+</localfile>
