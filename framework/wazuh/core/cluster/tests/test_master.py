@@ -16,6 +16,8 @@ import uvloop
 from freezegun import freeze_time
 
 from wazuh.core import exception
+import tracemalloc
+tracemalloc.start()
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -75,18 +77,16 @@ def get_master():
 
 # Test ReceiveIntegrityTask class
 
-@patch("asyncio.create_task")
-@patch("wazuh.core.cluster.master.ReceiveIntegrityTask.set_up_coro")
-def test_rit_init(set_up_coro_mock, create_task_mock):
+@pytest.mark.asyncio
+async def test_rit_init():
     """Test if the ReceiveIntegrityTask is properly initialized."""
-
-    receive_integrity_task = master.ReceiveIntegrityTask(wazuh_common=cluster_common.WazuhCommon(),
-                                                         logger=logging.getLogger("wazuh"))
-
-    assert isinstance(receive_integrity_task.wazuh_common, cluster_common.WazuhCommon)
-    assert isinstance(receive_integrity_task.logger, logging.Logger)
-    set_up_coro_mock.assert_called_once()
-    create_task_mock.assert_called_once()
+    master_common = get_master_handler()
+    with patch.object(master_common, 'integrity_check') as integrity_check_mock:
+        receive_integrity_task = master.ReceiveIntegrityTask(wazuh_common=master_common,
+                                                            logger=logging.getLogger("wazuh"))
+        assert isinstance(receive_integrity_task.wazuh_common, cluster_common.WazuhCommon)
+        assert isinstance(receive_integrity_task.logger, logging.Logger)
+        integrity_check_mock.assert_called_once()
 
 
 @patch("asyncio.create_task")
@@ -529,12 +529,28 @@ async def test_master_handler_execute_ok(uuid4_mock, wait_for_mock):
             """Auxiliary method."""
             return b"ok"
 
+    async def await_event(fut: asyncio.Event, timeout):
+        await fut
+
+    async def unlock_event(event: asyncio.Event):
+        event.set()
+    
     master_handler.server = Server()
 
+    wait_for_mock.side_effect = await_event
+    event = asyncio.Event()
+    dict_mock = MagicMock()
+    d = {'Event': event, 'Response':''}
+    dict_mock.__getitem__.return_value = d
+    dict_mock.__setitem__.side_effect = lambda k, v: None
+    master_handler.server.pending_api_requests = dict_mock
     # Test the first and second if
     with patch.object(LocalServer, "send_request", return_value=b"ok") as send_request_mock:
-        assert await master_handler.execute(command=b'dapi_fwd', data=b"client request", wait_for_complete=True) == ""
+        return_values = await asyncio.gather(
+            master_handler.execute(command=b'dapi_fwd', data=b"client request", wait_for_complete=True), 
+            unlock_event(event))
         send_request_mock.assert_called_once_with(b"dapi", str(uuid4_mock.return_value).encode() + b' ' + b"request")
+        assert return_values[0] == ''
 
     # Test the first elif and first try with a timeout
     with patch("wazuh.core.cluster.master.MasterHandler.send_request", return_value=b"result") as send_request_mock:
@@ -545,8 +561,11 @@ async def test_master_handler_execute_ok(uuid4_mock, wait_for_mock):
     # Test the first and second else
     with patch("wazuh.core.cluster.master.MasterHandler.process_request",
                return_value=[b"ok", b""]) as process_request_mock:
-        assert await master_handler.execute(command=b'random', data=b"client request", wait_for_complete=True) == ""
+        return_values = await asyncio.gather(
+            master_handler.execute(command=b'random', data=b"client request", wait_for_complete=True),
+            unlock_event(event))
         process_request_mock.assert_called_once_with(command=b"random", data=b"client request")
+        assert return_values[0] == ''
 
     uuid4_mock.assert_called_with()
     assert uuid4_mock.call_count == 3
@@ -574,14 +593,13 @@ async def test_master_handler_execute_ko(uuid4_mock):
         await master_handler.execute(command=b'dapi_fwd', data=b"client request", wait_for_complete=True)
 
     # Test the second exception
-    with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
-        with patch("wazuh.core.cluster.master.MasterHandler.send_request", return_value=b"result"):
-            with pytest.raises(exception.WazuhClusterError, match=r".* 3021 .*"):
-                await master_handler.execute(command=b'dapi', data=b"client request", wait_for_complete=True)
+    master_handler.cluster_items['intervals']['communication']['timeout_dapi_request'] = 0.1
+    with patch("wazuh.core.cluster.master.MasterHandler.send_request", return_value=b"result"):
+        with pytest.raises(exception.WazuhClusterError, match=r".* 3021 .*"):
+            await master_handler.execute(command=b'dapi', data=b"client request", wait_for_complete=False)
 
     # Test the third exception
-    with patch("wazuh.core.cluster.master.MasterHandler.process_request",
-               return_value=[b"error", b""]) as process_request_mock:
+    with patch("wazuh.core.cluster.master.MasterHandler.process_request", return_value=[b"error", b""]):
         with pytest.raises(exception.WazuhClusterError, match=r".* 3022 .*"):
             await master_handler.execute(command=b'random', data=b"client request", wait_for_complete=True)
 
@@ -618,7 +636,8 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
     sync_files_mock.assert_called_once_with(cmd=b"syn_m_c", logger=ANY, manager=ANY)
     sync_db_mock.assert_called_once_with(manager=ANY, logger=ANY, cmd=b"syn_g_m_w", data_retriever=ANY,
                                          set_data_command="global set-agent-groups",
-                                         set_payload={"mode": "override", "sync_status": "synced"})
+                                         set_payload={"mode": "override", "sync_status": "synced"},
+                                         loop=ANY)
 
     assert "Integrity check" in master_handler.task_loggers
     assert "Integrity sync" in master_handler.task_loggers
@@ -669,8 +688,8 @@ def test_master_handler_get_manager():
 
     assert isinstance(get_master_handler().get_manager(), client.AbstractClientManager)
 
-
-def test_master_handler_process_dapi_res_ok():
+@pytest.mark.asyncio
+async def test_master_handler_process_dapi_res_ok():
     """Check if a DAPI response is properly processed."""
 
     class Server:
@@ -711,9 +730,12 @@ def test_master_handler_process_dapi_res_ok():
 
     # Test the second condition
     master_handler.server.pending_api_requests = {}
-    with patch("asyncio.create_task") as create_task_mock:
+    with patch.object(master_handler, "forward_dapi_response", return_value=True) as forward_dapi_response_mock:
         assert master_handler.process_dapi_res(b"req_id string_id") == (b'ok', b'Response forwarded to worker')
-        create_task_mock.assert_called_once()
+        while forward_dapi_response_mock.called == False:
+            asyncio.sleep(0.01)
+
+        forward_dapi_response_mock.assert_called()
 
 
 def test_master_handler_process_dapi_res_ko():
@@ -995,15 +1017,27 @@ async def test_master_handler_sync_worker_files_ok(run_in_pool_mock, decompress_
             self.integrity_control = True
             self.task_pool = ''
 
+    async def await_event(fut: asyncio.Event, timeout):
+        await fut
+
+    async def unlock_event(event: asyncio.Event):
+        event.set()
+    
+    wait_for_mock.side_effect = await_event
+
     master_handler = get_master_handler()
     master_handler.sync_tasks["task_id"] = TaskMock()
     master_handler.server = ServerMock()
 
-    await master_handler.sync_worker_files("task_id", asyncio.Event(), logging.getLogger("wazuh"))
-    wait_for_mock.assert_called_once()
+    # await for sync_worker_files and unlock_event to complete. unlock_event unblocs Event.wait()
+    event = asyncio.Event()
+    await asyncio.gather(
+        master_handler.sync_worker_files("task_id", event, logging.getLogger("wazuh")),
+        unlock_event(event))
+    wait_for_mock.assert_awaited_once()
     decompress_files_mock.assert_called_once()
     rmtree_mock.assert_called_once_with("/decompressed/files/path")
-    run_in_pool_mock.assert_called_once_with(master_handler.loop, master_handler.server.task_pool,
+    run_in_pool_mock.assert_awaited_once_with(master_handler.loop, master_handler.server.task_pool,
                                              master_handler.process_files_from_worker,
                                              decompress_files_mock.return_value[0],
                                              decompress_files_mock.return_value[1], master_handler.cluster_items,

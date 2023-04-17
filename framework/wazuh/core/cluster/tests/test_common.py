@@ -13,15 +13,18 @@ import os
 import sys
 from contextvars import ContextVar
 from datetime import datetime
-from unittest.mock import patch, MagicMock, mock_open, call, ANY
+from unittest.mock import patch, MagicMock, mock_open, call, ANY, AsyncMock
 
 import cryptography
 import pytest
 from freezegun import freeze_time
-from uvloop import EventLoopPolicy, new_event_loop
+from uvloop import EventLoopPolicy, new_event_loop, Loop
 
 from wazuh import Wazuh
 from wazuh.core import exception
+
+import tracemalloc
+tracemalloc.start()
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -38,6 +41,13 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.wdb import AsyncWazuhDBConnection
 
 # Globals
+@pytest.fixture(scope="session")
+def event_loop() -> Loop:
+    asyncio.set_event_loop_policy(EventLoopPolicy())
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 cluster_items = {"etc/": {"permissions": "0o640", "source": "master", "files": ["client.keys"],
                           "description": "client keys file database"},
@@ -237,16 +247,21 @@ def test_rst_init(setup_coro_mock, create_task_mock):
         assert isinstance(string_task.task, TaskMock)
 
 
+@pytest.mark.asyncio
 @patch('logging.Logger')
-@patch('asyncio.create_task')
-@patch('wazuh.core.cluster.common.WazuhCommon')
-@patch('wazuh.core.cluster.common.ReceiveStringTask.set_up_coro')
-def test_rst_str_method(setup_coro_mock, wazuh_common_mock, create_task_mock, logger_mock):
+async def test_rst_str_method(logger_mock, event_loop):
     """Test the proper output of the '__str__' method."""
+    async def coro(task_id: str, data: str):
+        return ''
 
-    string_task = cluster_common.ReceiveStringTask(wazuh_common_mock, '', b"task", logger_mock)
-    assert isinstance(string_task.__str__(), str)
-    assert string_task.__str__() == "task"
+    def return_coro():
+        return coro
+    
+    with patch('wazuh.core.cluster.common.ReceiveStringTask.set_up_coro', side_effect = return_coro) as setup_coro_mock:
+        string_task = cluster_common.ReceiveStringTask(cluster_common.WazuhCommon(), '', b"task", logger_mock)
+        assert isinstance(string_task.__str__(), str)
+        assert string_task.__str__() == "task"
+        await string_task.coro('task', 'data' )
 
 
 @patch('logging.Logger')
@@ -541,24 +556,32 @@ def test_handler_get_messages_ko(decrypt_mock, msg_parse_mock):
 
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.common.Handler.push')
-@patch('asyncio.wait_for', return_value="some value")
 @patch('wazuh.core.cluster.common.Handler.next_counter', return_value=30)
 @patch('wazuh.core.cluster.common.Handler.msg_build', return_value=["some", "messages"])
-async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, wait_for_mock, push_mock):
+async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, push_mock):
     """Test if a request is being properly sent."""
+
+    async def delay():
+        await asyncio.sleep(0.5)
+
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
-    assert (await handler.send_request(b'some bytes', b'some data') == "some value")
-    assert next_counter_mock.return_value not in handler.box
+    with patch('wazuh.core.cluster.common.Response.read', return_value="some value") as read_mock:
+        assert (await handler.send_request(b'some bytes', b'some data') == "some value")
+        assert next_counter_mock.return_value not in handler.box
+        read_mock.assert_awaited_once()
 
-    wait_for_mock.side_effect = asyncio.TimeoutError
-    with pytest.raises(exception.WazuhClusterError, match=r'\b3020\b'):
-        await handler.send_request(b'some bytes', b'some data')
-    assert handler.box[next_counter_mock.return_value] is None
+    handler.cluster_items['intervals']['communication']['timeout_cluster_request'] = 0.01
+    with patch('wazuh.core.cluster.common.Response.read', side_effect=delay):
+        with pytest.raises(exception.WazuhClusterError, match=r'\b3020\b'):
+            await handler.send_request(b'some bytes', b'some data')
+        read_mock.assert_awaited_once()
+        assert handler.box[next_counter_mock.return_value] is None
+    
 
     msg_build_mock.assert_called_with(b'some bytes', 30, b'some data')
     next_counter_mock.assert_called_with()
-    assert wait_for_mock.call_count == 2
+    
     push_mock.assert_called_with("messages")
 
 
@@ -1207,35 +1230,48 @@ def test_handler_setup_task_logger():
 
 
 @pytest.mark.asyncio
-@patch("asyncio.wait_for")
-async def test_handler_wait_for_file(wait_for_mock):
-    """Check if wait_for is called with expected parameters."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
-    await handler.wait_for_file(asyncio.Event(), 'test')
-    wait_for_mock.assert_called_once_with(ANY, timeout=120)
+async def test_handler_wait_for_file():
+    """Check if wait_for is called with expected parameters.
 
+       The implementation is complex because asyncio.wait_for is patched.
+       Handler.wait_for_file and and unlocking coroutine are run using asyncio.gather
+       The unlocking coroutine waits 0.5 seconds, while the timeout is set to 10 seconds
+       The test must not raise any exception.
+       '"""
+    
+    async def unlock_file(event: asyncio.Event):
+        await asyncio.sleep(0.5)
+        event.set()
+
+    file_event = asyncio.Event()
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler.cluster_items['intervals']['communication']['timeout_receiving_file'] = 10
+    await asyncio.gather(handler.wait_for_file(file_event, 'test'), unlock_file(file_event))
 
 @pytest.mark.asyncio
-@patch("asyncio.wait_for")
 @patch('wazuh.core.cluster.common.Handler.send_request')
-async def test_handler_wait_for_file_ko(send_request_mock, wait_for_mock):
-    """Check if expected exception is raised."""
+async def test_handler_wait_for_file_ko(send_request_mock):
+    """Check if expected exception is raised.
+        Condition 1: when event.wait() exceeds the timeout, WazuhClusterError 3039 is raised
+        Condition 2: when any other exception occurs, WazuhClusterError 3040  is raised"""
+
+    async def delay():
+        await asyncio.sleep(0.5)
+
+    send_request_mock.return_value = ''
     handler = cluster_common.Handler(fernet_key, cluster_items)
-    with pytest.raises(exception.WazuhClusterError, match='.* 3039 .*'):
-        with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
-            await handler.wait_for_file(asyncio.Event(), 'test')
+    handler.cluster_items['intervals']['communication']['timeout_receiving_file'] = 0.4
+    file_event = AsyncMock()
+    with pytest.raises(exception.WazuhClusterError, match=r'.* 3039 .*'):
+        with patch.object(file_event, 'wait', side_effect = delay):
+            await handler.wait_for_file(file_event, 'test')
     send_request_mock.assert_called_once_with(command=b'cancel_task', data=ANY)
 
-    wait_for_mock.side_effect = asyncio.TimeoutError
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3039 .*"):
-        await handler.wait_for_file(asyncio.Event(), "task_id")
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):     
+        with patch.object(file_event, 'wait', side_effect = Exception('any')):
+            await handler.wait_for_file(file_event, "task_id")
     send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
-
-    wait_for_mock.side_effect = Exception
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):
-        await handler.wait_for_file(asyncio.Event(), "task_id")
-    send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
-
+    
 
 # Test 'WazuhCommon' class methods
 
