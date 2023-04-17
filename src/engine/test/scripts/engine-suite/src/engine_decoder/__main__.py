@@ -5,7 +5,6 @@ from importlib.metadata import metadata
 import shared.resource_handler as rs
 from .cmds.list_extracted import configure as list_ext_configure
 from .cmds.syntax_update import configure as syntax_ext_configure
-from .cmds.agent_simulator import configure as agent_simulator_ext_configure
 
 
 def parse_args():
@@ -19,7 +18,6 @@ def parse_args():
         title='subcommands', required=True, dest='subcommand')
     list_ext_configure(subparsers)
     syntax_ext_configure(subparsers)
-    agent_simulator_ext_configure(subparsers)
 
     return parser.parse_args()
 
