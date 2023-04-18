@@ -415,7 +415,7 @@ checks:
       - mitre_techniques: ["T1110", "T1527", "T1176", "T1088", "T1081", "T1214", "T1530", "T1213", "T1038", "T1073", "T1482", "T1114", "T1044", "T1484", "T1525", "T1161", "T1031", "T1034", "T1145", "T1076", "T1053", "T1505", "T1528", "T1078"]
     condition: all
     rules:
-      - 'c:sh -c "sudo -V -> r:Type of authentication timestamp record: tty'
+      - "c:sudo -V -> r:Type of authentication timestamp record: tty"
 
   # 5.6 Ensure the "root" Account Is Disabled. (Automated)
   - id: 31089
