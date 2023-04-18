@@ -117,8 +117,9 @@ class WazuhException(Exception):
         1126: {'message': 'Error updating ossec configuration',
                'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
                },
-        1127: {'message': 'Forbidden section detected',
-               'remediation': 'To solve this issue, please enable the section in the API settings: '
+        1127: {'message': 'Protected section was modified',
+               'remediation': 'To solve this, either revert the changes made to this section or disable the protection '
+                              'in the API settings: '
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         1128: {'message': 'Invalid configuration for the given component'},
 

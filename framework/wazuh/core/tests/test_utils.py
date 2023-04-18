@@ -1744,10 +1744,10 @@ def test_add_dynamic_detail(detail, value, attribs, details):
         assert details[detail][key] == value
 
 
-@patch('wazuh.core.utils.check_disabled_limits_in_conf')
+@patch('wazuh.core.utils.check_wazuh_limits_unchanged')
 @patch('wazuh.core.utils.check_remote_commands')
 @patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_remote_commands, mock_disabled_limits):
+def test_validate_wazuh_xml(mock_remote_commands, mock_unchanged_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
     with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
@@ -1897,22 +1897,47 @@ def test_get_utc_now():
     assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)
 
 
-@pytest.mark.parametrize("configuration", [
-    "<global><limits><eps><whatever>yes</whatever></eps></limits></global>",
-    "<global><logall>no</logall></global><global><limits><eps><whatever>yes</whatever></eps></limits></global>"
+@pytest.mark.parametrize("new_conf, unchanged_limits_conf", [
+    ("<ossec_config><global><limits><eps><maximum>300</maximum><timeframe>5</timeframe></eps></limits></global>"
+     "</ossec_config>", False),
+    ("<ossec_config><global><logall>no</logall></global><global><limits><eps><test>yes</test></eps></limits></global>"
+     "</ossec_config>", False),
+    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
+     "</ossec_config>", True),
+    ("<ossec_config><global><logall>yes</logall><limits><eps><maximum>300</maximum></eps></limits></global>"
+     "</ossec_config><ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>",
+     False)
 ])
-@pytest.mark.parametrize("limits_conf, expect_exc", [
-    ({'eps': {'allow': True}}, False),
-    ({'eps': {'allow': False}}, True)
+@pytest.mark.parametrize("original_conf", [
+    "<ossec_config><global><limits><eps><maximum>300</maximum></eps></limits></global></ossec_config>"
 ])
-def test_check_disabled_limits_in_conf(configuration, limits_conf, expect_exc):
-    """Test if forbidden limits in the API settings are blocked."""
-    new_conf = utils.configuration.api_conf
-    new_conf['upload_configuration']['limits'].update(limits_conf)
+@pytest.mark.parametrize("limits_conf", [
+    ({'eps': {'allow': True}}),
+    ({'eps': {'allow': False}})
+])
+def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_conf, limits_conf):
+    """Test if ossec.conf limits are protected by the API.
 
-    with patch('wazuh.core.utils.configuration.api_conf', new=new_conf):
-        if expect_exc:
-            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
-                utils.check_disabled_limits_in_conf(configuration)
+    When 'eps': {'allow': False} is set in the API configuration, the limits in ossec.conf cannot be changed.
+    However, other configuration sections can be added, removed or modified.
+
+    Parameters
+    ----------
+    new_conf : str
+        New ossec.conf to be uploaded.
+    unchanged_limits_conf : bool
+        Whether the limits section in ossec.conf is the same as the original one.
+    original_conf : str
+        Original ossec.conf to be uploaded.
+    limits_conf : dict
+        API configuration for the limits section.
+    """
+    api_conf = utils.configuration.api_conf
+    api_conf['upload_configuration']['limits'].update(limits_conf)
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
+        if limits_conf['eps']['allow'] or unchanged_limits_conf:
+            utils.check_wazuh_limits_unchanged(new_conf, original_conf)
         else:
-            utils.check_disabled_limits_in_conf(configuration)
+            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
+                utils.check_wazuh_limits_unchanged(new_conf, original_conf)
