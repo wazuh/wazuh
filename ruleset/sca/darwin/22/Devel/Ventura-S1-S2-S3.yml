@@ -742,8 +742,8 @@ checks:
     impact: "Without a screenlock in place anyone with physical access to the computer would be logged in and able to use the active user's session."
     remediation: "Graphical Method: Perform the following steps to enable a password for unlock after a screen saver begins or after sleep: 1. Open System Settings 2. Select Lock Screen 3. Set Require password after screensaver begins or display is turned off to either After 0 seconds or After 5 seconds Terminal Method: Run the following command to require a password to unlock the computer after the screen saver engages or the computer sleeps: $ /usr/bin/sudo /usr/sbin/sysadminctl -screenLock immediate -password <administrator password> or $ /usr/bin/sudo /usr/sbin/sysadminctl -screenLock 5 seconds -password <administrator password> Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.screensaver 2. The key to include is askForPassword 3. The key must be set to <true/> 4. The key to also include is askForPasswordDelay 5. The key must be set to <integer><0,5></integer>."
     references:
-      - "https://blog.kolide.com/screensaver-security-on-macos-10-13-is-broken-"
-      - "https://github.com/rtrouton/profiles/blob/master/SetDefaultScreensaver/SetDefaul"
+      - "https://blog.kolide.com/screensaver-security-on-macos-10-13-is-broken-a385726e2ae2"
+      - "https://github.com/rtrouton/profiles/blob/master/SetDefaultScreensaver/SetDefaultScreensaver.mobileconfig"
     compliance:
       - cis: ["2.10.2"]
       - cis_csc_v8: ["4.7"]
