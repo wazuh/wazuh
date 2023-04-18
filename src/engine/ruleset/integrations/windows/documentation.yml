@@ -1,0 +1,9 @@
+title: Windows Integration
+overview: This integration processes events from Windows Security channel, Sysmon and Powershell
+compatibility: X
+configuration: Works by default
+
+event:
+  module: windows
+  dataset: "????"
+

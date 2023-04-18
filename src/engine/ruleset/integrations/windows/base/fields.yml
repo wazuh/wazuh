@@ -1,0 +1,40 @@
+winlog.message:
+  description: >
+            Event messsage
+  type: keyword
+
+winlog.channel:
+  description: >
+            The name of the channel from which this record was read.
+  type: keyword
+
+winlog.process.pid:
+  description: >
+              Process id that generated the log
+  type: long
+
+winlog.process.thread.id:
+  description: >
+              Thread id that generated the log
+  type: long
+
+winlog.record_id:
+  description: >
+            The record ID of the event log record. The first record written
+            to an event log is record number 1, and other records are numbered
+            sequentially. If the record number reaches the maximum value (2^32^
+            for the Event Logging API and 2^64^ for the Windows Event Log API),
+            the next record number will be 0.
+  type: keyword
+
+winlog.original_event_data:
+  description: >
+            This is a non-exhaustive list of parameters that are used in
+            Windows events.
+  type: object
+  array: true
+
+winlog.level:
+  description: >
+            Log level, one of AUDIT, INFORMATIONAL, CRITICAL, ERROR, VERBOSE
+  type: keyword
