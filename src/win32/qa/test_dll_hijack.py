@@ -62,18 +62,11 @@ def test_dll_not_found(current_exe):
 
     # Read .csv file
     with open(PROCMON_CSV_OUTPUT) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        first_line = True
+        csv_reader = csv.DictReader(csv_file, delimiter=',')
         for row in csv_reader:
-            if first_line:
-                first_line = False
+            if (not row['Process Name'] in current_exe ):
                 continue
-            else:
-                process_name = row[1]
-                path = row[4]
-                if (not process_name in current_exe ):
-                    continue
-                print("Checking row: " + str(row))
-                if (path.startswith(WHITE_LIST_PATH)):
-                    continue
-                pytest.fail(f"Process '{process_name}' is vulnerable to DLL hijacking due to '{path}'.")
+            print("Checking row: " + str(row))
+            if (row['Path'].startswith(WHITE_LIST_PATH)):
+                continue
+            pytest.fail(f"Process '{row['Process Name']}' is vulnerable to DLL hijacking due to '{row['Path']}'.")

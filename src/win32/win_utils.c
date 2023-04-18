@@ -86,7 +86,7 @@ int local_start()
     }
 
     /* Initialize logging module*/
-    w_logging_init(false);
+    w_logging_init();
 
     /* Start agent */
     os_calloc(1, sizeof(agent), agt);

@@ -13,7 +13,6 @@
 #include "shared.h"
 #include "os_win.h"
 #include <winsvc.h>
-#include "dll_load_notify.h"
 
 #ifndef ARGV0
 #define ARGV0 "wazuh-agent"

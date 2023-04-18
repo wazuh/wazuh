@@ -20,7 +20,6 @@
 #include "os_execd/execd.h"
 #include "os_crypto/md5/md5_op.h"
 #include "external/cJSON/cJSON.h"
-#include "dll_load_notify.h"
 
 #ifndef ARGV0
 #define ARGV0 "wazuh-agent"

@@ -18,10 +18,8 @@
 /* Enable Syscheck */
 int main(int argc, char **argv)
 {
-#ifdef WIN32
     // This must be always the first instruction
     enable_dll_verification();
-#endif
 
     char *status;
     const char *(xml_syscheck_status[]) = {"ossec_config", "syscheck", "disabled", NULL};
