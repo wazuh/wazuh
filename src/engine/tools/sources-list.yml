@@ -1,41 +1,55 @@
 ---
+##################################
+# wildcards that will be replaced:
+# %AGENT_NAME% : agent-name
+
 logcollector:
-  - windowsEventChannel:
-    - '{"Message":"The Windows Error Reporting Service service entered the stopped state.","Event":"<Event xmlns=''http://schemas.microsoft.com/win/2004/08/events/event''><System><Provider Name=''Service Control Manager'' Guid=''{555908d1-a6d7-4695-8e1e-26931d2012f4}'' EventSourceName=''Service Control Manager''/><EventID Qualifiers=''16384''>7036</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime=''2023-04-14T16:44:06.487987300Z''/><EventRecordID>3497</EventRecordID><Correlation/><Execution ProcessID=''500'' ThreadID=''2980''/><Channel>System</Channel><Computer>WIN-IV0BOSRBARR</Computer><Security/></System><EventData><Data Name=''param1''>Windows Error Reporting Service</Data><Data Name=''param2''>stopped</Data><Binary>5700650072005300760063002F0031000000</Binary></EventData></Event>"}'
-  - windowsEventLog:
-    - '2023 Apr 14 12:42:06 WinEvtLog: Security: AUDIT_SUCCESS(4624): Microsoft-Windows-Security-Auditing: SYSTEM: NT AUTHORITY: WIN-IV0BOSRBARR: An account was successfully logged on. Subject:  Security ID:  S-1-5-18  Account Name:  WIN-IV0BOSRBARR$  Account Domain:  WORKGROUP  Logon ID:  0x3e7  Logon Type:   5  New Logon:  Security ID:  S-1-5-18  Account Name:  SYSTEM  Account Domain:  NT AUTHORITY  Logon ID:  0x3e7  Logon GUID:  {00000000-0000-0000-0000-000000000000}  Process Information:  Process ID:  0x1f4  Process Name:  C:\\Windows\\System32\\services.exe  Network Information:  Workstation Name:   Source Network Address: -  Source Port:  -  Detailed Authentication Information:  Logon Process:  Advapi    Authentication Package: Negotiate  Transited Services: -  Package Name (NTLM only): -  Key Length:  0  This event is generated when a logon session is created. It is generated on the computer that was accessed.'
-  - aws-ebs:
-  - auditd:
+  - audit:
     # Scape single quote:
     - 'type=TEST_GROUP msg=audit(1610903123.444:555): pid=2940 uid=0 auid=1000 ses=14 msg="op=adding group to /etc/group id=1004 exe=''/usr/sbin/groupadd'' hostname=ubuntu-bionic addr=127.0.0.1 terminal=pts/2 res=success"'
-  - f5:
-  - fortinet:
-  - nginx:
-  - postgresql:
-  - redis:
-  - sonicWall:
-  - sophos:
+  - command:
+    - 'ossec: output: ''df -P'': Filesystem     1024-blocks    Used Available Capacity Mounted on'
+    - "ossec: output: 'df -P': devtmpfs            993776       0    993776       0% /dev"
+  - djb-multilog:
+  - eventchannel:
+    - '{"Message":"The Windows Error Reporting Service service entered the stopped state.","Event":"<Event xmlns=''http://schemas.microsoft.com/win/2004/08/events/event''><System><Provider Name=''Service Control Manager'' Guid=''{555908d1-a6d7-4695-8e1e-26931d2012f4}'' EventSourceName=''Service Control Manager''/><EventID Qualifiers=''16384''>7036</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime=''2023-04-14T16:44:06.487987300Z''/><EventRecordID>3497</EventRecordID><Correlation/><Execution ProcessID=''500'' ThreadID=''2980''/><Channel>System</Channel><Computer>%AGENT_NAME%</Computer><Security/></System><EventData><Data Name=''param1''>Windows Error Reporting Service</Data><Data Name=''param2''>stopped</Data><Binary>5700650072005300760063002F0031000000</Binary></EventData></Event>"}'
+  - eventlog:
+    - '2023 Apr 14 12:42:06 WinEvtLog: Security: AUDIT_SUCCESS(4624): Microsoft-Windows-Security-Auditing: SYSTEM: NT AUTHORITY: %AGENT_NAME%: An account was successfully logged on. Subject:  Security ID:  S-1-5-18  Account Name:  %AGENT_NAME%$  Account Domain:  WORKGROUP  Logon ID:  0x3e7  Logon Type:   5  New Logon:  Security ID:  S-1-5-18  Account Name:  SYSTEM  Account Domain:  NT AUTHORITY  Logon ID:  0x3e7  Logon GUID:  {00000000-0000-0000-0000-000000000000}  Process Information:  Process ID:  0x1f4  Process Name:  C:\\Windows\\System32\\services.exe  Network Information:  Workstation Name:   Source Network Address: -  Source Port:  -  Detailed Authentication Information:  Logon Process:  Advapi    Authentication Package: Negotiate  Transited Services: -  Package Name (NTLM only): -  Key Length:  0  This event is generated when a logon session is created. It is generated on the computer that was accessed.'
+  - full_command:
+    - 'ossec: output: ''last -n 20'':\nvagrant  pts/0        10.0.2.2         Fri Apr 14 16:55   still logged in\nreboot   system boot  5.4.0-139-generi Fri Apr 14 16:55   still running\nvagrant  pts/0        10.0.2.2         Fri Apr 14 16:29 - crash  (00:25)\nreboot   system boot  5.4.0-139-generi Fri Apr 14 16:28   still running\nvagrant  pts/1        10.0.2.2         Fri Apr 14 11:46 - crash  (04:42)\nvagrant  pts/0        10.0.2.2         Fri Apr 14 11:44 - 12:10  (00:25)\nreboot   system boot  5.4.0-139-generi Fri Apr 14 11:43   still running\nvagrant  pts/1        10.0.2.2         Thu Apr 13 21:01 - crash  (14:42)\nvagrant  pts/0        10.0.2.2         Thu Apr 13 19:45 - crash  (15:57)\nreboot   system boot  5.4.0-139-generi Thu Apr 13 19:31   still running\nreboot   system boot  5.4.0-139-generi Thu Feb 16 07:24 - 07:38  (00:13)\nreboot   system boot  5.4.0-42-generic Thu Feb 16 07:06 - 07:23  (00:16)\nwtmp begins Thu Feb 16 07:06:36 2023'
+    - "ossec: output: 'last -n 20':\nvagrant  pts/0        10.0.2.2         Mon Apr 17 15:30   still logged in\nreboot   system boot  4.18.0-240.1.1.e Mon Apr 17 15:27   still running\nvagrant  pts/0        10.0.2.2         Thu Mar 30 14:07 - crash (18+01:19)\nvagrant  pts/0        10.0.2.2         Thu Mar 30 13:39 - 14:06  (00:26)\nvagrant  pts/0        10.0.2.2         Thu Mar 30 13:06 - 13:38  (00:32)\nvagrant  pts/0        10.0.2.2         Thu Mar 30 11:43 - 13:04  (01:20)\nreboot   system boot  4.18.0-240.1.1.e Thu Mar 30 11:42   still running\nvagrant  pts/0        10.0.2.2         Wed Mar 29 18:50 - 19:52  (01:02)\nvagrant  pts/0        10.0.2.2         Wed Mar 29 18:10 - 18:49  (00:39)\nreboot   system boot  4.18.0-240.1.1.e Wed Mar 29 18:09 - 19:53  (01:43)\nvagrant  pts/0        10.0.2.2         Tue Mar 21 09:40 - 11:35  (01:55)\nvagrant  pts/0        10.0.2.2         Tue Mar 21 09:31 - 09:38  (00:06)\nvagrant  pts/0        10.0.2.2         Tue Mar 21 02:39 - 09:30  (06:51)\nvagrant  pts/0        10.0.2.2         Mon Mar 20 20:42 - 02:37  (05:54)\nreboot   system boot  4.18.0-240.1.1.e Mon Mar 20 20:42 - 11:35  (14:53)\nvagrant  pts/0        10.0.2.2         Wed Mar 15 21:02 - 21:32  (00:30)\nreboot   system boot  4.18.0-240.1.1.e Wed Mar 15 21:01 - 21:34  (00:32)\nvagrant  pts/0        10.0.2.2         Tue Mar 14 19:27 - 19:49  (00:21)\nreboot   system boot  4.18.0-240.1.1.e Tue Mar 14 19:26 - 19:49  (00:23)\nvagrant  tty1                          Tue Mar 14 19:18 - 19:23  (00:05)\nwtmp begins Wed Mar  1 18:45:41 2023"
+  - iis:
+  - json:
+  - macos:
+  - multi-line-regex:
+  - multi-line:
+  - mysql_log:
+  - nmapg:
+  - postgresql_log:
+  - snort-full:
+  - squid:
+  - syslog:
+    - 'Apr 17 15:54:17 %AGENT_NAME% systemd[1]: cgroup compatibility translation between legacy and unified hierarchy settings'
+    - 'Apr 14 17:05:01 %AGENT_NAME% CRON[7628]: pam_unix(cron:session): session opened for user root by (uid=0)'
 external-modules:
-  - github:
-  - office_365:
   - aws-s3:
-  - aws-cloudtrail:
-  - open-scap:
+  - Azure:
   - cis-cat:
     - '{"type":"scan_info","scan_id":1886296483,"cis":{"benchmark":"CIS Ubuntu Linux 16.04 LTS Benchmark","profile":"xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server","hostname":"10-206-u20-agent4","timestamp":"2022-09-16T15:09:53.048Z","pass":90,"fail":93,"error":0,"unknown":1,"notchecked":36,"score":"49.5%"}}'
+  - docker-listener:
+  - github:
+  - office_365:
+  - open-scap:
   - osquery:
   - virustotal:
-  - docker-listener:
-  - Azure:
 internal-modules:
   - dbsync:
-  - hstinfo:
-  - fim:
+  - hostinfo:
   - rootcheck:
   - sca:
   - syscollector:
     - '{"data":{"argvs":null,"checksum":"71ece4e42dd41b4b06df00e3f5c4fab33aacc1c5","cmd":null,"egroup":"root","euser":"root","fgroup":"root","name":"kworker/1:2-eve","nice":0,"nlwp":1,"pgrp":0,"pid":"4188","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","scan_time":"2023/03/10 03:27:12","session":0,"sgroup":"root","share":0,"size":0,"start_time":1678418235,"state":"R","stime":14,"suser":"root","tgid":4188,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"}'
-    # - '{"data":{"architecture":"x86_64","checksum":"1678418832385321534","hostname":"vm-centos8","os_major":"8","os_minor":"3","os_name":"Centos Linux","os_patch":"2011","os_platform":"centos","os_version":"8.3.2011","release":"4.18.0-240.1.1.el8_3.x86_64","scan_time":"2023/03/10 03:27:12","sysname":"Linux","version":"#1 SMP Thu Nov 19 17:20:08 UTC 2020"},"operation":"MODIFIED","type":"dbsync_osinfo"}'
+    # - '{"data":{"architecture":"x86_64","checksum":"1678418832385321534","hostname":"%AGENT_NAME%","os_major":"8","os_minor":"3","os_name":"Centos Linux","os_patch":"2011","os_platform":"centos","os_version":"8.3.2011","release":"4.18.0-240.1.1.el8_3.x86_64","scan_time":"2023/03/10 03:27:12","sysname":"Linux","version":"#1 SMP Thu Nov 19 17:20:08 UTC 2020"},"operation":"MODIFIED","type":"dbsync_osinfo"}'
     # - '{"data":{"board_serial":"0","checksum":"f7605acc23c70cbb76290a45d956dbab27f5eebc","cpu_cores":2,"cpu_mhz":2371.0,"cpu_name":"AMD Ryzen 5 4500U with Radeon Graphics","ram_free":1691948,"ram_total":2024444,"ram_usage":17,"scan_time":"2023/03/10 03:37:16"},"operation":"MODIFIED","type":"dbsync_hwinfo"}'
     # - '{"data":{"checksum":"631a5cbb816346c903708bbc14cbc50597272601","inode":26875,"item_id":"fffd4d8c20cacb413ae6c1f39a3a52389375701d","local_ip":"10.0.2.15","local_port":68,"pid":0,"process":null,"protocol":"udp","remote_ip":"10.0.2.2","remote_port":67,"rx_queue":0,"scan_time":"2023/03/14 12:41:19","state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"}'
     # - '{"data":{"architecture":"x86_64","checksum":"0d7e29ef72b657c96512b43efa6637ad0431b2e5","description":"Tool to analyse BIOS DMI data","format":"rpm","groups":"Unspecified","install_time":"1607103514","item_id":"bbb009a26c1b5bc26c093e9fbcd9b01d0fd227d4","location":null,"multiarch":null,"name":"dmidecode","priority":null,"scan_time":"2023/03/14 15:09:43","size":222289,"source":null,"vendor":"CentOS","version":"1:3.2-6.el8"},"operation":"DELETED","type":"dbsync_packages"}'
