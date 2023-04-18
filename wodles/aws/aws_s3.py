@@ -1904,6 +1904,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         self.service = 'GuardDuty'
         if self.check_guardduty_type():
             self.type = "GuardDutyNative"
+            self.empty_bucket_message_template = AWSBucket.empty_bucket_message_template
         else:
             self.type = "GuardDutyKinesis"
 
