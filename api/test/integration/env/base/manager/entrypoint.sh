@@ -24,8 +24,8 @@ fi
 cp -rf /tmp_volume/configuration_files/config/* /var/ossec/
 chown root:wazuh /var/ossec/etc/client.keys
 chown -R wazuh:wazuh /var/ossec/queue/db
-chown -R wazuh:wazuh /var/ossec/queue/sockets
 chown -R wazuh:wazuh /var/ossec/etc/shared
+chmod 777 /var/ossec/queue/sockets
 chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
 cd /var/ossec/etc/shared && find -name merged.mg -exec chown wazuh:wazuh {} \; && cd /
 chown root:wazuh /var/ossec/etc/shared/ar.conf
