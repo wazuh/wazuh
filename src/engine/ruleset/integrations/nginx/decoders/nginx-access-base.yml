@@ -14,7 +14,7 @@ metadata:
       date: 2023/01/23
 
 sources:
-  - decoder/queue-localfile/0
+  - decoder/core-localfile/0
 
 definitions:
   STATUS_W_BYTES: <http.response.status_code> <http.response.body.bytes>
