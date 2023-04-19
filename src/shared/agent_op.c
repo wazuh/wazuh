@@ -625,11 +625,11 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
                 if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
                     switch (response_length) {
                     case -2:
-                        merror("Cluster error detected");
+                        mwarn("Cluster error detected");
                         send_error = TRUE;
                         break;
                     case -1:
-                        merror("OS_RecvSecureClusterTCP(): %s", strerror(errno));
+                        mwarn("OS_RecvSecureClusterTCP(): %s", strerror(errno));
                         send_error = TRUE;
                         break;
                     case 0:
@@ -643,14 +643,14 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
                 }
             }
             else {
-                merror("OS_SendSecureTCPCluster(): %s", strerror(errno));
+                mwarn("OS_SendSecureTCPCluster(): %s", strerror(errno));
                 send_error = TRUE;
                 result = -2;
             }
             close(sock);
         }
         else {
-            merror("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+            mwarn("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
             result = -2;
             send_error = TRUE;
         }

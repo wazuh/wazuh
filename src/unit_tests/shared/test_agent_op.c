@@ -193,7 +193,7 @@ void test_w_send_clustered_message_connection_error(void **state) {
         will_return(__wrap_OS_ConnectUnixDomain, -1);
 
         will_return(__wrap_strerror, "ERROR");
-        expect_string(__wrap__merror, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
+        expect_string(__wrap__mwarn, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
@@ -222,7 +222,7 @@ void test_w_send_clustered_message_send_error(void **state) {
         will_return(__wrap_OS_SendSecureTCPCluster, -1);
 
         will_return(__wrap_strerror, "ERROR");
-        expect_string(__wrap__merror, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
+        expect_string(__wrap__mwarn, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
@@ -256,7 +256,7 @@ void test_w_send_clustered_message_recv_cluster_error_detected(void **state) {
         will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
         will_return(__wrap_OS_RecvSecureClusterTCP, -2);
 
-        expect_string(__wrap__merror, formatted_msg, "Cluster error detected");
+        expect_string(__wrap__mwarn, formatted_msg, "Cluster error detected");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
@@ -291,7 +291,7 @@ void test_w_send_clustered_message_recv_error(void **state) {
         will_return(__wrap_OS_RecvSecureClusterTCP, -1);
 
         will_return(__wrap_strerror, "ERROR");
-        expect_string(__wrap__merror, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
+        expect_string(__wrap__mwarn, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
@@ -400,7 +400,7 @@ void test_w_send_clustered_message_success_after_connection_error(void **state) 
     will_return(__wrap_OS_ConnectUnixDomain, -1);
 
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__merror, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
     expect_value(__wrap_sleep, seconds, 1);
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
@@ -443,7 +443,7 @@ void test_w_send_clustered_message_success_after_send_error(void **state) {
     will_return(__wrap_OS_SendSecureTCPCluster, -1);
 
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__merror, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
+    expect_string(__wrap__mwarn, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
 
     expect_value(__wrap_sleep, seconds, 1);
 
@@ -491,7 +491,7 @@ void test_w_send_clustered_message_success_after_cluster_error(void **state) {
     will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
     will_return(__wrap_OS_RecvSecureClusterTCP, -2);
 
-    expect_string(__wrap__merror, formatted_msg, "Cluster error detected");
+    expect_string(__wrap__mwarn, formatted_msg, "Cluster error detected");
     expect_value(__wrap_sleep, seconds, 1);
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
@@ -539,7 +539,7 @@ void test_w_send_clustered_message_success_after_recv_error(void **state) {
     will_return(__wrap_OS_RecvSecureClusterTCP, -1);
 
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__merror, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
+    expect_string(__wrap__mwarn, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
     expect_value(__wrap_sleep, seconds, 1);
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
