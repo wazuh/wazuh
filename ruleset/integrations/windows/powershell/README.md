@@ -13,7 +13,7 @@ All Powershell versions
 
 ## Configuration
 
-Add the following stub in the agent configuration file  ```HTML <localfile>
+Add the following stub in the agent configuration file  ```html <localfile>
   <location>Microsoft-Windows-Powershell/Operational</location>
   <log_format>eventchannel</log_format>
 </localfile>
