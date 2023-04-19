@@ -718,6 +718,10 @@ def get_blobs(
                     min_datetime <= last_modified <= max_datetime)):
                 continue
 
+            # Skip if the blob is empty
+            if blob.properties.content_length == 0:
+                continue
+
             # Get the blob data
             try:
                 data = blob_service.get_blob_to_text(container_name, blob.name)
