@@ -66,7 +66,6 @@ pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
 pyparsing==2.4.7
-pytest-asyncio==0.20.3
 python-dateutil==2.8.1
 python-jose==3.1.0
 python-json-logger==2.0.2
