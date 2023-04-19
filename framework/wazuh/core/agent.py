@@ -634,8 +634,11 @@ class Agent:
                 force.update({"key_mismatch": True})
                 msg["arguments"]["force"] = force
 
-            if id and key:
-                msg["arguments"].update({"id": id, "key": key})
+            if id:
+                msg["arguments"].update({"id": id})
+
+            if key:
+                msg["arguments"].update({"key": key})
 
         try:
             authd_socket = WazuhSocketJSON(common.AUTHD_SOCKET)
