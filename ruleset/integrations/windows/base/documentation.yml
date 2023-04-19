@@ -1,0 +1,9 @@
+title: Windows Integration
+overview: This integration processes events from Windows Event Logs
+compatibility: All Windows versions
+configuration: This integration will work with standard Wazuh configuration. Additional configuration may be needed to capture specific logs.
+
+event:
+  module: windows
+  dataset: "-"
+
