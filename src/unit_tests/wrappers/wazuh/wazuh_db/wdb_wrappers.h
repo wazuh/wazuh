@@ -27,9 +27,7 @@ int __wrap_wdb_fim_update_date_entry(wdb_t* socket, const char *path);
 
 int __wrap_wdb_finalize();
 
-int  __wrap_wdb_step_without_rollback(sqlite3_stmt *stmt);
-
-int  __wrap_wdb_step_with_rollback(sqlite3_stmt *stmt, wdb_t * wdb);
+int __wrap_wdb_step(sqlite3_stmt *stmt);
 
 int __wrap_wdb_scan_info_fim_checks_control(wdb_t* socket, const char *last_check);
 
@@ -79,9 +77,7 @@ void __wrap_wdb_pool_append(wdb_t * wdb);
 
 sqlite3_stmt* __wrap_wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
 
-int __wrap_wdb_exec_stmt_silent(sqlite3_stmt* stmt, wdb_t * wdb);
-
-int __wrap_wdb_exec_stmt_silent_with_rollback(sqlite3_stmt* stmt, wdb_t *wdb);
+int __wrap_wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 
 sqlite3_stmt * __wrap_wdb_get_cache_stmt(wdb_t * wdb, char const *query);
 

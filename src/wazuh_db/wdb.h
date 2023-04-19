@@ -719,8 +719,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb);
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
 
 /* Execute statement with availability waiting */
-int wdb_step_without_rollback(sqlite3_stmt *stmt);
-int wdb_step_with_rollback(sqlite3_stmt *stmt, wdb_t * wdb);
+int wdb_step(sqlite3_stmt *stmt);
 
 /* Begin transaction */
 int wdb_begin(wdb_t * wdb);
@@ -729,6 +728,20 @@ int wdb_begin2(wdb_t * wdb);
 /* Commit transaction */
 int wdb_commit(wdb_t * wdb);
 int wdb_commit2(wdb_t * wdb);
+
+/**
+ * @brief Rollback transaction
+ * @param[in] wdb Database to query for the table existence.
+ * @return 0 when succeed, !=0 otherwise.
+*/
+int wdb_rollback(wdb_t * wdb);
+
+/**
+ * @brief Rollback transaction and write status
+ * @param[in] wdb Database to query for the table existence.
+ * @return 0 when succeed, !=0 otherwise.
+*/
+int wdb_rollback2(wdb_t * wdb);
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -927,19 +940,9 @@ cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status);
  * @brief Function to execute an SQL statement without a response.
  *
  * @param [in] stmt The SQL statement to be executed.
- * @param [in] wdb Database to query for the table existence.
  * @return OS_SUCCESS on success, OS_INVALID on error.
  */
-int wdb_exec_stmt_silent(sqlite3_stmt* stmt, wdb_t * wdb);
-
-/**
- * @brief Function to execute an SQL statement without a responsea and to be able to rollback.
- *
- * @param [in] stmt The SQL statement to be executed.
- * @param [in] wdb Database to query for the table existence.
- * @return OS_SUCCESS on success, OS_INVALID on error.
- */
-int wdb_exec_stmt_silent_with_rollback(sqlite3_stmt* stmt, wdb_t * wdb);
+int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 
 /**
  * @brief Function to execute a SQL statement and save the result in a JSON array limited by size.

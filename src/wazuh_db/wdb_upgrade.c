@@ -323,7 +323,7 @@ int wdb_adjust_v4(wdb_t *wdb) {
     sqlite3_stmt *get_stmt = wdb->stmt[WDB_STMT_FIM_GET_ATTRIBUTES];
     char decoded_attrs[OS_SIZE_256];
 
-    while (wdb_step_without_rollback(get_stmt) == SQLITE_ROW) {
+    while (wdb_step(get_stmt) == SQLITE_ROW) {
         const char *file = (char *) sqlite3_column_text(get_stmt, 0);
         const char *attrs = (char *) sqlite3_column_text(get_stmt, 1);
 
@@ -343,7 +343,7 @@ int wdb_adjust_v4(wdb_t *wdb) {
         sqlite3_bind_text(update_stmt, 1, decoded_attrs, -1, NULL);
         sqlite3_bind_text(update_stmt, 2, file, -1, NULL);
 
-        if (wdb_step_without_rollback(update_stmt) != SQLITE_DONE) {
+        if (wdb_step(update_stmt) != SQLITE_DONE) {
             mdebug1("DB(%s) The attribute coded as %s could not be updated.", wdb->id, attrs);
         }
     }
@@ -365,7 +365,7 @@ bool wdb_is_older_than_v310(wdb_t *wdb) {
         merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
     else {
-        switch (wdb_step_without_rollback(stmt)) {
+        switch (wdb_step(stmt)) {
             case SQLITE_ROW: {
                 result = sqlite3_column_int(stmt, 0);
                 break;

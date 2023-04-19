@@ -37,7 +37,7 @@ int wdb_agents_set_sys_osinfo_triaged(wdb_t *wdb){
         return OS_INVALID;
     }
 
-    return wdb_exec_stmt_silent(stmt, wdb);
+    return wdb_exec_stmt_silent(stmt);
 }
 
 bool wdb_agents_find_package(wdb_t *wdb, const char* reference){
@@ -49,7 +49,7 @@ bool wdb_agents_find_package(wdb_t *wdb, const char* reference){
 
     sqlite3_bind_text(stmt, 1, reference, -1, NULL);
 
-    switch (wdb_step_without_rollback(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         return TRUE;
     case SQLITE_DONE:
@@ -70,7 +70,7 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference){
     sqlite3_bind_text(stmt, 1, cve, -1, NULL);
     sqlite3_bind_text(stmt, 2, reference, -1, NULL);
 
-    switch (wdb_step_without_rollback(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         return TRUE;
     case SQLITE_DONE:
@@ -162,7 +162,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
             sqlite3_bind_null(stmt, 15);
         }
 
-        if (OS_SUCCESS == wdb_exec_stmt_silent(stmt, wdb)) {
+        if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
             cJSON_AddStringToObject(result, "status", "SUCCESS");
         }
         else {
@@ -211,7 +211,7 @@ int wdb_agents_update_vuln_cves_status(wdb_t *wdb, const char* old_status, const
         return OS_INVALID;
     }
 
-    return wdb_exec_stmt_silent(stmt, wdb);
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* reference) {
@@ -229,7 +229,7 @@ int wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* referen
     sqlite3_bind_text(stmt, 1, cve, -1, NULL);
     sqlite3_bind_text(stmt, 2, reference, -1, NULL);
 
-    return wdb_exec_stmt_silent(stmt, wdb);
+    return wdb_exec_stmt_silent(stmt);
 }
 
 wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status, char **output) {
@@ -286,7 +286,7 @@ int wdb_agents_set_packages_triaged(wdb_t *wdb) {
         return OS_INVALID;
     }
 
-    return wdb_exec_stmt_silent(stmt, wdb);
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_agents_send_packages(wdb_t *wdb, bool not_triaged_only) {
