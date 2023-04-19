@@ -13,10 +13,12 @@ All Sysmon versions
 
 ## Configuration
 
-Add the following stub in the agent configuration file  ''' <localfile>
+Add the following stub in the agent configuration file  ```html
+<localfile>
   <location>Microsoft-Windows-Sysmon/Operational</location>
   <log_format>eventchannel</log_format>
-</localfile> '''
+</localfile>
+```
 
 
 ## Schema
