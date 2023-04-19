@@ -154,7 +154,7 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX -D__unix -D_LINUX_SOURCE_COMPAT
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread -L./lib
+		OSSEC_LDFLAGS+=-pthread -L./lib -Xlinker -bmaxdata:0x80000000
 ifeq ($(INSTALLDIR),)
 	INSTALLDIR = /var/ossec
 endif
