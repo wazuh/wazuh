@@ -14,7 +14,7 @@
 *.out
 
 # Exclude automatic reports
-test/scripts/valgrindReport.log
+tools/valgrindReport.log
 
 ### CMake ###
 CMakeLists.txt.user
