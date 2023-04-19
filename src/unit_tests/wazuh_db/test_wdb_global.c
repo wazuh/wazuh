@@ -4418,9 +4418,7 @@ void test_wdb_global_update_agent_status_code_step_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "SQLite: ERROR MESSAGE");
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
 
     result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
 
@@ -4454,7 +4452,7 @@ void test_wdb_global_update_agent_status_code_success(void **state) {
     expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
 
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
     result = wdb_global_update_agent_status_code(data->wdb, 1, status_code, version, sync_status);
 
@@ -7687,7 +7685,7 @@ void test_wdb_global_adjust_v4_commit_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 2);
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
-    will_return(__wrap_wdb_step, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 

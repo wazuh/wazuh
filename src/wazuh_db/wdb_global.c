@@ -389,15 +389,7 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *co
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *sync_status) {
