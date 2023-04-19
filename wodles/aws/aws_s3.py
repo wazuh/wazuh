@@ -3548,26 +3548,30 @@ class AWSSQSQueue(WazuhIntegration):
     ----------
     name: str
         Name of the SQS Queue.
+    iam_role_arn : str
+        IAM Role.
     access_key : str
         AWS access key id.
     secret_key : str
         AWS secret access key.
-    aws_profile : str
-        AWS profile.
-    iam_role_arn : str
-        IAM Role.
+    external_id : str
+        The name of the External ID to use.
+    sts_endpoint : str
+        URL for the VPC endpoint to use to obtain the STS token.
+    service_endpoint : str
+        URL for the endpoint to use to obtain the logs.
     """
 
-    def __init__(self, name: str, aws_profile: str, access_key: str = None, secret_key: str = None,
+    def __init__(self, name: str, iam_role_arn: str, access_key: str = None, secret_key: str = None,
                  external_id: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
         self.sqs_name = name
-        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                  aws_profile=aws_profile, external_id=external_id, service_name='sqs', sts_endpoint=sts_endpoint,
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, iam_role_arn = iam_role_arn,
+                                  aws_profile=None, external_id=external_id, service_name='sqs', sts_endpoint=sts_endpoint,
                                   service_endpoint=service_endpoint, **kwargs)
-        self.sts_client = self.get_sts_client(access_key, secret_key, aws_profile)
+        self.sts_client = self.get_sts_client(access_key, secret_key)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
-        self.iam_role_arn = kwargs['iam_role_arn']
+        self.iam_role_arn = iam_role_arn
         self.asl_bucket_handler = AWSSLSubscriberBucket(external_id=external_id,
                                                         iam_role_arn=self.iam_role_arn,
                                                         service_endpoint=service_endpoint,
@@ -3908,7 +3912,6 @@ def main(argv):
             asl_queue = AWSSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
                                     sts_endpoint=options.sts_endpoint,
                                     service_endpoint=options.service_endpoint,
-                                    aws_profile=options.aws_profile,
                                     name=options.queue)
             asl_queue.sync_events()
 
