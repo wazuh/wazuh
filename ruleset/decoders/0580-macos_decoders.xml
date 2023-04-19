@@ -1,5 +1,5 @@
 <decoder name="macOS_tccd">
- <program_name>tccd</program_name>
+  <program_name>tccd</program_name>
 </decoder>
 
 <decoder name="macOS_tccd">
@@ -20,14 +20,14 @@
 
 <decoder name="macOS_loginwindow">
   <parent>macOS_loginwindow</parent>
-  <regex>[com.apple.loginwindow.logging:Standard] -[.+] | \w+: \w+.\w+.\w+.\w+, with userID:(\d+)||loginIsComplete</regex>
+  <regex>com.apple.sessionDidLogin, with userID:(\d+)</regex>
   <order>userID</order>
 </decoder>
 
 <decoder name="macOS_screensharingd">
   <program_name>screensharingd</program_name>
 </decoder>
-  
+
 <decoder name="macOS_screensharingd">
   <parent>macOS_screensharingd</parent>
   <regex>Authentication: (\S+) :: User Name: (\S+) :: Viewer Address: (\d+.\d+.\d+.\d+) :: Type: (\S+)</regex>
@@ -48,4 +48,8 @@
   <parent>macOS_securityd</parent>
   <regex>[com.apple.securityd:SecServer] \S+ Session (\d+) destroyed</regex>
   <order>sessionId</order>
+</decoder>
+
+<decoder name="macOS_sessionlogoutd">
+  <program_name>sessionlogoutd</program_name>
 </decoder>
