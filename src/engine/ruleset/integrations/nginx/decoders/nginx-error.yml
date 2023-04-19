@@ -13,7 +13,7 @@ metadata:
       date: 2023/01/13
 
 sources:
-  - decoder/queue-localfile/0
+  - decoder/core-localfile/0
 
 parse:
   logpar:
