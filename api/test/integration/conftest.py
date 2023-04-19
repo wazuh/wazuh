@@ -545,6 +545,7 @@ class SocketHandler:
 
     def bind(self):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(str(self.path))
 
         return sock
@@ -577,16 +578,19 @@ def _analysisd_manager(action: ACTIONS) -> None:
             )
             current_process.wait()
         elif action == STOP_ACTION:
-            subprocess.Popen(
+            current_process = subprocess.Popen(
                 ["docker-compose", "exec", "wazuh-master", "pkill", ANALYSISD_DAEMON],
                 stdout=f_docker,
                 stderr=subprocess.STDOUT
             )
-            subprocess.Popen(
+            current_process.wait()
+            current_process = subprocess.Popen(
                 ["docker-compose", "exec", "wazuh-master", "rm", CONTAINER_SOCKET_PATH],
                 stdout=f_docker,
                 stderr=subprocess.STDOUT
             )
+            current_process.wait()
+
     os.chdir(current_path)
 
 
