@@ -3,7 +3,7 @@ overview: This integration processes Powershell events
 compatibility: All Powershell versions
 configuration: > 
   Add the following stub in the agent configuration file 
-  ```HTML
+  ```html
   <localfile>
     <location>Microsoft-Windows-Powershell/Operational</location>
     <log_format>eventchannel</log_format>
@@ -17,5 +17,5 @@ configuration: >
 
 event:
   module: windows-powershell
-  dataset: "????"
+  dataset: "-"
 
