@@ -1885,7 +1885,6 @@ checks:
     condition: all
     rules:
       - "c:dpkg -s ufw -> r:Status: install ok installed"
-      - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
 
   # 3.5.1.2 Ensure iptables-persistent is not installed with ufw (Automated)
   - id: 19094
