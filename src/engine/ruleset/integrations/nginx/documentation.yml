@@ -1,0 +1,8 @@
+title: NGINX Integration
+overview: This integration processes events from NGINX
+compatibility: nginx-1.23.2
+configuration:
+
+event:
+  module:
+  dataset:
