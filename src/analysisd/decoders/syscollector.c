@@ -307,13 +307,6 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
             return (0);
         }
     }
-    else if (strncmp(msg_type, "dbsync_", 7) == 0) {
-        if (decode_dbsync(lf->agent_id, msg_type, logJSON, socket) < 0) {
-            mdebug1("Unable to send %s information to Wazuh DB.", msg_type);
-            cJSON_Delete (logJSON);
-            return (0);
-        }
-    }
     else {
         mdebug1("Invalid message type: %s.", msg_type);
         cJSON_Delete (logJSON);

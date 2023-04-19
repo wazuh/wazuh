@@ -429,17 +429,6 @@ int wdb_parse(char * input, char * output, int peer) {
                     merror("Unable to update 'sys_processes' table for agent '%s'", sagent_id);
                 }
             }
-        } else if (strcmp(query, "dbsync") == 0) {
-            if (!next) {
-                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
-                mdebug2("DB(%s) query error near: %s", sagent_id, query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = -1;
-            } else {
-                if (wdb_parse_dbsync(wdb, next, output)){
-                    mdebug2("Updated based on table deltas for agent '%s'", sagent_id);
-                }
-            }
         } else if (strcmp(query, "ciscat") == 0) {
             if (!next) {
                 mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
