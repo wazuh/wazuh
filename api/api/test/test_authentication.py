@@ -8,7 +8,7 @@ import os
 import sys
 from copy import deepcopy
 from datetime import datetime
-from unittest.mock import patch, MagicMock, ANY, call, AsyncMock
+from unittest.mock import patch, MagicMock, ANY, call
 import tracemalloc
 tracemalloc.start()
 
@@ -136,7 +136,7 @@ def test_get_security_conf():
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
 @patch('api.authentication.raise_if_exc', side_effect=None)
-async def test_generate_token(mock_raise_if_exc, mock_distribute_function: AsyncMock, mock_dapi, mock_generate_keypair,
+async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_generate_keypair,
                         mock_encode, auth_context):
     """Verify if result is as expected"""
 
@@ -175,7 +175,7 @@ def test_check_token(mock_tokenmanager):
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', return_value=True)
 @patch('api.authentication.raise_if_exc', side_effect=None)
-async def test_decode_token(mock_raise_if_exc, mock_distribute_function: AsyncMock, mock_dapi, mock_generate_keypair,
+async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_generate_keypair,
                       mock_decode):
     
     mock_decode.return_value = deepcopy(original_payload)
