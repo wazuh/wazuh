@@ -183,3 +183,21 @@ int __wrap_get_ipv6_string(__attribute__((unused)) struct in6_addr addr6,
     check_expected(address_size);
     return mock();
 }
+
+int __wrap_OS_SendSecureTCPCluster(int sock, const void *command, const void *payload, size_t length) {
+    check_expected(sock);
+    check_expected(command);
+    check_expected(payload);
+    check_expected(length);
+
+    return mock();
+}
+
+int __wrap_OS_RecvSecureClusterTCP(int sock, char *ret, size_t length) {
+    check_expected(sock);
+    check_expected(length);
+
+    strncpy(ret, mock_type(char*), length);
+
+    return mock();
+}

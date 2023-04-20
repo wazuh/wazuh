@@ -62,4 +62,7 @@ int __wrap_get_ipv4_string(struct in_addr addr, char *address, size_t address_si
 
 int __wrap_get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size);
 
+int __wrap_OS_SendSecureTCPCluster(int sock, const void *command, const void *payload, size_t length);
+
+int __wrap_OS_RecvSecureClusterTCP(int sock, char *ret, size_t length);
 #endif

@@ -613,41 +613,55 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
     int sock = -1;
     int result = 0;
     int response_length = 0;
+    int send_attempts = 0;
+    bool send_error = FALSE;
 
     strcpy(sockname, CLUSTER_SOCK);
-
-    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {
-        if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
-            if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
-                switch (response_length) {
-                case -2:
-                    merror("Cluster error detected");
-                    break;
-                case -1:
-                    merror("OS_RecvSecureClusterTCP(): %s", strerror(errno));
-                    break;
-
-                case 0:
-                    mdebug1("Empty message from local client.");
-                    break;
-
-
-                case OS_MAXLEN:
-                    merror("Received message > %i", OS_MAXSTR);
-                    break;
+    for (send_attempts = 0; send_attempts < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++send_attempts) {
+        result = 0;
+        send_error = FALSE;
+        if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {
+            if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
+                if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
+                    switch (response_length) {
+                    case -2:
+                        mwarn("Cluster error detected");
+                        send_error = TRUE;
+                        break;
+                    case -1:
+                        mwarn("OS_RecvSecureClusterTCP(): %s", strerror(errno));
+                        send_error = TRUE;
+                        break;
+                    case 0:
+                        mdebug1("Empty message from local client.");
+                        break;
+                    case OS_MAXLEN:
+                        merror("Received message > %i", OS_MAXSTR);
+                        break;
+                    }
+                    result = -1;
                 }
-                result = -1;
             }
+            else {
+                mwarn("OS_SendSecureTCPCluster(): %s", strerror(errno));
+                send_error = TRUE;
+                result = -2;
+            }
+            close(sock);
         }
-        else{
-            merror("OS_SendSecureTCPCluster(): %s", strerror(errno));
+        else {
+            mwarn("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
             result = -2;
+            send_error = TRUE;
         }
-        close(sock);
-    }
-    else {
-        merror("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-        result = -2;
+
+        if (!send_error) {
+            break;
+        } else if (send_attempts == CLUSTER_SEND_MESSAGE_ATTEMPTS - 1) {
+            merror("Could not send message through the cluster after '%d' attempts.", CLUSTER_SEND_MESSAGE_ATTEMPTS);
+        } else {
+            sleep(1);
+        }
     }
 
     return result;

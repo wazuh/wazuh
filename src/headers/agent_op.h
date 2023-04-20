@@ -14,6 +14,9 @@
 #include "external/cJSON/cJSON.h"
 #include "config/authd-config.h"
 
+/* Attempts to send a message through the cluster */
+#define CLUSTER_SEND_MESSAGE_ATTEMPTS   10
+
 /**
  * @brief Check if syscheck is to be executed/restarted
  * @return 1 on success or 0 on failure (shouldn't be executed now).

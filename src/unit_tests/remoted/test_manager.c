@@ -600,7 +600,7 @@ void test_lookfor_agent_group_set_group_worker()
     expect_string(__wrap_w_send_clustered_message, command, "sendsync");
     expect_string(__wrap_w_send_clustered_message, payload, message);
     will_return(__wrap_w_send_clustered_message, response);
-    will_return(__wrap_w_send_clustered_message, 1);
+    will_return(__wrap_w_send_clustered_message, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Message received from master node: '{\"error\":0,\"data\":{\"group\":\"test1\"}}'");
 
