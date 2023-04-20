@@ -209,6 +209,43 @@ class SysInfoProcess final
                 }
             }
 
+            // At least one logical drive couldn't be mapped, trying another use of QueryDosDevice
+            if (logicalDrives.size() != ret.size())
+            {
+                // We avoid using OS_MAXSTR on Windows XP
+                const auto spPhysicalDevices { std::make_unique<char[]>(OS_SIZE_32768) };
+
+                if (QueryDosDevice(nullptr, spPhysicalDevices.get(), OS_SIZE_32768))
+                {
+                    const auto tokens = Utils::splitNullTerminatedStrings(spPhysicalDevices.get());
+                    const auto spDosDevice { std::make_unique<char[]>(OS_SIZE_32768) };
+
+                    for (const auto& token : tokens)
+                    {
+                        // Checking if token is found in logicalDrives to avoid a large map with unnecessary volumes.
+                        // logicalDrives contains a slash at the end but the result of QueryDosDevice doesn't.
+                        if (std::find_if(logicalDrives.begin(), logicalDrives.end(), [&](const auto & logicalDrive)
+                    {
+                        return Utils::startsWith(logicalDrive, token);
+                        }) == logicalDrives.end())
+                        {
+                            continue;
+                        }
+                        res = QueryDosDevice(token.c_str(), spDosDevice.get(), OS_SIZE_32768);
+
+                        if (res && ret.find(spDosDevice.get()) == ret.end())
+                        {
+                            ret[spDosDevice.get()] = token + '\\';
+
+                            if (logicalDrives.size() == ret.size())
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             return ret;
         }
 
