@@ -12,7 +12,7 @@ import tracemalloc
 tracemalloc.start()
 
 import pytest
-from uvloop import EventLoopPolicy, Loop
+from uvloop import Loop
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -30,14 +30,6 @@ with patch('wazuh.common.wazuh_uid'):
 async def wait_function_called(func_mock):
     while not func_mock.call_count:
         await asyncio.sleep(0.01)
-
-@pytest.fixture(scope="session")
-def event_loop() -> Loop:
-    asyncio.set_event_loop_policy(EventLoopPolicy())
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
 
 @pytest.mark.asyncio
 async def test_LocalServerHandler_connection_made(event_loop):
@@ -457,7 +449,7 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
 
 
 @pytest.mark.asyncio
-async def test_LocalServerHandlerWorker_get_nodes():
+async def test_LocalServerHandlerWorker_get_nodes(event_loop):
     """Set the behavior of the get_nodes function of the LocalServerHandlerWorker class."""
     lshw = LocalServerHandlerWorker(server=None, loop=event_loop, fernet_key=None, cluster_items={})
     with patch.object(lshw, "send_request_to_master") as send_request_to_master_mock:
@@ -465,7 +457,7 @@ async def test_LocalServerHandlerWorker_get_nodes():
         send_request_to_master_mock.assert_called_once_with(b"get_nodes", b"test_worker_get_nodes")
 
 
-def test_LocalServerHandlerWorker_get_health():
+def test_LocalServerHandlerWorker_get_health(event_loop):
     """Set the behavior of the get_health function of the LocalServerHandlerWorker class."""
     lshw = LocalServerHandlerWorker(server=None, loop=event_loop, fernet_key=None, cluster_items={})
     with patch.object(lshw, "send_request_to_master") as send_request_to_master_mock:

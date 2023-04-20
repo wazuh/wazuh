@@ -31,13 +31,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core import common as core_common
         from wazuh.core.wdb import AsyncWazuhDBConnection
 
-@pytest.fixture(scope="session")
-def event_loop() -> Loop:
-    asyncio.set_event_loop_policy(EventLoopPolicy())
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
 
 logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
