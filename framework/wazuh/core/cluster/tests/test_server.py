@@ -10,19 +10,11 @@ from unittest.mock import call, patch, ANY, Mock, AsyncMock, MagicMock
 
 import pytest
 from freezegun import freeze_time
-from uvloop import EventLoopPolicy, Loop
+from uvloop import EventLoopPolicy
 
 import tracemalloc
 tracemalloc.start()
 
-
-@pytest.fixture(scope="session")
-def event_loop() -> Loop:
-    asyncio.set_event_loop_policy(EventLoopPolicy())
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -72,7 +64,7 @@ async def test_AbstractServerHandler_to_dict(event_loop):
     assert abstract_server_handler.to_dict() == {"info": {"ip": "111.111.111.111", "name": "to_dict_testing"}}
 
 
-def test_AbstractServerHandler_connection_made():
+def test_AbstractServerHandler_connection_made(event_loop):
     """Check that the connection_made function correctly assigns the IP and the transport."""
 
     def get_extra_info(self, name):
@@ -124,7 +116,7 @@ async def test_AbstractServerHandler_echo_master(event_loop):
 
 
 @patch("asyncio.create_task")
-def test_AbstractServerHandler_hello(create_task_mock):
+def test_AbstractServerHandler_hello(event_loop):
     """Check that the information of the new client invoking this function is stored correctly."""
 
     class ServerMock:
