@@ -14,8 +14,6 @@ from unittest.mock import MagicMock, mock_open, patch, call, ANY
 import pytest
 from wazuh.core import common
 from wazuh.core.utils import get_date_from_timestamp
-import asyncio
-from uvloop import EventLoopPolicy, Loop
 from concurrent.futures import ProcessPoolExecutor
 
 with patch('wazuh.common.wazuh_uid'):
@@ -33,14 +31,6 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.exception import WazuhError, WazuhInternalError
 
 agent_groups = b"default,windows-servers"
-
-@pytest.fixture(scope="session")
-def event_loop() -> Loop:
-    asyncio.set_event_loop_policy(EventLoopPolicy())
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
 
 # Valid configurations
 default_cluster_configuration = {
