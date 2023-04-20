@@ -188,8 +188,8 @@ def test_ac_init():
     assert abstract_client.name == "name"
     assert abstract_client.loop is None
 
-
-def test_ac_connection_result():
+@pytest.mark.asyncio
+async def test_ac_connection_result():
     """Check that once an asyncio.Future object is received, a
        first - connection is established if no problems were found, or
        second - closed if and Exception was received."""
