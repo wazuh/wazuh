@@ -1,7 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.10]
+## [v4.3.11]
+
+### Manager
+
+#### Fixed
+
+- Fixed a dead code bug that might cause wazuh-db to crash. ([#16752](https://github.com/wazuh/wazuh/pull/16752))  
+
+
+## [v4.3.10] - 2022-11-16
 
 ### Manager
 
