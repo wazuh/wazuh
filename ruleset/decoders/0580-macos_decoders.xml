@@ -20,7 +20,7 @@
 
 <decoder name="macOS_loginwindow">
   <parent>macOS_loginwindow</parent>
-  <regex>com.apple.sessionDidLogin, with userID:(\d+)</regex>
+  <regex>com.apple.sessionDidLogin, with userID:(\d+)|com.apple.sessionagent.screenIsUnlocked, with userID:(\d+)|com.apple.sessionagent.screenIsLocked, with userID:(\d+)</regex>
   <order>userID</order>
 </decoder>
 
