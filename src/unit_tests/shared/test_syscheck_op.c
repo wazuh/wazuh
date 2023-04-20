@@ -3584,15 +3584,15 @@ static void test_get_file_user_GetSecurityInfo_error(void **state) {
 
     expect_GetSecurityInfo_call(NULL, (PSID)"", ERROR_ACCESS_DENIED);
 
-    expect_GetLastError_call(ERROR_ACCESS_DENIED);
+    expect_ConvertSidToStringSid_call("", FALSE);
 
-    expect_ConvertSidToStringSid_call("dummy", FALSE);
+    will_return(__wrap_win_strerror,"Access denied.");
 
     expect_string(__wrap__mdebug1, formatted_msg, "The user's SID could not be extracted.");
 
     snprintf(error_msg,
              OS_SIZE_1024,
-             "GetSecurityInfo error = %lu",
+             "GetSecurityInfo error code = (%lu), 'Access denied.'",
              ERROR_ACCESS_DENIED);
 
     expect_string(__wrap__merror, formatted_msg, error_msg);
@@ -4109,11 +4109,12 @@ void test_get_registry_group_GetSecurityInfo_fails(void **state) {
     char error_msg[OS_SIZE_1024];
 
     expect_GetSecurityInfo_call(NULL, (PSID)"", ERROR_ACCESS_DENIED);
-    expect_GetLastError_call(ERROR_ACCESS_DENIED);
+    expect_ConvertSidToStringSid_call("", TRUE);
+    will_return(__wrap_win_strerror, "Access denied.");
 
     snprintf(error_msg,
              OS_SIZE_1024,
-             "GetSecurityInfo error = %lu",
+             "GetSecurityInfo error code = (%lu), 'Access denied.'",
              ERROR_ACCESS_DENIED);
 
     expect_string(__wrap__merror, formatted_msg, error_msg);
