@@ -41,14 +41,6 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.wdb import AsyncWazuhDBConnection
 
 # Globals
-@pytest.fixture(scope="session")
-def event_loop() -> Loop:
-    asyncio.set_event_loop_policy(EventLoopPolicy())
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
 cluster_items = {"etc/": {"permissions": "0o640", "source": "master", "files": ["client.keys"],
                           "description": "client keys file database"},
                  "intervals": {"worker": {"sync_integrity": 9, "sync_agent_info": 10, "sync_agent_groups": 10,
