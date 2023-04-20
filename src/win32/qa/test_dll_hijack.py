@@ -50,7 +50,7 @@ def generate_csv_logs(exe_path):
                 pytest.fail(f"Error while executing '{command}'. Return code: {process.returncode}.\nStdout:\n{stdout.decode()}\nStderr:\n{stderr.decode()}")
 
     except Exception as e:
-        pytest.fail(f"Error while getting the CSV logs for '{exe_path} with Process Monitor: {e}.")
+        pytest.fail(f"Error while getting the CSV logs for '{exe_path}' with Process Monitor: {e}.")
 
 @pytest.fixture(name='current_exe', scope='module', params=list(map(str, list(pathlib.Path(EXE_PATH).glob('*.exe')))))
 def get_exe_path(request):
@@ -59,6 +59,10 @@ def get_exe_path(request):
 def test_dll_not_found(current_exe):
     # Generate .csv output
     generate_csv_logs(current_exe)
+
+    # Save .csv file for later analysis
+    exe_name = current_exe.split('\\')[-1]
+    os.system(f"copy {PROCMON_CSV_OUTPUT} {EXE_PATH}\\{exe_name}.csv")
 
     # Read .csv file
     with open(PROCMON_CSV_OUTPUT) as csv_file:

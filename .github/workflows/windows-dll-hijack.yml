@@ -15,7 +15,9 @@ jobs:
       - name: make deps
         run: make -C src deps TARGET=winagent -j2
       - name: make
-        run: make -C src TARGET=winagent -j2
+        # We force the binary to exit when a library isn't signed because we could end up having a false
+        # positive if a Wazuh .dll is required after the verification mechanism has been enabled
+        run: make -C src TARGET=winagent -j2 IMAGE_TRUST_CHECKS=2
       - name: Copy executables
         run: |
           mkdir -p src/exe_files
@@ -79,3 +81,9 @@ jobs:
           cd src/win32/qa
           Copy-Item *.pmc C:\executables\
           python -m pytest -vv ./
+      - name: Upload .csv files
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: csv_files ${{ matrix.os }}
+          path: C:\executables\*.csv
