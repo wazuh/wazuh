@@ -25,7 +25,8 @@ CONTAINER_SOCKET_PATH = Path(WAZUH_PATH, RELATIVE_SOCKET_PATH)
 ANALYSISD_DAEMON_PATH = Path(WAZUH_PATH, 'bin', ANALYSISD_DAEMON)
 START_ACTION = 'start'
 STOP_ACTION = 'stop'
-ACTIONS = Literal['start', 'stop']
+RESTART_ACTION = 'restart'
+ACTIONS = Literal['start', 'stop', 'restart']
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(current_path, 'env')
@@ -590,6 +591,9 @@ def _analysisd_manager(action: ACTIONS) -> None:
                 stderr=subprocess.STDOUT
             )
             current_process.wait()
+        elif action == RESTART_ACTION:
+            _analysisd_manager(STOP_ACTION)
+            _analysisd_manager(START_ACTION)
 
     os.chdir(current_path)
 
@@ -599,6 +603,7 @@ def fixture_forwarded_events(request):
     """Check the number of forwarded events to analysisd."""
 
     _analysisd_manager(STOP_ACTION)
+
     events = []
     socket_handler = SocketHandler(path=HOST_SOCKET_PATH)
 
@@ -606,7 +611,9 @@ def fixture_forwarded_events(request):
     thread.daemon = True
     thread.start()
 
+    _analysisd_manager(START_ACTION)
+
     yield events
 
     socket_handler.shutdown()
-    _analysisd_manager(START_ACTION)
+    _analysisd_manager(RESTART_ACTION)
