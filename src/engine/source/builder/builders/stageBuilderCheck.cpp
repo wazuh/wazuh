@@ -15,7 +15,7 @@ namespace
 using namespace builder::internals;
 
 base::Expression stageBuilderCheckList(const std::any& definition,
-                                       std::shared_ptr<Registry> registry)
+                                       std::shared_ptr<Registry<Builder>> registry)
 {
     // TODO: add check conditional expression case
 
@@ -68,7 +68,7 @@ base::Expression stageBuilderCheckList(const std::any& definition,
 }
 
 base::Expression stageBuilderCheckExpression(const std::any& definition,
-                                             std::shared_ptr<Registry> registry)
+                                             std::shared_ptr<Registry<Builder>> registry)
 {
     // Obtain expressionString
     auto expressionString = std::any_cast<json::Json>(definition).getString().value();
@@ -143,7 +143,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
 namespace builder::internals::builders
 {
 
-Builder getStageBuilderCheck(std::shared_ptr<Registry> registry)
+Builder getStageBuilderCheck(std::shared_ptr<Registry<Builder>> registry)
 {
     return [registry](std::any definition)
     {

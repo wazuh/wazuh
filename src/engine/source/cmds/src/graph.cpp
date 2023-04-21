@@ -53,7 +53,7 @@ void run(const Options& options)
     auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
     hlp::registerParsers(logpar);
 
-    auto registry = std::make_shared<builder::internals::Registry>();
+    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
     try
     {
         builder::internals::registerBuilders(registry, {0, logpar, kvdb});

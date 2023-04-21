@@ -12,7 +12,7 @@
 namespace builder::internals::builders
 {
 
-Builder getStageBuilderParse(std::shared_ptr<Registry> registry)
+Builder getStageBuilderParse(std::shared_ptr<Registry<Builder>> registry)
 {
     return [registry](const std::any& definition)
     {

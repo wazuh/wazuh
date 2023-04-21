@@ -80,7 +80,7 @@ public:
      */
     Asset(const json::Json& jsonDefinition,
           Type type,
-          std::shared_ptr<internals::Registry> registry);
+          std::shared_ptr<internals::Registry<internals::Builder>> registry);
 
     /**
      * @brief Get the Expression object of the Asset.

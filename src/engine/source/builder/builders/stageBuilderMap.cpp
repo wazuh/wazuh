@@ -10,7 +10,7 @@
 
 namespace builder::internals::builders
 {
-Builder getStageMapBuilder(std::shared_ptr<Registry> registry)
+Builder getStageMapBuilder(std::shared_ptr<Registry<Builder>> registry)
 {
     return [registry](std::any definition)
     {

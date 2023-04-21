@@ -9,7 +9,7 @@ using namespace builder::internals;
 
 TEST(RegisterTest, AllBuildersRegistered)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     ASSERT_NO_THROW(registerBuilders(registry));
 
     // Check all builders have been registered

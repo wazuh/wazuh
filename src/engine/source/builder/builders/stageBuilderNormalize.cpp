@@ -19,7 +19,7 @@ const std::unordered_map<std::string, std::string> allowedBlocks = {
     {"map", "stage.map"}, {"check", "stage.check"}, {"logpar", "parser.logpar"}};
 }
 
-Builder getStageNormalizeBuilder(std::shared_ptr<Registry> registry)
+Builder getStageNormalizeBuilder(std::shared_ptr<Registry<Builder>> registry)
 {
     return [registry](const std::any& definition)
     {

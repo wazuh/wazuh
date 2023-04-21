@@ -17,7 +17,7 @@ using namespace base;
 
 TEST(StageBuilderOutputsTest, Builds)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([
             {"file":
@@ -33,7 +33,7 @@ TEST(StageBuilderOutputsTest, Builds)
 
 TEST(StageBuilderOutputsTest, UnexpectedDefinition)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"({
             "file":
@@ -45,7 +45,7 @@ TEST(StageBuilderOutputsTest, UnexpectedDefinition)
 
 TEST(StageBuilderOutputsTest, NotFoundOutput)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([
             {"nonExistingOutput":
@@ -58,7 +58,7 @@ TEST(StageBuilderOutputsTest, NotFoundOutput)
 
 TEST(StageBuilderOutputsTest, EmptyList)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([])"};
 
@@ -67,7 +67,7 @@ TEST(StageBuilderOutputsTest, EmptyList)
 
 TEST(StageBuilderOutputsTest, ArrayWrongSizeItem)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([
             {"file":
@@ -81,7 +81,7 @@ TEST(StageBuilderOutputsTest, ArrayWrongSizeItem)
 
 TEST(StageBuilderOutputsTest, BuildsCorrectExpression)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([
             {"file":
