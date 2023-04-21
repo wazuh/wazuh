@@ -292,8 +292,10 @@ def start_log_analytics():
 
     # Read credentials
     if args.la_auth_path and args.la_tenant_domain:
+        logging.info(f"Log Analytics: Using the auth file {args.la_auth_path} for authentication")
         client, secret = read_auth_file(auth_path=args.la_auth_path, fields=("application_id", "application_key"))
     elif args.la_id and args.la_key and args.la_tenant_domain:
+        logging.info(f"Log Analytics: Using id and key from configuration for authentication")
         logging.warning(DEPRECATED_MESSAGE.format(name="la_id and la_key", release="4.4", url=CREDENTIALS_URL))
         client = args.la_id
         secret = args.la_key
@@ -359,11 +361,15 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
     else:
         # Build the filter taking into account the min and max values
         if desired_datetime < min_datetime:
+            logging.info(f"Log Analytics: Making request query for the following intervals: "
+                         f"from {desired_str} to {min_str} and from {max_str}")
             filter_value = f"( TimeGenerated < {min_str} and TimeGenerated >= {desired_str}) or " \
                            f"( TimeGenerated > {max_str})"
         elif desired_datetime > max_datetime:
+            logging.info(f"Log Analytics: Making request for the following interval: from {desired_str}")
             filter_value = f"TimeGenerated >= {desired_str}"
         else:
+            logging.info(f"Log Analytics: Making request for the following interval: from {max_str}")
             filter_value = f"TimeGenerated > {max_str}"
 
     query = f"{args.la_query} | order by TimeGenerated asc | where {filter_value} "
@@ -472,8 +478,10 @@ def start_graph():
 
     # Read credentials
     if args.graph_auth_path and args.graph_tenant_domain:
+        logging.info(f"Graph: Using the auth file {args.graph_auth_path} for authentication")
         client, secret = read_auth_file(auth_path=args.graph_auth_path, fields=("application_id", "application_key"))
     elif args.graph_id and args.graph_key and args.graph_tenant_domain:
+        logging.info(f"Graph: Using id and key from configuration for authentication")
         logging.warning(DEPRECATED_MESSAGE.format(name="graph_id and graph_key", release="4.4", url=CREDENTIALS_URL))
         client = args.graph_id
         secret = args.graph_key
@@ -567,6 +575,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
         If the response for the request is not 200 OK.
     """
     logging.debug(f"Graph request - URL: {url} - Headers: {headers}")
+    logging.info("Graph: Requesting data")
     response = get(url=url, headers=headers)
 
     if response.status_code == 200:
@@ -590,6 +599,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
         next_url = response_json.get('@odata.nextLink')
 
         if next_url:
+            logging.info(f"Graph: Requesting data from next page")
             logging.debug(f"Iterating to next url: {next_url}")
             get_graph_events(url=next_url, headers=headers, md5_hash=md5_hash)
     elif response.status_code == 400:
@@ -609,8 +619,10 @@ def start_storage():
     # Read credentials
     logging.info("Storage: Authenticating.")
     if args.storage_auth_path:
+        logging.info(f"Storage: Using path {args.storage_auth_path} for authentication")
         name, key = read_auth_file(auth_path=args.storage_auth_path, fields=("account_name", "account_key"))
     elif args.account_name and args.account_key:
+        logging.info(f"Storage: Using path account name and account key for authentication")
         logging.warning(DEPRECATED_MESSAGE.format(name="account_name and account_key", release="4.4", url=CREDENTIALS_URL))
         name = args.account_name
         key = args.account_key
@@ -630,13 +642,14 @@ def start_storage():
             if not block_blob_service.exists(args.container):
                 logging.error(f"Storage: The '{args.container}' container does not exists.")
                 sys.exit(1)
+            logging.info(f"Storage: Getting the specified containers: {args.container}")
             containers = [args.container]
         except AzureException:
             logging.error(f"Storage: Invalid credentials for accessing the '{args.container}' container.")
             sys.exit(1)
     else:
         try:
-            logging.info("Storage: Getting containers.")
+            logging.info("Storage: Getting all containers.")
             containers = [container.name for container in block_blob_service.list_containers()]
         except AzureSigningError:
             logging.error("Storage: Unable to list the containers. Invalid credentials.")
@@ -648,7 +661,6 @@ def start_storage():
     # Restore the default max retry value
     block_blob_service.retry = old_retry_value
     logging.info("Storage: Authenticated.")
-    logging.debug(f"Containers to work with: {containers}")
 
     # Get the blobs
     for container in containers:
@@ -702,7 +714,7 @@ def get_blobs(
     """
     try:
         # Get the blob list
-        logging.info("Storage: Getting blobs.")
+        logging.info(f"Storage: Getting blobs from container {container_name}.")
         blobs = blob_service.list_blobs(container_name, prefix=prefix, marker=next_marker)
     except AzureException as e:
         logging.error(f"Storage: Error getting blobs from '{container_name}': '{e}'.")
@@ -714,19 +726,23 @@ def get_blobs(
         for blob in blobs:
             # Skip the blob if nested under prefix but prefix is not setted
             if prefix is None and len(blob.name.split("/")) > 1:
+                logging.info(f"Storage: Skipping blob {blob.name} with prefix not specified")
                 continue
             # Skip the blob if its name has not the expected format
             if args.blobs and args.blobs not in blob.name:
+                logging.info(f"Storage: Skipping blob {blob.name} with prefix with a different format")
                 continue
 
             # Skip the blob if already processed
             last_modified = blob.properties.last_modified
             if not args.reparse and (last_modified < desired_datetime or (
                     min_datetime <= last_modified <= max_datetime)):
+                logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
                 continue
 
             # Get the blob data
             try:
+                logging.info(f"Getting data from blob {blob.name}")
                 data = blob_service.get_blob_to_text(container_name, blob.name)
             except (ValueError, AzureException, AzureHttpError) as e:
                 logging.error(f"Storage: Error reading the blob data: '{e}'.")
