@@ -401,6 +401,14 @@ WriteAgent()
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Localfile logs
+    LOCALFILE_LOGS_TEMPLATE=$(GetTemplate "localfile-logs.agent.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$LOCALFILE_LOGS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      LOCALFILE_LOGS_TEMPLATE=$(GetTemplate "localfile-logs.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    cat ${LOCALFILE_LOGS_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     echo "  <!-- Active response -->" >> $NEWCONFIG
 
     echo "  <active-response>" >> $NEWCONFIG
@@ -537,6 +545,15 @@ WriteManager()
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Localfile logs
+    LOCALFILE_LOGS_TEMPLATE=$(GetTemplate "localfile-logs.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$LOCALFILE_LOGS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      LOCALFILE_LOGS_TEMPLATE=$(GetTemplate "localfile-logs.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    cat ${LOCALFILE_LOGS_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+
     # Writting rules configuration
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -656,6 +673,14 @@ WriteLocal()
       LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Localfile logs
+    LOCALFILE_LOGS_TEMPLATE=$(GetTemplate "localfile-logs.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$LOCALFILE_LOGS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      LOCALFILE_LOGS_TEMPLATE=$(GetTemplate "localfile-logs.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    cat ${LOCALFILE_LOGS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting rules configuration
