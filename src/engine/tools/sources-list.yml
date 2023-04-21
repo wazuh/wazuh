@@ -2,35 +2,82 @@
 ##################################
 # wildcards that will be replaced:
 # %AGENT_NAME% : agent-name
+# %LOCATION% : location
+#
+##################################
+# FORMAT
+#source:
+#  - module:
+#   - 'event'
 
 logcollector:
   - audit:
-    # Scape single quote:
-    - 'type=TEST_GROUP msg=audit(1610903123.444:555): pid=2940 uid=0 auid=1000 ses=14 msg="op=adding group to /etc/group id=1004 exe=''/usr/sbin/groupadd'' hostname=ubuntu-bionic addr=127.0.0.1 terminal=pts/2 res=success"'
+    - 'type=USER_END msg=audit(1681997563.808:746): pid=2921 uid=0 auid=1000 ses=4 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg=''op=PAM:session_close grantors=pam_selinux,pam_loginuid,pam_selinux,pam_namespace,pam_keyinit,pam_keyinit,pam_limits,pam_systemd,pam_unix,pam_umask,pam_lastlog acct="vagrant" exe="/usr/sbin/sshd" hostname=10.0.2.2 addr=10.0.2.2 terminal=ssh res=success''UID="root" AUID="vagrant"'
+    - 'type=CRED_DISP msg=audit(1681997563.808:747): pid=2921 uid=0 auid=1000 ses=4 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg=''op=PAM:setcred grantors=pam_env,pam_unix acct="vagrant" exe="/usr/sbin/sshd" hostname=10.0.2.2 addr=10.0.2.2 terminal=ssh res=success''UID="root" AUID="vagrant"'
+    - 'type=CRYPTO_KEY_USER msg=audit(1681997563.810:748): pid=2921 uid=0 auid=1000 ses=4 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg=''op=destroy kind=server fp=SHA256:49:e7:a6:0e:b5:43:5c:7e:d0:64:b3:95:f0:4e:c9:8f:48:60:43:7c:6e:f3:00:f1:c5:e1:b2:45:5e:cc:82:17 direction=? spid=2921 suid=0  exe="/usr/sbin/sshd" hostname=? addr=? terminal=? res=success''UID="root" AUID="vagrant" SUID="root"'
+    - 'type=SERVICE_STOP msg=audit(1681997563.857:752): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg=''unit=user-runtime-dir@1000 comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success''UID="root" AUID="unset"'
+    - 'type=SERVICE_STOP msg=audit(1681997563.837:751): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg=''unit=user@1000 comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success''UID="root" AUID="unset"'
   - command:
-    - 'ossec: output: ''df -P'': Filesystem     1024-blocks    Used Available Capacity Mounted on'
-    - "ossec: output: 'df -P': devtmpfs            993776       0    993776       0% /dev"
-  - djb-multilog:
+    - 'ossec: output: ''%LOCATION%'': tmpfs              1012220   16764    995456       2% /run'
+    - 'ossec: output: ''%LOCATION%'': Filesystem     1024-blocks    Used Available Capacity Mounted on'
+    - 'ossec: output: ''%LOCATION%'': tmpfs              1012220       0   1012220       0% /sys/fs/cgroup'
+    - 'ossec: output: ''df -P'': tmpfs              1012220       0   1012220       0% /dev/shm'
+    - 'ossec: output: ''df -P'': devtmpfs            993776       0    993776       0% /dev'
+    - 'ossec: output: ''df -P'': tmpfs              1012220   16748    995472       2% /run'
+    - 'ossec: output: ''df -P'': /dev/sda1         10474496 5820552   4653944      56% /'
   - eventchannel:
-    - '{"Message":"The Windows Error Reporting Service service entered the stopped state.","Event":"<Event xmlns=''http://schemas.microsoft.com/win/2004/08/events/event''><System><Provider Name=''Service Control Manager'' Guid=''{555908d1-a6d7-4695-8e1e-26931d2012f4}'' EventSourceName=''Service Control Manager''/><EventID Qualifiers=''16384''>7036</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime=''2023-04-14T16:44:06.487987300Z''/><EventRecordID>3497</EventRecordID><Correlation/><Execution ProcessID=''500'' ThreadID=''2980''/><Channel>System</Channel><Computer>%AGENT_NAME%</Computer><Security/></System><EventData><Data Name=''param1''>Windows Error Reporting Service</Data><Data Name=''param2''>stopped</Data><Binary>5700650072005300760063002F0031000000</Binary></EventData></Event>"}'
+    - '{"Message":"The Software Protection service entered the running state.","Event":"<Event xmlns=''http://schemas.microsoft.com/win/2004/08/events/event''><System><Provider Name=''Service Control Manager'' Guid=''{555908d1-a6d7-4695-8e1e-26931d2012f4}'' EventSourceName=''Service Control Manager''/><EventID Qualifiers=''16384''>7036</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime=''2023-04-20T14:44:44.856325900Z''/><EventRecordID>3897</EventRecordID><Correlation/><Execution ProcessID=''480'' ThreadID=''660''/><Channel>System</Channel><Computer>%AGENT_NAME%</Computer><Security/></System><EventData><Data Name=''param1''>Software Protection</Data><Data Name=''param2''>running</Data><Binary>7300700070007300760063002F0034000000</Binary></EventData></Event>"}'
+    - '{"Message":"The Software Protection service has started.\r\n6.3.9600.17809","Event":"<Event xmlns=''http://schemas.microsoft.com/win/2004/08/events/event''><System><Provider Name=''Microsoft-Windows-Security-SPP'' Guid=''{E23B33B0-C8C9-472C-A5F9-F2BDFEA0F156}'' EventSourceName=''Software Protection Platform Service''/><EventID Qualifiers=''16384''>902</EventID><Version>0</Version><Level>0</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime=''2023-04-20T14:44:44.000000000Z''/><EventRecordID>1785</EventRecordID><Correlation/><Execution ProcessID=''0'' ThreadID=''0''/><Channel>Application</Channel><Computer>%AGENT_NAME%</Computer><Security/></System><EventData><Data>6.3.9600.17809</Data></EventData></Event>"}'
   - eventlog:
-    - '2023 Apr 14 12:42:06 WinEvtLog: Security: AUDIT_SUCCESS(4624): Microsoft-Windows-Security-Auditing: SYSTEM: NT AUTHORITY: %AGENT_NAME%: An account was successfully logged on. Subject:  Security ID:  S-1-5-18  Account Name:  %AGENT_NAME%$  Account Domain:  WORKGROUP  Logon ID:  0x3e7  Logon Type:   5  New Logon:  Security ID:  S-1-5-18  Account Name:  SYSTEM  Account Domain:  NT AUTHORITY  Logon ID:  0x3e7  Logon GUID:  {00000000-0000-0000-0000-000000000000}  Process Information:  Process ID:  0x1f4  Process Name:  C:\\Windows\\System32\\services.exe  Network Information:  Workstation Name:   Source Network Address: -  Source Port:  -  Detailed Authentication Information:  Logon Process:  Advapi    Authentication Package: Negotiate  Transited Services: -  Package Name (NTLM only): -  Key Length:  0  This event is generated when a logon session is created. It is generated on the computer that was accessed.'
+    - '2023 Apr 20 10:44:43 WinEvtLog: Security: AUDIT_SUCCESS(4624): Microsoft-Windows-Security-Auditing: SYSTEM: NT AUTHORITY: %AGENT_NAME%: An account was successfully logged on. Subject:  Security ID:  S-1-5-18  Account Name:  %AGENT_NAME%$  Account Domain:  WORKGROUP  Logon ID:  0x3e7  Logon Type:   5  New Logon:  Security ID:  S-1-5-18  Account Name:  SYSTEM  Account Domain:  NT AUTHORITY  Logon ID:  0x3e7  Logon GUID:  {00000000-0000-0000-0000-000000000000}  Process Information:  Process ID:  0x1e0  Process Name:  C:\Windows\System32\services.exe  Network Information:  Workstation Name:   Source Network Address: -  Source Port:  -  Detailed Authentication Information:  Logon Process:  Advapi    Authentication Package: Negotiate  Transited Services: -  Package Name (NTLM only): -  Key Length:  0  This event is generated when a logon session is created. It is generated on the computer that was accessed.'
+    - '2023 Apr 20 10:44:43 WinEvtLog: Security: AUDIT_SUCCESS(4672): Microsoft-Windows-Security-Auditing: (no user): no domain: %AGENT_NAME%: Special privileges assigned to new logon. Subject:  Security ID:  S-1-5-18  Account Name:  SYSTEM  Account Domain:  NT AUTHORITY  Logon ID:  0x3e7  Privileges:  SeAssignPrimaryTokenPrivilege     SeTcbPrivilege     SeSecurityPrivilege     SeTakeOwnershipPrivilege     SeLoadDriverPrivilege     SeBackupPrivilege     SeRestorePrivilege     SeDebugPrivilege     SeAuditPrivilege     SeSystemEnvironmentPrivilege     SeImpersonatePrivilege'
   - full_command:
+    - 'ossec: output: ''%ORIGIN%'':/nvagrant  pts/0        10.0.2.2         Thu Apr 20 11:44   still logged in/nreboot   system boot  4.18.0-240.1.1.e Thu Apr 20 11:43   still running/nvagrant  pts/0        10.0.2.2         Wed Apr 19 14:30 - 14:31  (00:00)/nvagrant  pts/0        10.0.2.2         Wed Apr 19 14:25 - 14:30  (00:05)/nreboot   system boot  4.18.0-240.1.1.e Wed Apr 19 14:24 - 14:32  (00:07)/nvagrant  pts/0        10.0.2.2         Mon Apr 17 15:30 - 15:57  (00:26)/nreboot   system boot  4.18.0-240.1.1.e Mon Apr 17 15:27 - 15:57  (00:30)/nvagrant  pts/0        10.0.2.2         Thu Mar 30 14:07 - crash (18+01:19)/nvagrant  pts/0        10.0.2.2         Thu Mar 30 13:39 - 14:06  (00:26)/nvagrant  pts/0        10.0.2.2         Thu Mar 30 13:06 - 13:38  (00:32)/nvagrant  pts/0        10.0.2.2         Thu Mar 30 11:43 - 13:04  (01:20)/nreboot   system boot  4.18.0-240.1.1.e Thu Mar 30 11:42 - 15:57 (18+04:14)/nvagrant  pts/0        10.0.2.2         Wed Mar 29 18:50 - 19:52  (01:02)/nvagrant  pts/0        10.0.2.2         Wed Mar 29 18:10 - 18:49  (00:39)/nreboot   system boot  4.18.0-240.1.1.e Wed Mar 29 18:09 - 19:53  (01:43)/nvagrant  pts/0        10.0.2.2         Tue Mar 21 09:40 - 11:35  (01:55)/nvagrant  pts/0        10.0.2.2         Tue Mar 21 09:31 - 09:38  (00:06)/nvagrant  pts/0        10.0.2.2         Tue Mar 21 02:39 - 09:30  (06:51)/nvagrant  pts/0        10.0.2.2         Mon Mar 20 20:42 - 02:37  (05:54)/nreboot   system boot  4.18.0-240.1.1.e Mon Mar 20 20:42 - 11:35  (14:53)/nwtmp begins Wed Mar  1 18:45:41 2023'
     - 'ossec: output: ''last -n 20'':\nvagrant  pts/0        10.0.2.2         Fri Apr 14 16:55   still logged in\nreboot   system boot  5.4.0-139-generi Fri Apr 14 16:55   still running\nvagrant  pts/0        10.0.2.2         Fri Apr 14 16:29 - crash  (00:25)\nreboot   system boot  5.4.0-139-generi Fri Apr 14 16:28   still running\nvagrant  pts/1        10.0.2.2         Fri Apr 14 11:46 - crash  (04:42)\nvagrant  pts/0        10.0.2.2         Fri Apr 14 11:44 - 12:10  (00:25)\nreboot   system boot  5.4.0-139-generi Fri Apr 14 11:43   still running\nvagrant  pts/1        10.0.2.2         Thu Apr 13 21:01 - crash  (14:42)\nvagrant  pts/0        10.0.2.2         Thu Apr 13 19:45 - crash  (15:57)\nreboot   system boot  5.4.0-139-generi Thu Apr 13 19:31   still running\nreboot   system boot  5.4.0-139-generi Thu Feb 16 07:24 - 07:38  (00:13)\nreboot   system boot  5.4.0-42-generic Thu Feb 16 07:06 - 07:23  (00:16)\nwtmp begins Thu Feb 16 07:06:36 2023'
     - "ossec: output: 'last -n 20':\nvagrant  pts/0        10.0.2.2         Mon Apr 17 15:30   still logged in\nreboot   system boot  4.18.0-240.1.1.e Mon Apr 17 15:27   still running\nvagrant  pts/0        10.0.2.2         Thu Mar 30 14:07 - crash (18+01:19)\nvagrant  pts/0        10.0.2.2         Thu Mar 30 13:39 - 14:06  (00:26)\nvagrant  pts/0        10.0.2.2         Thu Mar 30 13:06 - 13:38  (00:32)\nvagrant  pts/0        10.0.2.2         Thu Mar 30 11:43 - 13:04  (01:20)\nreboot   system boot  4.18.0-240.1.1.e Thu Mar 30 11:42   still running\nvagrant  pts/0        10.0.2.2         Wed Mar 29 18:50 - 19:52  (01:02)\nvagrant  pts/0        10.0.2.2         Wed Mar 29 18:10 - 18:49  (00:39)\nreboot   system boot  4.18.0-240.1.1.e Wed Mar 29 18:09 - 19:53  (01:43)\nvagrant  pts/0        10.0.2.2         Tue Mar 21 09:40 - 11:35  (01:55)\nvagrant  pts/0        10.0.2.2         Tue Mar 21 09:31 - 09:38  (00:06)\nvagrant  pts/0        10.0.2.2         Tue Mar 21 02:39 - 09:30  (06:51)\nvagrant  pts/0        10.0.2.2         Mon Mar 20 20:42 - 02:37  (05:54)\nreboot   system boot  4.18.0-240.1.1.e Mon Mar 20 20:42 - 11:35  (14:53)\nvagrant  pts/0        10.0.2.2         Wed Mar 15 21:02 - 21:32  (00:30)\nreboot   system boot  4.18.0-240.1.1.e Wed Mar 15 21:01 - 21:34  (00:32)\nvagrant  pts/0        10.0.2.2         Tue Mar 14 19:27 - 19:49  (00:21)\nreboot   system boot  4.18.0-240.1.1.e Tue Mar 14 19:26 - 19:49  (00:23)\nvagrant  tty1                          Tue Mar 14 19:18 - 19:23  (00:05)\nwtmp begins Wed Mar  1 18:45:41 2023"
-  - iis:
   - json:
+    - '{"field": "value", "event": {"event-old": "value-old"}}'
+    - '{"field":"value"}'
+    - '{"timestamp":"2018-09-13T15:51:21.343","level":"INFO","ip_addr":"192.168.25.67","username":"cheno-test","http_method":"POST","detail":"test3","result":"Success","url":"http://192.168.5.191/gezhen-management-platform/company/edit","http_code":200,"event":{"module":"label-module","dataset":"label-dataset"}}'
   - macos:
+    # taken from script, validate
+    - '2021-04-13 14:42:38.972633-0700 %AGENT_NAME% AirPlayXPCHelper[131]: (CoreUtils) [AirPlay:APBonjourCache] Retry timer fired'
+    - '2021-04-13 14:42:38.972641-0700 %AGENT_NAME% AirPlayXPCHelper[131]: (CoreUtils) [AirPlay:APBonjourCache] Getting paired peers'
+    - '2021-04-13 14:42:38.972659-0700 %AGENT_NAME% AirPlayXPCHelper[131]: (CoreUtils) [com.apple.CoreUtils:CUPairingManager]'
   - multi-line-regex:
+    - 'Traceback (most recent call last):   File "main.py", line 27, in <module>     numb.append(random.choice(numbers))   File "/usr/lib/python3.8/random.py", line 288, in choice     i = self._randbelow(len(seq)) TypeError: object of type int has no len()'
   - multi-line:
-  - mysql_log:
-  - nmapg:
-  - postgresql_log:
-  - snort-full:
-  - squid:
+    - 'Aug 9 14:22:47 hostname log line one Aug 9 14:22:47 hostname log line two Aug 9 14:22:47 hostname log line four Aug 9 14:22:47 hostname log line three Aug 9 14:22:47 hostname log line five'
+  - mysql_log: # check !
+    - '180811  7:41:34   298 Connect   root@223.111.145.159 as anonymous on mysql'
+    - '180811  9:40:49   335 Query     SET GLOBAL general_log = ''ON'''
+    - '180811  9:40:50   335 Query     SET GLOBAL slow_query_log = ''ON'''
+    - '180811  9:44:50   336 Connect   renato@85.93.20.89 as anonymous on'
+    - '                  283 Connect   Access denied for user ''root''@''223.111.145.159'' (using password: YES)'
   - syslog:
     - 'Apr 17 15:54:17 %AGENT_NAME% systemd[1]: cgroup compatibility translation between legacy and unified hierarchy settings'
     - 'Apr 14 17:05:01 %AGENT_NAME% CRON[7628]: pam_unix(cron:session): session opened for user root by (uid=0)'
+    - 'Apr 20 11:54:38 %AGENT_NAME% dnf[3422]: CentOS Linux 8 - AppStream                      5.7 kB/s | 4.3 kB     00:00'
+    - 'Apr 20 12:13:33 %AGENT_NAME% env[4477]: 2023/04/20 12:13:33 wazuh-logcollector[4542] agent_op.c:237 at os_read_agent_profile(): DEBUG: os_read_agent_profile() = [centos, centos8, centos8.3]'
+    - 'Apr 20 12:13:33 %AGENT_NAME% env[4477]: 2023/04/20 12:13:33 wazuh-logcollector[4542] config.c:407 at ReadConfig(): DEBUG: agent_config element does not have any attributes.'
+    - 'Apr 20 12:13:33 %AGENT_NAME% env[4477]: 2023/04/20 12:13:33 wazuh-logcollector[4542] debug_op.c:70 at _log(): DEBUG: Logging module auto-initialized'
+    - 'Apr 20 12:13:33 %AGENT_NAME% env[4477]: 2023/04/20 12:13:33 wazuh-logcollector[4542] main.c:126 at main(): DEBUG: Wazuh home directory: /var/ossec'
+    - 'Apr 20 12:13:33 %AGENT_NAME% env[4477]: Started wazuh-syscheckd...'
+    - 'Apr 20 12:13:37 %AGENT_NAME% env[4477]: Completed.'
+    - 'Apr 20 12:13:37 %AGENT_NAME% systemd[1]: Started Wazuh agent.'
+    - 'Apr 20 12:41:01 %AGENT_NAME% rsyslogd[733]: [origin software="rsyslogd" swVersion="8.1911.0-6.el8" x-pid="733" x-info="https://www.rsyslog.com"] rsyslogd was HUPed'
+    - 'Apr 20 12:55:37 %AGENT_NAME% dnf[4675]: Metadata cache refreshed recently.'
+    - 'Apr 20 12:55:37 %AGENT_NAME% systemd[1]: dnf-makecache.service: Succeeded.'
+    - 'Apr 20 12:55:37 %AGENT_NAME% systemd[1]: Started dnf makecache.'
+    - 'Apr 20 13:32:43 %AGENT_NAME% systemd[1]: Removed slice User Slice of UID 1000.'
+    - 'Apr 20 13:32:43 %AGENT_NAME% systemd[1]: session-4.scope: Succeeded.'
+    - 'Apr 20 13:32:43 %AGENT_NAME% systemd[1]: Stopping /run/user/1000 mount wrapper...'
+  # not working - djb-multilog:
+  # not working - iis:
+  # not working - nmapg:
+  # not working - postgresql_log:
+  # not working - snort-full:
+  # not working - squid:
 external-modules:
   - aws-s3:
   - Azure:
@@ -48,17 +95,12 @@ internal-modules:
   - rootcheck:
   - sca:
   - syscollector:
-    - '{"data":{"argvs":null,"checksum":"71ece4e42dd41b4b06df00e3f5c4fab33aacc1c5","cmd":null,"egroup":"root","euser":"root","fgroup":"root","name":"kworker/1:2-eve","nice":0,"nlwp":1,"pgrp":0,"pid":"4188","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","scan_time":"2023/03/10 03:27:12","session":0,"sgroup":"root","share":0,"size":0,"start_time":1678418235,"state":"R","stime":14,"suser":"root","tgid":4188,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"}'
-    # - '{"data":{"architecture":"x86_64","checksum":"1678418832385321534","hostname":"%AGENT_NAME%","os_major":"8","os_minor":"3","os_name":"Centos Linux","os_patch":"2011","os_platform":"centos","os_version":"8.3.2011","release":"4.18.0-240.1.1.el8_3.x86_64","scan_time":"2023/03/10 03:27:12","sysname":"Linux","version":"#1 SMP Thu Nov 19 17:20:08 UTC 2020"},"operation":"MODIFIED","type":"dbsync_osinfo"}'
-    # - '{"data":{"board_serial":"0","checksum":"f7605acc23c70cbb76290a45d956dbab27f5eebc","cpu_cores":2,"cpu_mhz":2371.0,"cpu_name":"AMD Ryzen 5 4500U with Radeon Graphics","ram_free":1691948,"ram_total":2024444,"ram_usage":17,"scan_time":"2023/03/10 03:37:16"},"operation":"MODIFIED","type":"dbsync_hwinfo"}'
-    # - '{"data":{"checksum":"631a5cbb816346c903708bbc14cbc50597272601","inode":26875,"item_id":"fffd4d8c20cacb413ae6c1f39a3a52389375701d","local_ip":"10.0.2.15","local_port":68,"pid":0,"process":null,"protocol":"udp","remote_ip":"10.0.2.2","remote_port":67,"rx_queue":0,"scan_time":"2023/03/14 12:41:19","state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"}'
-    # - '{"data":{"architecture":"x86_64","checksum":"0d7e29ef72b657c96512b43efa6637ad0431b2e5","description":"Tool to analyse BIOS DMI data","format":"rpm","groups":"Unspecified","install_time":"1607103514","item_id":"bbb009a26c1b5bc26c093e9fbcd9b01d0fd227d4","location":null,"multiarch":null,"name":"dmidecode","priority":null,"scan_time":"2023/03/14 15:09:43","size":222289,"source":null,"vendor":"CentOS","version":"1:3.2-6.el8"},"operation":"DELETED","type":"dbsync_packages"}'
-    # - '{"data":{"adapter":null,"checksum":"052a00a969cb2d54a97890b20ea9af156b74d42d","item_id":"d4aa8b01955e438235d586585492f3f5edceec1b","mac":"52:54:00:27:8b:50","mtu":1500,"name":"eth0","rx_bytes":510595,"rx_dropped":0,"rx_errors":0,"rx_packets":4522,"scan_time":"2023/03/10 03:27:12","state":"up","tx_bytes":616053,"tx_dropped":0,"tx_errors":0,"tx_packets":4186,"type":"ethernet"},"operation":"MODIFIED","type":"dbsync_network_iface"}'
-    # - '{"data":{"address":"fe80::a00:27ff:fe0d:a1e5","broadcast":null,"checksum":"7bdb80f090fb4aa51756a4fd0382a1b08ee3e0be","dhcp":"unknown","iface":"eth1","item_id":"4a53b37f2fb0d3ef21c7ff8b5e1b9072b578b82f","metric":null,"netmask":"ffff:ffff:ffff:ffff::","proto":1,"scan_time":"2023/03/14 15:32:01"},"operation":"INSERTED","type":"dbsync_network_address"}'
-    # - '{"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"}'
-    # - '{"data":{"scan_time":"2021/10/29 14:26:24","hotfix":"KB123456","checksum":"abcdef0123456789"}, "type":"dbsync_hotfixes","operation":"MODIFIED"}'
+    - '{"component":"syscollector_packages","data":{"attributes":{"architecture":"x86_64","checksum":"d57b26ba5dc8e6cf9798c11927ff372980b9addb","description":"Access control list utilities","format":"rpm","groups":"Unspecified","install_time":"1607103509","item_id":"a7213efa3abf1d6f4eee66d429bda7dad3bca931","name":"acl","scan_time":"2023/04/20 15:41:37","size":205740,"vendor":"CentOS","version":"2.2.53-1.el8"},"index":"a7213efa3abf1d6f4eee66d429bda7dad3bca931","timestamp":""},"type":"state"}'
   - upgrade:
     - '{"command":"upgrade_update_status","parameters":{"error":0,"message":"Upgrade was successful","status":"Done"}}'
     - '{"command":"upgrade_update_status","parameters":{"error":2,"message":"Upgrade Failed","status":"Failed"}}'
 remote-syslog:
+  - rsyslog:
+    - 'Nov 17 15:30:51 192.168.1.230 : %ASA-6-611102: User authentication failed: IP address: 192.168.1.2, Uname: awaise -  from manager'
+    - 'Nov 17 15:30:51 192.168.1.230 : %ASA-6-611102: User authentication failed: IP address: 192.168.1.2, Uname: awaise - from agent'
 ...

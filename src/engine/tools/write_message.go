@@ -50,10 +50,10 @@ func main() {
 func sockQuery(conn net.Conn, message string, agentid int, is_raw bool) {
 	var payload []byte
 
-	agentStr := strconv.Itoa(agentid)
 	if is_raw {
 		payload = []byte(message)
 	} else {
+		agentStr := strconv.Itoa(agentid)
 		payload = []byte("2:[" + agentStr + "] (hostname" + agentStr + ") any->/var/cosas:" + message)
 	}
 
