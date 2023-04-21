@@ -60,7 +60,7 @@ TEST_F(PolicyTest, GetAssets)
 
 TEST_F(PolicyTest, OneDecoderPolicy)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name("policy/oneDecEnv/version")));
@@ -84,7 +84,7 @@ TEST_F(PolicyTest, OneDecoderPolicy)
 
 TEST_F(PolicyTest, OneRulePolicy)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneRuleEnv/version"}));
@@ -108,7 +108,7 @@ TEST_F(PolicyTest, OneRulePolicy)
 
 TEST_F(PolicyTest, OneOutputPolicy)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneOutEnv/version"}));
@@ -132,7 +132,7 @@ TEST_F(PolicyTest, OneOutputPolicy)
 
 TEST_F(PolicyTest, OneFilterPolicy)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/oneFilEnv/version"}));
@@ -141,7 +141,7 @@ TEST_F(PolicyTest, OneFilterPolicy)
 
 TEST_F(PolicyTest, OrphanAsset)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/orphanAssetEnv/version"}));
@@ -151,7 +151,7 @@ TEST_F(PolicyTest, OrphanAsset)
 TEST_F(PolicyTest, OrphanFilter)
 {
     GTEST_SKIP();
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/orphanFilterEnv/version"}));
@@ -160,7 +160,7 @@ TEST_F(PolicyTest, OrphanFilter)
 
 TEST_F(PolicyTest, CompletePolicy)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
     auto storeRead = std::make_shared<FakeStoreRead>();
     auto envJson = std::get<json::Json>(storeRead->get(base::Name {"policy/completeEnv/version"}));

@@ -18,7 +18,7 @@ constexpr auto outputPath = "/tmp/file";
 
 auto initTest()
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registerBuilders(registry);
     return registry;
 }

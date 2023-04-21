@@ -34,7 +34,7 @@ std::shared_ptr<builder::Builder> getFakeBuilder()
 
     auto store = std::make_shared<store::FileDriver>(STORE_PATH_TEST);
 
-    auto registry = std::make_shared<builder::internals::Registry>();
+    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
     builder::internals::registerBuilders(registry, {0});
 
     registry->registerBuilder(coutOutputHelper_test, "helper.coutOutputHelper_test");

@@ -133,7 +133,7 @@ public:
      */
     Policy(const json::Json& jsonDefinition,
                 std::shared_ptr<const store::IStoreRead> storeRead,
-                std::shared_ptr<internals::Registry> registry)
+                std::shared_ptr<internals::Registry<internals::Builder>> registry)
 
     {
         // Get name
@@ -258,7 +258,7 @@ public:
     static std::unordered_map<std::string, std::vector<std::shared_ptr<Asset>>>
     getManifestAssets(const json::Json& jsonDefinition,
                       std::shared_ptr<const store::IStoreRead> storeRead,
-                      std::shared_ptr<internals::Registry> registry);
+                      std::shared_ptr<internals::Registry<internals::Builder>> registry);
 };
 
 } // namespace builder

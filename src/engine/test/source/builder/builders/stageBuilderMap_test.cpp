@@ -17,7 +17,7 @@ using namespace base;
 
 TEST(StageBuilderMapTest, Builds)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationMapBuilder(registry), "operation.map");
     auto mapJson = Json {R"([
         {"string": "value"},
@@ -35,7 +35,7 @@ TEST(StageBuilderMapTest, Builds)
 
 TEST(StageBuilderMapTest, UnexpectedDefinition)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationMapBuilder(registry), "operation.map");
     auto mapJson = Json {R"({})"};
 
@@ -44,7 +44,7 @@ TEST(StageBuilderMapTest, UnexpectedDefinition)
 
 TEST(StageBuilderMapTest, BuildsCorrectExpression)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationMapBuilder(registry), "operation.map");
     auto mapJson = Json {R"([
         {"string": "value"},

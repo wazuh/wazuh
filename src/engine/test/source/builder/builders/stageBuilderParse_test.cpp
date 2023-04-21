@@ -13,7 +13,7 @@ using namespace base;
 
 TEST(StageBuilderParseTest, Builds)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderLogParser, "parser.logpar");
     Json doc = Json {R"({
             "logpar":[
@@ -25,7 +25,7 @@ TEST(StageBuilderParseTest, Builds)
 
 TEST(StageBuilderParseTest, NotJson)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderLogParser, "parser.logpar");
 
     ASSERT_THROW(getStageBuilderParse(registry)(std::string {}), std::runtime_error);
@@ -33,7 +33,7 @@ TEST(StageBuilderParseTest, NotJson)
 
 TEST(StageBuilderParseTest, NotObject)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderLogParser, "parser.logpar");
     Json doc = Json {R"([
             {"logpar":[
@@ -45,7 +45,7 @@ TEST(StageBuilderParseTest, NotObject)
 
 TEST(StageBuilderParseTest, BuildsCorrectExpression)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(opBuilderLogParser, "parser.logpar");
     Json doc = Json {R"({
             "logpar":[

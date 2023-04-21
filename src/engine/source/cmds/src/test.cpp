@@ -42,7 +42,7 @@ void run(const Options& options)
 {
     // Logging init
 
-     // Logging init
+    // Logging init
     logging::LoggingConfig logConfig;
     logConfig.logLevel = options.logLevel;
 
@@ -70,7 +70,7 @@ void run(const Options& options)
     hlp::registerParsers(logpar);
     LOG_INFO("HLP initialized.");
 
-    auto registry = std::make_shared<builder::internals::Registry>();
+    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
     size_t logparDebugLvl = options.debugLevel > 2 ? 1 : 0;
     try
     {

@@ -17,7 +17,7 @@ namespace builder::internals::builders
  * @param registry Registry of builders.
  * @return Builder
  */
-Builder getOperationConditionBuilder(std::shared_ptr<Registry> registry);
+Builder getOperationConditionBuilder(std::shared_ptr<Registry<Builder>> registry);
 
 /**
  * @brief Get the Operation Map Builder
@@ -25,7 +25,7 @@ Builder getOperationConditionBuilder(std::shared_ptr<Registry> registry);
  * @param registry Registry of builders.
  * @return Builder
  */
-Builder getOperationMapBuilder(std::shared_ptr<Registry> registry);
+Builder getOperationMapBuilder(std::shared_ptr<Registry<Builder>> registry);
 
 } // namespace builder::internals::builders
 

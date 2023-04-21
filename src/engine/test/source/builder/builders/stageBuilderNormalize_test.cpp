@@ -17,7 +17,7 @@ using namespace base;
 
 auto initTest()
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationConditionBuilder(registry),
                               "operation.condition");
     registry->registerBuilder(getOperationMapBuilder(registry), "operation.map");

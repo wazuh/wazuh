@@ -28,7 +28,7 @@ Asset::Asset(std::string name, Asset::Type type)
 
 Asset::Asset(const json::Json& jsonDefinition,
              Asset::Type type,
-             std::shared_ptr<internals::Registry> registry)
+             std::shared_ptr<internals::Registry<internals::Builder>> registry)
     : m_type {type}
 {
     if (!jsonDefinition.isObject())
