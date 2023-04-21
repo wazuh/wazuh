@@ -1,0 +1,6 @@
+  <localfile>
+    <log_format>full_command</log_format>
+    <command>netstat -an | awk '{if ((/^(tcp|udp)/) && ($4 != "*.*") && ($5 == "*.*")) {print $1" "$4" "$5}}' | sort -u</command>
+    <alias>netstat listening ports</alias>
+    <frequency>360</frequency>
+  </localfile>
