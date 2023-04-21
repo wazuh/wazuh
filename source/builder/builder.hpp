@@ -23,10 +23,10 @@ class Builder : public IValidator
 {
 private:
     std::shared_ptr<store::IStoreRead> m_storeRead;
-    std::shared_ptr<internals::Registry> m_registry;
+    std::shared_ptr<internals::Registry<internals::Builder>> m_registry;
 
 public:
-    Builder(std::shared_ptr<store::IStoreRead> storeRead, std::shared_ptr<internals::Registry> registry)
+    Builder(std::shared_ptr<store::IStoreRead> storeRead, std::shared_ptr<internals::Registry<internals::Builder>> registry)
         : m_storeRead {storeRead}
         , m_registry {registry}
     {

@@ -32,7 +32,7 @@ struct dependencies
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 };
 
-static void registerBuilders(std::shared_ptr<Registry> registry, const dependencies& dependencies = {})
+static void registerBuilders(std::shared_ptr<Registry<Builder>> registry, const dependencies& dependencies = {})
 {
     // Basic operations
     registry->registerBuilder(builders::getOperationMapBuilder(registry), "operation.map");

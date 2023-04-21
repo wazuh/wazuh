@@ -68,7 +68,7 @@ auto helperFunctionArray {helperFunctionsCases.getArray().value()};
 
 TEST(OperationConditionBuilderTest, Builds)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
@@ -78,7 +78,7 @@ TEST(OperationConditionBuilderTest, Builds)
 
 TEST(OperationConditionBuilderTest, UnexpectedDefinition)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     for (auto operationDef : operationArray)
     {
         ASSERT_THROW(getOperationConditionBuilder(registry)(operationDef), std::runtime_error);
@@ -87,7 +87,7 @@ TEST(OperationConditionBuilderTest, UnexpectedDefinition)
 
 TEST(OperationConditionBuilderTest, BuildsOperates)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto eventOk = std::make_shared<Json>(R"({
         "string": "value",
         "int": 1,
@@ -227,7 +227,7 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
 
 TEST(OperationConditionBuilderTest, BuildsOperatesArray)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     std::string targetField = "array";
     json::Json operation(R"([
         "string",
@@ -326,7 +326,7 @@ TEST(OperationConditionBuilderTest, BuildsOperatesArray)
 
 TEST(OperationConditionBuilderTest, BuildsOperatesObject)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     std::string targetField = "object";
     json::Json operation(R"({
         "string": "string",
@@ -425,7 +425,7 @@ TEST(OperationConditionBuilderTest, BuildsOperatesObject)
 
 TEST(OperationConditionBuilderTest, BuildsWithHelper)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
 
     ASSERT_NO_THROW(registerBuilders(registry));
     ASSERT_NO_THROW(registry->getBuilder("helper.array_append"));
@@ -439,7 +439,7 @@ TEST(OperationConditionBuilderTest, BuildsWithHelper)
 
 TEST(OperationMapBuilderTest, Builds)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
@@ -449,7 +449,7 @@ TEST(OperationMapBuilderTest, Builds)
 
 TEST(OperationMapBuilderTest, UnexpectedDefinition)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     for (auto operationDef : operationArray)
     {
         ASSERT_THROW(getOperationMapBuilder(registry)(operationDef), std::runtime_error);
@@ -459,7 +459,7 @@ TEST(OperationMapBuilderTest, UnexpectedDefinition)
 // TODO: add failed map reference test.
 TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto expected = std::make_shared<Json>(R"({
         "string": "value",
         "int": 1,
@@ -533,7 +533,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
 
 TEST(OperationMapBuilderTest, BuildsOperatesArray)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     std::string targetField("array");
     json::Json operationJson(R"([
         "string",
@@ -601,7 +601,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesArray)
 
 TEST(OperationMapBuilderTest, BuildsOperatesObject)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     std::string targetField = "object";
     json::Json operationJson(R"({
         "string": "value",
@@ -670,7 +670,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesObject)
 
 TEST(OperationMapBuilderTest, BuildsWithHelper)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
 
     ASSERT_NO_THROW(registerBuilders(registry));
     ASSERT_NO_THROW(registry->getBuilder("helper.array_append"));
