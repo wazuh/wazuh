@@ -13,7 +13,11 @@ metadata:
       date: 2023/01/13
 
 sources:
-  - decoder/core-localfile/0
+  - decoder/integrations/0
+
+check:
+  - event.module: nginx
+  - event.dataset: nginx-error
 
 parse:
   logpar:

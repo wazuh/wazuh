@@ -14,7 +14,11 @@ metadata:
       date: 2023/01/23
 
 sources:
-  - decoder/core-localfile/0
+  - decoder/integrations/0
+
+check:
+  - event.module: nginx
+  - event.dataset: nginx-access
 
 definitions:
   STATUS_W_BYTES: <http.response.status_code> <http.response.body.bytes>
