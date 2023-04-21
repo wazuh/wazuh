@@ -238,7 +238,7 @@ void runStart(ConfHandler confManager)
 
         // Builder and registry
         {
-            auto registry = std::make_shared<builder::internals::Registry>();
+            auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
             builder::internals::registerBuilders(registry, {0, logpar, kvdb});
             LOG_DEBUG("Builders registered.");
 

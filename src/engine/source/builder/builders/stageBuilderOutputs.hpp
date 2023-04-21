@@ -17,7 +17,7 @@ namespace builder::internals::builders
  * @param registry Registry of builders.
  * @return Builder
  */
-Builder getStageBuilderOutputs(std::shared_ptr<Registry> registry);
+Builder getStageBuilderOutputs(std::shared_ptr<Registry<Builder>> registry);
 
 } // namespace builder::internals::builders
 

@@ -26,7 +26,7 @@ protected:
 
 TEST_F(Router, build_ok)
 {
-    auto registry = std::make_shared<builder::internals::Registry>();
+    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
@@ -36,7 +36,7 @@ TEST_F(Router, build_ok)
 // Add more test
 TEST_F(Router, build_fail)
 {
-    auto registry = std::make_shared<builder::internals::Registry>();
+    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
@@ -86,7 +86,7 @@ TEST_F(Router, build_fail)
 
 TEST_F(Router, add_list_remove_routes)
 {
-    auto registry = std::make_shared<builder::internals::Registry>();
+    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
@@ -142,7 +142,7 @@ TEST_F(Router, add_list_remove_routes)
 
 TEST_F(Router, priorityChanges)
 {
-    auto registry = std::make_shared<builder::internals::Registry>();
+    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
@@ -255,7 +255,7 @@ TEST_F(Router, checkRouting)
     const auto ENV_C3 = "deco_C3";
     const auto PATH_DECODER = json::Json::formatJsonPath("~decoder");
 
-    auto registry = std::make_shared<builder::internals::Registry>();
+    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
     builder::internals::registerBuilders(registry);
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();

@@ -21,10 +21,12 @@ using Builder = std::function<base::Expression(std::any)>;
  *
  * This class is used to register builders and to get builders by name.
  */
+
+template<typename T = Builder>
 class Registry
 {
 private:
-    std::unordered_map<std::string, Builder> m_builders;
+    std::unordered_map<std::string, T> m_builders;
 
 public:
     Registry() = default;
@@ -39,7 +41,14 @@ public:
      * @param name Name of the builder.
      * @return Builder Builder object reference.
      */
-    Builder getBuilder(const std::string& name);
+    T getBuilder(const std::string& name)
+    {
+        if (m_builders.find(name) == m_builders.end())
+        {
+            throw std::runtime_error(fmt::format("Builder name \"{}\" could not be found in the registry", name));
+        }
+        return m_builders.at(name);
+    }
 
     /**
      * @brief Register a builder.
@@ -48,7 +57,7 @@ public:
      * @param names Names of the builder.
      */
     template<typename... Names>
-    void registerBuilder(Builder builder, Names... names)
+    void registerBuilder(T builder, Names... names)
     {
         for (auto name : {names...})
         {
@@ -59,10 +68,9 @@ public:
             else
             {
 
-                throw std::logic_error(
-                    fmt::format("Engine registry: A builder is already registered with "
-                                "name \"{}\", registration failed.",
-                                name));
+                throw std::logic_error(fmt::format("Engine registry: A builder is already registered with "
+                                                   "name \"{}\", registration failed.",
+                                                   name));
             }
         }
     }
@@ -71,7 +79,7 @@ public:
      * @brief Clear the registry.
      *
      */
-    void clear();
+    void clear() { m_builders.clear(); }
 };
 
 } // namespace builder::internals

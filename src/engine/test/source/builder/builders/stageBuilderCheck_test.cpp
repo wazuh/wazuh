@@ -15,7 +15,7 @@ using namespace base;
 
 TEST(StageBuilderCheckTest, ListBuilds)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationConditionBuilder(registry),
                               "operation.condition");
     auto checkJson = Json {R"([
@@ -34,7 +34,7 @@ TEST(StageBuilderCheckTest, ListBuilds)
 
 TEST(StageBuilderCheckTest, UnexpectedDefinition)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationConditionBuilder(registry),
                               "operation.condition");
     auto checkJson = Json {R"({})"};
@@ -44,7 +44,7 @@ TEST(StageBuilderCheckTest, UnexpectedDefinition)
 
 TEST(StageBuilderCheckTest, ListArrayWrongSizeItem)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationConditionBuilder(registry),
                               "operation.condition");
     auto checkJson = Json {R"([
@@ -64,7 +64,7 @@ TEST(StageBuilderCheckTest, ListArrayWrongSizeItem)
 
 TEST(StageBuilderCheckTest, ListArrayWrongTypeItem)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationConditionBuilder(registry),
                               "operation.condition");
     auto checkJson = Json {R"([
@@ -76,7 +76,7 @@ TEST(StageBuilderCheckTest, ListArrayWrongTypeItem)
 
 TEST(StageBuilderCheckTest, ListBuildsCorrectExpression)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationConditionBuilder(registry),
                               "operation.condition");
     auto checkJson = Json {R"([
@@ -102,7 +102,7 @@ TEST(StageBuilderCheckTest, ListBuildsCorrectExpression)
 
 TEST(StageBuilderCheckTest, ExpressionBuilds)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationConditionBuilder(registry),
                               "operation.condition");
     auto checkJson = Json {R"("field==value")"};
@@ -112,7 +112,7 @@ TEST(StageBuilderCheckTest, ExpressionBuilds)
 
 TEST(StageBuilderCheckTest, ExpressionBuildsCorrectExpression)
 {
-    auto registry = std::make_shared<Registry>();
+    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     registry->registerBuilder(getOperationConditionBuilder(registry),
                               "operation.condition");
     auto checkJson = Json {R"("field==value")"};

@@ -104,7 +104,7 @@ enum class OperationType
     FILTER
 };
 
-Expression operationBuilder(const std::any& definition, OperationType type, std::shared_ptr<Registry> registry)
+Expression operationBuilder(const std::any& definition, OperationType type, std::shared_ptr<Registry<Builder>> registry)
 {
     std::string field;
     Json value;
@@ -218,7 +218,7 @@ Expression operationBuilder(const std::any& definition, OperationType type, std:
 namespace builder::internals::builders
 {
 
-Builder getOperationConditionBuilder(std::shared_ptr<Registry> registry)
+Builder getOperationConditionBuilder(std::shared_ptr<Registry<Builder>> registry)
 {
     return [registry](std::any definition)
     {
@@ -226,7 +226,7 @@ Builder getOperationConditionBuilder(std::shared_ptr<Registry> registry)
     };
 }
 
-Builder getOperationMapBuilder(std::shared_ptr<Registry> registry)
+Builder getOperationMapBuilder(std::shared_ptr<Registry<Builder>> registry)
 {
     return [registry](std::any definition)
     {
