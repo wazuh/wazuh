@@ -148,10 +148,23 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        std::optional<int> lValue {event->getInt(targetField)};
+        const auto lValue {event->getString(targetField)};
+        int lValueInt;
         if (!lValue.has_value())
         {
             return base::result::makeFailure(event, failureTrace1);
+        }
+        try
+        {
+            lValueInt = std::stoi(lValue.value());
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(fmt::format("\"{}\" function: Parameter \"{}\" "
+                                                    "could not be converted to int: {}.",
+                                                    name,
+                                                    lValue.value(),
+                                                    e.what()));
         }
 
         int resolvedValue {0};
@@ -169,7 +182,7 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
             resolvedValue = std::get<int>(rValue);
         }
 
-        if (cmpFunction(lValue.value(), resolvedValue))
+        if (cmpFunction(lValueInt, resolvedValue))
         {
             return base::result::makeSuccess(event, successTrace);
         }
@@ -263,6 +276,9 @@ std::function<base::result::Result<base::Event>(base::Event)> getStringCmpFuncti
     // Tracing messages
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
+    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Parameter \"{}\" not found", name, rightParameter.m_value)};
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
@@ -272,56 +288,21 @@ std::function<base::result::Result<base::Event>(base::Event)> getStringCmpFuncti
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        auto validateNumericString = [name, targetField, rightParameter](const std::optional<std::string>& str)
-        {
-            if (!str.has_value()) 
-            {
-                throw std::runtime_error {fmt::format("[{}] -> Failure: Target field '{}' or Parameter \"{}\" not found", name, targetField, rightParameter.m_value)};
-            }
-
-            try 
-            {
-                std::stoi(str.value());
-            } 
-            catch (const std::invalid_argument&) 
-            {
-                throw std::runtime_error {fmt::format("[{}] -> Failure: Target field '{}' or Parameter \"{}\" have no valid arguments", name, targetField, rightParameter.m_value)};
-            }
-        };
-
         const auto lValue {event->getString(targetField)};
-        try
+        if (!lValue.has_value())
         {
-            validateNumericString(lValue);
-        }
-        catch (const std::runtime_error& e)
-        {
-            return base::result::makeFailure(event, e.what());
+            return base::result::makeFailure(event, failureTrace1);
         }
 
-        std::string resolvedValue;
-        try
-        {
-            std::stoi(rValue);
-            resolvedValue = rValue;
-        }
-        catch (const std::invalid_argument& e)
-        {
-            return base::result::makeFailure(event, e.what());
-        }
-
+        std::string resolvedValue {rValue};
         if (helper::base::Parameter::Type::REFERENCE == rValueType)
         {
             const auto resolvedRValue {event->getString(rValue)};
-            try
+            if (!resolvedRValue.has_value())
             {
-                validateNumericString(resolvedRValue);
-                resolvedValue = resolvedRValue.value();
+                return base::result::makeFailure(event, failureTrace2);
             }
-            catch (const std::runtime_error& e)
-            {
-                return base::result::makeFailure(event, e.what());
-            }
+            resolvedValue = resolvedRValue.value();
         }
 
         if (cmpFunction(lValue.value(), resolvedValue))
