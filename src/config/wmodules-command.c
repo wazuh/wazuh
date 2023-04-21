@@ -34,7 +34,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
     char * command_tag = NULL;
 
     if (!nodes) {
-        mwarn("Tag <%s> not found at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
+        merror("Tag <%s> not found at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
         return OS_INVALID;
     }
 
@@ -177,7 +177,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
     }
 
     if (!command->command) {
-        mwarn("Tag <%s> not found at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
+        merror("Tag <%s> not found at module '%s'.", XML_COMMAND, WM_COMMAND_CONTEXT.name);
         return OS_INVALID;
     }
 
