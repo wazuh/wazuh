@@ -75,10 +75,13 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
     auto expressionString = std::any_cast<json::Json>(definition).getString().value();
 
     // Inject builder
-    auto termBuilder = [=](std::string term) -> std::function<bool(base::Event)>
+    auto termBuilder = [&](std::string term) -> std::function<bool(base::Event)>
     {
         std::string field;
         std::string value;
+        json::Json valueJson;
+        bool isEqualEqual = true;
+        std::string operador;
 
         if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
         {
@@ -98,37 +101,136 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
         }
         else
         {
-            std::string pattern = R"([<>]=?|==)";  // pattern looking for '<', '>' o '<=' o '>=' o '=='
-            std::regex re(pattern);
-            std::smatch match;
+            // Pattern looking for '<', '>', '<=', '>=', '==' or '!='
+            const std::string opPattern = R"(^[^=<>!]+([<>]=?|==|!=))";
+            const std::regex opRegex(opPattern);
 
-            if (std::regex_search(term, match, re))
+            std::smatch match;
+            if (std::regex_search(term, match, opRegex))
             {
-                std::string operador = match[0];
+                operador = match[1];
                 auto pos = term.find(operador);
+
                 field = term.substr(0, pos);
+
                 auto operando = term.substr(pos + operador.length());
-                if (operador == "==") 
+
+                if (operador == "==" || operador == "!=")
                 {
-                    value = operando;
-                }
+                    if (operador == "!=")
+                    {
+                        isEqualEqual = false;
+                    }
+                    try
+                    {
+                        valueJson = json::Json(operando.c_str());
+                    } 
+                    catch (std::runtime_error &e)
+                    {
+                        valueJson.setString(operando);
+                    }
+                } 
                 else
                 {
-                    value = std::string("+string_") + ((operador == "<=") ? "less_or_equal/"    :
-                                                    (operador == ">=") ? "greater_or_equal/" :
-                                                    (operador == "<")  ? "less/" : "greater/") 
-                                                    + operando;
+                    valueJson = json::Json(operando.c_str());
+                    if (!valueJson.isInt64() && !valueJson.isString())
+                    {
+                        throw std::runtime_error(fmt::format("Check stage: The \"{}\" operator only allows operate with numbers or string", operador));
+                    }
+
+                    bool isInt = true;
+                    try 
+                    {
+                        std::stoi(operando);
+                    }
+                    catch (const std::invalid_argument& e)
+                    {
+                        isInt = false;
+                    }
+
+                    const auto prefix = isInt ? "+int_" : "+string_";
+                    const auto suffix = (
+                        (operador == "<=") ? "less_or_equal/"    :
+                        (operador == ">=") ? "greater_or_equal/" :
+                        (operador == "<")  ? "less/"             :
+                        "greater/") + operando;
+                    value = prefix + suffix;
+                    valueJson.setString(value);
+
                 }
+            }
+            else
+            {
+                throw std::runtime_error {fmt::format("Check stage: Invalid operator \"{}\"", term)};
             }
         }
 
-        json::Json valueJson;
-        valueJson.setString(value);
         auto conditionDef = std::make_tuple(field, valueJson);
-        auto opFn = registry->getBuilder("operation.condition")(conditionDef)
-                        ->getPtr<base::Term<base::EngineOp>>()
-                        ->getFn();
-        return opFn;
+        auto opEx = registry->getBuilder("operation.condition")(conditionDef);
+
+        if (opEx->isTerm())
+        {
+            if (operador != "==" || operador != "!=")
+            {
+                return opEx->getPtr<base::Term<base::EngineOp>>()->getFn();
+            }
+
+            auto fn = [opEx, isEqualEqual](base::Event event) -> bool
+            {
+                auto result = opEx->getPtr<base::Term<base::EngineOp>>()->getFn()(event);
+                if (!result)
+                {
+                    if (isEqualEqual)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+                return isEqualEqual;
+            };
+
+            return fn;
+        }
+        else
+        {
+            std::vector<base::EngineOp> fnVec;
+            for (const auto &t : opEx->getPtr<base::Operation>()->getOperands())
+            {
+                if (t->isTerm())
+                {
+                    fnVec.push_back(t->getPtr<base::Term<base::EngineOp>>()->getFn());
+                }
+                else
+                {
+                    throw std::runtime_error {"Comparison of objects that have objects inside is not supported."};
+                }
+            }
+
+            auto fn = [fnVec, isEqualEqual](base::Event event) -> bool
+            {
+                for (const auto& fn : fnVec)
+                {
+                    auto result = fn(event);
+                    if (!result)
+                    {
+                        if (isEqualEqual)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return isEqualEqual;
+            };
+
+            return fn;
+        }
     };
 
     // Evaluator function
