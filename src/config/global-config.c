@@ -164,6 +164,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_mailmaxperhour = "email_maxperhour";
     const char *xml_maillogsource = "email_log_source";
     const char *xml_queue_size = "queue_size";
+    const char *xml_forwardto = "forward_to";
 
 #ifdef LIBGEOIP_ENABLED
     const char *xml_geoip_db_path = "geoip_db_path";
@@ -219,6 +220,28 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             if (Config) {
                 Config->custom_alert_output = 1;
                 os_strdup(node[i]->content, Config->custom_alert_output_format);
+            }
+        }
+        /* Socket forwarding */
+        else if (strcmp(node[i]->element, xml_forwardto) == 0) {
+            if(Config) {
+                int target_count = 1;
+                for(int tgt_idx = 0; node[i]->content[tgt_idx]; tgt_idx++) {
+                    if(node[i]->content[tgt_idx] == ',') {
+                        target_count++;
+                    }
+                }
+                mdebug2("Read %d targets to forwarding messages.",target_count);
+                Config->forwarders_list = OS_StrBreak(',', node[i]->content, target_count);
+                char * tmp;
+                if(Config->forwarders_list) {
+                    for (int tgt_idx = 0; tgt_idx < target_count; tgt_idx++) {
+                        os_strdup(w_strtrim(Config->forwarders_list[tgt_idx]), tmp);
+                        mdebug2("Add target: '%s'.",tmp);
+                        free(Config->forwarders_list[tgt_idx]);
+                        Config->forwarders_list[tgt_idx] = tmp;
+                    }
+                }
             }
         }
         /* Mail notification */
@@ -770,6 +793,15 @@ void config_free(_Config *config) {
         free(config->decoders);
     }
 
+    if (config->forwarders_list) {
+        int i = 0;
+        while (config->forwarders_list[i]) {
+            free(config->forwarders_list[i]);
+            i++;
+        }
+        free(config->forwarders_list);
+    }
+
     if (config->g_rules_hash) {
         OSHash_Free(config->g_rules_hash);
     }
@@ -804,5 +836,4 @@ void config_free(_Config *config) {
     if (config->node_type) {
         free(config->node_type);
     }
-
 }

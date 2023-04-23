@@ -86,6 +86,7 @@ struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 int num_rule_matching_threads;
+socket_forwarder* forwarder_socket_list;
 
 /* execd queue */
 static int execdq = 0;
@@ -97,6 +98,19 @@ static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
+/**
+ * Sends a JSON message to a socket. If the socket has not been created yet it will be created based on
+ * the target information. If a message fails to be sent the method will not try to send it again until *sock_fail_time* has passed
+ * @param new_event Event structure with the information.
+ * @return
+ * UNIX ->  1 message was discarded
+ * UNIX -> -1 invalid protocol or cannot create socket
+ * UNIX ->  0 message was sent
+ * WIN32 -> -1 invalid target
+ * WIN32 -> 0 valid target
+ * Notes: (UNIX) If the message is not sent because the socket is busy, the return code will be 0
+ */
+int SendJSONtoSCK(Eventinfo *new_event);
 
 /* Archives writer thread */
 void * w_writer_thread(__attribute__((unused)) void * args );
@@ -425,6 +439,27 @@ int main_analysisd(int argc, char **argv)
     Config.ar = ar_flag;
     if (Config.ar == -1) {
         Config.ar = 0;
+    }
+
+    /* Check sockets */
+    if (Config.socket_list) {
+        forwarder_socket_list = Config.socket_list;
+
+        for(int num_sk = 0; forwarder_socket_list && forwarder_socket_list[num_sk].name; num_sk++) {
+            mdebug1("Socket '%s' (%s) added. Location: %s", forwarder_socket_list[num_sk].name, forwarder_socket_list[num_sk].mode == IPPROTO_UDP ? "udp" : "tcp", forwarder_socket_list[num_sk].location);
+        }
+
+        for(int target_num = 0; Config.forwarders_list[target_num]; target_num++) {
+            int found = -1;
+            for (int num_sk = 0; forwarder_socket_list && forwarder_socket_list->name; num_sk++) {
+                found = strcmp(forwarder_socket_list[num_sk].name, Config.forwarders_list[target_num]);
+                if (found == 0) {
+                    break;
+                } else if (found != 0) {
+                    merror_exit("Socket '%s' is not defined.", Config.forwarders_list[target_num]);
+                }
+            }
+        }
     }
 
     /* Get server's hostname */
@@ -1460,6 +1495,10 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
                     jsonout_output_event(lf);
                 }
 
+                if (Config.forwarders_list) {
+                    SendJSONtoSCK(lf);
+                }
+
     #ifdef PRELUDE_OUTPUT_ENABLED
                 /* Log to prelude */
                 if (Config.prelude) {
@@ -2393,4 +2432,84 @@ void w_init_queues(){
 
     /* Initialize upgrade module message queue */
     upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 128, 2000000));
+}
+
+int SendJSONtoSCK(Eventinfo *new_event) {
+    time_t mtime;
+    int retval = 0;
+    int __mq_rcode;
+
+    char* message = Eventinfo_to_jsonstr(new_event, false, NULL);
+
+    if (!Config.forwarders_list) {
+        merror("No targets defined for a forwarder.");
+        return -1;
+    }
+
+    if (strcmp(forwarder_socket_list->name, "agent") != 0) {
+        int sock_type;
+        const char * strmode;
+
+        switch (forwarder_socket_list->mode) {
+        case IPPROTO_UDP:
+            sock_type = SOCK_DGRAM;
+            strmode = "udp";
+            break;
+        case IPPROTO_TCP:
+            sock_type = SOCK_STREAM;
+            strmode = "tcp";
+            break;
+        default:
+            merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
+            free(message);
+            return -1;
+        }
+
+        // Connect to socket if disconnected
+        if (forwarder_socket_list->socket < 0) {
+            if (mtime = time(NULL), mtime > forwarder_socket_list->last_attempt + sock_fail_time) {
+                if (forwarder_socket_list->socket = OS_ConnectUnixDomain(forwarder_socket_list->location, sock_type, OS_MAXSTR + 256), forwarder_socket_list->socket < 0) {
+                    forwarder_socket_list->last_attempt = mtime;
+                    merror("Unable to connect to socket '%s': %s (%s)", forwarder_socket_list->name, forwarder_socket_list->location, strmode);
+                    free(message);
+                    return -1;
+                }
+
+                mdebug1("Connected to socket '%s' (%s)", forwarder_socket_list->name, forwarder_socket_list->location);
+            } else {
+                mdebug2("Discarding event from '%s' due to connection issue with '%s'", message, forwarder_socket_list->name);
+                free(message);
+                return 1;
+            }
+        }
+
+        // Send msg to socket
+        if (__mq_rcode = OS_SendUnix(forwarder_socket_list->socket, message, strlen(message)), __mq_rcode < 0) {
+            if (__mq_rcode == OS_SOCKTERR) {
+                if (mtime = time(NULL), mtime > forwarder_socket_list->last_attempt + sock_fail_time) {
+                    close(forwarder_socket_list->socket);
+
+                    if (forwarder_socket_list->socket = OS_ConnectUnixDomain(forwarder_socket_list->location, sock_type, OS_MAXSTR + 256), forwarder_socket_list->socket < 0) {
+                        merror("Unable to connect to socket '%s': %s (%s).", forwarder_socket_list->name, forwarder_socket_list->location, strmode);
+                        forwarder_socket_list->last_attempt = mtime;
+                    } else {
+                        mdebug1("Connected to socket '%s' (%s)", forwarder_socket_list->name, forwarder_socket_list->location);
+
+                        if (OS_SendUnix(forwarder_socket_list->socket, message, strlen(message)), __mq_rcode < 0) {
+                            merror("Cannot send message to socket '%s'. (Abort).", forwarder_socket_list->name);
+                            forwarder_socket_list->last_attempt = mtime;
+                        }
+                        mdebug2("Message %s send to socket '%s' (%s)", message, forwarder_socket_list->name, forwarder_socket_list->location);
+                    }
+                } else {
+                    mdebug2("Discarding event from Analysisd due to connection issue with '%s'.", forwarder_socket_list->name);
+                }
+            } else {
+                merror("Cannot send message to socket '%s'. (Abort).", forwarder_socket_list->name);
+            }
+            retval = 1;
+        }
+    }
+    free(message);
+    return (retval);
 }

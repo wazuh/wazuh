@@ -32,8 +32,9 @@
 #define CAUTHD        001000000
 #define CBUFFER       002000000
 #define CCLUSTER      004000000
-#define CSOCKET       010000000
-#define CLOGTEST      020000000
+#define CLGCSOCKET    010000000
+#define CANDSOCKET    020000000
+#define CLOGTEST      040000000
 
 #define MAX_NEEDED_TAGS 4
 
@@ -99,7 +100,8 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 #endif
 int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
-int Read_Socket(XML_NODE node, void *d1, void *d2);
+int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
+int Read_AnalysisdSocket(XML_NODE node, void *d1, void *d2);
 int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
 int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
 int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1);
