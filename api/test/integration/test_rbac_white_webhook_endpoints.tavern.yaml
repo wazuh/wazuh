@@ -1,9 +1,9 @@
 ---
-test_name: send_webhook_events
+test_name: POST /events
 
 stages:
 
-  - name: POST /events allowed
+  - name: Send webhook events (Allowed)
     request:
       verify: false
       url: "{protocol:s}://{host:s}:{port:d}/events"
