@@ -1,9 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+#
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute
+# it and/or modify it under the terms of GPLv2
+
+"""This module implements the strategy pattern to provide a flexible logging solution for Wazuh Cloud Modules"""
+
 from abc import ABC, abstractmethod
 import logging
 import sys
 
+################################################################################
+# Classes
+################################################################################
 
-class LogStrategy(ABC):
+
+class WazuhLogStrategy(ABC):
     """
     LogStrategy interface.
 
@@ -59,39 +73,47 @@ class LogStrategy(ABC):
         """
         pass
 
+    @abstractmethod
+    def critical(self, message: str):
+        """
+        Log a CRITICAL level message.
 
-class Logger:
+        Parameters
+        ----------
+        message : str
+            The message to be logged.
+        """
+        pass
+
+
+class WazuhCloudLogger:
     """
-    Logger class.
+    WazuhCloudLogger class.
 
     Provides a flexible logging solution for Wazuh that supports
     GCP, AWS, and Azure integrations using the strategy pattern.
     """
 
-    def __init__(self, strategy: LogStrategy, logger_name: str, log_level=1):
+    def __init__(self, strategy: WazuhLogStrategy, log_level: int = 1) -> object:
         """
-        Initialize the Logger class.
+        Initialize the Wazuh Cloud Logger class.
 
         Parameters
         ----------
         strategy : LogStrategy
             The logging strategy to be used (GCP, AWS, or Azure).
-        logger_name : str
-            The name of the logger.
         log_level : int, optional
             The logging level (0 for WARNING, 1 for INFO, 2 for DEBUG), default is 1.
         """
         self.strategy = strategy
-        self.logger = self.setup_logger(logger_name, log_level)
+        self.logger = self.setup_logger(log_level)
 
-    def setup_logger(self, logger_name: str, log_level: int) -> logging.Logger:
+    def setup_logger(self, log_level: int) -> logging.Logger:
         """
         Set up the logger.
 
         Parameters
         ----------
-        logger_name : str
-            The name of the logger.
         log_level : int
             The logging level (0 for WARNING, 1 for INFO, 2 for DEBUG).
 
@@ -100,8 +122,12 @@ class Logger:
         logging.Logger
             Configured logger instance.
         """
-        logger = logging.getLogger(logger_name)
-        log_levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
+        logger = self.strategy.logger
+        log_levels = {
+            0: logging.WARNING,
+            1: logging.INFO,
+            2: logging.DEBUG
+        }
         logger.setLevel(log_levels.get(log_level, logging.INFO))
         handler = self._setup_handler()
         logger.addHandler(handler)
@@ -163,3 +189,14 @@ class Logger:
             The message to be logged.
         """
         self.strategy.error(message)
+
+    def critical(self, message: str):
+        """
+        Log a CRITICAL level message using the selected strategy.
+
+        Parameters
+        ----------
+        message : str
+            The message to be logged.
+        """
+        self.strategy.critical(message)

@@ -8,23 +8,22 @@
 
 """This module contains generic functions for this wodle."""
 
+# Module Imports
 import argparse
-import logging
-from sys import stdout
 from datetime import datetime
-from logging.handlers import TimedRotatingFileHandler
 from pytz import UTC
 
+################################################################################
+# Constants
+################################################################################
 
-logger_name = ':gcloud_wodle:'
-logger = logging.getLogger(logger_name)
-log_levels = {0: logging.WARNING,
-              1: logging.INFO,
-              2: logging.DEBUG}
-logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-min_num_threads = 1
-min_num_messages = 1
-valid_types = ['pubsub', 'access_logs']
+MIN_NUM_THREADS = 1
+MIN_NUM_MESSAGES = 1
+VALID_TYPES = ['pubsub', 'access_logs']
+
+################################################################################
+# Functions
+################################################################################
 
 
 def get_script_arguments():
@@ -40,7 +39,7 @@ def get_script_arguments():
                                      formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('-T', '--integration_type', dest='integration_type',
-                        help=f'Supported integration types: {*valid_types,}', required=True)
+                        help=f'Supported integration types: {*VALID_TYPES,}', required=True)
 
     parser.add_argument('-p', '--project', dest='project',
                         help='Project ID')
@@ -70,38 +69,12 @@ def get_script_arguments():
                         default=None, type=arg_valid_date)
 
     parser.add_argument('-t', '--num_threads', dest='n_threads', type=int,
-                        help='Number of threads', required=False, default=min_num_threads)
+                        help='Number of threads', required=False, default=MIN_NUM_THREADS)
     
     parser.add_argument('--reparse', action='store_true', dest='reparse', 
                         help='Parse the log, even if its been parsed before', default=False)
 
     return parser.parse_args()
-
-
-def get_stdout_logger(name: str, level: int = 0) -> logging.Logger:
-    """Create a logger which returns the messages by stdout.
-
-    Parameters
-    ----------
-    name : str
-        Logger name.
-    level : int
-        Log level to be set.
-
-    Returns
-    -------
-    logging.Logger
-        Logger configured with input parameters. Returns the messages by stdout.
-    """
-    logger_stdout = logging.getLogger(name)
-    # set log level
-    logger.setLevel(log_levels.get(level, logging.WARNING))
-    # set handler for stdout
-    stdout_handler = logging.StreamHandler(stdout)
-    stdout_handler.setFormatter(logging_format)
-    logger_stdout.addHandler(stdout_handler)
-
-    return logger_stdout
 
 
 def arg_valid_date(arg_string: str) -> datetime:

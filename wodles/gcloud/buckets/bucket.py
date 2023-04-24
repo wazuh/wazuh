@@ -6,18 +6,21 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-import logging
+"""This module contains the class for getting Google Cloud Storage Bucket logs"""
+
 import sqlite3
-from sys import exit, path
+from sys import path
 from datetime import datetime, timezone
 from json import dumps, JSONDecodeError
 from os.path import join, dirname, realpath
 
 path.append(join(dirname(realpath(__file__)), '..', '..'))  # noqa: E501
+
+# Local Imports
 import utils
 import exceptions
-import tools
 from integration import WazuhGCloudIntegration
+from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
 
 try:
     from google.cloud import storage
@@ -30,7 +33,7 @@ except ImportError as e:
 class WazuhGCloudBucket(WazuhGCloudIntegration):
     """Class for getting Google Cloud Storage Bucket logs"""
 
-    def __init__(self, credentials_file: str, logger: logging.Logger, bucket_name: str, prefix: str = None,
+    def __init__(self, credentials_file: str, logger: WazuhCloudLogger, bucket_name: str, prefix: str = None,
             delete_file: bool = False, only_logs_after: datetime = None, reparse : bool = False):
         """Class constructor.
 
@@ -38,7 +41,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         ----------
         credentials_file : str
             Path to credentials file.
-        logger : logging.Logger
+        logger : WazuhCloudLogger
             Logger to use.
         bucket_name : str
             Name of the bucket to read the logs from.

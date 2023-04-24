@@ -6,6 +6,8 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
+"""This module contains the Class for getting Google Cloud Storage Access logs"""
+
 import csv
 import logging
 from os.path import dirname, realpath
@@ -13,18 +15,23 @@ from sys import path
 
 path.append(dirname(realpath(__file__)))  # noqa: E501
 from bucket import WazuhGCloudBucket
+from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
+
+################################################################################
+# Classes
+################################################################################
 
 
 class GCSAccessLogs(WazuhGCloudBucket):
     """Class for getting Google Cloud Storage Access Logs logs"""
-    def __init__(self, credentials_file: str, logger: logging.Logger, **kwargs):
+    def __init__(self, credentials_file: str, logger: WazuhCloudLogger, **kwargs):
         """Class constructor.
 
         Parameters
         ----------
         credentials_file : str
             Path to credentials file.
-        logger : logging.Logger
+        logger : WazuhCloudLogger
             Logger to use.
         kwargs : any
             Additional named arguments for WazuhGCloudBucket.
