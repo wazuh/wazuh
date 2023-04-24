@@ -7,6 +7,7 @@ from datetime import datetime
 from json import loads
 
 from box import Box
+from requests import Response
 
 
 def get_values(o):
@@ -510,5 +511,16 @@ def healthcheck_agent_restart(response, agents_list):
     check_agent_active_status(agents_list)
 
 
-def assert_forwarded_events(response, forwarded_events: str, expected_events: int):
+def assert_forwarded_events(response: Response, forwarded_events: str, expected_events: int):
+    """Check if the number forwarded events is equal to the expectede one.
+
+    Parameters
+    ----------
+    response : Response
+        Response from the endpoint.
+    forwarded_events : str
+        Events received from the analysisd socket.
+    expected_events : int
+        Number of expected events.
+    """
     assert len(eval(forwarded_events)) == expected_events, 'Forwarded events are not equal to the expected number'
