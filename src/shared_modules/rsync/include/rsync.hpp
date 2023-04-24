@@ -44,11 +44,11 @@ public:
     static void initialize(std::function<void(const std::string&)> logFunction);
 
     /**
-     * @brief Initialize all the logs functions used by RSync.
+     * @brief Initialize all the logs functions used by RSync with a full log function.
      *
      * @param log_function Function pointer to the log function.
      */
-    static void initializeLogFunction(full_log_fnc_t log_function);
+    static void initializeFullLogFunction(full_log_fnc_t log_function);
 
     /**
      * @brief Remote sync initializes the instance.

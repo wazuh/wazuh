@@ -40,7 +40,13 @@ extern "C" {
  */
 EXPORTED void rsync_initialize(log_fnc_t log_function);
 
-EXPORTED void rsync_initialize_log_function(full_log_fnc_t log_function);
+/**
+ * @brief Initializes the shared library with a full log function, it is, a function
+ * that can handle the log level, a tag, the file name, the line number and the function name.
+ *
+ * @param log_function Pointer to the full log function to be used by the rsync.
+ */
+EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t log_function);
 
 /**
  * @brief Turns off the services provided by the shared library.

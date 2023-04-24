@@ -20,6 +20,13 @@
 
 void* so_get_module_handle_on_path(const char *path, const char *so);
 void* so_get_module_handle(const char *so);
+/**
+ * @brief Check if a module/library is already loaded. Must call a corresponding so_free_library()
+ * if not used in WIN32.
+ *
+ * @param so The name of the module/library to check.
+ * @return void* A handle to module if it is already loaded, NULL otherwise.
+ */
 void* so_check_module_loaded(const char *so);
 void* so_get_function_sym(void *handle, const char *function_name);
 int so_free_library(void *handle);

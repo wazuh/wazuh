@@ -42,9 +42,9 @@ EXPORTED void rsync_initialize(log_fnc_t log_function)
     });
 }
 
-EXPORTED void rsync_initialize_log_function(full_log_fnc_t log_function)
+EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t log_function)
 {
-    RemoteSync::initializeLogFunction(log_function);
+    RemoteSync::initializeFullLogFunction(log_function);
 }
 
 EXPORTED void rsync_teardown(void)
@@ -222,13 +222,13 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
     }
 }
 
-void RemoteSync::initializeLogFunction(full_log_fnc_t log_function)
+void RemoteSync::initializeFullLogFunction(full_log_fnc_t log_function)
 {
-    Log::debug.assignLogFunction(log_function);
-    Log::debugVerbose.assignLogFunction(log_function);
-    Log::info.assignLogFunction(log_function);
-    Log::warning.assignLogFunction(log_function);
-    Log::error.assignLogFunction(log_function);
+    Log::debug.assignLogFunction(log_function, "rsync");
+    Log::debugVerbose.assignLogFunction(log_function, "rsync");
+    Log::info.assignLogFunction(log_function, "rsync");
+    Log::warning.assignLogFunction(log_function, "rsync");
+    Log::error.assignLogFunction(log_function, "rsync");
 }
 
 void RemoteSync::teardown()
@@ -367,12 +367,4 @@ StartSyncConfiguration& StartSyncConfiguration::rangeChecksum(QueryParameter& pa
 {
     m_jsConfiguration["range_checksum_query_json"] = parameter.queryParameter();
     return *this;
-}
-
-void RemoteSync::logMessage(const std::string& msg)
-{
-    if (!msg.empty() && gs_logFunction)
-    {
-        gs_logFunction(msg);
-    }
 }

@@ -85,6 +85,6 @@ typedef void(*syscollector_stop_func)();
 
 typedef int (*syscollector_sync_message_func)(const char* data);
 
-typedef void (*rsync_initialize_log_func)(full_log_fnc_t);
+typedef void (*rsync_initialize_full_log_func)(full_log_fnc_t);
 
 #endif //_SYSCOLLECTOR_H

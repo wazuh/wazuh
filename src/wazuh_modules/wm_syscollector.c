@@ -91,25 +91,6 @@ static void wm_sys_send_dbsync_message(const void* data) {
     wm_sys_send_message(data, DBSYNC_MQ);
 }
 
-static void wm_sys_log(const syscollector_log_level_t level, const char* log) {
-
-    switch(level) {
-        case SYS_LOG_ERROR:
-            mterror(WM_SYS_LOGTAG, "%s", log);
-            break;
-        case SYS_LOG_INFO:
-            mtinfo(WM_SYS_LOGTAG, "%s", log);
-            break;
-        case SYS_LOG_DEBUG:
-            mtdebug1(WM_SYS_LOGTAG, "%s", log);
-            break;
-        case SYS_LOG_DEBUG_VERBOSE:
-            mtdebug2(WM_SYS_LOGTAG, "%s", log);
-            break;
-        default:;
-    }
-}
-
 static void wm_sys_log_config(wm_sys_t *sys)
 {
     cJSON * config_json = wm_sys_dump(sys);
@@ -156,10 +137,11 @@ void* wm_sys_main(wm_sys_t *sys) {
 
         void* rsync_module = NULL;
         if(rsync_module = so_check_module_loaded("rsync"), rsync_module) {
-            rsync_initialize_log_func rsync_initialize_log_function_ptr = so_get_function_sym(rsync_module, "rsync_initialize_log_function");
+            rsync_initialize_full_log_func rsync_initialize_log_function_ptr = so_get_function_sym(rsync_module, "rsync_initialize_full_log_function");
             if(rsync_initialize_log_function_ptr) {
                 rsync_initialize_log_function_ptr(mt_log_wrapper);
             }
+            // Even when the RTLD_NOLOAD flag was used for dlopen(), we need a matching call to dlclose()
 #ifndef WIN32
             so_free_library(rsync_module);
 #endif

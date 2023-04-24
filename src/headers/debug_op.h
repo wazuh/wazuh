@@ -83,8 +83,17 @@ void _merror_exit(const char * file, int line, const char * func, const char *ms
 void _plain_merror_exit(const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 4, 5))) __attribute__((nonnull)) __attribute__ ((noreturn));
 void _mterror_exit(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull)) __attribute__ ((noreturn));
 void _mlerror_exit(const int level, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull)) __attribute__ ((noreturn));
-
-void mt_log_wrapper(const char* log_type, const char *tag, const char * file, int line, const char * func, const char *msg, ...);
+/**
+ * @brief Wrapper function for all the _mt variants of the logging functions. It calls the appropriate function based on the level parameter.
+ *
+ * @param level Log level (error, warning, info, debug, debug_verbose).
+ * @param tag The name of the module that is logging the message.
+ * @param file The name of the file where logging has been done.
+ * @param line The line number where logging has been done.
+ * @param func The name of the function where logging has been done.
+ * @param msg Log message.
+ */
+void mt_log_wrapper(const char* level, const char *tag, const char * file, int line, const char * func, const char *msg, ...);
 
 /**
  * @brief Logging module initializer

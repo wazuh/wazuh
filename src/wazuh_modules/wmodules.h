@@ -224,7 +224,4 @@ wmodule * wm_find_module(const char * name);
  */
 size_t wm_module_query(char * query, char ** output);
 
-// Basic logging function
-void logFunction(const char* msg);
-
 #endif // W_MODULES

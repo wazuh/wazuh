@@ -21,8 +21,6 @@
 
 using FullLogFunction = auto (*)(const char* log_level, const char* tag, const char* file, int line, const char* func, const char* msg, ...) -> void;
 
-auto constexpr LOGGER_TAG {"loggerHelper"};
-
 namespace Log
 {
 
@@ -41,6 +39,7 @@ namespace Log
         private:
             FullLogFunction m_logFunction;
             std::unordered_map<std::thread::id, std::string> m_threadsBuffers;
+            std::string m_tag;
 
         protected:
             std::string m_logType;
@@ -51,16 +50,19 @@ namespace Log
             Logger& operator=(const Logger& other) = delete;
             Logger(const Logger& other) = delete;
 
-            Logger& assignLogFunction(FullLogFunction& logFunction)
+            Logger& assignLogFunction(FullLogFunction& logFunction, const std::string& tag)
             {
                 if (!m_logFunction)
                 {
                     m_logFunction = logFunction;
+                    m_tag = tag;
                 }
 
                 return *this;
             }
 
+            // The << operator is overloaded to append data in the buffer for the current thread
+            // but the message isn't logged until std::endl or Log::endl are found.
             friend Logger& operator<<(Logger& logObject, const std::string& msg)
             {
                 if (!msg.empty())
@@ -72,6 +74,7 @@ namespace Log
                 return logObject;
             }
 
+            // This << overload is used when std::endl is found. But the file, line and function always point here.
             friend Logger& operator<<(Logger& logObject,
                                       std::ostream & (*)(std::ostream&))
             {
@@ -79,13 +82,15 @@ namespace Log
                 {
                     std::lock_guard<std::mutex> lockGuard(logMutex);
                     auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_logType.c_str(), LOGGER_TAG, __FILE__, __LINE__, __func__, logObject.m_threadsBuffers[threadId].c_str());
+                    logObject.m_logFunction(logObject.m_logType.c_str(), logObject.m_tag.c_str(), __FILE__, __LINE__, __func__, logObject.m_threadsBuffers[threadId].c_str());
                     logObject.m_threadsBuffers.erase(threadId);
                 }
 
                 return logObject;
             }
 
+            // This << overload is used when Log::endl is found. The file, line and function are taken from the sourceFile structure that
+            // contains the required data.
             friend Logger& operator<<(Logger& logObject,
                                       sourceFile sourceLocation)
             {
@@ -93,7 +98,7 @@ namespace Log
                 {
                     std::lock_guard<std::mutex> lockGuard(logMutex);
                     auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_logType.c_str(), LOGGER_TAG, sourceLocation.file, sourceLocation.line, sourceLocation.func, logObject.m_threadsBuffers[threadId].c_str());
+                    logObject.m_logFunction(logObject.m_logType.c_str(), logObject.m_tag.c_str(), sourceLocation.file, sourceLocation.line, sourceLocation.func, logObject.m_threadsBuffers[threadId].c_str());
                     logObject.m_threadsBuffers.erase(threadId);
                 }
 
