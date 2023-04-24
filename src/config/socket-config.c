@@ -114,6 +114,10 @@ int Read_AnalysisdSocket(XML_NODE node, void *d1, void *d2) {
     unsigned int pl = 0;
     unsigned int i = 0;
 
+    if(!analysis_config) {
+        return OS_INVALID;
+    }
+
     /* If config is not set, create it */
     if (!analysis_config->socket_list) {
         os_calloc(2, sizeof(socket_forwarder), analysis_config->socket_list);

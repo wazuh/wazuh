@@ -157,7 +157,7 @@ extern int loop_timeout;
 extern int logr_queue;
 extern int open_file_attempts;
 extern logreader *logff;
-extern socket_forwarder *globs;
+extern logreader_glob *globs;
 extern socket_forwarder *logsk;
 extern int vcheck_files;
 extern int maximum_lines;

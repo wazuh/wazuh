@@ -29,7 +29,7 @@ int LogCollectorConfig(const char *cfgfile)
     logreader_config log_config;
 
     modules |= CLOCALFILE;
-    modules |= CSOCKET;
+    modules |= CLGCSOCKET;
 
     log_config.config = NULL;
     log_config.globs = NULL;
