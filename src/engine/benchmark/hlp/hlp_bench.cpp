@@ -58,6 +58,7 @@ static std::string getRandomCapExprVariable(int len)
     for (int i = 0; i < len; ++i)
     {
         ret += '<';
+        ret += '~';
         ret += getRandomString((rand() % 10) + 1);
         for (int j = 0; j < (rand() % 5); ++j)
         {
@@ -77,6 +78,7 @@ static std::string getRandomCapExpr(int len)
     for (int i = 0; i < len; ++i)
     {
         ret += '<';
+        ret += '~';
         ret += getRandomString(10);
         for (int j = 0; j < 4; ++j)
         {
@@ -190,7 +192,7 @@ static void match_literal_range(benchmark::State& state)
     }
 }
 BENCHMARK(match_literal_range)->Range(8, 8 << 11);
-
+/*
 static void getting_result_from_defined_parser(benchmark::State& state)
 {
     // TODO Probably need a way to mix-match a variable number of all our
@@ -238,7 +240,7 @@ static void getting_result_from_defined_expression(benchmark::State& state)
     }
 }
 BENCHMARK(getting_result_from_defined_expression);
-
+*/
 // Url parsing
 static void url_parse(benchmark::State& state)
 {
@@ -574,6 +576,8 @@ static void quoted_string_variable_length_parse(benchmark::State& state)
     std::string ev = "\"" + getRandomString(state.range(0)) + "\"";
 
     Parser p;
+    p.options.push_back("\"");
+    p.options.push_back("\"");
     p.name = "quoted_string";
     p.endToken = '\0';
     ParseResult result;
@@ -585,3 +589,28 @@ static void quoted_string_variable_length_parse(benchmark::State& state)
     }
 }
 BENCHMARK(quoted_string_variable_length_parse)->Range(8, 8 << 8);
+
+
+static void getting_result_from_defined_expression(benchmark::State& state)
+{
+    const char* logparExpression =
+        "<source.address> - <JSON> - [<timestamp/APACHE>]"
+        " \"<http.request.method> <url> HTTP/<http.version>\" "
+        "<http.response.status_code> <http.response.body.bytes> \"-\" "
+        "\"<user_agent.original>\"";
+    const char* event =
+        "monitoring-server - {\"data\":\"this is a json\"} - "
+        "[29/May/2017:19:02:48 +0000] \"GET https://user:password@wazuh.com"
+        ":8080/status?query=%22a%20query%20with%20a%20space%22#fragment "
+        "HTTP/1.1\" 200 612 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0)"
+        " Gecko/20120716 Firefox/15.0a2\"";
+
+    for (auto _ : state)
+    {
+        auto parseOp = getParserOp(logparExpression);
+        ParseResult result;
+        bool ret = parseOp(event, result);
+    }
+}
+BENCHMARK(getting_result_from_defined_expression);
+*/

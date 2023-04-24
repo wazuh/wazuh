@@ -14,8 +14,9 @@ add_library(hlp3 STATIC
 )
 
 #TODO do this better
-target_link_libraries(hlp3)
+target_link_libraries(hlp3 json)
 
 target_include_directories(hlp3
     PUBLIC
-    ${ENGINE_HLP3_INCLUDE_DIR})
+    ${ENGINE_HLP3_INCLUDE_DIR}
+)

@@ -31,6 +31,8 @@ target_link_libraries(engine_bench_main
 
 add_subdirectory(regex)
 add_subdirectory(hlp)
+add_subdirectory(hlp2)
+add_subdirectory(hlp3)
 add_subdirectory(kvdb)
 add_subdirectory(logicExpression)
 add_subdirectory(base)

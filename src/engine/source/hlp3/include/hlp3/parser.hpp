@@ -16,31 +16,45 @@ class InputP final
 {
 
 private:
-    std::string_view m_data;
-    std::size_t m_pos;
+    std::string_view m_data; // The data to be parsed
+    std::size_t m_pos;       // The current position in the data
+    std::size_t m_maxPos;    // The maximum position in the data, this is used to limit the parser to a certain size
 
 public:
-    // TODO Capture this
+    // TODO Capture this or not (?)
     InputP() {
         throw std::logic_error("Input::Input: default constructor is not allowed");
     }
 
     InputP(std::string_view data)
         : m_data(data)
-        , m_pos(0) {};
+        , m_pos(0)
+        , m_maxPos(data.size())
+         {};
 
-    void addOffset(std::size_t offset)
+    InputP(const char *data)
+        : m_data(data)
+        , m_pos(0)
+        , m_maxPos(std::string_view(data).size())
+    {
+    }
+
+
+    InputP& advance(std::size_t offset)
     {
         m_pos += offset;
-        if (m_pos > m_data.size())
+        if (m_pos > m_maxPos)
         {
-            throw std::logic_error("Input::addOffset: offset is too large");
+            throw std::logic_error("Input::advance: offset is too large");
         }
+        return *this;
     }
 
     std::size_t getPos() const { return m_pos; }
 
-    std::size_t getRemaining() const { return m_data.size() - m_pos; }
+    const std::string_view& getData() const { return m_data; }
+
+    std::size_t getRemaining() const { return m_maxPos - m_pos; }
 
     std::string_view getRemainingData() const { return m_data.substr(m_pos); }
 };
@@ -228,6 +242,12 @@ public:
                 m_traces = std::move(otherTraces);
             }
         }
+        return *this;
+    }
+
+    ResultP& concatenateTraces(TraceP&& otherTraces)
+    {
+        m_traces.value().push_back(std::move(otherTraces));
         return *this;
     }
 
