@@ -932,6 +932,7 @@ class AWSBucket(WazuhIntegration):
                 sys.exit(error_code)
 
         try:
+            info(f"Getting information from file {log_key}")
             return self.load_information_from_file(log_key=log_key)
         except (TypeError, IOError, zipfile.BadZipfile, zipfile.LargeZipFile) as e:
             exception_handler("Failed to decompress file {}: {}".format(log_key, e), 8)
@@ -950,15 +951,18 @@ class AWSBucket(WazuhIntegration):
     def iter_regions_and_accounts(self, account_id, regions):
         if not account_id:
             # No accounts provided, so find which exist in s3 bucket
+            info(f"No account id provided, using the account id in the s3 bucket")
             account_id = self.find_account_ids()
         for aws_account_id in account_id:
             # No regions provided, so find which exist for this AWS account
             if not regions:
+                info(f"No regions provided, using the ones that exists for the AWS Account")
                 regions = self.find_regions(aws_account_id)
                 if not regions:
                     continue
             for aws_region in regions:
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                info(f"Getting files for region {aws_region}")
                 self.iter_files_in_bucket(aws_account_id, aws_region)
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
@@ -3427,6 +3431,10 @@ def error(msg):
     print('ERROR: {error_msg}'.format(error_msg=msg))
 
 
+def info(msg):
+    print('INFO: {msg}'.format(msg=msg))
+
+
 def arg_valid_date(arg_string):
     try:
         parsed_date = datetime.strptime(arg_string, "%Y-%b-%d")
@@ -3617,6 +3625,7 @@ def main(argv):
             else:
                 raise Exception(f"Invalid type of bucket passed: {options.logBucker}")
             debug(f"Initializing class {bucket_type.__name__} for handling bucket of type {options.logBucket}", 1)
+            info(f"Working with a bucket of type {options.logBucket}")
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
                                  secret_key=options.secret_key,
                                  profile=options.aws_profile,
@@ -3663,6 +3672,7 @@ def main(argv):
             for region in options.regions:
                 debug('+++ Getting alerts from "{}" region.'.format(region), 1)
                 debug(f"Initializing class {service_type.__name__} for handling service of type {options.service}", 1)
+                info(f"Working with a service of type {options.service}")
                 service = service_type(reparse=options.reparse,
                                        access_key=options.access_key,
                                        secret_key=options.secret_key,
