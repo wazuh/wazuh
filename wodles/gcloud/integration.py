@@ -12,10 +12,12 @@ import logging
 import socket
 from sys import path
 from os.path import dirname, abspath
+
+# Local Imports
 path.insert(0, dirname(dirname(abspath(__file__))))
 import exceptions
 from utils import ANALYSISD
-
+from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
 
 class WazuhGCloudIntegration:
     """Class for sending events from Google Cloud to Wazuh."""
@@ -23,12 +25,12 @@ class WazuhGCloudIntegration:
     header = '1:Wazuh-GCloud:'
     key_name = 'gcp'
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: WazuhCloudLogger):
         """Instantiate a WazuhGCloudIntegration object.
 
         Parameters
         ----------
-        logger: logging.Logger
+        logger: WazuhCloudLogger
             The logger that will be used to send messages to stdout.
         """
         self.logger = logger

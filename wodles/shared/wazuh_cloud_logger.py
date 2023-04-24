@@ -94,7 +94,7 @@ class WazuhCloudLogger:
     GCP, AWS, and Azure integrations using the strategy pattern.
     """
 
-    def __init__(self, strategy: WazuhLogStrategy, log_level: int = 1) -> object:
+    def __init__(self, strategy: WazuhLogStrategy, log_level: int) -> logging.Logger:
         """
         Initialize the Wazuh Cloud Logger class.
 
@@ -123,12 +123,8 @@ class WazuhCloudLogger:
             Configured logger instance.
         """
         logger = self.strategy.logger
-        log_levels = {
-            0: logging.WARNING,
-            1: logging.INFO,
-            2: logging.DEBUG
-        }
-        logger.setLevel(log_levels.get(log_level, logging.INFO))
+        logger_level = logging.DEBUG if log_level == 2 else logging.INFO
+        logger.setLevel(logger_level)
         handler = self._setup_handler()
         logger.addHandler(handler)
         return logger
