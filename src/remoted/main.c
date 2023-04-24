@@ -154,16 +154,16 @@ int main(int argc, char **argv)
             break;
     }
 
+    if (logr.conn == NULL) {
+        /* Not configured */
+        merror_exit("Remoted connection is not configured.");
+    }
+
     /* Exit if test_config is set */
     if (test_config) {
         exit(0);
     }
 
-    if (logr.conn == NULL) {
-        /* Not configured */
-        minfo("Remoted connection is not configured... Exiting.");
-        exit(0);
-    }
 
     /* Don't exit when client.keys empty (if set) */
     pass_empty_keyfile = getDefine_Int("remoted", "pass_empty_keyfile", 0, 1);
