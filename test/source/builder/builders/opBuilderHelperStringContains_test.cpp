@@ -16,26 +16,24 @@ TEST(opBuilderHelperStringContains, Build)
     auto tuple = std::make_tuple(
         std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"test_value"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperStringContains(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperStringContains, tuple));
 }
 
 // Build incorrect number of arguments
 TEST(opBuilderHelperStringContains, BuildManyParametersError)
 {
-    auto tuple = std::make_tuple(std::string {"/sourceField"},
-                                 std::string {"contains"},
-                                 std::vector<std::string> {"test_value", "test_value2"});
+    auto tuple = std::make_tuple(
+        std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"test_value", "test_value2"});
 
-    ASSERT_THROW(bld::opBuilderHelperStringContains(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperStringContains, tuple), std::runtime_error);
 }
 
 // Failed Empty
 TEST(opBuilderHelperStringContains, FailedEmptyStringValueOrReference)
 {
     // value
-    auto tuple =
-        std::make_tuple(std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {""});
-    auto op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto tuple = std::make_tuple(std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {""});
+    auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
     auto event = std::make_shared<json::Json>(
         R"({"sourceField":"sample_test_value",
         "reference":""})");
@@ -48,7 +46,7 @@ TEST(opBuilderHelperStringContains, FailedEmptyStringValueOrReference)
     tuple = std::make_tuple(
         std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$reference"});
 
-    op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result = op(event);
     ASSERT_FALSE(result);
@@ -61,7 +59,7 @@ TEST(opBuilderHelperStringContains, SuccessAndFailedUsageWithValue)
     auto tuple =
         std::make_tuple(std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"test"});
 
-    auto op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     auto event = std::make_shared<json::Json>(R"({"sourceField":"sample_test_value"})");
 
@@ -76,7 +74,7 @@ TEST(opBuilderHelperStringContains, SuccessAndFailedUsageWithReference)
     auto tuple = std::make_tuple(
         std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$test_reference"});
 
-    auto op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     auto event = std::make_shared<json::Json>(
         R"({"sourceField":"sample_test_value",
@@ -96,7 +94,7 @@ TEST(opBuilderHelperStringContains, SeveralDifferentCasesAsReferencce)
     // basic reference
     auto tuple = std::make_tuple(
         std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$test_reference"});
-    auto op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     const std::vector<std::string> textFields = {R"(ABCDEFGHIJKLMNOPQRSTUVWXYZ)",
                                                  R"(abcdefghijklmnopqrstuvwxyz)",
@@ -134,7 +132,7 @@ TEST(opBuilderHelperStringContains, SeveralDifferentCasesByValue)
         // basic reference
         auto tuple = std::make_tuple(
             std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {baseText});
-        auto op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
         auto event = std::make_shared<json::Json>((fmt::format(R"({{"sourceField":"{}"}})", allChars)).c_str());
 
@@ -170,7 +168,7 @@ TEST(opBuilderHelperStringContains, NotFoundVariousCases)
         // basic reference
         auto tuple = std::make_tuple(
             std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {baseText});
-        auto op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
         auto event =
             std::make_shared<json::Json>((fmt::format(R"({{"sourceField":"{}"}})", sourceFields.at(index++))).c_str());
@@ -188,7 +186,7 @@ TEST(opBuilderHelperStringContains, NestedReferencedStrings)
                                  std::string {"contains"},
                                  std::vector<std::string> {"$rootKey2.ref_key"});
 
-    auto op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     auto event = std::make_shared<json::Json>(R"(
                 {
@@ -209,7 +207,7 @@ TEST(opBuilderHelperStringContains, NestedReferencedStrings)
     tuple = std::make_tuple(
         std::string {"/rootKey1/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$rootKey2.0.A1"});
 
-    op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
     event = std::make_shared<json::Json>(R"(
                 {
                     "rootKey2":
@@ -237,7 +235,7 @@ TEST(opBuilderHelperStringContains, NestedReferencedStrings)
     tuple = std::make_tuple(
         std::string {"/root/ObjA/ObjB/Field"}, std::string {"contains"}, std::vector<std::string> {"value"});
 
-    op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
     event = std::make_shared<json::Json>(R"(
             {
                 "root":
@@ -261,7 +259,7 @@ TEST(opBuilderHelperStringContains, NotFoundDifferentTypes)
     auto tuple = std::make_tuple(
         std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$reference"});
 
-    auto op = bld::opBuilderHelperStringContains(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     // Bool
     auto event = std::make_shared<json::Json>(

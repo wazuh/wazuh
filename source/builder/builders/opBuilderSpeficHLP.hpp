@@ -7,7 +7,6 @@
 
 #include "expression.hpp"
 
-
 //*************************************************
 //*         HLP Specific parser Helpers           *
 //*************************************************
@@ -18,170 +17,249 @@ namespace builder::internals::builders
 /**
  * @brief Helper function of boolean parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  * @throw std::runtime_error If the number of parameters is not 1 (source)
  */
-base::Expression opBuilderSpecificHLPBoolParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPBoolParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of byte parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  * @throw std::runtime_error If the number of parameters is not 1 (source)
  */
-base::Expression opBuilderSpecificHLPByteParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPByteParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of long parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  * @throw std::runtime_error If the number of parameters is not 1 (source)
  */
-base::Expression opBuilderSpecificHLPLongParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPLongParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of float parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  * @throw std::runtime_error If the number of parameters is not 1 (source)
  */
-base::Expression opBuilderSpecificHLPFloatParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPFloatParse(const std::string& targetField,
+                                                const std::string& rawName,
+                                                const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of double parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  * @throw std::runtime_error If the number of parameters is not 1 (source)
  */
-base::Expression opBuilderSpecificHLPDoubleParse(const std::any& definition);
-
+base::Expression opBuilderSpecificHLPDoubleParse(const std::string& targetField,
+                                                 const std::string& rawName,
+                                                 const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of base64 parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  * @throw std::runtime_error If the number of parameters is not 1 (source)
  */
-base::Expression opBuilderSpecificHLPBinaryParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPBinaryParse(const std::string& targetField,
+                                                 const std::string& rawName,
+                                                 const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of date parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPDateParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPDateParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of ip parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPIPParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPIPParse(const std::string& targetField,
+                                             const std::string& rawName,
+                                             const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of uri parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPURIParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPURIParse(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of user agent parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPUserAgentParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPUserAgentParse(const std::string& targetField,
+                                                    const std::string& rawName,
+                                                    const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of FQDN parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPFQDNParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPFQDNParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of file path parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPFilePathParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPFilePathParse(const std::string& targetField,
+                                                   const std::string& rawName,
+                                                   const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of json parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPJSONParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPJSONParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of xml parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPXMLParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPXMLParse(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of csv parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPCSVParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPCSVParse(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of dsv parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPDSVParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPDSVParse(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of key value parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPKeyValueParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPKeyValueParse(const std::string& targetField,
+                                                   const std::string& rawName,
+                                                   const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of quoted parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPQuotedParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPQuotedParse(const std::string& targetField,
+                                                 const std::string& rawName,
+                                                 const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of between parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  */
-base::Expression opBuilderSpecificHLPBetweenParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPBetweenParse(const std::string& targetField,
+                                                  const std::string& rawName,
+                                                  const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper function of alphanumeric parser from HLP
  *
- * @param definition Definition of the operation
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression Expression of the operation
  * @throw std::runtime_error If the number of parameters is not 1 (source)
  */
-base::Expression opBuilderSpecificHLPAlphanumericParse(const std::any& definition);
+base::Expression opBuilderSpecificHLPAlphanumericParse(const std::string& targetField,
+                                                       const std::string& rawName,
+                                                       const std::vector<std::string>& rawParameters);
 
 } // namespace builder::internals::builders
 

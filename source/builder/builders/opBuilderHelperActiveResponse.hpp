@@ -28,12 +28,17 @@ constexpr const char* SUPPORTED_VERSION {"1"};
 } // namespace ar
 
 /**
- * @brief Helper Function that allows to send a message through the AR queue
+ * @brief Helper Function that allows to send a message through the AR queue.
+ * `<field>: +active_response_send/<str>|$<ref>`
  *
- * @param definition The transformation definition. i.e : `<field>: +active_response_send/<str>|$<ref>`
+ * @param targetField
+ * @param rawName
+ * @param rawParameters
  * @return base::Expression The lifter with the `active_response_send` transformation.
  */
-base::Expression opBuilderHelperSendAR(const std::any& definition);
+base::Expression opBuilderHelperSendAR(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Helper Function for creating the base event that will be sent through
@@ -46,10 +51,14 @@ base::Expression opBuilderHelperSendAR(const std::any& definition);
  * through a reference.
  *  - <extra-args>   (optional) Reference to an array of *strings*.
  *
- * @param definition
+ * @param targetField
+ * @param rawName
+ * @param rawParameters
  * @return base::Expression
  */
-base::Expression opBuilderHelperCreateAR(const std::any& definition);
+base::Expression opBuilderHelperCreateAR(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters);
 
 } // namespace builder::internals::builders
 

@@ -14,18 +14,18 @@ namespace builder::internals::builders
 /**
  * @brief Get the Operation Condition Builder
  *
- * @param registry Registry of builders.
+ * @param helperRegistry Registry of helper builders.
  * @return Builder
  */
-Builder getOperationConditionBuilder(std::shared_ptr<Registry<Builder>> registry);
+Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry);
 
 /**
  * @brief Get the Operation Map Builder
  *
- * @param registry Registry of builders.
+ * @param helperRegistry Registry of helper builders.
  * @return Builder
  */
-Builder getOperationMapBuilder(std::shared_ptr<Registry<Builder>> registry);
+Builder getOperationMapBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry);
 
 } // namespace builder::internals::builders
 

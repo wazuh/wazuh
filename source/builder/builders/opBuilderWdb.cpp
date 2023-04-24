@@ -14,18 +14,17 @@
 namespace builder::internals::builders
 {
 
-static inline base::Expression opBuilderWdbGenericQuery(const std::any& definition,
+static inline base::Expression opBuilderWdbGenericQuery(const std::string& targetField,
+                                                        const std::string& rawName,
+                                                        const std::vector<std::string>& rawParameters,
                                                         bool doReturnPayload)
 {
-    // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, raw_parameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParametersSize(rawName, parameters, 1);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Depending on rValue type we store the reference or the string value, string in both
     // cases
@@ -118,15 +117,19 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::any& definiti
 }
 
 // <wdb_result>: +wdb_update/<quey>|$<quey>
-base::Expression opBuilderWdbUpdate(const std::any& definition)
+base::Expression opBuilderWdbUpdate(const std::string& targetField,
+                                    const std::string& rawName,
+                                    const std::vector<std::string>& rawParameters)
 {
-    return opBuilderWdbGenericQuery(definition, false);
+    return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, false);
 }
 
 // <wdb_result>: +wdb_query/<quey>|$<quey>
-base::Expression opBuilderWdbQuery(const std::any& definition)
+base::Expression opBuilderWdbQuery(const std::string& targetField,
+                                   const std::string& rawName,
+                                   const std::vector<std::string>& rawParameters)
 {
-    return opBuilderWdbGenericQuery(definition, true);
+    return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, true);
 }
 
 } // namespace builder::internals::builders

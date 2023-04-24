@@ -12,30 +12,26 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringTrim, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"trim"}, std::vector<std::string> {"begin", "t"});
+    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"trim"}, std::vector<std::string> {"begin", "t"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperStringTrim(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperStringTrim, tuple));
 }
 
 TEST(opBuilderHelperStringTrim, Builds_bad_parameters)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"trim"},
-                                 std::vector<std::string> {"begin"});
+    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"trim"}, std::vector<std::string> {"begin"});
 
-    ASSERT_THROW(bld::opBuilderHelperStringTrim(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperStringTrim, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_field_not_exist)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"trim"},
-                                 std::vector<std::string> {"begin", "-"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"trim"}, std::vector<std::string> {"begin", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "--test"})");
 
-    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringTrim, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -44,13 +40,12 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_field_not_exist)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_success)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"trim"},
-                                 std::vector<std::string> {"begin", "-"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"trim"}, std::vector<std::string> {"begin", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "--test"})");
 
-    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringTrim, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -61,13 +56,12 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_end_success)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"trim"},
-                                 std::vector<std::string> {"end", "-"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"trim"}, std::vector<std::string> {"end", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "test--"})");
 
-    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringTrim, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -78,13 +72,12 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_end_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_both_success)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"trim"},
-                                 std::vector<std::string> {"both", "-"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"trim"}, std::vector<std::string> {"both", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "--test--"})");
 
-    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringTrim, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -95,9 +88,8 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_both_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_multilevel_field_not_exist)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"trim"},
-                                 std::vector<std::string> {"begin", "-"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"trim"}, std::vector<std::string> {"begin", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -110,7 +102,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_multilevel_field_not_exist)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringTrim, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -119,9 +111,8 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_multilevel_field_not_exist)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_multilevel_success)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"trim"},
-                                 std::vector<std::string> {"begin", "-"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"trim"}, std::vector<std::string> {"begin", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -134,7 +125,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_multilevel_success)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringTrim, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -145,9 +136,8 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_multilevel_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_end_multilevel_success)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"trim"},
-                                 std::vector<std::string> {"end", "-"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"trim"}, std::vector<std::string> {"end", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -160,7 +150,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_end_multilevel_success)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringTrim, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -171,9 +161,8 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_end_multilevel_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_both_multilevel_success)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"trim"},
-                                 std::vector<std::string> {"both", "-"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"trim"}, std::vector<std::string> {"both", "-"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -186,7 +175,7 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_both_multilevel_success)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringTrim(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringTrim, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 

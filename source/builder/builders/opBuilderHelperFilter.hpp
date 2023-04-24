@@ -20,20 +20,28 @@ namespace builder::internals::builders
  * field.
  *
  * The filter checks if a field exists in the JSON event `e`.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return Expression The lifter with the `exists` filter.
  */
-base::Expression opBuilderHelperExists(const std::any& definition);
+base::Expression opBuilderHelperExists(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `not_exists` helper function that filters events that not contains
  * specified field.
  *
  * The filter checks if a field not exists in the JSON event `e`.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return Expression The lifter with the `not_exists` filter.
  */
-base::Expression opBuilderHelperNotExists(const std::any& definition);
+base::Expression opBuilderHelperNotExists(const std::string& targetField,
+                                          const std::string& rawName,
+                                          const std::vector<std::string>& rawParameters);
 
 //*************************************************
 //*           String filters                      *
@@ -45,11 +53,15 @@ base::Expression opBuilderHelperNotExists(const std::any& definition);
  *
  * The filter checks if a field in the JSON event is equal to a value.
  * Only pass events if the fields are equal (case sensitive) and the values are a string.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return Expression The lifter with the `string_equal` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringEqual(const std::any& definition);
+base::Expression opBuilderHelperStringEqual(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `string_not_equal` helper function that filters events with a string
@@ -58,11 +70,15 @@ base::Expression opBuilderHelperStringEqual(const std::any& definition);
  * The filter checks if a field in the JSON event is not  equal to a value.
  * Only do not pass events if the fields are equal (case sensitive) and the values are a
  * string.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return Expression The lifter with the `string_not_equal` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringNotEqual(const std::any& definition);
+base::Expression opBuilderHelperStringNotEqual(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `string_greater` helper function that filters events with a string
@@ -71,11 +87,15 @@ base::Expression opBuilderHelperStringNotEqual(const std::any& definition);
  * The filter checks if the JSON event field <field> is greater than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return Expression The lifter with the `string_greater` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringGreaterThan(const std::any& definition);
+base::Expression opBuilderHelperStringGreaterThan(const std::string& targetField,
+                                                  const std::string& rawName,
+                                                  const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `string_greater_or_equal` helper function that filters events with a string
@@ -84,11 +104,15 @@ base::Expression opBuilderHelperStringGreaterThan(const std::any& definition);
  * The filter checks if the JSON event field <field> is greater or equals than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return Expression The lifter with the `string_greater_or_equal` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringGreaterThanEqual(const std::any& definition);
+base::Expression opBuilderHelperStringGreaterThanEqual(const std::string& targetField,
+                                                       const std::string& rawName,
+                                                       const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `string_less` helper function that filters events with a string
@@ -97,11 +121,15 @@ base::Expression opBuilderHelperStringGreaterThanEqual(const std::any& definitio
  * The filter checks if the JSON event field <field> is less than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return Expression The lifter with the `string_less` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringLessThan(const std::any& definition);
+base::Expression opBuilderHelperStringLessThan(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `string_less_or_equal` helper function that filters events with a string
@@ -110,33 +138,45 @@ base::Expression opBuilderHelperStringLessThan(const std::any& definition);
  * The filter checks if the JSON event field <field> is less or equals than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return Expression The lifter with the `string_less_or_equal` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition);
+base::Expression opBuilderHelperStringLessThanEqual(const std::string& targetField,
+                                                    const std::string& rawName,
+                                                    const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create the `starts_with` helper function that allows to check if a field string
  * starts as a given one.
  *
  * The filter passes if both strings are equal (case sensitive) on the first N characters.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return xpression The lifter with the `starts_with` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringStarts(const std::any& definition);
+base::Expression opBuilderHelperStringStarts(const std::string& targetField,
+                                             const std::string& rawName,
+                                             const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create the `contains` helper function that allows to check if a field string
  * contains another one.
  *
  * The filter passes if the first one contains all of the seccond one.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return xpression The lifter with the `contains` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringContains(const std::any& definition);
+base::Expression opBuilderHelperStringContains(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 //*************************************************
 //*              Int filters                      *
@@ -152,7 +192,9 @@ base::Expression opBuilderHelperStringContains(const std::any& definition);
  * @return Expression The lifter with the `int_equal` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Expression opBuilderHelperIntEqual(const std::any& definition);
+base::Expression opBuilderHelperIntEqual(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Builds helper integer not equal operation.
@@ -164,7 +206,9 @@ base::Expression opBuilderHelperIntEqual(const std::any& definition);
  * @return Expression The lifter with the `int_not_equal` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Expression opBuilderHelperIntNotEqual(const std::any& definition);
+base::Expression opBuilderHelperIntNotEqual(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Builds helper integer less than operation.
@@ -176,7 +220,9 @@ base::Expression opBuilderHelperIntNotEqual(const std::any& definition);
  * @return Expression The lifter with the `int_less` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Expression opBuilderHelperIntLessThan(const std::any& definition);
+base::Expression opBuilderHelperIntLessThan(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Builds helper integer less than equal operation.
@@ -188,7 +234,9 @@ base::Expression opBuilderHelperIntLessThan(const std::any& definition);
  * @return Expression The lifter with the `int_less_or_equal` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Expression opBuilderHelperIntLessThanEqual(const std::any& definition);
+base::Expression opBuilderHelperIntLessThanEqual(const std::string& targetField,
+                                                 const std::string& rawName,
+                                                 const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Builds helper integer greater than operation.
@@ -201,7 +249,9 @@ base::Expression opBuilderHelperIntLessThanEqual(const std::any& definition);
  * @throw std::runtime_error if the parameter is not a integer.
  */
 
-base::Expression opBuilderHelperIntGreaterThan(const std::any& definition);
+base::Expression opBuilderHelperIntGreaterThan(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Builds helper integer greater than equal operation.
@@ -213,7 +263,9 @@ base::Expression opBuilderHelperIntGreaterThan(const std::any& definition);
  * @return Expression The lifter with the `int_greater_or_equal` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition);
+base::Expression opBuilderHelperIntGreaterThanEqual(const std::string& targetField,
+                                                    const std::string& rawName,
+                                                    const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Builds helper regex match operation.
@@ -222,7 +274,9 @@ base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition);
  * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `regex` filter.
  */
-base::Expression opBuilderHelperRegexMatch(const std::any& definition);
+base::Expression opBuilderHelperRegexMatch(const std::string& targetField,
+                                           const std::string& rawName,
+                                           const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Builds helper regex not match operation.
@@ -231,28 +285,38 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition);
  * @param definition Definition of the operation to be built
  * @return Expression The lifter with the `regex_not` filter.
  */
-base::Expression opBuilderHelperRegexNotMatch(const std::any& definition);
+base::Expression opBuilderHelperRegexNotMatch(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `ip_cidr_match` helper function that filters events if the field
  * is in the specified CIDR range.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return Expression The lifter with the `ip_cidr_match` filter.
  * @throw  std::runtime_error if the parameter is not a cidr.
  */
-base::Expression opBuilderHelperIPCIDR(const std::any& definition);
+base::Expression opBuilderHelperIPCIDR(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `array_contains` helper function that filters events if the field
  * is an array and contains one of the specified values.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  *
  * @throws std::runtime_error if cannot create the filter.
  */
-base::Expression opBuilderHelperContainsString(const std::any& definition);
+base::Expression opBuilderHelperContainsString(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters);
 
 //*************************************************
 //*                Type filters                   *
@@ -262,127 +326,183 @@ base::Expression opBuilderHelperContainsString(const std::any& definition);
  * @brief Create `is_number` helper function that filters events which field is not of the
  * expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsNumber(const std::any& definition);
+base::Expression opBuilderHelperIsNumber(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_not_number` helper function that filters events which field is not of
  * the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsNotNumber(const std::any& definition);
+base::Expression opBuilderHelperIsNotNumber(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_string` helper function that filters events which field is not of
  * the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsString(const std::any& definition);
+base::Expression opBuilderHelperIsString(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_not_string` helper function that filters events which field is not
  * of the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsNotString(const std::any& definition);
+base::Expression opBuilderHelperIsNotString(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_boolean` helper function that filters events which field is not of the
  * expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsBool(const std::any& definition);
+base::Expression opBuilderHelperIsBool(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_not_boolean` helper function that filters events which field is not of
  * the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsNotBool(const std::any& definition);
+base::Expression opBuilderHelperIsNotBool(const std::string& targetField,
+                                          const std::string& rawName,
+                                          const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_array` helper function that filters events which field is not of
  * the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsArray(const std::any& definition);
+base::Expression opBuilderHelperIsArray(const std::string& targetField,
+                                        const std::string& rawName,
+                                        const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_not_array` helper function that filters events which field is not
  * of the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsNotArray(const std::any& definition);
+base::Expression opBuilderHelperIsNotArray(const std::string& targetField,
+                                           const std::string& rawName,
+                                           const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_object` helper function that filters events which field is not of
  * the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsObject(const std::any& definition);
+base::Expression opBuilderHelperIsObject(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_not_object` helper function that filters events which field is not
  * of the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsNotObject(const std::any& definition);
+base::Expression opBuilderHelperIsNotObject(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_null` helper function that filters events which field is not of the
  * expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsNull(const std::any& definition);
+base::Expression opBuilderHelperIsNull(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_not_null` helper function that filters events which field is not of
  * the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsNotNull(const std::any& definition);
+base::Expression opBuilderHelperIsNotNull(const std::string& targetField,
+                                          const std::string& rawName,
+                                          const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_true` helper function that filters events which field is not of the
  * expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsTrue(const std::any& definition);
+base::Expression opBuilderHelperIsTrue(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Create `is_false` helper function that filters events which field is not of
  * the expected type.
  *
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperIsFalse(const std::any& definition);
+base::Expression opBuilderHelperIsFalse(const std::string& targetField,
+                                        const std::string& rawName,
+                                        const std::vector<std::string>& rawParameters);
 
 } // namespace builder::internals::builders
 

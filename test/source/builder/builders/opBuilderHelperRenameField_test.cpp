@@ -16,29 +16,25 @@ base::EngineOp op {};
 
 TEST(opBuilderHelperRenameField, build)
 {
-    auto tuple = std::make_tuple(
-        string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
+    auto tuple = std::make_tuple(string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
 
-    ASSERT_NO_THROW(opBuilderHelperRenameField(tuple));
+    ASSERT_NO_THROW(std::apply(opBuilderHelperRenameField, tuple));
 }
 
 TEST(opBuilderHelperRenameField, buildNoReferenceError)
 {
-    auto tuple = std::make_tuple(
-        string {"/newField"}, string {"rename"}, vector<string> {"Some Value"});
+    auto tuple = std::make_tuple(string {"/newField"}, string {"rename"}, vector<string> {"Some Value"});
 
-    ASSERT_THROW(opBuilderHelperRenameField(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(opBuilderHelperRenameField, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperRenameField, renameField)
 {
-    auto tuple = std::make_tuple(
-        string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
+    auto tuple = std::make_tuple(string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
 
     auto event = std::make_shared<json::Json>(R"({"oldField": "some_data"})");
 
-    ASSERT_NO_THROW(
-        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+    ASSERT_NO_THROW(op = std::apply(opBuilderHelperRenameField, tuple)->getPtr<Term<EngineOp>>()->getFn());
 
     result::Result<Event> result {};
     ASSERT_NO_THROW(result = op(event));
@@ -50,13 +46,11 @@ TEST(opBuilderHelperRenameField, renameField)
 
 TEST(opBuilderHelperRenameField, renameWithNonExistantSourceField)
 {
-    auto tuple = std::make_tuple(
-        string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
+    auto tuple = std::make_tuple(string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
 
     auto event = std::make_shared<json::Json>(R"({"field": "some_data"})");
 
-    ASSERT_NO_THROW(
-        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+    ASSERT_NO_THROW(op = std::apply(opBuilderHelperRenameField, tuple)->getPtr<Term<EngineOp>>()->getFn());
 
     result::Result<Event> result {};
     ASSERT_NO_THROW(result = op(event));
@@ -67,13 +61,11 @@ TEST(opBuilderHelperRenameField, renameWithNonExistantSourceField)
 
 TEST(opBuilderHelperRenameField, renameToAnExistingFieldWithNonExistantSourceField)
 {
-    auto tuple = std::make_tuple(
-        string {"/field"}, string {"rename"}, vector<string> {"$oldField"});
+    auto tuple = std::make_tuple(string {"/field"}, string {"rename"}, vector<string> {"$oldField"});
 
     auto event = std::make_shared<json::Json>(R"({"field": "some_data"})");
 
-    ASSERT_NO_THROW(
-        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+    ASSERT_NO_THROW(op = std::apply(opBuilderHelperRenameField, tuple)->getPtr<Term<EngineOp>>()->getFn());
 
     result::Result<Event> result {};
     ASSERT_NO_THROW(result = op(event));
@@ -85,14 +77,11 @@ TEST(opBuilderHelperRenameField, renameToAnExistingFieldWithNonExistantSourceFie
 
 TEST(opBuilderHelperRenameField, renameToAnExistingField)
 {
-    auto tuple = std::make_tuple(
-        string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
+    auto tuple = std::make_tuple(string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
 
-    auto event = std::make_shared<json::Json>(
-        R"({"newField": "old_data","oldField": "new_data"})");
+    auto event = std::make_shared<json::Json>(R"({"newField": "old_data","oldField": "new_data"})");
 
-    ASSERT_NO_THROW(
-        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+    ASSERT_NO_THROW(op = std::apply(opBuilderHelperRenameField, tuple)->getPtr<Term<EngineOp>>()->getFn());
 
     result::Result<Event> result {};
     ASSERT_NO_THROW(result = op(event));
@@ -104,14 +93,11 @@ TEST(opBuilderHelperRenameField, renameToAnExistingField)
 
 TEST(opBuilderHelperRenameField, renameToAnExistingArrayField)
 {
-    auto tuple = std::make_tuple(
-        string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
+    auto tuple = std::make_tuple(string {"/newField"}, string {"rename"}, vector<string> {"$oldField"});
 
-    auto event = std::make_shared<json::Json>(
-        R"({"newField": "old_data","oldField": ["new_data"]})");
+    auto event = std::make_shared<json::Json>(R"({"newField": "old_data","oldField": ["new_data"]})");
 
-    ASSERT_NO_THROW(
-        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+    ASSERT_NO_THROW(op = std::apply(opBuilderHelperRenameField, tuple)->getPtr<Term<EngineOp>>()->getFn());
 
     result::Result<Event> result {};
     ASSERT_NO_THROW(result = op(event));
@@ -123,15 +109,11 @@ TEST(opBuilderHelperRenameField, renameToAnExistingArrayField)
 
 TEST(opBuilderHelperRenameField, renameToAnExistingObjtField)
 {
-    auto tuple = std::make_tuple(string {"/newField/emb"},
-                                 string {"rename"},
-                                 vector<string> {"$oldField.child"});
+    auto tuple = std::make_tuple(string {"/newField/emb"}, string {"rename"}, vector<string> {"$oldField.child"});
 
-    auto event = std::make_shared<json::Json>(
-        R"({"newField": {"emb": "old_data"},"oldField": {"child": "new_data"}})");
+    auto event = std::make_shared<json::Json>(R"({"newField": {"emb": "old_data"},"oldField": {"child": "new_data"}})");
 
-    ASSERT_NO_THROW(
-        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+    ASSERT_NO_THROW(op = std::apply(opBuilderHelperRenameField, tuple)->getPtr<Term<EngineOp>>()->getFn());
 
     result::Result<Event> result {};
     ASSERT_NO_THROW(result = op(event));
@@ -143,15 +125,11 @@ TEST(opBuilderHelperRenameField, renameToAnExistingObjtField)
 
 TEST(opBuilderHelperRenameField, renameToAnExistingNullField)
 {
-    auto tuple = std::make_tuple(string {"/newField/emb"},
-                                 string {"rename"},
-                                 vector<string> {"$oldField.child"});
+    auto tuple = std::make_tuple(string {"/newField/emb"}, string {"rename"}, vector<string> {"$oldField.child"});
 
-    auto event = std::make_shared<json::Json>(
-        R"({"newField": {"emb": "old_data"},"oldField": {"child": null}})");
+    auto event = std::make_shared<json::Json>(R"({"newField": {"emb": "old_data"},"oldField": {"child": null}})");
 
-    ASSERT_NO_THROW(
-        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+    ASSERT_NO_THROW(op = std::apply(opBuilderHelperRenameField, tuple)->getPtr<Term<EngineOp>>()->getFn());
 
     result::Result<Event> result {};
     ASSERT_NO_THROW(result = op(event));
@@ -163,15 +141,11 @@ TEST(opBuilderHelperRenameField, renameToAnExistingNullField)
 
 TEST(opBuilderHelperRenameField, renameToAnExistingBoolField)
 {
-    auto tuple = std::make_tuple(string {"/newField/emb"},
-                                 string {"rename"},
-                                 vector<string> {"$oldField.child"});
+    auto tuple = std::make_tuple(string {"/newField/emb"}, string {"rename"}, vector<string> {"$oldField.child"});
 
-    auto event = std::make_shared<json::Json>(
-        R"({"newField": {"emb": "old_data"},"oldField": {"child": true}})");
+    auto event = std::make_shared<json::Json>(R"({"newField": {"emb": "old_data"},"oldField": {"child": true}})");
 
-    ASSERT_NO_THROW(
-        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+    ASSERT_NO_THROW(op = std::apply(opBuilderHelperRenameField, tuple)->getPtr<Term<EngineOp>>()->getFn());
 
     result::Result<Event> result {};
     ASSERT_NO_THROW(result = op(event));
@@ -183,15 +157,11 @@ TEST(opBuilderHelperRenameField, renameToAnExistingBoolField)
 
 TEST(opBuilderHelperRenameField, renameToAnExistingStringEmptyField)
 {
-    auto tuple = std::make_tuple(string {"/newField/emb"},
-                                 string {"rename"},
-                                 vector<string> {"$oldField.child"});
+    auto tuple = std::make_tuple(string {"/newField/emb"}, string {"rename"}, vector<string> {"$oldField.child"});
 
-    auto event = std::make_shared<json::Json>(
-        R"({"newField": {"emb": "old_data"},"oldField": {"child": ""}})");
+    auto event = std::make_shared<json::Json>(R"({"newField": {"emb": "old_data"},"oldField": {"child": ""}})");
 
-    ASSERT_NO_THROW(
-        op = opBuilderHelperRenameField(tuple)->getPtr<Term<EngineOp>>()->getFn());
+    ASSERT_NO_THROW(op = std::apply(opBuilderHelperRenameField, tuple)->getPtr<Term<EngineOp>>()->getFn());
 
     result::Result<Event> result {};
     ASSERT_NO_THROW(result = op(event));

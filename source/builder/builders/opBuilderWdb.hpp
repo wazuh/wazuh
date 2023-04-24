@@ -14,18 +14,26 @@ namespace builder::internals::builders
 
 /**
  * @brief Executes query on WDB returning the status.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression true when executes without any problem, false otherwise.
  */
-base::Expression opBuilderWdbUpdate(const std::any& definition);
+base::Expression opBuilderWdbUpdate(const std::string& targetField,
+                                    const std::string& rawName,
+                                    const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Executes query on WDB returning the payload.
- * @param definition The filter definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @param tr Tracer
  * @return base::Expression when true returns string of payload, false none.
  */
-base::Expression opBuilderWdbQuery(const std::any& definition);
+base::Expression opBuilderWdbQuery(const std::string& targetField,
+                                   const std::string& rawName,
+                                   const std::vector<std::string>& rawParameters);
 
 } // namespace builder::internals::builders
 

@@ -12,21 +12,20 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperIntNotEqual, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"int_not_equal"}, std::vector<std::string> {"10"});
+    auto tuple =
+        std::make_tuple(std::string {"/field"}, std::string {"int_not_equal"}, std::vector<std::string> {"10"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIntNotEqual(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperIntNotEqual, tuple));
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_not_equal"},
-                                 std::vector<std::string> {"10"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"int_not_equal"}, std::vector<std::string> {"10"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    auto op = bld::opBuilderHelperIntNotEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntNotEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -35,13 +34,12 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_not_equal"},
-                                 std::vector<std::string> {"12"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"int_not_equal"}, std::vector<std::string> {"12"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    auto op = bld::opBuilderHelperIntNotEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntNotEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -50,14 +48,13 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_not_equal"},
-                                 std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"int_not_equal"}, std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 10})");
 
-    auto op = bld::opBuilderHelperIntNotEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntNotEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -66,14 +63,13 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_not_equal"},
-                                 std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"int_not_equal"}, std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 12})");
 
-    auto op = bld::opBuilderHelperIntNotEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntNotEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -82,9 +78,8 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_multilevel_false)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"int_not_equal"},
-                                 std::vector<std::string> {"11"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"int_not_equal"}, std::vector<std::string> {"11"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -97,7 +92,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_multilevel_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntNotEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntNotEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -106,9 +101,8 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_multilevel_false)
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_multilevel_true)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"int_not_equal"},
-                                 std::vector<std::string> {"10"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"int_not_equal"}, std::vector<std::string> {"10"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -121,7 +115,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_multilevel_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntNotEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntNotEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -145,7 +139,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_multilevel_ref_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntNotEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntNotEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -169,7 +163,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_multilevel_ref_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntNotEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntNotEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
