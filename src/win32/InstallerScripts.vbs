@@ -351,10 +351,6 @@ public function config()
         remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545 /q"
         WshShell.run remUserPerm, 0, True
 
-        userSID = GetUserSID()
-        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
-        WshShell.run grantUserPerm, 0, True
-
         ' Remove Everyone group for ossec.conf
         remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
         WshShell.run remEveryonePerms, 0, True
@@ -407,18 +403,4 @@ Public Function StartWazuhSvc()
 	Set WshShell = CreateObject("WScript.Shell")
     StartSvc = "NET START WazuhSvc"
     WshShell.run StartSvc, 0, True
-End Function
-
-Private Function GetUserSID()
-    GetUserSID = ""
-    Dim sDomain, oWMI, sDomUser
-
-    sDomain = CreateObject("WScript.Network").UserDomain
-    sDomUser = CreateObject( "WScript.Shell" ).ExpandEnvironmentStrings( "%USERNAME%" )
-
-    On Error Resume Next
-    Set oWMI = GetObject("winmgmts:{impersonationlevel=impersonate}!" & "/root/cimv2:Win32_UserAccount.Domain='" & sDomain & "'" & ",Name='" & sDomUser & "'")
-    If Err.Number = 0 Then
-        GetUserSID = oWMI.SID
-    End If
 End Function
