@@ -8,8 +8,8 @@
 
 #include <baseTypes.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <testsCommon.hpp>
 #include <opBuilderKVDB.hpp>
+#include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
 using namespace metricsManager;
@@ -50,26 +50,20 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBGetTest, BuildsGetI)
 {
-    auto tuple = std::make_tuple<std::string, std::string, std::vector<std::string>>("/field", "", {DB_NAME, "key"});
-
-    ASSERT_NO_THROW(bld::KVDBGet(tuple, false, opBuilderKVDBGetTest::kvdbManager));
-    ASSERT_NO_THROW(bld::KVDBGet(tuple, true, opBuilderKVDBGetTest::kvdbManager));
+    ASSERT_NO_THROW(bld::KVDBGet("/field", "", {DB_NAME, "key"}, false, opBuilderKVDBGetTest::kvdbManager));
+    ASSERT_NO_THROW(bld::KVDBGet("/field", "", {DB_NAME, "key"}, true, opBuilderKVDBGetTest::kvdbManager));
 }
 
 TEST_F(opBuilderKVDBGetTest, BuildsGetII)
 {
-    auto tuple = std::make_tuple<std::string, std::string, std::vector<std::string>>("/field", "", {DB_NAME, "$key"});
-
-    ASSERT_NO_THROW(bld::KVDBGet(tuple, false, opBuilderKVDBGetTest::kvdbManager));
-    ASSERT_NO_THROW(bld::KVDBGet(tuple, true, opBuilderKVDBGetTest::kvdbManager));
+    ASSERT_NO_THROW(bld::KVDBGet("/field", "", {DB_NAME, "$key"}, false, opBuilderKVDBGetTest::kvdbManager));
+    ASSERT_NO_THROW(bld::KVDBGet("/field", "", {DB_NAME, "$key"}, true, opBuilderKVDBGetTest::kvdbManager));
 }
 
 TEST_F(opBuilderKVDBGetTest, WrongNumberOfParameters)
 {
-    auto tuple = std::make_tuple<std::string, std::string, std::vector<std::string>>("/field", "", {DB_NAME});
-
-    ASSERT_THROW(bld::KVDBGet(tuple, false, opBuilderKVDBGetTest::kvdbManager), std::runtime_error);
-    ASSERT_THROW(bld::KVDBGet(tuple, true, opBuilderKVDBGetTest::kvdbManager), std::runtime_error);
+    ASSERT_THROW(bld::KVDBGet("/field", "", {DB_NAME}, false, opBuilderKVDBGetTest::kvdbManager), std::runtime_error);
+    ASSERT_THROW(bld::KVDBGet("/field", "", {DB_NAME}, true, opBuilderKVDBGetTest::kvdbManager), std::runtime_error);
 }
 
 TEST_F(opBuilderKVDBGetTest, GetSuccessCases)
@@ -88,38 +82,18 @@ TEST_F(opBuilderKVDBGetTest, GetSuccessCases)
     DBHandle->write("keyNull", "null");
 
     // Operations value key
-    auto tuple1 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldString", "", {DB_NAME, "keyString"});
-    auto op1 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple1);
-    auto tuple2 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldNumber", "", {DB_NAME, "keyNumber"});
-    auto op2 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple2);
-    auto tuple3 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldObject", "", {DB_NAME, "keyObject"});
-    auto op3 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple3);
-    auto tuple4 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldArray", "", {DB_NAME, "keyArray"});
-    auto op4 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple4);
-    auto tuple5 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldNull", "", {DB_NAME, "keyNull"});
-    auto op5 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple5);
+    auto op1 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldString", "", {DB_NAME, "keyString"});
+    auto op2 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldNumber", "", {DB_NAME, "keyNumber"});
+    auto op3 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldObject", "", {DB_NAME, "keyObject"});
+    auto op4 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldArray", "", {DB_NAME, "keyArray"});
+    auto op5 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldNull", "", {DB_NAME, "keyNull"});
 
     // Operations reference key
-    auto tuple6 = std::make_tuple<std::string, std::string, std::vector<std::string>>(
-        "/fieldString", "", {DB_NAME, "$keyString"});
-    auto op6 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple6);
-    auto tuple7 = std::make_tuple<std::string, std::string, std::vector<std::string>>(
-        "/fieldNumber", "", {DB_NAME, "$keyNumber"});
-    auto op7 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple7);
-    auto tuple8 = std::make_tuple<std::string, std::string, std::vector<std::string>>(
-        "/fieldObject", "", {DB_NAME, "$keyObject"});
-    auto op8 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple8);
-    auto tuple9 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldArray", "", {DB_NAME, "$keyArray"});
-    auto op9 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple9);
-    auto tuple10 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldNull", "", {DB_NAME, "$keyNull"});
-    auto op10 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple10);
+    auto op6 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldString", "", {DB_NAME, "$keyString"});
+    auto op7 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldNumber", "", {DB_NAME, "$keyNumber"});
+    auto op8 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldObject", "", {DB_NAME, "$keyObject"});
+    auto op9 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldArray", "", {DB_NAME, "$keyArray"});
+    auto op10 = bld::getOpBuilderKVDBGet(kvdbManager)("/fieldNull", "", {DB_NAME, "$keyNull"});
 
     // Events templates
     json::Json eventTemplate1 {R"({
@@ -259,15 +233,9 @@ TEST_F(opBuilderKVDBGetTest, GetSuccessCases)
 
 TEST_F(opBuilderKVDBGetTest, GetFailKeyNotFound)
 {
-    auto tuple1 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/field", "", {DB_NAME, "NotFoundKey"});
-    auto op1 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple1);
-    auto tuple2 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/field", "", {DB_NAME, "$NotFoundKey"});
-    auto op2 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple2);
-    auto tuple3 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/field", "", {DB_NAME, "$fieldNotFound"});
-    auto op3 = bld::getOpBuilderKVDBGet(kvdbManager)(tuple3);
+    auto op1 = bld::getOpBuilderKVDBGet(kvdbManager)("/field", "", {DB_NAME, "NotFoundKey"});
+    auto op2 = bld::getOpBuilderKVDBGet(kvdbManager)("/field", "", {DB_NAME, "$NotFoundKey"});
+    auto op3 = bld::getOpBuilderKVDBGet(kvdbManager)("/field", "", {DB_NAME, "$fieldNotFound"});
 
     auto event = std::make_shared<json::Json>(R"({
         "NotFoundKey": "NotFoundKey"
@@ -294,20 +262,12 @@ TEST_F(opBuilderKVDBGetTest, GetMergeSuccessCases)
     DBHandle->write("keyArray", R"(["value1", "value2", "value3"])");
 
     // Operations value key
-    auto tuple1 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldObject", "", {DB_NAME, "keyObject"});
-    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple1);
-    auto tuple2 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldArray", "", {DB_NAME, "keyArray"});
-    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple2);
+    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/fieldObject", "", {DB_NAME, "keyObject"});
+    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/fieldArray", "", {DB_NAME, "keyArray"});
 
     // Operations reference key
-    auto tuple3 = std::make_tuple<std::string, std::string, std::vector<std::string>>(
-        "/fieldObject", "", {DB_NAME, "$keyObject"});
-    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple3);
-    auto tuple4 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldArray", "", {DB_NAME, "$keyArray"});
-    auto op4 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple4);
+    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/fieldObject", "", {DB_NAME, "$keyObject"});
+    auto op4 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/fieldArray", "", {DB_NAME, "$keyArray"});
 
     // Events templates
     json::Json eventTemplate {R"({
@@ -348,15 +308,9 @@ TEST_F(opBuilderKVDBGetTest, GetMergeSuccessCases)
 
 TEST_F(opBuilderKVDBGetTest, GetMergeFailKeyNotFound)
 {
-    auto tuple1 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/field", "", {DB_NAME, "NotFoundKey"});
-    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple1);
-    auto tuple2 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/field", "", {DB_NAME, "$NotFoundKey"});
-    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple2);
-    auto tuple3 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/field", "", {DB_NAME, "$fieldNotFound"});
-    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple3);
+    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/field", "", {DB_NAME, "NotFoundKey"});
+    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/field", "", {DB_NAME, "$NotFoundKey"});
+    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/field", "", {DB_NAME, "$fieldNotFound"});
 
     auto event = std::make_shared<json::Json>(R"({
         "NotFoundKey": "NotFoundKey"
@@ -381,12 +335,8 @@ TEST_F(opBuilderKVDBGetTest, GetMergeFailTargetNotFound)
     auto DBHandle = std::get<kvdb_manager::KVDBHandle>(res);
     DBHandle->write("keyObject", R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
 
-    auto tuple1 = std::make_tuple<std::string, std::string, std::vector<std::string>>(
-        "/fieldNotFound", "", {DB_NAME, "keyObject"});
-    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple1);
-    auto tuple2 = std::make_tuple<std::string, std::string, std::vector<std::string>>(
-        "/fieldNotFound", "", {DB_NAME, "$keyObject"});
-    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple2);
+    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/fieldNotFound", "", {DB_NAME, "keyObject"});
+    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/fieldNotFound", "", {DB_NAME, "$keyObject"});
 
     auto event = std::make_shared<json::Json>(R"({
         "keyObject": "keyObject"
@@ -411,15 +361,9 @@ TEST_F(opBuilderKVDBGetTest, GetMergeFailTypeErrors)
     DBHandle->write("keyArray", R"(["value1", "value2", "value3"])");
     DBHandle->write("keyString", R"("value1")");
 
-    auto tuple1 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldObject", "", {DB_NAME, "keyArray"});
-    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple1);
-    auto tuple2 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldArray", "", {DB_NAME, "keyObject"});
-    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple2);
-    auto tuple3 =
-        std::make_tuple<std::string, std::string, std::vector<std::string>>("/fieldString", "", {DB_NAME, "keyString"});
-    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbManager)(tuple3);
+    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/fieldObject", "", {DB_NAME, "keyArray"});
+    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/fieldArray", "", {DB_NAME, "keyObject"});
+    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbManager)("/fieldString", "", {DB_NAME, "keyString"});
 
     auto event = std::make_shared<json::Json>(R"({
         "fieldObject": {"key": "value"},

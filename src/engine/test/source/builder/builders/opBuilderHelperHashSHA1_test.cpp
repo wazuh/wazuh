@@ -21,7 +21,7 @@ TEST(opBuilderHelperHashSHA1, Builds)
                                        std::string {"sha1"},
                                        std::vector<std::string> {"begin"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperHashSHA1(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperHashSHA1, tuple));
 }
 
 TEST(opBuilderHelperHashSHA1, Correct_execution_with_single_string)
@@ -32,7 +32,7 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_single_string)
     const auto event1 =
         std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
 
-    auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result);
     ASSERT_EQ(xxxHash, result.payload()->getString("/field").value());
@@ -46,7 +46,7 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_several_strings)
 
     const auto event1 = std::make_shared<json::Json>(R"({"Field": "ABCDE"})");
 
-    auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result);
     ASSERT_EQ(wordWorldWorstHash, result.payload()->getString("/field").value());
@@ -61,7 +61,7 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_reference)
     const auto event1 =
         std::make_shared<json::Json>(R"({"fieldReference": "wordworldworst"})");
 
-    auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result);
     ASSERT_EQ(wordWorldWorstHash, result.payload()->getString("/field").value());
@@ -77,7 +77,7 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_nested_reference)
     const auto event1 =
         std::make_shared<json::Json>(R"({"object":{"fieldReference3":"word"}})");
 
-    auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result);
     ASSERT_EQ(wordHash, result.payload()->getString("/field").value());
@@ -90,7 +90,7 @@ TEST(opBuilderHelperHashSHA1, No_parameters_error)
 
     const auto event1 = std::make_shared<json::Json>(R"({"arrayField": "A"})");
 
-    ASSERT_THROW(bld::opBuilderHelperHashSHA1(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperHashSHA1, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperHashSHA1, Empty_parameter)
@@ -100,7 +100,7 @@ TEST(opBuilderHelperHashSHA1, Empty_parameter)
 
     const auto event1 = std::make_shared<json::Json>(R"({"fieldReference": "word"})");
 
-    auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result);
 }
@@ -113,7 +113,7 @@ TEST(opBuilderHelperHashSHA1, Empty_reference_parameter)
 
     const auto event1 = std::make_shared<json::Json>(R"({"fieldReference": ""})");
 
-    auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result);
 }
@@ -127,7 +127,7 @@ TEST(opBuilderHelperHashSHA1, Failed_execution_with_array_reference)
     const auto event1 =
         std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
 
-    auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_FALSE(result);
 }
@@ -141,7 +141,7 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_nested_result)
     const auto event1 =
         std::make_shared<json::Json>(R"({"object":[{"field":"worst"},{"field2":1}]})");
 
-    auto op = bld::opBuilderHelperHashSHA1(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
     ASSERT_TRUE(result);
     ASSERT_EQ(abcdeHash, result.payload()->getString("/object/field").value());

@@ -50,8 +50,7 @@ enum class HLPParserType
  * @return std::string The value of the reference or the value itself. nullptr if the
  * reference is not found or the value is not a string
  */
-inline std::optional<std::string> resolvedValue(const base::Event& event,
-                                                const helper::base::Parameter& source)
+inline std::optional<std::string> resolvedValue(const base::Event& event, const helper::base::Parameter& source)
 {
     if (source.m_type == helper::base::Parameter::Type::REFERENCE)
     {
@@ -65,16 +64,16 @@ inline std::optional<std::string> resolvedValue(const base::Event& event,
     return source.m_value;
 }
 
-base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
+base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters,
                                                HLPParserType type)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(name, rawParameters);
+    auto parameters = helper::base::processParameters(rawName, rawParameters);
 
     if (parameters.empty())
     {
-        throw std::runtime_error("Invalid number of parameters for operation '" + name
-                                 + "'");
+        throw std::runtime_error("Invalid number of parameters for operation '" + rawName + "'");
     }
     auto source = parameters[0];
     parameters.erase(parameters.begin());
@@ -86,8 +85,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
     {
         if (parameter.m_type == helper::base::Parameter::Type::REFERENCE)
         {
-            throw std::runtime_error("Invalid parameter type for operation '" + name
-                                     + "'");
+            throw std::runtime_error("Invalid parameter type for operation '" + rawName + "'");
         }
         hlpOptionsList.emplace_back(parameter.m_value);
     }
@@ -95,73 +93,31 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
     parsec::Parser<json::Json> parser;
     switch (type)
     {
-        case HLPParserType::ALPHANUMERIC:
-            parser = hlp::getAlphanumericParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::BOOL:
-            parser = hlp::getBoolParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::BYTE:
-            parser = hlp::getByteParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::LONG:
-            parser = hlp::getLongParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::FLOAT:
-            parser = hlp::getFloatParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::DOUBLE:
-            parser = hlp::getDoubleParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::SCALED_FLOAT:
-            parser = hlp::getScaledFloatParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::QUOTED:
-            parser = hlp::getQuotedParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::BETWEEN:
-            parser = hlp::getBetweenParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::BINARY:
-            parser = hlp::getBinaryParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::DATE:
-            parser = hlp::getDateParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::IP:
-            parser = hlp::getIPParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::URI:
-            parser = hlp::getUriParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::USERAGENT:
-            parser = hlp::getUAParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::FQDN:
-            parser = hlp::getFQDNParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::FILE:
-            parser = hlp::getFilePathParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::JSON:
-            parser = hlp::getJSONParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::XML:
-            parser = hlp::getXMLParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::DSV:
-            parser = hlp::getDSVParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::CSV:
-            parser = hlp::getCSVParser({}, {""}, hlpOptionsList);
-            break;
-        case HLPParserType::KV:
-            parser = hlp::getKVParser({}, {""}, hlpOptionsList);
-            break;
+        case HLPParserType::ALPHANUMERIC: parser = hlp::getAlphanumericParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::BOOL: parser = hlp::getBoolParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::BYTE: parser = hlp::getByteParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::LONG: parser = hlp::getLongParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::FLOAT: parser = hlp::getFloatParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::DOUBLE: parser = hlp::getDoubleParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::SCALED_FLOAT: parser = hlp::getScaledFloatParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::QUOTED: parser = hlp::getQuotedParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::BETWEEN: parser = hlp::getBetweenParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::BINARY: parser = hlp::getBinaryParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::DATE: parser = hlp::getDateParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::IP: parser = hlp::getIPParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::URI: parser = hlp::getUriParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::USERAGENT: parser = hlp::getUAParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::FQDN: parser = hlp::getFQDNParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::FILE: parser = hlp::getFilePathParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::JSON: parser = hlp::getJSONParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::XML: parser = hlp::getXMLParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::DSV: parser = hlp::getDSVParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::CSV: parser = hlp::getCSVParser({}, {""}, hlpOptionsList); break;
+        case HLPParserType::KV: parser = hlp::getKVParser({}, {""}, hlpOptionsList); break;
         default: throw std::logic_error("Invalid HLP parser type");
     }
 
-    const std::string traceName {helper::base::formatHelperName(name, targetField, parameters)};
+    const std::string traceName {helper::base::formatHelperName(rawName, targetField, parameters)};
     const std::string successTrace {fmt::format("[{}] -> Success", traceName)};
     const std::string failureTrace {fmt::format("[{}] -> Failure: ", traceName)};
     const std::string failureTrace1 {
@@ -171,12 +127,9 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::any& definition,
 
     // Return Term
     return base::Term<base::EngineOp>::create(
-        name,
-        [=,
-         targetField = std::move(targetField),
-         parser = std::move(parser),
-         source =
-             std::move(source)](base::Event event) -> base::result::Result<base::Event>
+        traceName,
+        [=, targetField = std::move(targetField), parser = std::move(parser), source = std::move(source)](
+            base::Event event) -> base::result::Result<base::Event>
         {
             // Check if source is a reference
             const auto sourceValue = resolvedValue(event, source);
@@ -213,120 +166,161 @@ namespace builder::internals::builders
 //*         HLP Specific parser Helpers           *
 //*************************************************
 // +parse_bool/[$ref|value]
-base::Expression opBuilderSpecificHLPBoolParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPBoolParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::BOOL);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BOOL);
 }
 
 // +parse_byte/[$ref|value]
-base::Expression opBuilderSpecificHLPByteParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPByteParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::BYTE);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BYTE);
 }
 
 // +parse_long/[$ref|value]
-base::Expression opBuilderSpecificHLPLongParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPLongParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::LONG);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::LONG);
 }
 
 // +parse_float/[$ref|value]
-base::Expression opBuilderSpecificHLPFloatParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPFloatParse(const std::string& targetField,
+                                                const std::string& rawName,
+                                                const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::FLOAT);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::FLOAT);
 }
 
 // +parse_double/[$ref|value]
-base::Expression opBuilderSpecificHLPDoubleParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPDoubleParse(const std::string& targetField,
+                                                 const std::string& rawName,
+                                                 const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::DOUBLE);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::DOUBLE);
 }
 
 // +parse_binary/[$ref|value]
-base::Expression opBuilderSpecificHLPBinaryParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPBinaryParse(const std::string& targetField,
+                                                 const std::string& rawName,
+                                                 const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::BINARY);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BINARY);
 }
 
 // +parse_date/[$ref|value]
-base::Expression opBuilderSpecificHLPDateParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPDateParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::DATE);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::DATE);
 }
 
 // +parse_ip/[$ref|value]
-base::Expression opBuilderSpecificHLPIPParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPIPParse(const std::string& targetField,
+                                             const std::string& rawName,
+                                             const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::IP);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::IP);
 }
 
 // +parse_uri/[$ref|value]
-base::Expression opBuilderSpecificHLPURIParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPURIParse(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::URI);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::URI);
 }
 
 // +parse_useragent/[$ref|value]
-base::Expression opBuilderSpecificHLPUserAgentParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPUserAgentParse(const std::string& targetField,
+                                                    const std::string& rawName,
+                                                    const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::USERAGENT);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::USERAGENT);
 }
 
 // +parse_fqdn/[$ref|value]
-base::Expression opBuilderSpecificHLPFQDNParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPFQDNParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::FQDN);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::FQDN);
 }
 
 // +parse_file/[$ref|value]
-base::Expression opBuilderSpecificHLPFilePathParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPFilePathParse(const std::string& targetField,
+                                                   const std::string& rawName,
+                                                   const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::FILE);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::FILE);
 }
 
 // +parse_json/[$ref|value]
-base::Expression opBuilderSpecificHLPJSONParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPJSONParse(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::JSON);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::JSON);
 }
 
 // +parse_xml/[$ref|value]
-base::Expression opBuilderSpecificHLPXMLParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPXMLParse(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::XML);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::XML);
 }
 
 // +parse_cvs/[$ref|value]/parser options
-base::Expression opBuilderSpecificHLPCSVParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPCSVParse(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::CSV);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::CSV);
 }
 
 // +parse_dvs/[$ref|value]/parser options
-base::Expression opBuilderSpecificHLPDSVParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPDSVParse(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::DSV);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::DSV);
 }
 
 // +parse_key_value/[$ref|value]
-base::Expression opBuilderSpecificHLPKeyValueParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPKeyValueParse(const std::string& targetField,
+                                                   const std::string& rawName,
+                                                   const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::KV);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::KV);
 }
 
 // +parse_quoted/[$ref|value]
-base::Expression opBuilderSpecificHLPQuotedParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPQuotedParse(const std::string& targetField,
+                                                 const std::string& rawName,
+                                                 const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::QUOTED);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::QUOTED);
 }
 
-base::Expression opBuilderSpecificHLPBetweenParse(const std::any& definition){
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::BETWEEN);
+base::Expression opBuilderSpecificHLPBetweenParse(const std::string& targetField,
+                                                  const std::string& rawName,
+                                                  const std::vector<std::string>& rawParameters)
+{
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BETWEEN);
 }
 
 // +parse_alphanumeric/[$ref|value]
-base::Expression opBuilderSpecificHLPAlphanumericParse(const std::any& definition)
+base::Expression opBuilderSpecificHLPAlphanumericParse(const std::string& targetField,
+                                                       const std::string& rawName,
+                                                       const std::vector<std::string>& rawParameters)
 {
-    return opBuilderSpecificHLPTypeParse(definition, HLPParserType::ALPHANUMERIC);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::ALPHANUMERIC);
 }
 } // namespace builder::internals::builders

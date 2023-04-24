@@ -19,17 +19,29 @@ namespace builder::internals::builders
  * @brief Get address, netmask and gateway fields from iface IPv4
  * and executes netaddr save query for each one of them
  * e.g: field: +sysc_ni_save_ipv4
+ *
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperSaveNetInfoIPv4(const std::any& definition);
+base::Expression opBuilderHelperSaveNetInfoIPv4(const std::string& targetField,
+                                                const std::string& rawName,
+                                                const std::vector<std::string>& rawParameters);
 
 /**
  * @brief Get address, netmask and gateway fields from iface IPv6
  * and executes netaddr save query for each one of them
  * e.g: field: +sysc_ni_save_ipv6
+ *
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression
  */
-base::Expression opBuilderHelperSaveNetInfoIPv6(const std::any& definition);
+base::Expression opBuilderHelperSaveNetInfoIPv6(const std::string& targetField,
+                                                const std::string& rawName,
+                                                const std::vector<std::string>& rawParameters);
 
 } // namespace builder::internals::builders
 

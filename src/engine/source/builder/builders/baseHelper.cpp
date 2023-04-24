@@ -12,27 +12,7 @@
 
 namespace helper::base
 {
-
-std::tuple<std::string, std::string, std::vector<std::string>>
-extractDefinition(const std::any& definition)
-{
-    std::tuple<std::string, std::string, std::vector<std::string>> extracted;
-    try
-    {
-        extracted =
-            std::any_cast<std::tuple<std::string, std::string, std::vector<std::string>>>(
-                definition);
-    }
-    catch (const std::bad_any_cast& e)
-    {
-        throw std::runtime_error(fmt::format("Cannot process definition: {}", e.what()));
-    }
-
-    return extracted;
-}
-
-std::vector<Parameter> processParameters(const std::string name,
-                                         const std::vector<std::string>& parameters)
+std::vector<Parameter> processParameters(const std::string name, const std::vector<std::string>& parameters)
 {
     std::vector<Parameter> newParameters;
     std::transform(parameters.begin(),
@@ -45,16 +25,14 @@ std::vector<Parameter> processParameters(const std::string name,
                            std::string pointerPath;
                            try
                            {
-                               pointerPath =
-                                   json::Json::formatJsonPath(parameter.substr(1));
+                               pointerPath = json::Json::formatJsonPath(parameter.substr(1));
                            }
                            catch (const std::exception& e)
                            {
-                               throw std::runtime_error(
-                                   fmt::format("Cannot format parameter \"{}\" from to "
-                                               "Json pointer path: {}",
-                                               parameter,
-                                               e.what()));
+                               throw std::runtime_error(fmt::format("Cannot format parameter \"{}\" from to "
+                                                                    "Json pointer path: {}",
+                                                                    parameter,
+                                                                    e.what()));
                            }
                            return {Parameter::Type::REFERENCE, pointerPath};
                        }
@@ -67,45 +45,36 @@ std::vector<Parameter> processParameters(const std::string name,
     return newParameters;
 }
 
-void checkParametersSize(const std::string name,
-                         const std::vector<Parameter>& parameters,
-                         size_t size)
+void checkParametersSize(const std::string name, const std::vector<Parameter>& parameters, size_t size)
 {
     if (parameters.size() != size)
     {
-        throw std::runtime_error(
-            fmt::format("Expected {} parameters but got {}", size, parameters.size()));
+        throw std::runtime_error(fmt::format("Expected {} parameters but got {}", size, parameters.size()));
     }
 }
 
-void checkParametersMinSize(const std::string name,
-                            const std::vector<Parameter>& parameters,
-                            const size_t minSize)
+void checkParametersMinSize(const std::string name, const std::vector<Parameter>& parameters, const size_t minSize)
 {
     if (parameters.size() < minSize)
     {
-        throw std::runtime_error(fmt::format(
-            "Expected at least {} parameters but got {}", minSize, parameters.size()));
+        throw std::runtime_error(fmt::format("Expected at least {} parameters but got {}", minSize, parameters.size()));
     }
 }
 
-void checkParameterType(const std::string name,
-                        const Parameter& parameter,
-                        Parameter::Type type)
+void checkParameterType(const std::string name, const Parameter& parameter, Parameter::Type type)
 {
     if (parameter.m_type != type)
     {
-        throw std::runtime_error(fmt::format(
-            "Parameter \"{}\" is of type \"{}\" but it is expected to be of type \"{}\".",
-            parameter.m_value,
-            static_cast<int>(parameter.m_type),
-            static_cast<int>(type)));
+        throw std::runtime_error(
+            fmt::format("Parameter \"{}\" is of type \"{}\" but it is expected to be of type \"{}\".",
+                        parameter.m_value,
+                        static_cast<int>(parameter.m_type),
+                        static_cast<int>(type)));
     }
 }
 
-std::string formatHelperName(const std::string& name,
-                             const std::string& targetField,
-                             const std::vector<Parameter>& parameters)
+std::string
+formatHelperName(const std::string& name, const std::string& targetField, const std::vector<Parameter>& parameters)
 {
     std::stringstream formattedName;
     formattedName << fmt::format("helper.{}[{}", name, targetField);

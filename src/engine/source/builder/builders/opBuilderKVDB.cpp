@@ -19,19 +19,21 @@ namespace builder::internals::builders
 using builder::internals::syntax::REFERENCE_ANCHOR;
 using namespace helper::base;
 
-base::Expression KVDBGet(const std::any& definition, bool merge, std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+base::Expression KVDBGet(const std::string& targetField,
+                         const std::string& rawName,
+                         const std::vector<std::string>& rawParameters,
+                         bool merge,
+                         std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    // Extract parameters from any
-    auto [targetField, name, raw_parameters] = extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    const auto parameters {processParameters(name, raw_parameters)};
+    const auto parameters {processParameters(rawName, rawParameters)};
 
     // Assert expected number of parameters
-    checkParametersSize(name, parameters, 2);
-    checkParameterType(name, parameters[0], Parameter::Type::VALUE);
+    checkParametersSize(rawName, parameters, 2);
+    checkParameterType(rawName, parameters[0], Parameter::Type::VALUE);
 
     // Format name for the tracer
-    name = formatHelperName(name, targetField, parameters);
+    const auto name = formatHelperName(rawName, targetField, parameters);
 
     // Extract parameters
     const auto dbName = parameters[0].m_value;
@@ -113,32 +115,39 @@ base::Expression KVDBGet(const std::any& definition, bool merge, std::shared_ptr
 }
 
 // <field>: +kvdb_get/<DB>/<ref_key>
-Builder getOpBuilderKVDBGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+HelperBuilder getOpBuilderKVDBGet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const std::any& definition)
+    return [kvdbManager](const std::string& targetField,
+                         const std::string& rawName,
+                         const std::vector<std::string>& rawParameters)
     {
-        return KVDBGet(definition, false, kvdbManager);
+        return KVDBGet(targetField, rawName, rawParameters, false, kvdbManager);
     };
 }
 
 // <field>: +kvdb_get_merge/<DB>/<ref_key>
-Builder getOpBuilderKVDBGetMerge(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+HelperBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const std::any& definition)
+    return [kvdbManager](const std::string& targetField,
+                         const std::string& rawName,
+                         const std::vector<std::string>& rawParameters)
     {
-        return KVDBGet(definition, true, kvdbManager);
+        return KVDBGet(targetField, rawName, rawParameters, true, kvdbManager);
     };
 }
 
 // TODO: documentation and tests of this method are missing
-base::Expression
-existanceCheck(const std::any& definition, bool checkExist, std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+base::Expression existanceCheck(const std::string& targetField,
+                                const std::string& rawName,
+                                const std::vector<std::string>& rawParameters,
+                                bool checkExist,
+                                std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    auto [targetField, name, arguments] = extractDefinition(definition);
-    const auto parameters = processParameters(name, arguments);
-    checkParametersSize(name, parameters, 1);
-    checkParameterType(name, parameters[0], Parameter::Type::VALUE);
-    name = formatHelperName(targetField, name, parameters);
+
+    const auto parameters = processParameters(rawName, rawParameters);
+    checkParametersSize(rawName, parameters, 1);
+    checkParameterType(rawName, parameters[0], Parameter::Type::VALUE);
+    const auto name = formatHelperName(targetField, rawName, parameters);
 
     const auto dbName = parameters[0].m_value;
 
@@ -194,33 +203,40 @@ existanceCheck(const std::any& definition, bool checkExist, std::shared_ptr<kvdb
 
 // TODO: tests for this method are missing
 // <field>: +kvdb_match/<DB>
-Builder getOpBuilderKVDBMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+HelperBuilder getOpBuilderKVDBMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const std::any& definition)
+    return [kvdbManager](const std::string& targetField,
+                         const std::string& rawName,
+                         const std::vector<std::string>& rawParameters)
     {
-        return existanceCheck(definition, true, kvdbManager);
+        return existanceCheck(targetField, rawName, rawParameters, true, kvdbManager);
     };
 }
 
 // TODO: tests for this method are missing
 // <field>: +kvdb_not_match/<DB>
-Builder getOpBuilderKVDBNotMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+HelperBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const std::any& definition)
+    return [kvdbManager](const std::string& targetField,
+                         const std::string& rawName,
+                         const std::vector<std::string>& rawParameters)
     {
-        return existanceCheck(definition, false, kvdbManager);
+        return existanceCheck(targetField, rawName, rawParameters, false, kvdbManager);
     };
 }
 
-base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+base::Expression KVDBSet(const std::string& targetField,
+                         const std::string& rawName,
+                         const std::vector<std::string>& rawParameters,
+                         std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    auto [targetField, name, arguments] = extractDefinition(definition);
-    const auto parameters = processParameters(name, arguments);
 
-    checkParametersSize(name, parameters, 3);
-    checkParameterType(name, parameters[0], Parameter::Type::VALUE);
+    const auto parameters = processParameters(rawName, rawParameters);
 
-    name = formatHelperName(targetField, name, parameters);
+    checkParametersSize(rawName, parameters, 3);
+    checkParameterType(rawName, parameters[0], Parameter::Type::VALUE);
+
+    const auto name = formatHelperName(targetField, rawName, parameters);
 
     auto dbName = parameters[0].m_value;
     const auto key = parameters[1];
@@ -326,20 +342,25 @@ base::Expression KVDBSet(const std::any& definition, std::shared_ptr<kvdb_manage
 
 // TODO: some tests for this method are missing
 // <field>: +kvdb_set/<db>/<field>/<value>
-Builder getOpBuilderKVDBSet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+HelperBuilder getOpBuilderKVDBSet(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const std::any& definition)
+    return [kvdbManager](const std::string& targetField,
+                         const std::string& rawName,
+                         const std::vector<std::string>& rawParameters)
     {
-        return KVDBSet(definition, kvdbManager);
+        return KVDBSet(targetField, rawName, rawParameters, kvdbManager);
     };
 }
 
-base::Expression KVDBDelete(const std::any& definition, std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+base::Expression KVDBDelete(const std::string& targetField,
+                            const std::string& rawName,
+                            const std::vector<std::string>& rawParameters,
+                            std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    auto [targetField, name, arguments] = extractDefinition(definition);
-    const auto parameters = processParameters(name, arguments);
-    checkParametersSize(name, parameters, 1);
-    name = formatHelperName(targetField, name, parameters);
+
+    const auto parameters = processParameters(rawName, rawParameters);
+    checkParametersSize(rawName, parameters, 1);
+    const auto name = formatHelperName(targetField, rawName, parameters);
 
     const auto dbName = parameters[0];
 
@@ -350,54 +371,56 @@ base::Expression KVDBDelete(const std::any& definition, std::shared_ptr<kvdb_man
     const std::string failureTrace1 {fmt::format("[{}] -> Failure: reference '{}' not found", name, dbName.m_value)};
 
     // Return Expression
-    return base::Term<base::EngineOp>::create(
-        name,
-        [=, targetField = std::move(targetField)](base::Event event)
-        {
-            event->setBool(false, targetField);
+    return base::Term<base::EngineOp>::create(name,
+                                              [=, targetField = std::move(targetField)](base::Event event)
+                                              {
+                                                  event->setBool(false, targetField);
 
-            // Get DB name
-            std::string resolvedDBName;
-            if (Parameter::Type::REFERENCE == dbName.m_type)
-            {
-                const auto retval = event->getString(dbName.m_value);
-                if (retval)
-                {
-                    resolvedDBName = retval.value();
-                }
-                else
-                {
-                    return base::result::makeFailure(event, failureTrace1);
-                }
-            }
-            else
-            {
-                resolvedDBName = dbName.m_value;
-            }
+                                                  // Get DB name
+                                                  std::string resolvedDBName;
+                                                  if (Parameter::Type::REFERENCE == dbName.m_type)
+                                                  {
+                                                      const auto retval = event->getString(dbName.m_value);
+                                                      if (retval)
+                                                      {
+                                                          resolvedDBName = retval.value();
+                                                      }
+                                                      else
+                                                      {
+                                                          return base::result::makeFailure(event, failureTrace1);
+                                                      }
+                                                  }
+                                                  else
+                                                  {
+                                                      resolvedDBName = dbName.m_value;
+                                                  }
 
-            const auto deleteResult = kvdbManager->deleteDB(resolvedDBName);
-            if (deleteResult)
-            {
-                return base::result::makeFailure(event,
-                                                 failureTrace
-                                                     + fmt::format("Database '{}' could not be deleted: {}",
-                                                                   resolvedDBName,
-                                                                   deleteResult.value().message));
-            }
+                                                  const auto deleteResult = kvdbManager->deleteDB(resolvedDBName);
+                                                  if (deleteResult)
+                                                  {
+                                                      return base::result::makeFailure(
+                                                          event,
+                                                          failureTrace
+                                                              + fmt::format("Database '{}' could not be deleted: {}",
+                                                                            resolvedDBName,
+                                                                            deleteResult.value().message));
+                                                  }
 
-            event->setBool(true, targetField);
+                                                  event->setBool(true, targetField);
 
-            return base::result::makeSuccess(event, successTrace);
-        });
+                                                  return base::result::makeSuccess(event, successTrace);
+                                              });
 }
 
 // TODO: some tests for this method are missing
 // <field>: +kvdb_delete/<db>
-Builder getOpBuilderKVDBDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
+HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
-    return [kvdbManager](const std::any& definition)
+    return [kvdbManager](const std::string& targetField,
+                         const std::string& rawName,
+                         const std::vector<std::string>& rawParameters)
     {
-        return KVDBDelete(definition, kvdbManager);
+        return KVDBDelete(targetField, rawName, rawParameters, kvdbManager);
     };
 }
 

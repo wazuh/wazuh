@@ -15,25 +15,23 @@ TEST(opBuilderHelperRegexExtract, Builds)
     auto tuple = std::make_tuple(
         std::string {"/field"}, std::string {"regex_extract"}, std::vector<std::string> {"$_field", "(regex)"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperRegexExtract(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperRegexExtract, tuple));
 }
 
 TEST(opBuilderHelperRegexExtract, Builds_bad_parameters)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"regex_extract"},
-                                 std::vector<std::string> {"test"});
+    auto tuple =
+        std::make_tuple(std::string {"/field"}, std::string {"regex_extract"}, std::vector<std::string> {"test"});
 
-    ASSERT_THROW(bld::opBuilderHelperRegexExtract(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperRegexExtract, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexExtract, Builds_incorrect_parameter_type)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"regex_extract"},
-                                 std::vector<std::string> {"test", "(regex)"});
+    auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"regex_extract"}, std::vector<std::string> {"test", "(regex)"});
 
-    ASSERT_THROW(bld::opBuilderHelperRegexExtract(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperRegexExtract, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexExtract, Exec_regex_extract_field_not_exist)
@@ -44,7 +42,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_field_not_exist)
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "This is a test."})");
 
-    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexExtract, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -62,7 +60,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_ref_field_not_exist)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield2": "This is a test."})");
 
-    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexExtract, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -78,7 +76,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_fail)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "This is a test."})");
 
-    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexExtract, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -94,7 +92,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_success)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "This is a test."})");
 
-    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexExtract, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -120,7 +118,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_field_not_exist)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexExtract, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -146,7 +144,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_ref_field_not_ex
                     }
                     })");
 
-    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexExtract, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -170,7 +168,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_fail)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexExtract, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -194,7 +192,7 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_success)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperRegexExtract(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexExtract, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 

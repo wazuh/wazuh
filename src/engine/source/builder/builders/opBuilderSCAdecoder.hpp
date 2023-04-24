@@ -4,10 +4,10 @@
 #include <any>
 #include <memory>
 
+#include <baseTypes.hpp>
 #include <json/json.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
 #include <wdb/wdb.hpp>
-#include <baseTypes.hpp>
 
 #include "expression.hpp"
 
@@ -101,8 +101,8 @@ enum class SearchResult
  */
 struct DecodeCxt
 {
-    base::Event& event;         ///< Event to be processed.
-    const std::string& agentID; ///< Agent ID of the agent that generated the event.
+    base::Event& event;                    ///< Event to be processed.
+    const std::string& agentID;            ///< Agent ID of the agent that generated the event.
     std::shared_ptr<wazuhdb::WazuhDB> wdb; ///< WazuhDB instance.
     /** @brief Socket to forward dump request. */
     std::shared_ptr<base::utils::socketInterface::unixDatagram> forwarderSocket;
@@ -116,10 +116,7 @@ struct DecodeCxt
      * @param field Field to get the value.
      * @return empty if the field is not found or the value is not an int
      */
-    std::optional<int> getSrcInt(sca::field::Name field) const
-    {
-        return event->getInt(sourcePath.at(field));
-    };
+    std::optional<int> getSrcInt(sca::field::Name field) const { return event->getInt(sourcePath.at(field)); };
 
     /**
      * @brief Get number as a double value from a field.
@@ -147,8 +144,7 @@ struct DecodeCxt
      * @param field Field to get the value.
      * @return Empty if the field is not found or the value is not an object.
      */
-    std::optional<std::vector<std::tuple<std::string, json::Json>>>
-    getSrcObject(sca::field::Name field) const
+    std::optional<std::vector<std::tuple<std::string, json::Json>>> getSrcObject(sca::field::Name field) const
     {
         return event->getObject(sourcePath.at(field));
     };
@@ -170,10 +166,7 @@ struct DecodeCxt
      * @return true if the field is present.
      * @return false if the field is not present.
      */
-    bool existsSrc(sca::field::Name field) const
-    {
-        return event->exists(sourcePath.at(field));
-    }
+    bool existsSrc(sca::field::Name field) const { return event->exists(sourcePath.at(field)); }
 };
 
 /****************************************************************************************
@@ -290,8 +283,7 @@ bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId);
  * @param policyId The policy ID to find.
  * @return std::tuple<SearchResult, std::string> The search result and the event hash.
  */
-std::tuple<SearchResult, std::string> findCheckResults(const DecodeCxt& ctx,
-                                                       const std::string& policyId);
+std::tuple<SearchResult, std::string> findCheckResults(const DecodeCxt& ctx, const std::string& policyId);
 
 /**
  * @brief Fill the /sca object with the scan info event.
@@ -311,8 +303,7 @@ void FillScanInfo(const DecodeCxt& ctx);
  * @return true If the event is a valid dump event type.
  * @return false If the event is not a valid dump event type.
  */
-std::tuple<std::optional<std::string>, std::string, int>
-isValidDumpEvent(const DecodeCxt& ctx);
+std::tuple<std::optional<std::string>, std::string, int> isValidDumpEvent(const DecodeCxt& ctx);
 
 /**
  * @brief Delete check distinct policy id
@@ -321,9 +312,7 @@ isValidDumpEvent(const DecodeCxt& ctx);
  * @param policyId The policy ID to delete.
  * @param scanId The scan ID to delete.
  */
-void deletePolicyCheckDistinct(const DecodeCxt& ctx,
-                               const std::string& policyId,
-                               const int scanId);
+void deletePolicyCheckDistinct(const DecodeCxt& ctx, const std::string& policyId, const int scanId);
 
 /****************************************************************************************
                                   Handlers
@@ -369,11 +358,14 @@ std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx);
 
 /**
  * @brief SCA Decoder
- * @param def Json Doc
- * @param tr Tracer
- * @return base::Lifter true when executes without any problem, false otherwise.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
+ * @return base::Expression true when executes without any problem, false otherwise.
  */
-base::Expression opBuilderSCAdecoder(const std::any& definition);
+base::Expression opBuilderSCAdecoder(const std::string& targetField,
+                                     const std::string& rawName,
+                                     const std::vector<std::string>& rawParameters);
 
 } // namespace builder::internals::builders
 

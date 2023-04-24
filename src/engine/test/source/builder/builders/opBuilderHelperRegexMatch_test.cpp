@@ -12,22 +12,20 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperRegexMatch, Builds)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"regex_match"},
-                                 std::vector<std::string> {"^regex_test 123$"});
+    auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"regex_match"}, std::vector<std::string> {"^regex_test 123$"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperRegexMatch(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperRegexMatch, tuple));
 }
 
 TEST(opBuilderHelperRegexMatch, Exec_match_false)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"regex_match"},
-                                 std::vector<std::string> {"regex_test$"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"regex_match"}, std::vector<std::string> {"regex_test$"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "regex_test 123"})");
 
-    auto op = bld::opBuilderHelperRegexMatch(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexMatch, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -36,13 +34,12 @@ TEST(opBuilderHelperRegexMatch, Exec_match_false)
 
 TEST(opBuilderHelperRegexMatch, Exec_match_true)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"regex_match"},
-                                 std::vector<std::string> {"^regex_test"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"regex_match"}, std::vector<std::string> {"^regex_test"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "regex_test 123"})");
 
-    auto op = bld::opBuilderHelperRegexMatch(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexMatch, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -66,7 +63,7 @@ TEST(opBuilderHelperRegexMatch, Exec_match_multilevel_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperRegexMatch(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexMatch, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -90,7 +87,7 @@ TEST(opBuilderHelperRegexMatch, Exec_match_multilevel_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperRegexMatch(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperRegexMatch, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 

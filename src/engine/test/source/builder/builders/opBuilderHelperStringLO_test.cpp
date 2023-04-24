@@ -12,30 +12,27 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringLO, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
+    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperStringLO(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperStringLO, tuple));
 }
 
 TEST(opBuilderHelperStringLO, Builds_bad_parameters)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"downcase"},
-                                 std::vector<std::string> {"test", "TEST"});
+    auto tuple =
+        std::make_tuple(std::string {"/field"}, std::string {"downcase"}, std::vector<std::string> {"test", "TEST"});
 
-    ASSERT_THROW(bld::opBuilderHelperStringLO(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperStringLO, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_field_not_exist)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"downcase"},
-                                 std::vector<std::string> {"TEST"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
 
-    auto op = bld::opBuilderHelperStringLO(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringLO, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -44,13 +41,12 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_field_not_exist)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_success)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"downcase"},
-                                 std::vector<std::string> {"TEST"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    auto op = bld::opBuilderHelperStringLO(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringLO, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -61,14 +57,13 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_success)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_ref_field_not_exist)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"downcase"},
-                                 std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield2": 10})");
 
-    auto op = bld::opBuilderHelperStringLO(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringLO, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -77,14 +72,13 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_ref_field_not_exist)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_ref_success)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"downcase"},
-                                 std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "TEST"})");
 
-    auto op = bld::opBuilderHelperStringLO(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringLO, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -95,9 +89,8 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_ref_success)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_field_not_exist)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"downcase"},
-                                 std::vector<std::string> {"TEST"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -110,7 +103,7 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_field_not_exist)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringLO(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringLO, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -119,9 +112,8 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_field_not_exist)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_success)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"downcase"},
-                                 std::vector<std::string> {"TEST"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -134,7 +126,7 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_success)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringLO(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringLO, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -145,14 +137,13 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_success)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_ref_field_not_exist)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"downcase"},
-                                 std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield2": 10})");
 
-    auto op = bld::opBuilderHelperStringLO(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringLO, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -176,7 +167,7 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_ref_success)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringLO(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperStringLO, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 

@@ -18,9 +18,10 @@ using namespace base;
 auto initTest()
 {
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
-    registry->registerBuilder(getOperationConditionBuilder(registry),
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
+    registry->registerBuilder(getOperationConditionBuilder(helperRegistry),
                               "operation.condition");
-    registry->registerBuilder(getOperationMapBuilder(registry), "operation.map");
+    registry->registerBuilder(getOperationMapBuilder(helperRegistry), "operation.map");
     registry->registerBuilder(getStageBuilderCheck(registry), "stage.check");
     registry->registerBuilder(getStageMapBuilder(registry), "stage.map");
     return registry;

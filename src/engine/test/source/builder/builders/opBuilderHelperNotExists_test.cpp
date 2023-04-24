@@ -11,20 +11,18 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperNotExists, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"exists"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"exists"}, std::vector<std::string> {});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperNotExists(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperNotExists, tuple));
 }
 
 TEST(opBuilderHelperNotExists, Exec_not_exists_false)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "valid"})");
 
-    auto op = bld::opBuilderHelperNotExists(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperNotExists, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -33,12 +31,11 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_false)
 
 TEST(opBuilderHelperNotExists, Exec_not_exists_true)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "valid"})");
 
-    auto op = bld::opBuilderHelperNotExists(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperNotExists, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -47,9 +44,8 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_true)
 
 TEST(opBuilderHelperNotExists, Exec_multilevel_false)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/fieldcheck"},
-                                 std::string {"exists"},
-                                 std::vector<std::string> {});
+    auto tuple =
+        std::make_tuple(std::string {"/parentObjt_1/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -62,7 +58,7 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperNotExists(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperNotExists, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -71,9 +67,8 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_false)
 
 TEST(opBuilderHelperNotExists, Exec_multilevel_true)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/fieldcheck"},
-                                 std::string {"exists"},
-                                 std::vector<std::string> {});
+    auto tuple =
+        std::make_tuple(std::string {"/parentObjt_1/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -86,7 +81,7 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperNotExists(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperNotExists, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
