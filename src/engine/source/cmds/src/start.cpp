@@ -239,7 +239,13 @@ void runStart(ConfHandler confManager)
         // Builder and registry
         {
             auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-            builder::internals::registerBuilders(registry, {0, logpar, kvdb});
+            builder::internals::dependencies deps;
+            deps.logparDebugLvl = 0;
+            deps.logpar = logpar;
+            deps.kvdbManager = kvdb;
+            deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
+            builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
+            builder::internals::registerBuilders(registry, deps);
             LOG_DEBUG("Builders registered.");
 
             builder = std::make_shared<builder::Builder>(store, registry);
@@ -364,8 +370,7 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_LOG_LEVEL)
         ->envname(ENGINE_LOG_LEVEL_ENV);
 
-    serverApp
-        ->add_option("--log_output", options->logOutput, "Sets the logging output. Default: stdout.")
+    serverApp->add_option("--log_output", options->logOutput, "Sets the logging output. Default: stdout.")
         ->envname(ENGINE_LOG_OUTPUT_ENV);
 
     // Server module

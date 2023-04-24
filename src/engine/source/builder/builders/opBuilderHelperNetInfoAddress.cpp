@@ -47,12 +47,11 @@ bool sysNetAddresTableFill(base::Event event,
         return false;
     }
 
-    const auto netmaskI = event->getArray(ipObjectPath + getPath(Name::NETMASK).data())
-                              .value_or(std::vector<json::Json>());
+    const auto netmaskI =
+        event->getArray(ipObjectPath + getPath(Name::NETMASK).data()).value_or(std::vector<json::Json>());
 
     const auto broadcastI =
-        event->getArray(ipObjectPath + getPath(Name::BROADCAST).data())
-            .value_or(std::vector<json::Json>());
+        event->getArray(ipObjectPath + getPath(Name::BROADCAST).data()).value_or(std::vector<json::Json>());
 
     for (size_t i = 0; i != address_ar.value().size(); ++i)
     {
@@ -107,38 +106,35 @@ bool sysNetAddresTableFill(base::Event event,
     return true;
 }
 
-base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool isIPv6)
+base::Expression opBuilderHelperNetInfoAddress(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters,
+                                               bool isIPv6)
 {
-    const auto [targetField, name, rawParameters] =
-        helper::base::extractDefinition(definition);
-    const auto parameters = helper::base::processParameters(name, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters);
 
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 4);
+    helper::base::checkParametersSize(rawName, parameters, 4);
     // Parameter type check
     // Agent_id
-    helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
     // scan_id
-    helper::base::checkParameterType(
-        name, parameters[1], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::REFERENCE);
     // name
-    helper::base::checkParameterType(
-        name, parameters[2], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[2], helper::base::Parameter::Type::REFERENCE);
     // array (IPv4 or IPv6)
-    helper::base::checkParameterType(
-        name, parameters[3], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[3], helper::base::Parameter::Type::REFERENCE);
 
-    const auto traceName = helper::base::formatHelperName(name, targetField, parameters);
+    const auto traceName = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", traceName);
-    const auto failureTrace = fmt::format(
-        "[{}] -> Failure: Parameter doesn't exist or it has the wrong type: ", traceName);
-    const auto failureTrace1 = fmt::format(
-        "[{}] -> Failure: [{}] sysNetAddressTableFill error", traceName, targetField);
-    const auto failureTrace2 = fmt::format(
-        "[{}] -> Failure: [{}] couldn't assign result value", traceName, targetField);
+    const auto failureTrace =
+        fmt::format("[{}] -> Failure: Parameter doesn't exist or it has the wrong type: ", traceName);
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: [{}] sysNetAddressTableFill error", traceName, targetField);
+    const auto failureTrace2 =
+        fmt::format("[{}] -> Failure: [{}] couldn't assign result value", traceName, targetField);
 
     // EventPaths and mappedPaths can be set in buildtime
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
@@ -166,8 +162,7 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
                 return base::result::makeFailure(event, failureTrace + scan_id_path);
             }
             const auto resultValue {event->getInt(scan_id_path)};
-            const auto scan_id {
-                resultValue.has_value() ? std::to_string(resultValue.value()) : "NULL"};
+            const auto scan_id {resultValue.has_value() ? std::to_string(resultValue.value()) : "NULL"};
 
             if (!event->exists(name_path) || !event->isString(name_path))
             {
@@ -181,8 +176,8 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
                 return base::result::makeFailure(event, failureTrace + ipObject_path);
             }
 
-            const auto resultExecution = sysNetAddresTableFill(
-                event, agent_id, scan_id, name, ipObject_path, wdb, isIPv6);
+            const auto resultExecution =
+                sysNetAddresTableFill(event, agent_id, scan_id, name, ipObject_path, wdb, isIPv6);
 
             if (!resultExecution)
             {
@@ -207,14 +202,18 @@ base::Expression opBuilderHelperNetInfoAddress(const std::any& definition, bool 
 namespace builder::internals::builders
 {
 
-base::Expression opBuilderHelperSaveNetInfoIPv4(const std::any& definition)
+base::Expression opBuilderHelperSaveNetInfoIPv4(const std::string& targetField,
+                                                const std::string& rawName,
+                                                const std::vector<std::string>& rawParameters)
 {
-    return opBuilderHelperNetInfoAddress(definition, false);
+    return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, false);
 }
 
-base::Expression opBuilderHelperSaveNetInfoIPv6(const std::any& definition)
+base::Expression opBuilderHelperSaveNetInfoIPv6(const std::string& targetField,
+                                                const std::string& rawName,
+                                                const std::vector<std::string>& rawParameters)
 {
-    return opBuilderHelperNetInfoAddress(definition, true);
+    return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, true);
 }
 
 } // namespace builder::internals::builders

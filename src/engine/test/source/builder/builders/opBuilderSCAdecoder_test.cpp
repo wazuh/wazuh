@@ -466,30 +466,23 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFields)
     ASSERT_EQ(event->getInt("/sca/check/id").value(), 6500);
 
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "check");
-    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(),
-                 "CIS Benchmark for CentOS Linux 8");
+    ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "CIS Benchmark for CentOS Linux 8");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "cis_centos8_linux");
 
-    ASSERT_STREQ(event->getString("/sca/check/title").value().c_str(),
-                 "Ensure mounting of cramfs");
-    ASSERT_STREQ(event->getString("/sca/check/description").value().c_str(),
-                 "The cramfs filesystem type is ...");
+    ASSERT_STREQ(event->getString("/sca/check/title").value().c_str(), "Ensure mounting of cramfs");
+    ASSERT_STREQ(event->getString("/sca/check/description").value().c_str(), "The cramfs filesystem type is ...");
     ASSERT_STREQ(event->getString("/sca/check/rationale").value().c_str(),
                  "Removing support for unneeded filesystem...");
-    ASSERT_STREQ(event->getString("/sca/check/remediation").value().c_str(),
-                 "Edit or create a file in the /etc/mod.d");
-    ASSERT_STREQ(event->getString("/sca/check/compliance/cis").value().c_str(),
-                 "1.1.1.1");
+    ASSERT_STREQ(event->getString("/sca/check/remediation").value().c_str(), "Edit or create a file in the /etc/mod.d");
+    ASSERT_STREQ(event->getString("/sca/check/compliance/cis").value().c_str(), "1.1.1.1");
     ASSERT_STREQ(event->getString("/sca/check/references").value().c_str(),
                  "https://www.cisecurity.org/cis-benchmarks/");
     ASSERT_STREQ(event->getString("/sca/check/status").value().c_str(), "Not applicable");
-    ASSERT_STREQ(event->getString("/sca/check/reason").value().c_str(),
-                 "Could not open file '/boot/grub2/user.cfg'");
+    ASSERT_STREQ(event->getString("/sca/check/reason").value().c_str(), "Could not open file '/boot/grub2/user.cfg'");
 }
 
 // Map only mandatory fields present, result variation
-TEST_F(opBuilderSCAdecoder_Functions,
-       FillCheckEventJSON_OnlyMandatoryFieldsResultVariation)
+TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFieldsResultVariation)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -585,14 +578,10 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_CsvFields)
     auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     sca::fillCheckEvent(state, "Applicable");
 
-    ASSERT_STREQ(event->getString("/sca/check/file/0").value().c_str(),
-                 "/usr/lib/systemd/system/rescue.service");
-    ASSERT_STREQ(event->getString("/sca/check/file/1").value().c_str(),
-                 "/usr/lib/systemd/system/emergency.service");
-    ASSERT_STREQ(event->getString("/sca/check/command/0").value().c_str(),
-                 "sysctl net.ipv4.ip_forward");
-    ASSERT_STREQ(event->getString("/sca/check/command/1").value().c_str(),
-                 "sysctl net.ipv6.conf.all.forwarding");
+    ASSERT_STREQ(event->getString("/sca/check/file/0").value().c_str(), "/usr/lib/systemd/system/rescue.service");
+    ASSERT_STREQ(event->getString("/sca/check/file/1").value().c_str(), "/usr/lib/systemd/system/emergency.service");
+    ASSERT_STREQ(event->getString("/sca/check/command/0").value().c_str(), "sysctl net.ipv4.ip_forward");
+    ASSERT_STREQ(event->getString("/sca/check/command/1").value().c_str(), "sysctl net.ipv6.conf.all.forwarding");
 }
 
 // Result true, checks mandatory fields present
@@ -616,8 +605,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_MandatoryField)
         }
     })")};
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
     ASSERT_FALSE(checkError.has_value());
@@ -645,8 +633,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldScan_id)
         }
     })")};
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
@@ -673,8 +660,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldElements
         }
     })")};
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
     ASSERT_TRUE(checkError.has_value());
@@ -700,8 +686,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckDumpJSON_FailedMandatoryFieldPolicy_i
         }
     })")};
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
     auto [checkError, policyId, scanId] = sca::isValidDumpEvent(state);
 
     ASSERT_TRUE(checkError.has_value());
@@ -713,14 +698,16 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
-        testSendMsg(clientRemoteFD, "ok ");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
+                         "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
+            testSendMsg(clientRemoteFD, "ok ");
+            close(clientRemoteFD);
+        });
 
     auto event {std::make_shared<json::Json>(
         R"({
@@ -738,8 +725,7 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultOk)
         }
     })")};
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802);
 
@@ -753,14 +739,16 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQu
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
-        testSendMsg(clientRemoteFD, "err ");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
+                         "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
+            testSendMsg(clientRemoteFD, "err ");
+            close(clientRemoteFD);
+        });
 
     auto event {std::make_shared<json::Json>(
         R"({
@@ -778,8 +766,7 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQu
         }
     })")};
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802);
 
@@ -788,20 +775,21 @@ TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultTrueWithQu
 }
 
 // Result false, Executes Query and responds with anything besides regular options
-TEST_F(opBuilderSCAdecoder_Functions,
-       DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
+TEST_F(opBuilderSCAdecoder_Functions, DeletePolicyCheckDistinct_ResultFalseWithRandomAnswer)
 {
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
-        testSendMsg(clientRemoteFD, "anything_else ");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
+                         "agent 007 sca delete_check_distinct cis_centos8_linux|4602802");
+            testSendMsg(clientRemoteFD, "anything_else ");
+            close(clientRemoteFD);
+        });
 
     auto event {std::make_shared<json::Json>(
         R"({
@@ -819,8 +807,7 @@ TEST_F(opBuilderSCAdecoder_Functions,
         }
     })")};
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     sca::deletePolicyCheckDistinct(state, "cis_centos8_linux", 4602802);
 
@@ -852,19 +839,19 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkFound)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent 007 sca query_results cis_centos8_linux");
-        testSendMsg(clientRemoteFD, "ok found payload");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
+                         "agent 007 sca query_results cis_centos8_linux");
+            testSendMsg(clientRemoteFD, "ok found payload");
+            close(clientRemoteFD);
+        });
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
-    auto [resultCode, hashCheckResults] =
-        sca::findCheckResults(state, "cis_centos8_linux");
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    auto [resultCode, hashCheckResults] = sca::findCheckResults(state, "cis_centos8_linux");
 
     ASSERT_EQ(resultCode, sca::SearchResult::FOUND);
     ASSERT_STREQ(hashCheckResults.c_str(), "payload");
@@ -897,19 +884,19 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultOkNotFound)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent 007 sca query_results cis_centos8_linux");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
+                         "agent 007 sca query_results cis_centos8_linux");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
-    auto [resultCode, hashCheckResults] =
-        sca::findCheckResults(state, "cis_centos8_linux");
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    auto [resultCode, hashCheckResults] = sca::findCheckResults(state, "cis_centos8_linux");
 
     ASSERT_EQ(resultCode, sca::SearchResult::NOT_FOUND);
     ASSERT_TRUE(hashCheckResults.empty());
@@ -942,19 +929,19 @@ TEST_F(opBuilderSCAdecoder_Functions, FindCheckResults_ResultError)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
-                     "agent 007 sca query_results cis_centos8_linux");
-        testSendMsg(clientRemoteFD, "err not_found");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            ASSERT_STREQ(testRecvString(clientRemoteFD, SOCK_STREAM).c_str(),
+                         "agent 007 sca query_results cis_centos8_linux");
+            testSendMsg(clientRemoteFD, "err not_found");
+            close(clientRemoteFD);
+        });
 
-    const sca::DecodeCxt& state =
-        sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
-    auto [resultCode, hashCheckResults] =
-        sca::findCheckResults(state, "cis_centos8_linux");
+    const sca::DecodeCxt& state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
+    auto [resultCode, hashCheckResults] = sca::findCheckResults(state, "cis_centos8_linux");
 
     ASSERT_EQ(resultCode, sca::SearchResult::ERROR);
     ASSERT_STREQ(hashCheckResults.c_str(), "");
@@ -1093,8 +1080,7 @@ TEST_F(opBuilderSCAdecoder_Functions, FillScanInfo_AllCopiedFields)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
-                 "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -1132,8 +1118,7 @@ TEST_F(opBuilderSCAdecoder_Functions, scoreFloatFillScanInfo_AllCopiedFields)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
-                 "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -1176,7 +1161,7 @@ TEST_F(opBuilderSCAdecoderInit, BuildSimplest)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    ASSERT_NO_THROW(opBuilderSCAdecoder(tuple));
+    ASSERT_NO_THROW(std::apply(opBuilderSCAdecoder, tuple));
 }
 
 TEST_F(opBuilderSCAdecoderInit, checkWrongQttyParams)
@@ -1185,7 +1170,7 @@ TEST_F(opBuilderSCAdecoderInit, checkWrongQttyParams)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, arguments)};
 
-    ASSERT_THROW(opBuilderSCAdecoder(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(opBuilderSCAdecoder, tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderSCAdecoderInit, checkNoParams)
@@ -1194,7 +1179,7 @@ TEST_F(opBuilderSCAdecoderInit, checkNoParams)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, arguments)};
 
-    ASSERT_THROW(opBuilderSCAdecoder(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(opBuilderSCAdecoder, tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderSCAdecoderInit, gettingEmptyReference)
@@ -1203,7 +1188,7 @@ TEST_F(opBuilderSCAdecoderInit, gettingEmptyReference)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, arguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(R"({"_event_json": ""})")};
 
@@ -1218,7 +1203,7 @@ TEST_F(opBuilderSCAdecoderInit, gettingNonExistingReference)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(R"({"$_not_event_json": "event"})")};
 
@@ -1233,7 +1218,7 @@ TEST_F(opBuilderSCAdecoderInit, unexpectedType)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1287,7 +1272,7 @@ TEST_F(checkTypeDecoderSCA, missingFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1310,7 +1295,7 @@ TEST_F(checkTypeDecoderSCA, missingIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1345,7 +1330,7 @@ TEST_F(checkTypeDecoderSCA, missingPolicyField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1380,7 +1365,7 @@ TEST_F(checkTypeDecoderSCA, missingPolicyIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1415,7 +1400,7 @@ TEST_F(checkTypeDecoderSCA, missingCheckField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1445,7 +1430,7 @@ TEST_F(checkTypeDecoderSCA, missingCheckIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1480,7 +1465,7 @@ TEST_F(checkTypeDecoderSCA, missingCheckTitleField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1515,7 +1500,7 @@ TEST_F(checkTypeDecoderSCA, missingCheckResultAndStatusFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1550,22 +1535,24 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -1580,30 +1567,32 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok found payload");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok found payload");
+            close(clientRemoteFD);
 
-        // SaveEventcheck update (exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result|||404");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveEventcheck update (exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result|||404");
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -1617,8 +1606,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "Some Policy");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_Policy_ID");
     ASSERT_STREQ(event->getString("/sca/check/title").value().c_str(), "Some Title");
-    ASSERT_STREQ(event->getString("/sca/check/previous_result").value().c_str(),
-                 "payload");
+    ASSERT_STREQ(event->getString("/sca/check/previous_result").value().c_str(), "payload");
     ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "Some Result");
     ASSERT_FALSE(event->exists("/sca/check/compliance"));
     ASSERT_FALSE(event->exists("/sca/check/status"));
@@ -1630,30 +1618,32 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok found Some Result");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok found Some Result");
+            close(clientRemoteFD);
 
-        // SaveEventcheck update (exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result|||404");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveEventcheck update (exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result|||404");
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -1669,7 +1659,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualResp
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto checkTypeEvtWithoutResult {
         R"({
@@ -1701,24 +1691,25 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualResp
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok found Some Status");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok found Some Status");
+            close(clientRemoteFD);
 
-        // SaveEventcheck update (exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca update 911||Some Status|Could not open file|404");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveEventcheck update (exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911||Some Status|Could not open file|404");
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -1733,32 +1724,34 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -1779,7 +1772,7 @@ TEST_F(checkTypeDecoderSCA, SaveACompliance)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1812,34 +1805,35 @@ TEST_F(checkTypeDecoderSCA, SaveACompliance)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
 
-        // SaveCompliance
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_compliance 911|keyI|valueI");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveCompliance
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyI|valueI");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -1853,8 +1847,7 @@ TEST_F(checkTypeDecoderSCA, SaveACompliance)
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "Some Policy");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_Policy_ID");
     ASSERT_STREQ(event->getString("/sca/check/title").value().c_str(), "Some Title");
-    ASSERT_STREQ(event->getString("/sca/check/compliance/keyI").value().c_str(),
-                 "valueI");
+    ASSERT_STREQ(event->getString("/sca/check/compliance/keyI").value().c_str(), "valueI");
     ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "Some Result");
     ASSERT_FALSE(event->exists("/sca/check/description"));
     ASSERT_FALSE(event->exists("/sca/check/rationale"));
@@ -1868,7 +1861,7 @@ TEST_F(checkTypeDecoderSCA, SaveCompliances)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1903,51 +1896,51 @@ TEST_F(checkTypeDecoderSCA, SaveCompliances)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
 
-        // SaveCompliance
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_compliance 911|keyI|valueI");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
+            // SaveCompliance
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyI|valueI");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
 
-        // SaveCompliance
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyII|2");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
+            // SaveCompliance
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyII|2");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
 
-        // SaveCompliance
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_compliance 911|keyIII|3.0");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveCompliance
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_compliance 911|keyIII|3.0");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -1961,7 +1954,7 @@ TEST_F(checkTypeDecoderSCA, SaveFileRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1994,34 +1987,35 @@ TEST_F(checkTypeDecoderSCA, SaveFileRule)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|file|f:some_file_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|file|f:some_file_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -2035,7 +2029,7 @@ TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2068,34 +2062,35 @@ TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|directory|d:some_directory_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|directory|d:some_directory_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -2109,7 +2104,7 @@ TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2142,34 +2137,35 @@ TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|registry|r:some_registry_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|registry|r:some_registry_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -2183,7 +2179,7 @@ TEST_F(checkTypeDecoderSCA, SaveCommandRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2216,34 +2212,35 @@ TEST_F(checkTypeDecoderSCA, SaveCommandRule)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|command|c:some_command_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|command|c:some_command_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -2257,7 +2254,7 @@ TEST_F(checkTypeDecoderSCA, SaveProcessRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2290,34 +2287,35 @@ TEST_F(checkTypeDecoderSCA, SaveProcessRule)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|process|p:some_process_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|process|p:some_process_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -2331,7 +2329,7 @@ TEST_F(checkTypeDecoderSCA, SaveNumericRule)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2364,34 +2362,35 @@ TEST_F(checkTypeDecoderSCA, SaveNumericRule)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|numeric|n:some_numeric_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|numeric|n:some_numeric_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -2405,7 +2404,7 @@ TEST_F(checkTypeDecoderSCA, InvalidRules)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2540,25 +2539,27 @@ TEST_F(checkTypeDecoderSCA, InvalidRules)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
-    });
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -2572,7 +2573,7 @@ TEST_F(checkTypeDecoderSCA, SaveRules)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2610,79 +2611,75 @@ TEST_F(checkTypeDecoderSCA, SaveRules)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindEventcheck
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-        testSendMsg(clientRemoteFD, "ok not found"); // result = 1
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindEventcheck
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
+            testSendMsg(clientRemoteFD, "ok not found"); // result = 1
+            close(clientRemoteFD);
 
-        // SaveEventcheck insert (not exists)
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedQuery = std::string {"agent 007 sca insert "}
-                             + event->str("/event/original").value_or("error");
-        ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
-        testSendMsg(clientRemoteFD, "this answer is always ignored");
-        close(clientRemoteFD);
+            // SaveEventcheck insert (not exists)
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedQuery =
+                std::string {"agent 007 sca insert "} + event->str("/event/original").value_or("error");
+            ASSERT_STREQ(clientMessage.data(), expectedQuery.c_str());
+            testSendMsg(clientRemoteFD, "this answer is always ignored");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|file|f:some_file_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|file|f:some_file_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|directory|d:some_directory_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|directory|d:some_directory_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|registry|r:some_registry_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|registry|r:some_registry_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|command|c:some_command_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|command|c:some_command_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|process|p:some_process_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|process|p:some_process_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
 
-        // SaveRule
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_rules 911|numeric|n:some_numeric_rule");
-        testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // SaveRule
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca insert_rules 911|numeric|n:some_numeric_rule");
+            testSendMsg(clientRemoteFD, "ok this answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -2726,7 +2723,7 @@ TEST_F(summaryTypeDecoderSCA, missingFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2748,7 +2745,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldPolicyId)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2782,7 +2779,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldScanId)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2816,7 +2813,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldStartTime)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2850,7 +2847,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldEndTime)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2884,7 +2881,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldPassed)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2918,7 +2915,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldFailed)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2952,7 +2949,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldInvalid)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2986,7 +2983,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldTotalChecks)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3019,7 +3016,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldScore)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3053,7 +3050,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldHash)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3087,7 +3084,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldHashFile)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3121,7 +3118,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldFile)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3155,7 +3152,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldName)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3259,15 +3256,12 @@ enum FuncName
     FindCheckResults
 };
 
-const static std::map<FuncName, string> Function2Operation = {
-    {FuncName::FindScanInfo, "query_scan"},
-    {FuncName::FindPolicyInfo, "query_policy"},
-    {FuncName::FindCheckResults, "query_results"}};
+const static std::map<FuncName, string> Function2Operation = {{FuncName::FindScanInfo, "query_scan"},
+                                                              {FuncName::FindPolicyInfo, "query_policy"},
+                                                              {FuncName::FindCheckResults, "query_results"}};
 
-static inline void ignoreCodeSection(const FuncName function,
-                                     const int& serverSocketFD,
-                                     const string& agentID,
-                                     const string& policyID)
+static inline void
+ignoreCodeSection(const FuncName function, const int& serverSocketFD, const string& agentID, const string& policyID)
 {
     auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
     ASSERT_GT(clientRemoteFD, 0);
@@ -3283,26 +3277,25 @@ TEST_F(summaryTypeDecoderSCA, AllUnexpectedAnswers)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+    std::thread t(
+        [&]()
+        {
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3318,43 +3311,43 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_different_hash some_old_scan_id");
-        close(clientRemoteFD);
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_different_hash some_old_scan_id");
+            close(clientRemoteFD);
 
-        // SaveScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca update_scan_info_start "
-                     "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash");
-        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-        close(clientRemoteFD);
+            // SaveScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(),
+                         "agent 007 sca update_scan_info_start "
+                         "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash");
+            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+            close(clientRemoteFD);
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3365,8 +3358,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
-                 "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -3380,7 +3372,7 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto firstScanSummaryEvt {
         R"({
@@ -3419,37 +3411,36 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_different_hash some_old_scan_id");
-        close(clientRemoteFD);
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_different_hash some_old_scan_id");
+            close(clientRemoteFD);
 
-        // SaveScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(
-            clientMessage.data(),
-            "agent 007 sca update_scan_info_start "
-            "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash");
-        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-        close(clientRemoteFD);
+            // SaveScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(),
+                         "agent 007 sca update_scan_info_start "
+                         "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash");
+            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+            close(clientRemoteFD);
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3460,8 +3451,7 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
-                 "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -3475,7 +3465,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto notFirstScanNoForceSummaryEvt {
         R"({
@@ -3512,36 +3502,36 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash some_old_scan_id");
-        close(clientRemoteFD);
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash some_old_scan_id");
+            close(clientRemoteFD);
 
-        // SaveScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca update_scan_info_start "
-                     "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash");
-        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-        close(clientRemoteFD);
+            // SaveScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(),
+                         "agent 007 sca update_scan_info_start "
+                         "some_policy_id|19920710|20220808|404|314|42|8|420|4|some_hash");
+            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+            close(clientRemoteFD);
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3556,7 +3546,7 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFoundSameHashNoForced)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto notFirstScanNoForceSummaryEvt {
         R"({
@@ -3593,37 +3583,36 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFoundSameHashNoForced)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash some_old_scan_id");
-        close(clientRemoteFD);
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash some_old_scan_id");
+            close(clientRemoteFD);
 
-        // SaveScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(
-            clientMessage.data(),
-            "agent 007 sca update_scan_info_start "
-            "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash");
-        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-        close(clientRemoteFD);
+            // SaveScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(),
+                         "agent 007 sca update_scan_info_start "
+                         "some_policy_id|19920710|20220808|404|314|42|8|420|69.007|some_hash");
+            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+            close(clientRemoteFD);
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3638,43 +3627,43 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
 
-        // SaveScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_scan_info "
-                     "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash");
-        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-        close(clientRemoteFD);
+            // SaveScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(),
+                         "agent 007 sca insert_scan_info "
+                         "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash");
+            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+            close(clientRemoteFD);
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     // PushDumpRequest socket
     const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
@@ -3695,8 +3684,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
-                 "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -3710,43 +3698,43 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
 
-        // SaveScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca insert_scan_info "
-                     "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash");
-        testSendMsg(clientRemoteFD, "ok This answer is always ignored.");
-        close(clientRemoteFD);
+            // SaveScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(),
+                         "agent 007 sca insert_scan_info "
+                         "19920710|20220808|404|some_policy_id|314|42|8|420|4|some_hash");
+            testSendMsg(clientRemoteFD, "ok This answer is always ignored.");
+            close(clientRemoteFD);
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3757,8 +3745,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
     ASSERT_STREQ(event->getString("/sca/type").value().c_str(), "summary");
     ASSERT_STREQ(event->getString("/sca/policy").value().c_str(), "some_name");
     ASSERT_EQ(event->getInt("/sca/scan_id").value(), 404);
-    ASSERT_STREQ(event->getString("/sca/description").value().c_str(),
-                 "Some description");
+    ASSERT_STREQ(event->getString("/sca/description").value().c_str(), "Some description");
     ASSERT_STREQ(event->getString("/sca/policy_id").value().c_str(), "some_policy_id");
     ASSERT_EQ(event->getInt("/sca/passed").value(), 314);
     ASSERT_EQ(event->getInt("/sca/failed").value(), 42);
@@ -3772,44 +3759,43 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
+            // FindPolicyInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
 
-        // SavePolicyInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedMsg =
-            "agent 007 sca insert_policy some_name|some_file|some_policy_id|Some "
-            "description|Some references|some_hash_file";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
-        close(clientRemoteFD);
+            // SavePolicyInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedMsg = "agent 007 sca insert_policy some_name|some_file|some_policy_id|Some "
+                               "description|Some references|some_hash_file";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "ok This payload is always ignored.");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3824,42 +3810,42 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAns
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-        close(clientRemoteFD);
+            // FindPolicyInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
+            close(clientRemoteFD);
 
-        // FindPolicySHA256
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
+            // FindPolicySHA256
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3874,42 +3860,42 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-        close(clientRemoteFD);
+            // FindPolicyInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
+            close(clientRemoteFD);
 
-        // FindPolicySHA256
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
+            // FindPolicySHA256
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3924,42 +3910,42 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHa
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-        close(clientRemoteFD);
+            // FindPolicyInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
+            close(clientRemoteFD);
 
-        // FindPolicySHA256
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "ok found some_hash_file");
-        close(clientRemoteFD);
+            // FindPolicySHA256
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "ok found some_hash_file");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -3970,56 +3956,55 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHa
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST_F(summaryTypeDecoderSCA,
-       FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyUnexpectedAnswer)
+TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-        close(clientRemoteFD);
+            // FindPolicyInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
+            close(clientRemoteFD);
 
-        // FindPolicySHA256
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "ok found different_hash_file");
-        close(clientRemoteFD);
+            // FindPolicySHA256
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "ok found different_hash_file");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        expectedMsg = "agent 007 sca delete_policy some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            expectedMsg = "agent 007 sca delete_policy some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4034,51 +4019,51 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-        close(clientRemoteFD);
+            // FindPolicyInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
+            close(clientRemoteFD);
 
-        // FindPolicySHA256
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "ok found different_hash_file");
-        close(clientRemoteFD);
+            // FindPolicySHA256
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "ok found different_hash_file");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        expectedMsg = "agent 007 sca delete_policy some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "err");
-        close(clientRemoteFD);
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            expectedMsg = "agent 007 sca delete_policy some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "err");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4093,60 +4078,60 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
-        close(clientRemoteFD);
+            // FindPolicyInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policy some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found this_is_ignored_if_exists");
+            close(clientRemoteFD);
 
-        // FindPolicySHA256
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "ok found different_hash_file");
-        close(clientRemoteFD);
+            // FindPolicySHA256
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            auto expectedMsg = "agent 007 sca query_policy_sha256 some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "ok found different_hash_file");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        expectedMsg = "agent 007 sca delete_policy some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            expectedMsg = "agent 007 sca delete_policy some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // DeletePolicyCheck
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        expectedMsg = "agent 007 sca delete_check some_policy_id";
-        ASSERT_STREQ(clientMessage.data(), expectedMsg);
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
+            // DeletePolicyCheck
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            expectedMsg = "agent 007 sca delete_check some_policy_id";
+            ASSERT_STREQ(clientMessage.data(), expectedMsg);
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        ignoreCodeSection(
-            FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
-    });
+            // FindCheckResults
+            ignoreCodeSection(FuncName::FindCheckResults, serverSocketFD, "007", "some_policy_id");
+        });
 
     // PushDumpRequest socket
     const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
@@ -4171,33 +4156,33 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4212,33 +4197,33 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
     // PushDumpRequest socket
     const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
@@ -4263,33 +4248,33 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
     // PushDumpRequest socket
     const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
@@ -4314,33 +4299,33 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4355,33 +4340,33 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_different_hash");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_different_hash");
+            close(clientRemoteFD);
+        });
 
     // PushDumpRequest socket
     const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
@@ -4406,33 +4391,33 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        int clientRemoteFD {-1};
-        string clientMessage;
+    std::thread t(
+        [&]()
+        {
+            int clientRemoteFD {-1};
+            string clientMessage;
 
-        // FindScanInfo
-        ignoreCodeSection(
-            FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
+            // FindScanInfo
+            ignoreCodeSection(FuncName::FindScanInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindPolicyInfo
-        ignoreCodeSection(
-            FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
+            // FindPolicyInfo
+            ignoreCodeSection(FuncName::FindPolicyInfo, serverSocketFD, "007", "some_policy_id");
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_different_hash");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_different_hash");
+            close(clientRemoteFD);
+        });
 
     // PushDumpRequest socket
     const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
@@ -4461,7 +4446,7 @@ TEST_F(policiesTypeDecoderSCA, missingFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4484,7 +4469,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4505,15 +4490,17 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindCheckResults
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            // FindCheckResults
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4528,7 +4515,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4549,15 +4536,17 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            // FindPoliciesIds
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4572,7 +4561,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4593,15 +4582,17 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "ok found some_policy");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            // FindPoliciesIds
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "ok found some_policy");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4616,7 +4607,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4637,15 +4628,17 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "ok found some_policyN,some_policy1,some_policy2");
-        close(clientRemoteFD);
-    });
+    std::thread t(
+        [&]()
+        {
+            // FindPoliciesIds
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "ok found some_policyN,some_policy1,some_policy2");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4660,7 +4653,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4681,24 +4674,25 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "ok found some_different_policy");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindPoliciesIds
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "ok found some_different_policy");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_policy some_different_policy");
-        testSendMsg(clientRemoteFD, "err");
-        close(clientRemoteFD);
-    });
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy some_different_policy");
+            testSendMsg(clientRemoteFD, "err");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4713,7 +4707,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAn
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4734,24 +4728,25 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAn
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "ok found some_different_policy");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindPoliciesIds
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "ok found some_different_policy");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_policy some_different_policy");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
-    });
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy some_different_policy");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4766,7 +4761,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePoli
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4787,33 +4782,33 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePoli
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "ok found some_different_policy");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindPoliciesIds
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "ok found some_different_policy");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_policy some_different_policy");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy some_different_policy");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // DeletePolicyCheck
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check some_different_policy");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // DeletePolicyCheck
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check some_different_policy");
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4828,7 +4823,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4849,31 +4844,33 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "ok found policyI,policyIII,policyII");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindPoliciesIds
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "ok found policyI,policyIII,policyII");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyII");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyII");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // DeletePolicyCheck
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyII");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // DeletePolicyCheck
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyII");
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4887,7 +4884,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4908,31 +4905,33 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "ok found policyI,policyIII,policyIV");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindPoliciesIds
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "ok found policyI,policyIII,policyIV");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyIV");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyIV");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // DeletePolicyCheck
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyIV");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // DeletePolicyCheck
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyIV");
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -4942,13 +4941,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
     ASSERT_TRUE(result);
 }
 
-TEST_F(policiesTypeDecoderSCA,
-       FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckIII)
+TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckIII)
 {
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4969,47 +4967,49 @@ TEST_F(policiesTypeDecoderSCA,
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // FindPoliciesIds
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
-        testSendMsg(clientRemoteFD, "ok found policyII,policyIII,policyIV");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // FindPoliciesIds
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_policies ");
+            testSendMsg(clientRemoteFD, "ok found policyII,policyIII,policyIV");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyII");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyII");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // DeletePolicyCheck
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyII");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
+            // DeletePolicyCheck
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyII");
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
 
-        // DeletePolicy
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyIV");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+            // DeletePolicy
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_policy policyIV");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // DeletePolicyCheck
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyIV");
-        testSendMsg(clientRemoteFD, "This answer is always ignored.");
-        close(clientRemoteFD);
-    });
+            // DeletePolicyCheck
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check policyIV");
+            testSendMsg(clientRemoteFD, "This answer is always ignored.");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5053,7 +5053,7 @@ TEST_F(dumpEndTypeDecoderSCA, missingFields)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -5075,7 +5075,7 @@ TEST_F(dumpEndTypeDecoderSCA, missingPolicyIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -5099,7 +5099,7 @@ TEST_F(dumpEndTypeDecoderSCA, missingElementsSentField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -5123,7 +5123,7 @@ TEST_F(dumpEndTypeDecoderSCA, missingScanIDField)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -5143,36 +5143,36 @@ TEST_F(dumpEndTypeDecoderSCA, missingScanIDField)
     ASSERT_FALSE(result);
 }
 
-TEST_F(dumpEndTypeDecoderSCA,
-       DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsUnexpectedAnswer)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5184,36 +5184,36 @@ TEST_F(dumpEndTypeDecoderSCA,
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST_F(dumpEndTypeDecoderSCA,
-       DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsOkNotFound)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5229,31 +5229,32 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotF
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "err");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "err");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5269,31 +5270,32 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpec
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5309,31 +5311,32 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFo
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5345,44 +5348,44 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFo
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST_F(dumpEndTypeDecoderSCA,
-       DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoUnexpectedAnswer)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoUnexpectedAnswer)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5394,44 +5397,44 @@ TEST_F(dumpEndTypeDecoderSCA,
     ASSERT_TRUE(result.payload()->getBool(targetField).value());
 }
 
-TEST_F(dumpEndTypeDecoderSCA,
-       DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoOkNotFound)
+TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5447,39 +5450,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpected
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "err");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "err");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5495,39 +5499,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "err");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "err");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5543,39 +5548,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok not found");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok not found");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5591,39 +5597,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedA
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5639,39 +5646,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZ
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5687,39 +5695,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "err");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "err");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5735,39 +5744,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
 {
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
+        });
 
     result::Result<Event> result {op(event)};
 
@@ -5784,39 +5794,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsN
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "unexpected answer");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "unexpected answer");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_distinct_hash_id");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_distinct_hash_id");
+            close(clientRemoteFD);
+        });
 
     // PushDumpRequest socket
     const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
@@ -5843,39 +5854,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "err");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "err");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_distinct_hash_id");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_distinct_hash_id");
+            close(clientRemoteFD);
+        });
 
     // PushDumpRequest socket
     const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);
@@ -5902,39 +5914,40 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
 
     const auto tuple {std::make_tuple(targetField, helperFunctionName, commonArguments)};
 
-    const auto op {opBuilderSCAdecoder(tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(opBuilderSCAdecoder, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
     const int serverSocketFD = testBindUnixSocket(WDB_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t([&]() {
-        // DeletePolicyCheckDistinct
-        auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
-        ASSERT_GT(clientRemoteFD, 0);
-        auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
-        ASSERT_STREQ(clientMessage.data(),
-                     "agent 007 sca delete_check_distinct some_policy_id|404");
-        testSendMsg(clientRemoteFD, "ok");
-        close(clientRemoteFD);
+    std::thread t(
+        [&]()
+        {
+            // DeletePolicyCheckDistinct
+            auto clientRemoteFD {testAcceptConnection(serverSocketFD)};
+            ASSERT_GT(clientRemoteFD, 0);
+            auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca delete_check_distinct some_policy_id|404");
+            testSendMsg(clientRemoteFD, "ok");
+            close(clientRemoteFD);
 
-        // FindCheckResults
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_hash_id");
-        close(clientRemoteFD);
+            // FindCheckResults
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_results some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_hash_id");
+            close(clientRemoteFD);
 
-        // FindScanInfo
-        clientRemoteFD = testAcceptConnection(serverSocketFD);
-        ASSERT_GT(clientRemoteFD, 0);
-        clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-        ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
-        testSendMsg(clientRemoteFD, "ok found some_distinct_hash_id");
-        close(clientRemoteFD);
-    });
+            // FindScanInfo
+            clientRemoteFD = testAcceptConnection(serverSocketFD);
+            ASSERT_GT(clientRemoteFD, 0);
+            clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca query_scan some_policy_id");
+            testSendMsg(clientRemoteFD, "ok found some_distinct_hash_id");
+            close(clientRemoteFD);
+        });
 
     // PushDumpRequest socket
     const int clientDgramFD = testBindUnixSocket(CFG_AR_SOCK_PATH, SOCK_DGRAM);

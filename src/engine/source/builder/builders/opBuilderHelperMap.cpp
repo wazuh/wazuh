@@ -80,16 +80,17 @@ IntOperator strToOp(const helper::base::Parameter& op)
  * - `LO`: Lower case
  * @return base::Expression
  */
-base::Expression opBuilderHelperStringTransformation(const std::any& definition, StringOperator op)
+base::Expression opBuilderHelperStringTransformation(const std::string& targetField,
+                                                     const std::string& rawName,
+                                                     const std::vector<std::string>& rawParameters,
+                                                     StringOperator op)
 {
-    // Extract parameters from any
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParametersSize(rawName, parameters, 1);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Depending on rValue type we store the reference or the string value, string in both
     // cases
@@ -409,34 +410,37 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 //*************************************************
 
 // field: +upcase/value|$ref
-base::Expression opBuilderHelperStringUP(const std::any& definition)
+base::Expression opBuilderHelperStringUP(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderHelperStringTransformation(definition, StringOperator::UP)};
+    auto expression {opBuilderHelperStringTransformation(targetField, rawName, rawParameters, StringOperator::UP)};
     return expression;
 }
 
 // field: +downcase/value|$ref
-base::Expression opBuilderHelperStringLO(const std::any& definition)
+base::Expression opBuilderHelperStringLO(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderHelperStringTransformation(definition, StringOperator::LO)};
+    auto expression {opBuilderHelperStringTransformation(targetField, rawName, rawParameters, StringOperator::LO)};
     return expression;
 }
 
 // field: +trim/[begin | end | both]/char
-base::Expression opBuilderHelperStringTrim(const std::any& definition)
+base::Expression opBuilderHelperStringTrim(const std::string& targetField,
+                                           const std::string& rawName,
+                                           const std::vector<std::string>& rawParameters)
 {
-
-    // Extract parameters from any
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 2);
+    helper::base::checkParametersSize(rawName, parameters, 2);
     // Parameter type check
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::VALUE);
-    helper::base::checkParameterType(name, parameters[1], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Get trim type
     const char trimType = parameters[0].m_value == "begin"  ? 's'
@@ -505,17 +509,17 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
 }
 
 // field: +concat/string1|$ref1/string2|$ref2
-base::Expression opBuilderHelperStringConcat(const std::any& definition)
+base::Expression opBuilderHelperStringConcat(const std::string& targetField,
+                                             const std::string& rawName,
+                                             const std::vector<std::string>& rawParameters)
 {
 
-    // Extract parameters from any
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    checkParametersMinSize(name, parameters, 2);
+    checkParametersMinSize(rawName, parameters, 2);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing messages
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
@@ -581,21 +585,22 @@ base::Expression opBuilderHelperStringConcat(const std::any& definition)
 }
 
 // field: +join/$<array_reference1>/<separator>
-base::Expression opBuilderHelperStringFromArray(const std::any& definition)
+base::Expression opBuilderHelperStringFromArray(const std::string& targetField,
+                                                const std::string& rawName,
+                                                const std::vector<std::string>& rawParameters)
 {
-    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    const auto parameters = helper::base::processParameters(name, rawParameters);
-    helper::base::checkParametersSize(name, parameters, 2);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters);
+    helper::base::checkParametersSize(rawName, parameters, 2);
 
     // Check Array reference parameter
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
     const auto arrayName = parameters[0];
 
     // Check separator parameter
-    helper::base::checkParameterType(name, parameters[1], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::VALUE);
     const auto separator = parameters[1];
 
-    const std::string traceName {helper::base::formatHelperName(name, targetField, parameters)};
+    const std::string traceName {helper::base::formatHelperName(rawName, targetField, parameters)};
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, traceName)};
@@ -643,19 +648,20 @@ base::Expression opBuilderHelperStringFromArray(const std::any& definition)
 }
 
 // field: +decode_base16/$<hex_reference>
-base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
+base::Expression opBuilderHelperStringFromHexa(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
 
-    const auto parameters = helper::base::processParameters(name, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters);
 
-    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParametersSize(rawName, parameters, 1);
 
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
 
     const auto sourceField = parameters[0];
 
-    const std::string traceName {helper::base::formatHelperName(name, targetField, parameters)};
+    const std::string traceName {helper::base::formatHelperName(rawName, targetField, parameters)};
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, traceName)};
@@ -717,15 +723,16 @@ base::Expression opBuilderHelperStringFromHexa(const std::any& definition)
 }
 
 // field: +hex_to_number/$ref
-base::Expression opBuilderHelperHexToNumber(const std::any& definition)
+base::Expression opBuilderHelperHexToNumber(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)
 {
-    const auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    const auto parameters = helper::base::processParameters(name, rawParameters);
-    helper::base::checkParametersSize(name, parameters, 1);
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters);
+    helper::base::checkParametersSize(rawName, parameters, 1);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
     const auto sourceField = parameters[0];
 
-    const std::string traceName {helper::base::formatHelperName(name, targetField, parameters)};
+    const std::string traceName {helper::base::formatHelperName(rawName, targetField, parameters)};
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, traceName)};
@@ -766,16 +773,16 @@ base::Expression opBuilderHelperHexToNumber(const std::any& definition)
 }
 
 // field: +replace/substring/new_substring
-base::Expression opBuilderHelperStringReplace(const std::any& definition)
+base::Expression opBuilderHelperStringReplace(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from any
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 2);
+    helper::base::checkParametersSize(rawName, parameters, 2);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     const auto paramOldSubstr = parameters[0];
     if (paramOldSubstr.m_value.empty())
@@ -879,16 +886,16 @@ base::Expression opBuilderHelperStringReplace(const std::any& definition)
 //*************************************************
 
 // field: +int_calculate/[+|-|*|/]/<val1|$ref1>/.../<valN|$refN>
-base::Expression opBuilderHelperIntCalc(const std::any& definition)
+base::Expression opBuilderHelperIntCalc(const std::string& targetField,
+                                        const std::string& rawName,
+                                        const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from any
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    checkParametersMinSize(name, parameters, 2);
+    checkParametersMinSize(rawName, parameters, 2);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
     const auto op {strToOp(parameters[0])};
     // TODO: check if there's a better way to do this
     //  remove operation parameter in order to handle all the params equally
@@ -903,19 +910,19 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition)
 //*************************************************
 
 // field: +regex_extract/_field/regexp/
-base::Expression opBuilderHelperRegexExtract(const std::any& definition)
+base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
+                                             const std::string& rawName,
+                                             const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from any
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 2);
+    helper::base::checkParametersSize(rawName, parameters, 2);
     // Parameter type check
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::REFERENCE);
-    helper::base::checkParameterType(name, parameters[1], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     std::string map_field {parameters[0].m_value};
 
@@ -963,14 +970,15 @@ base::Expression opBuilderHelperRegexExtract(const std::any& definition)
 //*************************************************
 
 // field: +array_append/$field|literal...
-base::Expression opBuilderHelperAppend(const std::any& definition)
+base::Expression opBuilderHelperAppend(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(name, rawParameters);
+    auto parameters = helper::base::processParameters(rawName, rawParameters);
 
-    checkParametersMinSize(name, parameters, 1);
+    checkParametersMinSize(rawName, parameters, 1);
 
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
@@ -1019,14 +1027,15 @@ base::Expression opBuilderHelperAppend(const std::any& definition)
 }
 
 // field: +merge_recursive/$field
-base::Expression opBuilderHelperMergeRecursively(const std::any& definition)
+base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
+                                                 const std::string& rawName,
+                                                 const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(name, rawParameters);
-    helper::base::checkParametersSize(name, parameters, 1);
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    auto parameters = helper::base::processParameters(rawName, rawParameters);
+    helper::base::checkParametersSize(rawName, parameters, 1);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
 
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
@@ -1072,20 +1081,21 @@ base::Expression opBuilderHelperMergeRecursively(const std::any& definition)
 }
 
 // field: +split/$field/[,| | ...]
-base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
+base::Expression opBuilderHelperAppendSplitString(const std::string& targetField,
+                                                  const std::string& rawName,
+                                                  const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(name, rawParameters);
-    helper::base::checkParametersSize(name, parameters, 2);
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::REFERENCE);
-    helper::base::checkParameterType(name, parameters[1], helper::base::Parameter::Type::VALUE);
+    auto parameters = helper::base::processParameters(rawName, rawParameters);
+    helper::base::checkParametersSize(rawName, parameters, 2);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::VALUE);
     if (parameters[1].m_value.size() != 1)
     {
         throw std::runtime_error(fmt::format(
-            "\"{}\" function: Separator \"{}\" should be one character long", name, parameters[1].m_value.size()));
+            "\"{}\" function: Separator \"{}\" should be one character long", rawName, parameters[1].m_value.size()));
     }
 
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
@@ -1119,14 +1129,15 @@ base::Expression opBuilderHelperAppendSplitString(const std::any& definition)
         });
 }
 
-base::Expression opBuilderHelperMerge(const std::any& definition)
+base::Expression opBuilderHelperMerge(const std::string& targetField,
+                                      const std::string& rawName,
+                                      const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(name, rawParameters);
-    helper::base::checkParametersSize(name, parameters, 1);
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    auto parameters = helper::base::processParameters(rawName, rawParameters);
+    helper::base::checkParametersSize(rawName, parameters, 1);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
 
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
@@ -1176,16 +1187,16 @@ base::Expression opBuilderHelperMerge(const std::any& definition)
 //*************************************************
 
 // field: +delete
-base::Expression opBuilderHelperDeleteField(const std::any& definition)
+base::Expression opBuilderHelperDeleteField(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from any
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 0);
+    helper::base::checkParametersSize(rawName, parameters, 0);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing messages
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
@@ -1221,18 +1232,18 @@ base::Expression opBuilderHelperDeleteField(const std::any& definition)
 }
 
 // field: +rename/$sourceField
-base::Expression opBuilderHelperRenameField(const std::any& definition)
+base::Expression opBuilderHelperRenameField(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from any
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number and type of parameters
-    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParametersSize(rawName, parameters, 1);
     auto sourceField = parameters[0];
-    helper::base::checkParameterType(name, sourceField, helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, sourceField, helper::base::Parameter::Type::REFERENCE);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing messages
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
@@ -1290,17 +1301,18 @@ base::Expression opBuilderHelperRenameField(const std::any& definition)
 //*              IP tranform                      *
 //*************************************************
 // field: +s_IPVersion/$ip_field
-base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition)
+base::Expression opBuilderHelperIPVersionFromIPStr(const std::string& targetField,
+                                                   const std::string& rawName,
+                                                   const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
 
     // Check parameters
-    helper::base::checkParametersSize(name, parameters, 1);
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParametersSize(rawName, parameters, 1);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
 
     // Tracing
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
@@ -1344,16 +1356,17 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::any& definition)
 //*************************************************
 
 // field: + system_epoch
-base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition)
+base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetField,
+                                                    const std::string& rawName,
+                                                    const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters = helper::base::processParameters(name, rawParameters);
+    auto parameters = helper::base::processParameters(rawName, rawParameters);
 
     // Check parameters
-    helper::base::checkParametersSize(name, parameters, 0);
+    helper::base::checkParametersSize(rawName, parameters, 0);
 
     // Tracing
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
     const std::string failureTrace {fmt::format("[{}] -> Failure: Value overflow", name)};
@@ -1382,15 +1395,16 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::any& definition)
 //*************************************************
 
 // field: +sha1/<string1>|<string_reference1>
-base::Expression opBuilderHelperHashSHA1(const std::any& definition)
+base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    const auto parameters = helper::base::processParameters(name, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters);
 
     // Assert expected minimun number of parameters
-    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParametersSize(rawName, parameters, 1);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};

@@ -1,8 +1,8 @@
 #include "routerAuxiliarFunctions.hpp"
-#include <register.hpp>
-#include <store/drivers/fileDriver.hpp>
 #include <builders/baseHelper.hpp>
+#include <register.hpp>
 #include <router/router.hpp>
+#include <store/drivers/fileDriver.hpp>
 
 namespace aux
 {
@@ -10,12 +10,13 @@ namespace aux
 namespace
 {
 
-base::Expression coutOutputHelper_test(const std::any& definition)
+base::Expression coutOutputHelper_test(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    const auto parameters = helper::base::processParameters(name, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters);
 
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
@@ -35,15 +36,19 @@ std::shared_ptr<builder::Builder> getFakeBuilder()
     auto store = std::make_shared<store::FileDriver>(STORE_PATH_TEST);
 
     auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry, {0});
+    auto helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
+    builder::internals::dependencies dependencies;
+    dependencies.helperRegistry = helperRegistry;
+    dependencies.logparDebugLvl = 0;
+    builder::internals::registerHelperBuilders(helperRegistry);
+    builder::internals::registerBuilders(registry, dependencies);
 
-    registry->registerBuilder(coutOutputHelper_test, "helper.coutOutputHelper_test");
+    helperRegistry->registerBuilder(coutOutputHelper_test, "coutOutputHelper_test");
 
     auto builder = std::make_shared<builder::Builder>(store, registry);
 
     return builder;
 };
-
 
 base::Event createFakeMessage(std::optional<std::string> msgOpt)
 {
@@ -52,7 +57,6 @@ base::Event createFakeMessage(std::optional<std::string> msgOpt)
 
     return base::parseEvent::parseOssecEvent(msgStr);
 }
-
 
 std::shared_ptr<store::IStore> getFakeStore()
 {

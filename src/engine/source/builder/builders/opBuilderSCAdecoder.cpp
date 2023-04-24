@@ -170,12 +170,10 @@ using conditionToCheck = std::tuple<field::Name, field::Type, bool>;
  * @return true If all conditions are met.
  * @return false If any condition is not met.
  */
-inline bool isValidEvent(const DecodeCxt& ctx,
-                         const std::vector<conditionToCheck>& conditions)
+inline bool isValidEvent(const DecodeCxt& ctx, const std::vector<conditionToCheck>& conditions)
 {
     // Check types and mandatory fields if is necessary. Return false on fail.
-    const auto isValidCondition =
-        [&ctx](field::Type type, const std::string& path, bool mandatory)
+    const auto isValidCondition = [&ctx](field::Type type, const std::string& path, bool mandatory)
     {
         if (ctx.event->exists(path))
         {
@@ -244,8 +242,8 @@ inline std::optional<std::string> getRuleTypeStr(const char ruleChar)
  * @return <SearchResult::NOT_FOUND, ""> if "not found" result received.
  * @return <SearchResult::ERROR, ""> otherwise.
  */
-std::tuple<SearchResult, std::string> searchAndParse(
-    const std::string& query, std::shared_ptr<wazuhdb::WazuhDB> wdb, bool parse = true)
+std::tuple<SearchResult, std::string>
+searchAndParse(const std::string& query, std::shared_ptr<wazuhdb::WazuhDB> wdb, bool parse = true)
 {
     std::string retStr {};
     SearchResult retCode {SearchResult::ERROR};
@@ -348,8 +346,7 @@ void fillCheckEvent(const DecodeCxt& ctx, const std::string& previousResult)
     // Save the previous result
     if (!previousResult.empty())
     {
-        ctx.event->setString(previousResult.c_str(),
-                             ctx.destinationPath.at(field::Name::CHECK_PREVIOUS_RESULT));
+        ctx.event->setString(previousResult.c_str(), ctx.destinationPath.at(field::Name::CHECK_PREVIOUS_RESULT));
     }
 
     field::copyIfExist(ctx, field::Name::ID);
@@ -373,8 +370,7 @@ void fillCheckEvent(const DecodeCxt& ctx, const std::string& previousResult)
 
     if (ctx.existsSrc(field::Name::CHECK_RESULT))
     {
-        ctx.event->set(ctx.destinationPath.at(field::Name::CHECK_RESULT),
-                       ctx.sourcePath.at(field::Name::CHECK_RESULT));
+        ctx.event->set(ctx.destinationPath.at(field::Name::CHECK_RESULT), ctx.sourcePath.at(field::Name::CHECK_RESULT));
     }
     else
     {
@@ -401,11 +397,8 @@ void insertCompliance(const DecodeCxt& ctx, const int checkID)
             continue;
         }
         // Saving compliance fields to database for event id
-        const auto query = fmt::format("agent {} sca insert_compliance {}|{}|{}",
-                                       ctx.agentID,
-                                       checkID,
-                                       key,
-                                       value.value());
+        const auto query =
+            fmt::format("agent {} sca insert_compliance {}|{}|{}", ctx.agentID, checkID, key, value.value());
 
         const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query);
         if (wazuhdb::QueryResultCodes::OK != res)
@@ -439,11 +432,8 @@ void insertRules(const DecodeCxt& ctx, const int checkID)
         const auto type = getRuleTypeStr(rule.value()[0]);
         if (type)
         {
-            const auto query = fmt::format("agent {} sca insert_rules {}|{}|{}",
-                                           ctx.agentID,
-                                           checkID,
-                                           type.value(),
-                                           rule.value());
+            const auto query =
+                fmt::format("agent {} sca insert_rules {}|{}|{}", ctx.agentID, checkID, type.value(), rule.value());
 
             const auto [res, payload] = ctx.wdb->tryQueryAndParseResult(query);
             if (wazuhdb::QueryResultCodes::OK != res)
@@ -489,13 +479,8 @@ std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
             // There is a previous result, update it
             const auto id = ctx.getSrcInt(field::Name::ID).value_or(-1);
 
-            saveQuery = fmt::format("agent {} sca update {}|{}|{}|{}|{}",
-                                    ctx.agentID,
-                                    checkID,
-                                    result,
-                                    status,
-                                    reason,
-                                    id);
+            saveQuery =
+                fmt::format("agent {} sca update {}|{}|{}|{}|{}", ctx.agentID, checkID, result, status, reason, id);
             break;
         }
         case SearchResult::NOT_FOUND:
@@ -513,8 +498,7 @@ std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
             // if query fails, no sense to continue
             LOG_WARNING("Engine SCA decoder builder: Error querying policy monitoring database for agent '{}'",
                         ctx.agentID);
-            return std::string("Error querying policy monitoring database for agent ")
-                   + ctx.agentID;
+            return std::string("Error querying policy monitoring database for agent ") + ctx.agentID;
     }
     // Save or update the policy monitoring
     const auto [resSavePolicy, empty] = ctx.wdb->tryQueryAndParseResult(saveQuery);
@@ -531,9 +515,8 @@ std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
     }
 
     // Normalize the SCA event and add the previous result if exists
-    const bool normalize = result.empty()
-                               ? (!status.empty() && (previousResult != status))
-                               : (previousResult != result);
+    const bool normalize =
+        result.empty() ? (!status.empty() && (previousResult != status)) : (previousResult != result);
 
     if (normalize)
     {
@@ -596,8 +579,7 @@ void pushDumpRequest(const DecodeCxt& ctx, const std::string& policyId, bool fir
         }
     }
 
-    const auto msg =
-        fmt::format("{}:sca-dump:{}:{}", ctx.agentID, policyId, firstScan ? "1" : "0");
+    const auto msg = fmt::format("{}:sca-dump:{}:{}", ctx.agentID, policyId, firstScan ? "1" : "0");
 
     // Send the message to the forwarder, can fail but no throw exception,
     // becouse it is connected to the forwarder socket
@@ -642,19 +624,18 @@ bool SaveScanInfo(const DecodeCxt& ctx, bool update)
 
     if (update)
     {
-        query = fmt::format(
-            "agent {} sca update_scan_info_start {}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
-            ctx.agentID,
-            policyID,
-            pmStartScan,
-            pmEndScan,
-            scanID,
-            pass,
-            failed,
-            invalid,
-            totalChecks,
-            score,
-            hash);
+        query = fmt::format("agent {} sca update_scan_info_start {}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+                            ctx.agentID,
+                            policyID,
+                            pmStartScan,
+                            pmEndScan,
+                            scanID,
+                            pass,
+                            failed,
+                            invalid,
+                            totalChecks,
+                            score,
+                            hash);
     }
     else
     {
@@ -686,15 +667,14 @@ bool SaveScanInfo(const DecodeCxt& ctx, bool update)
 void insertPolicyInfo(const DecodeCxt& ctx)
 {
     // "Retrieving sha256 hash for policy id: policy_id"
-    const auto query =
-        fmt::format("agent {} sca insert_policy {}|{}|{}|{}|{}|{}",
-                    ctx.agentID,
-                    ctx.getSrcStr(field::Name::NAME).value_or("NULL"),
-                    ctx.getSrcStr(field::Name::FILE).value_or("NULL"),
-                    ctx.getSrcStr(field::Name::POLICY_ID).value_or("NULL"),
-                    ctx.getSrcStr(field::Name::DESCRIPTION).value_or("NULL"),
-                    ctx.getSrcStr(field::Name::REFERENCES).value_or("NULL"),
-                    ctx.getSrcStr(field::Name::HASH_FILE).value_or("NULL"));
+    const auto query = fmt::format("agent {} sca insert_policy {}|{}|{}|{}|{}|{}",
+                                   ctx.agentID,
+                                   ctx.getSrcStr(field::Name::NAME).value_or("NULL"),
+                                   ctx.getSrcStr(field::Name::FILE).value_or("NULL"),
+                                   ctx.getSrcStr(field::Name::POLICY_ID).value_or("NULL"),
+                                   ctx.getSrcStr(field::Name::DESCRIPTION).value_or("NULL"),
+                                   ctx.getSrcStr(field::Name::REFERENCES).value_or("NULL"),
+                                   ctx.getSrcStr(field::Name::HASH_FILE).value_or("NULL"));
 
     const auto [result, payload] = ctx.wdb->tryQueryAndParseResult(query);
 
@@ -708,8 +688,7 @@ void insertPolicyInfo(const DecodeCxt& ctx)
 void updatePolicyInfo(const DecodeCxt& ctx, const std::string& policyId)
 {
     // findPolicySHA256
-    const auto query =
-        fmt::format("agent {} sca query_policy_sha256 {}", ctx.agentID, policyId);
+    const auto query = fmt::format("agent {} sca query_policy_sha256 {}", ctx.agentID, policyId);
 
     const auto [resQuery, oldHashFile] = searchAndParse(query, ctx.wdb);
 
@@ -801,8 +780,7 @@ bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId)
     // "Deleting check for policy '%s', agent id '%s'"
     query = fmt::format("agent {} sca delete_check {}", ctx.agentID, policyId);
 
-    const auto [delCheckResultCode, delCheckPayload] =
-        ctx.wdb->tryQueryAndParseResult(query);
+    const auto [delCheckResultCode, delCheckPayload] = ctx.wdb->tryQueryAndParseResult(query);
 
     if (wazuhdb::QueryResultCodes::OK != delCheckResultCode)
     {
@@ -814,8 +792,7 @@ bool deletePolicyAndCheck(const DecodeCxt& ctx, const std::string& policyId)
     return true;
 }
 
-std::tuple<SearchResult, std::string> findCheckResults(const DecodeCxt& ctx,
-                                                       const std::string& pID)
+std::tuple<SearchResult, std::string> findCheckResults(const DecodeCxt& ctx, const std::string& pID)
 {
     // "Find check results for policy id: %s"
     const auto query = fmt::format("agent {} sca query_results {}", ctx.agentID, pID);
@@ -828,8 +805,7 @@ void FillScanInfo(const DecodeCxt& ctx)
     ctx.event->setString("summary", ctx.destinationPath.at(field::Name::TYPE));
 
     // The /name field is renamed to /policy
-    ctx.event->set(ctx.destinationPath.at(field::Name::POLICY),
-                   ctx.sourcePath.at(field::Name::NAME));
+    ctx.event->set(ctx.destinationPath.at(field::Name::POLICY), ctx.sourcePath.at(field::Name::NAME));
 
     // Copy if exists
     field::copyIfExist(ctx, field::Name::SCAN_ID);
@@ -859,8 +835,7 @@ std::optional<std::string> handleScanInfo(const DecodeCxt& ctx)
     // Check de policy in the DB
     bool normalize = false;
     bool scanInfoUpdate = false;
-    const auto scanInfoQuery =
-        fmt::format("agent {} sca query_scan {}", ctx.agentID, policyId);
+    const auto scanInfoQuery = fmt::format("agent {} sca query_scan {}", ctx.agentID, policyId);
     const auto [resScanInfo, scanInfo] = searchAndParse(scanInfoQuery, ctx.wdb);
 
     switch (resScanInfo)
@@ -957,10 +932,8 @@ std::optional<std::string> handlePoliciesInfo(const DecodeCxt& ctx)
     else
     {
         // "Retrieving policies from database."
-        const auto policiesIdQuery =
-            fmt::format("agent {} sca query_policies ", ctx.agentID);
-        const auto [resPoliciesIds, policiesDB] =
-            searchAndParse(policiesIdQuery, ctx.wdb);
+        const auto policiesIdQuery = fmt::format("agent {} sca query_policies ", ctx.agentID);
+        const auto [resPoliciesIds, policiesDB] = searchAndParse(policiesIdQuery, ctx.wdb);
 
         if (SearchResult::ERROR == resPoliciesIds)
         {
@@ -999,8 +972,7 @@ std::optional<std::string> handlePoliciesInfo(const DecodeCxt& ctx)
                                     DUMP
 *****************************************************************************************/
 
-std::tuple<std::optional<std::string>, std::string, int>
-isValidDumpEvent(const DecodeCxt& ctx)
+std::tuple<std::optional<std::string>, std::string, int> isValidDumpEvent(const DecodeCxt& ctx)
 {
 
     // ScanInfo conditions list
@@ -1021,9 +993,7 @@ isValidDumpEvent(const DecodeCxt& ctx)
     return {std::nullopt, std::move(policyId), scanId};
 }
 
-void deletePolicyCheckDistinct(const DecodeCxt& ctx,
-                               const std::string& policyId,
-                               const int scanId)
+void deletePolicyCheckDistinct(const DecodeCxt& ctx, const std::string& policyId, const int scanId)
 {
     // "Deleting check distinct policy id , agent id "
     const auto query = fmt::format("agent {} sca delete_check_distinct {}|{}", ctx.agentID, policyId, scanId);
@@ -1062,8 +1032,7 @@ std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx)
     if (SearchResult::FOUND == resCheckResult)
     {
         // Retreive hash from summary
-        const auto hashScanQuery =
-            fmt::format("agent {} sca query_scan {}", ctx.agentID, policyId);
+        const auto hashScanQuery = fmt::format("agent {} sca query_scan {}", ctx.agentID, policyId);
         const auto [resScanInfo, hashScanInfo] = searchAndParse(hashScanQuery, ctx.wdb);
 
         if (SearchResult::FOUND == resScanInfo)
@@ -1099,23 +1068,20 @@ std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx)
 
 // - Helper - //
 
-base::Expression opBuilderSCAdecoder(const std::any& definition)
+base::Expression opBuilderSCAdecoder(const std::string& targetField,
+                                     const std::string& rawName,
+                                     const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    const auto parameters {helper::base::processParameters(name, raw_parameters)};
+    const auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 2);
+    helper::base::checkParametersSize(rawName, parameters, 2);
     // Parameter type check
-    helper::base::checkParameterType(
-        name, parameters[0], helper::base::Parameter::Type::REFERENCE);
-    helper::base::checkParameterType(
-        name, parameters[1], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::REFERENCE);
 
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1128,8 +1094,7 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
     /* Create the context for SCA decoder */
     namespace SF = sca::field;
     auto wdb = std::make_shared<wazuhdb::WazuhDB>(wazuhdb::WDB_SOCK_PATH);
-    auto cfgarSock = std::make_shared<base::utils::socketInterface::unixDatagram>(
-        wazuhdb::CFG_AR_SOCK_PATH);
+    auto cfgarSock = std::make_shared<base::utils::socketInterface::unixDatagram>(wazuhdb::CFG_AR_SOCK_PATH);
     /*  Maps of paths. Contains the orginal path and the mapped path for each field */
     std::unordered_map<SF::Name, std::string> fieldSource {};
     std::unordered_map<SF::Name, std::string> fieldDest {};
@@ -1155,12 +1120,10 @@ base::Expression opBuilderSCAdecoder(const std::any& definition)
             std::optional<std::string> error;
 
             // TODO: this should be checked in the decoder
-            if (event->exists(sourceSCApath) && event->exists(agentIdPath)
-                && event->isString(agentIdPath))
+            if (event->exists(sourceSCApath) && event->exists(agentIdPath) && event->isString(agentIdPath))
             {
                 const auto agentId = event->getString(agentIdPath).value();
-                const auto cxt =
-                    sca::DecodeCxt {event, agentId, wdb, cfgarSock, fieldSrc, fieldDst};
+                const auto cxt = sca::DecodeCxt {event, agentId, wdb, cfgarSock, fieldSrc, fieldDst};
 
                 // TODO: Field type is mandatory and should be checked in the decoder
                 auto type = event->getString(sourceSCApath + "/type");

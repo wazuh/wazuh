@@ -12,22 +12,19 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperIntGreaterThan, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"int_greater"}, std::vector<std::string> {"10"});
+    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"int_greater"}, std::vector<std::string> {"10"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIntGreaterThan(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperIntGreaterThan, tuple));
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_greater"},
-                                 std::vector<std::string> {"12"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"12"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    auto op =
-        bld::opBuilderHelperIntGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntGreaterThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -36,14 +33,12 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_greater"},
-                                 std::vector<std::string> {"9"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"9"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    auto op =
-        bld::opBuilderHelperIntGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntGreaterThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -52,15 +47,13 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_greater"},
-                                 std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 12})");
 
-    auto op =
-        bld::opBuilderHelperIntGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntGreaterThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -69,15 +62,13 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_true)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_greater"},
-                                 std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 12,
                                                    "otherfield": 10})");
 
-    auto op =
-        bld::opBuilderHelperIntGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntGreaterThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -86,9 +77,8 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_true)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_false)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"int_greater"},
-                                 std::vector<std::string> {"12"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"12"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -101,8 +91,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_false)
                     }
                     })");
 
-    auto op =
-        bld::opBuilderHelperIntGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntGreaterThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -111,9 +100,8 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_false)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_true)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"int_greater"},
-                                 std::vector<std::string> {"10"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"10"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -126,8 +114,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_true)
                     }
                     })");
 
-    auto op =
-        bld::opBuilderHelperIntGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntGreaterThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -151,8 +138,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_ref_false)
                     }
                     })");
 
-    auto op =
-        bld::opBuilderHelperIntGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntGreaterThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -176,8 +162,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_ref_true)
                     }
                     })");
 
-    auto op =
-        bld::opBuilderHelperIntGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntGreaterThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 

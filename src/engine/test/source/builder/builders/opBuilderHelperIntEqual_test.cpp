@@ -15,7 +15,7 @@ TEST(opBuilderHelperIntEqual, Builds)
     auto tuple = std::make_tuple(
         std::string {"/field"}, std::string {"int_equal"}, std::vector<std::string> {"10"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIntEqual(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperIntEqual, tuple));
 }
 
 TEST(opBuilderHelperIntEqual, Exec_equal_false)
@@ -26,7 +26,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_false)
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    auto op = bld::opBuilderHelperIntEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -41,7 +41,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_true)
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    auto op = bld::opBuilderHelperIntEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -57,7 +57,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_false)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 12})");
 
-    auto op = bld::opBuilderHelperIntEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -73,7 +73,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_true)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 10})");
 
-    auto op = bld::opBuilderHelperIntEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -97,7 +97,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -121,7 +121,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -145,7 +145,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_ref_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -169,7 +169,7 @@ TEST(opBuilderHelperIntEqual, Exec_equal_multilevel_ref_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntEqual, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 

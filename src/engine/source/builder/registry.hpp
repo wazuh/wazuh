@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <fmt/format.h>
 
@@ -15,6 +16,8 @@ namespace builder::internals
 {
 
 using Builder = std::function<base::Expression(std::any)>;
+using HelperBuilder =
+    std::function<base::Expression(const std::string&, const std::string&, const std::vector<std::string>&)>;
 
 /**
  * @brief Registry of builders.

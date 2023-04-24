@@ -47,32 +47,23 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBDeleteTest, buildKVDBDeleteWithValue)
 {
-    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME_1});
-
-    ASSERT_NO_THROW(KVDBDelete(tuple, opBuilderKVDBDeleteTest::kvdbManager));
+    ASSERT_NO_THROW(KVDBDelete("/output", "", {DB_NAME_1}, opBuilderKVDBDeleteTest::kvdbManager));
 }
 
 TEST_F(opBuilderKVDBDeleteTest, buildKVDBDeleteWithReference)
 {
-    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_REF_NAME});
-
-    ASSERT_NO_THROW(KVDBDelete(tuple, opBuilderKVDBDeleteTest::kvdbManager));
+    ASSERT_NO_THROW(KVDBDelete("/output", "", {DB_REF_NAME}, opBuilderKVDBDeleteTest::kvdbManager));
 }
 
 TEST_F(opBuilderKVDBDeleteTest, buildKVDBDeleteWrongAmountOfParametersError)
 {
-    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {});
-
-    ASSERT_THROW(KVDBDelete(tuple, opBuilderKVDBDeleteTest::kvdbManager), std::runtime_error);
-
-    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_REF_NAME, "unexpected_key"});
-
-    ASSERT_THROW(KVDBDelete(tuple, opBuilderKVDBDeleteTest::kvdbManager), std::runtime_error);
-
-    tuple = std::make_tuple<string, string, vector<string>>(
-        "/output", "", {DB_REF_NAME, "unexpected_key", "unexpected_value"});
-
-    ASSERT_THROW(KVDBDelete(tuple, opBuilderKVDBDeleteTest::kvdbManager), std::runtime_error);
+    ASSERT_THROW(KVDBDelete("/output", "", {}, opBuilderKVDBDeleteTest::kvdbManager), std::runtime_error);
+    ASSERT_THROW(KVDBDelete("/output", "", {DB_REF_NAME, "unexpected_key"}, opBuilderKVDBDeleteTest::kvdbManager),
+                 std::runtime_error);
+    ASSERT_THROW(
+        KVDBDelete(
+            "/output", "", {DB_REF_NAME, "unexpected_key", "unexpected_value"}, opBuilderKVDBDeleteTest::kvdbManager),
+        std::runtime_error);
 }
 
 TEST_F(opBuilderKVDBDeleteTest, DeleteSuccessCases)
@@ -87,8 +78,7 @@ TEST_F(opBuilderKVDBDeleteTest, DeleteSuccessCases)
         ASSERT_FALSE(std::holds_alternative<base::Error>(res));
     }
 
-    auto parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME_1});
-    const auto op1 = getOpBuilderKVDBDelete(kvdbManager)(parameters);
+    const auto op1 = getOpBuilderKVDBDelete(kvdbManager)("/output", "", {DB_NAME_1});
 
     auto result = op1->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);
@@ -109,8 +99,7 @@ TEST_F(opBuilderKVDBDeleteTest, DeleteSuccessCases)
         ASSERT_FALSE(std::holds_alternative<base::Error>(res));
     }
 
-    parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_REF_NAME});
-    const auto op2 = getOpBuilderKVDBDelete(kvdbManager)(parameters);
+    const auto op2 = getOpBuilderKVDBDelete(kvdbManager)("/output", "", {DB_REF_NAME});
 
     result = op2->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);

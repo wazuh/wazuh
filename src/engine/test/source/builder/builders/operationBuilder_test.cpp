@@ -68,26 +68,26 @@ auto helperFunctionArray {helperFunctionsCases.getArray().value()};
 
 TEST(OperationConditionBuilderTest, Builds)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        ASSERT_NO_THROW(getOperationConditionBuilder(registry)(def));
+        ASSERT_NO_THROW(getOperationConditionBuilder(helperRegistry)(def));
     }
 }
 
 TEST(OperationConditionBuilderTest, UnexpectedDefinition)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     for (auto operationDef : operationArray)
     {
-        ASSERT_THROW(getOperationConditionBuilder(registry)(operationDef), std::runtime_error);
+        ASSERT_THROW(getOperationConditionBuilder(helperRegistry)(operationDef), std::runtime_error);
     }
 }
 
 TEST(OperationConditionBuilderTest, BuildsOperates)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     auto eventOk = std::make_shared<Json>(R"({
         "string": "value",
         "int": 1,
@@ -191,7 +191,7 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        auto op = getOperationConditionBuilder(registry)(def)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = getOperationConditionBuilder(helperRegistry)(def)->getPtr<Term<EngineOp>>()->getFn();
         auto result = op(eventOk);
         if (!result)
         {
@@ -203,7 +203,7 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        auto op = getOperationConditionBuilder(registry)(def)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = getOperationConditionBuilder(helperRegistry)(def)->getPtr<Term<EngineOp>>()->getFn();
         auto result = op(eventNotOk);
         if (result)
         {
@@ -215,7 +215,7 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        auto op = getOperationConditionBuilder(registry)(def)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = getOperationConditionBuilder(helperRegistry)(def)->getPtr<Term<EngineOp>>()->getFn();
         auto result = op(eventNull);
         if (result)
         {
@@ -227,7 +227,7 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
 
 TEST(OperationConditionBuilderTest, BuildsOperatesArray)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     std::string targetField = "array";
     json::Json operation(R"([
         "string",
@@ -285,7 +285,7 @@ TEST(OperationConditionBuilderTest, BuildsOperatesArray)
         ]
     })");
 
-    auto expression = getOperationConditionBuilder(registry)(definition);
+    auto expression = getOperationConditionBuilder(helperRegistry)(definition);
     auto expressionRootLevel = expression->getPtr<base::Operation>()->getOperands();
     auto expressionNestedLevel = expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
@@ -326,7 +326,7 @@ TEST(OperationConditionBuilderTest, BuildsOperatesArray)
 
 TEST(OperationConditionBuilderTest, BuildsOperatesObject)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     std::string targetField = "object";
     json::Json operation(R"({
         "string": "string",
@@ -384,7 +384,7 @@ TEST(OperationConditionBuilderTest, BuildsOperatesObject)
         }
     })");
 
-    auto expression = getOperationConditionBuilder(registry)(definition);
+    auto expression = getOperationConditionBuilder(helperRegistry)(definition);
     auto expressionRootLevel = expression->getPtr<base::Operation>()->getOperands();
     auto expressionNestedLevel = expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
@@ -425,41 +425,41 @@ TEST(OperationConditionBuilderTest, BuildsOperatesObject)
 
 TEST(OperationConditionBuilderTest, BuildsWithHelper)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
 
-    ASSERT_NO_THROW(registerBuilders(registry));
-    ASSERT_NO_THROW(registry->getBuilder("helper.array_append"));
+    ASSERT_NO_THROW(registerHelperBuilders(helperRegistry));
+    ASSERT_NO_THROW(helperRegistry->getBuilder("array_append"));
 
     for (auto operationDef : helperFunctionArray)
     {
         auto def = operationDef.getObject().value()[0];
-        ASSERT_NO_THROW(getOperationConditionBuilder(registry)(def));
+        ASSERT_NO_THROW(getOperationConditionBuilder(helperRegistry)(def));
     }
 }
 
 TEST(OperationMapBuilderTest, Builds)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        ASSERT_NO_THROW(getOperationMapBuilder(registry)(def));
+        ASSERT_NO_THROW(getOperationMapBuilder(helperRegistry)(def));
     }
 }
 
 TEST(OperationMapBuilderTest, UnexpectedDefinition)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     for (auto operationDef : operationArray)
     {
-        ASSERT_THROW(getOperationMapBuilder(registry)(operationDef), std::runtime_error);
+        ASSERT_THROW(getOperationMapBuilder(helperRegistry)(operationDef), std::runtime_error);
     }
 }
 
 // TODO: add failed map reference test.
 TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     auto expected = std::make_shared<Json>(R"({
         "string": "value",
         "int": 1,
@@ -520,7 +520,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        auto op = getOperationMapBuilder(registry)(def)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = getOperationMapBuilder(helperRegistry)(def)->getPtr<Term<EngineOp>>()->getFn();
         auto result = op(eventOk);
         if (!result)
         {
@@ -533,7 +533,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
 
 TEST(OperationMapBuilderTest, BuildsOperatesArray)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     std::string targetField("array");
     json::Json operationJson(R"([
         "string",
@@ -572,7 +572,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesArray)
         ]
     })");
     auto event = std::make_shared<Json>();
-    auto expression = getOperationMapBuilder(registry)(definition);
+    auto expression = getOperationMapBuilder(helperRegistry)(definition);
     auto expressionsRootLevel = expression->getPtr<base::Operation>()->getOperands();
     auto expressionsNestedLevel = expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
@@ -601,7 +601,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesArray)
 
 TEST(OperationMapBuilderTest, BuildsOperatesObject)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     std::string targetField = "object";
     json::Json operationJson(R"({
         "string": "value",
@@ -641,7 +641,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesObject)
     })");
 
     auto event = std::make_shared<Json>();
-    auto expression = getOperationMapBuilder(registry)(definition);
+    auto expression = getOperationMapBuilder(helperRegistry)(definition);
     auto expressionsRootLevel = expression->getPtr<base::Operation>()->getOperands();
     auto expressionsNestedLevel = expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
@@ -670,14 +670,14 @@ TEST(OperationMapBuilderTest, BuildsOperatesObject)
 
 TEST(OperationMapBuilderTest, BuildsWithHelper)
 {
-    auto registry = std::make_shared<Registry<builder::internals::Builder>>();
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
 
-    ASSERT_NO_THROW(registerBuilders(registry));
-    ASSERT_NO_THROW(registry->getBuilder("helper.array_append"));
+    ASSERT_NO_THROW(registerHelperBuilders(helperRegistry));
+    ASSERT_NO_THROW(helperRegistry->getBuilder("array_append"));
 
     for (auto helperFunctionDef : helperFunctionArray)
     {
         auto def = helperFunctionDef.getObject().value()[0];
-        ASSERT_NO_THROW(getOperationMapBuilder(registry)(def));
+        ASSERT_NO_THROW(getOperationMapBuilder(helperRegistry)(def));
     }
 }

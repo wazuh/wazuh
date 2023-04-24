@@ -9,43 +9,6 @@
 
 using namespace base;
 
-// extractDefinition
-TEST(extractDefinition, Builds)
-{
-    std::any definition = std::make_tuple(
-        std::string {"/field"}, std::string {"int_equal"}, std::vector<std::string> {"10"});
-
-    ASSERT_NO_THROW(helper::base::extractDefinition(definition));
-}
-
-TEST(extractDefinition, Exec_extract_definition_false)
-{
-    std::any definition = std::make_tuple(std::string {"/field2check"},
-                                          std::string {"int_equal"},
-                                          std::string {"int_not_equal"},
-                                          std::vector<std::string> {"12"});
-
-    ASSERT_THROW(helper::base::extractDefinition(definition), std::runtime_error);
-}
-
-TEST(extractDefinition, Exec_extract_definition_true)
-{
-    std::any definition = std::make_tuple(std::string {"/field2check"},
-                                          std::string {"int_equal"},
-                                          std::vector<std::string> {"12"});
-
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
-
-    std::string field_str = targetField;
-    std::string name_str = name;
-    std::string parameters_str = raw_parameters[0];
-
-    ASSERT_EQ(field_str, "/field2check");
-    ASSERT_EQ(name_str, "int_equal");
-    ASSERT_EQ(parameters_str, "12");
-}
-
 // processParameters
 TEST(processParameters, Builds)
 {
