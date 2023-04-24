@@ -193,6 +193,7 @@ class WazuhIntegration:
             self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
             self.db_connector = sqlite3.connect(self.db_path)
             self.db_cursor = self.db_connector.cursor()
+            self.old_version = None  # for DB migration if it is necessary
             self.check_metadata_version()
         if bucket:
             self.bucket = bucket
@@ -1058,7 +1059,7 @@ class AWSBucket(WazuhIntegration):
 
         def event_should_be_skipped(event_):
             return self.discard_field and self.discard_regex \
-                and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+                and check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
