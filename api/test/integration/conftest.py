@@ -599,8 +599,8 @@ def _analysisd_manager(action: ACTIONS) -> None:
 
 
 @pytest.fixture(name="forwarded_events")
-def fixture_forwarded_events(request):
-    """Check the number of forwarded events to analysisd."""
+def fixture_forwarded_events():
+    """Get forwarded events to analysisd."""
 
     _analysisd_manager(STOP_ACTION)
 
