@@ -46,7 +46,7 @@ def test_async_close():
     async_wdb._writer.close.assert_called_once_with()
 
 
-pytest.mark.asyncio
+@pytest.mark.asyncio
 @pytest.mark.parametrize('raw, expected_response', [
     (False, {'test': 'test response'}),
     (True, ['ok', '{"test": "test response"}'])
@@ -70,7 +70,7 @@ async def test_async_send(raw, expected_response):
     async_wdb._reader.readexactly.assert_has_calls([call(4), call(28)])
 
 
-pytest.mark.asyncio
+@pytest.mark.asyncio
 async def test_async_send_ko():
     """Verify that expected exception codes are raised."""
     async_wdb = AsyncWazuhDBConnection()
@@ -94,7 +94,7 @@ async def test_async_send_ko():
         await async_wdb._send('test')
 
 
-pytest.mark.asyncio
+@pytest.mark.asyncio
 async def test_run_wdb_command():
     """Test `WazuhDBConnection.run_wdb_command` method."""
     send_result = ('status', '["data"]')
