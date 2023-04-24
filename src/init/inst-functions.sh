@@ -406,8 +406,10 @@ WriteAgent()
     if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
       LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    if [ "$LOCALFILE_EXTRA_TEMPLATE" != "ERROR_NOT_FOUND" ]; then
+      cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
 
     echo "  <!-- Active response -->" >> $NEWCONFIG
 
@@ -550,9 +552,11 @@ WriteManager()
     if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
       LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
+    if [ ! "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
+    
 
     # Writting rules configuration
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
@@ -680,8 +684,10 @@ WriteLocal()
     if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
       LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    if [ ! "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
 
     # Writting rules configuration
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
