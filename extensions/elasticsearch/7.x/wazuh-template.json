@@ -1999,6 +1999,13 @@
                 "type": "keyword"
               }
             }
+          },
+          "parameters": {
+            "properties": {
+              "extra_args": {
+                "type": "keyword"
+              }
+            }
           }
         }
       },
