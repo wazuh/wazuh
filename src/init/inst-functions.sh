@@ -406,7 +406,7 @@ WriteAgent()
     if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
       LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    if [ "$LOCALFILE_EXTRA_TEMPLATE" != "ERROR_NOT_FOUND" ]; then
+    if [ ! "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
       cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
