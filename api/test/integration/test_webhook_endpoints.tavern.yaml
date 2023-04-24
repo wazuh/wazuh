@@ -1,5 +1,5 @@
 ---
-test_name: send_bulk_with_one_event
+test_name: POST /events
 
 marks:
   - usefixtures:
@@ -7,8 +7,8 @@ marks:
 
 stages:
 
-  - name: POST /events with one event
-    request:
+  - name: Send bulk with one element
+    request: &webhook_request
       verify: false
       url: "{protocol:s}://{host:s}:{port:d}/events"
       method: POST
@@ -18,6 +18,7 @@ stages:
         events: [
           {"foo": 1},
         ]
+
     response:
       verify_response_with:
         - function: tavern_utils:assert_forwarded_events
@@ -25,142 +26,43 @@ stages:
             forwarded_events: "{forwarded_events}"
             expected_events: 1
       status_code: 200
-      json:
+      json: &webhook_response_ok
+        message: The events where successfully forwarded
         error: 0
 
----
-test_name: send_bulk_with_multiple_events
-
-marks:
-  - usefixtures:
-      - forwarded_events
-
-stages:
-
-  - name: POST /events with multiple events
+  - name: POST /events with multiple elements
     request:
       verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/events"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *webhook_request
       json:
         events: [
           {"foo": 1},
           {"bar": 2},
           {"gaz": 3},
         ]
+
     response:
       verify_response_with:
         - function: tavern_utils:assert_forwarded_events
           extra_kwargs:
             forwarded_events: "{forwarded_events}"
-            expected_events: 3
+            expected_events: 4
       status_code: 200
       json:
-        error: 0
-
-
+        <<: *webhook_response_ok
 ---
-test_name: invalid_request
 
-stages:
-
-  - name: POST /events with invalid body
-    request:
-      verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/events"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      json:
-        [
-          {"foo": 1},
-          {"bar": 2}
-        ]
-    response:
-      status_code: 400
-      json:
-        error: 0
-
-
----
-test_name: send_bulk_greater_than_max_size_allowed
-
-stages:
-
-  - name: POST /events with invalid size
-    request:
-      verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/events"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      json:
-        events: [
-          {"foo": 1},
-          {"bar": 2}
-        ]
-    response:
-      status_code: 400
-      json:
-        error: 0
-
----
-test_name: send_events_under_the_eps_limit
+test_name: POST /events EPS limit
 
 marks:
   - usefixtures:
       - forwarded_events
 
 stages:
-
-  - name: POST /events under the EPS limit
-    request:
-      verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/events"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      json:
-        events: [
-          {"foo": 1},
-          {"bar": 2},
-          {"gaz": 3},
-          {"foo": 4},
-          {"bar": 5},
-          {"gaz": 6},
-          {"foo": 7},
-          {"bar": 8},
-          {"gaz": 9},
-          {"gaz": 10},
-        ]
-    response:
-      verify_response_with:
-        - function: tavern_utils:assert_forwarded_events
-          extra_kwargs:
-            forwarded_events: "{forwarded_events}"
-            expected_events: 10
-      status_code: 200
-      json:
-        error: 0
-
----
-test_name: send_events_over_the_eps_limit
-
-marks:
-  - usefixtures:
-      - forwarded_events
-
-stages:
-
   - name: POST /events over the EPS limit
     request:
       verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/events"
-      method: POST
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *webhook_request
       json:
         events: [
           {"foo": 1},
@@ -182,4 +84,61 @@ stages:
             expected_events: 5
       status_code: 200
       json:
-        error: 0
+        <<: *webhook_response_ok
+
+  - name: POST /events under the EPS limit
+    request:
+      verify: false
+      <<: *webhook_request
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2},
+          {"gaz": 3},
+          {"foo": 4},
+          {"bar": 5},
+        ]
+    response:
+      verify_response_with:
+        - function: tavern_utils:assert_forwarded_events
+          extra_kwargs:
+            forwarded_events: "{forwarded_events}"
+            expected_events: 10
+      status_code: 200
+      json:
+        <<: *webhook_response_ok
+
+
+---
+test_name: POST /events bad requests
+
+stages:
+
+  - name: POST /events with invalid body
+    request:
+      verify: false
+      <<: *webhook_request
+      json:
+        [
+          {"foo": 1},
+          {"bar": 2}
+        ]
+    response:
+      status_code: 400
+      json: &webhook_response_bad
+        detail: !anystr
+        title: !anystr
+
+  - name: POST /events with invalid size
+    request:
+      verify: false
+      <<: *webhook_request
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2}
+        ]
+    response:
+      status_code: 400
+      json:
+        <<: *webhook_response_bad
