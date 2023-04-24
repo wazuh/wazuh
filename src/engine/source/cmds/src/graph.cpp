@@ -56,7 +56,14 @@ void run(const Options& options)
     auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
     try
     {
-        builder::internals::registerBuilders(registry, {0, logpar, kvdb});
+
+        builder::internals::dependencies deps;
+        deps.logparDebugLvl = 0;
+        deps.logpar = logpar;
+        deps.kvdbManager = kvdb;
+        deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
+        builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
+        builder::internals::registerBuilders(registry, deps);
     }
     catch (const std::exception& e)
     {

@@ -37,8 +37,9 @@ static void opBuilderHelperIntEqual_success(benchmark::State& state)
                                                           "agent":{"id":"0","name":"hostname0","registeredIP":"any"},
                                                           "event":{"original":"TEST MSG"}})");
 
-    auto op =
-        builder::internals::builders::opBuilderHelperIntEqual(tuple)->getPtr<base::Term<base::EngineOp>>()->getFn();
+    auto op = std::apply(builder::internals::builders::opBuilderHelperIntEqual, tuple)
+                  ->getPtr<base::Term<base::EngineOp>>()
+                  ->getFn();
 
     for (auto _ : state)
     {
@@ -62,8 +63,9 @@ static void opBuilderHelperIntEqual_fail(benchmark::State& state)
                                                           "agent":{"id":"0","name":"hostname0","registeredIP":"any"},
                                                           "event":{"original":"TEST MSG"}})");
 
-    auto op =
-        builder::internals::builders::opBuilderHelperIntEqual(tuple)->getPtr<base::Term<base::EngineOp>>()->getFn();
+    auto op = std::apply(builder::internals::builders::opBuilderHelperIntEqual, tuple)
+                  ->getPtr<base::Term<base::EngineOp>>()
+                  ->getFn();
 
     for (auto _ : state)
     {
@@ -90,8 +92,9 @@ static void opBuilderHelperStringStarts_success(benchmark::State& state)
                                                           "agent":{"id":"0","name":"specificHost_001",
                                                           "registeredIP":"any"},"event":{"original":"TEST MSG"}})");
 
-    auto op =
-        builder::internals::builders::opBuilderHelperStringStarts(tuple)->getPtr<base::Term<base::EngineOp>>()->getFn();
+    auto op = std::apply(builder::internals::builders::opBuilderHelperStringStarts, tuple)
+                  ->getPtr<base::Term<base::EngineOp>>()
+                  ->getFn();
 
     for (auto _ : state)
     {
@@ -114,8 +117,9 @@ static void opBuilderHelperStringStarts_fail(benchmark::State& state)
                                                           "agent":{"id":"0","name":"specificHost_001",
                                                           "registeredIP":"any"},"event":{"original":"TEST MSG"}})");
 
-    auto op =
-        builder::internals::builders::opBuilderHelperStringStarts(tuple)->getPtr<base::Term<base::EngineOp>>()->getFn();
+    auto op = std::apply(builder::internals::builders::opBuilderHelperStringStarts, tuple)
+                  ->getPtr<base::Term<base::EngineOp>>()
+                  ->getFn();
 
     for (auto _ : state)
     {
@@ -144,7 +148,9 @@ static void opBuilderHelperIPCIDR_success(benchmark::State& state)
                                                           "registeredIP":"192.168.0.10"},
                                                           "event":{"original":"TEST MSG"}})");
 
-    auto op = builder::internals::builders::opBuilderHelperIPCIDR(tuple)->getPtr<base::Term<base::EngineOp>>()->getFn();
+    auto op = std::apply(builder::internals::builders::opBuilderHelperIPCIDR, tuple)
+                  ->getPtr<base::Term<base::EngineOp>>()
+                  ->getFn();
     for (auto _ : state)
     {
         base::result::Result<base::Event> result = op(event1);
@@ -168,7 +174,9 @@ static void opBuilderHelperIPCIDR_fail(benchmark::State& state)
                                                           "registeredIP":"10.0.0.10"},
                                                           "event":{"original":"TEST MSG"}})");
 
-    auto op = builder::internals::builders::opBuilderHelperIPCIDR(tuple)->getPtr<base::Term<base::EngineOp>>()->getFn();
+    auto op = std::apply(builder::internals::builders::opBuilderHelperIPCIDR, tuple)
+                  ->getPtr<base::Term<base::EngineOp>>()
+                  ->getFn();
     for (auto _ : state)
     {
         base::result::Result<base::Event> result = op(event1);

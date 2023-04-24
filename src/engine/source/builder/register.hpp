@@ -30,13 +30,131 @@ struct dependencies
     size_t logparDebugLvl;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
 };
+
+static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
+                                   const dependencies& dependencies = {})
+{
+    // Filter Helpers
+    helperRegistry->registerBuilder(builders::opBuilderHelperContainsString, "array_contains");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIntEqual, "int_equal");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIntGreaterThan, "int_greater");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIntGreaterThanEqual, "int_greater_or_equal");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIntLessThan, "int_less");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIntLessThanEqual, "int_less_or_equal");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIntNotEqual, "int_not_equal");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIPCIDR, "ip_cidr_match");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsArray, "is_array");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsBool, "is_boolean");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsFalse, "is_false");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsNotArray, "is_not_array");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsNotBool, "is_not_boolean");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsNotNull, "is_not_null");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsNotNumber, "is_not_number");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsNotObject, "is_not_object");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsNotString, "is_not_string");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsNull, "is_null");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsNumber, "is_number");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsObject, "is_object");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsString, "is_string");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIsTrue, "is_true");
+    helperRegistry->registerBuilder(builders::opBuilderHelperRegexMatch, "regex_match");
+    helperRegistry->registerBuilder(builders::opBuilderHelperRegexNotMatch, "regex_not_match");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringEqual, "string_equal");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringGreaterThan, "string_greater");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringGreaterThanEqual, "string_greater_or_equal");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringLessThan, "string_less");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringLessThanEqual, "string_less_or_equal");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringNotEqual, "string_not_equal");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringStarts, "starts_with");
+    helperRegistry->registerBuilder(builders::opBuilderHelperExists, "exists");
+    helperRegistry->registerBuilder(builders::opBuilderHelperNotExists, "not_exists");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringContains, "contains");
+
+    // Map Helpers
+    helperRegistry->registerBuilder(builders::opBuilderHelperIntCalc, "int_calculate");
+    helperRegistry->registerBuilder(builders::opBuilderHelperRegexExtract, "regex_extract");
+    // Map helpers: Event Field functions
+    helperRegistry->registerBuilder(builders::opBuilderHelperDeleteField, "delete");
+    helperRegistry->registerBuilder(builders::opBuilderHelperMerge, "merge");
+    helperRegistry->registerBuilder(builders::opBuilderHelperMergeRecursively, "merge_recursive");
+    helperRegistry->registerBuilder(builders::opBuilderHelperRenameField, "rename");
+    // Map helpers: Hash functions
+    helperRegistry->registerBuilder(builders::opBuilderHelperHashSHA1, "sha1");
+    // Map helpers: String functions
+    helperRegistry->registerBuilder(builders::opBuilderHelperAppendSplitString, "split");
+    helperRegistry->registerBuilder(builders::opBuilderHelperAppend, "array_append");
+    helperRegistry->registerBuilder(builders::opBuilderHelperHexToNumber, "hex_to_number");
+    helperRegistry->registerBuilder(builders::opBuilderHelperIPVersionFromIPStr, "ip_version");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringConcat, "concat");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringFromArray, "join");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringFromHexa, "decode_base16");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringLO, "downcase");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringReplace, "replace");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringTrim, "trim");
+    helperRegistry->registerBuilder(builders::opBuilderHelperStringUP, "upcase");
+
+    // Map helpers: Time functions
+    helperRegistry->registerBuilder(builders::opBuilderHelperEpochTimeFromSystem, "system_epoch");
+
+    // Special helpers
+
+    // Active Response
+    helperRegistry->registerBuilder(builders::opBuilderHelperCreateAR, "active_response_create");
+    helperRegistry->registerBuilder(builders::opBuilderHelperSendAR, "active_response_send");
+
+    // DB sync
+    helperRegistry->registerBuilder(builders::opBuilderWdbQuery, "wdb_query");
+    helperRegistry->registerBuilder(builders::opBuilderWdbUpdate, "wdb_update");
+
+    // KVDB
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBDelete(dependencies.kvdbManager), "kvdb_delete");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGet(dependencies.kvdbManager), "kvdb_get");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGetMerge(dependencies.kvdbManager), "kvdb_get_merge");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBMatch(dependencies.kvdbManager), "kvdb_match");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBNotMatch(dependencies.kvdbManager), "kvdb_not_match");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager), "kvdb_set");
+
+    // SCA decoder
+    helperRegistry->registerBuilder(builders::opBuilderSCAdecoder, "sca_decoder");
+
+    // SysCollector - netInfo
+    helperRegistry->registerBuilder(builders::opBuilderHelperSaveNetInfoIPv4, "sysc_ni_save_ipv4");
+    helperRegistry->registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6, "sysc_ni_save_ipv6");
+
+    // High level parsers
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBoolParse, "parse_bool");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPByteParse, "parse_byte");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPLongParse, "parse_long");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPFloatParse, "parse_float");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPDoubleParse, "parse_double");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBinaryParse, "parse_binary");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPDateParse, "parse_date");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPIPParse, "parse_ip");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPURIParse, "parse_uri");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPUserAgentParse, "parse_useragent");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPFQDNParse, "parse_fqdn");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPFilePathParse, "parse_file");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPJSONParse, "parse_json");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPXMLParse, "parse_xml");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPCSVParse, "parse_csv");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPDSVParse, "parse_dsv");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPKeyValueParse, "parse_key_value");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPQuotedParse, "parse_quoted");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBetweenParse, "parse_between");
+    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPAlphanumericParse, "parse_alphanumeric");
+
+    // Upgrade Confirmation
+    helperRegistry->registerBuilder(builders::opBuilderHelperSendUpgradeConfirmation, "send_upgrade_confirmation");
+}
 
 static void registerBuilders(std::shared_ptr<Registry<Builder>> registry, const dependencies& dependencies = {})
 {
     // Basic operations
-    registry->registerBuilder(builders::getOperationMapBuilder(registry), "operation.map");
-    registry->registerBuilder(builders::getOperationConditionBuilder(registry), "operation.condition");
+    registry->registerBuilder(builders::getOperationMapBuilder(dependencies.helperRegistry), "operation.map");
+    registry->registerBuilder(builders::getOperationConditionBuilder(dependencies.helperRegistry),
+                              "operation.condition");
 
     // Stages
     registry->registerBuilder(builders::getStageBuilderCheck(registry), "stage.check", "stage.allow");
@@ -51,118 +169,6 @@ static void registerBuilders(std::shared_ptr<Registry<Builder>> registry, const 
     // Outputs
     registry->registerBuilder(builders::getStageBuilderOutputs(registry), "stage.outputs");
     registry->registerBuilder(builders::opBuilderFileOutput, "output.file");
-
-    // Filter Helpers
-    registry->registerBuilder(builders::opBuilderHelperContainsString, "helper.array_contains");
-    registry->registerBuilder(builders::opBuilderHelperIntEqual, "helper.int_equal");
-    registry->registerBuilder(builders::opBuilderHelperIntGreaterThan, "helper.int_greater");
-    registry->registerBuilder(builders::opBuilderHelperIntGreaterThanEqual, "helper.int_greater_or_equal");
-    registry->registerBuilder(builders::opBuilderHelperIntLessThan, "helper.int_less");
-    registry->registerBuilder(builders::opBuilderHelperIntLessThanEqual, "helper.int_less_or_equal");
-    registry->registerBuilder(builders::opBuilderHelperIntNotEqual, "helper.int_not_equal");
-    registry->registerBuilder(builders::opBuilderHelperIPCIDR, "helper.ip_cidr_match");
-    registry->registerBuilder(builders::opBuilderHelperIsArray, "helper.is_array");
-    registry->registerBuilder(builders::opBuilderHelperIsBool, "helper.is_boolean");
-    registry->registerBuilder(builders::opBuilderHelperIsFalse, "helper.is_false");
-    registry->registerBuilder(builders::opBuilderHelperIsNotArray, "helper.is_not_array");
-    registry->registerBuilder(builders::opBuilderHelperIsNotBool, "helper.is_not_boolean");
-    registry->registerBuilder(builders::opBuilderHelperIsNotNull, "helper.is_not_null");
-    registry->registerBuilder(builders::opBuilderHelperIsNotNumber, "helper.is_not_number");
-    registry->registerBuilder(builders::opBuilderHelperIsNotObject, "helper.is_not_object");
-    registry->registerBuilder(builders::opBuilderHelperIsNotString, "helper.is_not_string");
-    registry->registerBuilder(builders::opBuilderHelperIsNull, "helper.is_null");
-    registry->registerBuilder(builders::opBuilderHelperIsNumber, "helper.is_number");
-    registry->registerBuilder(builders::opBuilderHelperIsObject, "helper.is_object");
-    registry->registerBuilder(builders::opBuilderHelperIsString, "helper.is_string");
-    registry->registerBuilder(builders::opBuilderHelperIsTrue, "helper.is_true");
-    registry->registerBuilder(builders::opBuilderHelperRegexMatch, "helper.regex_match");
-    registry->registerBuilder(builders::opBuilderHelperRegexNotMatch, "helper.regex_not_match");
-    registry->registerBuilder(builders::opBuilderHelperStringEqual, "helper.string_equal");
-    registry->registerBuilder(builders::opBuilderHelperStringGreaterThan, "helper.string_greater");
-    registry->registerBuilder(builders::opBuilderHelperStringGreaterThanEqual, "helper.string_greater_or_equal");
-    registry->registerBuilder(builders::opBuilderHelperStringLessThan, "helper.string_less");
-    registry->registerBuilder(builders::opBuilderHelperStringLessThanEqual, "helper.string_less_or_equal");
-    registry->registerBuilder(builders::opBuilderHelperStringNotEqual, "helper.string_not_equal");
-    registry->registerBuilder(builders::opBuilderHelperStringStarts, "helper.starts_with");
-    // Filter helpers: Event Field functions
-    registry->registerBuilder(builders::opBuilderHelperExists, "helper.exists");
-    registry->registerBuilder(builders::opBuilderHelperNotExists, "helper.not_exists");
-
-    // Map Helpers
-    registry->registerBuilder(builders::opBuilderHelperIntCalc, "helper.int_calculate");
-    registry->registerBuilder(builders::opBuilderHelperRegexExtract, "helper.regex_extract");
-    // Map helpers: Event Field functions
-    registry->registerBuilder(builders::opBuilderHelperDeleteField, "helper.delete");
-    registry->registerBuilder(builders::opBuilderHelperMerge, "helper.merge");
-    registry->registerBuilder(builders::opBuilderHelperMergeRecursively, "helper.merge_recursive");
-    registry->registerBuilder(builders::opBuilderHelperRenameField, "helper.rename");
-    // Map helpers: Hash functions
-    registry->registerBuilder(builders::opBuilderHelperHashSHA1, "helper.sha1");
-    // Map helpers: String functions
-    registry->registerBuilder(builders::opBuilderHelperAppendSplitString, "helper.split");
-    registry->registerBuilder(builders::opBuilderHelperAppend, "helper.array_append");
-    registry->registerBuilder(builders::opBuilderHelperHexToNumber, "helper.hex_to_number");
-    registry->registerBuilder(builders::opBuilderHelperIPVersionFromIPStr, "helper.ip_version");
-    registry->registerBuilder(builders::opBuilderHelperStringConcat, "helper.concat");
-    registry->registerBuilder(builders::opBuilderHelperStringFromArray, "helper.join");
-    registry->registerBuilder(builders::opBuilderHelperStringFromHexa, "helper.decode_base16");
-    registry->registerBuilder(builders::opBuilderHelperStringLO, "helper.downcase");
-    registry->registerBuilder(builders::opBuilderHelperStringReplace, "helper.replace");
-    registry->registerBuilder(builders::opBuilderHelperStringTrim, "helper.trim");
-    registry->registerBuilder(builders::opBuilderHelperStringUP, "helper.upcase");
-    registry->registerBuilder(builders::opBuilderHelperStringContains, "helper.contains");
-    // Map helpers: Time functions
-    registry->registerBuilder(builders::opBuilderHelperEpochTimeFromSystem, "helper.system_epoch");
-
-    // Special helpers
-
-    // Active Response
-    registry->registerBuilder(builders::opBuilderHelperCreateAR, "helper.active_response_create");
-    registry->registerBuilder(builders::opBuilderHelperSendAR, "helper.active_response_send");
-
-    // DB sync
-    registry->registerBuilder(builders::opBuilderWdbQuery, "helper.wdb_query");
-    registry->registerBuilder(builders::opBuilderWdbUpdate, "helper.wdb_update");
-
-    // KVDB
-    registry->registerBuilder(builders::getOpBuilderKVDBDelete(dependencies.kvdbManager), "helper.kvdb_delete");
-    registry->registerBuilder(builders::getOpBuilderKVDBGet(dependencies.kvdbManager), "helper.kvdb_get");
-    registry->registerBuilder(builders::getOpBuilderKVDBGetMerge(dependencies.kvdbManager), "helper.kvdb_get_merge");
-    registry->registerBuilder(builders::getOpBuilderKVDBMatch(dependencies.kvdbManager), "helper.kvdb_match");
-    registry->registerBuilder(builders::getOpBuilderKVDBNotMatch(dependencies.kvdbManager), "helper.kvdb_not_match");
-    registry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager), "helper.kvdb_set");
-
-    // SCA decoder
-    registry->registerBuilder(builders::opBuilderSCAdecoder, "helper.sca_decoder");
-
-    // SysCollector - netInfo
-    registry->registerBuilder(builders::opBuilderHelperSaveNetInfoIPv4, "helper.sysc_ni_save_ipv4");
-    registry->registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6, "helper.sysc_ni_save_ipv6");
-
-    // High level parsers
-    registry->registerBuilder(builders::opBuilderSpecificHLPBoolParse, "helper.parse_bool");
-    registry->registerBuilder(builders::opBuilderSpecificHLPByteParse, "helper.parse_byte");
-    registry->registerBuilder(builders::opBuilderSpecificHLPLongParse, "helper.parse_long");
-    registry->registerBuilder(builders::opBuilderSpecificHLPFloatParse, "helper.parse_float");
-    registry->registerBuilder(builders::opBuilderSpecificHLPDoubleParse, "helper.parse_double");
-    registry->registerBuilder(builders::opBuilderSpecificHLPBinaryParse, "helper.parse_binary");
-    registry->registerBuilder(builders::opBuilderSpecificHLPDateParse, "helper.parse_date");
-    registry->registerBuilder(builders::opBuilderSpecificHLPIPParse, "helper.parse_ip");
-    registry->registerBuilder(builders::opBuilderSpecificHLPURIParse, "helper.parse_uri");
-    registry->registerBuilder(builders::opBuilderSpecificHLPUserAgentParse, "helper.parse_useragent");
-    registry->registerBuilder(builders::opBuilderSpecificHLPFQDNParse, "helper.parse_fqdn");
-    registry->registerBuilder(builders::opBuilderSpecificHLPFilePathParse, "helper.parse_file");
-    registry->registerBuilder(builders::opBuilderSpecificHLPJSONParse, "helper.parse_json");
-    registry->registerBuilder(builders::opBuilderSpecificHLPXMLParse, "helper.parse_xml");
-    registry->registerBuilder(builders::opBuilderSpecificHLPCSVParse, "helper.parse_csv");
-    registry->registerBuilder(builders::opBuilderSpecificHLPDSVParse, "helper.parse_dsv");
-    registry->registerBuilder(builders::opBuilderSpecificHLPKeyValueParse, "helper.parse_key_value");
-    registry->registerBuilder(builders::opBuilderSpecificHLPQuotedParse, "helper.parse_quoted");
-    registry->registerBuilder(builders::opBuilderSpecificHLPBetweenParse, "helper.parse_between");
-    registry->registerBuilder(builders::opBuilderSpecificHLPAlphanumericParse, "helper.parse_alphanumeric");
-
-    // Upgrade Confirmation
-    registry->registerBuilder(builders::opBuilderHelperSendUpgradeConfirmation, "helper.send_upgrade_confirmation");
 }
 } // namespace builder::internals
 

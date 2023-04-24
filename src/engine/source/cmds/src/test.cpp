@@ -74,7 +74,13 @@ void run(const Options& options)
     size_t logparDebugLvl = options.debugLevel > 2 ? 1 : 0;
     try
     {
-        builder::internals::registerBuilders(registry, {0, logpar, kvdb});
+        builder::internals::dependencies deps;
+        deps.logparDebugLvl = logparDebugLvl;
+        deps.logpar = logpar;
+        deps.kvdbManager = kvdb;
+        deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
+        builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
+        builder::internals::registerBuilders(registry, deps);
     }
     catch (const std::exception& e)
     {

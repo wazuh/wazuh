@@ -20,15 +20,7 @@ TEST(opBuilderHelperStringReplace, build)
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    ASSERT_NO_THROW(opBuilderHelperStringReplace(tuple));
-}
-
-TEST(opBuilderHelperStringReplace, buildNoTargetError)
-{
-    const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
-    const auto tuple = std::make_tuple("", helperFunctionName, arguments);
-
-    ASSERT_THROW(opBuilderHelperStringReplace(tuple), std::runtime_error);
+    ASSERT_NO_THROW(std::apply(opBuilderHelperStringReplace, tuple));
 }
 
 TEST(opBuilderHelperStringReplace, buildNoArgumentsError)
@@ -36,7 +28,7 @@ TEST(opBuilderHelperStringReplace, buildNoArgumentsError)
     const std::vector<std::string> arguments {};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    ASSERT_THROW(opBuilderHelperStringReplace(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(opBuilderHelperStringReplace, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperStringReplace, buildInvalidParametersAmount)
@@ -45,7 +37,7 @@ TEST(opBuilderHelperStringReplace, buildInvalidParametersAmount)
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    ASSERT_THROW(opBuilderHelperStringReplace(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(opBuilderHelperStringReplace, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperStringReplace, OldSubstrParameterEmpty)
@@ -54,7 +46,7 @@ TEST(opBuilderHelperStringReplace, OldSubstrParameterEmpty)
 
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    ASSERT_THROW(opBuilderHelperStringReplace(tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(opBuilderHelperStringReplace, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperStringReplace, replaceCaseI)
@@ -64,7 +56,7 @@ TEST(opBuilderHelperStringReplace, replaceCaseI)
 
     auto event = std::make_shared<json::Json>(R"({"field": "Hi OldSubstr"})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -80,7 +72,7 @@ TEST(opBuilderHelperStringReplace, replaceCaseII)
 
     auto event = std::make_shared<json::Json>(R"({"field": "OldSubstr"})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -96,7 +88,7 @@ TEST(opBuilderHelperStringReplace, replaceCaseIII)
 
     auto event = std::make_shared<json::Json>(R"({"field": "SomethingOldSubstrDummy"})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -110,17 +102,15 @@ TEST(opBuilderHelperStringReplace, replaceCaseIV)
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto event = std::make_shared<json::Json>(
-        R"({"field": "OldSubstrSomethingOldSubstrDummyOldSubstr"})");
+    auto event = std::make_shared<json::Json>(R"({"field": "OldSubstrSomethingOldSubstrDummyOldSubstr"})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ("NewSubstrSomethingNewSubstrDummyNewSubstr",
-              result.payload()->getString("/field").value());
+    ASSERT_EQ("NewSubstrSomethingNewSubstrDummyNewSubstr", result.payload()->getString("/field").value());
 }
 
 TEST(opBuilderHelperStringReplace, replaceCaseV)
@@ -128,17 +118,15 @@ TEST(opBuilderHelperStringReplace, replaceCaseV)
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto event =
-        std::make_shared<json::Json>(R"({"field": "OldSubstrOldSubstrOldSubstr"})");
+    auto event = std::make_shared<json::Json>(R"({"field": "OldSubstrOldSubstrOldSubstr"})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ("NewSubstrNewSubstrNewSubstr",
-              result.payload()->getString("/field").value());
+    ASSERT_EQ("NewSubstrNewSubstrNewSubstr", result.payload()->getString("/field").value());
 }
 
 TEST(opBuilderHelperStringReplace, replaceCaseVI)
@@ -146,17 +134,15 @@ TEST(opBuilderHelperStringReplace, replaceCaseVI)
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto event = std::make_shared<json::Json>(
-        R"({"field": "Some dummy string that should remain the same"})");
+    auto event = std::make_shared<json::Json>(R"({"field": "Some dummy string that should remain the same"})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ("Some dummy string that should remain the same",
-              result.payload()->getString("/field").value());
+    ASSERT_EQ("Some dummy string that should remain the same", result.payload()->getString("/field").value());
 }
 
 TEST(opBuilderHelperStringReplace, replaceCaseVII)
@@ -164,17 +150,15 @@ TEST(opBuilderHelperStringReplace, replaceCaseVII)
     const std::vector<std::string> arguments {"OldSubstr", ""};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto event = std::make_shared<json::Json>(
-        R"({"field": "Some string that contains an 'OldSubstr'."})");
+    auto event = std::make_shared<json::Json>(R"({"field": "Some string that contains an 'OldSubstr'."})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ("Some string that contains an ''.",
-              result.payload()->getString("/field").value());
+    ASSERT_EQ("Some string that contains an ''.", result.payload()->getString("/field").value());
 }
 
 TEST(opBuilderHelperStringReplace, replaceCaseVIII)
@@ -182,17 +166,15 @@ TEST(opBuilderHelperStringReplace, replaceCaseVIII)
     const std::vector<std::string> arguments {"|", "?"};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto event = std::make_shared<json::Json>(
-        R"({"field": "Some string that contains a symbol like '|'."})");
+    auto event = std::make_shared<json::Json>(R"({"field": "Some string that contains a symbol like '|'."})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ("Some string that contains a symbol like '?'.",
-              result.payload()->getString("/field").value());
+    ASSERT_EQ("Some string that contains a symbol like '?'.", result.payload()->getString("/field").value());
 }
 
 TEST(opBuilderHelperStringReplace, replaceCaseIX)
@@ -200,17 +182,15 @@ TEST(opBuilderHelperStringReplace, replaceCaseIX)
     const std::vector<std::string> arguments {"|", "?"};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto event = std::make_shared<json::Json>(
-        R"({"field": "Some string that contains a symbol like '|'."})");
+    auto event = std::make_shared<json::Json>(R"({"field": "Some string that contains a symbol like '|'."})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ("Some string that contains a symbol like '?'.",
-              result.payload()->getString("/field").value());
+    ASSERT_EQ("Some string that contains a symbol like '?'.", result.payload()->getString("/field").value());
 }
 
 TEST(opBuilderHelperStringReplace, replaceCaseX)
@@ -218,10 +198,10 @@ TEST(opBuilderHelperStringReplace, replaceCaseX)
     const std::vector<std::string> arguments {"|", "?"};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto event = std::make_shared<json::Json>(
-        R"({"field": "|Some|| string that| contains many |symbols| |like '|'.|"})");
+    auto event =
+        std::make_shared<json::Json>(R"({"field": "|Some|| string that| contains many |symbols| |like '|'.|"})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
@@ -236,15 +216,14 @@ TEST(opBuilderHelperStringReplace, replaceCaseXI)
     const std::vector<std::string> arguments {"|", ""};
     const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
 
-    auto event = std::make_shared<json::Json>(
-        R"({"field": "|Some|| string that| contains many |symbols| |like '|'.|"})");
+    auto event =
+        std::make_shared<json::Json>(R"({"field": "|Some|| string that| contains many |symbols| |like '|'.|"})");
 
-    auto op = opBuilderHelperStringReplace(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(opBuilderHelperStringReplace, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event);
 
     ASSERT_TRUE(result);
 
-    ASSERT_EQ("Some string that contains many symbols like ''.",
-              result.payload()->getString("/field").value());
+    ASSERT_EQ("Some string that contains many symbols like ''.", result.payload()->getString("/field").value());
 }

@@ -104,8 +104,15 @@ enum class OperationType
     FILTER
 };
 
-Expression operationBuilder(const std::any& definition, OperationType type, std::shared_ptr<Registry<Builder>> registry)
+Expression operationBuilder(const std::any& definition,
+                            OperationType type,
+                            std::shared_ptr<Registry<HelperBuilder>> helperRegistry)
 {
+    if (helperRegistry == nullptr)
+    {
+        throw std::runtime_error("operation builder needs a valid helper registry.");
+    }
+
     std::string field;
     Json value;
     try
@@ -146,8 +153,7 @@ Expression operationBuilder(const std::any& definition, OperationType type, std:
 
         try
         {
-            return registry->getBuilder("helper." + helperName)(
-                std::make_tuple(std::move(field), helperName, std::move(helperArgs)));
+            return helperRegistry->getBuilder(helperName)(field, helperName, helperArgs);
         }
         catch (const std::exception& e)
         {
@@ -168,7 +174,7 @@ Expression operationBuilder(const std::any& definition, OperationType type, std:
         for (auto i = 0; i < array.size(); i++)
         {
             auto path = field + syntax::JSON_PATH_SEPARATOR + std::to_string(i);
-            expressions.push_back(operationBuilder(std::make_tuple(path, array[i]), type, registry));
+            expressions.push_back(operationBuilder(std::make_tuple(path, array[i]), type, helperRegistry));
         }
 
         switch (type)
@@ -188,7 +194,7 @@ Expression operationBuilder(const std::any& definition, OperationType type, std:
         for (auto& [key, value] : object)
         {
             auto path = field + syntax::JSON_PATH_SEPARATOR + key;
-            expressions.push_back(operationBuilder(std::make_tuple(path, value), type, registry));
+            expressions.push_back(operationBuilder(std::make_tuple(path, value), type, helperRegistry));
         }
 
         switch (type)
@@ -218,19 +224,19 @@ Expression operationBuilder(const std::any& definition, OperationType type, std:
 namespace builder::internals::builders
 {
 
-Builder getOperationConditionBuilder(std::shared_ptr<Registry<Builder>> registry)
+Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry)
 {
-    return [registry](std::any definition)
+    return [helperRegistry](std::any definition)
     {
-        return operationBuilder(definition, OperationType::FILTER, registry);
+        return operationBuilder(definition, OperationType::FILTER, helperRegistry);
     };
 }
 
-Builder getOperationMapBuilder(std::shared_ptr<Registry<Builder>> registry)
+Builder getOperationMapBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry)
 {
-    return [registry](std::any definition)
+    return [helperRegistry](std::any definition)
     {
-        return operationBuilder(definition, OperationType::MAP, registry);
+        return operationBuilder(definition, OperationType::MAP, helperRegistry);
     };
 }
 

@@ -311,16 +311,19 @@ std::function<base::result::Result<base::Event>(base::Event)> getStringCmpFuncti
  * @param type Type of the comparison
  * @return base::Expression
  */
-base::Expression opBuilderComparison(const std::any& definition, Operator op, Type t)
+base::Expression opBuilderComparison(const std::string& targetField,
+                                     const std::string& rawName,
+                                     const std::vector<std::string>& rawParameters,
+                                     Operator op,
+                                     Type t)
 {
-    // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, raw_parameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParametersSize(rawName, parameters, 1);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
     // Get the expression depending on the type
     switch (t)
     {
@@ -345,44 +348,56 @@ base::Expression opBuilderComparison(const std::any& definition, Operator op, Ty
 //*************************************************
 
 // field: +int_equal/int|$ref/
-base::Expression opBuilderHelperIntEqual(const std::any& definition)
+base::Expression opBuilderHelperIntEqual(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::EQ, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::EQ, Type::INT)};
     return expression;
 }
 
 // field: +int_not_equal/int|$ref/
-base::Expression opBuilderHelperIntNotEqual(const std::any& definition)
+base::Expression opBuilderHelperIntNotEqual(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::NE, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::NE, Type::INT)};
     return expression;
 }
 
 // field: +int_less/int|$ref/
-base::Expression opBuilderHelperIntLessThan(const std::any& definition)
+base::Expression opBuilderHelperIntLessThan(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::LT, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::LT, Type::INT)};
     return expression;
 }
 
 // field: +int_less_or_equal/int|$ref/
-base::Expression opBuilderHelperIntLessThanEqual(const std::any& definition)
+base::Expression opBuilderHelperIntLessThanEqual(const std::string& targetField,
+                                                 const std::string& rawName,
+                                                 const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::LE, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::LE, Type::INT)};
     return expression;
 }
 
 // field: +int_greater/int|$ref/
-base::Expression opBuilderHelperIntGreaterThan(const std::any& definition)
+base::Expression opBuilderHelperIntGreaterThan(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::GT, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::GT, Type::INT)};
     return expression;
 }
 
 // field: +int_greater_or_equal/int|$ref/
-base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition)
+base::Expression opBuilderHelperIntGreaterThanEqual(const std::string& targetField,
+                                                    const std::string& rawName,
+                                                    const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::GE, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::GE, Type::INT)};
     return expression;
 }
 
@@ -391,58 +406,74 @@ base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition)
 //*************************************************
 
 // field: +string_equal/value|$ref
-base::Expression opBuilderHelperStringEqual(const std::any& definition)
+base::Expression opBuilderHelperStringEqual(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::EQ, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::EQ, Type::STRING)};
     return expression;
 }
 
 // field: +string_not_equal/value|$ref
-base::Expression opBuilderHelperStringNotEqual(const std::any& definition)
+base::Expression opBuilderHelperStringNotEqual(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::NE, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::NE, Type::STRING)};
     return expression;
 }
 
 // field: +string_greater/value|$ref
-base::Expression opBuilderHelperStringGreaterThan(const std::any& definition)
+base::Expression opBuilderHelperStringGreaterThan(const std::string& targetField,
+                                                  const std::string& rawName,
+                                                  const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::GT, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::GT, Type::STRING)};
     return expression;
 }
 
 // field: +string_greater_or_equal/value|$ref
-base::Expression opBuilderHelperStringGreaterThanEqual(const std::any& definition)
+base::Expression opBuilderHelperStringGreaterThanEqual(const std::string& targetField,
+                                                       const std::string& rawName,
+                                                       const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::GE, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::GE, Type::STRING)};
     return expression;
 }
 
 // field: +string_less/value|$ref
-base::Expression opBuilderHelperStringLessThan(const std::any& definition)
+base::Expression opBuilderHelperStringLessThan(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::LT, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::LT, Type::STRING)};
     return expression;
 }
 
 // field: +string_less_or_equal/value|$ref
-base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition)
+base::Expression opBuilderHelperStringLessThanEqual(const std::string& targetField,
+                                                    const std::string& rawName,
+                                                    const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::LE, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::LE, Type::STRING)};
     return expression;
 }
 
 // field: +starts_with/value|$ref
-base::Expression opBuilderHelperStringStarts(const std::any& definition)
+base::Expression opBuilderHelperStringStarts(const std::string& targetField,
+                                             const std::string& rawName,
+                                             const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::ST, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::ST, Type::STRING)};
     return expression;
 }
 
 // field: +contains/value|$ref
-base::Expression opBuilderHelperStringContains(const std::any& definition)
+base::Expression opBuilderHelperStringContains(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    auto expression {opBuilderComparison(definition, Operator::CN, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::CN, Type::STRING)};
     return expression;
 }
 
@@ -451,18 +482,18 @@ base::Expression opBuilderHelperStringContains(const std::any& definition)
 //*************************************************
 
 // field: +regex_match/regexp
-base::Expression opBuilderHelperRegexMatch(const std::any& definition)
+base::Expression opBuilderHelperRegexMatch(const std::string& targetField,
+                                           const std::string& rawName,
+                                           const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, raw_parameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParametersSize(rawName, parameters, 1);
     // Parameter type check
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
@@ -502,19 +533,20 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
 }
 
 // field: +regex_not_match/regexp
-base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
+base::Expression opBuilderHelperRegexNotMatch(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters)
 {
     // TODO: Regex parameter fails at operationBuilderSplit
-    // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, raw_parameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParametersSize(rawName, parameters, 1);
     // Parameter type check
-    helper::base::checkParameterType(name, parameters[0], helper::base::Parameter::Type::VALUE);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::VALUE);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     auto regex_ptr {std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet)};
     if (!regex_ptr->ok())
@@ -559,21 +591,22 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 
 // field: +ip_cidr_match/192.168.0.0/16
 // field: +ip_cidr_match/192.168.0.0/255.255.0.0
-base::Expression opBuilderHelperIPCIDR(const std::any& definition)
+base::Expression opBuilderHelperIPCIDR(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from any
-    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, raw_parameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 2);
+    helper::base::checkParametersSize(rawName, parameters, 2);
     // Parameter type check
     for (const auto& parameter : parameters)
     {
-        helper::base::checkParameterType(name, parameter, helper::base::Parameter::Type::VALUE);
+        helper::base::checkParameterType(rawName, parameter, helper::base::Parameter::Type::VALUE);
     }
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     uint32_t network {};
     try
@@ -652,12 +685,13 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 //*************************************************
 
 // field: +exists
-base::Expression opBuilderHelperExists(const std::any& definition)
+base::Expression opBuilderHelperExists(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -681,12 +715,13 @@ base::Expression opBuilderHelperExists(const std::any& definition)
 }
 
 // field: +not_exists
-base::Expression opBuilderHelperNotExists(const std::any& definition)
+base::Expression opBuilderHelperNotExists(const std::string& targetField,
+                                          const std::string& rawName,
+                                          const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -714,12 +749,13 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
 //*************************************************
 
 // field: +array_contains/value1/value2/...valueN
-base::Expression opBuilderHelperContainsString(const std::any& definition)
+base::Expression opBuilderHelperContainsString(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersMinSize(name, parameters, 1);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersMinSize(rawName, parameters, 1);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -791,12 +827,13 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
 //*************************************************
 
 // field: +is_number
-base::Expression opBuilderHelperIsNumber(const std::any& definition)
+base::Expression opBuilderHelperIsNumber(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -834,12 +871,13 @@ base::Expression opBuilderHelperIsNumber(const std::any& definition)
 }
 
 // field: +is_not_number
-base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
+base::Expression opBuilderHelperIsNotNumber(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -876,12 +914,13 @@ base::Expression opBuilderHelperIsNotNumber(const std::any& definition)
 }
 
 // field: +is_string
-base::Expression opBuilderHelperIsString(const std::any& definition)
+base::Expression opBuilderHelperIsString(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -919,12 +958,13 @@ base::Expression opBuilderHelperIsString(const std::any& definition)
 }
 
 // field: +is_not_string
-base::Expression opBuilderHelperIsNotString(const std::any& definition)
+base::Expression opBuilderHelperIsNotString(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -962,12 +1002,13 @@ base::Expression opBuilderHelperIsNotString(const std::any& definition)
 }
 
 // field: +is_boolean
-base::Expression opBuilderHelperIsBool(const std::any& definition)
+base::Expression opBuilderHelperIsBool(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1006,12 +1047,13 @@ base::Expression opBuilderHelperIsBool(const std::any& definition)
 }
 
 // field: +is_not_boolean
-base::Expression opBuilderHelperIsNotBool(const std::any& definition)
+base::Expression opBuilderHelperIsNotBool(const std::string& targetField,
+                                          const std::string& rawName,
+                                          const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1049,12 +1091,13 @@ base::Expression opBuilderHelperIsNotBool(const std::any& definition)
 }
 
 // field: +is_array
-base::Expression opBuilderHelperIsArray(const std::any& definition)
+base::Expression opBuilderHelperIsArray(const std::string& targetField,
+                                        const std::string& rawName,
+                                        const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1093,12 +1136,13 @@ base::Expression opBuilderHelperIsArray(const std::any& definition)
 }
 
 // field: +is_not_array
-base::Expression opBuilderHelperIsNotArray(const std::any& definition)
+base::Expression opBuilderHelperIsNotArray(const std::string& targetField,
+                                           const std::string& rawName,
+                                           const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1136,12 +1180,13 @@ base::Expression opBuilderHelperIsNotArray(const std::any& definition)
 }
 
 // field: +is_object
-base::Expression opBuilderHelperIsObject(const std::any& definition)
+base::Expression opBuilderHelperIsObject(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1180,12 +1225,13 @@ base::Expression opBuilderHelperIsObject(const std::any& definition)
 }
 
 // field: +is_not_object
-base::Expression opBuilderHelperIsNotObject(const std::any& definition)
+base::Expression opBuilderHelperIsNotObject(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1223,12 +1269,13 @@ base::Expression opBuilderHelperIsNotObject(const std::any& definition)
 }
 
 // field: +is_null
-base::Expression opBuilderHelperIsNull(const std::any& definition)
+base::Expression opBuilderHelperIsNull(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1266,12 +1313,13 @@ base::Expression opBuilderHelperIsNull(const std::any& definition)
 }
 
 // field: +is_not_null
-base::Expression opBuilderHelperIsNotNull(const std::any& definition)
+base::Expression opBuilderHelperIsNotNull(const std::string& targetField,
+                                          const std::string& rawName,
+                                          const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1309,12 +1357,13 @@ base::Expression opBuilderHelperIsNotNull(const std::any& definition)
 }
 
 // field: +is_true
-base::Expression opBuilderHelperIsTrue(const std::any& definition)
+base::Expression opBuilderHelperIsTrue(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -1352,12 +1401,13 @@ base::Expression opBuilderHelperIsTrue(const std::any& definition)
 }
 
 // field: +is_false
-base::Expression opBuilderHelperIsFalse(const std::any& definition)
+base::Expression opBuilderHelperIsFalse(const std::string& targetField,
+                                        const std::string& rawName,
+                                        const std::vector<std::string>& rawParameters)
 {
-    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
-    auto parameters {helper::base::processParameters(name, rawParameters)};
-    helper::base::checkParametersSize(name, parameters, 0);
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};

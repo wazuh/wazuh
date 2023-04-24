@@ -8,8 +8,8 @@
 
 #include <baseTypes.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <testsCommon.hpp>
 #include <opBuilderKVDB.hpp>
+#include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
 using namespace metricsManager;
@@ -43,35 +43,22 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithValues)
 {
-    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, "key", "value"});
-
-    ASSERT_NO_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager));
+    ASSERT_NO_THROW(KVDBSet("/output", "", {DB_NAME, "key", "value"}, opBuilderKVDBSetTest::kvdbManager));
 }
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithReferences)
 {
-    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {"$SOME_DB_NAME", "$key", "$value"});
-
-    ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
+    ASSERT_THROW(KVDBSet("/output", "", {"$SOME_DB_NAME", "$key", "$value"}, opBuilderKVDBSetTest::kvdbManager),
+                 std::runtime_error);
 }
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWrongAmountOfParametersError)
 {
-    auto tuple = std::make_tuple<string, string, vector<string>>("/output", "", {});
-
-    ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
-
-    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME});
-
-    ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
-
-    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, "key"});
-
-    ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
-
-    tuple = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, "key", "value", "unexpected"});
-
-    ASSERT_THROW(KVDBSet(tuple, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
+    ASSERT_THROW(KVDBSet("/output", "", {}, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
+    ASSERT_THROW(KVDBSet("/output", "", {DB_NAME}, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
+    ASSERT_THROW(KVDBSet("/output", "", {DB_NAME, "key"}, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
+    ASSERT_THROW(KVDBSet("/output", "", {DB_NAME, "key", "value", "unexpected"}, opBuilderKVDBSetTest::kvdbManager),
+                 std::runtime_error);
 }
 
 TEST_F(opBuilderKVDBSetTest, SetSuccessCases)
@@ -95,56 +82,47 @@ TEST_F(opBuilderKVDBSetTest, SetSuccessCases)
     string dbOp1 {DB_NAME};
     string keyOp1 {"some_key"};
     string valueOp1 {"some_value"};
-    auto parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, keyOp1, valueOp1});
-    const auto op1 = getOpBuilderKVDBSet(kvdbManager)(parameters);
+    const auto op1 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp1, valueOp1});
 
     string dbOp2 {DB_NAME};
     string keyOp2 {"fieldString"};
     string valueOp2 {"$fieldString"};
-    parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, keyOp2, valueOp2});
-    const auto op2 = getOpBuilderKVDBSet(kvdbManager)(parameters);
+    const auto op2 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp2, valueOp2});
 
     string dbOp3 {DB_NAME};
     string keyOp3 {"fieldIntNumber"};
     string valueOp3 {"$fieldIntNumber"};
-    parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, keyOp3, valueOp3});
-    const auto op3 = getOpBuilderKVDBSet(kvdbManager)(parameters);
+    const auto op3 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp3, valueOp3});
 
     string dbOp4 {DB_NAME};
     string keyOp4 {"fieldObject"};
     string valueOp4 {"$fieldObject"};
-    parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, keyOp4, valueOp4});
-    const auto op4 = getOpBuilderKVDBSet(kvdbManager)(parameters);
+    const auto op4 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp4, valueOp4});
 
     string dbOp5 {DB_NAME};
     string keyOp5 {"fieldArray"};
     string valueOp5 {"$fieldArray"};
-    parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, keyOp5, valueOp5});
-    const auto op5 = getOpBuilderKVDBSet(kvdbManager)(parameters);
+    const auto op5 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp5, valueOp5});
 
     string dbOp6 {DB_NAME};
     string keyOp6 {"fieldNull"};
     string valueOp6 {"$fieldNull"};
-    parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, keyOp6, valueOp6});
-    const auto op6 = getOpBuilderKVDBSet(kvdbManager)(parameters);
+    const auto op6 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp6, valueOp6});
 
     string dbOp7 {DB_NAME};
     string keyOp7 {"fieldDoubleNumber"};
     string valueOp7 {"$fieldDoubleNumber"};
-    parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, keyOp7, valueOp7});
-    const auto op7 = getOpBuilderKVDBSet(kvdbManager)(parameters);
+    const auto op7 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp7, valueOp7});
 
     string dbOp8 {DB_NAME};
     string keyOp8 {"fieldTrue"};
     string valueOp8 {"$fieldTrue"};
-    parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, keyOp8, valueOp8});
-    const auto op8 = getOpBuilderKVDBSet(kvdbManager)(parameters);
+    const auto op8 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp8, valueOp8});
 
     string dbOp9 {DB_NAME};
     string keyOp9 {"fieldFalse"};
     string valueOp9 {"$fieldFalse"};
-    parameters = std::make_tuple<string, string, vector<string>>("/output", "", {DB_NAME, keyOp9, valueOp9});
-    const auto op9 = getOpBuilderKVDBSet(kvdbManager)(parameters);
+    const auto op9 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp9, valueOp9});
 
     auto result = op1->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);

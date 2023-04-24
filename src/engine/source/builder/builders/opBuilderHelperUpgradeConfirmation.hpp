@@ -21,10 +21,14 @@ constexpr const char* WM_UPGRADE_SOCK {"/var/ossec/queue/tasks/upgrade"};
 /**
  * @brief Sends upgrade confirmation throug UPGRADE_MQ socket
  *
- * @param definition The transformation definition.
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
  * @return base::Expression The ifter with the transformation.
  */
-base::Expression opBuilderHelperSendUpgradeConfirmation(const std::any& definition);
+base::Expression opBuilderHelperSendUpgradeConfirmation(const std::string& targetField,
+                                                        const std::string& rawName,
+                                                        const std::vector<std::string>& rawParameters);
 
 } // namespace builder::internals::builders
 

@@ -19,7 +19,12 @@ constexpr auto outputPath = "/tmp/file";
 auto initTest()
 {
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
-    registerBuilders(registry);
+    auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
+    registerHelperBuilders(helperRegistry);
+    dependencies deps;
+    deps.helperRegistry = helperRegistry;
+    deps.logparDebugLvl = 0;
+    registerBuilders(registry, deps);
     return registry;
 }
 

@@ -12,21 +12,19 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperIntLessThan, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"int_less"}, std::vector<std::string> {"10"});
+    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"int_less"}, std::vector<std::string> {"10"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIntLessThan(tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperIntLessThan, tuple));
 }
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_false)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_less"},
-                                 std::vector<std::string> {"8"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"int_less"}, std::vector<std::string> {"8"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    auto op = bld::opBuilderHelperIntLessThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntLessThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -35,13 +33,12 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_false)
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_true)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_less"},
-                                 std::vector<std::string> {"12"});
+    auto tuple =
+        std::make_tuple(std::string {"/field2check"}, std::string {"int_less"}, std::vector<std::string> {"12"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    auto op = bld::opBuilderHelperIntLessThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntLessThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -50,14 +47,13 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_true)
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_false)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_less"},
-                                 std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"int_less"}, std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 12,
                                                    "otherfield": 10})");
 
-    auto op = bld::opBuilderHelperIntLessThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntLessThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -66,14 +62,13 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_false)
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_true)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"},
-                                 std::string {"int_less"},
-                                 std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(
+        std::string {"/field2check"}, std::string {"int_less"}, std::vector<std::string> {"$otherfield"});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 12})");
 
-    auto op = bld::opBuilderHelperIntLessThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntLessThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -82,9 +77,8 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_true)
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_multilevel_false)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"int_less"},
-                                 std::vector<std::string> {"8"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"int_less"}, std::vector<std::string> {"8"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -97,7 +91,7 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_multilevel_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntLessThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntLessThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -106,9 +100,8 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_multilevel_false)
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_multilevel_true)
 {
-    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
-                                 std::string {"int_less"},
-                                 std::vector<std::string> {"12"});
+    auto tuple = std::make_tuple(
+        std::string {"/parentObjt_1/field2check"}, std::string {"int_less"}, std::vector<std::string> {"12"});
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -121,7 +114,7 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_multilevel_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntLessThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntLessThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -145,7 +138,7 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_multilevel_ref_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntLessThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntLessThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -169,7 +162,7 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_multilevel_ref_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperIntLessThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperIntLessThan, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 

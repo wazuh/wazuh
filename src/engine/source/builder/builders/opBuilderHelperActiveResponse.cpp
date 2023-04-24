@@ -41,30 +41,27 @@ inline bool isStringNumber(const std::string value)
 } // namespace ar
 
 // ar_message: +active_response_create/<command-name>/<location>/<timeout>/<extra-args>
-base::Expression opBuilderHelperCreateAR(const std::any& definition)
+base::Expression opBuilderHelperCreateAR(const std::string& targetField,
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from definition
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
-
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, raw_parameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
 
     // Assert expected number of parameters
-    helper::base::checkParametersMinSize(name, parameters, 2);
+    helper::base::checkParametersMinSize(rawName, parameters, 2);
 
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
     // Get command-name -> mandatory parameter, it can be either a value or a reference
     const Parameter::Type commandNameType {parameters[0].m_type};
     std::string commandNameValue {parameters[0].m_value};
     if (commandNameValue.empty())
     {
-        throw std::runtime_error(
-            fmt::format("Engine active response builder: \"{}\" function: <command-name> "
-                        "cannot be empty.",
-                        name));
+        throw std::runtime_error(fmt::format("Engine active response builder: \"{}\" function: <command-name> "
+                                             "cannot be empty.",
+                                             name));
     }
 
     // Get location -> mandatory value, it can be either a value or a reference
@@ -81,8 +78,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
 
     // Get timeout -> optional parameter, it can be either a value or a reference
     const std::string timeoutValue {(paramsQtty > 2) ? parameters[2].m_value : ""};
-    const Parameter::Type timeoutType {(paramsQtty > 2) ? parameters[2].m_type
-                                                        : Parameter::Type::VALUE};
+    const Parameter::Type timeoutType {(paramsQtty > 2) ? parameters[2].m_type : Parameter::Type::VALUE};
 
     // Get extra-args -> optional parameter, it must be a reference of an array
     if (paramsQtty > 3)
@@ -94,11 +90,10 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
     // If it has more than 4 arguments then an error is raised
     if (paramsQtty > 4)
     {
-        throw std::runtime_error(
-            fmt::format("Engine active response builder: \"{}\" function: 3 parameters "
-                        "were expected at most, {} parameters received.",
-                        name,
-                        paramsQtty));
+        throw std::runtime_error(fmt::format("Engine active response builder: \"{}\" function: 3 parameters "
+                                             "were expected at most, {} parameters received.",
+                                             name,
+                                             paramsQtty));
     }
 
     // Tracing
@@ -138,8 +133,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
             std::string commandNameResolvedValue {};
             if (Parameter::Type::REFERENCE == commandNameType)
             {
-                commandNameResolvedValue =
-                    event->getString(commandNameValue).value_or("");
+                commandNameResolvedValue = event->getString(commandNameValue).value_or("");
 
                 if (commandNameResolvedValue.empty())
                 {
@@ -175,8 +169,7 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
             }
 
             // Adds the timeout at the end of the command name (or "0" if no timeout set)
-            commandNameResolvedValue +=
-                timeoutResolvedValue.empty() ? "0" : timeoutResolvedValue;
+            commandNameResolvedValue += timeoutResolvedValue.empty() ? "0" : timeoutResolvedValue;
 
             std::optional<std::string> locationResolvedValue {};
             std::string location {locationValue};
@@ -256,9 +249,8 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
 
                         if (resolvedElement)
                         {
-                            jsonParams.appendString(
-                                std::string_view {resolvedElement.value()},
-                                std::string_view {"/extra_args"});
+                            jsonParams.appendString(std::string_view {resolvedElement.value()},
+                                                    std::string_view {"/extra_args"});
                         }
                         else
                         {
@@ -278,16 +270,15 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
                 return base::result::makeFailure(event, failureTrace10 + e.what());
             }
 
-            auto payload = base::utils::wazuhProtocol::WazuhRequest::create(
-                commandNameResolvedValue, ar::ORIGIN_NAME, jsonParams);
+            auto payload =
+                base::utils::wazuhProtocol::WazuhRequest::create(commandNameResolvedValue, ar::ORIGIN_NAME, jsonParams);
 
             // Append header message
-            const std::string completeMesage =
-                fmt::format("(local_source) [] N{}{} {} {}",
-                            isLocal ? 'R' : 'N',
-                            (isAll || isID) ? 'S' : 'N',
-                            agentID,
-                            payload.toStr());
+            const std::string completeMesage = fmt::format("(local_source) [] N{}{} {} {}",
+                                                           isLocal ? 'R' : 'N',
+                                                           (isAll || isID) ? 'S' : 'N',
+                                                           agentID,
+                                                           payload.toStr());
 
             event->setString(completeMesage, targetField);
             return base::result::makeSuccess(event, successTrace);
@@ -296,20 +287,18 @@ base::Expression opBuilderHelperCreateAR(const std::any& definition)
 
 // field: +active_response_send/ar_message
 
-base::Expression opBuilderHelperSendAR(const std::any& definition)
+base::Expression opBuilderHelperSendAR(const std::string& targetField,
+                                       const std::string& rawName,
+                                       const std::vector<std::string>& rawParameters)
 {
-    // Extract parameters from any
-    auto [targetField, name, raw_parameters] =
-        helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(name, raw_parameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
     // Assert expected number of parameters
-    helper::base::checkParametersSize(name, parameters, 1);
+    helper::base::checkParametersSize(rawName, parameters, 1);
     // Format name for the tracer
-    name = helper::base::formatHelperName(name, targetField, parameters);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
-    std::shared_ptr<unixDatagram> socketAR {
-        std::make_shared<unixDatagram>(ar::AR_QUEUE_PATH)};
+    std::shared_ptr<unixDatagram> socketAR {std::make_shared<unixDatagram>(ar::AR_QUEUE_PATH)};
 
     std::string rValue {};
     const helper::base::Parameter rightParameter {parameters[0]};
@@ -320,68 +309,63 @@ base::Expression opBuilderHelperSendAR(const std::any& definition)
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const std::string failureTrace1 {
-        fmt::format("[{}] -> Failure: Query reference \"{}\" not found",
-                    name,
-                    parameters[0].m_value)};
-    const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: The query is empty", name)};
-    const std::string failureTrace3 {
-        fmt::format("[{}] -> Failure: AR message could not be send", name)};
-    const std::string failureTrace4 {
-        fmt::format("[{}] -> Failure: Error trying to send AR message: ", name)};
+        fmt::format("[{}] -> Failure: Query reference \"{}\" not found", name, parameters[0].m_value)};
+    const std::string failureTrace2 {fmt::format("[{}] -> Failure: The query is empty", name)};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: AR message could not be send", name)};
+    const std::string failureTrace4 {fmt::format("[{}] -> Failure: Error trying to send AR message: ", name)};
 
     // Function that implements the helper
-    return base::Term<base::EngineOp>::create(
-        name,
-        [=, targetField = std::move(targetField), name = std::move(name)](
-            base::Event event) -> base::result::Result<base::Event>
-        {
-            std::string query {};
-            bool messageSent {false};
+    return base::Term<base::EngineOp>::create(name,
+                                              [=, targetField = std::move(targetField), name = std::move(name)](
+                                                  base::Event event) -> base::result::Result<base::Event>
+                                              {
+                                                  std::string query {};
+                                                  bool messageSent {false};
 
-            // Check if the value comes from a reference
-            if (Parameter::Type::REFERENCE == rValueType)
-            {
-                auto resolvedRValue {event->getString(rValue)};
+                                                  // Check if the value comes from a reference
+                                                  if (Parameter::Type::REFERENCE == rValueType)
+                                                  {
+                                                      auto resolvedRValue {event->getString(rValue)};
 
-                if (!resolvedRValue.has_value())
-                {
-                    return base::result::makeFailure(event, failureTrace1);
-                }
-                else
-                {
-                    query = resolvedRValue.value();
-                }
-            }
-            else // Direct value
-            {
-                query = rValue;
-            }
+                                                      if (!resolvedRValue.has_value())
+                                                      {
+                                                          return base::result::makeFailure(event, failureTrace1);
+                                                      }
+                                                      else
+                                                      {
+                                                          query = resolvedRValue.value();
+                                                      }
+                                                  }
+                                                  else // Direct value
+                                                  {
+                                                      query = rValue;
+                                                  }
 
-            if (query.empty())
-            {
-                return base::result::makeFailure(event, failureTrace2);
-            }
-            else
-            {
-                try
-                {
-                    if (SendRetval::SUCCESS == socketAR->sendMsg(query))
-                    {
-                        event->setBool(true, targetField);
-                        return base::result::makeSuccess(event, successTrace);
-                    }
-                    else
-                    {
-                        return base::result::makeFailure(event, failureTrace3);
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    return base::result::makeFailure(event, failureTrace4 + e.what());
-                }
-            }
-        });
+                                                  if (query.empty())
+                                                  {
+                                                      return base::result::makeFailure(event, failureTrace2);
+                                                  }
+                                                  else
+                                                  {
+                                                      try
+                                                      {
+                                                          if (SendRetval::SUCCESS == socketAR->sendMsg(query))
+                                                          {
+                                                              event->setBool(true, targetField);
+                                                              return base::result::makeSuccess(event, successTrace);
+                                                          }
+                                                          else
+                                                          {
+                                                              return base::result::makeFailure(event, failureTrace3);
+                                                          }
+                                                      }
+                                                      catch (const std::exception& e)
+                                                      {
+                                                          return base::result::makeFailure(event,
+                                                                                           failureTrace4 + e.what());
+                                                      }
+                                                  }
+                                              });
 }
 
 } // namespace builder::internals::builders
