@@ -47,15 +47,6 @@
     },
     {
       "geoip": {
-        "field": "data.aws.client_ip",
-        "target_field": "GeoLocation",
-        "properties": ["city_name", "country_name", "region_name", "location"],
-        "ignore_missing": true,
-        "ignore_failure": true
-      }
-    },
-    {
-      "geoip": {
         "field": "data.aws.service.action.networkConnectionAction.remoteIpDetails.ipAddressV4",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "region_name", "location"],
@@ -86,7 +77,7 @@
         "field": "timestamp",
         "target_field": "@timestamp",
         "formats": ["ISO8601"],
-        "ignore_failure": false
+        "ignore_failure": false 
       }
     },
     {
@@ -95,7 +86,7 @@
         "date_rounding": "d",
         "index_name_prefix": "{{fields.index_prefix}}",
         "index_name_format": "yyyy.MM.dd",
-        "ignore_failure": false
+        "ignore_failure": false 
       }
     },
 
