@@ -10,51 +10,63 @@ import socket
 import sys
 
 DUMP_FILE_NAME = 'test_logs_base.txt'
-SOURCES_LIST_PATH = '/home/vagrant/workspace/wazuh/src/engine/tools/sources-list.yml'
 DEFAULT_ENGINE_SOCKET = '/var/ossec/queue/sockets/queue'
+JSON_BASE_EVENT = '{"event" : {"original" : {}}}'
 
 
-def load_file(path_str) -> dict:
-    path = Path(path_str)
-    content = path.read_text()
-    read = yaml.load(content, Loader=Loader)
-    if not read:
-        raise Exception(f'Failed to read {path_str}')
-    return read
-
-
-def replace_fields(base_event, agent_name, location):
-    # is it neccesary to set a dynamic timestamp ?
-    replaceable_fields = {'%AGENT_NAME%': agent_name,
-                          '%LOCATION%': location}
-    for key, value in replaceable_fields.items():
-        base_event = base_event.replace(key, value)
-    return base_event
-
-
-def add_event_object(message_modified, labels):
-    # Creating labels object for json
-    labels_object = json.loads(labels)  # breaks on malformed json
-    if not labels_object:
+def add_to_event_object(events_list, labels):
+    # Creating labelsjson object
+    try:
+        labels_object = json.loads(labels)
+        if not labels_object:
+            print('Wrong json format for labels.')
+            exit(1)
+    except ValueError: # includes simplejson.decoder.JSONDecodeError
         print('Wrong json format for labels.')
         exit(1)
     events_object = labels_object
 
-    message_modified_json = json.loads(message_modified)
-    if not message_modified_json:
-        print("wrong json formated event")  # This scenario shouldn't happend
-        exit(1)
+    modified_event_list = []
+    for single_event in events_list:
+        try:
+            events_json = json.loads(single_event)
+        except ValueError:
+            events_json = json.loads(JSON_BASE_EVENT)
+            events_json['event']['original'] = single_event
 
-    if "event" in message_modified_json:
-        for key in events_object:
-            message_modified_json["event"][key] = events_object[key]
+        if "event" in events_json:
+            for key in events_object:
+                events_json["event"][key] = events_object[key]
+        else:
+            events_json["event"] = events_object
+
+        modified_event_list.append(json.dumps(events_json))
+
+    return modified_event_list
+
+
+def create_header(protocol_queue, agent_id, agent_name, agent_ip, location):
+    # Scaping the ':' is made with '|' and without checking if it was already scaped (it shouldn't be)
+    location = location.replace(':', '|:')
+    agent_ip = agent_ip.replace(':', '|:')
+
+    # There are two possible formats of events:
+    # 1st:
+    # <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Origin>:<Log>
+    # 2nd: -> for remote syslog events
+    # <Queue_ID>:<Syslog_Client_IP>:<Log>
+    if agent_id and agent_name and agent_ip:
+        protocol_location = '[' + agent_id + \
+            '] (' + agent_name + ') ' + agent_ip + '->' + location
     else:
-        message_modified_json["event"] = events_object
+        protocol_location = location
 
-    return json.dumps(message_modified_json)
+    event_header = chr(protocol_queue) + ':' + protocol_location + ':'
+
+    return event_header
 
 
-def create_events(agent_id, module, source, agent_name, agent_ip, location, labels):
+def get_queue_from_module(module):
     modules_queue = {
         'audit': 49,
         'command': 49,
@@ -92,55 +104,8 @@ def create_events(agent_id, module, source, agent_name, agent_ip, location, labe
         'rsyslog': 50
     }
 
-    # Getting queue according to source
-    protocol_queue = modules_queue[module]
-
-    # Scaping the ':' is made with '|' and without checking if it was already scaped (it shouldn't be)
-    if source == 'logcollector' and location and module != 'eventchannel' and module != 'eventlog':
-        location = location.replace(':', '|:')
-    else:
-        location = module
-
-    if not agent_ip:
-        agent_ip = 'any'
-    else:
-        agent_ip = agent_ip.replace(':', '|:')
-
-    # There are two possible formats of events:
-    # 1st:
-    # <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Origin>:<Log>
-    # 2nd: -> for remote syslog events
-    # <Queue_ID>:<Syslog_Client_IP>:<Log>
-    if source == 'remote-syslog' or module == 'rsyslog':
-        protocol_location = agent_ip
-    else:
-        protocol_location = '[' + agent_id + \
-            '] (' + agent_name + ') ' + agent_ip + '->' + location
-
-    # Getting messages from yaml
-    source_list_content = load_file(SOURCES_LIST_PATH)
-    if not source_list_content:
-        print('File must not be empty.')
-        exit(1)
-
-    final_events = []
-    if source in source_list_content:
-        for sources_block in source_list_content[source]:
-            if module in sources_block and sources_block[module]:
-                for single_message in sources_block[module]:
-                    if not single_message:
-                        break
-                    message_modified = replace_fields(
-                        single_message, agent_name, location)
-                    if module == 'json' and labels:
-                        message_modified = add_event_object(
-                            message_modified, labels)
-                    event = chr(protocol_queue) + ':' + \
-                        protocol_location + ':' + message_modified
-                    print(event)
-                    final_events.append(event)
-
-    return final_events
+    # Getting queue according to module
+    return modules_queue[module]
 
 
 def send_event(event_list, socket_address):
@@ -155,30 +120,41 @@ def send_event(event_list, socket_address):
 
     try:
         for event in event_list:
-            print('sending {!r}'.format(event))
+            # print('sending {!r}'.format(event))
             sock.sendall(event.encode())
 
+    # closing socket
     finally:
-        print('closing socket')
         sock.close()
 
 
-def save_to_file(events_list, output_file_name):
+def save_to_file(list_events, output_file_name):
     # append content and creates file if it doesn't exist
     with open(output_file_name, 'a+') as f:
-        for event in events_list:
+        for event in list_events:
             f.write(event + '\n')
         f.close()
 
 
+def append_header_to_events(header, list_events):
+    final_events = []
+    for single_event in list_events:
+        event = header + single_event
+        final_events.append(event)
+    return final_events
+
+
+def get_events():
+    final_events = []
+    for line in sys.stdin:
+        if len(line) == 0:
+            break
+        final_events.append(line)
+    return final_events
+
+
 def main():
     parser = argparse.ArgumentParser()
-
-    # Mandatory fields
-    parser.add_argument(
-        '-m', '--module', help=f'Module of events', type=str, dest='module')
-    parser.add_argument(
-        '-s', '--source', help=f'Source of events', type=str, dest='source')
 
     # Agent specific fields
     parser.add_argument('-i', '--agent-id', help=f'Agent ID for event filling',
@@ -188,59 +164,105 @@ def main():
     parser.add_argument('-a', '--agent-ip', help=f'Agent ip address for events filling',
                         type=str, default='any', dest='agent_ip')
 
-    subcommands = parser.add_subparsers(dest="subcommand_name")
-
-    # Creates and send a sample event based on configurations
-    create_and_send_command = subcommands.add_parser('send_event')
-    create_and_send_command.add_argument(
+    parser.add_argument(
+        '--dry-run', help=f'events wont be sent to the engine socket', action='store_false', dest='must_send')
+    parser.add_argument(
         '-e', '--engine-socket', help=f'Where the engine is listening to events',
         default=DEFAULT_ENGINE_SOCKET, type=str, dest='engine_socket')
 
-    # Creates a sample event based on configurations
-    saves_event_command = subcommands.add_parser('save_event')
-    saves_event_command.add_argument(
-        '-O', '--Output', help=f'File where to store created events', type=str, default=DUMP_FILE_NAME, dest='output')
+    parser.add_argument(
+        '-o', '--output', help=f'Output file where the events will be stored, if empty events wont be saved', type=str, default='', dest='output_file')
 
-    # Module specific fields
-    parser.add_argument('-L', '--location', help=f'logcollector location wether file path or command',
-                        type=str, default="", dest='location')
-    parser.add_argument('-l', '--labels', help=f'json object added to logcollector json event',
-                        type=str, default="", dest='labels')
+    subcommands = parser.add_subparsers(dest="source")
+
+    logcollector_command = subcommands.add_parser('logcollector')
+    # This should be set on each module, but to avoid repetition
+    logcollector_command.add_argument('-L', '--location', help=f'logcollector location wether file path or command',
+                                      type=str, dest='location')
+
+    logcollector_subcommand = logcollector_command.add_subparsers(
+        dest="module_name")
+    audit_subcommand = logcollector_subcommand.add_parser('audit')
+    command_subcommand = logcollector_subcommand.add_parser('command')
+    eventchannel_subcommand = logcollector_subcommand.add_parser(
+        'eventchannel')
+    eventlog_subcommand = logcollector_subcommand.add_parser('eventlog')
+    full_command_subcommand = logcollector_subcommand.add_parser(
+        'full_command')
+    json_subcommand = logcollector_subcommand.add_parser('json')
+    json_subcommand.add_argument('-l', '--labels', help=f'json object added to logcollector json event',
+                                 type=str, default="", dest='labels')
+
+    macos_subcommand = logcollector_subcommand.add_parser('macos')
+    multi_line_subcommand = logcollector_subcommand.add_parser('multi_line')
+    multi_line_regex_subcommand = logcollector_subcommand.add_parser(
+        'multi_line_regex')
+    mysql_log_subcommand = logcollector_subcommand.add_parser('mysql_log')
+    syslog_subcommand = logcollector_subcommand.add_parser('syslog')
+
+    remote_syslog_command = subcommands.add_parser('remote-syslog')
+    remote_syslog_command.add_argument('-R', '--remote_ip', help=f'remote-syslog remote IP, random IP as default',
+                                       type=str, dest='remote_ip')
+    remote_syslog_subcommand = remote_syslog_command.add_subparsers(
+        dest="module_name")
+    rsyslog_subcommand = remote_syslog_subcommand.add_parser('rsyslog')
 
     args = parser.parse_args()
 
-    if not args.module or not args.source:
-        print("module and source are mandatory parameters.")
+    add_labels = False
+    if args.source == 'logcollector':
+        if args.module_name == 'eventlog' or args.module_name == 'eventchannel':
+            location = args.module_name
+        elif args.module_name == 'json':
+            if not args.location:
+                print("When using module '{}' location cannot be empty.".format(args.module_name))
+                exit(1)
+            location = args.location
+            if len(args.labels) != 0:
+                add_labels = True
+        elif args.module_name == 'audit' or args.module_name == 'command' or args.module_name == 'full_command' or args.module_name == 'macos' or args.module_name == 'multi_line' or args.module_name == 'multi_line_regex' or args.module_name == 'mysql_log' or args.module_name == 'syslog':
+            if not args.location:
+                print("When using module '{}' location cannot be empty.".format(args.module_name))
+                exit(1)
+            location = args.location
+        elif len(args.module_name) == 0:
+            print("module is a mandatory parameter.")
+            exit(1)
+        else:
+            print("Non available module.")
+            exit(1)
+    elif args.source == 'remote-syslog':
+        if args.module_name == 'rsyslog':
+            args.agent_id = ''
+            args.agent_name = ''
+            args.agent_ip = ''
+            if not args.remote_ip:
+                print("When using module '{}' remote_ip cannot be empty.".format(args.module_name))
+                exit(1)
+            location = args.remote_ip
+    elif len(args.source) == 0:
+        print("source is a mandatory parameter.")
+        exit(1)
+    else:
+        print("Not Yet Implemented.")
         exit(1)
 
-    if args.subcommand_name == 'send_event':
-        agent_id = args.agent_id
-        module = args.module
-        source = args.source
-        agent_name = args.agent_name
-        agent_ip = args.agent_ip
-        location = args.location
-        labels = args.labels
-        events_list = create_events(agent_id, module, source,
-                                    agent_name, agent_ip, location, labels)
-        socket = args.engine_socket
-        send_event(events_list, socket)
-    elif args.subcommand_name == 'save_event':
-        agent_id = args.agent_id
-        module = args.module
-        source = args.source
-        agent_name = args.agent_name
-        agent_ip = args.agent_ip
-        location = args.location
-        labels = args.labels
-        output_file = args.output
-        print(output_file)
-        events_list = create_events(agent_id, module, source,
-                                    agent_name, agent_ip, location, labels)
-        save_to_file(events_list, output_file)
-    else:
-        print("Subcommand unavailable or empty.")
-        exit(1)
+    list_events = get_events()
+    if add_labels:
+        list_events = add_to_event_object(list_events, args.labels)
+    header = create_header(get_queue_from_module(
+        args.module_name), args.agent_id, args.agent_name, args.agent_ip, location)
+    list_events = append_header_to_events(header, list_events)
+
+    if len(list_events) != 0:
+        if args.must_send :
+            socket = args.engine_socket
+            send_event(list_events, socket)
+        if len(args.output_file) != 0:
+            save_to_file(list_events, args.output_file)
+        else:
+            for event in list_events:
+                print(event)
 
 
 if __name__ == "__main__":
