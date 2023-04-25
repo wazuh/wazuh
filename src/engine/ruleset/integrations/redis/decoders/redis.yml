@@ -12,7 +12,10 @@ metadata:
     - https://docs.rs/redis-module/latest/redis_module/logging/index.html
 
 sources:
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
+
+check:
+  - event.module: redis
 
 parse:
   logpar:
