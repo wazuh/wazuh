@@ -1311,7 +1311,7 @@ EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
 # Shared tools like dependencies
 SHARED_RES := http-request
-SHARED_TAR := $(SHARED_RES:%=shared/%.tar.gz)
+SHARED_TAR := $(SHARED_RES:%=shared_modules/%.tar.gz)
 
 .PHONY: deps
 deps: $(EXTERNAL_TAR) $(SHARED_TAR)
@@ -1369,12 +1369,12 @@ endif
 # Shared tools
 HTTP_REQUEST_URL := https://github.com/wazuh/wazuh-http-request/tarball/$(HTTP_REQUEST_BRANCH)
 
-shared/http-request.tar.gz:
-	find $(patsubst %.tar.gz,%,$@) -maxdepth 0 -empty -exec false {} + ||\
+shared_modules/http-request.tar.gz:
+	find $(patsubst %.tar.gz,%,$@) -type f -exec false {} + &&\
 	((test -e $(patsubst %.gz,%,$@) || $(CURL) $@ -L $(HTTP_REQUEST_URL)) &&\
 	($(GUNZIP) $@ || (rm -f $@ && echo "Error decompressing $@ maybe wrong branch was supplied!" && false)) &&\
 	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) &&\
-	rm $(patsubst %.gz,%,$@))
+	rm $(patsubst %.gz,%,$@)) || true
 
 ####################
 #### OSSEC Libs ####
@@ -2591,6 +2591,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SYSINFO)build
 	rm -rf $(SYSCHECK)build
+	rm -rf ${SHARED_MODULES}http-request/build
 	rm -rf libwazuhext
 	rm -rf libstdc++.so.6
 	rm -rf libgcc_s.so.1
