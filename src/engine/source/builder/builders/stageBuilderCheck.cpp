@@ -27,8 +27,7 @@ base::Expression stageBuilderCheckList(const std::any& definition,
     }
     catch (std::exception& e)
     {
-        throw std::runtime_error(fmt::format(
-            "Check stage: Definition could not be converted to json: {}", e.what()));
+        throw std::runtime_error(fmt::format("Check stage: Definition could not be converted to json: {}", e.what()));
     }
 
     if (!jsonDefinition.isArray())
@@ -47,20 +46,18 @@ base::Expression stageBuilderCheckList(const std::any& definition,
                    {
                        if (!condition.isObject())
                        {
-                           throw std::runtime_error(fmt::format(
-                               "Check stage: Invalid array item type, expected "
-                               "\"object\" but got \"{}\"",
-                               condition.typeName()));
+                           throw std::runtime_error(fmt::format("Check stage: Invalid array item type, expected "
+                                                                "\"object\" but got \"{}\"",
+                                                                condition.typeName()));
                        }
                        if (condition.size() != 1)
                        {
-                           throw std::runtime_error(fmt::format(
-                               "Check stage: Invalid object item size, expected exactly "
-                               "one key/value pair but got \"{}\"",
-                               condition.size()));
+                           throw std::runtime_error(
+                               fmt::format("Check stage: Invalid object item size, expected exactly "
+                                           "one key/value pair but got \"{}\"",
+                                           condition.size()));
                        }
-                       return registry->getBuilder("operation.condition")(
-                           condition.getObject().value()[0]);
+                       return registry->getBuilder("operation.condition")(condition.getObject().value()[0]);
                    });
 
     auto expression = base::And::create("stage.check", conditionExpressions);
@@ -80,7 +77,6 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
         std::string field;
         std::string value;
         json::Json valueJson;
-        bool isEqualEqual = true;
         std::string operador;
 
         if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
@@ -117,46 +113,40 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
 
                 if (operador == "==" || operador == "!=")
                 {
-                    if (operador == "!=")
-                    {
-                        isEqualEqual = false;
-                    }
                     try
                     {
                         valueJson = json::Json(operando.c_str());
-                    } 
-                    catch (std::runtime_error &e)
+                    }
+                    catch (std::runtime_error& e)
                     {
                         valueJson.setString(operando);
                     }
-                } 
+                }
                 else
                 {
-                    valueJson = json::Json(operando.c_str());
+                    try
+                    {
+                        valueJson = json::Json(operando.c_str());
+                    }
+                    catch (std::runtime_error& e)
+                    {
+                        valueJson.setString(operando);
+                    }
+
                     if (!valueJson.isInt64() && !valueJson.isString())
                     {
-                        throw std::runtime_error(fmt::format("Check stage: The \"{}\" operator only allows operate with numbers or string", operador));
+                        throw std::runtime_error(fmt::format(
+                            "Check stage: The \"{}\" operator only allows operate with numbers or string", operador));
                     }
 
-                    bool isInt = true;
-                    try 
-                    {
-                        std::stoi(operando);
-                    }
-                    catch (const std::invalid_argument& e)
-                    {
-                        isInt = false;
-                    }
-
-                    const auto prefix = isInt ? "+int_" : "+string_";
-                    const auto suffix = (
-                        (operador == "<=") ? "less_or_equal/"    :
-                        (operador == ">=") ? "greater_or_equal/" :
-                        (operador == "<")  ? "less/"             :
-                        "greater/") + operando;
+                    const auto prefix = valueJson.isInt64() ? "+int_" : "+string_";
+                    const auto suffix = ((operador == "<=")   ? "less_or_equal/"
+                                         : (operador == ">=") ? "greater_or_equal/"
+                                         : (operador == "<")  ? "less/"
+                                                              : "greater/")
+                                        + operando;
                     value = prefix + suffix;
                     valueJson.setString(value);
-
                 }
             }
             else
@@ -170,17 +160,17 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
 
         if (opEx->isTerm())
         {
-            if (operador != "==" || operador != "!=")
+            if (operador != "==" && operador != "!=")
             {
                 return opEx->getPtr<base::Term<base::EngineOp>>()->getFn();
             }
 
-            auto fn = [opEx, isEqualEqual](base::Event event) -> bool
+            return [opEx, operador](base::Event event) -> bool
             {
                 auto result = opEx->getPtr<base::Term<base::EngineOp>>()->getFn()(event);
                 if (!result)
                 {
-                    if (isEqualEqual)
+                    if (operador == "==")
                     {
                         return false;
                     }
@@ -189,15 +179,13 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                         return true;
                     }
                 }
-                return isEqualEqual;
+                return true && operador == "==";
             };
-
-            return fn;
         }
         else
         {
             std::vector<base::EngineOp> fnVec;
-            for (const auto &t : opEx->getPtr<base::Operation>()->getOperands())
+            for (const auto& t : opEx->getPtr<base::Operation>()->getOperands())
             {
                 if (t->isTerm())
                 {
@@ -205,18 +193,18 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                 }
                 else
                 {
-                    throw std::runtime_error {"Comparison of objects that have objects inside is not supported."};
+                    throw std::runtime_error {fmt::format("Check stage: Comparison of objects that have objects inside is not supported.")};
                 }
             }
 
-            auto fn = [fnVec, isEqualEqual](base::Event event) -> bool
+            return [fnVec, operador](base::Event event) -> bool
             {
                 for (const auto& fn : fnVec)
                 {
                     auto result = fn(event);
                     if (!result)
                     {
-                        if (isEqualEqual)
+                        if (operador == "==")
                         {
                             return false;
                         }
@@ -226,16 +214,13 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                         }
                     }
                 }
-                return isEqualEqual;
+                return true && operador == "==";
             };
-
-            return fn;
         }
     };
 
     // Evaluator function
-    auto evaluator = logicExpression::buildDijstraEvaluator<base::Event>(expressionString,
-                                                                         termBuilder);
+    auto evaluator = logicExpression::buildDijstraEvaluator<base::Event>(expressionString, termBuilder);
 
     // Trace
     auto name = fmt::format("check: {}", expressionString);
@@ -243,19 +228,18 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
     const auto failureTrace = fmt::format("[{}] -> Failure", name);
 
     // Return expression
-    return base::Term<base::EngineOp>::create(
-        "stage.check",
-        [=](base::Event event)
-        {
-            if (evaluator(event))
-            {
-                return base::result::makeSuccess(event, successTrace);
-            }
-            else
-            {
-                return base::result::makeFailure(event, failureTrace);
-            }
-        });
+    return base::Term<base::EngineOp>::create("stage.check",
+                                              [=](base::Event event)
+                                              {
+                                                  if (evaluator(event))
+                                                  {
+                                                      return base::result::makeSuccess(event, successTrace);
+                                                  }
+                                                  else
+                                                  {
+                                                      return base::result::makeFailure(event, failureTrace);
+                                                  }
+                                              });
 }
 
 } // namespace
@@ -274,8 +258,8 @@ Builder getStageBuilderCheck(std::shared_ptr<Registry<Builder>> registry)
         }
         catch (const std::exception& e)
         {
-            throw std::runtime_error(fmt::format(
-                "Check stage: Definition could not be converted to json: {}", e.what()));
+            throw std::runtime_error(
+                fmt::format("Check stage: Definition could not be converted to json: {}", e.what()));
         }
 
         if (jsonDefinition.isArray())
@@ -288,10 +272,9 @@ Builder getStageBuilderCheck(std::shared_ptr<Registry<Builder>> registry)
         }
         else
         {
-            throw std::runtime_error(
-                fmt::format("Check stage: Invalid json definition type, \"string\" or "
-                            "\"array\" were expected but got \"{}\"",
-                            jsonDefinition.typeName()));
+            throw std::runtime_error(fmt::format("Check stage: Invalid json definition type, \"string\" or "
+                                                 "\"array\" were expected but got \"{}\"",
+                                                 jsonDefinition.typeName()));
         }
     };
 }
