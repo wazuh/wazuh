@@ -442,7 +442,7 @@ int main_analysisd(int argc, char **argv)
                 if (found == 0) {
                     break;
                 } else if (found != 0) {
-                    merror_exit("Socket '%s' is not defined.", Config.forwarders_list[target_num]);
+                    mdebug1("Socket for target '%s' is not defined. Did you check your 'ossec.conf' file ?", Config.forwarders_list[target_num]);
                 }
             }
         }

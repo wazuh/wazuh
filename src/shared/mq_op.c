@@ -292,7 +292,6 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
                     free(message);
                     return -1;
                 }
-
                 mdebug1("Connected to socket '%s' (%s)", Config->name, Config->location);
             } else {
                 mdebug2("Discarding event from '%s' due to connection issue with '%s'", message, Config->name);
@@ -320,7 +319,7 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
                         mdebug2("Message send to socket '%s' (%s) successfully.", Config->name, Config->location);
                     }
                 } else {
-                    mdebug2("Discarding event from Analysisd due to connection issue with '%s' due %s. (Abort).", Config->name,strerror(errno));
+                    mdebug2("Discarding event from analysisd due to connection issue with '%s' due %s. (Abort).", Config->name,strerror(errno));
                 }
             } else {
                 mdebug2("Cannot send message to socket '%s' due %s. (Abort).", Config->name,strerror(errno));
