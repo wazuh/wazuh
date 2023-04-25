@@ -487,7 +487,8 @@ async def test_get_log_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
                     'tag': None,
                     'level': None,
                     'q': None,
-                    'select': None
+                    'select': None,
+                    'distinct': False
                     }
         mock_dapi.assert_called_once_with(f=manager.ossec_log,
                                           f_kwargs=mock_remove.return_value,

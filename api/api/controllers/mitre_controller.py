@@ -106,7 +106,7 @@ async def get_references(request, reference_ids: list = None, pretty: bool = Fal
 
 async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                       offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
-                      q: str = None) -> web.Response:
+                      q: str = None, distinct: bool = False) -> web.Response:
     """Get information of specified MITRE's tactics.
 
     Parameters
@@ -131,6 +131,8 @@ async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wa
         ascending or descending order.
     q : str
         Query to filter by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -148,7 +150,8 @@ async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wa
         'search_text': parse_api_param(search, 'search')['value'] if search else None,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search else None,
         'select': select,
-        'q': q
+        'q': q,
+        'distinct': distinct
     }
 
     dapi = DistributedAPI(f=mitre.mitre_tactics,
@@ -166,7 +169,7 @@ async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wa
 
 async def get_techniques(request, technique_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                          offset: int = None, limit: int = None, sort: str = None, search: str = None,
-                         select: list = None, q: str = None) -> web.Response:
+                         select: list = None, q: str = None, distinct: bool = False) -> web.Response:
     """Get information of specified MITRE's techniques.
 
     Parameters
@@ -191,6 +194,8 @@ async def get_techniques(request, technique_ids: list = None, pretty: bool = Fal
         ascending or descending order.
     q : str
         Query to filter by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -206,7 +211,9 @@ async def get_techniques(request, technique_ids: list = None, pretty: bool = Fal
         'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
         'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-        'select': select, 'q': q}
+        'select': select, 
+        'q': q,
+        'distinct': distinct}
 
     dapi = DistributedAPI(f=mitre.mitre_techniques,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -223,7 +230,7 @@ async def get_techniques(request, technique_ids: list = None, pretty: bool = Fal
 
 async def get_mitigations(request, mitigation_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                           offset: int = None, limit: int = None, sort: str = None, search: str = None,
-                          select: list = None, q: str = None) -> web.Response:
+                          select: list = None, q: str = None, distinct: bool = False) -> web.Response:
     """Get information of specified MITRE's mitigations.
 
     Parameters
@@ -248,6 +255,8 @@ async def get_mitigations(request, mitigation_ids: list = None, pretty: bool = F
         ascending or descending order.
     q : str
         Query to filter by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -263,7 +272,9 @@ async def get_mitigations(request, mitigation_ids: list = None, pretty: bool = F
         'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
         'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-        'select': select, 'q': q}
+        'select': select,
+        'q': q,
+        'distinct': distinct}
 
     dapi = DistributedAPI(f=mitre.mitre_mitigations,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -280,7 +291,7 @@ async def get_mitigations(request, mitigation_ids: list = None, pretty: bool = F
 
 async def get_groups(request, group_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                      offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
-                     q: str = None) -> web.Response:
+                     q: str = None, distinct: bool = False) -> web.Response:
     """Get information of specified MITRE's groups.
 
     Parameters
@@ -305,6 +316,8 @@ async def get_groups(request, group_ids: list = None, pretty: bool = False, wait
         ascending or descending order.
     q : str
         Query to filter by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -322,7 +335,8 @@ async def get_groups(request, group_ids: list = None, pretty: bool = False, wait
         'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
         'select': select,
-        'q': q}
+        'q': q,
+        'distinct': distinct}
 
     dapi = DistributedAPI(f=mitre.mitre_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -339,7 +353,7 @@ async def get_groups(request, group_ids: list = None, pretty: bool = False, wait
 
 async def get_software(request, software_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                        offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
-                       q: str = None) -> web.Response:
+                       q: str = None, distinct: bool = False) -> web.Response:
     """Get information of specified MITRE's software.
 
     Parameters
@@ -364,6 +378,8 @@ async def get_software(request, software_ids: list = None, pretty: bool = False,
         ascending or descending order.
     q : str
         Query to filter by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -381,7 +397,8 @@ async def get_software(request, software_ids: list = None, pretty: bool = False,
         'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
         'select': select,
-        'q': q}
+        'q': q,
+        'distinct': distinct}
 
     dapi = DistributedAPI(f=mitre.mitre_software,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

@@ -217,70 +217,83 @@ def test_cut_array_ko(limit, offset, expected_exception):
         utils.cut_array(array=['one', 'two', 'three'], limit=limit, offset=offset)
 
 
-@pytest.mark.parametrize('array, q, filters, limit, search_text, select, sort_by, expected_items, expected_total_items',
-                         [
-                             # Test cases with queries
-                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
-                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
-                              'datetime=2017-10-25T14:48:53.732000Z', None, None, None, None, None,
-                              [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
+@pytest.mark.parametrize(
+    'array, q, filters, limit, search_text, select, sort_by, distinct, expected_items, expected_total_items',
+    [
+        # Test cases with queries
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         'datetime=2017-10-25T14:48:53.732000Z', None, None, None, None, None, None,
+         [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
-                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
-                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
-                              'datetime<2017-10-26', None, None, None, None, None,
-                              [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         'datetime<2017-10-26', None, None, None, None, None, None,
+         [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
-                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
-                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
-                              'datetime>2019-10-26,datetime<2017-10-26', None, None, None, None, None,
-                              [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         'datetime>2019-10-26,datetime<2017-10-26', None, None, None, None, None, None,
+         [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
-                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
-                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
-                              'datetime>2017-10-26;datetime<2018-05-15T12:34:12.644000Z', None, None, None, None, None,
-                              [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}], 1),
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         'datetime>2017-10-26;datetime<2018-05-15T12:34:12.644000Z', None, None, None, None, None, None,
+         [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}], 1),
 
-                             ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53Z'},
-                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}],
-                              'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', None, None, None, None, None,
-                              [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}], 1),
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}],
+         'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', None, None, None, None, None, None,
+         [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}], 1),
 
-                             # Test cases with filters, limit and search
-                             ([{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}],
-                              None, {'item': 'value_1'}, 1, None, None, None,
-                              [{'item': 'value_1'}], 1),
+        # Test cases with filters, limit and search
+        ([{'item': 'value_1', 'some': 't'}, {'item': 'value_2', 'some': 'a'}, {'item': 'value_3', 'some': 'b'}],
+         None, {'item': 'value_1', 'some': 't'}, 1, None, None, None, None,
+         [{'item': 'value_1', 'some': 't'}], 1),
 
-                             ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
-                              None, None, 1, 'e_1', None, None,
-                              [{'item': 'value_1'}], 2),
+        ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
+         None, None, 1, 'e_1', None, None, None,
+         [{'item': 'value_1'}], 2),
 
-                             ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
-                              None, None, 2, 'e_1', None, None,
-                              [{'item': 'value_1'}, {'item': 'value_1'}], 2),
+        ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
+         None, None, 2, 'e_1', None, None, None,
+         [{'item': 'value_1'}, {'item': 'value_1'}], 2),
 
-                             # Test cases with sort
-                             ([{'item': 'value_2'}, {'item': 'value_1'}, {'item': 'value_3'}],
-                              None, None, None, None, None, ['item'],
-                              [{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}], 3),
+        # Test cases with sort
+        ([{'item': 'value_2'}, {'item': 'value_1'}, {'item': 'value_3'}],
+         None, None, None, None, None, ['item'], None,
+         [{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}], 3),
 
-                             # Complex test cases
-                             ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
-                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
-                              'datetime~2017', {'item': 'value_1'}, 1, 'frame', None, None,
-                              [{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z',
-                                'component': 'framework'}], 1),
+        # Test cases with distinct
+        ([{'item': 'value_1', 'component': 'framework'},
+           {'item': 'value_2', 'component': 'API'},
+           {'item': 'value_1', 'component': 'framework'}],
+         None, None, None, None, None, None, True,
+         [{'item': 'value_1', 'component': 'framework'}, {'item': 'value_2', 'component': 'API'}], 2),
+         
+         (['framework', 'API', 'API'],
+         None, None, None, None, None, None, True,
+         ['framework', 'API'], 2),
 
-                             ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
-                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
-                              'datetime~2019', {'item': 'value_1'}, 1, None, None, None,
-                              [], 0),
+        # Complex test cases
+        ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
+         'datetime~2017', {'item': 'value_1'}, 1, 'frame', None, None, None,
+         [{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z',
+           'component': 'framework'}], 1),
 
-                             ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
-                               {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
-                              'datetime~2017', {'item': 'value_1'}, 1, None, ['component', 'item'], None,
-                              [{'item': 'value_1', 'component': 'framework'}], 1),
-                         ])
-def test_process_array(array, q, filters, limit, search_text, sort_by, select, expected_items, expected_total_items):
+        ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
+         'datetime~2019', {'item': 'value_1'}, 1, None, None, None, None,
+         [], 0),
+
+        ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
+         'datetime~2017', {'item': 'value_1'}, 1, None, ['component', 'item'], None, None,
+         [{'item': 'value_1', 'component': 'framework'}], 1),
+    ])
+def test_process_array(array, q, filters, limit, search_text, sort_by, select, distinct, expected_items,
+                       expected_total_items):
     """Test that the process_array function is working properly with simple and complex examples.
 
     Parameters
@@ -305,7 +318,7 @@ def test_process_array(array, q, filters, limit, search_text, sort_by, select, e
         Total items expected after having applied the processing.
     """
     result = utils.process_array(array=array, filters=filters, limit=limit, offset=0, search_text=search_text,
-                                 select=select, sort_by=sort_by, q=q)
+                                 select=select, sort_by=sort_by, q=q, distinct=distinct)
 
     assert result == {'items': expected_items, 'totalItems': expected_total_items}
 

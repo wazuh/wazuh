@@ -18,7 +18,7 @@ from wazuh.rbac.decorators import expose_resources
 def get_lists(filename: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
               sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: str = None,
-              relative_dirname: str = None, q: str = None) -> AffectedItemsWazuhResult:
+              relative_dirname: str = None, q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get CDB lists content.
 
     Parameters
@@ -46,6 +46,8 @@ def get_lists(filename: list = None, offset: int = 0, limit: int = common.DATABA
          Filter by relative dirname.
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -68,7 +70,7 @@ def get_lists(filename: list = None, offset: int = 0, limit: int = common.DATABA
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit, select=select, allowed_sort_fields=SORT_FIELDS,
-                         required_fields=REQUIRED_FIELDS, allowed_select_fields=LIST_FIELDS, q=q)
+                         required_fields=REQUIRED_FIELDS, allowed_select_fields=LIST_FIELDS, q=q, distinct=distinct)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

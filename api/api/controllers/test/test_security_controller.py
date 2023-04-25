@@ -210,7 +210,8 @@ async def test_get_users(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'sort_ascending': True,
                 'search_text': None,
                 'complementary_search': None,
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=security.get_users,
                                       f_kwargs=mock_remove.return_value,
@@ -345,7 +346,8 @@ async def test_get_roles(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'sort_ascending': True,
                 'search_text': None,
                 'complementary_search': None,
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=security.get_roles,
                                       f_kwargs=mock_remove.return_value,
@@ -559,7 +561,8 @@ async def test_get_policies(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
                 'sort_ascending': True,
                 'search_text': None,
                 'complementary_search': None,
-                'q': None
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=security.get_policies,
                                       f_kwargs=mock_remove.return_value,

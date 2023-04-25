@@ -49,7 +49,7 @@ def get_status() -> AffectedItemsWazuhResult:
 def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
               sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
-              q: str = '', select: str = None) -> AffectedItemsWazuhResult:
+              q: str = '', select: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get logs from ossec.log.
 
     Parameters
@@ -76,6 +76,8 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
         Query to filter results by.
     select : str
         Select which fields to return (separated by comma).
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -99,7 +101,7 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
     data = process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by,
                          sort_ascending=sort_ascending, offset=offset, limit=limit, q=query,
-                         select=select, allowed_select_fields=OSSEC_LOG_FIELDS)
+                         select=select, allowed_select_fields=OSSEC_LOG_FIELDS, distinct=distinct)
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
 
@@ -285,6 +287,8 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False) -
         Filters by field in section (i.e. included).
     raw : bool
         Whether to return the file content in raw or JSON format.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------

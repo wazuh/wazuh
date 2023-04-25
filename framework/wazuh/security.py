@@ -69,7 +69,7 @@ def get_user_me(token: dict) -> AffectedItemsWazuhResult:
 def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
               sort_ascending: bool = True, search_text: str = None, select: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
-              q: str = None) -> AffectedItemsWazuhResult:
+              q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get the information of a specified user.
 
     Parameters
@@ -94,6 +94,8 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABA
         Fields to search in.
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -113,7 +115,7 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.DATABA
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS_GET_USERS,
-                         required_fields=REQUIRED_FIELDS, q=q)
+                         required_fields=REQUIRED_FIELDS, q=q, distinct=distinct)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -294,7 +296,7 @@ def remove_users(user_ids: list) -> AffectedItemsWazuhResult:
 def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
               select: str = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
-              q: str = None) -> AffectedItemsWazuhResult:
+              q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
     """Return information from all system roles, does not return information from its associated policies.
 
     Parameters
@@ -319,6 +321,8 @@ def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.DATABA
         Fields to search in.
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -341,7 +345,7 @@ def get_roles(role_ids: list = None, offset: int = 0, limit: int = common.DATABA
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS,
-                         q=q)
+                         q=q, distinct=distinct)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -464,7 +468,7 @@ def update_role(role_id: str = None, name: str = None) -> AffectedItemsWazuhResu
 def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
                  select: str = None, sort_ascending: bool = True, search_text: str = None,
                  complementary_search: bool = False, search_in_fields: list = None,
-                 q: str = None) -> AffectedItemsWazuhResult:
+                 q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
     """Return the information of a certain policy.
 
     Parameters
@@ -489,6 +493,8 @@ def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DATABASE
         Fields to search in.
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -511,7 +517,7 @@ def get_policies(policy_ids: list, offset: int = 0, limit: int = common.DATABASE
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS,
-                         q=q)
+                         q=q, distinct=distinct)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

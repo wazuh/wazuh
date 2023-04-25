@@ -299,7 +299,7 @@ def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult
                   post_proc_kwargs={'exclude_codes': [1701]})
 def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
                search: dict = None, select: dict = None, filters: dict = None,
-               q: str = None) -> AffectedItemsWazuhResult:
+               q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
     """Gets a list of available agents with basic attributes.
 
     Parameters
@@ -320,6 +320,8 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
         Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -343,7 +345,7 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list, filters=filters)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=q, **rbac_filters) as db_query:
+                                query=q, **rbac_filters, distinct=distinct) as db_query:
             data = db_query.run()
 
         result.affected_items.extend(data['items'])
@@ -355,7 +357,7 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
                         search: dict = None, select: dict = None, filters: dict = None,
-                        q: str = None) -> AffectedItemsWazuhResult:
+                        q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
     """Gets a list of available agents with basic attributes.
 
     Parameters
@@ -376,6 +378,8 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
         Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Raises
     ------
@@ -394,7 +398,8 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
 
     q = 'group=' + group_list[0] + (';' + q if q else '')
 
-    return get_agents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, q=q)
+    return get_agents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, q=q,
+     distinct=distinct)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
@@ -552,7 +557,8 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710]})
 def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None, sort: dict = None,
-                     search: dict = None, hash_algorithm: str = 'md5', q: str = None) -> AffectedItemsWazuhResult:
+                     search: dict = None, hash_algorithm: str = 'md5', q: str = None,
+                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Gets the existing groups.
 
     Parameters
@@ -571,6 +577,8 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         hash algorithm used to get mergedsum and configsum. Default: 'md5'
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -615,7 +623,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
     data = process_array(affected_groups, offset=offset, limit=limit,
                          allowed_sort_fields=GROUP_SORT_FIELDS, sort_by=sort,
-                         search_text=search, q=q)
+                         search_text=search, q=q, distinct=distinct)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -626,7 +634,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 def get_group_files(group_list: list = None, offset: int = 0, limit: int = None, search_text: str = None,
                     search_in_fields: list = None, complementary_search: bool = False, sort_by: list = None,
                     sort_ascending: bool = True, hash_algorithm: str = 'md5', q: str = None,
-                    select: str = None) -> WazuhResult:
+                    select: str = None, distinct: bool = False) -> WazuhResult:
     """Gets the group files.
 
     Parameters
@@ -653,6 +661,9 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
         Query to filter results by.
     select : str
         Select which fields to return (separated by comma).
+        Maximum number of elements to return.
+    distinct : bool
+        Look for distinct values.
 
     Raises
     ------
@@ -698,7 +709,7 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
         data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by,
                              sort_ascending=sort_ascending, offset=offset, limit=limit, q=q, select=select,
-                             allowed_select_fields=GROUP_FILES_FIELDS)
+                             allowed_select_fields=GROUP_FILES_FIELDS, distinct=distinct)
         result.affected_items = data['items']
         result.total_affected_items = data['totalItems']
     except WazuhError as e:

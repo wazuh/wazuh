@@ -40,7 +40,8 @@ async def test_get_decoders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
                 'q': None,
                 'filename': None,
                 'status': None,
-                'relative_dirname': None
+                'relative_dirname': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=decoder_framework.get_decoders,
                                       f_kwargs=mock_remove.return_value,
@@ -73,7 +74,8 @@ async def test_get_decoders_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'status': None,
                 'relative_dirname': None,
                 'q': None,
-                'select': None
+                'select': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=decoder_framework.get_decoders_files,
                                       f_kwargs=mock_remove.return_value,
