@@ -8,26 +8,29 @@
 
 """This module processes events from Google Cloud PubSub service and GCS Buckets."""
 
-from sys import path
-from os.path import join, dirname, realpath
-path.append(join(dirname(realpath(__file__)), '..', '..'))
-
 import exceptions
 import logging
-from sys import exit
 from os import cpu_count
+from sys import path, exit
+from os.path import join, dirname, realpath
+
+path.append(join(dirname(realpath(__file__)), '..', '..'))
 
 # Local Imports
 from buckets.access_logs import GCSAccessLogs
 from pubsub.subscriber import WazuhGCloudSubscriber
 from concurrent.futures import ThreadPoolExecutor
 from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
-from wodles.gcloud.tools import MIN_NUM_THREADS, MIN_NUM_MESSAGES, get_script_arguments
-from wodles.gcloud.gcp_logs import GCPLogStrategy
+from tools import MIN_NUM_THREADS, MIN_NUM_MESSAGES, get_script_arguments
+from gcp_logger import GCPLogStrategy
+
+# Set GCP logger
+gcp_logger = WazuhCloudLogger(
+    strategy=GCPLogStrategy(logging.getLogger(':gcloud_wodle'))
+)
 
 
 def main():
-    global gcp_logger
 
     try:
         # Get script arguments
@@ -35,12 +38,8 @@ def main():
 
         # Get logger level
         log_lvl = arguments.log_level
-        
-        # Set GCP logger
-        gcp_logger = WazuhCloudLogger(
-            strategy=GCPLogStrategy(logging.getLogger(':gcloud_wodle')),
-            log_level=log_lvl
-        )
+
+        gcp_logger.set_level(log_level=log_lvl)
 
         # Get credentials file
         credentials_file = arguments.credentials_file
@@ -81,7 +80,8 @@ def main():
                 subscriber_client.check_permissions()
                 messages_per_thread = max_messages // n_threads
                 remaining_messages = max_messages % n_threads
-                futures.append(executor.submit(subscriber_client.process_messages, messages_per_thread + remaining_messages))
+                futures.append(
+                    executor.submit(subscriber_client.process_messages, messages_per_thread + remaining_messages))
 
                 if messages_per_thread > 0:
                     for _ in range(n_threads - 1):

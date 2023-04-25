@@ -94,7 +94,7 @@ class WazuhCloudLogger:
     GCP, AWS, and Azure integrations using the strategy pattern.
     """
 
-    def __init__(self, strategy: WazuhLogStrategy, log_level: int) -> logging.Logger:
+    def __init__(self, strategy: WazuhLogStrategy) -> logging.Logger:
         """
         Initialize the Wazuh Cloud Logger class.
 
@@ -102,20 +102,13 @@ class WazuhCloudLogger:
         ----------
         strategy : LogStrategy
             The logging strategy to be used (GCP, AWS, or Azure).
-        log_level : int, optional
-            The logging level (0 for WARNING, 1 for INFO, 2 for DEBUG), default is 1.
         """
         self.strategy = strategy
-        self.logger = self.setup_logger(log_level)
+        self.logger = self.setup_logger()
 
-    def setup_logger(self, log_level: int) -> logging.Logger:
+    def setup_logger(self) -> logging.Logger:
         """
         Set up the logger.
-
-        Parameters
-        ----------
-        log_level : int
-            The logging level (0 for WARNING, 1 for INFO, 2 for DEBUG).
 
         Returns
         -------
@@ -123,8 +116,7 @@ class WazuhCloudLogger:
             Configured logger instance.
         """
         logger = self.strategy.logger
-        logger_level = logging.DEBUG if log_level == 2 else logging.INFO
-        logger.setLevel(logger_level)
+        logger.setLevel(logging.INFO)
         handler = self._setup_handler()
         logger.addHandler(handler)
         return logger
@@ -196,3 +188,15 @@ class WazuhCloudLogger:
             The message to be logged.
         """
         self.strategy.critical(message)
+
+    def set_level(self, log_level: int):
+        """
+        Set the logging level for the logger used by the strategy.
+
+        Parameters
+        ----------
+        log_level : int
+            The logging level to be set.
+        """
+        logger_level = logging.DEBUG if log_level == 2 else logging.INFO
+        self.logger.setLevel(logger_level)

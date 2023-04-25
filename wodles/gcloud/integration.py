@@ -19,6 +19,12 @@ import exceptions
 from utils import ANALYSISD
 from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
 
+
+########################################################################################################################
+# Classes
+########################################################################################################################
+
+
 class WazuhGCloudIntegration:
     """Class for sending events from Google Cloud to Wazuh."""
 
