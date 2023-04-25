@@ -43,13 +43,13 @@ def cleanAll():
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True,
+                         check=False,
                          text=True)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanAll: PASSED]")
     else:
         print("make clean")
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[CleanAll: FAILED]")
         errorString = "Error Running CleanAll: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -72,12 +72,12 @@ def cleanExternals():
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0 and not out.stderr:
         utils.printGreen("[CleanExternals: PASSED]")
     else:
         print("rm -rf ./external/*")
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[CleanExternals: FAILED]")
         errorString = "Error Running CleanExternals: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -109,12 +109,12 @@ def cleanFolder(moduleName, additionalFolder, folderName=""):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              shell=True,
-                             check=True)
+                             check=False)
         if out.returncode == 0 and not out.stderr:
             utils.printGreen(msg="[Cleanfolder {}: PASSED]".format(folderName))
         else:
             print(cleanFolderCommand)
-            print(out.stderr)
+            print(out.stderr.decode('utf-8','replace'))
             utils.printFail(msg="[Cleanfolder {}: FAILED]".format(folderName))
             errorString = "Error Running Cleanfolder: {}".format(
                 out.returncode)
@@ -144,13 +144,13 @@ def cleanInternals():
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True,
+                         check=False,
                          text=True)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanInternals: PASSED]")
     else:
         print("make clean-internals")
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[CleanInternals: FAILED]")
         errorString = "Error Running CleanInternals: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -177,12 +177,12 @@ def cleanLib(moduleName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanLib: PASSED]")
     else:
         print("make -C {} clean".format(moduleName))
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[CleanLib: FAILED]")
         errorString = "Error Running CleanLib: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -231,13 +231,13 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     os.chdir(utils.rootPath())
     if out.returncode == 0 and not out.stderr:
         utils.printGreen(msg="[ConfigureCMake: PASSED]")
     else:
         print(configureCMakeCommand)
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[ConfigureCMake: FAILED]")
         errorString = "Error Running ConfigureCMake: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -287,12 +287,12 @@ def makeDeps(targetName, srcOnly):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         utils.printGreen(msg="[MakeDeps: PASSED]")
     else:
         print(makeDepsCommand)
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[MakeDeps: FAILED]")
         errorString = "Error Running MakeDeps: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -322,11 +322,11 @@ def makeLib(moduleName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode != 0:
         print(command)
-        print(out.stdout)
-        print(out.stderr)
+        print(out.stdout.decode('utf-8','replace'))
+        print(out.stderr.decode('utf-8','replace'))
         errorString = "Error compiling library: {}".format(out.returncode)
         raise ValueError(errorString)
     utils.printGreen(msg="[make: PASSED]")
@@ -363,12 +363,12 @@ def makeTarget(targetName, tests, debug):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         utils.printGreen(msg="[MakeTarget: PASSED]")
     else:
         print(makeTargetCommand)
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[MakeTarget: FAILED]")
         errorString = "Error Running MakeTarget: {}".format(out.returncode)
         raise ValueError(errorString)

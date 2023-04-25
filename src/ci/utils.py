@@ -86,13 +86,13 @@ def deleteLogs(moduleName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         printGreen(msg="[{}{}: PASSED]".format("Cleanfolder ",
                                                pytestResultsPath))
     else:
-        print(out.stdout)
-        print(out.stderr)
+        print(out.stdout.decode('utf-8','replace'))
+        print(out.stderr.decode('utf-8','replace'))
         printFail(msg="[{}{}: FAILED]".format("Cleanfolder ",
                                               pytestResultsPath))
         errorString = "Error cleaning tests/results: {}".format(out.returncode)
