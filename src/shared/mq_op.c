@@ -317,7 +317,7 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
                             mdebug2("Cannot send message to socket '%s' due %s. (Abort).", Config->name,strerror(errno));
                             Config->last_attempt = mtime;
                         }
-                        mdebug2("Message send to socket '%s' (%s) successfully.", message, Config->name, Config->location);
+                        mdebug2("Message send to socket '%s' (%s) successfully.", Config->name, Config->location);
                     }
                 } else {
                     mdebug2("Discarding event from Analysisd due to connection issue with '%s' due %s. (Abort).", Config->name,strerror(errno));
