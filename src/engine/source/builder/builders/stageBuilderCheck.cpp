@@ -160,27 +160,16 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
 
         if (opEx->isTerm())
         {
-            if (operador != "==" && operador != "!=")
+            auto fn = opEx->getPtr<base::Term<base::EngineOp>>()->getFn();
+            if (operador == "!=") 
             {
-                return opEx->getPtr<base::Term<base::EngineOp>>()->getFn();
+                return [fn](base::Event event) -> bool
+                {
+                    return !fn(event);
+                };
             }
 
-            return [opEx, operador](base::Event event) -> bool
-            {
-                auto result = opEx->getPtr<base::Term<base::EngineOp>>()->getFn()(event);
-                if (!result)
-                {
-                    if (operador == "==")
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return true;
-                    }
-                }
-                return true && operador == "==";
-            };
+            return fn;
         }
         else
         {
@@ -198,24 +187,17 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                 }
             }
 
-            return [fnVec, operador](base::Event event) -> bool
+            auto result = (operador == "!=");
+            return [fnVec, result](base::Event event) -> bool
             {
                 for (const auto& fn : fnVec)
                 {
-                    auto result = fn(event);
-                    if (!result)
+                    if (fn(event) == result)
                     {
-                        if (operador == "==")
-                        {
-                            return false;
-                        }
-                        else
-                        {
-                            return true;
-                        }
+                        return result;
                     }
                 }
-                return true && operador == "==";
+                return !result;
             };
         }
     };
