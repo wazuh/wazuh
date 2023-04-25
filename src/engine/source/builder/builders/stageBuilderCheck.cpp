@@ -193,7 +193,8 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                 }
                 else
                 {
-                    throw std::runtime_error {fmt::format("Check stage: Comparison of objects that have objects inside is not supported.")};
+                    throw std::runtime_error {
+                        fmt::format("Check stage: Comparison of objects that have objects inside is not supported.")};
                 }
             }
 
