@@ -18,14 +18,14 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 
 using FullLogFunction = auto (*)(const char* log_level, const char* tag, const char* file, int line, const char* func, const char* msg, ...) -> void;
+// We can't use std::source_location until C++20
+#define LogEndl Log::sourceFile {__FILE__, __LINE__, __func__}
 
 namespace Log
 {
-
-#define endl sourceFile {__FILE__, __LINE__, __func__}
-
     static std::mutex logMutex;
     struct sourceFile
     {
@@ -50,7 +50,7 @@ namespace Log
             Logger& operator=(const Logger& other) = delete;
             Logger(const Logger& other) = delete;
 
-            Logger& assignLogFunction(FullLogFunction& logFunction, const std::string& tag)
+            Logger& assignLogFunction(FullLogFunction logFunction, const std::string& tag)
             {
                 if (!m_logFunction)
                 {
@@ -62,7 +62,7 @@ namespace Log
             }
 
             // The << operator is overloaded to append data in the buffer for the current thread
-            // but the message isn't logged until std::endl or Log::endl are found.
+            // but the message isn't logged until std::endl or LogEndl are found.
             friend Logger& operator<<(Logger& logObject, const std::string& msg)
             {
                 if (!msg.empty())
@@ -89,7 +89,7 @@ namespace Log
                 return logObject;
             }
 
-            // This << overload is used when Log::endl is found. The file, line and function are taken from the sourceFile structure that
+            // This << overload is used when LogEndl is found. The file, line and function are taken from the sourceFile structure that
             // contains the required data.
             friend Logger& operator<<(Logger& logObject,
                                       sourceFile sourceLocation)
