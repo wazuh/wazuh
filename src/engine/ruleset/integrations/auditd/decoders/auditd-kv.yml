@@ -30,6 +30,7 @@ normalize:
       #TODO: issue on +string_equal can't use it as a value
       - ~null_parenthesis: (null)
       - ~kv_msg: +delete
+      - wazuh.decoders: +array_append/auditd-kv
 
   # Start of hexa to string fields transformation
   # for each audit.log.X
