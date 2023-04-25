@@ -77,7 +77,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
         std::string field;
         std::string value;
         json::Json valueJson;
-        std::string operador;
+        std::string keyboarder;
 
         if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
         {
@@ -104,47 +104,47 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
             std::smatch match;
             if (std::regex_search(term, match, opRegex))
             {
-                operador = match[1];
-                auto pos = term.find(operador);
+                keyboarder = match[1];
+                auto pos = term.find(keyboarder);
 
                 field = term.substr(0, pos);
 
-                auto operando = term.substr(pos + operador.length());
+                auto operand = term.substr(pos + keyboarder.length());
 
-                if (operador == "==" || operador == "!=")
+                if (keyboarder == "==" || keyboarder == "!=")
                 {
                     try
                     {
-                        valueJson = json::Json(operando.c_str());
+                        valueJson = json::Json(operand.c_str());
                     }
                     catch (std::runtime_error& e)
                     {
-                        valueJson.setString(operando);
+                        valueJson.setString(operand);
                     }
                 }
                 else
                 {
                     try
                     {
-                        valueJson = json::Json(operando.c_str());
+                        valueJson = json::Json(operand.c_str());
                     }
                     catch (std::runtime_error& e)
                     {
-                        valueJson.setString(operando);
+                        valueJson.setString(operand);
                     }
 
                     if (!valueJson.isInt64() && !valueJson.isString())
                     {
                         throw std::runtime_error(fmt::format(
-                            "Check stage: The \"{}\" operator only allows operate with numbers or string", operador));
+                            "Check stage: The \"{}\" operator only allows operate with numbers or string", keyboarder));
                     }
 
                     const auto prefix = valueJson.isInt64() ? "+int_" : "+string_";
-                    const auto suffix = ((operador == "<=")   ? "less_or_equal/"
-                                         : (operador == ">=") ? "greater_or_equal/"
-                                         : (operador == "<")  ? "less/"
+                    const auto suffix = ((keyboarder == "<=")   ? "less_or_equal/"
+                                         : (keyboarder == ">=") ? "greater_or_equal/"
+                                         : (keyboarder == "<")  ? "less/"
                                                               : "greater/")
-                                        + operando;
+                                        + operand;
                     value = prefix + suffix;
                     valueJson.setString(value);
                 }
@@ -161,7 +161,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
         if (opEx->isTerm())
         {
             auto fn = opEx->getPtr<base::Term<base::EngineOp>>()->getFn();
-            if (operador == "!=") 
+            if (keyboarder == "!=") 
             {
                 return [fn](base::Event event) -> bool
                 {
@@ -187,17 +187,17 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                 }
             }
 
-            auto result = (operador == "!=");
-            return [fnVec, result](base::Event event) -> bool
+            auto negated = (keyboarder == "!=");
+            return [fnVec, negated](base::Event event) -> bool
             {
                 for (const auto& fn : fnVec)
                 {
-                    if (fn(event) == result)
+                    if (negated == fn(event))
                     {
-                        return result;
+                        return false;
                     }
                 }
-                return !result;
+                return true;
             };
         }
     };

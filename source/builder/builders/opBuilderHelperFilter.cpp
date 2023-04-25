@@ -148,23 +148,10 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        const auto lValue {event->getString(targetField)};
-        int lValueInt;
+        std::optional<int> lValue {event->getInt(targetField)};
         if (!lValue.has_value())
         {
             return base::result::makeFailure(event, failureTrace1);
-        }
-        try
-        {
-            lValueInt = std::stoi(lValue.value());
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error(fmt::format("\"{}\" function: Parameter \"{}\" "
-                                                    "could not be converted to int: {}.",
-                                                    name,
-                                                    lValue.value(),
-                                                    e.what()));
         }
 
         int resolvedValue {0};
@@ -182,7 +169,7 @@ std::function<base::result::Result<base::Event>(base::Event)> getIntCmpFunction(
             resolvedValue = std::get<int>(rValue);
         }
 
-        if (cmpFunction(lValueInt, resolvedValue))
+        if (cmpFunction(lValue.value(), resolvedValue))
         {
             return base::result::makeSuccess(event, successTrace);
         }
