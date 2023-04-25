@@ -44,6 +44,7 @@ normalize:
       - http.version: $~request_fields.2
       - related.user: +array_append/$user.name
       - ~http_slash: +delete
+      - wazuh.decoders: +array_append/nginx-access-base
 
   - check:
       - http.response.status_code: +int_less/400

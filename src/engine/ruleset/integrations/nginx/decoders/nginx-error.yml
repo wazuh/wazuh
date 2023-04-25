@@ -32,3 +32,4 @@ normalize:
       - event.kind: event
       - event.category: +array_append/web
       - event.type: +array_append/error
+      - wazuh.decoders: +array_append/nginx-error

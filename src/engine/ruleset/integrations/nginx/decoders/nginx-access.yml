@@ -97,6 +97,7 @@ normalize:
       - ~ip2_version: +ip_version/$~ip2
       - ~ip3_private: false
       - ~ip3_version: +ip_version/$~ip3
+      - wazuh.decoders: +array_append/nginx-access
 
   # source.address will get assigne firs IPv4 not private:
   # IP1
