@@ -53,7 +53,7 @@ async def get_hardware_info(request, agent_id: str, pretty: bool = False, wait_f
 
 async def get_hotfix_info(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                           offset: int = 0, limit: int = None, sort: str = None, search: str = None, select: str = None,
-                          hotfix: str = None, q: str = None) -> web.Response:
+                          hotfix: str = None, q: str = None, distinct: bool = False) -> web.Response:
     """Get info about an agent's hotfixes.
 
     Parameters
@@ -80,6 +80,8 @@ async def get_hotfix_info(request, agent_id: str, pretty: bool = False, wait_for
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -97,7 +99,8 @@ async def get_hotfix_info(request, agent_id: str, pretty: bool = False, wait_for
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'hotfixes',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -115,7 +118,8 @@ async def get_hotfix_info(request, agent_id: str, pretty: bool = False, wait_for
 async def get_network_address_info(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                    offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                                    search: str = None, iface: str = None, proto: str = None, address: str = None,
-                                   broadcast: str = None, netmask: str = None, q: str = None) -> web.Response:
+                                   broadcast: str = None, netmask: str = None, q: str = None,
+                                   distinct: bool = False) -> web.Response:
     """Get network address info of an agent.
 
     Parameters
@@ -150,6 +154,8 @@ async def get_network_address_info(request, agent_id: str, pretty: bool = False,
         Filters by broadcast direction.
     netmask : str
         Filters by netmask.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -170,7 +176,8 @@ async def get_network_address_info(request, agent_id: str, pretty: bool = False,
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'netaddr',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -188,7 +195,7 @@ async def get_network_address_info(request, agent_id: str, pretty: bool = False,
 async def get_network_interface_info(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                      offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                                      search: str = None, name: str = None, adapter: str = None, state: str = None,
-                                     mtu: str = None, q: str = None) -> web.Response:
+                                     mtu: str = None, q: str = None, distinct: bool = False) -> web.Response:
     """Get network interface info of an agent.
 
     Parameters
@@ -221,6 +228,8 @@ async def get_network_interface_info(request, agent_id: str, pretty: bool = Fals
         Filters by state.
     mtu : str
         Filters by mtu.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -245,7 +254,8 @@ async def get_network_interface_info(request, agent_id: str, pretty: bool = Fals
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'netiface',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -263,7 +273,7 @@ async def get_network_interface_info(request, agent_id: str, pretty: bool = Fals
 async def get_network_protocol_info(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                     offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                                     search: str = None, iface: str = None, gateway: str = None, dhcp: str = None,
-                                    q: str = None) -> web.Response:
+                                    q: str = None, distinct: bool = False) -> web.Response:
     """Get network protocol info of an agent.
 
     Parameters
@@ -294,6 +304,8 @@ async def get_network_protocol_info(request, agent_id: str, pretty: bool = False
         Filters by gateway.
     dhcp : str
         Filters by dhcp.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -313,7 +325,8 @@ async def get_network_protocol_info(request, agent_id: str, pretty: bool = False
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'netproto',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -369,7 +382,7 @@ async def get_os_info(request, agent_id: str, pretty: bool = False, wait_for_com
 async def get_packages_info(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                             search: str = None, vendor: str = None, name: str = None, architecture: str = None,
-                            version: str = None, q: str = None) -> web.Response:
+                            version: str = None, q: str = None, distinct: bool = False) -> web.Response:
     """Get packages info of an agent.
 
     Parameters
@@ -402,6 +415,8 @@ async def get_packages_info(request, agent_id: str, pretty: bool = False, wait_f
         Filters by architecture.
     version : str
         Filters by version.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -422,7 +437,8 @@ async def get_packages_info(request, agent_id: str, pretty: bool = False, wait_f
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'packages',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -440,7 +456,7 @@ async def get_packages_info(request, agent_id: str, pretty: bool = False, wait_f
 async def get_ports_info(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                          limit: int = None, select: str = None, sort: str = None, search: str = None, pid: str = None,
                          protocol: str = None, tx_queue: str = None, state: str = None, process: str = None,
-                         q: str = None) -> web.Response:
+                         q: str = None, distinct: bool = False) -> web.Response:
     """Get ports info of an agent.
 
     Parameters
@@ -475,6 +491,8 @@ async def get_ports_info(request, agent_id: str, pretty: bool = False, wait_for_
         Filters by state.
     process : str
         Filters by process.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -499,7 +517,8 @@ async def get_ports_info(request, agent_id: str, pretty: bool = False, wait_for_
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'ports',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -519,7 +538,8 @@ async def get_processes_info(request, agent_id: str, pretty: bool = False, wait_
                              search: str = None, pid: str = None, state: str = None, ppid: str = None,
                              egroup: str = None, euser: str = None, fgroup: str = None, name: str = None,
                              nlwp: str = None, pgrp: str = None, priority: str = None, rgroup: str = None,
-                             ruser: str = None, sgroup: str = None, suser: str = None, q: str = None) -> web.Response:
+                             ruser: str = None, sgroup: str = None, suser: str = None, q: str = None,
+                             distinct: bool = False) -> web.Response:
     """Get processes info an agent.
 
     Parameters
@@ -572,6 +592,8 @@ async def get_processes_info(request, agent_id: str, pretty: bool = False, wait_
         Filters by process sgroup.
     suser : str
         Filters by process suser.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -601,7 +623,8 @@ async def get_processes_info(request, agent_id: str, pretty: bool = False, wait_
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'processes',
-                'q': q}
+                'q': q,
+               'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

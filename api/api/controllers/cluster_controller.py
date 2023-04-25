@@ -631,7 +631,7 @@ async def get_stats_remoted_node(request, node_id: str, pretty: bool = False,
 
 async def get_log_node(request, node_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                        limit: int = None, sort: str = None, search: str = None, tag: str = None, level: str = None,
-                       q: str = None) -> web.Response:
+                       q: str = None, distinct: bool = False) -> web.Response:
     """Get a specified node's wazuh logs.
 
     Returns the last 2000 wazuh log entries in node {node_id}.
@@ -660,6 +660,8 @@ async def get_log_node(request, node_id: str, pretty: bool = False, wait_for_com
         Filters by log level.
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -675,7 +677,8 @@ async def get_log_node(request, node_id: str, pretty: bool = False, wait_for_com
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'tag': tag,
                 'level': level,
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=manager.ossec_log,

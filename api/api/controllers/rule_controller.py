@@ -25,7 +25,7 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
                     offset: int = 0, select: str = None, limit: int = None, sort: str = None, search: str = None,
                     q: str = None, status: str = None, group: str = None, level: str = None, filename: list = None,
                     relative_dirname: str = None, pci_dss: str = None, gdpr: str = None, gpg13: str = None,
-                    hipaa: str = None, tsc: str = None, mitre: str = None) -> web.Response:
+                    hipaa: str = None, tsc: str = None, mitre: str = None, distinct: bool = False) -> web.Response:
     """Get information about all Wazuh rules.
 
     Parameters
@@ -72,6 +72,8 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
         Filters by TSC requirement.
     mitre : str
         Filters by mitre technique ID.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -95,7 +97,8 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
                 'hipaa': hipaa,
                 'nist_800_53': request.query.get('nist-800-53', None),
                 'tsc': tsc,
-                'mitre': mitre}
+                'mitre': mitre,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=rule_framework.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -210,7 +213,7 @@ async def get_rules_requirement(request, requirement: str = None, pretty: bool =
 @cache(expires=api_conf['cache']['time'])
 async def get_rules_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                           limit: int = None, sort: str = None, search: str = None, status: str = None,
-                          filename: list = None, relative_dirname: str = None) -> web.Response:
+                          filename: list = None, relative_dirname: str = None, distinct: bool = False) -> web.Response:
     """Get all the rules files.
 
     Parameters
@@ -235,6 +238,8 @@ async def get_rules_files(request, pretty: bool = False, wait_for_complete: bool
         List of filenames to filter by.
     relative_dirname : str
         Filters by relative dirname.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -249,7 +254,8 @@ async def get_rules_files(request, pretty: bool = False, wait_for_complete: bool
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'status': status,
                 'filename': filename,
-                'relative_dirname': relative_dirname}
+                'relative_dirname': relative_dirname,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=rule_framework.get_rules_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

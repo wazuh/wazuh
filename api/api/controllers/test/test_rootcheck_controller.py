@@ -81,7 +81,7 @@ async def test_get_rootcheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc,
                 'search': None,
                 'select': None,
                 'q': '',
-                'distinct': None,
+                'distinct': False,
                 'filters': {
                     'status': 'all',
                     'pci_dss': None,

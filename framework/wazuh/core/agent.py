@@ -233,7 +233,7 @@ class WazuhDBQueryGroup(WazuhDBQuery):
     def __init__(self, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None, search: dict = None,
                  select: list = None, get_data: bool = True, query: str = '', filters: dict = None, count: bool = True,
                  default_sort_field: str = 'name', min_select_fields: set = None, remove_extra_fields: bool = True,
-                 rbac_negate: bool = True):
+                 rbac_negate: bool = True, distinct: bool = False):
         """Class constructor.
 
         Parameters
@@ -262,6 +262,8 @@ class WazuhDBQueryGroup(WazuhDBQuery):
             Whether to return data or not.
         rbac_negate : bool
             Whether to use IN or NOT IN on RBAC resources.
+        distinct : bool
+            Look for distinct values.
         """
         if filters is None:
             filters = {}
@@ -273,7 +275,7 @@ class WazuhDBQueryGroup(WazuhDBQuery):
                               filters=filters, fields={'name': 'name'},
                               default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               backend=backend, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              rbac_negate=rbac_negate)
+                              rbac_negate=rbac_negate, distinct=distinct)
         self.remove_extra_fields = remove_extra_fields
 
     def _add_select_to_query(self):

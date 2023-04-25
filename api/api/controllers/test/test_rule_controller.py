@@ -51,7 +51,8 @@ async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'hipaa': None,
                 'nist_800_53': mock_request.query.get('nist-800-53', None),
                 'tsc': None,
-                'mitre': None
+                'mitre': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=rule_framework.get_rules,
                                       f_kwargs=mock_remove.return_value,
@@ -140,7 +141,8 @@ async def test_get_rules_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
                 'complementary_search': None,
                 'status': None,
                 'filename': None,
-                'relative_dirname': None
+                'relative_dirname': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=rule_framework.get_rules_files,
                                       f_kwargs=mock_remove.return_value,

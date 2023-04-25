@@ -60,7 +60,8 @@ async def test_get_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
         'search_text': None,
         'complementary_search': None,
         'select': None,
-        'q': None
+        'q': None,
+        'distinct': False
     }
     mock_dapi.assert_called_once_with(f=mitre.mitre_groups,
                                       f_kwargs=mock_remove.return_value,
@@ -94,7 +95,8 @@ async def test_get_mitigations(mock_exc, mock_dapi, mock_remove, mock_dfunc, moc
         'search_text': None,
         'complementary_search': None,
         'select': None,
-        'q': None
+        'q': None,
+        'distinct': False
     }
     mock_dapi.assert_called_once_with(f=mitre.mitre_mitigations,
                                       f_kwargs=mock_remove.return_value,
@@ -162,7 +164,8 @@ async def test_get_software(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
         'search_text': None,
         'complementary_search': None,
         'select': None,
-        'q': None
+        'q': None,
+        'distinct': False
     }
     mock_dapi.assert_called_once_with(f=mitre.mitre_software,
                                       f_kwargs=mock_remove.return_value,
@@ -196,7 +199,8 @@ async def test_get_tactics(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
         'search_text': None,
         'complementary_search': None,
         'select': None,
-        'q': None
+        'q': None,
+        'distinct': False
     }
     mock_dapi.assert_called_once_with(f=mitre.mitre_tactics,
                                       f_kwargs=mock_remove.return_value,
@@ -230,7 +234,8 @@ async def test_get_techniques(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
         'search_text': None,
         'complementary_search': None,
         'select': None,
-        'q': None
+        'q': None,
+        'distinct': False
     }
     mock_dapi.assert_called_once_with(f=mitre.mitre_techniques,
                                       f_kwargs=mock_remove.return_value,
