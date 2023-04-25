@@ -25,7 +25,7 @@ protected:
                                   "operation.condition");
     }
 
-    std::shared_ptr<Registry<builder::internals::Builder>> registry;
+    std::shared_ptr<Registry<Builder>> registry;
 };
 
 TEST_F(StageBuilderCheckTest, ListBuilds)
@@ -115,18 +115,21 @@ TEST_F(StageBuilderCheckTest, ExpressionNotEqualOperator)
 }
 
 class StageBuilderCheckHelperOperatorsTest
-    : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::function<Expression(const std::any&)>>>
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::function<Expression(const std::string& targetField,
+                                            const std::string& rawName,
+                                            const std::vector<std::string>& rawParameters)>>>
 {
 protected:
     void SetUp() override
     {
         registry = std::make_shared<Registry<builder::internals::Builder>>();
-        auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
+        helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
         registry->registerBuilder(getOperationConditionBuilder(helperRegistry),
                                   "operation.condition");
     }
 
-    std::shared_ptr<Registry<builder::internals::Builder>> registry;
+    std::shared_ptr<Registry<Builder>> registry;
+    std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
 };
 
 TEST_P(StageBuilderCheckHelperOperatorsTest, CheckExpressionOperator)
@@ -135,7 +138,7 @@ TEST_P(StageBuilderCheckHelperOperatorsTest, CheckExpressionOperator)
 
     auto checkJson = Json {expression.c_str()};
 
-    registry->registerBuilder(registerBuilder, builderName);
+    helperRegistry->registerBuilder(registerBuilder, builderName);
     ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
 }
 
@@ -143,16 +146,16 @@ INSTANTIATE_TEST_SUITE_P(
     CheckExpressionOperator,
     StageBuilderCheckHelperOperatorsTest,
     ::testing::Values(
-        std::make_tuple(R"("field<\"value\"")", "helper.string_less", opBuilderHelperStringLessThan),
-        std::make_tuple(R"("field<=\"value\"")", "helper.string_less_or_equal", opBuilderHelperStringLessThanEqual),
-        std::make_tuple(R"("field>\"value\"")", "helper.string_greater", opBuilderHelperStringGreaterThan),
+        std::make_tuple(R"("field<\"value\"")", "string_less", opBuilderHelperStringLessThan),
+        std::make_tuple(R"("field<=\"value\"")", "string_less_or_equal", opBuilderHelperStringLessThanEqual),
+        std::make_tuple(R"("field>\"value\"")", "string_greater", opBuilderHelperStringGreaterThan),
         std::make_tuple(R"("field>=\"value\"")",
-                        "helper.string_greater_or_equal",
+                        "string_greater_or_equal",
                         opBuilderHelperStringGreaterThanEqual),
-        std::make_tuple(R"("field<3")", "helper.int_less", opBuilderHelperIntLessThan),
-        std::make_tuple(R"("field<=3")", "helper.int_less_or_equal", opBuilderHelperIntLessThanEqual),
-        std::make_tuple(R"("field>3")", "helper.int_greater", opBuilderHelperIntGreaterThan),
-        std::make_tuple(R"("field>=3")", "helper.int_greater_or_equal", opBuilderHelperIntGreaterThanEqual)));
+        std::make_tuple(R"("field<3")", "int_less", opBuilderHelperIntLessThan),
+        std::make_tuple(R"("field<=3")", "int_less_or_equal", opBuilderHelperIntLessThanEqual),
+        std::make_tuple(R"("field>3")", "int_greater", opBuilderHelperIntGreaterThan),
+        std::make_tuple(R"("field>=3")", "int_greater_or_equal", opBuilderHelperIntGreaterThanEqual)));
 
 class StageBuilderCheckInvalidOperatorsTest : public testing::TestWithParam<std::tuple<Json, std::string>>
 {
@@ -165,7 +168,7 @@ protected:
                                   "operation.condition");
     }
 
-    std::shared_ptr<Registry<builder::internals::Builder>> registry;
+    std::shared_ptr<Registry<Builder>> registry;
 };
 
 TEST_P(StageBuilderCheckInvalidOperatorsTest, InvalidValuesInField)
