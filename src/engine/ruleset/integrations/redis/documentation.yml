@@ -16,4 +16,4 @@ configuration: >
 
 event:
   module: redis
-  dataset: "-"
+  dataset: redis

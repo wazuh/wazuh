@@ -20,10 +20,11 @@ definitions:
   MSG_FIELD: '<~/literal/msg=audit(>$LOG_EPOCH:$LOG_SEQUENCE<~/literal/):>'
 
 sources:
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
 
 check:
-  - event.original: +regex_match/^(?:node=.*)?type=\w+ msg=audit
+  - event.module: auditd
+  # - event.original: +regex_match/^(?:node=.*)?type=\w+ msg=audit
 
 parse:
   logpar:
@@ -64,10 +65,10 @@ normalize:
 
   - map:
       - event.kind: event
-      - event.module: auditd
       - fileset.name: log
       - auditd.log.old_auid: $auditd.log.old_auid
       - auditd.log.old_ses: $auditd.log.old_ses
+      - wazuh.decoders: +array_append/auditd
 
       # TODO: we need a HF that parses a date from epoch in secs
       - timestamp: $~log.epoch

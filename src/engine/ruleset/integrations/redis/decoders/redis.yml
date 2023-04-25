@@ -44,6 +44,7 @@ normalize:
       - fileset.name: log
       - input.type: log
       - service.type: redis
+      - wazuh.decoders: +array_append/redis
   - check:
       - log.level: "."
     map:
