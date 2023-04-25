@@ -39,45 +39,10 @@
 static wmodule *ms_graph_module;
 static OS_XML *lxml;
 
-static int setup_module() {
-    merror("Building module");
-    ms_graph_module = calloc(1, sizeof(wmodule));
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    lxml = malloc(sizeof(OS_XML));
-    XML_NODE nodes = string_to_xml_node(config, lxml);
-    int ret = wm_ms_graph_read(lxml, nodes, ms_graph_module);
-    OS_ClearNode(nodes);
-    test_mode = 1;
-    return ret;
-}
-
 static void wmodule_cleanup(wmodule *module){
     wm_ms_graph* module_data = (wm_ms_graph*)module->data;
-    fprintf(stderr, "Got here __1\n");
     if(module_data){
         os_free(module_data->version);
-        fprintf(stderr, "Got here __2\n");
         for(unsigned int resource = 0; resource < module_data->num_resources; resource++){
             for(unsigned int relationship = 0; relationship < module_data->resources[resource].num_relationships; relationship++){
                 os_free(module_data->resources[resource].relationships[relationship]);
@@ -85,32 +50,17 @@ static void wmodule_cleanup(wmodule *module){
             os_free(module_data->resources[resource].relationships);
             os_free(module_data->resources[resource].name);
         }
-        fprintf(stderr, "Got here __3\n");
         os_free(module_data->resources);
 
-        fprintf(stderr, "Got here __4\n");
         os_free(module_data->auth_config.tenant_id);
-        fprintf(stderr, "Got here __5\n");
         os_free(module_data->auth_config.client_id);
-        fprintf(stderr, "Got here __6\n");
         os_free(module_data->auth_config.secret_value);
-        fprintf(stderr, "Got here __7\n");
         os_free(module_data->auth_config.access_token);
 
-        fprintf(stderr, "Got here __8\n");
         os_free(module_data);
     }
-    fprintf(stderr, "Got here __9\n");
     os_free(module->tag);
-    fprintf(stderr, "Got here __10\n");
     os_free(module);
-}
-
-static int teardown_module(){
-    test_mode = 0;
-    wmodule_cleanup(ms_graph_module);
-    OS_ClearXML(lxml);
-    return 0;
 }
 
 static int setup_test_read(void **state) {
@@ -122,21 +72,29 @@ static int setup_test_read(void **state) {
 
 static int teardown_test_read(void **state) {
     test_structure *test = *state;
-    fprintf(stderr, "Got here _1\n");
     OS_ClearNode(test->nodes);
-    fprintf(stderr, "Got here _2\n");
     OS_ClearXML(&(test->xml));
-    fprintf(stderr, "Got here _3\n");
     wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
-    fprintf(stderr, "Got here _4\n");
     if(module_data && &(module_data->scan_config)){
         sched_scan_free(&(module_data->scan_config));
     }
-    fprintf(stderr, "Got here _5\n");
     wmodule_cleanup(test->module);
-    fprintf(stderr, "Got here _6\n");
     os_free(test);
-    fprintf(stderr, "Got here _7\n");
+    return 0;
+}
+
+static int setup_conf(void **state) {
+    wm_ms_graph* init_data = NULL;
+    os_calloc(1,sizeof(wm_ms_graph), init_data);
+    test_mode = true;
+    *state = init_data;
+    return 0;
+}
+
+static int teardown_conf(void **state) {
+    wm_ms_graph *data  = (wm_ms_graph *)*state;
+    test_mode = false;
+    wm_ms_graph_destroy(data);
     return 0;
 }
 
@@ -661,7 +619,7 @@ void test_normal_config(void **state) {
     wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
     assert_int_equal(module_data->only_future_events, 1);
-    assert_int_equal(module_data->curl_max_size, 4096);
+    assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
     assert_string_equal(module_data->auth_config.tenant_id, "example_string_with_36_characters___");
@@ -678,47 +636,88 @@ void test_normal_config(void **state) {
 }
 
 void test_disabled(void **state) {
-     wm_ms_graph* module_data = (wm_ms_graph*)ms_graph_module->data;
-    *state = module_data;
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
     module_data->enabled = false;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Module disabled. Exiting...");
 
     wm_ms_graph_main(module_data);
 }
 
 void test_no_resources(void **state) {
-         wm_ms_graph* module_data = (wm_ms_graph*)ms_graph_module->data;
-    *state = module_data;
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
     module_data->enabled = true;
+    module_data->num_resources = 0;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
 
     wm_ms_graph_main(module_data);
 }
 
 void test_no_relationships(void **state) {
-         wm_ms_graph* module_data = (wm_ms_graph*)ms_graph_module->data;
-    *state = module_data;
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
     module_data->enabled = true;
     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
     module_data->resources[0].num_relationships = 0;
     module_data->num_resources = 1;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtinfo, formatted_msg, "Started module.");
-
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
 
     wm_ms_graph_main(module_data);
 
     os_free(module_data->resources);
+    module_data->num_resources = 0;
+}
+
+void test_dump(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <curl_max_size>1M</curl_max_size>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>example_string_with_36_characters___</client_id>
+      <tenant_id>example_string_with_36_characters___</tenant_id>
+      <secret_value>example_string_with_40_characters_______</secret_value>
+    </api_auth>
+    <resource>
+      <name>security</name>
+      <relationship>alerts_v2</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_string_with_36_characters___", module_data->auth_config.client_id);
+    os_strdup("example_string_with_36_characters___", module_data->auth_config.tenant_id);
+    os_strdup("example_string_with_40_characters_______", module_data->auth_config.secret_value);
+    os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
+    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+
+    cJSON* dump = wm_ms_graph_dump(module_data);
+    char* dump_text = cJSON_PrintUnformatted(dump);
+
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string_with_36_characters___\",\"tenant_id\":\"example_string_with_36_characters___\",\"secret_value\":\"example_string_with_40_characters_______\",\"name\":\"security\"},\"resources\":[{\"relationship\":\"alerts_v2\"}]}}");
+
+    cJSON_Delete(dump);
+    os_free(dump_text);
+    os_free(module_data->resources[0].relationships[0]);
+    os_free(module_data->resources[0].relationships);
+    module_data->resources[0].num_relationships = 0;
+    os_free(module_data->resources[0].name);
+    os_free(module_data->resources);
+    module_data->num_resources = 0;
 }
 
 int main(void) {
@@ -732,14 +731,24 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_invalid_version, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_missing_api_auth, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_client_id, setup_test_read, teardown_test_read),
-        //cmocka_unit_test_setup_teardown(test_missing_client_id, setup_test_read, teardown_test_read),
-        //cmocka_unit_test_setup_teardown(test_invalid_tenant_id, setup_test_read, teardown_test_read),
-        //cmocka_unit_test_setup_teardown(test_missing_tenant_id, setup_test_read, teardown_test_read),
-        //cmocka_unit_test_setup_teardown(test_invalid_secret_value, setup_test_read, teardown_test_read),
-        //cmocka_unit_test_setup_teardown(test_missing_secret_value, setup_test_read, teardown_test_read),
-        //cmocka_unit_test_setup_teardown(test_missing_resource, setup_test_read, teardown_test_read),
-        //cmocka_unit_test_setup_teardown(test_missing_name, setup_test_read, teardown_test_read),
-        //cmocka_unit_test_setup_teardown(test_missing_relationship, setup_test_read, teardown_test_read)
+        cmocka_unit_test_setup_teardown(test_missing_client_id, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_tenant_id, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_tenant_id, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_secret_value, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_secret_value, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_resource, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_name, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_missing_relationship, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_normal_config, setup_test_read, teardown_test_read)
     };
-    return cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    const struct CMUnitTest tests_with_startup[] = {
+        cmocka_unit_test_setup_teardown(test_disabled, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_no_resources, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_no_relationships, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_dump, setup_conf, teardown_conf)
+    };
+    int result = 0;
+    result = cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    result += cmocka_run_group_tests(tests_with_startup, NULL, NULL);
+    return result;
 }
