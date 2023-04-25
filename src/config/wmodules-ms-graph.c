@@ -138,6 +138,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					}
 					else {
 						merror(XML_VALUEERR, XML_CLIENT_ID, children[j]->content);
+						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
 				}
@@ -147,6 +148,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					}
 					else {
 						merror(XML_VALUEERR, XML_TENANT_ID, children[j]->content);
+						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
 				}
@@ -156,12 +158,13 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					}
 					else {
 						merror(XML_VALUEERR, XML_SECRET_VALUE, children[j]->content);
+						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
 				}
 				else {
-					OS_ClearNode(children);
 					merror(XML_INVATTR, children[j]->element, WM_MS_GRAPH_CONTEXT.name);
+					OS_ClearNode(children);
 					return OS_CFGERR;
 				}
 			}
@@ -183,25 +186,29 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 		}
 		else if (!strcmp(nodes[i]->element, XML_RESOURCE)) {
 			if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-				OS_ClearNode(children);
 				merror(XML_VALUEERR, XML_RESOURCE, nodes[i]->content);
+				OS_ClearNode(children);
 				return OS_CFGERR;
 			}
+			// Construct a new resource entry
+			os_malloc(sizeof(char*) * 2, ms_graph->resources[ms_graph->num_resources].relationships);
+			ms_graph->resources[ms_graph->num_resources].name = NULL;
 			bool name_set = false;
+			ms_graph->resources[ms_graph->num_resources++].num_relationships = 0;
+			// Check if power of 2
+			if (ms_graph->num_resources > 1 && !(ms_graph->num_resources & (ms_graph->num_resources - 1))) {
+				os_realloc(ms_graph->resources, (ms_graph->num_resources * 2) * sizeof(wm_ms_graph_resource), ms_graph->resources);
+			}
+
 			for (int j = 0; children[j]; j++) {
 				if (!strcmp(children[j]->element, XML_RESOURCE_NAME)) {
 					if(strlen(children[j]->content) > 0){
 						name_set = true;
-						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources].name);
-						os_malloc(sizeof(char*) * 2, ms_graph->resources[ms_graph->num_resources].relationships);
-						ms_graph->resources[ms_graph->num_resources++].num_relationships = 0;
-						// Check if power of 2
-						if (ms_graph->num_resources > 1 && !(ms_graph->num_resources & (ms_graph->num_resources - 1))) {
-							os_realloc(ms_graph->resources, (ms_graph->num_resources * 2) * sizeof(wm_ms_graph_resource), ms_graph->resources);
-						}
+						os_strdup(children[j]->content, ms_graph->resources[ms_graph->num_resources - 1].name);
 					}
 					else{
 						merror(XML_VALUEERR, XML_RESOURCE_NAME, children[j]->content);
+						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
 				}
@@ -215,18 +222,20 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					}
 					else{
 						merror(XML_VALUEERR, XML_RESOURCE_RELATIONSHIP, children[j]->content);
+						OS_ClearNode(children);
 						return OS_CFGERR;
 					}
 				}
 				else {
-					OS_ClearNode(children);
 					merror(XML_INVATTR, children[j]->element, WM_MS_GRAPH_CONTEXT.name);
+					OS_ClearNode(children);
 					return OS_CFGERR;
 				}
 			}
 			OS_ClearNode(children);
 
 			if(!name_set){
+				// Set the value to NULL to avoid complicating destruction logic
 				merror(XML_NO_ELEM, XML_RESOURCE_NAME);
 				return OS_NOTFOUND; // OS_MISVALUE?
 			}
