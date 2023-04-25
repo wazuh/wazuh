@@ -6,8 +6,8 @@ auditd.log.new_auid:
   type: keyword
 
 auditd.log.old_auid:
-  description: > 
-    For login events this is the old audit ID used for the user 
+  description: >
+    For login events this is the old audit ID used for the user
     prior to this login.
   type: keyword
 
@@ -26,8 +26,8 @@ auditd.log.old_ses:
 auditd.log.record_type:
   description: >
     Alias of event.action. This describes the information in the event.
-    It is more specific than event.category. Examples are group-add, 
-    process-started, file-created. The value is normally defined by the 
+    It is more specific than event.category. Examples are group-add,
+    process-started, file-created. The value is normally defined by the
     implementer.
   type: keyword
 
