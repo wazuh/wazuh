@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
 #include "baseTypes.hpp"
+#include "builder/builders/opBuilderHelperFilter.hpp"
 #include "builder/builders/operationBuilder.hpp"
 #include "builder/builders/stageBuilderCheck.hpp"
-#include "builder/builders/opBuilderHelperFilter.hpp"
 #include "builder/registry.hpp"
 #include <json/json.hpp>
 
@@ -114,7 +114,8 @@ TEST_F(StageBuilderCheckTest, ExpressionNotEqualOperator)
     ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
 }
 
-class StageBuilderCheckHelperOperatorsTest : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::function<Expression(const std::any&)>>>
+class StageBuilderCheckHelperOperatorsTest
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::function<Expression(const std::any&)>>>
 {
 protected:
     void SetUp() override
@@ -132,22 +133,26 @@ TEST_P(StageBuilderCheckHelperOperatorsTest, CheckExpressionOperator)
 {
     auto [expression, builderName, registerBuilder] = GetParam();
 
-    auto checkJson = Json{expression.c_str()};
+    auto checkJson = Json {expression.c_str()};
 
     registry->registerBuilder(registerBuilder, builderName);
     ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
 }
 
-INSTANTIATE_TEST_SUITE_P(CheckExpressionOperator, StageBuilderCheckHelperOperatorsTest, ::testing::Values(
-    std::make_tuple(R"("field<\"value\"")", "helper.string_less", opBuilderHelperStringLessThan),
-    std::make_tuple(R"("field<=\"value\"")", "helper.string_less_or_equal", opBuilderHelperStringLessThanEqual),
-    std::make_tuple(R"("field>\"value\"")", "helper.string_greater", opBuilderHelperStringGreaterThan),
-    std::make_tuple(R"("field>=\"value\"")", "helper.string_greater_or_equal", opBuilderHelperStringGreaterThanEqual),
-    std::make_tuple(R"("field<3")", "helper.int_less", opBuilderHelperIntLessThan),
-    std::make_tuple(R"("field<=3")", "helper.int_less_or_equal", opBuilderHelperIntLessThanEqual),
-    std::make_tuple(R"("field>3")", "helper.int_greater", opBuilderHelperIntGreaterThan),
-    std::make_tuple(R"("field>=3")", "helper.int_greater_or_equal", opBuilderHelperIntGreaterThanEqual)
-));
+INSTANTIATE_TEST_SUITE_P(
+    CheckExpressionOperator,
+    StageBuilderCheckHelperOperatorsTest,
+    ::testing::Values(
+        std::make_tuple(R"("field<\"value\"")", "helper.string_less", opBuilderHelperStringLessThan),
+        std::make_tuple(R"("field<=\"value\"")", "helper.string_less_or_equal", opBuilderHelperStringLessThanEqual),
+        std::make_tuple(R"("field>\"value\"")", "helper.string_greater", opBuilderHelperStringGreaterThan),
+        std::make_tuple(R"("field>=\"value\"")",
+                        "helper.string_greater_or_equal",
+                        opBuilderHelperStringGreaterThanEqual),
+        std::make_tuple(R"("field<3")", "helper.int_less", opBuilderHelperIntLessThan),
+        std::make_tuple(R"("field<=3")", "helper.int_less_or_equal", opBuilderHelperIntLessThanEqual),
+        std::make_tuple(R"("field>3")", "helper.int_greater", opBuilderHelperIntGreaterThan),
+        std::make_tuple(R"("field>=3")", "helper.int_greater_or_equal", opBuilderHelperIntGreaterThanEqual)));
 
 class StageBuilderCheckInvalidOperatorsTest : public testing::TestWithParam<std::tuple<Json, std::string>>
 {
@@ -177,42 +182,41 @@ TEST_P(StageBuilderCheckInvalidOperatorsTest, InvalidValuesInField)
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(InvalidValuesInField, StageBuilderCheckInvalidOperatorsTest,
-  testing::Values(
-    std::make_tuple(Json{R"("field>{\"key\":\"value\"}")"},
-                    "Check stage: The \">\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field>[\"value1\",\"value2\"]")"},
-                    "Check stage: The \">\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field>false")"},
-                    "Check stage: The \">\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field>null")"},
-                    "Check stage: The \">\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field<{\"key\":\"value\"}")"},
-                    "Check stage: The \"<\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field<[\"value1\",\"value2\"]")"},
-                    "Check stage: The \"<\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field<false")"},
-                    "Check stage: The \"<\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field<null")"},
-                    "Check stage: The \"<\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field<={\"key\":\"value\"}")"},
-                    "Check stage: The \"<=\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field<=[\"value1\",\"value2\"]")"},
-                    "Check stage: The \"<=\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field<=false")"},
-                    "Check stage: The \"<=\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field<=null")"},
-                    "Check stage: The \"<=\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field>={\"key\":\"value\"}")"},
-                    "Check stage: The \">=\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field>=[\"value1\",\"value2\"]")"},
-                    "Check stage: The \">=\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field>=false")"},
-                    "Check stage: The \">=\" operator only allows operate with numbers or string"),
-    std::make_tuple(Json{R"("field>=null")"},
-                    "Check stage: The \">=\" operator only allows operate with numbers or string")
-  )
-);
+INSTANTIATE_TEST_SUITE_P(
+    InvalidValuesInField,
+    StageBuilderCheckInvalidOperatorsTest,
+    testing::Values(std::make_tuple(Json {R"("field>{\"key\":\"value\"}")"},
+                                    "Check stage: The \">\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field>[\"value1\",\"value2\"]")"},
+                                    "Check stage: The \">\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field>false")"},
+                                    "Check stage: The \">\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field>null")"},
+                                    "Check stage: The \">\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field<{\"key\":\"value\"}")"},
+                                    "Check stage: The \"<\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field<[\"value1\",\"value2\"]")"},
+                                    "Check stage: The \"<\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field<false")"},
+                                    "Check stage: The \"<\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field<null")"},
+                                    "Check stage: The \"<\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field<={\"key\":\"value\"}")"},
+                                    "Check stage: The \"<=\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field<=[\"value1\",\"value2\"]")"},
+                                    "Check stage: The \"<=\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field<=false")"},
+                                    "Check stage: The \"<=\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field<=null")"},
+                                    "Check stage: The \"<=\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field>={\"key\":\"value\"}")"},
+                                    "Check stage: The \">=\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field>=[\"value1\",\"value2\"]")"},
+                                    "Check stage: The \">=\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field>=false")"},
+                                    "Check stage: The \">=\" operator only allows operate with numbers or string"),
+                    std::make_tuple(Json {R"("field>=null")"},
+                                    "Check stage: The \">=\" operator only allows operate with numbers or string")));
 
 TEST_F(StageBuilderCheckTest, InvalidOperator)
 {
