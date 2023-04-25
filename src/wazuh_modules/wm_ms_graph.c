@@ -22,12 +22,11 @@
 #endif
 #endif
 
-static wm_ms_graph* ms_graph;
 static void* wm_ms_graph_main(wm_ms_graph* ms_graph);
-static void wm_ms_graph_setup(wm_ms_graph* ms_graph);
-static void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config);
+static bool wm_ms_graph_setup(wm_ms_graph* ms_graph);
+static bool wm_ms_graph_check();
+static void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t curl_max_size);
 static void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph);
-static void wm_ms_graph_check();
 static void wm_ms_graph_destroy(wm_ms_graph* ms_graph);
 static void wm_ms_graph_cleanup();
 cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph);
@@ -49,40 +48,45 @@ const wm_context WM_MS_GRAPH_CONTEXT = {
 void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
     char* timestamp = NULL;
 
-    wm_ms_graph_setup(ms_graph);
-    last_scan = time(NULL);
-    mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
-
-    while(FOREVER()){
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&ms_graph->scan_config, WM_MS_GRAPH_LOGTAG, ms_graph->run_on_start);
-
-        if(ms_graph->state.next_time == 0){
-            ms_graph->state.next_time = ms_graph->scan_config.time_start + time_sleep;
-        }
-
-        if (time_sleep) {
-            const int next_scan_time = sched_get_next_scan_time(ms_graph->scan_config);
-            timestamp = w_get_timestamp(next_scan_time);
-            mtdebug1(WM_MS_GRAPH_LOGTAG, "Waiting until: %s", timestamp);
-            os_free(timestamp);
-            w_sleep_until(next_scan_time);
-        }
-
-        if(!ms_graph->auth_config.access_token || time(NULL) >= ms_graph->auth_config.token_expiration_time){
-            mtinfo(WM_MS_GRAPH_LOGTAG, "Obtaining access token.");
-            wm_ms_graph_get_access_token(&ms_graph->auth_config);
-        }
-        mtinfo(WM_MS_GRAPH_LOGTAG, "Scanning tenant '%s'", ms_graph->auth_config.tenant_id);
-        wm_ms_graph_scan_relationships(ms_graph);
-
+    if (!wm_ms_graph_setup(ms_graph)){
+        return NULL;
     }
+    else{
+        last_scan = time(NULL);
+        mtinfo(WM_MS_GRAPH_LOGTAG, "Started module.");
+
+        while(FOREVER()){
+            const time_t time_sleep = sched_scan_get_time_until_next_scan(&ms_graph->scan_config, WM_MS_GRAPH_LOGTAG, ms_graph->run_on_start);
+
+            if(ms_graph->state.next_time == 0){
+                ms_graph->state.next_time = ms_graph->scan_config.time_start + time_sleep;
+            }
+
+            if (time_sleep) {
+                const int next_scan_time = sched_get_next_scan_time(ms_graph->scan_config);
+                timestamp = w_get_timestamp(next_scan_time);
+                mtdebug1(WM_MS_GRAPH_LOGTAG, "Waiting until: %s", timestamp);
+                os_free(timestamp);
+                w_sleep_until(next_scan_time);
+            }
+
+            if(!ms_graph->auth_config.access_token || time(NULL) >= ms_graph->auth_config.token_expiration_time){
+                mtinfo(WM_MS_GRAPH_LOGTAG, "Obtaining access token.");
+                wm_ms_graph_get_access_token(&ms_graph->auth_config, ms_graph->curl_max_size);
+            }
+            mtinfo(WM_MS_GRAPH_LOGTAG, "Scanning tenant '%s'", ms_graph->auth_config.tenant_id);
+            wm_ms_graph_scan_relationships(ms_graph);
+
+        }
+    }    
     return NULL;
 }
 
-void wm_ms_graph_setup(wm_ms_graph* _ms_graph) {
+bool wm_ms_graph_setup(wm_ms_graph* ms_graph) {
 
-    ms_graph = _ms_graph;
-    wm_ms_graph_check();
+    if (!wm_ms_graph_check(ms_graph)){
+        return false;
+    }
 
     if(wm_state_io(WM_MS_GRAPH_CONTEXT.name, WM_IO_READ, &ms_graph->state, sizeof(ms_graph->state)) < 0){
         memset(&ms_graph->state, 0, sizeof(ms_graph->state));
@@ -92,14 +96,53 @@ void wm_ms_graph_setup(wm_ms_graph* _ms_graph) {
 
     if (queue_fd < 0) {
         mterror(WM_MS_GRAPH_LOGTAG, "Unable to connect to Message Queue. Exiting...");
+        #ifdef WAZUH_UNIT_TESTING
+        return false;
+        #else
         pthread_exit(NULL);
+        #endif
     }
 
     atexit(wm_ms_graph_cleanup);
+    return true;
 
 }
 
-void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config) {
+bool wm_ms_graph_check(wm_ms_graph* ms_graph) {
+
+    if(!ms_graph->enabled){
+        mtinfo(WM_MS_GRAPH_LOGTAG, "Module disabled. Exiting...");
+        #ifdef WAZUH_UNIT_TESTING
+        return false;
+        #else
+        pthread_exit(NULL);
+        #endif
+        
+    }
+    else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0){
+        mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+        #ifdef WAZUH_UNIT_TESTING
+        return false;
+        #else
+        pthread_exit(NULL);
+        #endif
+    }
+    else {
+        for(unsigned int resource = 0; resource < ms_graph->num_resources; resource++){
+            if(ms_graph->resources[resource].num_relationships == 0){
+                mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+                #ifdef WAZUH_UNIT_TESTING
+                return false;
+                #else
+                pthread_exit(NULL);
+                #endif
+            }
+        }
+    }
+    return true;
+}
+
+void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t curl_max_size) {
     char *url= calloc(1, sizeof(char) * OS_SIZE_8192);
     char *payload = calloc(1, sizeof(char) * OS_SIZE_8192);
     char** headers = NULL;
@@ -114,7 +157,7 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config) {
     os_strdup("Content-Type: application/x-www-form-urlencoded", headers[0]);
     headers[1] = NULL;
 
-    response = wurl_http_request(WURL_POST_METHOD, headers, url, payload, ms_graph->curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    response = wurl_http_request(WURL_POST_METHOD, headers, url, payload, curl_max_size, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     if(response){
         if(response->status_code != 200){
             char status_code[4];
@@ -247,26 +290,6 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph) {
     }
 }
 
-void wm_ms_graph_check() {
-
-    if(!ms_graph->enabled){
-        mtinfo(WM_MS_GRAPH_LOGTAG, "Module disabled. Exiting...");
-        pthread_exit(NULL);
-    }
-    else if (!ms_graph || !ms_graph->resources || ms_graph->num_resources == 0){
-        mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
-        pthread_exit(NULL);
-    }
-    else {
-        for(unsigned int resource = 0; resource < ms_graph->num_resources; resource++){
-            if(ms_graph->resources[resource].num_relationships == 0){
-                mterror(WM_MS_GRAPH_LOGTAG, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
-                pthread_exit(NULL);
-            }
-        }
-    }
-}
-
 void wm_ms_graph_destroy(wm_ms_graph* ms_graph) {
 
     for(unsigned int resource = 0; resource < ms_graph->num_resources; resource++){
@@ -362,7 +385,6 @@ cJSON* wm_ms_graph_dump(const wm_ms_graph* ms_graph) {
             cJSON_free(resource_array);
         }
     }
-
     cJSON_AddItemToObject(root, "ms_graph", ms_graph_info);
 
     return root;
