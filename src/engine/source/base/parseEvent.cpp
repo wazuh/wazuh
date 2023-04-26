@@ -28,7 +28,8 @@ Event parseOssecEvent(const std::string& event)
 
     if (':' != event[1])
     {
-        throw std::runtime_error(fmt::format("Invalid event format, a colon was expected to be right after the first character"));
+        throw std::runtime_error(
+            fmt::format("Invalid event format, a colon was expected to be right after the first character"));
     }
 
     const int queue {event[0]};
@@ -50,7 +51,14 @@ Event parseOssecEvent(const std::string& event)
                                              "to be right after the location"));
     }
 
-    parseEvent->setString(event.substr(LOCATION_OFFSET, locationIdx - LOCATION_OFFSET), EVENT_LOCATION_ID);
+    std::string unescapedLocation = event.substr(LOCATION_OFFSET, locationIdx - LOCATION_OFFSET);
+    for (auto j = unescapedLocation.find("|:", 0); j != std::string::npos; j = unescapedLocation.find("|:", j))
+    {
+        unescapedLocation.erase(j, 1);
+        j++;
+    }
+
+    parseEvent->setString(unescapedLocation, EVENT_LOCATION_ID);
     parseEvent->setString(event.substr(locationIdx + 1), EVENT_MESSAGE_ID);
 
     return parseEvent;
