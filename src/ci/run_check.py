@@ -75,10 +75,6 @@ def runASAN(moduleName, testToolConfig):
     """
     utils.printHeader(moduleName,
                       headerKey="asan")
-    build_tools.cleanInternals()
-    build_tools.makeTarget(targetName="agent",
-                           tests=False,
-                           debug=True)
     build_tools.cleanFolder(moduleName=moduleName,
                             additionalFolder="build")
     build_tools.configureCMake(moduleName=moduleName,
@@ -301,62 +297,55 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     Args:
         - moduleName: Library to be built and analyzed.
         - clean: Delete logs.
-        - target: Build type. <agent, winagent, manager>
+        - target: Build type. <agent, winagent, server>
 
     Returns:
         - None
     """
     utils.printHeader(moduleName=moduleName,
                       headerKey="rtr")
+
+    # We first run the fastest tests
     runCppCheck(moduleName=moduleName)
     runAStyleCheck(moduleName=moduleName)
+
+    # Making a full clean, downloading external dependencies and
+    # building the corresponding target with tests flag enabled
     build_tools.cleanAll()
     build_tools.makeDeps(targetName=target,
                          srcOnly=False)
     build_tools.makeTarget(targetName=target,
                            tests=True,
                            debug=True)
+
+    # Running UTs and coverage
     runTests(moduleName=moduleName)
-    build_tools.cleanFolder(moduleName=moduleName,
-                            additionalFolder="build")
-    build_tools.configureCMake(moduleName=moduleName,
-                               debugMode=True,
-                               testMode=(False, True)
-                               [moduleName != "shared_modules/utils"],
-                               withAsan=False)
+    runCoverage(moduleName=moduleName)
+
+    # We run valgrind for all targets except Windows
     if target != "winagent":
-        build_tools.makeLib(moduleName=moduleName)
         runValgrind(moduleName=moduleName)
-        runCoverage(moduleName=moduleName)
+
+    # For the following tests we don't require the tests flag
+    build_tools.cleanInternals()
+    build_tools.makeTarget(targetName=target,
+                           tests=False,
+                           debug=True)
+
     configPath = os.path.join(utils.currentPath(),
                               "input/test_tool_config.json")
     smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
-    if target == "winagent":
-        build_tools.cleanAll()
-        build_tools.cleanExternals()
-        build_tools.makeDeps(targetName="agent", srcOnly=False)
-        build_tools.makeTarget(targetName="agent", tests=False, debug=True)
-        build_tools.cleanFolder(moduleName=moduleName,
-                                additionalFolder="build")
-    if moduleName != "shared_modules/utils":
-        runASAN(moduleName=moduleName,
-                testToolConfig=smokeTestConfig)
-    if moduleName == "syscheckd":
+    # We run the test tool for syscheckd in Windows
+    if moduleName == 'syscheckd' and target == 'winagent':
         runTestToolForWindows(moduleName=moduleName,
                               testToolConfig=smokeTestConfig)
         runTestToolCheck(moduleName=moduleName)
-    if moduleName != "syscheckd":
-        build_tools.cleanAll()
-        build_tools.cleanExternals()
-    if target != "winagent":
-        utils.printHeader(moduleName=moduleName,
-                          headerKey="winagentTests")
-        build_tools.makeDeps(targetName="winagent",
-                             srcOnly=False)
-        build_tools.makeTarget(targetName="winagent",
-                               tests=True,
-                               debug=True)
-        runTests(moduleName=moduleName)
+
+    # The ASAN check is in the end. It builds again the module but with the ASAN flag
+    # and runs the test tool
+    if moduleName != "shared_modules/utils":
+        runASAN(moduleName=moduleName,
+                testToolConfig=smokeTestConfig)
     if clean:
         os.chdir(os.path.join(utils.rootPath(), moduleName))
         utils.deleteLogs(moduleName=moduleName)
@@ -484,35 +473,29 @@ def runTestToolForWindows(moduleName, testToolConfig):
     Raises:
         - None
     """
-    utils.printHeader(moduleName, headerKey="wintests")
-    build_tools.cleanAll()
-    build_tools.cleanExternals()
-    build_tools.makeDeps(targetName="winagent",
-                         srcOnly=False)
-    build_tools.makeTarget(targetName="winagent",
-                           tests=False,
-                           debug=True)
+    utils.printHeader(moduleName, headerKey="wintesttool")
     winModuleName = "win" + moduleName
     module = testToolConfig[winModuleName]
     rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
                             "bin")
-    if moduleName == "syscheckd":
-        libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
-                                path=utils.rootPath())
-        rsync = utils.findFile(name="rsync.dll",
-                               path=utils.rootPath())
-        dbsync = utils.findFile(name="dbsync.dll",
-                                path=utils.rootPath())
-        stdcpp = utils.findFile(name="libstdc++-6.dll",
-                                path=utils.rootPath())
-        shutil.copyfile(libgcc,
-                        os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
-        shutil.copyfile(rsync,
-                        os.path.join(rootPath, "rsync.dll"))
-        shutil.copyfile(dbsync,
-                        os.path.join(rootPath, "dbsync.dll"))
-        shutil.copyfile(stdcpp,
-                        os.path.join(rootPath, "libstdc++-6.dll"))
+
+    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
+                            path=utils.rootPath())
+    rsync = utils.findFile(name="rsync.dll",
+                            path=utils.rootPath())
+    dbsync = utils.findFile(name="dbsync.dll",
+                            path=utils.rootPath())
+    stdcpp = utils.findFile(name="libstdc++-6.dll",
+                            path=utils.rootPath())
+    shutil.copyfile(libgcc,
+                    os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
+    shutil.copyfile(rsync,
+                    os.path.join(rootPath, "rsync.dll"))
+    shutil.copyfile(dbsync,
+                    os.path.join(rootPath, "dbsync.dll"))
+    shutil.copyfile(stdcpp,
+                    os.path.join(rootPath, "libstdc++-6.dll"))
+
     for element in module:
         path = os.path.join(rootPath, element['test_tool_name'])
         args = " ".join(element['args'])
