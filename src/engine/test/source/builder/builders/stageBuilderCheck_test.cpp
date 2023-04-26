@@ -20,11 +20,12 @@ protected:
     void SetUp() override
     {
         registry = std::make_shared<Registry<builder::internals::Builder>>();
-        auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
+        helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
         registry->registerBuilder(getOperationConditionBuilder(helperRegistry),
                                   "operation.condition");
     }
 
+    std::shared_ptr<builder::internals::Registry<builder::internals::HelperBuilder>> helperRegistry;
     std::shared_ptr<Registry<Builder>> registry;
 };
 
@@ -247,4 +248,20 @@ TEST_F(StageBuilderCheckTest, ObjectIntoObject)
     {
         EXPECT_STREQ("Check stage: Comparison of objects that have objects inside is not supported.", e.what());
     }
+}
+
+TEST_F(StageBuilderCheckTest, CheckExpressionHelperOK)
+{
+    auto checkJson = Json {R"("+int_less_or_equal/~json/2")"};
+
+    helperRegistry->registerBuilder(opBuilderHelperIntLessThanEqual, "int_less_or_equal");
+    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
+}
+
+TEST_F(StageBuilderCheckTest, CheckExpressionHelperFail)
+{
+    auto checkJson = Json {R"("+int_equal/~json/2")"};
+
+    helperRegistry->registerBuilder(opBuilderHelperIntLessThanEqual, "int_less_or_equal");
+    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson), std::runtime_error);
 }
