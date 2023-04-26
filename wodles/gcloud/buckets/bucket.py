@@ -20,7 +20,7 @@ path.append(join(dirname(realpath(__file__)), '..', '..'))  # noqa: E501
 import utils
 import exceptions
 from integration import WazuhGCloudIntegration
-from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 try:
     from google.cloud import storage

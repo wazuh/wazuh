@@ -17,7 +17,7 @@ from os.path import dirname, abspath
 path.insert(0, dirname(dirname(abspath(__file__))))
 import exceptions
 from utils import ANALYSISD
-from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 
 ########################################################################################################################

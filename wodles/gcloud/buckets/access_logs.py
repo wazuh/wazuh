@@ -15,7 +15,7 @@ from sys import path
 
 path.append(dirname(realpath(__file__)))  # noqa: E501
 from bucket import WazuhGCloudBucket
-from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 ################################################################################
 # Classes
