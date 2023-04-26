@@ -11,9 +11,10 @@ configuration: >
     <location>/var/log/redis/redis-server.log</location>
     <log_format>json</log_format>
     <label key="event.module">redis</label>
+    <label key="event.dataset">redis.log</label>
   </localfile>
   ```
 
 event:
   module: redis
-  dataset: redis
+  dataset: redis.log

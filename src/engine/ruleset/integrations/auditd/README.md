@@ -27,16 +27,11 @@ This integration uses the logcollector source localfile to ingest the logs from 
 
 | Field | Description | Type |
 |---|---|---|
-| auditd.log.new_auid | For login events this is the new audit ID. The audit ID can be used to trace future events to the user even if their identity changes (like becoming root).
- | keyword |
-| auditd.log.old_auid | For login events this is the old audit ID used for the user prior to this login.
- | keyword |
-| auditd.log.new_ses | For login events this is the new session ID. It can be used to tie a user to future events by session ID.
- | keyword |
-| auditd.log.old_ses | For login events this is the old session ID usedfor the user prior to this login.
- | keyword |
-| auditd.log.record_type | Alias of event.action. This describes the information in the event. It is more specific than event.category. Examples are group-add, process-started, file-created. The value is normally defined by the implementer.
- | keyword |
+| auditd.log.new_auid | For login events this is the new audit ID. The audit ID can be used to trace future events to the user even if their identity changes (like becoming root). | keyword |
+| auditd.log.old_auid | For login events this is the old audit ID used for the user prior to this login. | keyword |
+| auditd.log.new_ses | For login events this is the new session ID. It can be used to tie a user to future events by session ID. | keyword |
+| auditd.log.old_ses | For login events this is the old session ID usedfor the user prior to this login. | keyword |
+| auditd.log.record_type | Alias of event.action. This describes the information in the event. It is more specific than event.category. Examples are group-add, process-started, file-created. The value is normally defined by the implementer. | keyword |
 | auditd.log.sequence | The audit event sequence number. | long |
 | auditd.data.apparmor | apparmor event information | keyword |
 | auditd.data.cgroup | path to cgroup in sysfs | keyword |
