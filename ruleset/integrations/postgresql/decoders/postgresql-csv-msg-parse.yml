@@ -2,8 +2,8 @@
 name: decoder/postgresql-csv-msg-parse/0
 
 metadata:
-  title: Postgresql csv Decoder
-  description: Decoder for messages from postgresql in csv log format
+  title: PostgreSQL CSV Decoder
+  description: Decoder for messages from PostgreSQL in CSV log format
   references: "https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG"
   product.name: postgresql
   product.versions:
@@ -35,3 +35,5 @@ normalize:
 
       - postgresql.log.client_addr: '+regex_extract/$~csv.connection_from/^([^:]*):'
       - postgresql.log.client_port: '+regex_extract/$~csv.connection_from/^(?:[^:]*):(\d+)'
+
+      - wazuh.decoders: +array_append/postgresql-csv-msg-parse

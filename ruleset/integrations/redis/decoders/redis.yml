@@ -16,6 +16,7 @@ sources:
 
 check:
   - event.module: redis
+  - event.dataset: redis.log
 
 parse:
   logpar:
@@ -37,10 +38,8 @@ parse:
 normalize:
   - map:
       - event.kind: event
-      - event.module: redis
       - event.type: +array_append/info
       - event.category: +array_append/database
-      - event.dataset: redis.log
       - fileset.name: log
       - input.type: log
       - service.type: redis

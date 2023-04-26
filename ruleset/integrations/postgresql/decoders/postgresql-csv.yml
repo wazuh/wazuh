@@ -2,8 +2,8 @@
 name: decoder/postgresql-csv/0
 
 metadata:
-  title: Postgresql csv Decoder
-  description: Decoder for postgresql in csv log format
+  title: PostgreSQL CSV Decoder
+  description: Decoder for PostgreSQL in CSV log format
   references: "https://www.postgresql.org/docs/current/runtime-config-logging.html#RUNTIME-CONFIG-LOGGING-CSVLOG"
   product.name: postgresql
   product.versions:
@@ -17,7 +17,11 @@ metadata:
     date: 2023-01-05
 
 sources:
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
+
+check:
+  - event.module: postgresql
+  - event.dataset: postgresql.log
 
 parse:
   logpar:
@@ -38,9 +42,7 @@ parse:
 normalize:
   - map:
       - event.category: +array_append/database
-      - event.dataset: postgresql.log
       - event.kind: event
-      - event.module: postgresql
       - fileset.name: log                 #assumed fixed value
       - input.type: log                   #assumed fixed value
       - postgresql.log.timestamp: $~timestamp
@@ -65,3 +67,5 @@ normalize:
       - postgresql.log.virtual_transaction_id: +rename/$~csv.log_virtual_transaction_id
       - process.pid: +rename/$~csv.process_pid
       - user.name: +rename/$~csv.user_name
+
+      - wazuh.decoders: +array_append/postgresql-csv
