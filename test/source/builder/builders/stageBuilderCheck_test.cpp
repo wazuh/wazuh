@@ -6,6 +6,7 @@
 #include "builder/builders/stageBuilderCheck.hpp"
 #include "builder/registry.hpp"
 #include <json/json.hpp>
+#include <baseHelper.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;
@@ -250,12 +251,58 @@ TEST_F(StageBuilderCheckTest, ObjectIntoObject)
     }
 }
 
-TEST_F(StageBuilderCheckTest, CheckExpressionHelperOK)
+namespace builder::internals::builders
 {
-    auto checkJson = Json {R"("+int_less_or_equal/~json/2")"};
+base::Expression opBuilderHelperDummy(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters)
+{
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 0);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
-    helperRegistry->registerBuilder(opBuilderHelperIntLessThanEqual, "int_less_or_equal");
-    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
+        {
+            base::result::Result<base::Event> result;
+            auto lValue {event->getBool(targetField)};
+            if (lValue.value())
+            {
+                result = base::result::makeSuccess(event, "isTrue");
+            }
+            else
+            {
+                result = base::result::makeFailure(event, "isFalse");
+            }
+
+            return result;
+        });
+}
+}
+
+TEST_F(StageBuilderCheckTest, CheckExpressionHelperDummyTrue)
+{
+    auto checkJson = Json {R"("+dummy/field")"};
+
+    auto event = std::make_shared<json::Json>(R"({"field": true})");
+
+    helperRegistry->registerBuilder(opBuilderHelperDummy, "dummy");
+    auto opEx = getStageBuilderCheck(registry)(checkJson);
+
+    ASSERT_TRUE(opEx->getPtr<base::Term<base::EngineOp>>()->getFn()(event));
+}
+
+TEST_F(StageBuilderCheckTest, CheckExpressionHelperDummyFalse)
+{
+    auto checkJson = Json {R"("+dummy/field")"};
+
+    auto event = std::make_shared<json::Json>(R"({"field": false})");
+
+    helperRegistry->registerBuilder(opBuilderHelperDummy, "dummy");
+    auto opEx = getStageBuilderCheck(registry)(checkJson);
+
+    ASSERT_FALSE(opEx->getPtr<base::Term<base::EngineOp>>()->getFn()(event));
 }
 
 TEST_F(StageBuilderCheckTest, CheckExpressionHelperFail)
