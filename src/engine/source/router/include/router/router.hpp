@@ -162,7 +162,7 @@ public:
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("Error parsing event: '{}' (discarting...)", e.what());
+            LOG_WARNING("Error parsing event: '{}' (discarding...)", e.what());
             return;
         }
         m_queue->push(std::move(event));
