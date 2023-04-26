@@ -36,10 +36,5 @@ class LoggerHelperTest : public ::testing::Test
         {
             ssOutput.str("");
         }
-
-        virtual void TearDown()
-        {
-            ssOutput.str("");
-        }
 };
 #endif //LOGGER_HELPER_TEST_H
