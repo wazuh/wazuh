@@ -94,6 +94,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
 
             field = term.substr(pos1 + 1, pos2 - pos1 - 1);
             value = term.substr(0, pos1) + term.substr(pos2);
+            valueJson.setString(value);
         }
         else
         {
