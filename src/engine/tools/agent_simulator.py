@@ -21,7 +21,7 @@ def add_to_event_object(events_list, labels):
         if not labels_object:
             print('Wrong json format for labels.')
             exit(1)
-    except ValueError: # includes simplejson.decoder.JSONDecodeError
+    except ValueError:  # includes simplejson.decoder.JSONDecodeError
         print('Wrong json format for labels.')
         exit(1)
     events_object = labels_object
@@ -49,6 +49,10 @@ def create_header(protocol_queue, agent_id, agent_name, agent_ip, location):
     # Scaping the ':' is made with '|' and without checking if it was already scaped (it shouldn't be)
     location = location.replace(':', '|:')
     agent_ip = agent_ip.replace(':', '|:')
+
+    # respect filling with zeros
+    if len(agent_id) < 3:
+        agent_id = agent_id.zfill(3)
 
     # There are two possible formats of events:
     # 1st:
@@ -101,7 +105,7 @@ def get_queue_from_module(module):
         'sca': 112,
         'syscollector': 100,
         'upgrade': 117,
-        'rsyslog': 50
+        'remote-syslog': 50
     }
 
     # Getting queue according to module
@@ -146,7 +150,7 @@ def append_header_to_events(header, list_events):
 
 def get_events():
     final_events = []
-    for line in sys.stdin:
+    for line in sys.stdin.read().splitlines():
         if len(line) == 0:
             break
         final_events.append(line)
@@ -182,6 +186,7 @@ def main():
 
     logcollector_subcommand = logcollector_command.add_subparsers(
         dest="module_name")
+    # TODO: all the subcommands when implementing more scenarios should register the callbacks
     audit_subcommand = logcollector_subcommand.add_parser('audit')
     command_subcommand = logcollector_subcommand.add_parser('command')
     eventchannel_subcommand = logcollector_subcommand.add_parser(
@@ -205,26 +210,30 @@ def main():
                                        type=str, dest='remote_ip')
     remote_syslog_subcommand = remote_syslog_command.add_subparsers(
         dest="module_name")
-    rsyslog_subcommand = remote_syslog_subcommand.add_parser('rsyslog')
 
     args = parser.parse_args()
 
     add_labels = False
     if args.source == 'logcollector':
         if args.module_name == 'eventlog' or args.module_name == 'eventchannel':
+            module_name = args.module_name
             location = args.module_name
         elif args.module_name == 'json':
             if not args.location:
-                print("When using module '{}' location cannot be empty.".format(args.module_name))
+                print("When using module '{}' location cannot be empty.".format(
+                    args.module_name))
                 exit(1)
+            module_name = args.module_name
             location = args.location
             if len(args.labels) != 0:
                 add_labels = True
         elif args.module_name == 'audit' or args.module_name == 'command' or args.module_name == 'full_command' or args.module_name == 'macos' or args.module_name == 'multi_line' or args.module_name == 'multi_line_regex' or args.module_name == 'mysql_log' or args.module_name == 'syslog':
             if not args.location:
-                print("When using module '{}' location cannot be empty.".format(args.module_name))
+                print("When using module '{}' location cannot be empty.".format(
+                    args.module_name))
                 exit(1)
             location = args.location
+            module_name = args.module_name
         elif len(args.module_name) == 0:
             print("module is a mandatory parameter.")
             exit(1)
@@ -232,14 +241,15 @@ def main():
             print("Non available module.")
             exit(1)
     elif args.source == 'remote-syslog':
-        if args.module_name == 'rsyslog':
-            args.agent_id = ''
-            args.agent_name = ''
-            args.agent_ip = ''
-            if not args.remote_ip:
-                print("When using module '{}' remote_ip cannot be empty.".format(args.module_name))
-                exit(1)
-            location = args.remote_ip
+        args.agent_id = ''
+        args.agent_name = ''
+        args.agent_ip = ''
+        if not args.remote_ip:
+            print("When using module '{}' remote_ip cannot be empty.".format(
+                args.module_name))
+            exit(1)
+        location = args.remote_ip
+        module_name = 'remote-syslog'
     elif len(args.source) == 0:
         print("source is a mandatory parameter.")
         exit(1)
@@ -251,11 +261,11 @@ def main():
     if add_labels:
         list_events = add_to_event_object(list_events, args.labels)
     header = create_header(get_queue_from_module(
-        args.module_name), args.agent_id, args.agent_name, args.agent_ip, location)
+        module_name), args.agent_id, args.agent_name, args.agent_ip, location)
     list_events = append_header_to_events(header, list_events)
 
     if len(list_events) != 0:
-        if args.must_send :
+        if args.must_send:
             socket = args.engine_socket
             send_event(list_events, socket)
         if len(args.output_file) != 0:
