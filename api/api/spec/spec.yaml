@@ -19066,6 +19066,62 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /events:
+    post:
+      tags:
+      - Webhook
+      summary: "Ingest events"
+      description: "Ingest security events to analysisd"
+      operationId: api.controllers.webhook_controller.ingest_events
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/event:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    description: "Bulk of events"
+                    type: array
+                    format: events
+                    items:
+                      type: object
+                required:
+                - events
+              example:
+                events: [
+                  {"someKey": "Event value 1"},
+                  {"someKey": "Event value 2"},
+                ]
+      responses:
+        '202':
+          description: "Events accepted"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "The events will be forwarded to analisysd"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/4.4/user-manual/api/index.html'
