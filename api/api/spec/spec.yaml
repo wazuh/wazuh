@@ -19062,7 +19062,7 @@ paths:
       - Webhook
       summary: "Ingest events"
       description: "Ingest security events to analysisd"
-      operationId: api.controllers.webhook_controller.ingest_events
+      operationId: api.controllers.event_controller.forward_event
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/event:create'
       parameters:
