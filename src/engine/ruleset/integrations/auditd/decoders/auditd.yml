@@ -24,6 +24,7 @@ sources:
 
 check:
   - event.module: auditd
+  - event.dataset: auditd.log
   # - event.original: +regex_match/^(?:node=.*)?type=\w+ msg=audit
 
 parse:

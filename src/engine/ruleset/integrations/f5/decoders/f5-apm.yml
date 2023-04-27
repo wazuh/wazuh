@@ -14,8 +14,11 @@ metadata:
     - https://techdocs.f5.com/kb/en-us/products/big-ip_apm/manuals/product/apm-network-access-12-1-0/10.html
 
 sources:
-  - decoder/queue-syslog/0
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
+
+check:
+  - event.module: f5
+  - event.dataset: f5.bigipapm
 
 definitions:
   DEF_SESSION: :<~>:<~/ignore/ ><~tmp.rsa.misc.log_session_id>
@@ -388,5 +391,6 @@ normalize:
       - rsa.time.event_time: $@timestamp
       - service.type: f5
       - tags: [f5.bigipapm, forwarded]
+      - wazuh.decoders: +array_append/f5-apm
       - ~content: +delete
       - ~tmp: +delete
