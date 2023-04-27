@@ -43,7 +43,7 @@ class ResourceHandler:
             content_str = json.dumps(content)
             path = path.with_suffix('.json')
         elif Format.YML == format:
-            content_str = yaml.dump(content, Dumper=Dumper)
+            content_str = yaml.dump(content, Dumper=Dumper, sort_keys=False)
             path = path.with_suffix('.yml')
         else:
             raise Exception(f'Trying to store file with format not supported')
@@ -110,7 +110,7 @@ class ResourceHandler:
             raw_message = json.dumps(content)
             format_str = 'json'
         elif format is Format.YML:
-            raw_message = yaml.dump(content, Dumper=Dumper)
+            raw_message = yaml.dump(content, Dumper=Dumper, sort_keys=False)
             format_str = 'yaml'
         else:
             raise Exception(f'Format not supported in update catalog {name}')
@@ -142,7 +142,7 @@ class ResourceHandler:
             raw_message = json.dumps(content)
             format_str = 'json'
         elif format is Format.YML:
-            raw_message = yaml.dump(content, Dumper=Dumper)
+            raw_message = yaml.dump(content, Dumper=Dumper, sort_keys=False)
             format_str = 'yaml'
         else:
             raise Exception(f'Format not supported in update catalog {name}')
