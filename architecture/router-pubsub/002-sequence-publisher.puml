@@ -1,0 +1,24 @@
+@startuml
+actor User
+
+User -> RouterFacade: 1. Initialize subscriber (from modulesd)
+RouterFacade -> Subscriber: 2. Instance a new subscriber derived from observable.
+Subscriber -> Subscriber: 3. Initialize subscriber callback.
+Subscriber -> Subscriber: 3. Initialize subscriber filter callback.
+Subscriber --> RouterFacade: 4. Initialization response (throw exceptions if exists any error).
+RouterFacade -> RouterFacade: 5. Attach subscriber in specific publisher topic instance subject.
+
+User -> RouterFacade: 6. Send message(from publisher)
+RouterFacade -> RouterFacade: 7. Find provider instance for specific topic.
+RouterFacade -> Publisher: 8. Push message into the publisher message queue class.
+Publisher -> MessageQueue: 9. Copy message to the message queue list.
+MessageQueue -> Observer: 10. Distribute message for all observers.
+Observer -> Subscriber: 11. Filter message with filter callback.
+Observer -> Subscriber: 12. Call to subscriber callback.
+
+
+User -> RouterFacade: 13. Remove subscriber
+RouterFacade -> RouterFacade: 14. Remove Subscriber with specific topic in the broker instance.
+
+
+@enduml
