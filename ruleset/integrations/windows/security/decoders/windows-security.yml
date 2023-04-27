@@ -20,7 +20,8 @@ check: ~windows.Event.System.Provider.@Name==Microsoft-Windows-Security-Auditing
 
 normalize:
  - map:
-    - event.module: security
+    - event.module: windows
+    - event.dataset: security
 
     # Set categorization fields
     - event.id: +kvdb_get_merge/win_security_categories/$~windows.Event.System.EventID.#text

@@ -14,6 +14,6 @@ configuration: >
   ```
 
 event:
-  module: windows-sysmon
-  dataset: "-"
+  module: windows
+  dataset: sysmon
 
