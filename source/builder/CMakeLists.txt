@@ -75,4 +75,5 @@ target_link_libraries(builders
   logicExpression
   wdb
   OpenSSL::Crypto
+  defs
 )

@@ -146,6 +146,7 @@ target_include_directories(main
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/api)
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
+add_subdirectory(${ENGINE_SOURCE_DIR}/defs)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp2)

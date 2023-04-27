@@ -18,6 +18,7 @@ include(GoogleTest)
 add_subdirectory(${TEST_SOURCE_DIR}/mocks)
 add_subdirectory(${TEST_SOURCE_DIR}/api)
 add_subdirectory(${TEST_SOURCE_DIR}/base)
+add_subdirectory(${TEST_SOURCE_DIR}/defs)
 add_subdirectory(${TEST_SOURCE_DIR}/builder)
 add_subdirectory(${TEST_SOURCE_DIR}/cmds)
 add_subdirectory(${TEST_SOURCE_DIR}/hlp) # TODO Delete This and hlp from source
