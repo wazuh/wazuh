@@ -2269,6 +2269,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
+      - "f:/etc/sysconfig/nftables.conf -> r:^include"
 
   # 3.4.3.1.1 Ensure iptables packages are installed. (Automated)
   - id: 31127
@@ -2286,8 +2287,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q iptables -> r:^iptables-"
+      - "c:rpm -q iptables-services -> r:^iptables-services-"
 
   # 3.4.3.1.2 Ensure nftables is not installed with iptables. (Automated)
   - id: 31128
@@ -2305,8 +2308,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q nftables -> r:package nftables is not installed"
 
   # 3.4.3.1.3 Ensure firewalld is either not installed or masked with iptables. (Automated)
   - id: 31129
@@ -2324,8 +2328,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.3.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.4.1", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:rpm -q firewalld -> r:^package firewalld is not installed"
+      - "not c:firewall-cmd --state -> r:^running"
+      - "c:systemctl is-enabled firewalld -> r:^masked"
 
   # 3.4.3.2.1 Ensure iptables loopback traffic is configured. (Automated)
   - id: 31130
@@ -2343,47 +2350,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:iptables -L INPUT -v -n -> r:ACCEPT && r:all && r:lo\s*\t**'
+      - 'c:iptables -L INPUT -v -n -> r:DROP && r:all && r:*\s*\t** && r:127.0.0.0'
+      - 'c:iptables -L OUTPUT -v -n -> r:ACCEPT && r:all && r:*\s*\t*lo'
 
-  # 3.4.3.2.2 Ensure iptables outbound and established connections are configured. (Manual)
-  - id: 31131
-    title: "Ensure iptables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound, and established connections."
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # iptables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A OUTPUT -p icmp -m state --state NEW,ESTABLISHED -j ACCEPT # iptables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # iptables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT # iptables -A INPUT -p icmp -m state --state ESTABLISHED -j ACCEPT."
-    compliance:
-      - cis: ["3.4.3.2.2"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 3.4.3.2.3 Ensure iptables rules exist for all open ports. (Automated)
-  - id: 31132
-    title: "Ensure iptables rules exist for all open ports."
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports. Note: - Changing firewall settings while connected over network can result in being locked out of the system. - The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # iptables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT."
-    compliance:
-      - cis: ["3.4.3.2.3"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.2", "9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1", "A.13.1.3"]
-      - mitre_techniques: ["T1015", "T1051", "T1076", "T1133", "T1200"]
-      - nist_sp_800-53: ["CA-9"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.3.2.2 Ensure iptables outbound and established connections are configured. (Manual) - Not Implemented
+  # 3.4.3.2.3 Ensure iptables rules exist for all open ports. (Automated) - Not Implemented
 
   # 3.4.3.2.4 Ensure iptables default deny firewall policy. (Automated)
   - id: 31133
@@ -2401,27 +2375,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:iptables -L -> r:INPUT && r:policy DROP"
+      - "c:iptables -L -> r:FORWARD && r:policy DROP"
+      - "c:iptables -L -> r:OUTPUT && r:policy DROP"
 
-  # 3.4.3.2.5 Ensure iptables rules are saved. (Automated)
-  - id: 31134
-    title: "Ensure iptables rules are saved."
-    description: "The iptables-services package includes the /etc/sysconfig/iptables file. The iptables rules in this file will be loaded by the iptables.service during boot, or when it is started or re-loaded."
-    rationale: "If the iptables rules are not saved and a system re-boot occurs, the iptables rules will be lost."
-    remediation: "Run the following commands to create or update the /etc/sysconfig/iptables file: Run the following command to review the current running iptables configuration: # iptables -L Output should include: Chain INPUT (policy DROP) target prot opt source destination ACCEPT all -- anywhere anywhere DROP all -- loopback/8 anywhere ACCEPT tcp -- anywhere anywhere state ESTABLISHED ACCEPT udp -- anywhere anywhere state ESTABLISHED ACCEPT icmp -- anywhere anywhere state ESTABLISHED ACCEPT tcp -- anywhere anywhere tcp dpt:ssh state NEW Chain FORWARD (policy DROP) target prot opt source destination Chain OUTPUT (policy DROP) target prot opt source destination ACCEPT all -- anywhere anywhere ACCEPT tcp -- anywhere anywhere state NEW,ESTABLISHED ACCEPT udp -- anywhere anywhere state NEW,ESTABLISHED ACCEPT icmp -- anywhere anywhere state NEW,ESTABLISHED Run the following command to save the verified running configuration to the file /etc/sysconfig/iptables: # service iptables save iptables: Saving firewall rules to /etc/sysconfig/iptables:[ OK ]."
-    compliance:
-      - cis: ["3.4.3.2.5"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["CA-9"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.3.2.5 Ensure iptables rules are saved. (Automated) - Not Impemented
 
   # 3.4.3.2.6 Ensure iptables is enabled and active. (Automated)
   - id: 31135
@@ -2439,8 +2399,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled iptables -> r:^enabled"
+      - "c:systemctl is-active iptables -> r:^active"
 
   # 3.4.3.3.1 Ensure ip6tables loopback traffic is configured. (Automated)
   - id: 31136
@@ -2458,46 +2420,14 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:ip6tables -L INPUT -v -n -> r:ACCEPT && r:all && r:lo\s*\t**'
+      - 'c:ip6tables -L INPUT -v -n -> r:DROP && r:all && r:*\s*\t** && r:::1'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:ACCEPT && r:all && r:*\s*\t*lo'
 
-  # 3.4.3.3.2 Ensure ip6tables outbound and established connections are configured. (Manual)
-  - id: 31137
-    title: "Ensure ip6tables outbound and established connections are configured."
-    description: "Configure the firewall rules for new outbound, and established IPv6 connections."
-    rationale: "If rules are not in place for new outbound, and established connections all packets will be dropped by the default policy preventing network usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Configure iptables in accordance with site policy. The following commands will implement a policy to allow all outbound connections and all established connections: # ip6tables -A OUTPUT -p tcp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A OUTPUT -p udp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A OUTPUT -p icmp -m state --state NEW,ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p tcp -m state --state ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p udp -m state --state ESTABLISHED -j ACCEPT # ip6tables -A INPUT -p icmp -m state --state ESTABLISHED -j ACCEPT."
-    compliance:
-      - cis: ["3.4.3.3.2"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
-
-  # 3.4.3.3.3 Ensure ip6tables firewall rules exist for all open ports. (Automated)
-  - id: 31138
-    title: "Ensure ip6tables firewall rules exist for all open ports."
-    description: "Any ports that have been opened on non-loopback addresses need firewall rules to govern traffic."
-    rationale: "Without a firewall rule configured for open ports default firewall policy will drop all packets to these ports. Note: - Changing firewall settings while connected over network can result in being locked out of the system. - The remediation command opens up the port to traffic from all sources. Consult iptables documentation and set any restrictions in compliance with site policy."
-    remediation: "For each port identified in the audit which does not have a firewall rule establish a proper rule for accepting inbound connections: # ip6tables -A INPUT -p <protocol> --dport <port> -m state --state NEW -j ACCEPT."
-    compliance:
-      - cis: ["3.4.3.3.3"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.3.3.2 Ensure ip6tables outbound and established connections are configured. (Manual) - Not Implemented
+  # 3.4.3.3.3 Ensure ip6tables firewall rules exist for all open ports. (Automated) - Not Implemented
 
   # 3.4.3.3.4 Ensure ip6tables default deny firewall policy. (Automated)
   - id: 31139
@@ -2515,27 +2445,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:ip6tables -L -> r:INPUT && r:policy DROP"
+      - "c:ip6tables -L -> r:FORWARD && r:policy DROP"
+      - "c:ip6tables -L -> r:OUTPUT && r:policy DROP"
 
-  # 3.4.3.3.5 Ensure ip6tables rules are saved. (Automated)
-  - id: 31140
-    title: "Ensure ip6tables rules are saved."
-    description: "The iptables-services package includes the /etc/sysconfig/ip6tables file. The ip6tables rules in this file will be loaded by the ip6tables.service during boot, or when it is started or re-loaded."
-    rationale: "If the ip6tables rules are not saved and a system re-boot occurs, the ip6tables rules will be lost."
-    remediation: "Run the following commands to create or update the /etc/sysconfig/ip6tables file: Run the following command to review the current running iptables configuration: # ip6tables -L Output should include: Chain INPUT (policy DROP) target prot opt source destination ACCEPT all anywhere anywhere DROP all localhost anywhere ACCEPT tcp anywhere anywhere state ESTABLISHED ACCEPT udp anywhere anywhere state ESTABLISHED ACCEPT icmp anywhere anywhere state ESTABLISHED ACCEPT tcp anywhere anywhere tcp dpt:ssh state NEW Chain FORWARD (policy DROP) target prot opt source destination Chain OUTPUT (policy DROP) target prot opt source destination ACCEPT all anywhere anywhere ACCEPT tcp anywhere anywhere state NEW,ESTABLISHED ACCEPT udp anywhere anywhere state NEW,ESTABLISHED ACCEPT icmp anywhere anywhere state NEW,ESTABLISHED Run the following command to save the verified running configuration to the file /etc/sysconfig/ip6tables: # service ip6tables save ip6tables: Saving firewall rules to /etc/sysconfig/ip6table[ OK ]."
-    compliance:
-      - cis: ["3.4.3.3.5"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["CA-9"]
-      - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_v4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition:
-    rules:
+  # 3.4.3.3.5 Ensure ip6tables rules are saved. (Automated) - Not Implemented
 
   # 3.4.3.3.6 Ensure ip6tables is enabled and active. (Automated)
   - id: 31141
@@ -2553,8 +2469,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.3.1"]
       - pci_dss_v4.0: ["1.2.1", "1.4.1"]
       - soc_2: ["CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled ip6tables -> r:^enabled"
+      - "c:systemctl is-active ip6tables -> r:^active"
 
   # 4.1.1.1 Ensure auditd is installed. (Automated)
   - id: 31142
@@ -2573,8 +2491,9 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q audit -> r:^audit-"
 
   # 4.1.1.2 Ensure auditd service is enabled. (Automated)
   - id: 31143
@@ -2592,8 +2511,9 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled auditd -> r:^enabled"
 
   # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 31144
@@ -2611,8 +2531,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:grubby --info=ALL -> r:audit=1"
 
   # 4.1.1.4 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 31145
@@ -2630,8 +2551,9 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:grubby --info=ALL -> n:\s*audit_backlog_limit=(\d+) compare => 8192'
 
   # 4.1.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 31146
