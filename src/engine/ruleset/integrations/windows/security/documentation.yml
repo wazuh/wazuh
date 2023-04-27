@@ -4,6 +4,6 @@ compatibility: All Windows versions
 configuration: This integration will work with Wazuh default configuration
 
 event:
-  module: windows-security
-  dataset: "-"
+  module: windows
+  dataset: security
 

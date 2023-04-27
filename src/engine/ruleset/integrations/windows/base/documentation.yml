@@ -5,5 +5,5 @@ configuration: This integration will work with standard Wazuh configuration. Add
 
 event:
   module: windows
-  dataset: "-"
+  dataset: base
 

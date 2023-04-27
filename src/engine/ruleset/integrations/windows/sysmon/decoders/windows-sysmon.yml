@@ -21,7 +21,8 @@ check:
 
 normalize:
  - map:
-    - event.module: sysmon
+    - event.module: windows
+    - event.dataset: sysmon
     - event.kind: event
 
     # Add categorization fields

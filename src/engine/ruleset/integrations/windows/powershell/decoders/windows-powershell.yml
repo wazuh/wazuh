@@ -20,7 +20,8 @@ check:
 
 normalize:
  - map:
-   - event.module: powershell
+   - event.module: windows
+   - event.dataset: powershell
    - event.kind: event
    - event.category: [process]
    - event.type: [info]
