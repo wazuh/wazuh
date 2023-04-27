@@ -51,14 +51,14 @@ Event parseOssecEvent(const std::string& event)
                                              "to be right after the location"));
     }
 
-    std::string unescapedLocation = event.substr(LOCATION_OFFSET, locationIdx - LOCATION_OFFSET);
-    for (auto j = unescapedLocation.find("|:", 0); j != std::string::npos; j = unescapedLocation.find("|:", j))
+    std::string location = event.substr(LOCATION_OFFSET, locationIdx - LOCATION_OFFSET);
     {
-        unescapedLocation.erase(j, 1);
-        j++;
+        size_t pos;
+        while ((pos = location.find("|:")) != std::string::npos) {
+            location.erase(pos, 1);
+        }
     }
-
-    parseEvent->setString(unescapedLocation, EVENT_LOCATION_ID);
+    parseEvent->setString(location, EVENT_LOCATION_ID);
     parseEvent->setString(event.substr(locationIdx + 1), EVENT_MESSAGE_ID);
 
     return parseEvent;
