@@ -19,6 +19,6 @@ configuration: >
   ```
 
 event:
-  module: windows-powershell
-  dataset: "-"
+  module: windows
+  dataset: powershell
 

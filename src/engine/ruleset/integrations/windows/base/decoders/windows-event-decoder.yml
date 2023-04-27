@@ -24,6 +24,8 @@ parse:
 
 normalize:
  - map:
+   - event.module: windows
+   - event.dataset: base
    - event.start: $~windows.Event.System.TimeCreated.@SystemTime
    - event.code: $~windows.Event.System.EventID.#text
    - event.id: $~windows.Event.System.EventID.#text
