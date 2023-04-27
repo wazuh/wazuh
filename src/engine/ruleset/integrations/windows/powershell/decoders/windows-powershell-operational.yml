@@ -19,7 +19,8 @@ check: ~windows.Event.System.Channel.#text==Microsoft-Windows-PowerShell/Operati
 
 normalize:
  - map:
-   - event.module: powershell
+   - event.module: windows
+   - event.dataset: powershell
    - event.category: [process]
    - event.type: [info]
    - event.sequence: $~windows.Event.EventData.SequenceNumber
