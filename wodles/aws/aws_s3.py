@@ -3568,7 +3568,7 @@ class AWSSQSQueue(WazuhIntegration):
         self.sqs_name = name
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, iam_role_arn = iam_role_arn,
                                   aws_profile=None, external_id=external_id, service_name='sqs', sts_endpoint=sts_endpoint,
-                                  service_endpoint=service_endpoint, **kwargs)
+                                  **kwargs)
         self.sts_client = self.get_sts_client(access_key, secret_key)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
