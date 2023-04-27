@@ -11,9 +11,10 @@ configuration: >
     <location>/var/log/audit/audit.log</location>
     <log_format>json</log_format>
     <label key="event.module">auditd</label>
+    <label key="event.dataset">auditd.log</label>
   </localfile>
   ```
 
 event:
   module: auditd
-  dataset: auditd
+  dataset: auditd.log

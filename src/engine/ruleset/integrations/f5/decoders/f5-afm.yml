@@ -14,8 +14,11 @@ metadata:
     - https://support.f5.com/csp/article/K05327372
 
 sources:
-  - decoder/queue-syslog/0
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
+
+check:
+  - event.module: f5
+  - event.dataset: f5.bigipafm
 
 parse:
   logpar:
@@ -72,4 +75,5 @@ normalize:
     - source.port: $~tmp.kvMap.source_port
     - tags: [f5.bigipafm, forwarded]
     - user.name: $~tmp.kvMap.source_user
+    - wazuh.decoders: +array_append/f5-afm
     - ~tmp: +delete

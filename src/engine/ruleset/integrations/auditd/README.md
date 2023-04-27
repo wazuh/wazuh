@@ -20,6 +20,7 @@ This integration uses the logcollector source localfile to ingest the logs from 
   <location>/var/log/audit/audit.log</location>
   <log_format>json</log_format>
   <label key="event.module">auditd</label>
+  <label key="event.dataset">auditd.log</label>
 </localfile>
 ```
 
