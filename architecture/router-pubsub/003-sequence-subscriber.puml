@@ -1,0 +1,21 @@
+@startuml
+actor User
+
+User -> RouterFacade: 1. Initialize provider (from modulesd)
+RouterFacade -> Publisher: 2. Initialize publisher.
+Publisher -> Publisher: 3. Initialize socket to receive IPC subscribers and provider.
+Publisher -> Publisher: 3. Initialize Message queue with specific thread quantity for dispatching.
+Publisher --> RouterFacade: 4. Initialization response (throw exceptions if exists any error).
+RouterFacade -> RouterFacade: 5. Add publisher with specific topic in the broker instance.
+
+User -> RouterFacade: 6. Send message
+RouterFacade -> RouterFacade: 7. Find provider instance for specific topic.
+RouterFacade -> Publisher: 8. Push message into the publisher message queue class.
+Publisher -> MessageQueue: 9. Copy message to the message queue list.
+MessageQueue -> Observer: 10. Distribute message for all observers.
+
+User -> RouterFacade: 11. Remove provider
+RouterFacade -> RouterFacade: 12. Remove publisher with specific topic in the broker instance.
+
+
+@enduml
