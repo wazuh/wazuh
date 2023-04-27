@@ -4,7 +4,6 @@ no="n"
 yesmatch="y"
 nomatch="n"
 agent="agent"
-local="local"
 server="server"
 help="help"
 
@@ -21,10 +20,19 @@ system="Σύστημα"
 user="Χρήστης"
 host="Υπολογιστής"
 hitanyorabort="Πατήστε ENTER για να συνεχίσετε ή Ctrl-C για ακύρωση."
-whattoinstall="Τι τύπου εγκατάσταση επιθυμείτε (manager, agent, local ή help);"
+whattoinstall="Τι τύπου εγκατάσταση επιθυμείτε (manager, agent ή help);"
 serverchose="Επιλέχθηκε η εγκατάσταση διακομιστή (manager)"
 clientchose="Επιλέχθηκε η εγκατάσταση πελάτη (agent)"
-localchose="Επιλέχθηκε η τοπική (local) εγκατάσταση"
+
+# Part 1.2
+buildremoted="Θέλετε να μεταγλωττίσετε και να εγκαταστήσετε τις ενότητες Remote και Auth;"
+nobuildremoted="Οι ενότητες Remote και Auth δεν θα μεταγλωττιστούν"
+yesbuildremoted="Οι ενότητες Remote και Auth θα μεταγλωττιστούν και θα εγκατασταθούν"
+
+# Part 1.3
+buildclusterd="Θέλετε να μεταγλωττίσετε και να εγκαταστήσετε τη συστάδα;"
+nobuildclusterd="Η συστάδα δεν θα μεταγλωττιστεί"
+yesbuildclusterd="Η συστάδα θα μεταγλωττιστεί και θα εγκατασταθεί"
 
 # Part 2
 settingupenv="Ρυθμίζεται το περιβάλλον εγκατάστασης"

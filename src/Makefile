@@ -75,6 +75,9 @@ USE_MSGPACK_OPT=yes
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 
+BUILD_REMOTED=yes
+BUILD_CLUSTERD=yes
+
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
 WIN_CMAKE_RULES+=win32/sysinfo
@@ -543,8 +546,9 @@ ifeq (${TARGET},agent)
 endif
 
 ifeq (${TARGET},local)
-	DEFINES+=-DLOCAL
+	$(error The target 'local' is not supported, use 'TARGET=server')
 endif
+
 
 
 .PHONY: build
@@ -614,6 +618,8 @@ settings:
 	@echo
 	@echo "General settings:"
 	@echo "    TARGET:             ${TARGET}"
+	@echo "    BUILD_REMOTED:      ${BUILD_REMOTED}"
+	@echo "    BUILD_CLUSTERD:     ${BUILD_CLUSTERD}"
 	@echo "    V:                  ${V}"
 	@echo "    DEBUG:              ${DEBUG}"
 	@echo "    DEBUGAD             ${DEBUGAD}"
@@ -656,7 +662,10 @@ BUILD_SERVER+=wazuh-csyslogd -
 BUILD_SERVER+=wazuh-agentlessd -
 BUILD_SERVER+=wazuh-execd -
 BUILD_SERVER+=wazuh-logcollector -
-BUILD_SERVER+=wazuh-remoted
+ifeq (${BUILD_REMOTED},$(filter ${BUILD_REMOTED},auto yes y Y 1))
+	BUILD_SERVER+=wazuh-remoted
+	BUILD_SERVER+=wazuh-authd
+endif
 BUILD_SERVER+=wazuh-agentd
 BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
@@ -664,7 +673,6 @@ BUILD_SERVER+=active-responses
 BUILD_SERVER+=wazuh-syscheckd
 BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-reportd
-BUILD_SERVER+=wazuh-authd
 BUILD_SERVER+=wazuh-analysisd
 BUILD_SERVER+=wazuh-logtest-legacy
 BUILD_SERVER+=wazuh-dbd -
@@ -688,7 +696,7 @@ BUILD_CMAKE_PROJECTS+=build_syscollector
 endif
 
 
-.PHONY: server local hybrid agent selinux
+.PHONY: server hybrid agent selinux
 
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
@@ -699,10 +707,6 @@ ifneq (${uname_S},HP-UX)
 endif
 	${MAKE} ${BUILD_SERVER}
 
-ifeq (${MAKECMDGOALS},local)
-$(error Do not use 'local' directly, use 'TARGET=local')
-endif
-local: external
 ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
@@ -2100,6 +2104,11 @@ wmodulesd_o := $(wmodulesd_c:.c=.o)
 wazuh-modulesd: ${wmodulesd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
+### wazuh-framework ##
+
+wazuh-framework: ${sqlite_o} ${shared_o} ${EXTERNAL_OPENSSL}libssl.a ${EXTERNAL_OPENSSL}libcrypto.a
+	${MAKE} -C ../framework build PREFIX=${PREFIX} BUILD_CLUSTERD=${BUILD_CLUSTERD}
+
 ### wazuh-gtest-gmock ###
 
 build_gtest:
@@ -2500,10 +2509,3 @@ clean-config:
 	rm -f ../etc/ossec.mc
 	rm -f Config.OS
 
-
-.PHONY: see
-see:
-	$(info $(EXTERNAL_CURL))
-	$(info $(LIBCURL_LIB))
-	$(info $(WAZUHEXT_LIB))
-	$(info $(BUILD_LIBS))

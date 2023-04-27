@@ -4,7 +4,6 @@ no="n"
 yesmatch="i"
 nomatch="n"
 agent="agent"
-local="lokális"
 server="szerver"
 help="segítség"
 
@@ -21,10 +20,19 @@ system="Rendszer"
 user="Felhasználó"
 host="Hoszt"
 hitanyorabort="Nyomjon ENTER-t a folytatáshoz vagy Ctrl-C-t a megszakításhoz."
-whattoinstall="Milyen típusú telepítést szeretne? (manager, agent, lokális vagy segítség)?"
+whattoinstall="Milyen típusú telepítést szeretne? (manager, agent vagy segítség)?"
 serverchose="Manager (szerver) telepítés kiválasztva"
 clientchose="Agent(kliens) telepítés kiválasztva"
-localchose="Lokális telepítés kiválasztva"
+
+# Part 1.2
+buildremoted="Szeretné lefordítani és telepíteni a Remote és Auth modulokat?"
+nobuildremoted="A Remote és Auth modulok nem lesznek lefordítva"
+yesbuildremoted="A Remote és Auth modulok lefordításra és telepítésre kerülnek"
+
+# Part 1.3
+buildclusterd="Szeretné lefordítani és telepíteni a fürtöt?"
+nobuildclusterd="A fürt nem lesz lefordítva"
+yesbuildclusterd="A fürt lefordításra és telepítésre kerül"
 
 # Part 2
 settingupenv="A telepítési környezet létrehozása"
