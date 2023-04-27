@@ -4,7 +4,6 @@ no="n"
 yesmatch="d"
 nomatch="n"
 agent="agent"
-local="lokalna"
 server="server"
 help="pomoć"
 
@@ -21,10 +20,19 @@ system="Sistem"
 user="Korisnik"
 host="Host"
 hitanyorabort="Pritisni ENTER da nastavis ili Ctrl-C da poništiš."
-whattoinstall="Koju vrstu instalacije želiš (manager, agent, lokalnu ili pomoć)?"
+whattoinstall="Koju vrstu instalacije želiš (manager, agent ili pomoć)?"
 serverchose="Izabrana instalacija manager (server)"
 clientchose="Izabrana instalacija agent (klijent)"
-localchose="Izabrana lokalna instalacija"
+
+# Part 1.2
+buildremoted="Ali želite sestaviti in namestiti modula Remote in Auth?"
+nobuildremoted="Modula Remote in Auth ne bosta sestavljena"
+yesbuildremoted="Modula Remote in Auth bosta sestavljena in nameščena"
+
+# Part 1.3
+buildclusterd="Ali želite sestaviti in namestiti gručo?"
+nobuildclusterd="Cluster ne bo sestavljen"
+yesbuildclusterd="Cluster bo sestavljen in nameščen"
 
 # Part 2
 settingupenv="Postavljanje instalacionog okruženja"

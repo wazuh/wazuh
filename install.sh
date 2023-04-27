@@ -110,8 +110,8 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
-
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} BUILD_REMOTED=${BUILDREMOTED} BUILD_CLUSTERD=${BUILDCLUSTERD} build
+    
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"
@@ -208,6 +208,60 @@ UseRootcheck()
             ;;
     esac
 }
+
+
+##########
+# BuildRemotedAuthd()
+##########
+BuildRemotedAuthd()
+{
+    # Compilation of remoted and authd
+    echo ""
+    $ECHO "  1.2- ${buildremoted} ($yes/$no) [$yes]: "
+    if [ "X${USER_BUILD_REMOTED}" = "X" ]; then
+        read AS
+    else
+        AS=${USER_BUILD_REMOTED}
+    fi
+    echo ""
+    case $AS in
+        $nomatch)
+            BUILDREMOTED="no"
+            echo "   - ${nobuildremoted}."
+            ;;
+        *)
+            BUILDREMOTED="yes"
+            echo "   - ${yesbuildremoted}."
+            ;;
+    esac
+}
+
+##########
+# BuildClusterd()
+##########
+BuildClusterd()
+{
+    # Compilation of the cluster
+    echo ""
+    $ECHO "  1.3- ${buildclusterd} ($yes/$no) [$yes]: "
+    if [ "X${USER_BUILD_CLUSTERD}" = "X" ]; then
+        read AS
+    else
+        AS=${USER_BUILD_CLUSTERD}
+    fi
+    echo ""
+    case $AS in
+        $nomatch)
+            BUILDCLUSTERD="no"
+            echo "   - ${nobuildclusterd}."
+            ;;
+        *)
+            BUILDCLUSTERD="yes"
+            echo "   - ${yesbuildclusterd}."
+            ;;
+    esac
+}
+
 
 UseSyscollector()
 {
@@ -508,43 +562,40 @@ ConfigureServer()
     AddWhite
 
     if [ "X$INSTYPE" = "Xserver" ]; then
-      # Configuring remote syslog
-      echo ""
-      $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
+        if [ "X$BUILDREMOTED" = "Xyes" ]; then
+           # Configuring remote syslog
+            echo ""
+            $ECHO "  3.6- ${syslog} ($yes/$no) [$yes]: "
+            if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
+                read ANSWER
+            else
+                ANSWER=${USER_ENABLE_SYSLOG}
+            fi
 
-      if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
-        read ANSWER
-      else
-        ANSWER=${USER_ENABLE_SYSLOG}
-      fi
+           echo ""
+            case $ANSWER in
+                $nomatch)
+                    echo "   --- ${nosyslog}."
+                    ;;
+                *)
+                    echo "   - ${yessyslog}."
+                    RLOG="yes"
+                    ;;
+            esac
 
-      echo ""
-      case $ANSWER in
-        $nomatch)
-            echo "   --- ${nosyslog}."
-            ;;
-        *)
-            echo "   - ${yessyslog}."
-            RLOG="yes"
-            ;;
-      esac
+            # Configuring remote connections
+            SLOG="yes"
 
-      # Configuring remote connections
-      SLOG="yes"
-    fi
-
-    UseSSLCert
-
-    # Setting up the auth daemon & logs
-    if [ "X$INSTYPE" = "Xserver" ]; then
-        EnableAuthd "3.7"
-        ConfigureBoot "3.8"
-        SetupLogs "3.9"
-        WriteManager
-    else
-        ConfigureBoot "3.6"
-        SetupLogs "3.7"
-        WriteLocal
+            # Setting up the auth daemon & logs
+            EnableAuthd "3.7"
+            ConfigureBoot "3.8"
+            SetupLogs "3.9"
+            WriteManager
+        else
+            ConfigureBoot "3.6"
+            SetupLogs "3.7"
+            WriteManager
+        fi
     fi
 }
 
@@ -589,8 +640,6 @@ setEnv()
 
     if [ "X$INSTYPE" = "Xagent" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        CEXTRA="$CEXTRA -DLOCAL"
     fi
 }
 
@@ -765,11 +814,13 @@ AddPFTable()
 
 }
 
+
 ##########
 # main()
 ##########
 main()
 {
+
     LG="en"
     LANGUAGE="en"
     . ./src/init/dist-detect.sh
@@ -925,7 +976,6 @@ main()
     HYBID=""
     hybridm=`echo ${hybrid} | cut -b 1`
     serverm=`echo ${server} | cut -b 1`
-    localm=`echo ${local} | cut -b 1`
     agentm=`echo ${agent} | cut -b 1`
     helpm=`echo ${help} | cut -b 1`
 
@@ -966,18 +1016,19 @@ main()
                     HYBID="go"
                     break;
                 ;;
-                ${local}|${localm})
-                    echo ""
-                    echo "  - ${localchose}."
-                    INSTYPE="local"
-                    break;
-                ;;
             esac
         done
 
     else
         INSTYPE=${USER_INSTALL_TYPE}
     fi
+
+    # Selecting components to build and install
+    # Checking to install Remoted and Authd
+    BuildRemotedAuthd
+
+    # Checking to install Clusterd
+    BuildClusterd
 
     # Setting up the installation directory
     setInstallDir
@@ -994,8 +1045,6 @@ main()
             ConfigureServer
         elif [ "X$INSTYPE" = "Xagent" ]; then
             ConfigureClient
-        elif [ "X$INSTYPE" = "Xlocal" ]; then
-            ConfigureServer
         else
             catError "0x4-installtype"
         fi
