@@ -12,6 +12,7 @@ import json
 import sys
 import time
 import os
+import re
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 
@@ -131,9 +132,16 @@ def query_api(hash, apikey):
 def request_virustotal_info(alert, apikey):
     alert_output = {}
 
-    # If there is no a md5 checksum present in the alert. Exit.
+    # If there is no md5 checksum present in the alert. Exit.
     if not "md5_after" in alert["syscheck"]:
-      return(0)
+        debug("# No md5 checksum present in the alert")
+        return None
+
+    # If the md5_after field is not a md5 hash checksum. Exit
+    if len(re.findall(r'\b([a-f\d]{32}|[A-F\d]{32})\b', alert["syscheck"]["md5_after"])) != 1 :
+        debug("# md5_after field in the alert is not a md5 hash checksum")
+        return None
+
 
     # Request info using VirusTotal API
     data = query_api(alert["syscheck"]["md5_after"], apikey)
