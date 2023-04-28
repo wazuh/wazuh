@@ -1,0 +1,12 @@
+description: Apache error logs of version 2.4.41 in Ubuntu
+
+agent_simulator:
+  queue: 49
+  location: "[002] (ubuntu-agent) any->/var/log/apache2/error.log"
+  integration:
+    module: apache-http
+    dataset: apache-error
+
+input:
+  - "[Tue Mar 14 10:50:33.260617 2023] [mpm_event:notice] [pid 3651:tid 139732022373440] AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations"
+  - "[Tue Mar 14 10:50:33.261185 2023] [core:notice] [pid 3651:tid 139732022373440] AH00094: Command line: '/usr/sbin/apache2'"

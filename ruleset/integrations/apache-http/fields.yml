@@ -1,0 +1,11 @@
+apache.access.ssl.protocol:
+  description: SSL protocol version.
+  type: keyword
+
+apache.access.ssl.cipher:
+  description: SSL cipher name.
+  type: keyword
+
+apache.error.module:
+  description: The module producing the logged message.
+  type: keyword
