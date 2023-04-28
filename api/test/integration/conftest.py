@@ -135,7 +135,7 @@ def down_env():
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker", "compose", "down", "-t0"], stdout=f_docker,
+        current_process = subprocess.Popen(["docker", "compose", "down", "--remove-orphans", "-t0"], stdout=f_docker,
                                            stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
