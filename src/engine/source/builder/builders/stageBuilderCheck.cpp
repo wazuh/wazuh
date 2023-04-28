@@ -33,7 +33,7 @@ base::Expression stageBuilderCheckList(const std::any& definition,
     if (!jsonDefinition.isArray())
     {
         throw std::runtime_error(fmt::format("Check stage: Invalid json definition type: "
-                                             "expected \"array\" but got \"{}\"",
+                                             "expected \"array\" but got \'{}\'",
                                              jsonDefinition.typeName()));
     }
 
@@ -47,14 +47,14 @@ base::Expression stageBuilderCheckList(const std::any& definition,
                        if (!condition.isObject())
                        {
                            throw std::runtime_error(fmt::format("Check stage: Invalid array item type, expected "
-                                                                "\"object\" but got \"{}\"",
+                                                                "\"object\" but got \'{}\'",
                                                                 condition.typeName()));
                        }
                        if (condition.size() != 1)
                        {
                            throw std::runtime_error(
                                fmt::format("Check stage: Invalid object item size, expected exactly "
-                                           "one key/value pair but got \"{}\"",
+                                           "one key/value pair but got \'{}\'",
                                            condition.size()));
                        }
                        return registry->getBuilder("operation.condition")(condition.getObject().value()[0]);
@@ -70,14 +70,14 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
 {
     // Obtain expressionString
     auto expressionString = std::any_cast<json::Json>(definition).getString().value();
+    std::string keyboarder;
 
-    // Inject builder
-    auto termBuilder = [&](std::string term) -> std::function<bool(base::Event)>
+    // Obtain field and value
+    auto extractFieldAndValue = [&](const std::string& term) -> std::pair<std::string, json::Json>
     {
         std::string field;
         std::string value;
         json::Json valueJson;
-        std::string keyboarder;
 
         if (syntax::FUNCTION_HELPER_ANCHOR == term[0])
         {
@@ -137,7 +137,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                     if (!valueJson.isInt64() && !valueJson.isString())
                     {
                         throw std::runtime_error(fmt::format(
-                            "Check stage: The \"{}\" operator only allows operate with numbers or string", keyboarder));
+                            "Check stage: The \'{}\' operator only allows operate with numbers or string", keyboarder));
                     }
 
                     const auto prefix = valueJson.isInt64() ? "+int_" : "+string_";
@@ -152,10 +152,17 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
             }
             else
             {
-                throw std::runtime_error {fmt::format("Check stage: Invalid operator \"{}\"", term)};
+                throw std::runtime_error {fmt::format("Check stage: Invalid operator \'{}\'", term)};
             }
         }
 
+        return {field, valueJson};
+    };
+
+    // Inject builder
+    auto termBuilder = [&](std::string term) -> std::function<bool(base::Event)>
+    {
+        auto [field, valueJson] = extractFieldAndValue(term);
         auto conditionDef = std::make_tuple(field, valueJson);
         auto opEx = registry->getBuilder("operation.condition")(conditionDef);
 
@@ -257,7 +264,7 @@ Builder getStageBuilderCheck(std::shared_ptr<Registry<Builder>> registry)
         else
         {
             throw std::runtime_error(fmt::format("Check stage: Invalid json definition type, \"string\" or "
-                                                 "\"array\" were expected but got \"{}\"",
+                                                 "\"array\" were expected but got \'{}\'",
                                                  jsonDefinition.typeName()));
         }
     };
