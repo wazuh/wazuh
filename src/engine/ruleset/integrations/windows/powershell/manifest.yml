@@ -1,0 +1,4 @@
+name: integration/powershell/0
+decoders:
+- decoder/windows-powershell-operational/0
+- decoder/windows-powershell/0
