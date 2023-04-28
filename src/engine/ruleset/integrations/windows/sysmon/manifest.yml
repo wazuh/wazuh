@@ -1,0 +1,3 @@
+name: integration/sysmon/0
+decoders:
+- decoder/windows-sysmon/0
