@@ -222,15 +222,21 @@ class SysInfoProcess final
 
                     for (const auto& token : tokens)
                     {
+
                         // Checking if token is found in logicalDrives to avoid a large map with unnecessary volumes.
                         // logicalDrives contains a slash at the end but the result of QueryDosDevice doesn't.
-                        if (std::find_if(logicalDrives.begin(), logicalDrives.end(), [&](const auto & logicalDrive)
-                    {
-                        return Utils::startsWith(logicalDrive, token);
-                        }) == logicalDrives.end())
+                        auto startsWithLambda = [&](const auto & logicalDrive)
+                        {
+                            return Utils::startsWith(logicalDrive, token);
+                        };
+
+                        if (std::find_if(logicalDrives.begin(),
+                                         logicalDrives.end(),
+                                         startsWithLambda) == logicalDrives.end())
                         {
                             continue;
                         }
+
                         res = QueryDosDevice(token.c_str(), spDosDevice.get(), OS_SIZE_32768);
 
                         if (res && ret.find(spDosDevice.get()) == ret.end())
