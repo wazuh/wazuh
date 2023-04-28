@@ -26,7 +26,7 @@ from gcp_logger import GCPLogStrategy
 
 # Set GCP logger
 gcp_logger = WazuhCloudLogger(
-    strategy=GCPLogStrategy(logging.getLogger(':gcloud_wodle'))
+        strategy=GCPLogStrategy()
 )
 
 

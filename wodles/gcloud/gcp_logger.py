@@ -24,7 +24,7 @@ class GCPLogStrategy(WazuhLogStrategy):
 
     Implements the LogStrategy interface to log messages for GCP integration.
     """
-    def __init__(self, logger: logging.Logger):
+    def __init__(self):
         """
         Initialize the GCPLogStrategy class.
 
@@ -33,7 +33,7 @@ class GCPLogStrategy(WazuhLogStrategy):
         logger : logging.Logger
             The logger instance.
         """
-        self.logger = logger
+        self.logger = logging.getLogger(':gcloud_wodle:')
 
     def info(self, message: str):
         """
