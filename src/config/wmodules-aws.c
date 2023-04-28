@@ -14,12 +14,16 @@
 static const char *XML_DISABLED = "disabled";
 static const char *XML_BUCKET = "bucket";
 static const char *XML_SERVICE = "service";
+static const char *XML_SUBSCRIBER = "subscriber";
+static const char *XML_SUBSCRIBER_TYPE = "type";
+static const char *XML_SUBSCRIBER_QUEUE = "sqs_name";
 static const char *XML_ACCESS_KEY = "access_key";
 static const char *XML_SECRET_KEY = "secret_key";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_REMOVE_FORM_BUCKET = "remove_from_bucket";
 static const char *XML_SKIP_ON_ERROR = "skip_on_error";
 static const char *XML_AWS_PROFILE = "aws_profile";
+static const char *XML_AWS_EXTERNAL_ID = "external_id";
 static const char *XML_IAM_ROLE_ARN = "iam_role_arn";
 static const char *XML_AWS_ORGANIZATION_ID = "aws_organization_id";
 static const char *XML_AWS_ACCOUNT_ID = "aws_account_id";
@@ -54,6 +58,7 @@ static const char *SERVER_ACCESS_BUCKET_TYPE = "server_access";
 static const char *INSPECTOR_SERVICE_TYPE = "inspector";
 static const char *CLOUDWATCHLOGS_SERVICE_TYPE = "cloudwatchlogs";
 static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
+static const char *SECURITY_LAKE_SUBSCRIBER_TYPE = "security_lake";
 
 static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html";
 static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
@@ -68,6 +73,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     wm_aws *aws_config;
     wm_aws_bucket *cur_bucket = NULL;
     wm_aws_service *cur_service = NULL;
+    wm_aws_subscriber *cur_subscriber = NULL;
 
     if (!nodes) {
         mwarn("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
@@ -476,6 +482,101 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
             OS_ClearNode(children);
 
+        // for subscriber
+        } else if (!strcmp(nodes[i]->element, XML_SUBSCRIBER)) {
+
+            mtdebug2(WM_AWS_LOGTAG, "Found a subscriber tag");
+
+            if (!nodes[i]->attributes) {
+                mterror(WM_AWS_LOGTAG, "Undefined type for subscriber.");
+                return OS_INVALID;
+            }
+
+            // Create subscriber node
+            if (cur_subscriber) {
+                os_calloc(1, sizeof(wm_aws_subscriber), cur_subscriber->next);
+                cur_subscriber = cur_subscriber->next;
+                mtdebug2(WM_AWS_LOGTAG, "Creating another subscriber structure");
+            } else {
+                // First subscriber
+                os_calloc(1, sizeof(wm_aws_subscriber), cur_subscriber);
+                aws_config->subscribers = cur_subscriber;
+                mtdebug2(WM_AWS_LOGTAG, "Creating first subscriber structure");
+            }
+
+            // type is an attribute of the subscriber tag
+            if (!strcmp(*nodes[i]->attributes, XML_SUBSCRIBER_TYPE)) {
+                if (!nodes[i]->values) {
+                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid one is '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE);
+                    return OS_INVALID;
+                } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE)) {
+                    os_strdup(*nodes[i]->values, cur_subscriber->type);
+                } else {
+                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid one is '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE);
+                    return OS_INVALID;
+                }
+            } else {
+                mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SUBSCRIBER_TYPE);
+                return OS_INVALID;
+            }
+
+            // Expand subscriber Child Nodes
+
+            if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
+                continue;
+            }
+
+            mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+            for (j = 0; children[j]; j++) {
+
+                mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
+
+                if (!children[j]->element) {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+
+                // Start
+                if (strcmp(children[j]->element, XML_SUBSCRIBER_QUEUE) == 0) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_subscriber->sqs_name);
+                        os_strdup(children[j]->content, cur_subscriber->sqs_name);
+                    }
+                } else if (!strcmp(children[j]->element, XML_AWS_EXTERNAL_ID)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_subscriber->external_id);
+                        os_strdup(children[j]->content, cur_subscriber->external_id);
+                    }
+                } else if (!strcmp(children[j]->element, XML_IAM_ROLE_ARN)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_subscriber->iam_role_arn);
+                        os_strdup(children[j]->content, cur_subscriber->iam_role_arn);
+                    }
+                } else if (!strcmp(children[j]->element, XML_IAM_ROLE_DURATION)){
+                        if (strlen(children[j]->content) != 0){
+                            free(cur_subscriber->iam_role_duration);
+                            os_strdup(children[j]->content, cur_subscriber->iam_role_duration);
+                        }
+                } else if (!strcmp(children[j]->element, XML_STS_ENDPOINT)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_subscriber->sts_endpoint);
+                        os_strdup(children[j]->content, cur_subscriber->sts_endpoint);
+                    }
+                } else if (!strcmp(children[j]->element, XML_SERVICE_ENDPOINT)) {
+                    if (strlen(children[j]->content) != 0) {
+                        free(cur_subscriber->service_endpoint);
+                        os_strdup(children[j]->content, cur_subscriber->service_endpoint);
+                    }
+                } else {
+                    merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+
+            OS_ClearNode(children);
+
         } else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
         } else {
@@ -530,8 +631,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         os_strdup(LEGACY_AWS_ACCOUNT_ALIAS, cur_bucket->aws_account_alias);
     }
 
-    if (!aws_config->buckets && !aws_config->services) {
-        mtwarn(WM_AWS_LOGTAG, "No buckets or services definitions found at module '%s'.", WM_AWS_CONTEXT.name);
+    if (!aws_config->buckets && !aws_config->services  && !aws_config->subscribers) {
+        mtwarn(WM_AWS_LOGTAG, "No buckets, services or subscribers definitions found at module '%s'.", WM_AWS_CONTEXT.name);
         return OS_INVALID;
     }
 

@@ -17,6 +17,7 @@
 #   7 - Unexpected error querying/working with objects in S3
 #   8 - Failed to decompress file
 #   9 - Failed to parse file
+#   10 - pyarrow module missing
 #   11 - Unable to connect to Wazuh
 #   12 - Invalid type of bucket
 #   13 - Unexpected error sending message to Wazuh
@@ -24,6 +25,11 @@
 #   15 - Invalid endpoint URL
 #   16 - Throttling error
 #   17 - Invalid key format
+#   18 - Invalid prefix
+#   19 - The server datetime and datetime of the AWS environment differ
+#   20 - Unable to find SQS
+#   21 - Failed fetch/delete from SQS
+
 
 import argparse
 import signal
@@ -36,6 +42,13 @@ try:
 except ImportError:
     print('ERROR: boto3 module is required.')
     sys.exit(4)
+
+try:
+    import pyarrow.parquet as pq
+except ImportError:
+    print('ERROR: pyarrow module is required.')
+    sys.exit(10)
+
 import botocore
 import json
 import csv
@@ -70,6 +83,7 @@ DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {rel
 # Enable/disable debug mode
 debug_level = 0
 
+
 ################################################################################
 # Classes
 ################################################################################
@@ -86,11 +100,13 @@ class WazuhIntegration:
     :param region: Region of service
     :param bucket: Bucket name to extract logs from
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
+    :param external_id: AWS external ID for IAM Role assumption
     """
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name=None, region=None, bucket=None, discard_field=None,
-                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
+                 external_id=None):
         # SQL queries
         self.sql_find_table_names = """
                             SELECT
@@ -169,18 +185,18 @@ class WazuhIntegration:
                                       region=region,
                                       sts_endpoint=sts_endpoint,
                                       service_endpoint=service_endpoint,
-                                      iam_role_duration=iam_role_duration
+                                      iam_role_duration=iam_role_duration,
+                                      external_id=external_id
                                       )
-
-
-        # db_name is an instance variable of subclass
-        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
-        self.db_connector = sqlite3.connect(self.db_path)
-        self.db_cursor = self.db_connector.cursor()
+        if hasattr(self, 'db_name'):  # If db_name is present, the subclass is not part of the SecLake process
+            # db_name is an instance variable of subclass
+            self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
+            self.db_connector = sqlite3.connect(self.db_path)
+            self.db_cursor = self.db_connector.cursor()
+            self.old_version = None  # for DB migration if it is necessary
+            self.check_metadata_version()
         if bucket:
             self.bucket = bucket
-        self.old_version = None  # for DB migration if it is necessary
-        self.check_metadata_version()
         self.discard_field = discard_field
         self.discard_regex = re.compile(fr'{discard_regex}')
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
@@ -245,18 +261,20 @@ class WazuhIntegration:
                     'mode': 'standard'
                 }
             )
-            debug(f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",2)
+            debug(
+                f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
+                2)
         else:
-            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',2)
+            debug(f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}',
+                  2)
 
         return args
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name,
                    bucket, region=None,
-                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None, external_id=None):
 
         conn_args = {}
-
 
         if access_key is not None and secret_key is not None:
             print(DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4", url=CREDENTIALS_URL))
@@ -283,8 +301,10 @@ class WazuhIntegration:
                 sts_client = boto_session.client('sts', endpoint_url=sts_endpoint, **self.connection_config)
 
                 assume_role_kwargs = {'RoleArn': iam_role_arn,
-                                      'RoleSessionName': 'WazuhLogParsing'
-                                      }
+                                      'RoleSessionName': 'WazuhLogParsing'}
+                if external_id:
+                    assume_role_kwargs['ExternalId'] = external_id
+
                 if iam_role_duration is not None:
                     assume_role_kwargs['DurationSeconds'] = iam_role_duration
 
@@ -301,7 +321,7 @@ class WazuhIntegration:
                 client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint,
                                              **self.connection_config)
 
-        except botocore.exceptions.ClientError as e:
+        except (botocore.exceptions.ClientError, botocore.exceptions.NoCredentialsError) as e:
             print("ERROR: Access error: {}".format(e))
             sys.exit(3)
         return client
@@ -802,7 +822,7 @@ class AWSBucket(WazuhIntegration):
             bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'waf', 'custom'}
             print(f"ERROR: Invalid type of bucket. The bucket was set up as '{get_script_arguments().type.lower()}' "
                   f"type and this bucket does not contain log files from this type. Try with other type: "
-                  f"{bucket_types - {get_script_arguments().type.lower()}}")
+                  f"{bucket_types - {get_script_arguments().type.lower()} }")
             sys.exit(12)
 
     def find_regions(self, account_id):
@@ -956,8 +976,6 @@ class AWSBucket(WazuhIntegration):
         else:
             return io.TextIOWrapper(raw_object)
 
-
-
     def load_information_from_file(self, log_key):
         """
         AWS logs are stored in different formats depending on the service:
@@ -1041,7 +1059,7 @@ class AWSBucket(WazuhIntegration):
 
         def event_should_be_skipped(event_):
             return self.discard_field and self.discard_regex \
-                   and check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+                and check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
@@ -1894,7 +1912,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
-               + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
+            + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
 
     def build_s3_filter_args(self, aws_account_id, aws_region, date, flow_log_id, iterating=False):
         filter_marker = ''
@@ -2509,7 +2527,6 @@ class AWSALBBucket(AWSLBBucket):
                         debug(f"Log Entry: {log_entry}", msg_level=2)
 
             return tsv_file
-
 
 
 class AWSCLBBucket(AWSLBBucket):
@@ -3458,6 +3475,191 @@ class AWSCloudWatchLogs(AWSService):
                                                                     aws_log_stream=log_stream))
 
 
+class AWSSLSubscriberBucket(WazuhIntegration):
+    """
+    Class for processing AWS Security Lake events from S3.
+
+    Attributes
+    ----------
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    aws_profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role.
+    """
+
+    def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None,
+                 service_endpoint: str = None, sts_endpoint: str = None, **kwargs):
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, aws_profile=aws_profile,
+                                  service_name='s3', service_endpoint=service_endpoint, sts_endpoint=sts_endpoint,
+                                  **kwargs)
+
+    def obtain_information_from_parquet(self, bucket_path: str, parquet_path: str) -> list:
+        """Fetch a parquet file from a bucket and obtain a list of the events it contains.
+
+        Parameters
+        ----------
+        bucket_path : str
+            Path of the bucket to get the parquet file from.
+        parquet_path : str
+            Relative path of the parquet file inside the bucket.
+
+        Returns
+        -------
+        events : list
+            Events contained inside the parquet file.
+        """
+        debug(f'Processing file {parquet_path} in {bucket_path}', 2)
+        events = []
+        try:
+            raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket_path, Key=parquet_path)['Body'].read())
+        except Exception as e:
+            debug(f'Could not get the parquet file {parquet_path} in {bucket_path}: {e}', 1)
+            sys.exit(21)
+        pfile = pq.ParquetFile(raw_parquet)
+        for i in pfile.iter_batches():
+            for j in i.to_pylist():
+                events.append(json.dumps(j))
+        debug(f'Found {len(events)} events in file {parquet_path}', 2)
+        return events
+
+    def process_file(self, message: dict) -> None:
+        """Parse an SQS message, obtain the events associated, and send them to Analysisd.
+        
+        Parameters
+        ----------
+        message : dict
+            An SQS message received from the queue.
+        """
+        events_in_file = self.obtain_information_from_parquet(bucket_path=message['bucket_path'],
+                                                              parquet_path=message['parquet_path'])
+        for event in events_in_file:
+            self.send_msg(event, dump_json=False)
+        debug(f'{len(events_in_file)} events sent to Analysisd', 2)
+
+
+class AWSSQSQueue(WazuhIntegration):
+    """
+    Class for getting AWS SQS Queue notifications.
+
+    Attributes
+    ----------
+    name: str
+        Name of the SQS Queue.
+    iam_role_arn : str
+        IAM Role.
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    external_id : str
+        The name of the External ID to use.
+    sts_endpoint : str
+        URL for the VPC endpoint to use to obtain the STS token.
+    service_endpoint : str
+        URL for the endpoint to use to obtain the logs.
+    """
+
+    def __init__(self, name: str, iam_role_arn: str, access_key: str = None, secret_key: str = None,
+                 external_id: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
+        self.sqs_name = name
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, iam_role_arn = iam_role_arn,
+                                  aws_profile=None, external_id=external_id, service_name='sqs', sts_endpoint=sts_endpoint,
+                                  **kwargs)
+        self.sts_client = self.get_sts_client(access_key, secret_key)
+        self.account_id = self.sts_client.get_caller_identity().get('Account')
+        self.sqs_url = self._get_sqs_url()
+        self.iam_role_arn = iam_role_arn
+        self.asl_bucket_handler = AWSSLSubscriberBucket(external_id=external_id,
+                                                        iam_role_arn=self.iam_role_arn,
+                                                        service_endpoint=service_endpoint,
+                                                        sts_endpoint=sts_endpoint)
+
+    def _get_sqs_url(self) -> str:
+        """Get the URL of the AWS SQS queue
+
+        Returns
+        -------
+        url : str
+            The URL of the AWS SQS queue
+        """
+        try:
+            url = self.client.get_queue_url(QueueName=self.sqs_name,
+                                            QueueOwnerAWSAccountId=self.account_id)['QueueUrl']
+            debug(f'The SQS queue is: {url}', 2)
+            return url
+        except botocore.exceptions.ClientError:
+            print('ERROR: Queue does not exist, verify the given name')
+            sys.exit(20)
+
+    def delete_message(self, message: dict) -> None:
+        """Delete message from the SQS queue.
+
+        Parameters
+        ----------
+        message : dict
+            An SQS message recieved from the queue
+        """
+        try:
+            self.client.delete_message(QueueUrl=self.sqs_url, ReceiptHandle=message["handle"])
+            debug(f'Message deleted from: {self.sqs_name}', 2)
+        except Exception as e:
+            debug(f'ERROR: Error deleting message from SQS: {e}', 1)
+            sys.exit(21)
+
+    def fetch_messages(self) -> dict:
+        """Retrieves one or more messages (up to 10), from the specified queue.
+
+        Returns
+        -------
+        dict
+            A dictionary with a list of messages from the SQS queue.
+        """
+        try:
+            debug(f'Retrieving messages from: {self.sqs_name}', 2)
+            return self.client.receive_message(QueueUrl=self.sqs_url, AttributeNames=['All'],
+                                               MaxNumberOfMessages=10, MessageAttributeNames=['All'],
+                                               WaitTimeSeconds=20)
+        except Exception as e:
+            debug(f'ERROR: Error receiving message from SQS: {e}', 1)
+            sys.exit(21)
+
+    def get_messages(self) -> list:
+        """Retrieve parsed messages from the SQS queue.
+
+        Returns
+        -------
+        messages : list
+            Parsed messages from the SQS queue.
+        """
+        messages = []
+        sqs_raw_messages = self.fetch_messages()
+        sqs_messages = sqs_raw_messages.get('Messages', [])
+        for mesg in sqs_messages:
+            body = mesg['Body']
+            msg_handle = mesg["ReceiptHandle"]
+            message = json.loads(body)
+            parquet_path = message["detail"]["object"]["key"]
+            bucket_path = message["detail"]["bucket"]["name"]
+            messages.append({"parquet_path": parquet_path, "bucket_path": bucket_path,
+                             "handle": msg_handle})
+        return messages
+
+    def sync_events(self) -> None:
+        """
+        Get messages from the SQS queue, parse their events, send them to AnalysisD, and delete them from the queue.
+        """
+        messages = self.get_messages()
+        while messages:
+            for message in messages:
+                self.asl_bucket_handler.process_file(message)
+                self.delete_message(message)
+            messages = self.get_messages()
+
+
 ################################################################################
 # Functions
 ################################################################################
@@ -3534,6 +3736,7 @@ def arg_valid_iam_role_duration(arg_string):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
     return int(arg_string)
 
+
 def get_script_arguments():
     parser = argparse.ArgumentParser(usage="usage: %(prog)s [options]",
                                      description="Wazuh wodle for monitoring AWS",
@@ -3544,6 +3747,10 @@ def get_script_arguments():
                        action='store')
     group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
                        action='store')
+    group.add_argument('-sb', '--subscriber', dest='subscriber', help='Specify the type of the subscriber',
+                       action='store')
+    parser.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS',
+                        action='store')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -3560,6 +3767,8 @@ def get_script_arguments():
     parser.add_argument('-R', '--remove', action='store_true', dest='deleteFile',
                         help='Remove processed files from the AWS S3 bucket', default=False)
     parser.add_argument('-p', '--aws_profile', dest='aws_profile', help='The name of credential profile to use',
+                        default=None)
+    parser.add_argument('-x', '--external_id', dest='external_id', help='The name of the External ID to use',
                         default=None)
     parser.add_argument('-i', '--iam_role_arn', dest='iam_role_arn',
                         help='ARN of IAM role to assume for access to S3 bucket',
@@ -3700,6 +3909,12 @@ def main(argv):
                                        iam_role_duration=options.iam_role_duration
                                        )
                 service.get_alerts()
+        elif options.subscriber:
+            asl_queue = AWSSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
+                                    sts_endpoint=options.sts_endpoint,
+                                    service_endpoint=options.service_endpoint,
+                                    name=options.queue)
+            asl_queue.sync_events()
 
     except Exception as err:
         debug("+++ Error: {}".format(err), 2)
