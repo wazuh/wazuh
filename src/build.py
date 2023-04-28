@@ -136,7 +136,7 @@ def processArgs():
         run_check.runCppCheck(moduleName=args.cppcheck)
     elif args.asan and args.path:
         run_check.runASAN(moduleName=args.asan,
-                          testToolConfig=args.path)
+                          testToolConfig=utils.readJSONFile(jsonFilePath=args.path))
     elif args.scheck:
         run_check.runAStyleCheck(moduleName=args.scheck)
     elif args.sformat:

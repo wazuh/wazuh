@@ -38,7 +38,6 @@ def cleanAll():
     Raises:
         - ValueError: Raises an exception.
     """
-    os.chdir(utils.rootPath())
     out = subprocess.run("make clean",
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
@@ -155,6 +154,34 @@ def cleanInternals():
         errorString = "Error Running CleanInternals: {}".format(out.returncode)
         raise ValueError(errorString)
 
+def cleanWindows():
+    """
+    Execute the command 'make clean-windows' in the operating system.
+
+    Args:
+        - None
+
+    Returns:
+        - None
+
+    Raises:
+        - ValueError: Raises an exception.
+    """
+    os.chdir(utils.rootPath())
+    out = subprocess.run("make clean-windows",
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         shell=True,
+                         check=False,
+                         text=True)
+    if out.returncode == 0:
+        utils.printGreen(msg="[CleanWindows: PASSED]")
+    else:
+        print("make clean-windows")
+        print(out.stderr.decode('utf-8','replace'))
+        utils.printFail(msg="[CleanWindows: FAILED]")
+        errorString = "Error Running CleanWindows: {}".format(out.returncode)
+        raise ValueError(errorString)
 
 def cleanLib(moduleName):
     """
@@ -314,7 +341,7 @@ def makeLib(moduleName):
     Example:
         makeLib("syscheckd")
     """
-    command = "make -C {}".format(utils.moduleDirPathBuild(moduleName))
+    command = "make -C {} -j4".format(utils.moduleDirPathBuild(moduleName))
     utils.printSubHeader(moduleName=moduleName,
                          headerKey="make")
 
