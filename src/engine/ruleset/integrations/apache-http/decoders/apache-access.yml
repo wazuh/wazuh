@@ -1,0 +1,80 @@
+name: decoder/apache-access/0
+
+sources:
+  - decoder/integrations/0
+
+metadata:
+  module: apache-http
+  title: Apache HTTP Server access logs decoder
+  description: Decoder for Apache HTTP Server access logs.
+  compatibility: The Apache datasets were tested with Apache 2.4.12 and 2.4.46 and are expected to work with all versions >= 2.2.31 and >= 2.4.16 (independent from operating system).
+  versions:
+    - "2.2.31"
+    - "2.4.16"
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2022-11-15
+  references:
+    - https://httpd.apache.org/docs/2.4/logs.html
+
+check:
+  - event.module: apache-http
+  - event.dataset: apache-access
+
+definitions:
+  isSuccess: +t_is_not_null/http.response.status_code AND +i_lt/http.response.status_code/400
+  isFailed: +t_is_not_null/http.response.status_code AND +i_ge/http.response.status_code/400
+
+parse:
+  logpar:
+    - event.original: <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<~tmp.http.request>" <http.response.status_code> <~tmp./literal/->?<http.response.body.bytes>(? "<http.request.referrer>" "<user_agent.original>")
+    - event.original: <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "-" <http.response.status_code> -
+    - event.original: <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "-" <http.response.status_code> -
+    - event.original: <destination.domain> <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <~tmp.url.orig> <http.version>?<~tmp.dash>" <http.response.status_code> <http.response.body.bytes>?<~tmp.dash> "<http.request.referrer>" "<user_agent.original>"
+    - event.original: <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <~tmp.url.orig> <http.version>?<~tmp.dash>" <http.response.status_code> <http.response.body.bytes>?<~tmp.dash> "<http.request.referrer>" "<user_agent.original>"
+    - event.original: <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <~tmp.url.orig> <http.version>?<~tmp.dash>" <http.response.status_code> <http.response.body.bytes>?<~tmp.dash> "<http.request.referrer>" "<user_agent.original>"
+    - event.original: '[<event.created/%a %b %d %T %Y/en_US.UTF-8>] <source.address> <apache.access.ssl.protocol> <apache.access.ssl.cipher> "<http.request.method> <~tmp.url.orig> <http.version>" <http.response.body.bytes>?<~tmp.dash>'
+
+normalize:
+  - map:
+      - ~tmp.dash: +ef_delete
+      - event.category: +a_append/web
+      - event.dataset: apache.access
+      - event.kind: event
+      - service.type: apache
+      - source.ip: +parse_ip/$source.address
+      - ~tmp.tls: +s_to_array/$apache.access.ssl.protocol/v
+      - ~tmp.tls-1: $~tmp.tls/1
+      - tls.version_protocol: $~tmp.tls/0
+      - tls.cipher: $apache.access.ssl.cipher
+
+    logpar:
+      - ~tmp.http.version: HTTP/<http.version>
+      - ~tmp.http.request: <http.request.method> <url.original> <~tmp.http.version>
+
+  - check:
+      - ~tmp.tls-1: +r_match/\d+\.\d+
+    map:
+      - tls.version: ~tmp.tls-1
+
+  - check:
+      - ~tmp.tls-1: +r_not_match/\d+\.\d+
+    map:
+      - tls.version: +s_concat/~tmp.tls-1/.0
+
+  - check: $isSuccess
+    map:
+      - event.outcome: success
+  - check: $isFailed
+    map:
+      - event.outcome: failure
+
+  - check:
+      - source.ip: +ef_not_exists
+    map:
+      - source.domain: +parse_fqdn/$source.address
+
+  - map:
+      - url.extension: +r_ext/$url.original/.*\.([^.]+)$
+      - ~tmp: +ef_delete
