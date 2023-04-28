@@ -94,6 +94,10 @@ async def test_print_nodes(local_client_mock, get_agents_mock, print_table_mock,
                                     'sync_integrity_free': 'True',
                                     'last_sync_agentinfo': {'date_start_master': '0', 'date_end_master': '0',
                                                             'n_synced_chunks': 0},
+                                    'last_sync_agentgroup': {'date_start': 0, 'date_end': 0,
+                                                             'n_synced_chunks': 0},
+                                    'last_sync_full_agentgroup': {'date_start': 0, 'date_end': 0,
+                                                                  'n_synced_chunks': 0},
                                     'sync_agent_info_free': 'True'}}}})
 async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, get_utc_strptime_mock, print_mock):
     """Test if the current status of the cluster is properly printed."""
@@ -148,6 +152,18 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
                                           f"{worker_status['last_sync_agentinfo']['n_synced_chunks']}."
                                           f"\n                Permission to synchronize agent-info: "
                                           f"{worker_status['sync_agent_info_free']}.\n"
+                                          "            Agents-groups:\n"
+                                          f"                Last synchronization: 0.001s "
+                                          f"({worker_status['last_sync_agentgroup']['date_start']} - "
+                                          f"{worker_status['last_sync_agentgroup']['date_end']}).\n"
+                                          f"                Number of synchronized chunks: "
+                                          f"{worker_status['last_sync_agentgroup']['n_synced_chunks']}.\n"
+                                          "            Agents-groups full:\n"
+                                          f"                Last synchronization: 0.001s "
+                                          f"({worker_status['last_sync_full_agentgroup']['date_start']} - "
+                                          f"{worker_status['last_sync_full_agentgroup']['date_end']}).\n"
+                                          f"                Number of synchronized chunks: "
+                                          f"{worker_status['last_sync_full_agentgroup']['n_synced_chunks']}.\n"
                                           )])
 
         # Common assertions
@@ -177,6 +193,8 @@ async def test_print_health(get_health_mock, get_nodes_mock, local_client_mock, 
                                        f"Integrity check: {worker_status['last_check_integrity']['date_end_master']} "
                                        f"| Integrity sync: {worker_status['last_sync_integrity']['date_end_master']} |"
                                        f" Agents-info: {worker_status['last_sync_agentinfo']['date_end_master']} | "
+                                       f"Agent-groups: {worker_status['last_sync_agentgroup']['date_end']} | "
+                                       f"Agent-groups full: {worker_status['last_sync_full_agentgroup']['date_end']} | "
                                        f"Last keep alive: {worker_status['last_keep_alive']}.\n")
 
 
