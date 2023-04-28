@@ -308,15 +308,31 @@ cJSON *getModulesConfig(void) {
 int modulesSync(char* args) {
     int ret = -1;
     wmodule *cur_module = NULL;
-    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (strstr(args, cur_module->context->name)) {
-            ret = 0;
-            if (strstr(args, "dbsync") && cur_module->context->sync != NULL) {
-                ret = cur_module->context->sync(args);
+    size_t retry = 0;
+
+    do {
+        if (retry > 0) {
+            usleep(retry * WM_MAX_WAIT);
+            mdebug1("At modulesSync(): WModules is not ready. Retry %d", retry);
+        }
+
+        for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+            if (strstr(args, cur_module->context->name)) {
+                ret = 0;
+                if (strstr(args, "dbsync") && cur_module->context->sync != NULL) {
+                    ret = cur_module->context->sync(args);
+                }
+                break;
             }
+        }
+
+        ++retry;
+
+        if (retry > WM_MAX_ATTEMPTS) {
             break;
         }
-    }
+    } while (ret != 0);
+
     if (ret) {
         merror("At modulesSync(): Unable to sync module: (%d)", ret);
     }
