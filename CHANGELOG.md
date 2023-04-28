@@ -324,6 +324,15 @@ All notable changes to this project will be documented in this file.
 - Fixed Makefile to detect CPU archivecture on Gentoo Linux. ([#14165](https://github.com/wazuh/wazuh/pull/14165))
 
 
+## [v4.3.11] - 2023-04-24
+
+### Manager
+
+#### Fixed
+
+- Fixed a dead code bug that might cause wazuh-db to crash. ([#16752](https://github.com/wazuh/wazuh/pull/16752))
+
+
 ## [v4.3.10] - 2022-11-16
 
 ### Manager
