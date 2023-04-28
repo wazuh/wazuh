@@ -13,7 +13,7 @@ metadata:
     - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
 
 sources:
-  - decoder/core-windows/0
+  - decoder/integrations/0
 
 check:
   - event.original: +starts_with/{
