@@ -66,7 +66,7 @@ int mitre_load() {
     techniques_json = wdbc_query_parse_json(&sock, wazuhdb_query, response, OS_MAXSTR);
 
     if (!techniques_json) {
-        merror("Response from the Mitre database cannot be parsed.");
+        mdebug1("Response from the Mitre database cannot be parsed.");
         result = -1;
         goto end;
     }
@@ -116,7 +116,7 @@ int mitre_load() {
             phases_json = wdbc_query_parse_json(&sock, wazuhdb_query, response, OS_MAXSTR);
 
             if (!phases_json) {
-                merror("Response from the Mitre database cannot be parsed.");
+                mdebug1("Response from the Mitre database cannot be parsed.");
                 result = -1;
                 goto end;
             }
@@ -142,7 +142,7 @@ int mitre_load() {
                 tactic_json = wdbc_query_parse_json(&sock, wazuhdb_query, response, OS_MAXSTR);
 
                 if (!tactic_json) {
-                    merror("Response from the Mitre database cannot be parsed.");
+                    mdebug1("Response from the Mitre database cannot be parsed.");
                     result = -1;
                     goto end;
                 }
@@ -235,7 +235,7 @@ end:
     }
 
     if (result != 0) {
-         merror("Mitre matrix information could not be loaded.");
+         mdebug1("Mitre matrix information could not be loaded.");
     }
 
     return result;

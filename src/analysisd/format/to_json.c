@@ -113,7 +113,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
 
             for (i = 0; lf->generated_rule->mitre_technique_id[i] != NULL; i++) {
                 if (data_technique = mitre_get_attack(lf->generated_rule->mitre_technique_id[i]), !data_technique) {
-                    smwarn(list_msg, "Mitre Technique ID '%s' not found in database.", lf->generated_rule->mitre_technique_id[i]);
+                    //smwarn(list_msg, "Mitre Technique ID '%s' not found in database.", lf->generated_rule->mitre_technique_id[i]);
                 } else {
                     OSListNode *tactic_node = OSList_GetFirstNode(data_technique->tactics_list);
                     bool tactic_exist = FALSE;
@@ -194,7 +194,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log, OSList * li
 
             for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++) {
                 if (data_technique = mitre_get_attack(lf->generated_rule->mitre_id[i]), !data_technique) {
-                    smwarn(list_msg, "Mitre Technique ID '%s' not found in database.", lf->generated_rule->mitre_id[i]);
+                    //smwarn(list_msg, "Mitre Technique ID '%s' not found in database.", lf->generated_rule->mitre_id[i]);
                 } else {
                     OSListNode *tactic_node = OSList_GetFirstNode(data_technique->tactics_list);
 
