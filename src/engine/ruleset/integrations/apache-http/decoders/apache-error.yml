@@ -20,8 +20,7 @@ metadata:
     - https://httpd.apache.org/docs/2.4/custom-error.html
 
 check:
-  - event.module: apache-http
-  - event.dataset: apache-error
+  - event.original: +starts_with/[
 
 parse:
   logpar:
@@ -42,26 +41,27 @@ parse:
 
 normalize:
   - check:
-      - log.level: +r_match/^(?:emerg|alert|crit|error|warn)$
+      - log.level: +regex_match/^(?:emerg|alert|crit|error|warn)$
     map:
-      - event.type: +a_append/error
+      - event.type: +array_append/error
   - check:
-      - log.level: +r_not_match/^(?:emerg|alert|crit|error|warn)?$
+      - log.level: +regex_not_match/^(?:emerg|alert|crit|error|warn)?$
     map:
-      - event.type: +a_append/info
+      - event.type: +array_append/info
 
   - map:
       - service.type: apache
-      - event.category: +a_append/web
-      - event.dataset: apache.error
+      - event.category: +array_append/web
       - event.kind: event
       - service.type: apache
       - source.ip: +parse_ip/$source.address
+      - event.module: apache-http
+      - event.dataset: apache-error
 
     logpar:
       - message: "File does not exist: <file.path>(?, referer: <http.request.referrer>)"
 
   - check:
-      - source.ip: +ef_not_exists
+      - source.ip: +not_exists
     map:
       - source.domain: +parse_fqdn/$source.address
