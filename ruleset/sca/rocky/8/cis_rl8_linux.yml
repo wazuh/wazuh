@@ -2420,26 +2420,7 @@ checks:
 
   # 3.4.3.2.2 Ensure iptables outbound and established connections are configured. (Manual) - Not Implemented
   # 3.4.3.2.3 Ensure iptables rules exist for all open ports. (Automated) - Not implemented
-  # 3.4.3.2.4 Ensure iptables default deny firewall policy. (Automated)
-  - id: 31133
-    title: "Ensure iptables default deny firewall policy."
-    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
-    rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following commands to implement a default DROP policy: # iptables -P INPUT DROP # iptables -P OUTPUT DROP # iptables -P FORWARD DROP."
-    compliance:
-      - cis: ["3.4.3.2.4"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["CA-9"]
-      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:iptables -L -> r:"
-
+  # 3.4.3.2.4 Ensure iptables default deny firewall policy. (Automated) - Not implemented
   # 3.4.3.2.5 Ensure iptables rules are saved. (Automated) - Not Implemented
   # 3.4.3.2.6 Ensure iptables is enabled and active. (Automated)
   - id: 31135
@@ -2465,48 +2446,10 @@ checks:
   ###############################################
   # 3.4.3.3 Configure IPv6 ip6tables
   ###############################################
-  # 3.4.3.3.1 Ensure ip6tables loopback traffic is configured. (Automated)
-  - id: 31136
-    title: "Ensure ip6tables loopback traffic is configured."
-    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1)."
-    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (::1) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following commands to implement the loopback rules: # ip6tables -A INPUT -i lo -j ACCEPT # ip6tables -A OUTPUT -o lo -j ACCEPT # ip6tables -A INPUT -s ::1 -j DROP."
-    compliance:
-      - cis: ["3.4.3.3.1"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["SC-7(5)"]
-      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:iptables -L -> r:"
-
+  # 3.4.3.3.1 Ensure ip6tables loopback traffic is configured. (Automated) - Not implemented
   # 3.4.3.3.2 Ensure ip6tables outbound and established connections are configured. (Manual) - Not Implemented
   # 3.4.3.3.3 Ensure ip6tables firewall rules exist for all open ports. (Automated) - Not Implemented
-  # 3.4.3.3.4 Ensure ip6tables default deny firewall policy. (Automated)
-  - id: 31139
-    title: "Ensure ip6tables default deny firewall policy."
-    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
-    rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage. Note: Changing firewall settings while connected over network can result in being locked out of the system."
-    remediation: "Run the following commands to implement a default DROP policy: # ip6tables -P INPUT DROP # ip6tables -P OUTPUT DROP # ip6tables -P FORWARD DROP."
-    compliance:
-      - cis: ["3.4.3.3.4"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["CA-9"]
-      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:iptables -L -> r:"
-
+  # 3.4.3.3.4 Ensure ip6tables default deny firewall policy. (Automated) - Not implemented
   # 3.4.3.3.5 Ensure ip6tables rules are saved. (Automated) - Not Implemented
   # 3.4.3.3.6 Ensure ip6tables is enabled and active. (Automated)
   - id: 31141
@@ -4041,50 +3984,8 @@ checks:
   ###############################################
   # 6.1 System File Permissions
   ###############################################
-  # 6.1.1 Audit system file permissions. (Manual)
-  - id: 31240
-    title: "Audit system file permissions."
-    description: "The RPM package manager has a number of useful options. One of these, the -V for RPM option, can be used to verify that system packages are correctly installed. The -V option can be used to verify a particular package or to verify all system packages. If no output is returned, the package is installed correctly. The following table describes the meaning of output from the verify option: Code Meaning S File size differs. M File mode differs (includes permissions and file type). 5 The MD5 checksum differs. D The major and minor version numbers differ on a device file. L A mismatch occurs in a link. U The file ownership differs. G The file group owner differs. T The file time (mtime) differs. The rpm -qf command can be used to determine which package a particular file belongs to. For example the following commands determines which package the /bin/bash file belongs to: # rpm -qf /bin/bash bash-4.1.2-29.el6.x86_64 # rpm -S /bin/bash bash: /bin/bash To verify the settings for the package that controls the /bin/bash file, run the following: # rpm -V bash-4.1.2-29.el6.x86_64 .M....... /bin/bash # rpm --verify bash ??5?????? c /etc/bash.bashrc Note that you can feed the output of the rpm -qf command to the rpm -V command: # rpm -V `rpm -qf /etc/passwd` .M...... c /etc/passwd S.5....T c /etc/printcap."
-    rationale: "It is important to confirm that packaged system files and directories are maintained with the permissions they were intended to have from the OS vendor."
-    remediation: "Correct any discrepancies found and rerun the audit until output is clean or risk is mitigated or accepted."
-    references:
-      - "http://docs.fedoraproject.org/en-"
-    compliance:
-      - cis: ["6.1.1"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-      - nist_sp_800-53: ["AC-3", "CM-1", "CM-2", "CM-6", "CM-7", "IA-5", "MP-2"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.2 Ensure sticky bit is set on all world-writable directories. (Automated)
-  - id: 31241
-    title: "Ensure sticky bit is set on all world-writable directories."
-    description: "Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
-    rationale: "This feature prevents the ability to delete or rename files in world writable directories (such as /tmp) that are owned by another user."
-    remediation: "Run the following command to set the sticky bit on all world writable directories: # df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null | xargs -I '{}' chmod a+t '{}'."
-    compliance:
-      - cis: ["6.1.2"]
-      - cis_csc_v8: ["3.3", "4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-      - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
-      - pci_dss_3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
-    condition:
-    rules:
-
+  # 6.1.1 Audit system file permissions. (Manual) - Not Implemented
+  # 6.1.2 Ensure sticky bit is set on all world-writable directories. (Automated) - Not Implemented
   # 6.1.3 Ensure permissions on /etc/passwd are configured. (Automated)
   - id: 31242
     title: "Ensure permissions on /etc/passwd are configured."
@@ -4102,8 +4003,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.4 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 31243
@@ -4122,8 +4024,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/shadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.5 Ensure permissions on /etc/group are configured. (Automated)
   - id: 31244
@@ -4142,8 +4045,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.6 Ensure permissions on /etc/gshadow are configured. (Automated)
   - id: 31245
@@ -4162,8 +4066,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/gshadow -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.7 Ensure permissions on /etc/passwd- are configured. (Automated)
   - id: 31246
@@ -4182,8 +4087,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/passwd- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.8 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 31247
@@ -4202,8 +4108,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/shadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.9 Ensure permissions on /etc/group- are configured. (Automated)
   - id: 31248
@@ -4222,8 +4129,9 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/group- -> r:Access:\s*\(0644/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.10 Ensure permissions on /etc/gshadow- are configured. (Automated)
   - id: 31249
@@ -4242,112 +4150,18 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 6.1.11 Ensure no world writable files exist. (Automated)
-  - id: 31250
-    title: "Ensure no world writable files exist."
-    description: "Unix-based systems support variable settings to control access to files. World writable files are the least secure. See the chmod(2) man page for more information."
-    rationale: "Data in world-writable files can be modified and compromised by any user on the system. World writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system's integrity."
-    remediation: 'Removing write access for the "other" category ( chmod o-w <filename> ) is advisable, but always consult relevant vendor documentation to avoid breaking any application dependencies on a given file.'
-    compliance:
-      - cis: ["6.1.11"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1", "13"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.12 Ensure no unowned files or directories exist. (Automated)
-  - id: 31251
-    title: "Ensure no unowned files or directories exist."
-    description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
-    rationale: 'A new user who is assigned the deleted user''s user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended.'
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-    compliance:
-      - cis: ["6.1.12"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["13.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - mitre_techniques: ["T1015", "T1028", "T1046", "T1051", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1200", "T1210", "T1221", "T1519"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.13 Ensure no ungrouped files or directories exist. (Automated)
-  - id: 31252
-    title: "Ensure no ungrouped files or directories exist."
-    description: "Sometimes when administrators delete users or groups from the system they neglect to remove all files owned by those users or groups."
-    rationale: 'A new user who is assigned the deleted user''s user ID or group ID may then end up "owning" these files, and thus have more access on the system than was intended.'
-    remediation: "Locate files that are owned by users or groups not listed in the system configuration files, and reset the ownership of these files to some active user on the system as appropriate."
-    compliance:
-      - cis: ["6.1.13"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["13.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - mitre_techniques: ["T1015", "T1028", "T1046", "T1051", "T1052", "T1064", "T1076", "T1086", "T1091", "T1092", "T1118", "T1121", "T1127", "T1133", "T1137", "T1164", "T1170", "T1171", "T1173", "T1175", "T1180", "T1184", "T1191", "T1200", "T1210", "T1221", "T1519"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.14 Audit SUID executables. (Manual)
-  - id: 31253
-    title: "Audit SUID executables."
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SUID programs, but it is important to identify and review such programs to ensure they are legitimate."
-    remediation: "Ensure that no rogue SUID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-    compliance:
-      - cis: ["6.1.14"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.1.15 Audit SGID executables. (Manual)
-  - id: 31254
-    title: "Audit SGID executables."
-    description: "The owner of a file can set the file's permissions to run with the owner's or group's permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SGID program is to enable users to perform functions (such as changing their password) that require root privileges."
-    rationale: "There are valid reasons for SGID programs, but it is important to identify and review such programs to ensure they are legitimate. Review the files returned by the action in the audit section and check to see if system binaries have a different md5 checksum than what from the package. This is an indication that the binary may have been replaced."
-    remediation: "Ensure that no rogue SGID programs have been introduced into the system. Review the files returned by the action in the Audit section and confirm the integrity of these binaries."
-    compliance:
-      - cis: ["6.1.15"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
+  # 6.1.11 Ensure no world writable files exist. (Automated) - Not Implemented
+  # 6.1.12 Ensure no unowned files or directories exist. (Automated) - Not Implemented
+  # 6.1.13 Ensure no ungrouped files or directories exist. (Automated) - Not Implemented
+  # 6.1.14 Audit SUID executables. (Manual) - Not Implemented
+  # 6.1.15 Audit SGID executables. (Manual) - Not Implemented
+  ################################################
+  # 6.2 User and Group Settings
+  ################################################
   # 6.2.1 Ensure password fields are not empty. (Automated)
   - id: 31255
     title: "Ensure password fields are not empty."
@@ -4364,119 +4178,16 @@ checks:
       - nist_sp_800-53: ["IA-5(1)"]
       - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/shadow -> !r:^# && r:^\w+::'
 
-  # 6.2.2 Ensure all groups in /etc/passwd exist in /etc/group. (Automated)
-  - id: 31256
-    title: "Ensure all groups in /etc/passwd exist in /etc/group."
-    description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group ."
-    rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
-    remediation: "Analyze the output of the Audit step above and perform the appropriate action to correct any discrepancies found."
-    compliance:
-      - cis: ["6.2.2"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.3 Ensure no duplicate UIDs exist. (Automated)
-  - id: 31257
-    title: "Ensure no duplicate UIDs exist."
-    description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually edit the /etc/passwd file and change the UID field."
-    rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
-    remediation: "Based on the results of the audit script, establish unique UIDs and review all files owned by the shared UIDs to determine which UID they are supposed to belong to."
-    compliance:
-      - cis: ["6.2.3"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.4 Ensure no duplicate GIDs exist. (Automated)
-  - id: 31258
-    title: "Ensure no duplicate GIDs exist."
-    description: "Although the groupadd program will not let you create a duplicate Group ID (GID), it is possible for an administrator to manually edit the /etc/group file and change the GID field."
-    rationale: "User groups must be assigned unique GIDs for accountability and to ensure appropriate access protections."
-    remediation: "Based on the results of the audit script, establish unique GIDs and review all files owned by the shared GID to determine which group they are supposed to belong to."
-    compliance:
-      - cis: ["6.2.4"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.5 Ensure no duplicate user names exist. (Automated)
-  - id: 31259
-    title: "Ensure no duplicate user names exist."
-    description: "Although the useradd program will not let you create a duplicate user name, it is possible for an administrator to manually edit the /etc/passwd file and change the user name."
-    rationale: 'If a user is assigned a duplicate user name, it will create and have access to files with the first UID for that username in /etc/passwd . For example, if "test4" has a UID of 1000 and a subsequent "test4" entry has a UID of 2000, logging in as "test4" will use UID 1000. Effectively, the UID is shared, which is a security problem.'
-    remediation: "Based on the results of the audit script, establish unique user names for the users. File ownerships will automatically reflect the change as long as the users have unique UIDs."
-    compliance:
-      - cis: ["6.2.5"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.6 Ensure no duplicate group names exist. (Automated)
-  - id: 31260
-    title: "Ensure no duplicate group names exist."
-    description: "Although the groupadd program will not let you create a duplicate group name, it is possible for an administrator to manually edit the /etc/group file and change the group name."
-    rationale: "If a group is assigned a duplicate group name, it will create and have access to files with the first GID for that group in /etc/group . Effectively, the GID is shared, which is a security problem."
-    remediation: "Based on the results of the audit script, establish unique names for the user groups. File group ownerships will automatically reflect the change as long as the groups have unique GIDs."
-    compliance:
-      - cis: ["6.2.6"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.7 Ensure root PATH Integrity. (Automated)
-  - id: 31261
-    title: "Ensure root PATH Integrity."
-    description: "The root user can execute any command on the system and could be fooled into executing programs unintentionally if the PATH is not set correctly."
-    rationale: "Including the current working directory (.) or other writable directory in root 's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a Trojan horse program."
-    remediation: "Correct or justify any items discovered in the Audit step."
-    compliance:
-      - cis: ["6.2.7"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
+  # 6.2.2 Ensure all groups in /etc/passwd exist in /etc/group. (Automated) - Not Implemented
+  # 6.2.3 Ensure no duplicate UIDs exist. (Automated) - Not Implemented
+  # 6.2.4 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
+  # 6.2.5 Ensure no duplicate user names exist. (Automated) - Not Implemented
+  # 6.2.6 Ensure no duplicate group names exist. (Automated) - Not Implemented
+  # 6.2.7 Ensure root PATH Integrity. (Automated) - Not Implemented
   # 6.2.8 Ensure root is the only UID 0 account. (Automated)
   - id: 31262
     title: "Ensure root is the only UID 0 account."
@@ -4494,167 +4205,15 @@ checks:
       - pci_dss_3.2.1: ["11.5", "2.2"]
       - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
 
-  # 6.2.9 Ensure all users' home directories exist. (Automated)
-  - id: 31263
-    title: "Ensure all users' home directories exist."
-    description: "Users can be defined in /etc/passwd without a home directory or with a home directory that does not actually exist."
-    rationale: 'If the user''s home directory does not exist or is unassigned, the user will be placed in "/" and will not be able to write any files or have local environment variables set.'
-    remediation: "If any users' home directories do not exist, create them and make sure the respective user owns the directory. Users without an assigned home directory should be removed or assigned a home directory as appropriate. The following script will create a home directory for users with an interactive shell whose home directory doesn't exist: #!/bin/bash awk -F: '($1!~/(halt|sync|shutdown|nfsnobody)/ && $7!~/^(\\/usr)?\\/sbin\\/nologin(\\/)?$/ && $7!~/(\\/usr)?\\/bin\\/false(\\/)?$/) { print $1 \" \" $6 }' /etc/passwd | while read -r user dir; do if [ ! -d \"$dir\" ]; then mkdir \"$dir\" chmod g-w,o-wrx \"$dir\" chown \"$user\" \"$dir\" fi done."
-    compliance:
-      - cis: ["6.2.9"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.10 Ensure users own their home directories. (Automated)
-  - id: 31264
-    title: "Ensure users own their home directories."
-    description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files."
-    rationale: "Since the user is accountable for files stored in the user home directory, the user (or root) must be the owner of the directory."
-    remediation: "Change the ownership of any home directories that are not owned by the defined user to the correct user. The following script will create missing home directories, set the owner, and set the permissions for interactive users' home directories: #!/bin/bash awk -F: '($1!~/(halt|sync|shutdown|nfsnobody)/ && $7!~/^(\\/usr)?\\/sbin\\/nologin(\\/)?$/ && $7!~/(\\/usr)?\\/bin\\/false(\\/)?$/) { print $1 \" \" $6 }' /etc/passwd | while read -r user dir; do if [ ! -d \"$dir\" ]; then echo \"User: \\\"$user\\\" home directory: \\\"$dir\\\" does not exist, creating home directory\" mkdir \"$dir\" chmod g-w,o-rwx \"$dir\" chown \"$user\" \"$dir\" else owner=$(stat -L -c \"%U\" \"$dir\") if [ \"$owner\" != \"$user\" ]; then chmod g-w,o-rwx \"$dir\" chown \"$user\" \"$dir\" fi fi done."
-    compliance:
-      - cis: ["6.2.10"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.11 Ensure users' home directories permissions are 750 or more restrictive. (Automated)
-  - id: 31265
-    title: "Ensure users' home directories permissions are 750 or more restrictive."
-    description: "While the system administrator can establish secure permissions for users' home directories, the users can easily override these."
-    rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-    remediation: "Making global modifications to user home directories without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user file permissions and determine the action to be taken in accordance with site policy. The following script can be used to remove permissions is excess of 750 from users' home directories: #!/bin/bash awk -F: '($1!~/(halt|sync|shutdown|nfsnobody)/ && $7!~/^(\\/usr)?\\/sbin\\/nologin(\\/)?$/ && $7!~/(\\/usr)?\\/bin\\/false(\\/)?$/) {print $6}' /etc/passwd | while read -r dir; do if [ -d \"$dir\" ]; then dirperm=$(stat -L -c \"%A\" \"$dir\") if [ \"$(echo \"$dirperm\" | cut -c6)\" != \"-\" ] || [ \"$(echo \"$dirperm\" | cut -c8)\" != \"-\" ] || [ \"$(echo \"$dirperm\" | cut -c9)\" != \"-\" ] || [ \"$(echo \"$dirperm\" | cut -c10)\" != \"-\" ]; then chmod g-w,o-rwx \"$dir\" fi fi done."
-    compliance:
-      - cis: ["6.2.11"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.12 Ensure users' dot files are not group or world writable. (Automated)
-  - id: 31266
-    title: "Ensure users' dot files are not group or world writable."
-    description: 'While the system administrator can establish secure permissions for users'' "dot" files, the users can easily override these.'
-    rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user dot file permissions and determine the action to be taken in accordance with site policy. The following script will remove excessive permissions on dot files within interactive users' home directories. #!/bin/bash awk -F: '($1!~/(halt|sync|shutdown|nfsnobody)/ && $7!~/^(\\/usr)?\\/sbin\\/nologin(\\/)?$/ && $7!~/(\\/usr)?\\/bin\\/false(\\/)?$/) { print $6 }' /etc/passwd | while read -r dir; do if [ -d \"$dir\" ]; then for file in \"$dir\"/.*; do if [ ! -h \"$file\" ] && [ -f \"$file\" ]; then fileperm=$(stat -L -c \"%A\" \"$file\") if [ \"$(echo \"$fileperm\" | cut -c6)\" != \"-\" ] || [ \"$(echo \"$fileperm\" | cut -c9)\" != \"-\" ]; then chmod go-w \"$file\" fi fi done fi done."
-    compliance:
-      - cis: ["6.2.12"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.13 Ensure users' .netrc Files are not group or world accessible. (Automated)
-  - id: 31267
-    title: "Ensure users' .netrc Files are not group or world accessible."
-    description: "While the system administrator can establish secure permissions for users' .netrc files, the users can easily override these."
-    rationale: "The .netrc file presents a significant security risk since it stores passwords in unencrypted form. Even if FTP is disabled, user accounts may have brought over .netrc files from other systems which could pose a risk to those systems. If a .netrc file is required, and follows local site policy, it should have permissions of 600 or more restrictive."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .netrc files and determine the action to be taken in accordance with site policy. The following script will remove .netrc files from interactive users' home directories #!/bin/bash awk -F: '($1!~/(halt|sync|shutdown|nfsnobody)/ && $7!~/^(\\/usr)?\\/sbin\\/nologin(\\/)?$/ && $7!~/(\\/usr)?\\/bin\\/false(\\/)?$/) { print $6 }' /etc/passwd | while read -r dir; do if [ -d \"$dir\" ]; then file=\"$dir/.netrc\" [ ! -h \"$file\" ] && [ -f \"$file\" ] && rm -f \"$file\" fi done."
-    compliance:
-      - cis: ["6.2.13"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_techniques: ["T1004", "T1015", "T1021", "T1023", "T1031", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1050", "T1051", "T1053", "T1054", "T1070", "T1072", "T1073", "T1075", "T1076", "T1078", "T1080", "T1081", "T1084", "T1089", "T1096", "T1097", "T1133", "T1134", "T1145", "T1146", "T1150", "T1152", "T1156", "T1157", "T1159", "T1160", "T1162", "T1163", "T1165", "T1168", "T1169", "T1184", "T1185", "T1196", "T1197", "T1198", "T1200", "T1209", "T1213", "T1484", "T1489", "T1492", "T1494", "T1501", "T1504", "T1528", "T1530", "T1537", "T1538"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 6.2.14 Ensure no users have .forward files. (Automated)
-  - id: 31268
-    title: "Ensure no users have .forward files."
-    description: "The .forward file specifies an email address to forward the user's mail to."
-    rationale: "Use of the .forward file poses a security risk in that sensitive data may be inadvertently transferred outside the organization. The .forward file also poses a risk as it can be used to execute commands that may perform unintended actions."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .forward files and determine the action to be taken in accordance with site policy. The following script will remove .forward files from interactive users' home directories #!/bin/bash awk -F: '($1!~/(halt|sync|shutdown|nfsnobody)/ && $7!~/^(\\/usr)?\\/sbin\\/nologin(\\/)?$/ && $7!~/(\\/usr)?\\/bin\\/false(\\/)?$/) { print $6 }' /etc/passwd | while read -r dir; do if [ -d \"$dir\" ]; then file=\"$dir/.forward\" [ ! -h \"$file\" ] && [ -f \"$file\" ] && rm -r \"$file\" fi done."
-    compliance:
-      - cis: ["6.2.14"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["5.1"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.15 Ensure no users have .netrc files. (Automated)
-  - id: 31269
-    title: "Ensure no users have .netrc files."
-    description: "The .netrc file contains data for logging into a remote host for file transfers via FTP."
-    rationale: "The .netrc file presents a significant security risk since it stores passwords in unencrypted form. Even if FTP is disabled, user accounts may have brought over .netrc files from other systems which could pose a risk to those systems."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .netrc files and determine the action to be taken in accordance with site policy. The following script will remove .netrc files from interactive users' home directories #!/bin/bash awk -F: '($1!~/(halt|sync|shutdown|nfsnobody)/ && $7!~/^(\\/usr)?\\/sbin\\/nologin(\\/)?$/ && $7!~/(\\/usr)?\\/bin\\/false(\\/)?$/) { print $6 }' /etc/passwd | while read -r dir; do if [ -d \"$dir\" ]; then file=\"$dir/.netrc\" [ ! -h \"$file\" ] && [ -f \"$file\" ] && rm -f \"$file\" fi done."
-    compliance:
-      - cis: ["6.2.15"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.10.1.1"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
-
-  # 6.2.16 Ensure no users have .rhosts files. (Automated)
-  - id: 31270
-    title: "Ensure no users have .rhosts files."
-    description: "While no .rhosts files are shipped by default, users can easily create them."
-    rationale: "This action is only meaningful if .rhosts support is permitted in the file /etc/pam.conf . Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf , they may have been brought over from other systems and could contain information useful to an attacker for those other systems."
-    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user .rhosts files and determine the action to be taken in accordance with site policy. The following script will remove .rhosts files from interactive users' home directories #!/bin/bash awk -F: '($1!~/(halt|sync|shutdown|nfsnobody)/ && $7!~/^(\\/usr)?\\/sbin\\/nologin(\\/)?$/ && $7!~/(\\/usr)?\\/bin\\/false(\\/)?$/) { print $6 }' /etc/passwd | while read -r dir; do if [ -d \"$dir\" ]; then file=\"$dir/.rhosts\" [ ! -h \"$file\" ] && [ -f \"$file\" ] && rm -r \"$file\" fi done."
-    compliance:
-      - cis: ["6.2.16"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["16.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.10.1.1"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition:
-    rules:
+  # 6.2.9 Ensure all users' home directories exist. (Automated) - Not Implemented
+  # 6.2.10 Ensure users own their home directories. (Automated) - Not Implemented
+  # 6.2.11 Ensure users' home directories permissions are 750 or more restrictive. (Automated) - Not Implemented
+  # 6.2.12 Ensure users' dot files are not group or world writable. (Automated) - Not Implemented
+  # 6.2.13 Ensure users' .netrc Files are not group or world accessible. (Automated) - Not Implemented
+  # 6.2.14 Ensure no users have .forward files. (Automated) - Not Implemented
+  # 6.2.15 Ensure no users have .netrc files. (Automated) - Not Implemented
+  # 6.2.16 Ensure no users have .rhosts files. (Automated) - Not Implemented
