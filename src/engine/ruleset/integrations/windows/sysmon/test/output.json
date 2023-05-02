@@ -7,7 +7,10 @@
             "decoders": [
                 "core-ossec-message",
                 "core-windows",
-                "integrations"
+                "integrations",
+                "windows-json",
+                "windows-event-decoder",
+                "windows-sysmon"
             ],
             "source": "logcollector"
         },
@@ -91,7 +94,10 @@
             "decoders": [
                 "core-ossec-message",
                 "core-windows",
-                "integrations"
+                "integrations",
+                "windows-json",
+                "windows-event-decoder",
+                "windows-sysmon"
             ],
             "source": "logcollector"
         },
@@ -179,7 +185,10 @@
             "decoders": [
                 "core-ossec-message",
                 "core-windows",
-                "integrations"
+                "integrations",
+                "windows-json",
+                "windows-event-decoder",
+                "windows-sysmon"
             ],
             "source": "logcollector"
         },
@@ -298,7 +307,10 @@
             "decoders": [
                 "core-ossec-message",
                 "core-windows",
-                "integrations"
+                "integrations",
+                "windows-json",
+                "windows-event-decoder",
+                "windows-sysmon"
             ],
             "source": "logcollector"
         },

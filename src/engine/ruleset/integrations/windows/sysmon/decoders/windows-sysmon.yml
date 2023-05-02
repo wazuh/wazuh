@@ -21,6 +21,7 @@ check:
 
 normalize:
  - map:
+    - wazuh.decoders: +array_append/windows-sysmon
     - event.module: windows
     - event.dataset: sysmon
     - event.kind: event
