@@ -36,7 +36,7 @@ normalize:
    - ~temp.user_parts: +split/$~windows.Event.EventData.UserId/\
    - user.domain: $~temp.user_parts.0
    - user.name: $~temp.user_parts.1
-   - related.user: +array_append/user.name
+   - related.user: +array_append/$user.name
 
   ## PowerShell fields.
    - powershell.engine.new_state: $~windows.Event.EventData.NewEngineState
