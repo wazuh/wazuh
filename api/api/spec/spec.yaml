@@ -538,6 +538,14 @@ x-rbac-catalog:
         actions: [ 'vulnerability:run' ]
         resources: [ '*:*:*' ]
         effect: "allow"
+    'event:create':
+      description: "Ingest agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['event:create']
+        resources: ['*:*:*']
+        effect: "allow"
 
 components:
   responses:
