@@ -24,6 +24,7 @@ parse:
 
 normalize:
  - map:
+   - wazuh.decoders: +array_append/windows-event-decoder
    - event.module: windows
    - event.dataset: base
    - event.start: $~windows.Event.System.TimeCreated.@SystemTime
