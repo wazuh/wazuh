@@ -13,10 +13,11 @@ metadata:
     - https://www.sonicwall.com/es-mx/support/technical-documentation
 
 sources:
-  - decoder/queue-syslog/0
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
 
 check:
+  - event.module: sonicwall
+  - event.dataset: sonicwall.firewall
   - event.original: +regex_match/id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
 
 parse:
@@ -83,6 +84,7 @@ normalize:
       - related.ip: +array_append/$destination.ip
       - related.ip: +array_append/$source.nat.ip
       - related.ip: +array_append/$destination.nat.ip
+      - wazuh.decoders: +array_append/sonicwall-firewall-generated
   - check:
       - ~log.start_message: +not_exists
     logpar:
