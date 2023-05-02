@@ -92,6 +92,13 @@ THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to req
 # Classes
 ################################################################################
 
+from shared.wazuh_cloud_logger import WazuhCloudLogger
+from aws_logger import AWSLogStrategy
+
+aws_logger = WazuhCloudLogger(
+    strategy=AWSLogStrategy()
+)
+
 
 class WazuhIntegration:
     """
@@ -3591,6 +3598,9 @@ def main(argv):
         global debug_level
         debug_level = int(options.debug)
         debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
+
+        # Set Logger level
+        aws_logger.set_level(log_level=debug_level)
 
     try:
         if options.logBucket:

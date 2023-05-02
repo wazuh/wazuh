@@ -6,7 +6,7 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-"""This module implements the GCPLogStrategy class"""
+"""This module implements the AWSLogStrategy class"""
 
 import logging
 
@@ -18,18 +18,19 @@ from wodles.shared.wazuh_cloud_logger import WazuhLogStrategy
 ########################################################################################################################
 
 
-class GCPLogStrategy(WazuhLogStrategy):
+class AWSLogStrategy(WazuhLogStrategy):
     """
-    GCPLogStrategy class for GCP integration.
+    AWSLogStrategy class for AWS integration.
 
-    Implements the LogStrategy interface to log messages for GCP integration.
+    Implements the LogStrategy interface to log messages for AWS integration.
     """
+
     def __init__(self):
         """
-        Initialize the GCPLogStrategy class.
+        Initialize the AWSLogStrategy class.
 
         """
-        self.logger = logging.getLogger(':gcloud_wodle:')
+        self.logger = logging.getLogger(':aws-s3')
 
     def info(self, message: str):
         """
@@ -40,29 +41,29 @@ class GCPLogStrategy(WazuhLogStrategy):
         message : str
             The message to be logged.
         """
-        self.logger.info(message)
+        self.logger.info("aws.py: info: " + message)
 
     def debug(self, message: str):
         """
-        Log an DEBUG level message.
+        Log a DEBUG level message.
 
         Parameters
         ----------
         message : str
             The message to be logged.
         """
-        self.logger.debug(message)
+        self.logger.debug("aws.py: debug: " + message)
 
     def warning(self, message: str):
         """
-        Log an WARNING level message.
+        Log a WARNING level message.
 
         Parameters
         ----------
         message : str
             The message to be logged.
         """
-        self.logger.warning(message)
+        self.logger.warning("aws.py: warning: " + message)
 
     def error(self, message: str):
         """
@@ -73,15 +74,15 @@ class GCPLogStrategy(WazuhLogStrategy):
         message : str
             The message to be logged.
         """
-        self.logger.error(message)
+        self.logger.error("aws.py: error: " + message)
 
     def critical(self, message: str):
         """
-        Log an CRITICAL level message.
+        Log a CRITICAL level message.
 
         Parameters
         ----------
         message : str
             The message to be logged.
         """
-        self.logger.critical(message)
+        self.logger.critical("aws.py: critical: " + message)
