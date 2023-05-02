@@ -13,12 +13,13 @@ metadata:
     - https://www.sonicwall.com/es-mx/support/technical-documentation
 
 sources:
-  - decoder/syslog/0
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
 
 # Since the event is first parsed by the syslog, event.original is
 # not used here but the message field where the syslog saved the rest of the event information.
 check:
+  - event.module: sonicwall
+  - event.dataset: sonicwall.firewall
   - message: +regex_match/^id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
 
 parse:
@@ -47,6 +48,7 @@ normalize:
       - service.type: sonicwall
       - tags: +array_append/forwarded/sonicwall.firewall
       - \@timestamp: $event.start
+      - wazuh.decoders: +array_append/sonicwall-firewall
   - check:
       - ~tmp.src: +exists
     logpar:
