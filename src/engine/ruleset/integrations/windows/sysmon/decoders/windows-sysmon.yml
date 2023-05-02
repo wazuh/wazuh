@@ -171,7 +171,7 @@ normalize:
  - check: event.code==12 OR event.code==13  OR event.code==14
    map:
     - registry.path: $~windows.Event.EventData.TargetObject
-    - ~temp.registry.array: +split/$registry.path/\/
+    - ~temp.registry.array: +split/$registry.path/\\
     - registry.hive: $~temp.registry.array.0
     - ~temp.registry.array.0: +delete
     - registry.key: +join/$~temp.registry.array/\\
@@ -202,5 +202,5 @@ normalize:
 
 # Cleanup
  - map:
-   - ~temp: +delete
+ #  - ~temp: +delete
    - ~windows: +delete
