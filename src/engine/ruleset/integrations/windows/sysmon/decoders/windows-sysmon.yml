@@ -202,5 +202,5 @@ normalize:
 
 # Cleanup
  - map:
- #  - ~temp: +delete
+   - ~temp: +delete
    - ~windows: +delete
