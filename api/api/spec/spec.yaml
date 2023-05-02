@@ -11647,7 +11647,7 @@ paths:
                       name: "wazuh"
                       node: "master-node"
                     full_log: "ERROR"
-                    decoder:
+                    decoder: None
                     location: "/var/log/syslog"
                   alert: false
                   codemsg: 1
