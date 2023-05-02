@@ -2,18 +2,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import logging
 
 from aiohttp import web
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.results import WazuhResult
 from wazuh.event import send_event_to_analysisd
 
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.api.models.events_ingest_model import EventsIngestModel
-from api.util import remove_nones_to_dict
+from api.models.events_ingest_model import EventsIngestModel
+from api.util import raise_if_exc, remove_nones_to_dict
 
 logger = logging.getLogger('wazuh-api')
 
@@ -32,8 +30,6 @@ async def forward_event(request, pretty=False, wait_for_complete=False):
         rbac_permissions=request['token_info']['rbac_policies']
     )
 
-    asyncio.create_task(dapi.distribute_function())
+    data = raise_if_exc(await dapi.distribute_function())
 
-    data = WazuhResult({'message': 'The events will be forwarded to analisysd'})
-
-    return web.json_response(data=data, status=202, dumps=prettify if pretty else dumps)
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
