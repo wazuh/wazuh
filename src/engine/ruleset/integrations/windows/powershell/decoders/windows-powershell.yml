@@ -20,6 +20,7 @@ check:
 
 normalize:
  - map:
+   - wazuh.decoders: +array_append/windows-powershell
    - event.module: windows
    - event.dataset: powershell
    - event.kind: event
