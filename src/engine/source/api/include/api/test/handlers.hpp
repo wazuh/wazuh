@@ -139,6 +139,13 @@ api::Handler sessionsDelete(std::shared_ptr<::router::Router> router, std::share
 api::Handler sessionsGet(void);
 
 /**
+ * @brief 
+ * 
+ * @return api::Handler 
+ */
+api::Handler sessionRun();
+
+/**
  * @brief Register all handlers for the test API.
  *
  * @param config Test configuration.
