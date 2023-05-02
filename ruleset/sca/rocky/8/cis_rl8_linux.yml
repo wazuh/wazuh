@@ -796,7 +796,7 @@ checks:
   ###############################################
   # 1.2 Configure Software Updates
   ###############################################
-  # 1.2.1 Ensure GPG keys are configured (Manual) - Not implemented
+  # 1.2.1 Ensure GPG keys are configured (Manual) - Not Implemented
   # 1.2.2 Ensure gpgcheck is globally activated. (Automated)
   - id: 31034
     title: "Ensure gpgcheck is globally activated."
@@ -1985,14 +1985,14 @@ checks:
     rules:
       - "c:rpm -q tftp -> r:^package tftp is not installed"
 
-  # 2.4 Ensure nonessential services are removed or masked. (Manual) - Not implemented
+  # 2.4 Ensure nonessential services are removed or masked. (Manual) - Not Implemented
   ###############################################
   # 3 Network Configuration
   ###############################################
   ###############################################
   # 3.1 Disable unused network protocols and devices
   ###############################################
-  # 3.1.1 Verify if IPv6 is enabled on the system. (Manual) - Not implemented
+  # 3.1.1 Verify if IPv6 is enabled on the system. (Manual) - Not Implemented
   # 3.1.2 Ensure SCTP is disabled. (Automated)
   - id: 31095
     title: "Ensure SCTP is disabled."
@@ -2122,6 +2122,7 @@ checks:
       - "c:rpm -q nftables -> r:^package nftables is not installed"
       - "c:systemctl is-active nftables -> r:inactive"
       - "c:systemctl is-enabled nftables -> r:masked"
+
   # 3.4.1.4 Ensure firewalld service enabled and running. (Automated)
   - id: 31112
     title: "Ensure firewalld service enabled and running."
