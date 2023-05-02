@@ -21,3 +21,7 @@ check:
 parse:
   logpar:
     - event.original: <~json/json>
+
+normalize:
+ - map:
+    - wazuh.decoders: +array_append/windows-json

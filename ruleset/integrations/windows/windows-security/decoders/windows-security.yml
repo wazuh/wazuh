@@ -20,6 +20,7 @@ check: ~windows.Event.System.Provider.@Name==Microsoft-Windows-Security-Auditing
 
 normalize:
  - map:
+    - wazuh.decoders: +array_append/windows-security
     - event.module: windows
     - event.dataset: security
 
