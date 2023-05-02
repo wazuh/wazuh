@@ -308,12 +308,12 @@ cJSON *getModulesConfig(void) {
 int modulesSync(char* args) {
     int ret = -1;
     wmodule *cur_module = NULL;
-    size_t retry = 0;
+    int retry = 0;
 
     do {
         if (retry > 0) {
             usleep(retry * WM_MAX_WAIT);
-            mdebug1("At modulesSync(): WModules is not ready. Retry %d", retry);
+            mdebug1("WModules is not ready. Retry %d", retry);
         }
 
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
@@ -334,7 +334,7 @@ int modulesSync(char* args) {
     } while (ret != 0);
 
     if (ret) {
-        merror("At modulesSync(): Unable to sync module: (%d)", ret);
+        merror("At modulesSync(): Unable to sync module '%s': (%d)", cur_module ? cur_module->tag : "",  ret);
     }
     return ret;
 }
