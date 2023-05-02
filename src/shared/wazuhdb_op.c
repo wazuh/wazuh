@@ -219,7 +219,7 @@ cJSON * wdbc_query_parse_json(int *sock, const char *query, char *response, cons
     case WDBC_OK:
         break;
     case WDBC_ERROR:
-        merror("Bad response from wazuh-db: %s", arg);
+        mdebug1("Bad response from wazuh-db: %s", arg);
         // Fallthrough
     default:
         return NULL;
@@ -248,7 +248,7 @@ wdbc_result wdbc_query_parse(int *sock, const char *query, char *response, const
     if (OS_SUCCESS == result) {
         status = wdbc_parse_result(response, &_payload);
         if (status == WDBC_ERROR){
-            merror("Bad response from wazuh-db: %s", _payload);
+            mdebug1("Bad response from wazuh-db: %s", _payload);
         }
     }
     else if (-2 == result) {
