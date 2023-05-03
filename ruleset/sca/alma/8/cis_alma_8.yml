@@ -2894,8 +2894,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|key=perm_chng'
 
   # 4.1.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded. (Automated)
   - id: 31164
@@ -2913,8 +2915,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
 
   # 4.1.3.17 Ensure successful and unsuccessful attempts to use the chacl command are recorded. (Automated)
   - id: 31165
@@ -2932,8 +2936,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k priv_cmd|-F key=priv_cmd'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k priv_cmd|-F key=priv_cmd'
 
   # 4.1.3.18 Ensure successful and unsuccessful attempts to use the usermod command are recorded. (Automated)
   - id: 31166
@@ -2951,8 +2957,10 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k usermod|-F key=usermod'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k usermod|-F key=usermod'
 
   # 4.1.3.19 Ensure kernel module loading unloading and modification is collected. (Automated)
   - id: 31167
@@ -2970,13 +2978,23 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - 'c:auditctl -l-> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/kmod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
+      - "c:ls -l /usr/sbin/lsmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/rmmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/insmod -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/modinfo -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/modprobe -> r:/bin/kmod"
+      - "c:ls -l /usr/sbin/depmod -> r:/bin/kmod"
 
   # 4.1.3.20 Ensure the audit configuration is immutable. (Automated)
   - id: 31168
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- \"-e 2\" >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
     compliance:
@@ -2990,8 +3008,9 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "7.1", "9.4.5"]
       - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - 'not d:/etc/audit/rules.d -> r:\.+.rules$ -> !r:\s*\t*-e 2$'
 
   # 4.1.3.21 Ensure the running and on disk configuration is the same. (Manual)
   - id: 31169
@@ -3009,8 +3028,9 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "c:augenrules --check -> r:/usr/sbin/augenrules && r:No change"
 
   # 4.2.1.1 Ensure rsyslog is installed. (Automated)
   - id: 31170
@@ -3028,8 +3048,9 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q rsyslog -> r:^rsyslog-"
 
   # 4.2.1.2 Ensure rsyslog service is enabled. (Automated)
   - id: 31171
@@ -3047,8 +3068,9 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled rsyslog -> r:^enabled"
 
   # 4.2.1.3 Ensure journald is configured to send logs to rsyslog. (Manual)
   - id: 31172
@@ -3067,8 +3089,9 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["PL1.4"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 4.2.1.4 Ensure rsyslog default file permissions are configured. (Automated)
   - id: 31173
@@ -3089,46 +3112,13 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0640|^\$FileCreateMode 0600|^\$FileCreateMode 0400'
+      - 'd:/etc/rsyslog.d/ -> r:\.+.conf -> r:^\$FileCreateMode 0640|^\$FileCreateMode 0600|^\$FileCreateMode 0400'
 
-  # 4.2.1.5 Ensure logging is configured. (Manual)
-  - id: 31174
-    title: "Ensure logging is configured."
-    description: "The /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files specifies rules for logging and which files are to be used to log certain classes of messages."
-    rationale: "A great deal of important security-related information is sent via rsyslog (e.g., successful and failed su attempts, failed login attempts, root login attempts, etc.)."
-    remediation: "Edit the following lines in the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files as appropriate for your environment. NOTE: The below configuration is shown for example purposes only. Due care should be given to how the organization wish to store log data. *.emerg :omusrmsg:* auth,authpriv.* /var/log/secure mail.* -/var/log/mail mail.info -/var/log/mail.info mail.warning -/var/log/mail.warn mail.err /var/log/mail.err cron.* /var/log/cron *.=warning;*.=err -/var/log/warn *.crit /var/log/warn *.*;mail.none;news.none -/var/log/messages local0,local1.* -/var/log/localmessages local2,local3.* -/var/log/localmessages local4,local5.* -/var/log/localmessages local6,local7.* -/var/log/localmessages Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog."
-    compliance:
-      - cis: ["4.2.1.5"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 4.2.1.6 Ensure rsyslog is configured to send logs to a remote log host. (Manual)
-  - id: 31175
-    title: "Ensure rsyslog is configured to send logs to a remote log host."
-    description: "RSyslog supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralized log management."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog.'
-    compliance:
-      - cis: ["4.2.1.6"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
+  # 4.2.1.5 Ensure logging is configured. (Manual) - Not Implemented
+  # 4.2.1.6 Ensure rsyslog is configured to send logs to a remote log host. (Manual) - Not Implemented
 
   # 4.2.1.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated)
   - id: 31176
@@ -3148,8 +3138,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "10.2", "10.3", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "2.2.4", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'not d:/etc/rsyslog.d -> r:\.+.conf$ -> r:^\s*\t*\$ModLoad imtcp|\s*\t*^\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
+      - 'not f:/etc/rsyslog.conf -> r:^\s*\t*\$ModLoad imtcp|^\s*\t*\$InputTCPServerRun|^\s*\t*module load="imtcp"|^\s*\t*input type="imtcp" port="514"'
 
   # 4.2.2.1.1 Ensure systemd-journal-remote is installed. (Manual)
   - id: 31177
@@ -3167,27 +3159,11 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:rpm -q systemd-journal-remote -> r:^systemd-journal-remote-"
 
-  # 4.2.2.1.2 Ensure systemd-journal-remote is configured. (Manual)
-  - id: 31178
-    title: "Ensure systemd-journal-remote is configured."
-    description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralised log management."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: "Edit the /etc/systemd/journal-upload.conf file and ensure the following lines are set per your environment: URL=192.168.50.42 ServerKeyFile=/etc/ssl/private/journal-upload.pem ServerCertificateFile=/etc/ssl/certs/journal-upload.pem TrustedCertificateFile=/etc/ssl/ca/trusted.pem Restart the service: # systemctl restart systemd-journal-upload."
-    compliance:
-      - cis: ["4.2.2.1.2"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-12", "AU-2", "SI-5"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
+  # 4.2.2.1.2 Ensure systemd-journal-remote is configured. (Manual) - Not Implemented
 
   # 4.2.2.1.3 Ensure systemd-journal-remote is enabled. (Manual)
   - id: 31179
@@ -3205,8 +3181,9 @@ checks:
       - nist_sp_800-53: ["AU-12", "AU-2", "CM-7", "SI-5"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:systemctl is-enabled systemd-journal-upload.service -> r:^\s*\t*enabled$'
 
   # 4.2.2.1.4 Ensure journald is not configured to receive logs from a remote client. (Automated)
   - id: 31180
@@ -3226,8 +3203,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "10.2", "10.3", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "2.2.4", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled systemd-journal-remote.socket -> r:^masked"
 
   # 4.2.2.2 Ensure journald service is enabled. (Automated)
   - id: 31181
@@ -3245,8 +3223,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled systemd-journald.service -> r:^static"
 
   # 4.2.2.3 Ensure journald is configured to compress large log files. (Automated)
   - id: 31182
@@ -3265,8 +3244,9 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.7"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*Compress=yes'
 
   # 4.2.2.4 Ensure journald is configured to write logfiles to persistent disk. (Automated)
   - id: 31183
@@ -3284,8 +3264,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/systemd/journald.conf -> r:^\s*Storage=persistent'
 
   # 4.2.2.5 Ensure journald is not configured to send logs to rsyslog. (Manual)
   - id: 31184
@@ -3304,48 +3285,12 @@ checks:
       - pci_dss_v3.2.1: ["10.2", "10.3", "10.5.3", "10.5.4"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "10.3.3", "5.3.4", "6.4.1", "6.4.2"]
       - soc_2: ["PL1.4"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
-  # 4.2.2.6 Ensure journald log rotation is configured per site policy. (Manual)
-  - id: 31185
-    title: "Ensure journald log rotation is configured per site policy."
-    description: "Journald includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/systemd/journald.conf is the configuration file used to specify how logs generated by Journald should be rotated."
-    rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-    remediation: "Review /etc/systemd/journald.conf and verify logs are rotated according to site policy. The settings should be carefully understood as there are specific edge cases and prioritization of parameters. The specific parameters for log rotation are: SystemMaxUse= SystemKeepFree= RuntimeMaxUse= RuntimeKeepFree= MaxFileSec=."
-    compliance:
-      - cis: ["4.2.2.6"]
-      - cis_csc_v8: ["8.2"]
-      - cis_csc_v7: ["6.2", "6.3"]
-      - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - hipaa: ["164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.2", "10.3"]
-      - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition:
-    rules:
-
-  # 4.2.2.7 Ensure journald default file permissions configured. (Manual)
-  - id: 31186
-    title: "Ensure journald default file permissions configured."
-    description: "Journald will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
-    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
-    remediation: "If the default configuration is not appropriate for the site specific requirements, copy /usr/lib/tmpfiles.d/systemd.conf to /etc/tmpfiles.d/systemd.conf and modify as required. Requirements is either 0640 or site policy if that is less restrictive."
-    compliance:
-      - cis: ["4.2.2.7"]
-      - cis_csc_v8: ["3.3", "8.2"]
-      - cis_csc_v7: ["5.1", "6.2", "6.3"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "AU.L2-3.3.1", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)", "164.312(b)"]
-      - iso_27001-2013: ["A.12.4.1", "A.14.2.5", "A.8.1.3"]
-      - mitre_techniques: ["T1003", "T1011", "T1015", "T1017", "T1019", "T1028", "T1034", "T1035", "T1036", "T1037", "T1044", "T1047", "T1051", "T1053", "T1054", "T1055", "T1058", "T1067", "T1070", "T1072", "T1073", "T1075", "T1076", "T1077", "T1078", "T1080", "T1081", "T1084", "T1086", "T1087", "T1088", "T1089", "T1092", "T1096", "T1097", "T1098", "T1100", "T1110", "T1112", "T1130", "T1133", "T1134", "T1136", "T1137", "T1138", "T1139", "T1142", "T1145", "T1146", "T1147", "T1148", "T1150", "T1156", "T1157", "T1165", "T1166", "T1169", "T1173", "T1174", "T1175", "T1176", "T1177", "T1178", "T1184", "T1187", "T1190", "T1196", "T1197", "T1198", "T1199", "T1200", "T1201", "T1206", "T1208", "T1209", "T1210", "T1214", "T1215", "T1218", "T1485", "T1486", "T1487", "T1488", "T1489", "T1490", "T1491", "T1492", "T1494", "T1495", "T1501", "T1503", "T1504", "T1505", "T1506", "T1525", "T1530", "T1535", "T1537", "T1539"]
-      - nist_sp_800-53: ["AC-3", "AU-12", "AU-2", "MP-2", "SI-5"]
-      - pci_dss_v3.2.1: ["10.2", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 4.2.2.6 Ensure journald log rotation is configured per site policy. (Manual) - Not Implemented
+  # 4.2.2.7 Ensure journald default file permissions configured. (Manual) - Not Implemented
 
   # 4.2.3 Ensure permissions on all logfiles are configured. (Automated)
   - id: 31187
@@ -3365,25 +3310,11 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'not c:sh -c "find /var/log/ -type f -perm /g+wx,o+rwx -exec ls -l "{}" +" -> r:\w+'
 
-  # 4.3 Ensure logrotate is configured. (Manual)
-  - id: 31188
-    title: "Ensure logrotate is configured."
-    description: "The system includes the capability of rotating log files regularly to avoid filling up the system with logs or making the logs unmanageably large. The file /etc/logrotate.d/syslog is the configuration file used to rotate log files created by syslog or rsyslog."
-    rationale: "By keeping the log files smaller and more manageable, a system administrator can easily archive these files to another system and spend less time looking through inordinately large log files."
-    remediation: "Edit /etc/logrotate.conf and /etc/logrotate.d/* to ensure logs are rotated according to site policy."
-    compliance:
-      - cis: ["4.3"]
-      - cis_csc_v8: ["8.3"]
-      - cis_csc_v7: ["6.4"]
-      - iso_27001-2013: ["A.12.4.1"]
-      - nist_sp_800-53: ["AU-8"]
-      - pci_dss_v3.2.1: ["10.7"]
-      - soc_2: ["A1.1"]
-    condition:
-    rules:
+  # 4.3 Ensure logrotate is configured. (Manual) - Not Implemented
 
   # 5.1.1 Ensure cron daemon is enabled. (Automated)
   - id: 31189
@@ -3673,7 +3604,7 @@ checks:
   # 5.2.6 Ensure SSH PAM is enabled. (Automated)
   - id: 31203
     title: "Ensure SSH PAM is enabled."
-    description: "UsePAM Enables the Pluggable Authentication Module interface. If set to “yes” this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
+    description: 'UsePAM Enables the Pluggable Authentication Module interface. If set to "yes" this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types.'
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     impact: "If UsePAM is enabled, you will not be able to run sshd(8) as a non-root user."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: UsePAM yes."
