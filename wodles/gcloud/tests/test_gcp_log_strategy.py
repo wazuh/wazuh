@@ -6,7 +6,7 @@ from gcp_logger import GCPLogStrategy
 
 @pytest.fixture(scope='module')
 def gcp_strategy():
-    return GCPLogStrategy(logger=logging.getLogger('TestGCPLogStrategy'))
+    return GCPLogStrategy()
 
 
 def test_info(gcp_strategy, caplog):

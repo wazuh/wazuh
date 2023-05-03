@@ -6,7 +6,7 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-"""This module implements the GCPLogStrategy class"""
+"""This module implements the GCPLogStrategy class."""
 
 import logging
 
@@ -28,10 +28,6 @@ class GCPLogStrategy(WazuhLogStrategy):
         """
         Initialize the GCPLogStrategy class.
 
-        Parameters
-        ----------
-        logger : logging.Logger
-            The logger instance.
         """
         self.logger = logging.getLogger(':gcloud_wodle:')
 
