@@ -16,6 +16,10 @@ from api.util import raise_if_exc
 from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
 from wazuh.core.utils import get_utc_now
 
+
+MAX_REQUESTS_DEFAULT = 300
+EVENTS_LIMIT_PERCENTAGE = 0.1
+
 # API secure headers
 secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
 
@@ -49,6 +53,8 @@ ip_stats = dict()
 ip_block = set()
 request_counter = 0
 current_time = None
+events_request_counter = 0
+events_current_time = None
 
 
 async def unlock_ip(request: web_request.BaseRequest, block_time: int):
@@ -112,7 +118,7 @@ async def request_logging(request, handler):
 
 
 @web.middleware
-async def prevent_denial_of_service(request: web_request.BaseRequest, max_requests: int = 300):
+async def prevent_denial_of_service(request: web_request.BaseRequest, max_requests: int = MAX_REQUESTS_DEFAULT):
     """This function checks that the maximum number of requests per minute set in the configuration is not exceeded.
 
     Parameters
@@ -138,10 +144,43 @@ async def prevent_denial_of_service(request: web_request.BaseRequest, max_reques
 
 
 @web.middleware
+async def events_endpoint_rate_limiter(
+    request: web_request.BaseRequest, max_requests: int = MAX_REQUESTS_DEFAULT
+) -> None:
+    """Rate limiter for the events ingestion endpoint.
+    This takes a percentage, defined in EVENTS_LIMIT_PERCENTAGE, from the max requests parameter.
+
+    Parameters
+    ----------
+    request : web_request.BaseRequest
+        API request.
+    max_requests : int, optional
+        Maximum number of requests per minute permitted, by default MAX_REQUESTS_DEFAULT.
+    """
+    global events_current_time, events_request_counter
+
+    if not events_current_time:
+        events_current_time = get_utc_now().timestamp()
+
+    if get_utc_now().timestamp() - 60 <= events_current_time:
+        events_request_counter += 1
+    else:
+        events_request_counter = 0
+        events_current_time = get_utc_now().timestamp()
+
+    if events_request_counter > int(max_requests * EVENTS_LIMIT_PERCENTAGE):
+        logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
+        raise_if_exc(WazuhTooManyRequests(6001))
+
+
+@web.middleware
 async def security_middleware(request, handler):
     access_conf = api_conf['access']
     if access_conf['max_request_per_minute'] > 0:
-        await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
+        if request.path != '/events':
+            await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
+        else:
+            await events_endpoint_rate_limiter(request, max_requests=access_conf['max_request_per_minute'])
     await unlock_ip(request, block_time=access_conf['block_time'])
 
     return await handler(request)
