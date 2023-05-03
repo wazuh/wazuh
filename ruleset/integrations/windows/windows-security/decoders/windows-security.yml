@@ -96,26 +96,6 @@ normalize:
        - ~windows.Event.EventData.FailureReason: +exists
    map:
         - winlog.logon.failure.reason: +kvdb_get/failure_codes_descriptions/$~windows.Event.EventData.FailureReason
-    # Audit Policy Changes
-    # Needs for each element of an array
-    #- check:
-    #  - ~windows.Event.EventData.AuditPolicyChanges: +exists
-    #  map:
-    #    - ~tmp.array_policy_changes: +split/$~windows.Event.EventData.AuditPolicyChanges/,
-    #    - event.AuditPolicyChangesDescription: +kvdb_for_each/win_failure_codes_description/$~tmp.array_policy_changes
-    # Access List
- #- check:
-   #   - ~windows.Event.EventData.AccessList: +exists
-   #map:
-        #- ~tmp.array_access_masks: +split/$~windows.Event.EventData.AccessMask/,
-        #- event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
-    #
-    # Access Mask - # Requires bitwise operations
-    #- check:
-    #  - ~windows.Event.EventData.AccessMask: +exists
-    #  map:
-    #   - _tmp.array_policy_changes: +split/$~windows.Event.EventData.AuditPolicyChanges/ #whitespace spearator?
-    #   - _tmp.accesMask |= _tmp.array_policy_changes #bitwise OR add?
 
     # Conditional logon status and substatus
     # 4625 and 4776 Set Status and SubStatus
@@ -246,9 +226,6 @@ normalize:
      - user.domain: $~windows.Event.UserData.LogFileCleared.SubjectDomainName.#text
      - winlog.logon.id: $~windows.Event.UserData.LogFileCleared.SubjectLogonId.#text
      - winlog.task: Log clear
-     # If we wanted to alert about this event - How the rule would look:
-     # - alert.description: Windows audit log was cleared.
-     # - alert.level: 9
 
 
 # Rename Common Auth Fields
