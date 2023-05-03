@@ -538,12 +538,12 @@ x-rbac-catalog:
         actions: [ 'vulnerability:run' ]
         resources: [ '*:*:*' ]
         effect: "allow"
-    'event:create':
-      description: "Ingest agents"
+    'event:ingest':
+      description: "Ingest events"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['event:create']
+        actions: ['event:ingest']
         resources: ['*:*:*']
         effect: "allow"
 
@@ -19072,7 +19072,7 @@ paths:
       description: "Ingest security events to analysisd"
       operationId: api.controllers.event_controller.forward_event
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/event:create'
+        - $ref: '#/x-rbac-catalog/actions/event:ingest'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
