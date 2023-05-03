@@ -13,11 +13,13 @@ metadata:
     - https://docs.fortinet.com/document/fortimanager/7.2.1/log-message-reference/683345/introduction
 
 sources:
-  - decoder/queue-syslog/0
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
 
 check:
   - event.original: +regex_match/(?i)logver=
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: fortinet
+  # - event.dataset: fortinet.fortimanager
 
 parse:
   logpar:
