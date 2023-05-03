@@ -1,0 +1,580 @@
+<!--
+  - Microsoft Graph rules - Security resource
+-->
+
+<!--
+    ID range: 99000 - 99500
+-->
+
+<group name="ms-graph">
+    <!--Add catchall rule -->
+    <rule id="99000" level="0">
+        <decoded_as>json</decoded_as>
+        <field name="integration">ms-graph</field>
+        <options>no_full_log</options>
+        <description>Microsoft graph messages grouped.</description>
+    </rule>
+
+<!--Alerts 99001-99200-->
+
+    <rule id="99001" level="3">
+        <if_sid>99000</if_sid>
+        <field name="relationship">alerts|alerts_v2</field>
+        <description>Alert related events</description>
+    </rule>
+
+<!--Alerts/Classification 99005-99015-->
+
+    <rule id="99005" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.classification">falsePositive</field>
+        <description>MS Graph message: The alert is a false positive and didn't detect malicious activity.</description>
+    </rule>
+
+    <rule id="99006" level="6">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.classification">truePositive</field>
+        <description>MS Graph message: The alert is true positive and detected malicious activity.</description>
+    </rule>
+
+    <rule id="99007" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.classification">informationalExpectedActivity</field>
+        <description>MS Graph message: The alert is benign positive and detected potentially malicious activity by a trusted/internal user, for example, security testing.</description>
+    </rule>
+
+    <rule id="99008" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.classification">unknownFutureValue</field>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations.</description>
+    </rule>
+
+
+<!--Alerts/DetectionSource 99030-99055-->
+
+    <rule id="99046" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.detectionSource">unknownFutureValue</field>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations.</description>
+    </rule>
+
+
+<!--Alerts/determination 99062-99090-->
+
+    <rule id="99062" level="14">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">apt</field>
+        <description>MS Graph message: A true positive alert that detected an advanced persistent threat.</description>
+    </rule>
+
+    <rule id="99063" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">malware</field>
+        <description>MS Graph message: A true positive alert that detected malicious software.</description>
+    </rule>
+
+    <rule id="99064" level="6">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">securityPersonnel</field>
+        <description>MS Graph message: A true positive alert that detected valid suspicious activity that was performed by someone on the customer's security team.</description>
+    </rule>
+
+    <rule id="99065" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">securityTesting</field>
+        <description>MS Graph message: The alert detected valid suspicious activity that was performed as part of a known security testing.</description>
+    </rule>
+
+    <rule id="99066" level="6">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">unwantedSoftware</field>
+        <description>MS Graph message: The alert detected unwanted software.</description>
+    </rule>
+
+    <rule id="99067" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">multiStagedAttack</field>
+        <description>MS Graph message: A true positive alert that detected multiple kill-chain attack stages.</description>
+    </rule>
+
+    <rule id="99068" level="14">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">compromisedAccount</field>
+        <description>MS Graph message: A true positive alert that detected that the intended user's credentials were compromised or stolen.</description>
+    </rule>
+
+    <rule id="99069" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">phishing</field>
+        <description>MS Graph message: A true positive alert that detected a phishing email.</description>
+    </rule>
+
+    <rule id="99070" level="6">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">maliciousUserActivity</field>
+        <description>MS Graph message: A true positive alert that detected that the logged-on user performs malicious activities.</description>
+    </rule>
+
+    <rule id="99071" level="0">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">notMalicious</field>
+        <description>MS Graph message: A false alert, no suspicious activity.</description>
+    </rule>
+
+    <rule id="99072" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">notEnoughDataToValidate</field>
+        <description>MS Graph message: A false alert, without enough information to prove otherwise.</description>
+    </rule>
+
+    <rule id="99073" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">confirmedActivity</field>
+        <description>MS Graph message: The alert caught a true suspicious activity that is considered OK because it is a known user activity.</description>
+    </rule>
+
+    <rule id="99074" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">lineOfBusinessApplication</field>
+        <description>MS Graph message: The alert caught a true suspicious activity that is considered OK because it is a known and confirmed internal application.</description>
+    </rule>
+
+    <rule id="99075" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">other</field>
+        <description>MS Graph message: Other determination.</description>
+    </rule>
+
+    <rule id="99076" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">unknownFutureValue</field>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations.</description>
+    </rule>
+
+
+<!--Alerts/evidence/remediation status 99094-99100-->
+
+    <rule id="99094" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.remediationStatus">none</field>
+        <description>MS Graph message: No threats were found.</description>
+    </rule>
+
+    <rule id="99095" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.remediationStatus">remediated</field>
+        <description>MS Graph message: Remediation action has completed successfully.</description>
+    </rule>
+
+    <rule id="99096" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.remediationStatus">prevented</field>
+        <description>MS Graph message: The threat was prevented from executing.</description>
+    </rule>
+
+    <rule id="99097" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.remediationStatus">blocked</field>
+        <description>MS Graph message: The threat was blocked while executing.</description>
+    </rule>
+
+    <rule id="99098" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.remediationStatus">notFound</field>
+        <description>MS Graph message: The evidence was not found.</description>
+    </rule>
+
+    <rule id="99099" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.remediationStatus">unknownFutureValue</field>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations</description>
+    </rule>
+
+
+<!--Alerts/Evidence/roles 99104-99120-->
+
+    <rule id="99104" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">contextual</field>
+        <description>MS Graph message: An entity that arose likely benign but was reported as a side effect of an attacker's action.</description>
+    </rule>
+
+    <rule id="99105" level="6">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">scanned</field>
+        <description>MS Graph message: An entity identified as a target of discovery scanning or reconnaissance actions.</description>
+    </rule>
+
+    <rule id="99108" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">created</field>
+        <description>MS Graph message: The entity was created as a result of the actions of an attacker.</description>
+    </rule>
+
+    <rule id="99109" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">added</field>
+        <description>MS Graph message: The entity was added as a result of the actions of an attacker.</description>
+    </rule>
+
+    <rule id="99110" level="14">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">compromised</field>
+        <description>MS Graph message: The entity was compromised and is under the control of an attacker.</description>
+    </rule>
+
+    <rule id="99111" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">edited</field>
+        <description>MS Graph message: The entity was edited or changed by an attacker.</description>
+    </rule>
+
+    <rule id="99112" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">attacked</field>
+        <description>MS Graph message: The entity was attacked.</description>
+    </rule>
+
+    <rule id="99113" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">attacker</field>
+        <description>MS Graph message: The entity represents the attacker.</description>
+    </rule>
+
+    <rule id="99114" level="14">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">commandAndControl</field>
+        <description>MS Graph message: The entity is being used for command and control.</description>
+    </rule>
+
+    <rule id="99115" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">loaded</field>
+        <description>MS Graph message: The entity was loaded by a process under the control of an attacker.</description>
+    </rule>
+
+    <rule id="99116" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">suspicious</field>
+        <description>MS Graph message: The entity is suspected of being malicious or controlled by an attacker but has not been incriminated.</description>
+    </rule>
+
+    <rule id="99117" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">policyViolator</field>
+        <description>MS Graph message: The entity is a violator of a customer defined policy.</description>
+    </rule>
+
+    <rule id="99118" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.roles">unknownFutureValue</field>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations.</description>
+    </rule>
+
+
+<!--Alerts/evidence/verdict 99125-99140-->
+
+    <rule id="99125" level="6">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.verdict">suspicious</field>
+        <description>MS Graph message: The evidence was determined to be Suspicious.</description>
+    </rule>
+
+    <rule id="99126" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.verdict">malicious</field>
+        <description>MS Graph message: The evidence was determined to be malicious.</description>
+    </rule>
+
+    <rule id="99127" level="0">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.verdict">noThreatsFound</field>
+        <description>MS Graph message: No threat was detected - the evidence is benign.</description>
+    </rule>
+
+    <rule id="99128" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.verdict">unknownFutureValue</field>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations.</description>
+    </rule>
+
+<!--end of evidence-->
+
+<!--Alerts/ServiceSource 99145-99160-->
+
+    <rule id="99152" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.serviceSource">unknownFutureValue</field>
+        <description>MS Graph message: Evolvable enumeration sentinel value. Do not use.</description>
+    </rule>
+
+
+<!--Alerts/Severity 99161-99170-->
+
+    <rule id="99161" level="3">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">informational</field>
+        <description>MS Graph message: Alerts that may not be actionable or considered harmful to the network but can drive organizational security awareness on potential security issues.</description>
+    </rule>
+
+    <rule id="99162" level="6">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">low</field>
+        <description>MS Graph message: Alerts on threats associated with prevalent malware.</description>
+    </rule>
+
+    <rule id="99163" level="12">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">medium</field>
+        <description>MS Graph message: Alerts generated from detections and response post-breach behaviors that might be a part of an advanced persistent threat (APT). This includes observed behaviors typical of attack stages, anomalous registry change, execution of suspicious files, and so forth. Although some might be due to internal security testing, they are valid detections and require investigation as they may be a part of an advanced attack.</description>
+    </rule>
+
+    <rule id="99164" level="14">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">high</field>
+        <description>MS Graph message: Alerts commonly seen associated with advanced persistent threats (APT). These alerts indicate a high risk because of the severity of damage they can inflict on assets.</description>
+    </rule>
+
+    <rule id="99165" level="4">
+        <if_sid>99001</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">unknownFutureValue</field>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations.</description>
+    </rule>
+
+<!--End of Alerts -->
+
+<!--Incidents 99201-99270-->
+
+    <rule id="99201" level="3">
+        <if_sid>99000</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.relationship">incidents</field>
+        <description>MS Graph message: Incident Related Events</description>
+    </rule>
+
+
+<!--incident/Classification 99205-99210-->
+
+    <rule id="99205" level="4">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.classification">falsePositive</field>
+        <description>MS Graph message: The incident is a false positive and didn't detect malicious activity.</description>
+    </rule>
+
+    <rule id="99206" level="6">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.classification">truePositive</field>
+        <description>MS Graph message: The incident is true positive and detected malicious activity.</description>
+    </rule>
+
+    <rule id="99207" level="3">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.classification">informationalExpectedActivity</field>
+        <description>MS Graph message: The incident is benign positive and detected potentially malicious activity by a trusted/internal user, for example, security testing.</description>
+    </rule>
+
+    <rule id="99208" level="4">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.classification">unknownFutureValue</field>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations.</description>
+    </rule>
+    
+<!--incident/determination 99225-99245-->
+
+    <rule id="99225" level="14">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">apt</field>
+        <description>MS Graph message: A true positive alert that detected an advanced persistent threat.</description>
+    </rule>
+
+    <rule id="99226" level="12">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">malware</field>
+        <description>MS Graph message: A true positive alert that detected malicious software.</description>
+    </rule>
+
+    <rule id="99227" level="6">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">securityPersonnel</field>
+        <description>MS Graph message: A true positive alert that detected valid suspicious activity that was performed by someone on the customer's security team.</description>
+    </rule>
+
+    <rule id="99228" level="3">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">securityTesting</field>
+        <description>MS Graph message: The alert detected valid suspicious activity that was performed as part of a known security testing.</description>
+    </rule>
+
+    <rule id="99229" level="6">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">unwantedSoftware</field>
+        <description>MS Graph message: The alert detected unwanted software.</description>
+    </rule>
+
+    <rule id="99230" level="12">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">multiStagedAttack</field>
+        <description>MS Graph message: A true positive alert that detected multiple kill-chain attack stages.</description>
+    </rule>
+
+    <rule id="99231" level="14">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">compromisedAccount</field>
+        <description>MS Graph message: A true positive alert that detected that the intended user's credentials were compromised or stolen.</description>
+    </rule>
+
+    <rule id="99232" level="3">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">phishing</field>
+        <description>MS Graph message: A true positive alert that detected a phishing email.</description>
+    </rule>
+
+    <rule id="99233" level="6">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">maliciousUserActivity</field>
+        <description>MS Graph message: A true positive alert that detected that the logged-on user performs malicious activities.</description>
+    </rule>
+
+    <rule id="99234" level="0">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">notMalicious</field>
+        <description>MS Graph message: A false alert, no suspicious activity.</description>
+    </rule>
+
+    <rule id="99235" level="3">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">notEnoughDataToValidate</field>
+        <description>MS Graph message: A false alert, without enough information to prove otherwise.</description>
+    </rule>
+
+    <rule id="99236" level="3">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">confirmedActivity</field>
+        <description>MS Graph message: The alert caught a true suspicious activity that is considered OK because it is a known user activity.</description>
+    </rule>
+
+    <rule id="99237" level="3">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">lineOfBusinessApplication</field>
+        <description>MS Graph message: The alert caught a true suspicious activity that is considered OK because it is a known and confirmed internal application.</description>
+    </rule>
+
+    <rule id="99238" level="3">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">other</field>
+        <description>MS Graph message: Other determination.</description>
+    </rule>
+
+    <rule id="99239" level="4">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.determination">unknownFutureValue</field>
+        <description>MS Graph message: Unused value - Check for logging misconfigurations</description>
+    </rule>
+
+
+<!--incident/Severity 99250-99260-->
+
+    <rule id="99250" level="3">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">informational</field>
+        <description>MS Graph message: Severity | Alerts that may not be actionable or considered harmful to the network but can drive organizational security awareness on potential security issues.</description>
+    </rule>
+
+    <rule id="99251" level="6">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">low</field>
+        <description>MS Graph message: Severity | Alerts on threats associated with prevalent malware.</description>
+    </rule>
+
+    <rule id="99252" level="12">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">medium</field>
+        <description>MS Graph message: Severity | Alerts generated from detections and response post-breach behaviors that might be a part of an advanced persistent threat (APT). This includes observed behaviors typical of attack stages, anomalous registry change, execution of suspicious files, and so forth. Although some might be due to internal security testing, they are valid detections and require investigation as they may be a part of an advanced attack.</description>
+    </rule>
+
+    <rule id="99253" level="14">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">high</field>
+        <description>MS Graph message: Severity | Alerts commonly seen associated with advanced persistent threats (APT). These alerts indicate a high risk because of the severity of damage they can inflict on assets.</description>
+    </rule>
+
+    <rule id="99254" level="4">
+        <if_sid>99201</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.severity">unknownFutureValue</field>
+        <description>MS Graph message: Severity | Unused value - Check for logging misconfigurations.</description>
+    </rule>
+
+</group>
