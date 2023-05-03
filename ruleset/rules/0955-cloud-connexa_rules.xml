@@ -1,0 +1,27 @@
+<!--
+  -  CloudConnexa rules
+  -  Created by OpenVPN Inc.
+  -  Copyright (C) 2023, OpenVPN Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+    Log messages
+    {"OpenVpnLogVersion": 1, "time": "2013-02-29T08:00:01+01:00", "logId": "012345678901234567890", "category": "Activity.Admin", "action": "test message", "publicIp": "19.9.9.9", "initiator": "abcde", "source": "openvpncloud", "aws": {"log_info": {"aws_account_alias": "", "log_file": "healthcheck/2023-03-01/2023-03-01-08-01-1.json.gz", "s3bucket": "ychapran-log-streaming-2-wazuh"}, "source": "openvpncloud"}}
+-->
+
+<group name="cloud-connexa.json">
+
+    <rule id="100000" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="OpenVpnLogVersion">\d+</field>
+    <description>Cloud Connexa messages</description>
+    </rule>
+
+    <rule id="100001" level="13">
+    <if_sid>100000</if_sid>
+    <description>Cloud Connexa: $(initiator) (publicIp:$(publicIp)) performed '$(action1)' from category $(category)</description>
+    <options>no_full_log</options>
+    </rule>
+
+</group>

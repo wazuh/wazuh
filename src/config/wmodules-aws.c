@@ -59,6 +59,10 @@ static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 static const char *SECURITY_LAKE_SUBSCRIBER_TYPE = "security_lake";
 static const char *BUCKETS_SUBSCRIBER_TYPE = "buckets";
 static const char *SECURITY_HUB_SUBSCRIBER_TYPE = "security_hub";
+static const char *CLOUD_CONNEXA_BUCKET_TYPE = "cloud_connexa";
+
+static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html";
+static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
 
 // Parse XML
 
@@ -167,14 +171,14 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         || !strcmp(*nodes[i]->values, VPCFLOW_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CISCO_UMBRELLA_BUCKET_TYPE)
                         || !strcmp(*nodes[i]->values, WAF_BUCKET_TYPE) || !strcmp(*nodes[i]->values, ALB_BUCKET_TYPE)
                         || !strcmp(*nodes[i]->values, CLB_BUCKET_TYPE) || !strcmp(*nodes[i]->values, NLB_BUCKET_TYPE)
-                        || !strcmp(*nodes[i]->values, SERVER_ACCESS_BUCKET_TYPE)) {
+                        || !strcmp(*nodes[i]->values, SERVER_ACCESS_BUCKET_TYPE) || !strcmp(*nodes[i]->values, CLOUD_CONNEXA_BUCKET_TYPE)) {
                         os_strdup(*nodes[i]->values, cur_bucket->type);
                     } else {
                         mterror(WM_AWS_LOGTAG, "Invalid bucket type '%s'. Valid ones are '%s', '%s', '%s', '%s', '%s', "
-                                               "'%s', %s', %s', %s', %s' or '%s'",
+                                               "'%s', %s', %s', %s', %s', %s' or '%s'",
                             *nodes[i]->values, CLOUDTRAIL_BUCKET_TYPE, CONFIG_BUCKET_TYPE, GUARDDUTY_BUCKET_TYPE, VPCFLOW_BUCKET_TYPE,
                             WAF_BUCKET_TYPE, CISCO_UMBRELLA_BUCKET_TYPE, CUSTOM_BUCKET_TYPE, ALB_BUCKET_TYPE, CLB_BUCKET_TYPE, NLB_BUCKET_TYPE,
-                            SERVER_ACCESS_BUCKET_TYPE);
+                            CLOUD_CONNEXA_BUCKET_TYPE, SERVER_ACCESS_BUCKET_TYPE);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }

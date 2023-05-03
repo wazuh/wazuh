@@ -9,7 +9,7 @@
 from __future__ import division
 from collections import OrderedDict
 import xml.etree.ElementTree as ET
-import ConfigParser
+import configparser
 import subprocess
 import os
 import sys
@@ -35,14 +35,13 @@ def getWazuhInfo(wazuh_home):
     wazuh_control = os.path.join(wazuh_home, "bin", "wazuh-control")
     wazuh_env_vars = {}
     try:
-        proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
+        proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE, text=True)
         (stdout, stderr) = proc.communicate()
     except Exception as e:
         print("Seems like there is no Wazuh installation.")
         return None
 
-    env_variables = stdout.rsplit("\n")
-    env_variables.remove("")
+    env_variables = stdout.splitlines()
     for env_variable in env_variables:
         key, value = env_variable.split("=")
         wazuh_env_vars[key] = value.replace("\"", "")
@@ -202,7 +201,7 @@ class OssecTester(object):
                     continue
                 self._execution_data[a_ini_file] = {"passed": 0, "failed": 0}
                 print("- [ File = %s ] ---------" % (a_ini_file))
-                tGroup = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
+                tGroup = configparser.RawConfigParser(dict_type=MultiOrderedDict)
                 tGroup.read([a_ini_file])
                 tSections = tGroup.sections()
                 for t in tSections:
@@ -231,7 +230,8 @@ class OssecTester(object):
         for test_name in self._execution_data:
             passed_count = self._execution_data[test_name]["passed"]
             failed_count = self._execution_data[test_name]["failed"]
-            status = u'\u274c'.encode('utf-8') if (failed_count > 0) else u'\u2705'.encode('utf-8')
+            # status = u'\u274c'.encode('utf-8') if (failed_count > 0) else u'\u2705'.encode('utf-8')
+            status = "FAILED" if (failed_count > 0) else "PASSED"
             print(template.format(test_name, passed_count, failed_count, status))
 
         if len(self._failed_tests):
