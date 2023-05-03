@@ -4,12 +4,19 @@
 from copy import copy
 from datetime import datetime
 from unittest.mock import AsyncMock, patch
-from freezegun import freeze_time
-import pytest
 
-from api.middlewares import unlock_ip, _cleanup_detail_field, prevent_bruteforce_attack, prevent_denial_of_service, \
-    security_middleware
+import pytest
+from freezegun import freeze_time
 from wazuh.core.exception import WazuhPermissionError, WazuhTooManyRequests
+
+from api.middlewares import (
+    _cleanup_detail_field,
+    events_endpoint_rate_limiter,
+    prevent_bruteforce_attack,
+    prevent_denial_of_service,
+    security_middleware,
+    unlock_ip,
+)
 
 
 class DummyRequest:
@@ -51,7 +58,8 @@ def test_cleanup_detail_field():
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 @pytest.mark.asyncio
 async def test_middlewares_unlock_ip():
-    from api.middlewares import ip_stats, ip_block
+    from api.middlewares import ip_block, ip_stats
+
     # Assert they are not empty
     assert ip_stats and ip_block
     await unlock_ip(DummyRequest({'remote': "ip"}), 5)
@@ -83,7 +91,7 @@ async def test_middlewares_unlock_ip_ko():
 async def test_middlewares_prevent_bruteforce_attack(request_info, stats):
     """Test `prevent_bruteforce_attack` blocks IPs when reaching max number of attempts."""
     with patch("api.middlewares.ip_stats", new=copy(stats)):
-        from api.middlewares import ip_stats, ip_block
+        from api.middlewares import ip_block, ip_stats
         previous_attempts = ip_stats['ip']['attempts'] if 'ip' in ip_stats else 0
         await prevent_bruteforce_attack(DummyRequest(request_info),
                                         attempts=5)
@@ -112,18 +120,49 @@ async def test_middlewares_prevent_denial_of_service(current_time, max_requests)
                 raise_mock.assert_called_once_with(WazuhTooManyRequests(6001))
 
 
+@freeze_time(datetime(1970, 1, 1))
+@pytest.mark.parametrize("current_time, max_requests", [
+    (-80, 300),
+    (0, 0),
+])
+@pytest.mark.asyncio
+async def test_middlewares_events_endpoint_rate_limiter(current_time, max_requests):
+    """Test if the rate limit mechanism triggers when the `max_requests` are reached."""
+
+    with patch("api.middlewares.current_time", new=current_time):
+        with patch("api.middlewares.raise_if_exc") as raise_mock:
+            await events_endpoint_rate_limiter(DummyRequest({'remote': 'ip'}), max_requests=max_requests)
+            if max_requests == 0:
+                raise_mock.assert_called_once_with(WazuhTooManyRequests(6001))
+
+
 @patch("api.middlewares.unlock_ip")
 @patch("api.middlewares.prevent_denial_of_service")
+@patch("api.middlewares.events_endpoint_rate_limiter")
+@pytest.mark.parametrize(
+    "request_body,expected_mock",
+    [
+        ({"path": "/events"}, "events_limit_mock"),
+        ({"path": "some_path"}, "denial_mock")
+    ]
+)
 @pytest.mark.asyncio
-async def test_middlewares_security_middleware(denial_mock, unlock_mock):
+async def test_middlewares_security_middleware(
+    events_limit_mock, denial_mock, unlock_mock, request_body, expected_mock
+):
     """Test that all security middlewares are correctly set following the API configuration."""
     max_req = 5
     block_time = 10
-    request = DummyRequest({})
+    request = DummyRequest(request_body)
 
-    with patch("api.middlewares.api_conf", new={'access': {'max_request_per_minute': max_req,
-                                                           'block_time': block_time}}):
+    with patch(
+        "api.middlewares.api_conf",
+        new={'access': {'max_request_per_minute': max_req, 'block_time': block_time}}
+    ):
         await security_middleware(request, handler_mock)
 
-        denial_mock.assert_called_once_with(request, max_requests=max_req)
+        if expected_mock == "denial_mock":
+            denial_mock.assert_called_once_with(request, max_requests=max_req)
+        elif expected_mock == "events_limit_mock":
+            events_limit_mock.assert_called_once_with(request, max_requests=max_req)
         unlock_mock.assert_called_once_with(request, block_time=block_time)
