@@ -2,7 +2,12 @@ name: Syscollector test on Windows
 
 on:
   pull_request:
-    branches: ["*"]
+    paths:
+      - ".github/workflows/windows-syscollector-tests.yml"
+      - "src/data_provider/**"
+      - "src/shared_modules/**"
+      - "src/wazuh_modules/syscollector/**"
+      - "src/Makefile"
 
 jobs:
   build:
