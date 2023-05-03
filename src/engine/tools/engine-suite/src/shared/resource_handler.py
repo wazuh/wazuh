@@ -103,7 +103,7 @@ class ResourceHandler:
 
         self._write_file(pure_path, content, format)
 
-    def update_catalog_file(self, path: str, name: str, content: dict, format: Format):
+    def _base_catalog_command(self, path: str, type: str, name: str, content: dict, format: Format, command: str):
         raw_message = ''
         format_str = ''
         if format is Format.JSON:
@@ -112,42 +112,10 @@ class ResourceHandler:
         elif format is Format.YML:
             raw_message = yaml.dump(content, Dumper=Dumper, sort_keys=False)
             format_str = 'yaml'
-        else:
-            raise Exception(f'Format not supported in update catalog {name}')
+        elif command != 'delete':
+            raise Exception(f'Format not supported for catalog {name}')
 
-        request = {'version': 1, 'command': 'catalog.resource/put', 'origin': {
-            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'name': name, 'content': raw_message, 'format': format_str}}
-        request_raw = json.dumps(request)
-        request_bytes = len(request_raw).to_bytes(4, 'little')
-        request_bytes += request_raw.encode('utf-8')
-
-        data = b''
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-            s.connect(path)
-            s.sendall(request_bytes)
-            data = s.recv(65507)
-
-        resp_size = int.from_bytes(data[:4], 'little')
-        resp_message = data[4:resp_size+4].decode('UTF-8')
-
-        response = json.loads(resp_message)
-        if response['data']['status'] != 'OK':
-            raise Exception(
-                f'Could not create {name} due to: {response["data"]["error"]}')
-
-    def add_catalog_file(self, path: str, type: str, name: str, content: dict, format: Format):
-        raw_message = ''
-        format_str = ''
-        if format is Format.JSON:
-            raw_message = json.dumps(content)
-            format_str = 'json'
-        elif format is Format.YML:
-            raw_message = yaml.dump(content, Dumper=Dumper, sort_keys=False)
-            format_str = 'yaml'
-        else:
-            raise Exception(f'Format not supported in update catalog {name}')
-
-        request = {'version': 1, 'command': 'catalog.resource/post', 'origin': {
+        request = {'version': 1, 'command': 'catalog.resource/' + command, 'origin': {
             'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'type': type, 'name': name, 'content': raw_message, 'format': format_str}}
         request_raw = json.dumps(request)
         request_bytes = len(request_raw).to_bytes(4, 'little')
@@ -162,10 +130,24 @@ class ResourceHandler:
         resp_size = int.from_bytes(data[:4], 'little')
         resp_message = data[4:resp_size+4].decode('UTF-8')
 
+        # Change post for update and put for add
+        if command == 'post':
+            command = 'add'
+        elif command == 'put':
+            command = 'update'
         response = json.loads(resp_message)
         if response['data']['status'] != 'OK':
             raise Exception(
-                f'Could not create {name} due to: {response["data"]["error"]}')
+                f'Could not execute {command} {name} due to: {response["data"]["error"]}')
+
+    def update_catalog_file(self, path: str, name: str, content: dict, format: Format):
+        self._base_catalog_command(path, type, name, content, format, 'put')
+
+    def add_catalog_file(self, path: str, type: str, name: str, content: dict, format: Format):
+        self._base_catalog_command(path, type, name, content, format, 'post')
+
+    def delete_catalog_file(self, path: str, type: str, name: str):
+        self._base_catalog_command(path, type, name, [], format, 'delete')
 
     def save_plain_text_file(self, path_str: str, name: str, content: str):
         path = Path(path_str)
@@ -207,19 +189,8 @@ class ResourceHandler:
     def cwd(self) -> str:
         return str(Path.cwd())
 
-    def recursive_load_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
-        path = Path(path_str) / type
-        if path.exists():
-            for entry in path.rglob('*'):
-                if entry.is_file():
-                    if print_name:
-                        print(f'Loading {entry.name}')
-                    component = self.load_file(entry, Format.YML)
-                    self.add_catalog_file(
-                        api_socket, type[:-1], component['name'], component, Format.YML)
-
-    def create_kvdb(self, api_socket: str, name: str, path: str):
-        request = {'version': 1, 'command': 'kvdb.manager/post', 'origin': {
+    def _base_command_kvdb(self, api_socket: str, name: str, path: str, subcommand):
+        request = {'version': 1, 'command': 'kvdb.manager/' + subcommand, 'origin': {
             'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'name': name, 'path': path}}
         request_raw = json.dumps(request)
         request_bytes = len(request_raw).to_bytes(4, 'little')
@@ -235,15 +206,73 @@ class ResourceHandler:
         resp_message = data[4:resp_size+4].decode('UTF-8')
 
         response = json.loads(resp_message)
-        if response['data']['status'] != 'OK':
+        try:
+            if response['data']['status'] != 'OK':
+                raise Exception(
+                    f'Could not execute [{subcommand}] command in "{name}" due to: {response["data"]["error"]}')
+        except:
             raise Exception(
-                f'Could not create {name} due to: {response["data"]["error"]}')
+                f'Could not execute [{subcommand}] command in "{name}" due to: {response["message"]}')
 
-    def recursive_create_kvdbs(self, api_socket: str, path_str: str, print_name: bool = False):
+    def create_kvdb(self, api_socket: str, name: str, path: str):
+        self._base_command_kvdb(api_socket, name, path, 'post')
+
+    def delete_kvdb(self, api_socket: str, name: str, path: str):
+        self._base_command_kvdb(api_socket, name, path, 'delete')
+
+    def _base_recursive_command_on_kvdbs(self, api_socket: str, path_str: str, command: str, print_name: bool = False):
         path = Path(path_str) / 'kvdbs'
         if path.exists():
             for entry in path.rglob('*'):
                 if entry.is_file():
+                    # Change post for create
+                    command_str = command
+                    if command == 'post':
+                        command_str = 'create'
                     if print_name:
-                        print(f'Creating {entry.name}')
-                    self.create_kvdb(api_socket, entry.stem, str(entry))
+                        print(
+                            f'Applying [{command_str}] command to "{entry.stem}"')
+                    self._base_command_kvdb(
+                        api_socket, entry.stem, str(entry), command)
+                else:
+                    raise Exception(f'"kvdbs" Directory should contain files')
+        else:
+            raise Exception(
+                f'Could not execute [{command}] command in "{name}" due to: unexistent path "{path_str}"')
+
+    def recursive_create_kvdbs(self, api_socket: str, path_str: str, print_name: bool = False):
+        self._base_recursive_command_on_kvdbs(
+            api_socket, path_str, 'post', print_name)
+
+    def recursive_delete_kvdbs(self, api_socket: str, path_str: str, print_name: bool = False):
+        self._base_recursive_command_on_kvdbs(
+            api_socket, path_str, 'delete', print_name)
+
+    def _recursive_command_to_catalog(self, api_socket: str, path_str: str, type: str, command: str, print_name: bool = False):
+        path = Path(path_str) / type
+        if path.exists():
+            for entry in path.rglob('*'):
+                if entry.is_file():
+                    component = []
+                    name = entry.stem
+                    component = self.load_file(entry, Format.YML)
+                    name = component['name']
+                    if print_name:
+                        print(
+                            f'Applying {command} command to {name} {type[:-1]}')
+                    self._base_catalog_command(
+                        api_socket, type[:-1], name, component, Format.YML, command)
+        else:
+            raise Exception(f'{path_str}/{type} does not exist')
+
+    def recursive_load_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
+        self._recursive_command_to_catalog(
+            api_socket, path_str, type, 'post', print_name)
+
+    def recursive_update_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
+        self._recursive_command_to_catalog(
+            api_socket, path_str, type, 'put', print_name)
+
+    def recursive_delete_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
+        self._recursive_command_to_catalog(
+            api_socket, path_str, type, 'delete', print_name)
