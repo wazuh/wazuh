@@ -343,7 +343,7 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
                 } else if (strstr(text, "[Ref #1629]")) {
                     mwarn("osqueryd initialize failed: Could not initialize database.");
                 } else if (end = wm_osquery_already_running(text), end) {
-                    free(strpid);
+                    os_free(strpid);
                     strpid = end;
 
                     // Don't report the first time
@@ -406,25 +406,28 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
         }
     }
 
-    free(strpid);
+    os_free(strpid);
     return NULL;
 }
 
 char * wm_osquery_already_running(char * text) {
-    const char * PATTERNS[] = { "osqueryd (", ") is already running" };
+    const char * PATTERNS[] = { "osqueryd (", ") is already running" , "Pidfile::Error::Busy" };
     char * begin;
     char * end;
 
     // Find "osqueryd (xxxx) is already running"
+   if (text != NULL) {
+       if (begin = strstr(text, PATTERNS[0]), begin && (end = strstr(begin += strlen(PATTERNS[0]), PATTERNS[1]), end)) {
+           *end = '\0';
+           os_strdup(begin, text);
+           *end = *PATTERNS[1];
 
-    if (begin = strstr(text, PATTERNS[0]), begin && (end = strstr(begin += strlen(PATTERNS[0]), PATTERNS[1]), end)) {
-        *end = '\0';
-        os_strdup(begin, text);
-        *end = *PATTERNS[1];
-        return text;
-    } else {
-        return NULL;
+           // Find "Pidfile::Error::Busy"
+        } else if (strstr(text, PATTERNS[2]) != NULL) {
+           os_strdup("unknown", text);
+        }
     }
+    return text;
 }
 
 int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
