@@ -13,11 +13,13 @@ metadata:
     - https://docs.fortinet.com/document/forticlient/7.0.2/log-message-reference/327109
 
 sources:
-  - decoder/queue-syslog/0
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
 
 check:
   - event.original: +regex_match/^\S+\s\d{1,2}\s\d{1,2}:\d{1,2}:\d{1,2}\s\S+.*?\sproto=\S+\sservice=\S+\sstatus=\S+\ssrc=\S+\sdst=\S+\s
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: fortinet
+  # - event.dataset: fortinet.clientendpoint
 
 parse:
   logpar:
