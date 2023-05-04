@@ -3325,8 +3325,9 @@ checks:
     compliance:
       - cis: ["5.1.1"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled cron -> r:^enabled"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 31190
@@ -3346,8 +3347,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/crontab -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 31191
@@ -3367,8 +3369,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.hourly -> r:Access:\s*\(0\d00/\w\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 31192
@@ -3388,8 +3391,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.daily -> r:Access:\s*\(0700/drwx------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 31193
@@ -3409,8 +3413,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.weekly -> r:Access:\s*\(0\d00/\w\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 31194
@@ -3430,8 +3435,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.monthly -> r:Access:\s*\(0\d00/\w\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 31195
@@ -3451,8 +3457,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -L /etc/cron.d -> r:Access:\s*\(0\d00/\w\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 5.1.8 Ensure cron is restricted to authorized users. (Automated)
   - id: 31196
