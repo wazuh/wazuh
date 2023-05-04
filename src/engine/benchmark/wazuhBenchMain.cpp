@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include <kvdb/kvdbManager.hpp>
+//#include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 
 int main(int argc, char **argv)
