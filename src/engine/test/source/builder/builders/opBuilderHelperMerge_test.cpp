@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -11,29 +12,40 @@ namespace bld = builder::internals::builders;
 
 TEST(OpBuilderHelperMerge, Builds)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"+merge"}, std::vector<std::string> {"$ref"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"$ref"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperMerge, tuple));
 }
 
 TEST(OpBuilderHelperMerge, WrongSizeParameters)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+merge"}, std::vector<std::string> {"$ref", "$ref2"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"$ref", "$ref2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperMerge, tuple), std::runtime_error);
 }
 
 TEST(OpBuilderHelperMerge, WrongTypeParameter)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"+merge"}, std::vector<std::string> {"ref"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"ref"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperMerge, tuple), std::runtime_error);
 }
 
 TEST(OpBuilderHelperMerge, MergeObjectsRoot)
 {
-    auto tuple = std::make_tuple(std::string {""}, std::string {"+merge"}, std::vector<std::string> {"$to_merge"});
+    auto tuple = std::make_tuple(std::string {""},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"$to_merge"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperMerge, tuple);
     auto event = std::make_shared<json::Json>(R"({
@@ -58,8 +70,10 @@ TEST(OpBuilderHelperMerge, MergeObjectsRoot)
 
 TEST(OpBuilderHelperMerge, MergeObjectsNested)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+merge"}, std::vector<std::string> {"$to_merge"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"$to_merge"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperMerge, tuple);
     auto event = std::make_shared<json::Json>(R"({
@@ -88,8 +102,10 @@ TEST(OpBuilderHelperMerge, MergeObjectsNested)
 
 TEST(OpBuilderHelperMerge, MergeArraysNested)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+merge"}, std::vector<std::string> {"$to_merge"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"$to_merge"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperMerge, tuple);
     auto event = std::make_shared<json::Json>(R"({
@@ -118,8 +134,10 @@ TEST(OpBuilderHelperMerge, MergeArraysNested)
 
 TEST(OpBuilderHelperMerge, FailMergeDifferentTypes)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+merge"}, std::vector<std::string> {"$to_merge"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"$to_merge"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperMerge, tuple);
     auto event = std::make_shared<json::Json>(R"({
@@ -136,7 +154,10 @@ TEST(OpBuilderHelperMerge, FailMergeDifferentTypes)
     auto result = op->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_FALSE(result);
 
-    tuple = std::make_tuple(std::string {"/to_merge"}, std::string {"+merge"}, std::vector<std::string> {"$field"});
+    tuple = std::make_tuple(std::string {"/to_merge"},
+                            std::string {"+merge"},
+                            std::vector<std::string> {"$field"},
+                            std::make_shared<defs::mocks::FailDef>());
     op = std::apply(bld::opBuilderHelperMerge, tuple);
     result = op->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_FALSE(result);
@@ -144,8 +165,10 @@ TEST(OpBuilderHelperMerge, FailMergeDifferentTypes)
 
 TEST(OpBuilderHelperMerge, FailTargetNotFound)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+merge"}, std::vector<std::string> {"$to_merge"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"$to_merge"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperMerge, tuple);
     auto event = std::make_shared<json::Json>(R"({
@@ -161,8 +184,10 @@ TEST(OpBuilderHelperMerge, FailTargetNotFound)
 
 TEST(OpBuilderHelperMerge, FailReferenceNotFound)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+merge"}, std::vector<std::string> {"$to_merge"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"$to_merge"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperMerge, tuple);
     auto event = std::make_shared<json::Json>(R"({
@@ -178,8 +203,10 @@ TEST(OpBuilderHelperMerge, FailReferenceNotFound)
 
 TEST(OpBuilderHelperMerge, FailNotObjNotArray)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+merge"}, std::vector<std::string> {"$to_merge"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+merge"},
+                                 std::vector<std::string> {"$to_merge"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperMerge, tuple);
     auto event = std::make_shared<json::Json>(R"({

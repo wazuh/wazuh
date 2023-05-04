@@ -3,6 +3,7 @@
 #include <any>
 #include <vector>
 
+#include <defs/idefinitions.hpp>
 #include <json/json.hpp>
 
 #include "baseTypes.hpp"
@@ -105,6 +106,7 @@ enum class OperationType
 };
 
 Expression operationBuilder(const std::any& definition,
+                            std::shared_ptr<defs::IDefinitions> definitions,
                             OperationType type,
                             std::shared_ptr<Registry<HelperBuilder>> helperRegistry)
 {
@@ -131,6 +133,21 @@ Expression operationBuilder(const std::any& definition,
     {
         field = Json::formatJsonPath(field);
         auto reference = Json::formatJsonPath(value.getString().value().substr(1));
+
+        // If it is a definition call value builder
+        if (definitions->contains(reference))
+        {
+            value = definitions->get(reference);
+            switch (type)
+            {
+                case OperationType::FILTER: return conditionValueBuilder(std::move(field), std::move(value));
+                case OperationType::MAP: return mapValueBuilder(std::move(field), std::move(value));
+                default:
+                    throw std::runtime_error(fmt::format("Unsupported operation type \"{}\"", static_cast<int>(type)));
+            }
+        }
+
+        // If it is not a definition call reference builder
         switch (type)
         {
             case OperationType::FILTER: return conditionReferenceBuilder(std::move(field), std::move(reference));
@@ -153,7 +170,7 @@ Expression operationBuilder(const std::any& definition,
 
         try
         {
-            return helperRegistry->getBuilder(helperName)(field, helperName, helperArgs);
+            return helperRegistry->getBuilder(helperName)(field, helperName, helperArgs, definitions);
         }
         catch (const std::exception& e)
         {
@@ -174,7 +191,7 @@ Expression operationBuilder(const std::any& definition,
         for (auto i = 0; i < array.size(); i++)
         {
             auto path = field + syntax::JSON_PATH_SEPARATOR + std::to_string(i);
-            expressions.push_back(operationBuilder(std::make_tuple(path, array[i]), type, helperRegistry));
+            expressions.push_back(operationBuilder(std::make_tuple(path, array[i]), definitions, type, helperRegistry));
         }
 
         switch (type)
@@ -194,7 +211,7 @@ Expression operationBuilder(const std::any& definition,
         for (auto& [key, value] : object)
         {
             auto path = field + syntax::JSON_PATH_SEPARATOR + key;
-            expressions.push_back(operationBuilder(std::make_tuple(path, value), type, helperRegistry));
+            expressions.push_back(operationBuilder(std::make_tuple(path, value), definitions, type, helperRegistry));
         }
 
         switch (type)
@@ -226,17 +243,17 @@ namespace builder::internals::builders
 
 Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry)
 {
-    return [helperRegistry](std::any definition)
+    return [helperRegistry](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return operationBuilder(definition, OperationType::FILTER, helperRegistry);
+        return operationBuilder(definition, definitions, OperationType::FILTER, helperRegistry);
     };
 }
 
 Builder getOperationMapBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry)
 {
-    return [helperRegistry](std::any definition)
+    return [helperRegistry](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return operationBuilder(definition, OperationType::MAP, helperRegistry);
+        return operationBuilder(definition, definitions, OperationType::MAP, helperRegistry);
     };
 }
 

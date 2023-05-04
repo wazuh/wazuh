@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <defs/idefinitions.hpp>
 #include <fmt/format.h>
 
 #include "expression.hpp"
@@ -15,9 +16,9 @@
 namespace builder::internals
 {
 
-using Builder = std::function<base::Expression(std::any)>;
-using HelperBuilder =
-    std::function<base::Expression(const std::string&, const std::string&, const std::vector<std::string>&)>;
+using Builder = std::function<base::Expression(std::any, std::shared_ptr<defs::IDefinitions>)>;
+using HelperBuilder = std::function<base::Expression(
+    const std::string&, const std::string&, const std::vector<std::string>&, std::shared_ptr<defs::IDefinitions>)>;
 
 /**
  * @brief Registry of builders.

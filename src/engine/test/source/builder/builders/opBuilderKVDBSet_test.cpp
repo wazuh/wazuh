@@ -7,6 +7,8 @@
 #include <json/json.hpp>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
+
 #include <kvdb/kvdbManager.hpp>
 #include <opBuilderKVDB.hpp>
 #include <testsCommon.hpp>
@@ -43,21 +45,42 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithValues)
 {
-    ASSERT_NO_THROW(KVDBSet("/output", "", {DB_NAME, "key", "value"}, opBuilderKVDBSetTest::kvdbManager));
+    ASSERT_NO_THROW(KVDBSet("/output",
+                            "",
+                            {DB_NAME, "key", "value"},
+                            std::make_shared<defs::mocks::FailDef>(),
+                            opBuilderKVDBSetTest::kvdbManager));
 }
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithReferences)
 {
-    ASSERT_THROW(KVDBSet("/output", "", {"$SOME_DB_NAME", "$key", "$value"}, opBuilderKVDBSetTest::kvdbManager),
+    ASSERT_THROW(KVDBSet("/output",
+                         "",
+                         {"$SOME_DB_NAME", "$key", "$value"},
+                         std::make_shared<defs::mocks::FailDef>(),
+                         opBuilderKVDBSetTest::kvdbManager),
                  std::runtime_error);
 }
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWrongAmountOfParametersError)
 {
-    ASSERT_THROW(KVDBSet("/output", "", {}, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
-    ASSERT_THROW(KVDBSet("/output", "", {DB_NAME}, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
-    ASSERT_THROW(KVDBSet("/output", "", {DB_NAME, "key"}, opBuilderKVDBSetTest::kvdbManager), std::runtime_error);
-    ASSERT_THROW(KVDBSet("/output", "", {DB_NAME, "key", "value", "unexpected"}, opBuilderKVDBSetTest::kvdbManager),
+    ASSERT_THROW(
+        KVDBSet("/output", "", {}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBSetTest::kvdbManager),
+        std::runtime_error);
+    ASSERT_THROW(
+        KVDBSet("/output", "", {DB_NAME}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBSetTest::kvdbManager),
+        std::runtime_error);
+    ASSERT_THROW(KVDBSet("/output",
+                         "",
+                         {DB_NAME, "key"},
+                         std::make_shared<defs::mocks::FailDef>(),
+                         opBuilderKVDBSetTest::kvdbManager),
+                 std::runtime_error);
+    ASSERT_THROW(KVDBSet("/output",
+                         "",
+                         {DB_NAME, "key", "value", "unexpected"},
+                         std::make_shared<defs::mocks::FailDef>(),
+                         opBuilderKVDBSetTest::kvdbManager),
                  std::runtime_error);
 }
 
@@ -82,47 +105,56 @@ TEST_F(opBuilderKVDBSetTest, SetSuccessCases)
     string dbOp1 {DB_NAME};
     string keyOp1 {"some_key"};
     string valueOp1 {"some_value"};
-    const auto op1 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp1, valueOp1});
+    const auto op1 = getOpBuilderKVDBSet(kvdbManager)(
+        "/output", "", {DB_NAME, keyOp1, valueOp1}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp2 {DB_NAME};
     string keyOp2 {"fieldString"};
     string valueOp2 {"$fieldString"};
-    const auto op2 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp2, valueOp2});
+    const auto op2 = getOpBuilderKVDBSet(kvdbManager)(
+        "/output", "", {DB_NAME, keyOp2, valueOp2}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp3 {DB_NAME};
     string keyOp3 {"fieldIntNumber"};
     string valueOp3 {"$fieldIntNumber"};
-    const auto op3 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp3, valueOp3});
+    const auto op3 = getOpBuilderKVDBSet(kvdbManager)(
+        "/output", "", {DB_NAME, keyOp3, valueOp3}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp4 {DB_NAME};
     string keyOp4 {"fieldObject"};
     string valueOp4 {"$fieldObject"};
-    const auto op4 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp4, valueOp4});
+    const auto op4 = getOpBuilderKVDBSet(kvdbManager)(
+        "/output", "", {DB_NAME, keyOp4, valueOp4}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp5 {DB_NAME};
     string keyOp5 {"fieldArray"};
     string valueOp5 {"$fieldArray"};
-    const auto op5 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp5, valueOp5});
+    const auto op5 = getOpBuilderKVDBSet(kvdbManager)(
+        "/output", "", {DB_NAME, keyOp5, valueOp5}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp6 {DB_NAME};
     string keyOp6 {"fieldNull"};
     string valueOp6 {"$fieldNull"};
-    const auto op6 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp6, valueOp6});
+    const auto op6 = getOpBuilderKVDBSet(kvdbManager)(
+        "/output", "", {DB_NAME, keyOp6, valueOp6}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp7 {DB_NAME};
     string keyOp7 {"fieldDoubleNumber"};
     string valueOp7 {"$fieldDoubleNumber"};
-    const auto op7 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp7, valueOp7});
+    const auto op7 = getOpBuilderKVDBSet(kvdbManager)(
+        "/output", "", {DB_NAME, keyOp7, valueOp7}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp8 {DB_NAME};
     string keyOp8 {"fieldTrue"};
     string valueOp8 {"$fieldTrue"};
-    const auto op8 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp8, valueOp8});
+    const auto op8 = getOpBuilderKVDBSet(kvdbManager)(
+        "/output", "", {DB_NAME, keyOp8, valueOp8}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp9 {DB_NAME};
     string keyOp9 {"fieldFalse"};
     string valueOp9 {"$fieldFalse"};
-    const auto op9 = getOpBuilderKVDBSet(kvdbManager)("/output", "", {DB_NAME, keyOp9, valueOp9});
+    const auto op9 = getOpBuilderKVDBSet(kvdbManager)(
+        "/output", "", {DB_NAME, keyOp9, valueOp9}, std::make_shared<defs::mocks::FailDef>());
 
     auto result = op1->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);

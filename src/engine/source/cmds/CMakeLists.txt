@@ -13,6 +13,7 @@ add_library(cmds STATIC
 target_link_libraries(cmds
     base
     json
+    defs
     builders
     rxbk
     server

@@ -3,6 +3,7 @@
 #include <benchmark/benchmark.h>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 #include <expression.hpp>
 #include <json/json.hpp>
 
@@ -30,8 +31,10 @@
 
 static void opBuilderHelperIntEqual_success(benchmark::State& state)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/wazuh/queue"}, std::string {"int_equal"}, std::vector<std::string> {"10"});
+    auto tuple = std::make_tuple(std::string {"/wazuh/queue"},
+                                 std::string {"int_equal"},
+                                 std::vector<std::string> {"10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"hostname0","registeredIP":"any"},
@@ -56,8 +59,10 @@ BENCHMARK(opBuilderHelperIntEqual_success)->Threads(1)->Threads(2)->Threads(4)->
 // opBuilderHelperIntEqual
 static void opBuilderHelperIntEqual_fail(benchmark::State& state)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/wazuh/queue"}, std::string {"int_equal"}, std::vector<std::string> {"11"});
+    auto tuple = std::make_tuple(std::string {"/wazuh/queue"},
+                                 std::string {"int_equal"},
+                                 std::vector<std::string> {"11"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"hostname0","registeredIP":"any"},
@@ -85,8 +90,10 @@ BENCHMARK(opBuilderHelperIntEqual_fail)->Threads(1)->Threads(2)->Threads(4)->Use
 // opBuilderHelperStringStarts
 static void opBuilderHelperStringStarts_success(benchmark::State& state)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/agent/name"}, std::string {"starts_with"}, std::vector<std::string> {"specificHost"});
+    auto tuple = std::make_tuple(std::string {"/agent/name"},
+                                 std::string {"starts_with"},
+                                 std::vector<std::string> {"specificHost"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"specificHost_001",
@@ -110,8 +117,10 @@ BENCHMARK(opBuilderHelperStringStarts_success)->Threads(1)->Threads(2)->Threads(
 
 static void opBuilderHelperStringStarts_fail(benchmark::State& state)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/agent/name"}, std::string {"starts_with"}, std::vector<std::string> {"otherHost"});
+    auto tuple = std::make_tuple(std::string {"/agent/name"},
+                                 std::string {"starts_with"},
+                                 std::vector<std::string> {"otherHost"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"specificHost_001",
@@ -141,7 +150,8 @@ static void opBuilderHelperIPCIDR_success(benchmark::State& state)
 {
     auto tuple = std::make_tuple(std::string {"/agent/registeredIP"},
                                  std::string {"ip_in_cidr"},
-                                 std::vector<std::string> {"192.168.0.0", "24"});
+                                 std::vector<std::string> {"192.168.0.0", "24"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"specificHost_001",
@@ -167,7 +177,8 @@ static void opBuilderHelperIPCIDR_fail(benchmark::State& state)
 {
     auto tuple = std::make_tuple(std::string {"/agent/registeredIP"},
                                  std::string {"ip_in_cidr"},
-                                 std::vector<std::string> {"192.168.0.0", "24"});
+                                 std::vector<std::string> {"192.168.0.0", "24"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     base::Event event1 = std::make_shared<json::Json>(R"({"wazuh":{"queue":10,"origin":"/var/cosas"},
                                                           "agent":{"id":"0","name":"specificHost_001",

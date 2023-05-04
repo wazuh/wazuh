@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 
@@ -12,16 +13,20 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringLessThanEqual, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"string_less_or_equal"}, std::vector<std::string> {"value1"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"string_less_or_equal"},
+                                 std::vector<std::string> {"value1"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperStringLessThanEqual, tuple));
 }
 
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_false)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"string_less_or_equal"}, std::vector<std::string> {"value1"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"string_less_or_equal"},
+                                 std::vector<std::string> {"value1"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2"})");
 
@@ -34,8 +39,10 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_false)
 
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_true)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"string_less_or_equal"}, std::vector<std::string> {"value2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"string_less_or_equal"},
+                                 std::vector<std::string> {"value2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1"})");
 
@@ -48,8 +55,10 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_true)
 
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_true)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"string_less_or_equal"}, std::vector<std::string> {"value1"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"string_less_or_equal"},
+                                 std::vector<std::string> {"value1"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1"})");
 
@@ -62,8 +71,10 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_true)
 
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_ref_false)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"string_less_or_equal"}, std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"string_less_or_equal"},
+                                 std::vector<std::string> {"$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2",
                                                    "otherfield": "value1"})");
@@ -77,8 +88,10 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_ref_false)
 
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_ref_true)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"string_less_or_equal"}, std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"string_less_or_equal"},
+                                 std::vector<std::string> {"$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1",
                                                    "otherfield": "value2"})");
@@ -92,8 +105,10 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_ref_true)
 
 TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_ref_true)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"string_less_or_equal"}, std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"string_less_or_equal"},
+                                 std::vector<std::string> {"$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1",
                                                    "otherfield": "value1"})");
@@ -109,7 +124,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"string_less_or_equal"},
-                                 std::vector<std::string> {"value1"});
+                                 std::vector<std::string> {"value1"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -133,7 +149,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"string_less_or_equal"},
-                                 std::vector<std::string> {"value2"});
+                                 std::vector<std::string> {"value2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -157,7 +174,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"string_less_or_equal"},
-                                 std::vector<std::string> {"value1"});
+                                 std::vector<std::string> {"value1"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -181,7 +199,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_ref_fal
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"string_less_or_equal"},
-                                 std::vector<std::string> {"$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -205,7 +224,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_multilevel_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"string_less_or_equal"},
-                                 std::vector<std::string> {"$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -229,7 +249,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_ref_tru
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"string_less_or_equal"},
-                                 std::vector<std::string> {"$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

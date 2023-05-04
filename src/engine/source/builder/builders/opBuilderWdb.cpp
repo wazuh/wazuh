@@ -17,6 +17,7 @@ namespace builder::internals::builders
 static inline base::Expression opBuilderWdbGenericQuery(const std::string& targetField,
                                                         const std::string& rawName,
                                                         const std::vector<std::string>& rawParameters,
+                                                        std::shared_ptr<defs::IDefinitions> definitions,
                                                         bool doReturnPayload)
 {
     // Identify references and build JSON pointer paths
@@ -119,17 +120,19 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::string& targe
 // <wdb_result>: +wdb_update/<quey>|$<quey>
 base::Expression opBuilderWdbUpdate(const std::string& targetField,
                                     const std::string& rawName,
-                                    const std::vector<std::string>& rawParameters)
+                                    const std::vector<std::string>& rawParameters,
+                                    std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, false);
+    return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, definitions, false);
 }
 
 // <wdb_result>: +wdb_query/<quey>|$<quey>
 base::Expression opBuilderWdbQuery(const std::string& targetField,
                                    const std::string& rawName,
-                                   const std::vector<std::string>& rawParameters)
+                                   const std::vector<std::string>& rawParameters,
+                                   std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, true);
+    return opBuilderWdbGenericQuery(targetField, rawName, rawParameters, definitions, true);
 }
 
 } // namespace builder::internals::builders

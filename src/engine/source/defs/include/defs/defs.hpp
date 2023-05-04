@@ -1,20 +1,24 @@
 #ifndef _DEFS_HPP_
 #define _DEFS_HPP_
 
+#include <memory>
 #include <string>
 #include <string_view>
 
+#include <defs/idefinitions.hpp>
 #include <json/json.hpp>
-#include <defs/iDefinitions.hpp>
 
 namespace defs
 {
 class Definitions : public IDefinitions
 {
 private:
-    json::Json m_definitions;
+    std::unique_ptr<json::Json> m_definitions;
 
 public:
+    Definitions() = default;
+    ~Definitions() = default;
+
     /**
      * @brief Construct a new Definitions object
      *
@@ -23,15 +27,14 @@ public:
      */
     explicit Definitions(const json::Json& definitions);
 
-    Definitions() = default;
-    ~Definitions() = default;
+    bool contains(std::string_view name) const override;
 
     /**
      * @brief Get the definitions json object
      *
      * @return const json::Json&
      */
-    const json::Json& get() const;
+    json::Json get(std::string_view name) const override;
 };
 } // namespace defs
 

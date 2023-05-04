@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -19,18 +20,20 @@ TEST(opBuilderHelperHashSHA1, Builds)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
                                        std::string {"sha1"},
-                                       std::vector<std::string> {"begin"});
+                                       std::vector<std::string> {"begin"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperHashSHA1, tuple));
 }
 
 TEST(opBuilderHelperHashSHA1, Correct_execution_with_single_string)
 {
-    const auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"sha1"}, std::vector<std::string> {"XXX"});
+    const auto tuple = std::make_tuple(std::string {"/field"},
+                                       std::string {"sha1"},
+                                       std::vector<std::string> {"XXX"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
-    const auto event1 =
-        std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
+    const auto event1 = std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
 
     auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
@@ -42,7 +45,8 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_several_strings)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
                                        std::string {"sha1"},
-                                       std::vector<std::string> {"wordworldworst"});
+                                       std::vector<std::string> {"wordworldworst"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(R"({"Field": "ABCDE"})");
 
@@ -56,10 +60,10 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_reference)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
                                        std::string {"sha1"},
-                                       std::vector<std::string> {"$fieldReference"});
+                                       std::vector<std::string> {"$fieldReference"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
-    const auto event1 =
-        std::make_shared<json::Json>(R"({"fieldReference": "wordworldworst"})");
+    const auto event1 = std::make_shared<json::Json>(R"({"fieldReference": "wordworldworst"})");
 
     auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
@@ -69,13 +73,12 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_reference)
 
 TEST(opBuilderHelperHashSHA1, Correct_execution_with_nested_reference)
 {
-    const auto tuple =
-        std::make_tuple(std::string {"/field"},
-                        std::string {"sha1"},
-                        std::vector<std::string> {"$object.fieldReference3"});
+    const auto tuple = std::make_tuple(std::string {"/field"},
+                                       std::string {"sha1"},
+                                       std::vector<std::string> {"$object.fieldReference3"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
-    const auto event1 =
-        std::make_shared<json::Json>(R"({"object":{"fieldReference3":"word"}})");
+    const auto event1 = std::make_shared<json::Json>(R"({"object":{"fieldReference3":"word"}})");
 
     auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
@@ -85,8 +88,10 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_nested_reference)
 
 TEST(opBuilderHelperHashSHA1, No_parameters_error)
 {
-    const auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"sha1"}, std::vector<std::string> {});
+    const auto tuple = std::make_tuple(std::string {"/field"},
+                                       std::string {"sha1"},
+                                       std::vector<std::string> {},
+                                       std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(R"({"arrayField": "A"})");
 
@@ -95,8 +100,10 @@ TEST(opBuilderHelperHashSHA1, No_parameters_error)
 
 TEST(opBuilderHelperHashSHA1, Empty_parameter)
 {
-    const auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"sha1"}, std::vector<std::string> {""});
+    const auto tuple = std::make_tuple(std::string {"/field"},
+                                       std::string {"sha1"},
+                                       std::vector<std::string> {""},
+                                       std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(R"({"fieldReference": "word"})");
 
@@ -109,7 +116,8 @@ TEST(opBuilderHelperHashSHA1, Empty_reference_parameter)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
                                        std::string {"sha1"},
-                                       std::vector<std::string> {"$fieldReference"});
+                                       std::vector<std::string> {"$fieldReference"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(R"({"fieldReference": ""})");
 
@@ -122,10 +130,10 @@ TEST(opBuilderHelperHashSHA1, Failed_execution_with_array_reference)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
                                        std::string {"sha1"},
-                                       std::vector<std::string> {"$arrayField"});
+                                       std::vector<std::string> {"$arrayField"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
-    const auto event1 =
-        std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
+    const auto event1 = std::make_shared<json::Json>(R"({"arrayField": ["A","B","C","D","E"]})");
 
     auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);
@@ -136,10 +144,10 @@ TEST(opBuilderHelperHashSHA1, Correct_execution_with_nested_result)
 {
     const auto tuple = std::make_tuple(std::string {"/object/field"},
                                        std::string {"sha1"},
-                                       std::vector<std::string> {"ABCDE"});
+                                       std::vector<std::string> {"ABCDE"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
-    const auto event1 =
-        std::make_shared<json::Json>(R"({"object":[{"field":"worst"},{"field2":1}]})");
+    const auto event1 = std::make_shared<json::Json>(R"({"object":[{"field":"worst"},{"field2":1}]})");
 
     auto op = std::apply(bld::opBuilderHelperHashSHA1, tuple)->getPtr<Term<EngineOp>>()->getFn();
     result::Result<Event> result = op(event1);

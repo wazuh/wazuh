@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <baseTypes.hpp>
+#include <defs/idefinitions.hpp>
 #include <json/json.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
 #include <wdb/wdb.hpp>
@@ -365,7 +366,8 @@ std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx);
  */
 base::Expression opBuilderSCAdecoder(const std::string& targetField,
                                      const std::string& rawName,
-                                     const std::vector<std::string>& rawParameters);
+                                     const std::vector<std::string>& rawParameters,
+                                     std::shared_ptr<defs::IDefinitions> definitions);
 
 } // namespace builder::internals::builders
 

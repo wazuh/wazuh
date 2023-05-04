@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -12,23 +13,30 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringConcat, Builds)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"concat"}, std::vector<std::string> {"Concat", "test"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"Concat", "test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperStringConcat, tuple));
 }
 
 TEST(opBuilderHelperStringConcat, Builds_bad_parameters)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"concat"}, std::vector<std::string> {"test"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperStringConcat, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"concat", "test"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"concat", "test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
 
@@ -41,8 +49,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_field_not_exist)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"concat", "test"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"concat", "test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -57,8 +67,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_success)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_large_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"This", "is", "a", "test"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"This", "is", "a", "test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -73,8 +85,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_large_success)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"$otherfield", "$otherfield2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"$otherfield", "$otherfield2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield3": "test",
@@ -89,8 +103,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_field_not_exist)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_not_string_or_int)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"$otherfield", "$otherfield2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"$otherfield", "$otherfield2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 2,
@@ -105,8 +121,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_not_string_or_int)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"$otherfield", "$otherfield2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"$otherfield", "$otherfield2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "concat",
@@ -123,8 +141,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_success)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_success_int)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"$otherfield", "$otherfield2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"$otherfield", "$otherfield2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 10,
@@ -144,7 +164,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_large_success)
     auto tuple =
         std::make_tuple(std::string {"/field2check"},
                         std::string {"concat"},
-                        std::vector<std::string> {"$otherfield", "$otherfield2", "$otherfield3", "$otherfield4"});
+                        std::vector<std::string> {"$otherfield", "$otherfield2", "$otherfield3", "$otherfield4"},
+                        std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "This",
@@ -166,7 +187,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_large_success_int)
     auto tuple =
         std::make_tuple(std::string {"/field2check"},
                         std::string {"concat"},
-                        std::vector<std::string> {"$otherfield", "$otherfield2", "$otherfield3", "$otherfield4"});
+                        std::vector<std::string> {"$otherfield", "$otherfield2", "$otherfield3", "$otherfield4"},
+                        std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "This",
@@ -185,8 +207,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_ref_large_success_int)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_ref_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"$otherfield", "test"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"$otherfield", "test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -199,8 +223,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_ref_field_not_exist)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_not_string_or_int)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"test", "$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"test", "$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": true,
@@ -215,8 +241,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_not_string_or_int)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"concat", "$otherfield2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"concat", "$otherfield2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 2,
@@ -233,8 +261,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_success)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_success_int)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"concat"}, std::vector<std::string> {"10", "$otherfield2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"10", "$otherfield2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 2,
@@ -253,7 +283,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_large_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"This", "$otherfield2", "a", "$otherfield4"});
+                                 std::vector<std::string> {"This", "$otherfield2", "a", "$otherfield4"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 10,
@@ -274,7 +305,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_large_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"This", "$otherfield2", "10", "$otherfield4"});
+                                 std::vector<std::string> {"This", "$otherfield2", "10", "$otherfield4"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "This",
@@ -293,8 +325,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_mix_large_success_int)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt_1/field2check"}, std::string {"concat"}, std::vector<std::string> {"concat", "test"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"concat", "test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -318,8 +352,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_not_exist)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt/field2check"}, std::string {"concat"}, std::vector<std::string> {"concat", "test"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"concat", "test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -351,8 +387,10 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_success)
 
 TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_field_success_int)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt/field2check"}, std::string {"concat"}, std::vector<std::string> {"10", "20"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
+                                 std::string {"concat"},
+                                 std::vector<std::string> {"10", "20"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -386,7 +424,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_field_not_ex
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"$parentObjt_1/field2check", "$parentObjt_2/fieldcheck"});
+                                 std::vector<std::string> {"$parentObjt_1/field2check", "$parentObjt_2/fieldcheck"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "field2check": 10,
@@ -411,7 +450,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"$parentObjt_1.field2check", "$parentObjt_3.field2check"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check", "$parentObjt_3.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -445,7 +485,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_success_int)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"$parentObjt_1.field2check", "$parentObjt_3.field2check"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check", "$parentObjt_3.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -482,7 +523,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_large_succes
                                  std::vector<std::string> {"$parentObjt_1.field2check",
                                                            "$parentObjt_2.field2check",
                                                            "$parentObjt_4.field2check",
-                                                           "$parentObjt_3.field2check"});
+                                                           "$parentObjt_3.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -519,7 +561,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_large_succes
                                  std::vector<std::string> {"$parentObjt_1.field2check",
                                                            "$parentObjt_2.field2check",
                                                            "$parentObjt_4.field2check",
-                                                           "$parentObjt_3.field2check"});
+                                                           "$parentObjt_3.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -553,7 +596,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_field_not_ex
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"concat", "$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"concat", "$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -579,7 +623,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_ref_field_succes
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"$parentObjt_1.field2check", "$parentObjt_3.field2check"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check", "$parentObjt_3.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -613,7 +658,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_field_no
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"concat", "$parentObjt_2.fieldcheck"});
+                                 std::vector<std::string> {"concat", "$parentObjt_2.fieldcheck"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "field2check": 10,
@@ -639,7 +685,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"concat", "$parentObjt_3.field2check"});
+                                 std::vector<std::string> {"concat", "$parentObjt_3.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -673,7 +720,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_success_
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"concat"},
-                                 std::vector<std::string> {"10", "$parentObjt_3.field2check"});
+                                 std::vector<std::string> {"10", "$parentObjt_3.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -708,7 +756,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_large_su
     auto tuple = std::make_tuple(
         std::string {"/parentObjt/field2check"},
         std::string {"concat"},
-        std::vector<std::string> {"This", "$parentObjt_2.field2check", "a", "$parentObjt_4.field2check"});
+        std::vector<std::string> {"This", "$parentObjt_2.field2check", "a", "$parentObjt_4.field2check"},
+        std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -743,7 +792,8 @@ TEST(opBuilderHelperStringConcat, Exec_string_concat_multilevel_mix_ref_large_su
     auto tuple = std::make_tuple(
         std::string {"/parentObjt/field2check"},
         std::string {"concat"},
-        std::vector<std::string> {"This", "$parentObjt_2.field2check", "10", "$parentObjt_4.field2check"});
+        std::vector<std::string> {"This", "$parentObjt_2.field2check", "10", "$parentObjt_4.field2check"},
+        std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

@@ -30,11 +30,16 @@ Definitions::Definitions(const json::Json& definitions)
         }
     }
 
-    m_definitions = definitions;
+    m_definitions = std::make_unique<json::Json>(definitions);
 }
 
-const json::Json& Definitions::get() const
+json::Json Definitions::get(std::string_view name) const
 {
-    return m_definitions;
+    return m_definitions->getJson(name).value();
+}
+
+bool Definitions::contains(std::string_view name) const
+{
+    return m_definitions && m_definitions->exists(name);
 }
 } // namespace defs

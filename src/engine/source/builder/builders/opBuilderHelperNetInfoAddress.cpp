@@ -109,6 +109,7 @@ bool sysNetAddresTableFill(base::Event event,
 base::Expression opBuilderHelperNetInfoAddress(const std::string& targetField,
                                                const std::string& rawName,
                                                const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions,
                                                bool isIPv6)
 {
     const auto parameters = helper::base::processParameters(rawName, rawParameters);
@@ -204,16 +205,18 @@ namespace builder::internals::builders
 
 base::Expression opBuilderHelperSaveNetInfoIPv4(const std::string& targetField,
                                                 const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters)
+                                                const std::vector<std::string>& rawParameters,
+                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, false);
+    return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, definitions, false);
 }
 
 base::Expression opBuilderHelperSaveNetInfoIPv6(const std::string& targetField,
                                                 const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters)
+                                                const std::vector<std::string>& rawParameters,
+                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, true);
+    return opBuilderHelperNetInfoAddress(targetField, rawName, rawParameters, definitions, true);
 }
 
 } // namespace builder::internals::builders

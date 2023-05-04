@@ -15,7 +15,7 @@ namespace builder::internals::builders
 
 Builder getStageBuilderOutputs(std::shared_ptr<Registry<Builder>> registry)
 {
-    return [registry](const std::any& definition)
+    return [registry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
         json::Json jsonDefinition;
 
@@ -26,20 +26,17 @@ Builder getStageBuilderOutputs(std::shared_ptr<Registry<Builder>> registry)
         }
         catch (const std::exception& e)
         {
-            throw std::runtime_error(
-                fmt::format("Definition could not be converted to json: {}", e.what()));
+            throw std::runtime_error(fmt::format("Definition could not be converted to json: {}", e.what()));
         }
 
         if (!jsonDefinition.isArray())
         {
-            throw std::runtime_error(fmt::format(
-                "Invalid json definition type: expected \"array\" but got \"{}\"",
-                jsonDefinition.typeName()));
+            throw std::runtime_error(fmt::format("Invalid json definition type: expected \"array\" but got \"{}\"",
+                                                 jsonDefinition.typeName()));
         }
         if (jsonDefinition.size() == 0)
         {
-            throw std::runtime_error(
-                "Invalid json definition, expected one element at least");
+            throw std::runtime_error("Invalid json definition, expected one element at least");
         }
 
         // All output expressions
@@ -52,22 +49,20 @@ Builder getStageBuilderOutputs(std::shared_ptr<Registry<Builder>> registry)
             outputObjects.begin(),
             outputObjects.end(),
             std::back_inserter(outputExpressions),
-            [registry](auto outputDefinition)
+            [registry, definitions](auto outputDefinition)
             {
                 if (!outputDefinition.isObject())
                 {
-                    throw std::runtime_error(
-                        fmt::format("Invalid array item type, expected "
-                                    "\"object\" but got \"{}\"",
-                                    outputDefinition.typeName()));
+                    throw std::runtime_error(fmt::format("Invalid array item type, expected "
+                                                         "\"object\" but got \"{}\"",
+                                                         outputDefinition.typeName()));
                 }
 
                 if (outputDefinition.size() != 1)
                 {
-                    throw std::runtime_error(
-                        fmt::format("Invalid object item size, expected exactly one "
-                                    "key/value pair but got \"{}\"",
-                                    outputDefinition.size()));
+                    throw std::runtime_error(fmt::format("Invalid object item size, expected exactly one "
+                                                         "key/value pair but got \"{}\"",
+                                                         outputDefinition.size()));
                 }
 
                 auto outputObject = outputDefinition.getObject().value();
@@ -77,13 +72,11 @@ Builder getStageBuilderOutputs(std::shared_ptr<Registry<Builder>> registry)
                 base::Expression outputExpression;
                 try
                 {
-                    outputExpression =
-                        registry->getBuilder("output." + outputName)(outputValue);
+                    outputExpression = registry->getBuilder("output." + outputName)(outputValue, definitions);
                 }
                 catch (const std::exception& e)
                 {
-                    throw std::runtime_error(fmt::format(
-                        "Building output \"{}\" failed: {}", outputName, e.what()));
+                    throw std::runtime_error(fmt::format("Building output \"{}\" failed: {}", outputName, e.what()));
                 }
 
                 return outputExpression;

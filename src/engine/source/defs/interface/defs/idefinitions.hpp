@@ -10,12 +10,9 @@ namespace defs
     public:
         virtual ~IDefinitions() = default;
 
-        /**
-         * @brief Get the definitions json object
-         *
-         * @return const json::Json&
-         */
-        virtual const json::Json& get() const = 0;
+        virtual json::Json get(std::string_view name) const = 0;
+
+        virtual bool contains(std::string_view name) const = 0;
     };
 }
 
