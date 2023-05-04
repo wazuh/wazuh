@@ -4,9 +4,10 @@
 
 import json
 import socket
+from typing import Any
 
 from wazuh.core.common import origin_module
-from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 
@@ -34,23 +35,7 @@ def create_wazuh_queue_socket_msg(flag: str, str_agent_id: str, msg: str, is_res
         f"(msg_to_agent) [] {flag} {str_agent_id} {msg} - null (from_the_server) (no_rule_id)"
 
 
-class WazuhQueue:
-    """
-    WazuhQueue Object.
-    """
-
-    # Messages
-    HC_SK_RESTART = "syscheck restart"  # syscheck restart
-    HC_FORCE_RECONNECT = "force_reconnect"  # force reconnect command
-    RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
-    RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': origin_module.get()},
-                                                                 command="restart-wazuh0",
-                                                                 parameters={"extra_args": [],
-                                                                             "alert": {}}))  # Agents, not manager (000)
-
-    # Types
-    AR_TYPE = "ar-message"
-
+class BaseQueue:
     # Sizes
     OS_MAXSTR = 6144  # OS_SIZE_6144
     MAX_MSG_SIZE = OS_MAXSTR + 256
@@ -83,6 +68,27 @@ class WazuhQueue:
 
     def close(self):
         self.socket.close()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+
+class WazuhQueue(BaseQueue):
+    """
+    WazuhQueue Object.
+    """
+
+    # Messages
+    HC_SK_RESTART = "syscheck restart"  # syscheck restart
+    HC_FORCE_RECONNECT = "force_reconnect"  # force reconnect command
+    RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
+    RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': origin_module.get()},
+                                                                 command="restart-wazuh0",
+                                                                 parameters={"extra_args": [],
+                                                                             "alert": {}}))  # Agents, not manager (000)
+
+    # Types
+    AR_TYPE = "ar-message"
 
     def send_msg_to_agent(self, msg: str = '', agent_id: str = '', msg_type: str = '') -> str:
         """Send message to agent.
@@ -164,5 +170,35 @@ class WazuhQueue:
 
         return ret_msg
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+
+class WazuhAnalysisdQueue(BaseQueue):
+    """
+    WazuhAnalysisdQueue Object.
+    """
+
+    def send_msg(self, msg_header: str, msg: Any):
+        """Send message to analysisd.
+
+        Parameters
+        ----------
+        msg_header : str
+            Header message to attach.
+        mesg : dict
+            Message to send.
+
+        Raises
+        ------
+        WazuhError(1014)
+            If there was an error communicating with socket.
+
+        Returns
+        -------
+        str
+            Message confirming the message has been sent.
+        """
+        try:
+            socket_msg = (f"{msg_header}{json.dumps(msg)}")
+            # Send message
+            self._send(socket_msg.encode())
+        except Exception as e:
+            raise WazuhError(1014, extra_message=f': WazuhAnalysisdQueue socket with path {self.path}. Error: {str(e)}')
