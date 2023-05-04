@@ -16,9 +16,10 @@ sources:
   - decoder/integrations/0
 
 check:
-  - event.module: sonicwall
-  - event.dataset: sonicwall.firewall
   - event.original: +regex_match/id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: sonicwall
+  # - event.dataset: sonicwall.firewall
 
 parse:
   logpar:
