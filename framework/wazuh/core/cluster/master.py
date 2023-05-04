@@ -269,7 +269,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_wgc_e':
             logger = self.task_loggers['Agent-groups send full']
-            start_time = self.send_agent_groups_status['date_start']
+            start_time = self.send_full_agent_groups_status['date_start']
             if isinstance(start_time, str):
                 start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
 
