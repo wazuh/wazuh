@@ -1,0 +1,7 @@
+title: AWS Base Integration
+overview: This integration processes events from AWS
+compatibility:
+configuration: See specific configuration for each sub-integration.
+event:
+  module: aws
+  dataset: aws.cloudtrail, aws.elb, aws.s3access
