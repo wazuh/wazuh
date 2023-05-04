@@ -16,9 +16,10 @@ metadata:
 sources:
   - decoder/integrations/0
 
-check:
-  - event.module: f5
-  - event.dataset: f5.bigipafm
+#TODO: Once the events arrive tagged, uncomment these lines below
+# check:
+#   - event.module: f5
+#   - event.dataset: f5.bigipafm
 
 parse:
   logpar:

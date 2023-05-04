@@ -16,9 +16,10 @@ metadata:
 sources:
   - decoder/integrations/0
 
-check:
-  - event.module: f5
-  - event.dataset: f5.bigipapm
+#TODO: Once the events arrive tagged, uncomment these lines below
+# check:
+#   - event.module: f5
+#   - event.dataset: f5.bigipapm
 
 definitions:
   DEF_SESSION: :<~>:<~/ignore/ ><~tmp.rsa.misc.log_session_id>

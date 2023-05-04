@@ -14,9 +14,10 @@ metadata:
 sources:
   - decoder/integrations/0
 
-check:
-  - event.module: redis
-  - event.dataset: redis.log
+#TODO: Once the events arrive tagged, uncomment these lines below
+# check:
+#   - event.module: redis
+#   - event.dataset: redis.log
 
 parse:
   logpar:

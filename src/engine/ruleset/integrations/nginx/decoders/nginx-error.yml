@@ -15,9 +15,10 @@ metadata:
 sources:
   - decoder/integrations/0
 
-check:
-  - event.module: nginx
-  - event.dataset: nginx-error
+#TODO: Once the events arrive tagged, uncomment these lines below
+# check:
+#   - event.module: nginx
+#   - event.dataset: nginx-error
 
 parse:
   logpar:

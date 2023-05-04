@@ -19,9 +19,10 @@ metadata:
 sources:
   - decoder/integrations/0
 
-check:
-  - event.module: postgresql
-  - event.dataset: postgresql.log
+#TODO: Once the events arrive tagged, uncomment these lines below
+# check:
+#   - event.module: postgresql
+#   - event.dataset: postgresql.log
 
 parse:
   logpar:
