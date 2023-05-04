@@ -1,0 +1,4 @@
+decoders:
+- decoder/aws/0
+- decoder/aws-json/0
+name: integration/aws-base/0
