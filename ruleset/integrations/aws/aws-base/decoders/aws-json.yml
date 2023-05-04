@@ -1,0 +1,25 @@
+name: decoder/aws-json/0
+
+metadata:
+  title: Wazuh AWS integration JSON Decoder
+  description: Partial JSON decoder for AWS events
+  module: AWS
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.4
+  author:
+    name: Wazuh, Inc.
+    date: 2023/05/04
+
+sources:
+  - decoder/integrations/0
+
+check:
+  - event.original: +starts_with/{
+
+parse:
+  logpar:
+    - event.original: <~json/json>
+
+normalize:
+ - map:
+    - wazuh.decoders: +array_append/aws-json

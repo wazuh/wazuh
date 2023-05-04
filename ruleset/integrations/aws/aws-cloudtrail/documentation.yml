@@ -1,0 +1,21 @@
+title: AWS CloudTrail Integration
+overview: This integration processes logs from AWS CloudTrail.
+compatibility:
+configuration: >
+  Add to the ossec.conf file in the monitored agent the following configuration block to enable the integration with CloudTrail:
+
+  ```html
+  <wodle name="aws-s3">
+    <disabled>no</disabled>
+    <interval>10m</interval>
+    <run_on_start>yes</run_on_start>
+    <skip_on_error>yes</skip_on_error>
+    <bucket type="cloudtrail">
+      <name>wazuh-cloudtrail</name>
+      <aws_profile>default</aws_profile>
+    </bucket>
+  </wodle>
+  ```
+event:
+  module: aws
+  dataset: aws.cloudtrail

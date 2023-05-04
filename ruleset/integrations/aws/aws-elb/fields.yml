@@ -1,0 +1,119 @@
+aws.elb.name:
+  description: 'The name of the load balancer.'
+  type: keyword
+
+aws.elb.backend.ip:
+  description: 'The IP address of the backend processing this connection.'
+  type: keyword
+
+aws.elb.backend.port:
+  description: 'The port in the backend processing this connection.'
+  type: keyword
+
+aws.elb.request_processing_time.sec:
+  description: >
+    The total time in seconds since the connection or request is received until it is sent to a registered backend.
+  type: float
+
+aws.elb.backend_processing_time.sec:
+  description: >
+    The total time in seconds since the connection is sent to the backend till the backend starts responding.
+  type: float
+
+aws.elb.response_processing_time.sec:
+  description: >
+    The total time in seconds since the response is received from the backend till it is sent to the client.
+  type: float
+
+aws.elb.backend.http.response.status_code:
+  description: >
+    The status code from the backend (status code sent to the client from ELB is stored in http.response.status_code)
+  type: long
+
+aws.elb.ssl_cipher:
+  description: 'The SSL cipher used in TLS/SSL connections.'
+  type: keyword
+
+aws.elb.ssl_protocol:
+  description: 'The SSL protocol used in TLS/SSL connections.'
+  type: keyword
+
+aws.elb.type:
+  description: 'The type of the load balancer for v2 Load Balancers.'
+  type: keyword
+
+aws.elb.target_group.arn:
+  description: 'The ARN of the target group handling the request.'
+  type: keyword
+
+aws.elb.trace_id:
+  description: 'The contents of the X-Amzn-Trace-Id header.'
+  type: keyword
+
+aws.elb.chosen_cert.arn:
+  description: >
+    The ARN of the chosen certificate presented to the client in TLS/SSL connections.
+  type: keyword
+
+aws.elb.matched_rule_priority:
+  description: >
+    The priority value of the rule that matched the request, if a rule matched.
+  type: keyword
+
+aws.elb.redirect_url:
+  description: 'The URL used if a redirection action was executed.'
+  type: keyword
+
+aws.elb.error.reason:
+  description: 'The error reason if the executed action failed.'
+  type: keyword
+
+aws.elb.listener:
+  description: 'The ELB listener that received the connection.'
+  type: keyword
+
+aws.elb.action_executed:
+  description: >
+    The action executed when processing the request (forward, fixed-response, authenticate...). It can contain several values.
+  type: keyword
+
+aws.elb.chosen_cert.serial:
+  description: >
+    he serial number of the chosen certificate presented to the client in TLS/SSL connections.
+  type: keyword
+
+aws.elb.classification:
+  description: 'The classification for desync mitigation.'
+  type: keyword
+
+aws.elb.classification_reason:
+  description: 'The classification reason code.'
+  type: keyword
+
+aws.elb.connection_time.ms:
+  description: >
+    The total time of the connection in milliseconds, since it is opened till it is closed.
+  type: long
+
+aws.elb.incoming_tls_alert:
+  description: >
+    The integer value of TLS alerts received by the load balancer from the client, if present.
+  type: keyword
+
+aws.elb.protocol:
+  description: 'The protocol of the load balancer (http or tcp).'
+  type: keyword
+
+aws.elb.target_port:
+  description: >
+    List of IP addresses and ports for the targets that processed this request.
+  type: keyword
+
+aws.elb.target_status_code:
+  description: 'List of status codes from the responses of the targets.'
+  type: keyword
+
+aws.elb.tls_handshake_time.ms:
+  description: >
+    The total time for the TLS handshake to complete in milliseconds once the connection has been established.
+  type: long

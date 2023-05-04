@@ -103,6 +103,8 @@ normalize:
       - user_agent.original: $~json.aws.userAgent
       - user.id: $~json.aws.userIdentity.principalId
 
+      - wazuh.decoders: +array_append/aws-cloudtrail
+
   - check:
       # TODO: need a HF to check a string length, used by flattened should be less than 32766
       - aws.cloudtrail.request_parameters: +exists
