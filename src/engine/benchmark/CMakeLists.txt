@@ -25,13 +25,11 @@ target_link_libraries(engine_bench_main
     PUBLIC
     benchmark::benchmark
     base
-    kvdb
     metrics
     )
 
 add_subdirectory(regex)
 add_subdirectory(hlp)
-add_subdirectory(kvdb)
 add_subdirectory(logicExpression)
 add_subdirectory(base)
 add_subdirectory(helperFunctions)
