@@ -1,12 +1,9 @@
 import shared.resource_handler as rs
+from pathlib import Path
+from .generate_manifest import run as gen_manifest
 import sys
-# TODO: check is this is better
-sys.tracebacklimit = 0
 
 DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
-
-# undo redo pattern
-
 
 class CommandsManager:
     commands_list = []
@@ -38,6 +35,19 @@ class CommandsManager:
 
 def run(args, resource_handler: rs.ResourceHandler):
     api_socket = args['api_sock']
+
+    working_path = resource_handler.cwd()
+    if args['integration-path']:
+        working_path = args['integration-path']
+        path = Path(working_path)
+        if path.is_dir():
+            working_path = str(path.resolve())
+        else:
+            print(f'Error: Directory does not exist ')
+            return -1
+
+    print(f'Adding integration from: {working_path}')
+
     cm = CommandsManager()
 
     # Catalog Functions to functions for undo / redo
@@ -67,41 +77,44 @@ def run(args, resource_handler: rs.ResourceHandler):
         return recursive_delete_kvdbs
 
     # Create kvdbs
-    pos = cm.add_command(func_to_recursive_create_kvdbs(api_socket, resource_handler.cwd(), True),
-                         func_to_recursive_delete_kvdbs(api_socket, resource_handler.cwd(), True))
+    pos = cm.add_command(func_to_recursive_create_kvdbs(api_socket, working_path, True),
+                         func_to_recursive_delete_kvdbs(api_socket, working_path, True))
     print(f'Kvdbs creation,  \texecution order: {pos}')
     # Recursively add all components to the catalog
-    pos = cm.add_command(func_to_recursive_load_catalog(api_socket, resource_handler.cwd(), 'decoders', True),
-                         func_to_recursive_delete_catalog(api_socket, resource_handler.cwd(), 'decoders', True))
+    pos = cm.add_command(func_to_recursive_load_catalog(api_socket, working_path, 'decoders', True),
+                         func_to_recursive_delete_catalog(api_socket, working_path, 'decoders', True))
     print(f'Decoders creation,\texecution order: {pos}')
-    pos = cm.add_command(func_to_recursive_load_catalog(api_socket, resource_handler.cwd(), 'rules', True),
-                         func_to_recursive_delete_catalog(api_socket, resource_handler.cwd(), 'rules', True))
+    pos = cm.add_command(func_to_recursive_load_catalog(api_socket, working_path, 'rules', True),
+                         func_to_recursive_delete_catalog(api_socket, working_path, 'rules', True))
     print(f'Rules creation,  \texecution order: {pos}')
-    pos = cm.add_command(func_to_recursive_load_catalog(api_socket, resource_handler.cwd(), 'outputs', True),
-                         func_to_recursive_delete_catalog(api_socket, resource_handler.cwd(), 'outputs', True))
+    pos = cm.add_command(func_to_recursive_load_catalog(api_socket, working_path, 'outputs', True),
+                         func_to_recursive_delete_catalog(api_socket, working_path, 'outputs', True))
     print(f'Outputs creation,\texecution order: {pos}')
-    pos = cm.add_command(func_to_recursive_load_catalog(api_socket, resource_handler.cwd(), 'filters', True),
-                         func_to_recursive_delete_catalog(api_socket, resource_handler.cwd(), 'filters', True))
+    pos = cm.add_command(func_to_recursive_load_catalog(api_socket, working_path, 'filters', True),
+                         func_to_recursive_delete_catalog(api_socket, working_path, 'filters', True))
     print(f'Filters creation,\texecution order: {pos}')
 
     if cm.execute() == 0:
-        # Add integration manifest
+        # Creates a manifest.yml if it doesn't exists
+        manifest_file = working_path + '/manifest.yml'
+        path = Path(manifest_file)
+        if not path.is_file():
+            args = {'output-path':working_path} #Is there a better way of doing this?
+            print(f'"manifest.yml" not found creating one...')
+            gen_manifest(args,resource_handler)
+
+        # integration name is taken from the directory name
+        name = path.resolve().parent.name
+        print(f'Loading integration [{name}] manifest...')
         try:
-            print('Loading integration manifest...')
-            manifest = resource_handler.load_file(
-                'manifest.yml', rs.Format.YML)
-        except FileNotFoundError:
-            print('No manifest.yml file found in the integration directory. Use the generate-manifest command to generate it and manually add it to the Catalog.')
-            return -1
-        else:
-            try:
-                resource_handler.add_catalog_file(
-                    api_socket, 'integration', f'integration/{resource_handler.current_dir_name()}/0', manifest, rs.Format.YML)
-            except:
-                #TODO: should be neccesary to undo the whole proccess for this single step?
-                print('Couldnt add integration to the store, try manually with catalog update')
-                resource_handler.delete_catalog_file(
-                    api_socket, 'integration', f'integration/{resource_handler.current_dir_name()}/0')
+            manifest = resource_handler.load_file(manifest_file)
+            resource_handler.add_catalog_file(
+                api_socket, 'integration', f'integration/{name}/0', manifest, rs.Format.YML)
+        except:
+            #TODO: should be neccesary to undo the whole proccess for this single step?
+            print('Couldnt add integration to the store, try manually with catalog update')
+            resource_handler.delete_catalog_file(
+                api_socket, 'integration', f'integration/{name}/0')
     else:
         print('Error occur on the adding proccess, policy cleaned')
 
@@ -109,7 +122,15 @@ def run(args, resource_handler: rs.ResourceHandler):
 def configure(subparsers):
     parser_add = subparsers.add_parser(
         'add', help='Add integration components to the Engine\' Catalog')
-    parser_add.add_argument('--api-sock', type=str, default=DEFAULT_API_SOCK,
+    parser_add.add_argument('-a', '--api-sock', type=str, default=DEFAULT_API_SOCK, dest='api_sock',
                             help=f'[default="{DEFAULT_API_SOCK}"] Engine instance API socket path')
+
+    parser_add.add_argument('-p', '--integration-path', type=str, dest='integration-path',
+                            help=f'[default=current directory] Integration directory path')
+
+    #bool
+    # parser_add.add_argument('-v', '--verbose', type=str, help=f'prints Traceback on error messages')
+    # TODO: check if this is a clearer approach
+    # sys.tracebacklimit = 0
 
     parser_add.set_defaults(func=run)
