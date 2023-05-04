@@ -21,6 +21,9 @@ metadata:
 
 check:
   - event.original: +starts_with/[
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+# - event.module: apache-http
+# - event.dataset: apache-access
 
 parse:
   logpar:
