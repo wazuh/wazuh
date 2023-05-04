@@ -1,0 +1,19 @@
+title: Amazon ELB Integration
+overview: This integration processes logs from Amazon Elastic Load Balancing service.
+compatibility:
+configuration: >
+  This integration uses the logcollector source localfile to ingest the logs from the agent.
+  Add to the ossec.conf file in the monitored agent the following block:
+
+  ```html
+  <localfile>
+    <!-- Edit location to appropriate path if needed -->
+    <location>[AWS ELB log path]</location>
+    <log_format>json</log_format>
+    <label key="event.module">aws</label>
+    <label key="event.dataset">aws.elb</label>
+  </localfile>
+  ```
+event:
+  module: aws
+  dataset: aws.elb

@@ -95,6 +95,8 @@ normalize:
 
       - tls.cipher: $~json.aws.cipher_suite
 
+      - wazuh.decoders: +array_append/aws-s3
+
   - logpar:
     - ~json.aws.host_header: <?~>s3.<cloud.region>.<~>
 

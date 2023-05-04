@@ -1,0 +1,19 @@
+---
+name: decoder/aws/0
+
+metadata:
+  title: Wazuh AWS integration Decoder
+  description: Parent decoder for Wazuh AWS integration Logs
+  product.name: Wazuh AWS integration
+
+sources:
+  - decoder/aws-json/0
+
+check:
+  - ~json.integration: aws
+
+normalize:
+  - map:
+      - wazuh.integration: $~json.integration
+      - wazuh.modules.aws.source: $~json.aws.source
+      - wazuh.decoders: +array_append/aws
