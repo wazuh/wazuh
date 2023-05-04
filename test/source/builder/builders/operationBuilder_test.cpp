@@ -3,6 +3,8 @@
 #include "baseTypes.hpp"
 #include "builder/builders/operationBuilder.hpp"
 #include "builder/register.hpp"
+
+#include <defs/failDef.hpp>
 #include <json/json.hpp>
 
 using namespace builder::internals;
@@ -72,7 +74,7 @@ TEST(OperationConditionBuilderTest, Builds)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        ASSERT_NO_THROW(getOperationConditionBuilder(helperRegistry)(def));
+        ASSERT_NO_THROW(getOperationConditionBuilder(helperRegistry)(def, std::make_shared<defs::mocks::FailDef>()));
     }
 }
 
@@ -81,7 +83,9 @@ TEST(OperationConditionBuilderTest, UnexpectedDefinition)
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     for (auto operationDef : operationArray)
     {
-        ASSERT_THROW(getOperationConditionBuilder(helperRegistry)(operationDef), std::runtime_error);
+        ASSERT_THROW(
+            getOperationConditionBuilder(helperRegistry)(operationDef, std::make_shared<defs::mocks::FailDef>()),
+            std::runtime_error);
     }
 }
 
@@ -191,7 +195,9 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        auto op = getOperationConditionBuilder(helperRegistry)(def)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = getOperationConditionBuilder(helperRegistry)(def, std::make_shared<defs::mocks::FailDef>())
+                      ->getPtr<Term<EngineOp>>()
+                      ->getFn();
         auto result = op(eventOk);
         if (!result)
         {
@@ -203,7 +209,9 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        auto op = getOperationConditionBuilder(helperRegistry)(def)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = getOperationConditionBuilder(helperRegistry)(def, std::make_shared<defs::mocks::FailDef>())
+                      ->getPtr<Term<EngineOp>>()
+                      ->getFn();
         auto result = op(eventNotOk);
         if (result)
         {
@@ -215,7 +223,9 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        auto op = getOperationConditionBuilder(helperRegistry)(def)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = getOperationConditionBuilder(helperRegistry)(def, std::make_shared<defs::mocks::FailDef>())
+                      ->getPtr<Term<EngineOp>>()
+                      ->getFn();
         auto result = op(eventNull);
         if (result)
         {
@@ -285,7 +295,8 @@ TEST(OperationConditionBuilderTest, BuildsOperatesArray)
         ]
     })");
 
-    auto expression = getOperationConditionBuilder(helperRegistry)(definition);
+    auto expression =
+        getOperationConditionBuilder(helperRegistry)(definition, std::make_shared<defs::mocks::FailDef>());
     auto expressionRootLevel = expression->getPtr<base::Operation>()->getOperands();
     auto expressionNestedLevel = expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
@@ -384,7 +395,8 @@ TEST(OperationConditionBuilderTest, BuildsOperatesObject)
         }
     })");
 
-    auto expression = getOperationConditionBuilder(helperRegistry)(definition);
+    auto expression =
+        getOperationConditionBuilder(helperRegistry)(definition, std::make_shared<defs::mocks::FailDef>());
     auto expressionRootLevel = expression->getPtr<base::Operation>()->getOperands();
     auto expressionNestedLevel = expressionRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
@@ -433,7 +445,7 @@ TEST(OperationConditionBuilderTest, BuildsWithHelper)
     for (auto operationDef : helperFunctionArray)
     {
         auto def = operationDef.getObject().value()[0];
-        ASSERT_NO_THROW(getOperationConditionBuilder(helperRegistry)(def));
+        ASSERT_NO_THROW(getOperationConditionBuilder(helperRegistry)(def, std::make_shared<defs::mocks::FailDef>()));
     }
 }
 
@@ -443,7 +455,7 @@ TEST(OperationMapBuilderTest, Builds)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        ASSERT_NO_THROW(getOperationMapBuilder(helperRegistry)(def));
+        ASSERT_NO_THROW(getOperationMapBuilder(helperRegistry)(def, std::make_shared<defs::mocks::FailDef>()));
     }
 }
 
@@ -452,7 +464,8 @@ TEST(OperationMapBuilderTest, UnexpectedDefinition)
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
     for (auto operationDef : operationArray)
     {
-        ASSERT_THROW(getOperationMapBuilder(helperRegistry)(operationDef), std::runtime_error);
+        ASSERT_THROW(getOperationMapBuilder(helperRegistry)(operationDef, std::make_shared<defs::mocks::FailDef>()),
+                     std::runtime_error);
     }
 }
 
@@ -520,7 +533,9 @@ TEST(OperationMapBuilderTest, BuildsOperatesLiterals)
     for (auto operationDef : operationArray)
     {
         auto def = operationDef.getObject().value()[0];
-        auto op = getOperationMapBuilder(helperRegistry)(def)->getPtr<Term<EngineOp>>()->getFn();
+        auto op = getOperationMapBuilder(helperRegistry)(def, std::make_shared<defs::mocks::FailDef>())
+                      ->getPtr<Term<EngineOp>>()
+                      ->getFn();
         auto result = op(eventOk);
         if (!result)
         {
@@ -572,7 +587,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesArray)
         ]
     })");
     auto event = std::make_shared<Json>();
-    auto expression = getOperationMapBuilder(helperRegistry)(definition);
+    auto expression = getOperationMapBuilder(helperRegistry)(definition, std::make_shared<defs::mocks::FailDef>());
     auto expressionsRootLevel = expression->getPtr<base::Operation>()->getOperands();
     auto expressionsNestedLevel = expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
@@ -641,7 +656,7 @@ TEST(OperationMapBuilderTest, BuildsOperatesObject)
     })");
 
     auto event = std::make_shared<Json>();
-    auto expression = getOperationMapBuilder(helperRegistry)(definition);
+    auto expression = getOperationMapBuilder(helperRegistry)(definition, std::make_shared<defs::mocks::FailDef>());
     auto expressionsRootLevel = expression->getPtr<base::Operation>()->getOperands();
     auto expressionsNestedLevel = expressionsRootLevel[6]->getPtr<base::Operation>()->getOperands();
 
@@ -678,6 +693,6 @@ TEST(OperationMapBuilderTest, BuildsWithHelper)
     for (auto helperFunctionDef : helperFunctionArray)
     {
         auto def = helperFunctionDef.getObject().value()[0];
-        ASSERT_NO_THROW(getOperationMapBuilder(helperRegistry)(def));
+        ASSERT_NO_THROW(getOperationMapBuilder(helperRegistry)(def, std::make_shared<defs::mocks::FailDef>()));
     }
 }

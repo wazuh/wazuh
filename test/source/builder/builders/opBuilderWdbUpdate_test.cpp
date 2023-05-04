@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
 
 #include <testsCommon.hpp>
@@ -32,7 +33,8 @@ TEST_F(opBuilderWdbUpdate, Build)
 {
     auto tuple {std::make_tuple(std::string {"/sourceField"},
                                 std::string {"wdb_update"},
-                                std::vector<std::string> {"agent 007 syscheck integrity_clear ...."})};
+                                std::vector<std::string> {"agent 007 syscheck integrity_clear ...."},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderWdbUpdate, tuple));
 }
@@ -44,7 +46,8 @@ TEST_F(opBuilderWdbUpdate, BuildsWithJson)
         std::string {"/sourceField"},
         std::string {"wdb_update"},
         std::vector<std::string> {"agent 007 syscheck integrity_clear {\"tail\": \"tail\", "
-                                  "\"checksum\":\"checksum\", \"begin\": \"/a/path\", \"end\": \"/z/path\"}"})};
+                                  "\"checksum\":\"checksum\", \"begin\": \"/a/path\", \"end\": \"/z/path\"}"},
+        std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderWdbUpdate, tuple));
 }
@@ -52,8 +55,10 @@ TEST_F(opBuilderWdbUpdate, BuildsWithJson)
 TEST_F(opBuilderWdbUpdate, BuildsWithQueryRef)
 {
 
-    auto tuple {std::make_tuple(
-        std::string {"/wdb/result"}, std::string {"wdb_update"}, std::vector<std::string> {"$wdb.query_parameters"})};
+    auto tuple {std::make_tuple(std::string {"/wdb/result"},
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderWdbUpdate, tuple));
 }
@@ -63,15 +68,18 @@ TEST_F(opBuilderWdbUpdate, checkWrongQttyParams)
 
     auto tuple {std::make_tuple(std::string {"/wdb/result"},
                                 std::string {"wdb_update"},
-                                std::vector<std::string> {"$wdb.query_parameters", "param2"})};
+                                std::vector<std::string> {"$wdb.query_parameters", "param2"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_THROW(std::apply(bld::opBuilderWdbUpdate, tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderWdbUpdate, gettingEmptyReference)
 {
-    auto tuple {std::make_tuple(
-        std::string {"/wdb/result"}, std::string {"wdb_update"}, std::vector<std::string> {"$wdb.query_parameters"})};
+    auto tuple {std::make_tuple(std::string {"/wdb/result"},
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     auto op {std::apply(bld::opBuilderWdbUpdate, tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -84,8 +92,10 @@ TEST_F(opBuilderWdbUpdate, gettingEmptyReference)
 
 TEST_F(opBuilderWdbUpdate, gettingNonExistingReference)
 {
-    auto tuple {std::make_tuple(
-        std::string {"/wdb/result"}, std::string {"wdb_update"}, std::vector<std::string> {"$wdb.query_parameters"})};
+    auto tuple {std::make_tuple(std::string {"/wdb/result"},
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     auto op {std::apply(bld::opBuilderWdbUpdate, tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -99,8 +109,10 @@ TEST_F(opBuilderWdbUpdate, gettingNonExistingReference)
 TEST_F(opBuilderWdbUpdate, completeFunctioningWithBadResponse)
 {
 
-    auto tuple {std::make_tuple(
-        std::string {"/wdb/result"}, std::string {"wdb_update"}, std::vector<std::string> {"$wdb.query_parameters"})};
+    auto tuple {std::make_tuple(std::string {"/wdb/result"},
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     auto op {std::apply(bld::opBuilderWdbUpdate, tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -132,8 +144,10 @@ TEST_F(opBuilderWdbUpdate, completeFunctioningWithBadResponse)
 
 TEST_F(opBuilderWdbUpdate, completeFunctioningWithOkResponse)
 {
-    auto tuple {std::make_tuple(
-        std::string {"/wdb/result"}, std::string {"wdb_update"}, std::vector<std::string> {"$wdb.query_parameters"})};
+    auto tuple {std::make_tuple(std::string {"/wdb/result"},
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     auto op {std::apply(bld::opBuilderWdbUpdate, tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -165,8 +179,10 @@ TEST_F(opBuilderWdbUpdate, completeFunctioningWithOkResponse)
 
 TEST_F(opBuilderWdbUpdate, completeFunctioningWithOkResponseWPayload)
 {
-    auto tuple {std::make_tuple(
-        std::string {"/wdb/result"}, std::string {"wdb_update"}, std::vector<std::string> {"$wdb.query_parameters"})};
+    auto tuple {std::make_tuple(std::string {"/wdb/result"},
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     auto op {std::apply(bld::opBuilderWdbUpdate, tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -197,8 +213,10 @@ TEST_F(opBuilderWdbUpdate, completeFunctioningWithOkResponseWPayload)
 
 TEST_F(opBuilderWdbUpdate, QueryResultCodeNotOkWithPayload)
 {
-    auto tuple {std::make_tuple(
-        std::string {"/wdb/result"}, std::string {"wdb_update"}, std::vector<std::string> {"$wdb.query_parameters"})};
+    auto tuple {std::make_tuple(std::string {"/wdb/result"},
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     auto op {std::apply(bld::opBuilderWdbUpdate, tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {
@@ -230,8 +248,10 @@ TEST_F(opBuilderWdbUpdate, QueryResultCodeNotOkWithPayload)
 
 TEST_F(opBuilderWdbUpdate, QueryResultCodeOkPayloadEmpty)
 {
-    auto tuple {std::make_tuple(
-        std::string {"/wdb/result"}, std::string {"wdb_update"}, std::vector<std::string> {"$wdb.query_parameters"})};
+    auto tuple {std::make_tuple(std::string {"/wdb/result"},
+                                std::string {"wdb_update"},
+                                std::vector<std::string> {"$wdb.query_parameters"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     auto op {std::apply(bld::opBuilderWdbUpdate, tuple)->getPtr<Term<EngineOp>>()->getFn()};
     auto event1 {std::make_shared<json::Json>(R"({"wdb": {

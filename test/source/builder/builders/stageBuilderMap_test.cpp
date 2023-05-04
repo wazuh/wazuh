@@ -8,6 +8,8 @@
 #include "builder/registry.hpp"
 #include <json/json.hpp>
 
+#include <defs/failDef.hpp>
+
 using namespace builder::internals;
 using namespace builder::internals::builders;
 using namespace json;
@@ -31,7 +33,7 @@ TEST(StageBuilderMapTest, Builds)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    ASSERT_NO_THROW(getStageMapBuilder(registry)(mapJson));
+    ASSERT_NO_THROW(getStageMapBuilder(registry)(mapJson, std::make_shared<defs::mocks::FailDef>()));
 }
 
 TEST(StageBuilderMapTest, UnexpectedDefinition)
@@ -41,7 +43,7 @@ TEST(StageBuilderMapTest, UnexpectedDefinition)
     registry->registerBuilder(getOperationMapBuilder(helperRegistry), "operation.map");
     auto mapJson = Json {R"({})"};
 
-    ASSERT_THROW(getStageMapBuilder(registry)(mapJson), std::runtime_error);
+    ASSERT_THROW(getStageMapBuilder(registry)(mapJson, std::make_shared<defs::mocks::FailDef>()), std::runtime_error);
 }
 
 TEST(StageBuilderMapTest, BuildsCorrectExpression)
@@ -60,7 +62,7 @@ TEST(StageBuilderMapTest, BuildsCorrectExpression)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    auto expression = getStageMapBuilder(registry)(mapJson);
+    auto expression = getStageMapBuilder(registry)(mapJson, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isChain());

@@ -6,6 +6,8 @@
 #include <tuple>
 #include <vector>
 
+#include <defs/idefinitions.hpp>
+
 namespace helper::base
 {
 

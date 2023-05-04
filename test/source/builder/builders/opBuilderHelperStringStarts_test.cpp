@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 
@@ -13,8 +14,10 @@ namespace bld = builder::internals::builders;
 // Build ok
 TEST(opBuilderHelperStringStarts, Build)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"starts_with"}, std::vector<std::string> {"test_value"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"starts_with"},
+                                 std::vector<std::string> {"test_value"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperStringStarts, tuple));
 }
@@ -24,7 +27,8 @@ TEST(opBuilderHelperStringStarts, BuildManyParametersError)
 {
     auto tuple = std::make_tuple(std::string {"/sourceField"},
                                  std::string {"starts_with"},
-                                 std::vector<std::string> {"test_value", "test_value2"});
+                                 std::vector<std::string> {"test_value", "test_value2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperStringStarts, tuple), std::runtime_error);
 }
@@ -32,8 +36,10 @@ TEST(opBuilderHelperStringStarts, BuildManyParametersError)
 // Test ok: static values
 TEST(opBuilderHelperStringStarts, RawString)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"starts_with"}, std::vector<std::string> {"test_value"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"starts_with"},
+                                 std::vector<std::string> {"test_value"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringStarts, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -86,8 +92,10 @@ TEST(opBuilderHelperStringStarts, RawString)
 TEST(opBuilderHelperStringStarts, NotStrings)
 {
 
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"starts_with"}, std::vector<std::string> {"test_value"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"starts_with"},
+                                 std::vector<std::string> {"test_value"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringStarts, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -122,8 +130,10 @@ TEST(opBuilderHelperStringStarts, NotStrings)
 
 TEST(opBuilderHelperStringStarts, EmptyString)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"starts_with"}, std::vector<std::string> {"test_value"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"starts_with"},
+                                 std::vector<std::string> {"test_value"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringStarts, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -140,8 +150,10 @@ TEST(opBuilderHelperStringStarts, EmptyString)
 TEST(opBuilderHelperStringStarts, EmptyStartString)
 {
 
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"starts_with"}, std::vector<std::string> {"$testField"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"starts_with"},
+                                 std::vector<std::string> {"$testField"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringStarts, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -158,8 +170,10 @@ TEST(opBuilderHelperStringStarts, EmptyStartString)
 TEST(opBuilderHelperStringStarts, ReferencedString)
 {
 
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"starts_with"}, std::vector<std::string> {"$ref_key"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"starts_with"},
+                                 std::vector<std::string> {"$ref_key"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringStarts, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -215,7 +229,8 @@ TEST(opBuilderHelperStringStarts, NestedReferencedStrings)
     auto tuple = std::make_tuple(std::string {"/rootKey1/sourceField"}, // TODO check if this is the expected
                                                                         // argument with '/'
                                  std::string {"starts_with"},
-                                 std::vector<std::string> {"$rootKey2.ref_key"});
+                                 std::vector<std::string> {"$rootKey2.ref_key"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringStarts, tuple)->getPtr<Term<EngineOp>>()->getFn();
 

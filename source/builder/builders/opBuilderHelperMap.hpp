@@ -4,6 +4,7 @@
 #include <any>
 
 #include <baseTypes.hpp>
+#include <defs/idefinitions.hpp>
 
 #include "expression.hpp"
 #include <utils/stringUtils.hpp>
@@ -25,12 +26,14 @@ namespace builder::internals::builders
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition i.e : `<field>: +upcase/<str>|$<ref>`
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `uppercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
 base::Expression opBuilderHelperStringUP(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters);
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Transforms a string to lowercase and append or remplace it in the event `e`
@@ -38,12 +41,14 @@ base::Expression opBuilderHelperStringUP(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition i.e : `<field>: +downcase/<str>|$<ref>`
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `lowercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
 base::Expression opBuilderHelperStringLO(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters);
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Transforms a string, trim it and append or remplace it in the event `e`
@@ -52,12 +57,14 @@ base::Expression opBuilderHelperStringLO(const std::string& targetField,
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
  * i.e : `<field>: +trim/[begin | end | both]/char`
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `trim` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
 base::Expression opBuilderHelperStringTrim(const std::string& targetField,
                                            const std::string& rawName,
-                                           const std::vector<std::string>& rawParameters);
+                                           const std::vector<std::string>& rawParameters,
+                                           std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Transform a list of arguments into a single strim with all of them concatenated
@@ -66,11 +73,13 @@ base::Expression opBuilderHelperStringTrim(const std::string& targetField,
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
  * i.e : '<field>: +concat/<stringA>|$<referenceA>/<stringB>|$<referenceB>/...'
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `concat` transformation.
  */
 base::Expression opBuilderHelperStringConcat(const std::string& targetField,
                                              const std::string& rawName,
-                                             const std::vector<std::string>& rawParameters);
+                                             const std::vector<std::string>& rawParameters,
+                                             std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Transforms an array of strings into a single string field result of concatenate
@@ -79,13 +88,15 @@ base::Expression opBuilderHelperStringConcat(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @throw std::runtime_error if the parameter is not a reference or if theres no
  * Value argument for the separator.
  * @return base::Expression
  */
 base::Expression opBuilderHelperStringFromArray(const std::string& targetField,
                                                 const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters);
+                                                const std::vector<std::string>& rawParameters,
+                                                std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Transforms a string of hexa digits into an ASCII string
@@ -94,12 +105,14 @@ base::Expression opBuilderHelperStringFromArray(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @throw std::runtime_error if the parameter is not a reference
  * @return base::Expression
  */
 base::Expression opBuilderHelperStringFromHexa(const std::string& targetField,
                                                const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters);
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Transforms a string of hexadecimal digits into a number
@@ -109,6 +122,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @return base::Expression
  *
  * @throw std::runtime_error if the parameter is not a reference, or more than one
@@ -116,7 +130,8 @@ base::Expression opBuilderHelperStringFromHexa(const std::string& targetField,
  */
 base::Expression opBuilderHelperHexToNumber(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters);
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Transforms a string by replacing, if exists, every ocurrence of a substring by a
@@ -130,12 +145,14 @@ base::Expression opBuilderHelperHexToNumber(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @throw std::runtime_error if the first parameter is empty
  * @return base::Expression
  */
 base::Expression opBuilderHelperStringReplace(const std::string& targetField,
                                               const std::string& rawName,
-                                              const std::vector<std::string>& rawParameters);
+                                              const std::vector<std::string>& rawParameters,
+                                              std::shared_ptr<defs::IDefinitions> definitions);
 
 //*************************************************
 //*           Int tranform                        *
@@ -149,12 +166,14 @@ base::Expression opBuilderHelperStringReplace(const std::string& targetField,
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
  * i.e : `<field>: +int_calculate/[sum|sub|mul|div]/[value1|$<ref1>]/.../[valueN|$<refN>]`
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `mathematical operation` transformation.
  * @throw std::runtime_error if the parameter is not a integer.
  */
 base::Expression opBuilderHelperIntCalc(const std::string& targetField,
                                         const std::string& rawName,
-                                        const std::vector<std::string>& rawParameters);
+                                        const std::vector<std::string>& rawParameters,
+                                        std::shared_ptr<defs::IDefinitions> definitions);
 
 //*************************************************
 //*             JSON tranform                     *
@@ -168,11 +187,13 @@ base::Expression opBuilderHelperIntCalc(const std::string& targetField,
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
  * i.e : '<field>: +delete
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `delete` transformation.
  */
 base::Expression opBuilderHelperDeleteField(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters);
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Renames a field of the json event
@@ -181,11 +202,13 @@ base::Expression opBuilderHelperDeleteField(const std::string& targetField,
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
  * i.e : '<field>: +rename/$<sourceField>
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `rename` transformation.
  */
 base::Expression opBuilderHelperRenameField(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters);
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Merge two arrays or objects.
@@ -197,13 +220,15 @@ base::Expression opBuilderHelperRenameField(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `merge` transformation.
  *
  * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
  */
 base::Expression opBuilderHelperMerge(const std::string& targetField,
                                       const std::string& rawName,
-                                      const std::vector<std::string>& rawParameters);
+                                      const std::vector<std::string>& rawParameters,
+                                      std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Merge recursively two arrays or two objects.
@@ -215,6 +240,7 @@ base::Expression opBuilderHelperMerge(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `merge` transformation.
  *
  * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
@@ -222,7 +248,8 @@ base::Expression opBuilderHelperMerge(const std::string& targetField,
 
 base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
                                                  const std::string& rawName,
-                                                 const std::vector<std::string>& rawParameters);
+                                                 const std::vector<std::string>& rawParameters,
+                                                 std::shared_ptr<defs::IDefinitions> definitions);
 
 //*************************************************
 //*           Regex tranform                      *
@@ -235,12 +262,14 @@ base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `regex extract` transformation.
  * @throw std::runtime_error if the parameter is the regex is invalid.
  */
 base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
                                              const std::string& rawName,
-                                             const std::vector<std::string>& rawParameters);
+                                             const std::vector<std::string>& rawParameters,
+                                             std::shared_ptr<defs::IDefinitions> definitions);
 
 //*************************************************
 //*           Array tranform                      *
@@ -254,16 +283,19 @@ base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `append string to array` transformation.
  * @throw std::runtime_error if the parameters are empty.
  */
 base::Expression opBuilderHelperAppend(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters);
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions);
 
 base::Expression opBuilderHelperAppendSplitString(const std::string& targetField,
                                                   const std::string& rawName,
-                                                  const std::vector<std::string>& rawParameters);
+                                                  const std::vector<std::string>& rawParameters,
+                                                  std::shared_ptr<defs::IDefinitions> definitions);
 
 //*************************************************
 //*              IP tranform                      *
@@ -274,11 +306,13 @@ base::Expression opBuilderHelperAppendSplitString(const std::string& targetField
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @return base::Expression The lifter with the `ip version` transformation.
  */
 base::Expression opBuilderHelperIPVersionFromIPStr(const std::string& targetField,
                                                    const std::string& rawName,
-                                                   const std::vector<std::string>& rawParameters);
+                                                   const std::vector<std::string>& rawParameters,
+                                                   std::shared_ptr<defs::IDefinitions> definitions);
 
 //*************************************************
 //*              Time tranform                    *
@@ -288,12 +322,14 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::string& targetFiel
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @throw std::runtime_error if the parameter is not a reference
  * @return base::Expression
  */
 base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetField,
                                                     const std::string& rawName,
-                                                    const std::vector<std::string>& rawParameters);
+                                                    const std::vector<std::string>& rawParameters,
+                                                    std::shared_ptr<defs::IDefinitions> definitions);
 
 //*************************************************
 //*              Checksum and hash                *
@@ -306,12 +342,14 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetFie
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition.
+ * @param definitions handler with definitions
  * @return base::Expression The Lifter with the SHA1 hash.
  * @throw std::runtime_error if the parameter size is not one.
  */
 base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters);
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions);
 
 } // namespace builder::internals::builders
 

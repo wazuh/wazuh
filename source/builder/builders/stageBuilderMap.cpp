@@ -12,7 +12,7 @@ namespace builder::internals::builders
 {
 Builder getStageMapBuilder(std::shared_ptr<Registry<Builder>> registry)
 {
-    return [registry](std::any definition)
+    return [registry](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
         json::Json jsonDefinition;
 
@@ -22,16 +22,14 @@ Builder getStageMapBuilder(std::shared_ptr<Registry<Builder>> registry)
         }
         catch (std::exception& e)
         {
-            throw std::runtime_error(fmt::format(
-                "Map stage: Definition could not be converted to json: {}", e.what()));
+            throw std::runtime_error(fmt::format("Map stage: Definition could not be converted to json: {}", e.what()));
         }
 
         if (!jsonDefinition.isArray())
         {
-            throw std::runtime_error(
-                fmt::format("Map stage: Invalid json definition type, expected \"array\" "
-                            "but got \"{}\"",
-                            jsonDefinition.typeName()));
+            throw std::runtime_error(fmt::format("Map stage: Invalid json definition type, expected \"array\" "
+                                                 "but got \"{}\"",
+                                                 jsonDefinition.typeName()));
         }
 
         auto mappings = jsonDefinition.getArray().value();
@@ -39,24 +37,22 @@ Builder getStageMapBuilder(std::shared_ptr<Registry<Builder>> registry)
         std::transform(mappings.begin(),
                        mappings.end(),
                        std::back_inserter(mappingExpressions),
-                       [registry](auto arrayMember)
+                       [registry, definitions](auto arrayMember)
                        {
                            if (!arrayMember.isObject())
                            {
-                               throw std::runtime_error(fmt::format(
-                                   "Map stage: Invalid array item type, expected "
-                                   "\"object\" but got \"{}\"",
-                                   arrayMember.typeName()));
+                               throw std::runtime_error(fmt::format("Map stage: Invalid array item type, expected "
+                                                                    "\"object\" but got \"{}\"",
+                                                                    arrayMember.typeName()));
                            }
                            if (arrayMember.size() != 1)
                            {
-                               throw std::runtime_error(fmt::format(
-                                   "Map stage: Invalid object item size, expected "
-                                   "exactly one key/value pair but got \"{}\"",
-                                   arrayMember.size()));
+                               throw std::runtime_error(fmt::format("Map stage: Invalid object item size, expected "
+                                                                    "exactly one key/value pair but got \"{}\"",
+                                                                    arrayMember.size()));
                            }
-                           return registry->getBuilder("operation.map")(
-                               arrayMember.getObject().value()[0]);
+                           return registry->getBuilder("operation.map")(arrayMember.getObject().value()[0],
+                                                                        definitions);
                        });
 
         auto expression = base::Chain::create("stage.map", mappingExpressions);

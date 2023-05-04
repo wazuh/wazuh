@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 
@@ -11,14 +12,20 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperNotExists, Builds)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"exists"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"exists"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperNotExists, tuple));
 }
 
 TEST(opBuilderHelperNotExists, Exec_not_exists_false)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
+                                 std::string {"exists"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "valid"})");
 
@@ -31,7 +38,10 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_false)
 
 TEST(opBuilderHelperNotExists, Exec_not_exists_true)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
+                                 std::string {"exists"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "valid"})");
 
@@ -44,8 +54,10 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_true)
 
 TEST(opBuilderHelperNotExists, Exec_multilevel_false)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/parentObjt_1/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/fieldcheck"},
+                                 std::string {"exists"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -67,8 +79,10 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_false)
 
 TEST(opBuilderHelperNotExists, Exec_multilevel_true)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/parentObjt_1/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/fieldcheck"},
+                                 std::string {"exists"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

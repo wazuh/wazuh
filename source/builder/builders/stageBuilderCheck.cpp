@@ -16,6 +16,7 @@ namespace
 using namespace builder::internals;
 
 base::Expression stageBuilderCheckList(const std::any& definition,
+                                       std::shared_ptr<defs::IDefinitions> definitions,
                                        std::shared_ptr<Registry<Builder>> registry)
 {
     // TODO: add check conditional expression case
@@ -39,26 +40,26 @@ base::Expression stageBuilderCheckList(const std::any& definition,
 
     auto conditions = jsonDefinition.getArray().value();
     std::vector<base::Expression> conditionExpressions;
-    std::transform(conditions.begin(),
-                   conditions.end(),
-                   std::back_inserter(conditionExpressions),
-                   [registry](auto condition)
-                   {
-                       if (!condition.isObject())
-                       {
-                           throw std::runtime_error(fmt::format("Check stage: Invalid array item type, expected "
-                                                                "'object' but got '{}'",
-                                                                condition.typeName()));
-                       }
-                       if (condition.size() != 1)
-                       {
-                           throw std::runtime_error(
-                               fmt::format("Check stage: Invalid object item size, expected exactly "
-                                           "one key/value pair but got '{}'",
-                                           condition.size()));
-                       }
-                       return registry->getBuilder("operation.condition")(condition.getObject().value()[0]);
-                   });
+    std::transform(
+        conditions.begin(),
+        conditions.end(),
+        std::back_inserter(conditionExpressions),
+        [registry, definitions](auto condition)
+        {
+            if (!condition.isObject())
+            {
+                throw std::runtime_error(fmt::format("Check stage: Invalid array item type, expected "
+                                                     "'object' but got '{}'",
+                                                     condition.typeName()));
+            }
+            if (condition.size() != 1)
+            {
+                throw std::runtime_error(fmt::format("Check stage: Invalid object item size, expected exactly "
+                                                     "one key/value pair but got '{}'",
+                                                     condition.size()));
+            }
+            return registry->getBuilder("operation.condition")(condition.getObject().value()[0], definitions);
+        });
 
     auto expression = base::And::create("stage.check", conditionExpressions);
 
@@ -66,6 +67,7 @@ base::Expression stageBuilderCheckList(const std::any& definition,
 }
 
 base::Expression stageBuilderCheckExpression(const std::any& definition,
+                                             std::shared_ptr<defs::IDefinitions> definitions,
                                              std::shared_ptr<Registry<Builder>> registry)
 {
     // Obtain expressionString
@@ -164,12 +166,12 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
     {
         auto [field, valueJson] = extractFieldAndValue(term);
         auto conditionDef = std::make_tuple(field, valueJson);
-        auto opEx = registry->getBuilder("operation.condition")(conditionDef);
+        auto opEx = registry->getBuilder("operation.condition")(conditionDef, definitions);
 
         if (opEx->isTerm())
         {
             auto fn = opEx->getPtr<base::Term<base::EngineOp>>()->getFn();
-            if (keyboarder == "!=") 
+            if (keyboarder == "!=")
             {
                 return [fn](base::Event event) -> bool
                 {
@@ -240,7 +242,7 @@ namespace builder::internals::builders
 
 Builder getStageBuilderCheck(std::shared_ptr<Registry<Builder>> registry)
 {
-    return [registry](std::any definition)
+    return [registry](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
         json::Json jsonDefinition;
         try
@@ -255,11 +257,11 @@ Builder getStageBuilderCheck(std::shared_ptr<Registry<Builder>> registry)
 
         if (jsonDefinition.isArray())
         {
-            return stageBuilderCheckList(definition, registry);
+            return stageBuilderCheckList(definition, definitions, registry);
         }
         else if (jsonDefinition.isString())
         {
-            return stageBuilderCheckExpression(definition, registry);
+            return stageBuilderCheckExpression(definition, definitions, registry);
         }
         else
         {

@@ -10,6 +10,8 @@
 #include "opBuilderFileOutput.hpp"
 #include "stageBuilderOutputs.hpp"
 
+#include <defs/failDef.hpp>
+
 using namespace builder::internals;
 using namespace builder::internals::builders;
 using namespace json;
@@ -28,7 +30,7 @@ TEST(StageBuilderOutputsTest, Builds)
             }
     ])"};
 
-    ASSERT_NO_THROW(builders::getStageBuilderOutputs(registry)(doc));
+    ASSERT_NO_THROW(builders::getStageBuilderOutputs(registry)(doc, std::make_shared<defs::mocks::FailDef>()));
 }
 
 TEST(StageBuilderOutputsTest, UnexpectedDefinition)
@@ -40,7 +42,8 @@ TEST(StageBuilderOutputsTest, UnexpectedDefinition)
                 {"path": "/tmp/stageOutputsTest1.txt"}
     })"};
 
-    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc), std::runtime_error);
+    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 TEST(StageBuilderOutputsTest, NotFoundOutput)
@@ -53,7 +56,8 @@ TEST(StageBuilderOutputsTest, NotFoundOutput)
             }
     ])"};
 
-    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc), std::runtime_error);
+    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 TEST(StageBuilderOutputsTest, EmptyList)
@@ -62,7 +66,8 @@ TEST(StageBuilderOutputsTest, EmptyList)
     registry->registerBuilder(opBuilderFileOutput, "output.file");
     Json doc {R"([])"};
 
-    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc), std::runtime_error);
+    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 TEST(StageBuilderOutputsTest, ArrayWrongSizeItem)
@@ -76,7 +81,8 @@ TEST(StageBuilderOutputsTest, ArrayWrongSizeItem)
             }
     ])"};
 
-    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc), std::runtime_error);
+    ASSERT_THROW(builders::getStageBuilderOutputs(registry)(doc, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 TEST(StageBuilderOutputsTest, BuildsCorrectExpression)
@@ -92,7 +98,7 @@ TEST(StageBuilderOutputsTest, BuildsCorrectExpression)
             }
     ])"};
 
-    auto expression = builders::getStageBuilderOutputs(registry)(doc);
+    auto expression = builders::getStageBuilderOutputs(registry)(doc, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isBroadcast());

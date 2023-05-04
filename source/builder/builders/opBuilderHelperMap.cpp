@@ -83,6 +83,7 @@ IntOperator strToOp(const helper::base::Parameter& op)
 base::Expression opBuilderHelperStringTransformation(const std::string& targetField,
                                                      const std::string& rawName,
                                                      const std::vector<std::string>& rawParameters,
+                                                     std::shared_ptr<defs::IDefinitions> definitions,
                                                      StringOperator op)
 {
     // Identify references and build JSON pointer paths
@@ -181,6 +182,7 @@ base::Expression opBuilderHelperStringTransformation(const std::string& targetFi
 base::Expression opBuilderHelperIntTransformation(const std::string& targetField,
                                                   IntOperator op,
                                                   const std::vector<helper::base::Parameter>& parameters,
+                                                  std::shared_ptr<defs::IDefinitions> definitions,
                                                   const std::string& name)
 {
     std::vector<int> rValueVector {};
@@ -412,25 +414,30 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 // field: +upcase/value|$ref
 base::Expression opBuilderHelperStringUP(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters)
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderHelperStringTransformation(targetField, rawName, rawParameters, StringOperator::UP)};
+    auto expression {
+        opBuilderHelperStringTransformation(targetField, rawName, rawParameters, definitions, StringOperator::UP)};
     return expression;
 }
 
 // field: +downcase/value|$ref
 base::Expression opBuilderHelperStringLO(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters)
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderHelperStringTransformation(targetField, rawName, rawParameters, StringOperator::LO)};
+    auto expression {
+        opBuilderHelperStringTransformation(targetField, rawName, rawParameters, definitions, StringOperator::LO)};
     return expression;
 }
 
 // field: +trim/[begin | end | both]/char
 base::Expression opBuilderHelperStringTrim(const std::string& targetField,
                                            const std::string& rawName,
-                                           const std::vector<std::string>& rawParameters)
+                                           const std::vector<std::string>& rawParameters,
+                                           std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
@@ -511,7 +518,8 @@ base::Expression opBuilderHelperStringTrim(const std::string& targetField,
 // field: +concat/string1|$ref1/string2|$ref2
 base::Expression opBuilderHelperStringConcat(const std::string& targetField,
                                              const std::string& rawName,
-                                             const std::vector<std::string>& rawParameters)
+                                             const std::vector<std::string>& rawParameters,
+                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
 
     // Identify references and build JSON pointer paths
@@ -587,7 +595,8 @@ base::Expression opBuilderHelperStringConcat(const std::string& targetField,
 // field: +join/$<array_reference1>/<separator>
 base::Expression opBuilderHelperStringFromArray(const std::string& targetField,
                                                 const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters)
+                                                const std::vector<std::string>& rawParameters,
+                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
     const auto parameters = helper::base::processParameters(rawName, rawParameters);
     helper::base::checkParametersSize(rawName, parameters, 2);
@@ -650,7 +659,8 @@ base::Expression opBuilderHelperStringFromArray(const std::string& targetField,
 // field: +decode_base16/$<hex_reference>
 base::Expression opBuilderHelperStringFromHexa(const std::string& targetField,
                                                const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters)
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
 
     const auto parameters = helper::base::processParameters(rawName, rawParameters);
@@ -725,7 +735,8 @@ base::Expression opBuilderHelperStringFromHexa(const std::string& targetField,
 // field: +hex_to_number/$ref
 base::Expression opBuilderHelperHexToNumber(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     const auto parameters = helper::base::processParameters(rawName, rawParameters);
     helper::base::checkParametersSize(rawName, parameters, 1);
@@ -775,7 +786,8 @@ base::Expression opBuilderHelperHexToNumber(const std::string& targetField,
 // field: +replace/substring/new_substring
 base::Expression opBuilderHelperStringReplace(const std::string& targetField,
                                               const std::string& rawName,
-                                              const std::vector<std::string>& rawParameters)
+                                              const std::vector<std::string>& rawParameters,
+                                              std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
@@ -888,7 +900,8 @@ base::Expression opBuilderHelperStringReplace(const std::string& targetField,
 // field: +int_calculate/[+|-|*|/]/<val1|$ref1>/.../<valN|$refN>
 base::Expression opBuilderHelperIntCalc(const std::string& targetField,
                                         const std::string& rawName,
-                                        const std::vector<std::string>& rawParameters)
+                                        const std::vector<std::string>& rawParameters,
+                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
@@ -901,7 +914,7 @@ base::Expression opBuilderHelperIntCalc(const std::string& targetField,
     //  remove operation parameter in order to handle all the params equally
     parameters.erase(parameters.begin());
 
-    auto expression {opBuilderHelperIntTransformation(targetField, op, parameters, name)};
+    auto expression {opBuilderHelperIntTransformation(targetField, op, parameters, definitions, name)};
     return expression;
 }
 
@@ -912,7 +925,8 @@ base::Expression opBuilderHelperIntCalc(const std::string& targetField,
 // field: +regex_extract/_field/regexp/
 base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
                                              const std::string& rawName,
-                                             const std::vector<std::string>& rawParameters)
+                                             const std::vector<std::string>& rawParameters,
+                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
@@ -972,7 +986,8 @@ base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
 // field: +array_append/$field|literal...
 base::Expression opBuilderHelperAppend(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters)
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters = helper::base::processParameters(rawName, rawParameters);
 
@@ -1029,7 +1044,8 @@ base::Expression opBuilderHelperAppend(const std::string& targetField,
 // field: +merge_recursive/$field
 base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
                                                  const std::string& rawName,
-                                                 const std::vector<std::string>& rawParameters)
+                                                 const std::vector<std::string>& rawParameters,
+                                                 std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters = helper::base::processParameters(rawName, rawParameters);
     helper::base::checkParametersSize(rawName, parameters, 1);
@@ -1083,7 +1099,8 @@ base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
 // field: +split/$field/[,| | ...]
 base::Expression opBuilderHelperAppendSplitString(const std::string& targetField,
                                                   const std::string& rawName,
-                                                  const std::vector<std::string>& rawParameters)
+                                                  const std::vector<std::string>& rawParameters,
+                                                  std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters = helper::base::processParameters(rawName, rawParameters);
     helper::base::checkParametersSize(rawName, parameters, 2);
@@ -1131,7 +1148,8 @@ base::Expression opBuilderHelperAppendSplitString(const std::string& targetField
 
 base::Expression opBuilderHelperMerge(const std::string& targetField,
                                       const std::string& rawName,
-                                      const std::vector<std::string>& rawParameters)
+                                      const std::vector<std::string>& rawParameters,
+                                      std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters = helper::base::processParameters(rawName, rawParameters);
     helper::base::checkParametersSize(rawName, parameters, 1);
@@ -1189,7 +1207,8 @@ base::Expression opBuilderHelperMerge(const std::string& targetField,
 // field: +delete
 base::Expression opBuilderHelperDeleteField(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
@@ -1234,7 +1253,8 @@ base::Expression opBuilderHelperDeleteField(const std::string& targetField,
 // field: +rename/$sourceField
 base::Expression opBuilderHelperRenameField(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
@@ -1303,7 +1323,8 @@ base::Expression opBuilderHelperRenameField(const std::string& targetField,
 // field: +s_IPVersion/$ip_field
 base::Expression opBuilderHelperIPVersionFromIPStr(const std::string& targetField,
                                                    const std::string& rawName,
-                                                   const std::vector<std::string>& rawParameters)
+                                                   const std::vector<std::string>& rawParameters,
+                                                   std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
 
@@ -1358,7 +1379,8 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::string& targetFiel
 // field: + system_epoch
 base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetField,
                                                     const std::string& rawName,
-                                                    const std::vector<std::string>& rawParameters)
+                                                    const std::vector<std::string>& rawParameters,
+                                                    std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters = helper::base::processParameters(rawName, rawParameters);
 
@@ -1397,7 +1419,8 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetFie
 // field: +sha1/<string1>|<string_reference1>
 base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters)
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     const auto parameters = helper::base::processParameters(rawName, rawParameters);
 

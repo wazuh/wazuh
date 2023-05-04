@@ -21,7 +21,7 @@ const std::unordered_map<std::string, std::string> allowedBlocks = {
 
 Builder getStageNormalizeBuilder(std::shared_ptr<Registry<Builder>> registry)
 {
-    return [registry](const std::any& definition)
+    return [registry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
         json::Json jsonDefinition;
 
@@ -31,15 +31,13 @@ Builder getStageNormalizeBuilder(std::shared_ptr<Registry<Builder>> registry)
         }
         catch (std::exception& e)
         {
-            throw std::runtime_error(
-                fmt::format("Definition could not be converted to json: {}", e.what()));
+            throw std::runtime_error(fmt::format("Definition could not be converted to json: {}", e.what()));
         }
 
         if (!jsonDefinition.isArray())
         {
-            throw std::runtime_error(fmt::format(
-                "Invalid json definition type: expected \"array\" but got \"{}\"",
-                jsonDefinition.typeName()));
+            throw std::runtime_error(fmt::format("Invalid json definition type: expected \"array\" but got \"{}\"",
+                                                 jsonDefinition.typeName()));
         }
 
         auto blocks = jsonDefinition.getArray().value();
@@ -48,42 +46,39 @@ Builder getStageNormalizeBuilder(std::shared_ptr<Registry<Builder>> registry)
             blocks.begin(),
             blocks.end(),
             std::back_inserter(blockExpressions),
-            [registry](auto block)
+            [registry, definitions](auto block)
             {
                 if (!block.isObject())
                 {
-                    throw std::runtime_error(fmt::format(
-                        "Invalid array item type, expected \"object\" but got \"{}\"",
-                        block.typeName()));
+                    throw std::runtime_error(
+                        fmt::format("Invalid array item type, expected \"object\" but got \"{}\"", block.typeName()));
                 }
                 auto blockObj = block.getObject().value();
                 std::vector<base::Expression> subBlocksExpressions;
 
-                std::transform(
-                    blockObj.begin(),
-                    blockObj.end(),
-                    std::back_inserter(subBlocksExpressions),
-                    [registry](auto& tuple)
-                    {
-                        auto& [key, value] = tuple;
-                        if (allowedBlocks.count(key) == 0)
-                        {
-                            throw std::runtime_error(
-                                fmt::format("[builders::stageNormalizeBuilder(json)] "
-                                            "Invalid block name: [{}]",
-                                            key));
-                        }
+                std::transform(blockObj.begin(),
+                               blockObj.end(),
+                               std::back_inserter(subBlocksExpressions),
+                               [registry, definitions](auto& tuple)
+                               {
+                                   auto& [key, value] = tuple;
+                                   if (allowedBlocks.count(key) == 0)
+                                   {
+                                       throw std::runtime_error(fmt::format("[builders::stageNormalizeBuilder(json)] "
+                                                                            "Invalid block name: [{}]",
+                                                                            key));
+                                   }
 
-                        try
-                        {
-                            return registry->getBuilder(allowedBlocks.at(key))(value);
-                        }
-                        catch (const std::exception& e)
-                        {
-                            throw std::runtime_error(fmt::format(
-                                "Stage block \"{}\" building failed: {}", key, e.what()));
-                        }
-                    });
+                                   try
+                                   {
+                                       return registry->getBuilder(allowedBlocks.at(key))(value, definitions);
+                                   }
+                                   catch (const std::exception& e)
+                                   {
+                                       throw std::runtime_error(
+                                           fmt::format("Stage block \"{}\" building failed: {}", key, e.what()));
+                                   }
+                               });
                 auto expression = base::And::create("subblock", subBlocksExpressions);
                 return expression;
             });

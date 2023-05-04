@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -16,7 +17,8 @@ const std::string targetField {"/output"};
 TEST(opBuilderHelperStringFromHexa, build)
 {
     const std::vector<std::string> arguments {"$dummy"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperStringFromHexa, tuple));
 }
@@ -24,7 +26,8 @@ TEST(opBuilderHelperStringFromHexa, build)
 TEST(opBuilderHelperStringFromHexa, buildNoArgumentsError)
 {
     const std::vector<std::string> arguments {};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(opBuilderHelperStringFromHexa, tuple), std::runtime_error);
 }
@@ -32,7 +35,7 @@ TEST(opBuilderHelperStringFromHexa, buildNoArgumentsError)
 TEST(opBuilderHelperStringFromHexa, buildNoTargetError)
 {
     const std::vector<std::string> arguments {};
-    const auto tuple = std::make_tuple("", helperFunctionName, arguments);
+    const auto tuple = std::make_tuple("", helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(opBuilderHelperStringFromHexa, tuple), std::runtime_error);
 }
@@ -40,7 +43,7 @@ TEST(opBuilderHelperStringFromHexa, buildNoTargetError)
 TEST(opBuilderHelperStringFromHexa, buildNoHelperFunctionError)
 {
     const std::vector<std::string> arguments {};
-    const auto tuple = std::make_tuple(targetField, "", arguments);
+    const auto tuple = std::make_tuple(targetField, "", arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(opBuilderHelperStringFromHexa, tuple), std::runtime_error);
 }
@@ -48,7 +51,8 @@ TEST(opBuilderHelperStringFromHexa, buildNoHelperFunctionError)
 TEST(opBuilderHelperStringFromHexa, buildHexaValueError)
 {
     const std::vector<std::string> arguments {"48656C6C6F20776F726C6421"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(opBuilderHelperStringFromHexa, tuple), std::runtime_error);
 }
@@ -56,7 +60,8 @@ TEST(opBuilderHelperStringFromHexa, buildHexaValueError)
 TEST(opBuilderHelperStringFromHexa, hexaReference)
 {
     const std::vector<std::string> arguments {"$sourceField"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"sourceField": "48656C6C6F20776F726C6421"})");
 
@@ -72,7 +77,8 @@ TEST(opBuilderHelperStringFromHexa, hexaReference)
 TEST(opBuilderHelperStringFromHexa, invalidHexaReference)
 {
     const std::vector<std::string> arguments {"$sourceField"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"sourceField": "48656C6C6F20X776F726C6421"})");
 
@@ -86,7 +92,8 @@ TEST(opBuilderHelperStringFromHexa, invalidHexaReference)
 TEST(opBuilderHelperStringFromHexa, allThePrintableCharacters)
 {
     const std::vector<std::string> arguments {"$sourceField"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>("{\"sourceField\": "
                                               "\"202122232425262728292A2B2C2D2E2F30313233343536373"
@@ -108,7 +115,8 @@ TEST(opBuilderHelperStringFromHexa, allThePrintableCharacters)
 TEST(opBuilderHelperStringFromHexa, emptyString)
 {
     const std::vector<std::string> arguments {"$sourceField"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>("{\"sourceField\": "
                                               "\"\"}");
@@ -125,7 +133,8 @@ TEST(opBuilderHelperStringFromHexa, emptyString)
 TEST(opBuilderHelperStringFromHexa, fieldNotAString)
 {
     const std::vector<std::string> arguments {"$sourceField"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>("{\"sourceField\": 123456}");
 

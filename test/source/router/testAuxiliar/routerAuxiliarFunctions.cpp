@@ -3,7 +3,7 @@
 #include <register.hpp>
 #include <router/router.hpp>
 #include <store/drivers/fileDriver.hpp>
-
+#include <defs/idefinitions.hpp>
 namespace aux
 {
 
@@ -12,7 +12,8 @@ namespace
 
 base::Expression coutOutputHelper_test(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters)
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
     const auto parameters = helper::base::processParameters(rawName, rawParameters);
 

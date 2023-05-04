@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -12,22 +13,30 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperTimeEpoch, Builds)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {" system_epoch"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {" system_epoch"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperEpochTimeFromSystem, tuple));
 }
 
 TEST(opBuilderHelperTimeEpoch, Builds_bad_parameters)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {" system_epoch"}, std::vector<std::string> {"test"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {" system_epoch"},
+                                 std::vector<std::string> {"test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperEpochTimeFromSystem, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperTimeEpoch, Exec_string_UP_field_not_exist)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {" system_epoch"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {" system_epoch"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
 

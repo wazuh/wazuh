@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 
@@ -12,15 +13,20 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperIntGreaterThan, Builds)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"int_greater"}, std::vector<std::string> {"10"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"int_greater"},
+                                 std::vector<std::string> {"10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperIntGreaterThan, tuple));
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"12"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_greater"},
+                                 std::vector<std::string> {"12"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -33,8 +39,10 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"9"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_greater"},
+                                 std::vector<std::string> {"9"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -47,8 +55,10 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_greater"},
+                                 std::vector<std::string> {"$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 12})");
@@ -62,8 +72,10 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_true)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_greater"},
+                                 std::vector<std::string> {"$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 12,
                                                    "otherfield": 10})");
@@ -77,8 +89,10 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_true)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_false)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt_1/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"12"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"int_greater"},
+                                 std::vector<std::string> {"12"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -100,8 +114,10 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_false)
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_true)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt_1/field2check"}, std::string {"int_greater"}, std::vector<std::string> {"10"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"int_greater"},
+                                 std::vector<std::string> {"10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -125,7 +141,8 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_ref_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_greater"},
-                                 std::vector<std::string> {"$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -149,7 +166,8 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_multilevel_ref_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_greater"},
-                                 std::vector<std::string> {"$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

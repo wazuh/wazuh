@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 
@@ -17,7 +18,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsNumber)
 {
     const std::string helperFunctionName {"is_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsNumber, tuple));
 }
@@ -26,7 +28,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotNumber)
 {
     const std::string helperFunctionName {"is_not_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsNotNumber, tuple));
 }
@@ -35,7 +38,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsString)
 {
     const std::string helperFunctionName {"is_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsString, tuple));
 }
@@ -44,7 +48,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotString)
 {
     const std::string helperFunctionName {"is_not_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsNotString, tuple));
 }
@@ -53,7 +58,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsBool)
 {
     const std::string helperFunctionName {"is_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsBool, tuple));
 }
@@ -62,7 +68,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotBool)
 {
     const std::string helperFunctionName {"is_not_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsNotBool, tuple));
 }
@@ -71,7 +78,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsArray)
 {
     const std::string helperFunctionName {"is_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsArray, tuple));
 }
@@ -80,7 +88,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotArray)
 {
     const std::string helperFunctionName {"is_not_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsNotArray, tuple));
 }
@@ -89,7 +98,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsObject)
 {
     const std::string helperFunctionName {"is_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsObject, tuple));
 }
@@ -98,7 +108,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotObject)
 {
     const std::string helperFunctionName {"is_not_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsNotObject, tuple));
 }
@@ -107,7 +118,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsNull)
 {
     const std::string helperFunctionName {"is_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsNull, tuple));
 }
@@ -116,7 +128,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsNotNull)
 {
     const std::string helperFunctionName {"is_not_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsNotNull, tuple));
 }
@@ -125,7 +138,8 @@ TEST(opBuilderHelperTypeCheck, BuildIsTrue)
 {
     const std::string helperFunctionName {"is_true"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsTrue, tuple));
 }
@@ -134,7 +148,8 @@ TEST(opBuilderHelperTypeCheck, IsFalseIsFalse)
 {
     const std::string helperFunctionName {"is_faslse"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperIsFalse, tuple));
 }
@@ -145,7 +160,8 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckString)
 {
     const std::string helperFunctionName {"is_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -160,7 +176,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckString)
 {
     const std::string helperFunctionName {"is_not_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -175,7 +192,8 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckString)
 {
     const std::string helperFunctionName {"is_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -190,7 +208,8 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckString)
 {
     const std::string helperFunctionName {"is_not_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -205,7 +224,8 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckString)
 {
     const std::string helperFunctionName {"is_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -220,7 +240,8 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckString)
 {
     const std::string helperFunctionName {"is_not_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -235,7 +256,8 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckString)
 {
     const std::string helperFunctionName {"is_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -250,7 +272,8 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckString)
 {
     const std::string helperFunctionName {"is_not_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -265,7 +288,8 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckString)
 {
     const std::string helperFunctionName {"is_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -280,7 +304,8 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckString)
 {
     const std::string helperFunctionName {"is_not_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -295,7 +320,8 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckString)
 {
     const std::string helperFunctionName {"is_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -310,7 +336,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckString)
 {
     const std::string helperFunctionName {"is_not_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -325,7 +352,8 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckString)
 {
     const std::string helperFunctionName {"is_true"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -340,7 +368,8 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckString)
 {
     const std::string helperFunctionName {"is_false"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": "string"})");
 
@@ -357,7 +386,8 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckNumber)
 {
     const std::string helperFunctionName {"is_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -372,7 +402,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNumber)
 {
     const std::string helperFunctionName {"is_not_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -387,7 +418,8 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckNumber)
 {
     const std::string helperFunctionName {"is_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -402,7 +434,8 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckNumber)
 {
     const std::string helperFunctionName {"is_not_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -417,7 +450,8 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckNumber)
 {
     const std::string helperFunctionName {"is_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -432,7 +466,8 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNumber)
 {
     const std::string helperFunctionName {"is_not_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -447,7 +482,8 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckNumber)
 {
     const std::string helperFunctionName {"is_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -462,7 +498,8 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNumber)
 {
     const std::string helperFunctionName {"is_not_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -477,7 +514,8 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckNumber)
 {
     const std::string helperFunctionName {"is_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -492,7 +530,8 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNumber)
 {
     const std::string helperFunctionName {"is_not_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -507,7 +546,8 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckNumber)
 {
     const std::string helperFunctionName {"is_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -522,7 +562,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckNumber)
 {
     const std::string helperFunctionName {"is_not_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -537,7 +578,8 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckNumber)
 {
     const std::string helperFunctionName {"is_true"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -552,7 +594,8 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckNumber)
 {
     const std::string helperFunctionName {"is_false"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": 1234.5678})");
 
@@ -569,7 +612,8 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -584,7 +628,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_not_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -599,7 +644,8 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -614,7 +660,8 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_not_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -629,7 +676,8 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -644,7 +692,8 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_not_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -659,7 +708,8 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -674,7 +724,8 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_not_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -689,7 +740,8 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -704,7 +756,8 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_not_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -719,7 +772,8 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -734,7 +788,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_not_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -749,7 +804,8 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_true"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -764,7 +820,8 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolTrue)
 {
     const std::string helperFunctionName {"is_false"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": true})");
 
@@ -781,7 +838,8 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -796,7 +854,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_not_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -811,7 +870,8 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -826,7 +886,8 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_not_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -841,7 +902,8 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -856,7 +918,8 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_not_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -871,7 +934,8 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -886,7 +950,8 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_not_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -901,7 +966,8 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -916,7 +982,8 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_not_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -931,7 +998,8 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -946,7 +1014,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_not_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -961,7 +1030,8 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_true"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -976,7 +1046,8 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckBoolFalse)
 {
     const std::string helperFunctionName {"is_false"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": false})");
 
@@ -993,7 +1064,8 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckArray)
 {
     const std::string helperFunctionName {"is_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1008,7 +1080,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckArray)
 {
     const std::string helperFunctionName {"is_not_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1023,7 +1096,8 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckArray)
 {
     const std::string helperFunctionName {"is_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1038,7 +1112,8 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckArray)
 {
     const std::string helperFunctionName {"is_not_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1053,7 +1128,8 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckArray)
 {
     const std::string helperFunctionName {"is_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1068,7 +1144,8 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckArray)
 {
     const std::string helperFunctionName {"is_not_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1083,7 +1160,8 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckArray)
 {
     const std::string helperFunctionName {"is_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1098,7 +1176,8 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckArray)
 {
     const std::string helperFunctionName {"is_not_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1113,7 +1192,8 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckArray)
 {
     const std::string helperFunctionName {"is_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1128,7 +1208,8 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckArray)
 {
     const std::string helperFunctionName {"is_not_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1143,7 +1224,8 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckArray)
 {
     const std::string helperFunctionName {"is_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1158,7 +1240,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckArray)
 {
     const std::string helperFunctionName {"is_not_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1173,7 +1256,8 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckArray)
 {
     const std::string helperFunctionName {"is_true"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ]})");
 
@@ -1188,7 +1272,8 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckArray)
 {
     const std::string helperFunctionName {"is_false"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": [ 123, false, "dummy" ] })");
 
@@ -1205,7 +1290,8 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckObject)
 {
     const std::string helperFunctionName {"is_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1220,7 +1306,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckObject)
 {
     const std::string helperFunctionName {"is_not_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1235,7 +1322,8 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckObject)
 {
     const std::string helperFunctionName {"is_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1250,7 +1338,8 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckObject)
 {
     const std::string helperFunctionName {"is_not_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1265,7 +1354,8 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckObject)
 {
     const std::string helperFunctionName {"is_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1280,7 +1370,8 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckObject)
 {
     const std::string helperFunctionName {"is_not_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1295,7 +1386,8 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckObject)
 {
     const std::string helperFunctionName {"is_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1310,7 +1402,8 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckObject)
 {
     const std::string helperFunctionName {"is_not_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1325,7 +1418,8 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckObject)
 {
     const std::string helperFunctionName {"is_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1340,7 +1434,8 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckObject)
 {
     const std::string helperFunctionName {"is_not_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1355,7 +1450,8 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckObject)
 {
     const std::string helperFunctionName {"is_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1370,7 +1466,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckObject)
 {
     const std::string helperFunctionName {"is_not_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1385,7 +1482,8 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckObject)
 {
     const std::string helperFunctionName {"is_true"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1400,7 +1498,8 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckObject)
 {
     const std::string helperFunctionName {"is_false"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": { "key": "value" }})");
 
@@ -1417,7 +1516,8 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckNull)
 {
     const std::string helperFunctionName {"is_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1432,7 +1532,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNull)
 {
     const std::string helperFunctionName {"is_not_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1447,7 +1548,8 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckNull)
 {
     const std::string helperFunctionName {"is_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1462,7 +1564,8 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckNull)
 {
     const std::string helperFunctionName {"is_not_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1477,7 +1580,8 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckNull)
 {
     const std::string helperFunctionName {"is_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1492,7 +1596,8 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNull)
 {
     const std::string helperFunctionName {"is_not_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1507,7 +1612,8 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckNull)
 {
     const std::string helperFunctionName {"is_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1522,7 +1628,8 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNull)
 {
     const std::string helperFunctionName {"is_not_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1537,7 +1644,8 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckNull)
 {
     const std::string helperFunctionName {"is_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1552,7 +1660,8 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNull)
 {
     const std::string helperFunctionName {"is_not_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1567,7 +1676,8 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckNull)
 {
     const std::string helperFunctionName {"is_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1582,7 +1692,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckNull)
 {
     const std::string helperFunctionName {"is_not_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1597,7 +1708,8 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckNull)
 {
     const std::string helperFunctionName {"is_true"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1612,7 +1724,8 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckNull)
 {
     const std::string helperFunctionName {"is_false"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"check_field": null})");
 
@@ -1629,7 +1742,8 @@ TEST(opBuilderHelperTypeCheck, IsNumberCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1644,7 +1758,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNumberCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_not_number"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1659,7 +1774,8 @@ TEST(opBuilderHelperTypeCheck, IsStringCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1674,7 +1790,8 @@ TEST(opBuilderHelperTypeCheck, IsNotStringCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_not_string"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1689,7 +1806,8 @@ TEST(opBuilderHelperTypeCheck, IsBoolCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1704,7 +1822,8 @@ TEST(opBuilderHelperTypeCheck, IsNotBoolCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_not_boolean"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1719,7 +1838,8 @@ TEST(opBuilderHelperTypeCheck, IsArrayCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1734,7 +1854,8 @@ TEST(opBuilderHelperTypeCheck, IsNotArrayCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_not_array"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1749,7 +1870,8 @@ TEST(opBuilderHelperTypeCheck, IsObjectCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1764,7 +1886,8 @@ TEST(opBuilderHelperTypeCheck, IsNotObjectCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_not_object"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1779,7 +1902,8 @@ TEST(opBuilderHelperTypeCheck, IsNullCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1794,7 +1918,8 @@ TEST(opBuilderHelperTypeCheck, IsNotNullCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_not_null"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1809,7 +1934,8 @@ TEST(opBuilderHelperTypeCheck, IsTrueCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_true"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 
@@ -1824,7 +1950,8 @@ TEST(opBuilderHelperTypeCheck, IsFalseCheckNonexistentField)
 {
     const std::string helperFunctionName {"is_false"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     const auto event = std::make_shared<json::Json>(R"({"other_field": null})");
 

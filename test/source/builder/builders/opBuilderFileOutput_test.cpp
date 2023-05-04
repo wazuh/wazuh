@@ -9,6 +9,8 @@
 #include "builder/builders/opBuilderFileOutput.hpp"
 #include <fmt/format.h>
 
+#include <defs/failDef.hpp>
+
 using namespace builder::internals::builders;
 using namespace base;
 using namespace json;
@@ -38,33 +40,33 @@ TEST_F(OpBuilderFileOutputTest, Builds)
 {
     Json doc {fmt::format("{{\"path\": \"{}\"}}", FILE_PATH).c_str()};
 
-    ASSERT_NO_THROW(opBuilderFileOutput(doc));
+    ASSERT_NO_THROW(opBuilderFileOutput(doc, std::make_shared<defs::mocks::FailDef>()));
 }
 
 TEST_F(OpBuilderFileOutputTest, NotJson)
 {
-    ASSERT_THROW(opBuilderFileOutput(1), std::runtime_error);
+    ASSERT_THROW(opBuilderFileOutput(1, std::make_shared<defs::mocks::FailDef>()), std::runtime_error);
 }
 
 TEST_F(OpBuilderFileOutputTest, NotObject)
 {
     Json doc {fmt::format("[{{\"path\": \"{}\"}}]", FILE_PATH).c_str()};
 
-    ASSERT_THROW(opBuilderFileOutput(doc), std::runtime_error);
+    ASSERT_THROW(opBuilderFileOutput(doc, std::make_shared<defs::mocks::FailDef>()), std::runtime_error);
 }
 
 TEST_F(OpBuilderFileOutputTest, WrongObjectSize)
 {
     Json doc {fmt::format("{{\"path\": \"{}\", \"other\":1}}", FILE_PATH).c_str()};
 
-    ASSERT_THROW(opBuilderFileOutput(doc), std::runtime_error);
+    ASSERT_THROW(opBuilderFileOutput(doc, std::make_shared<defs::mocks::FailDef>()), std::runtime_error);
 }
 
 TEST_F(OpBuilderFileOutputTest, BuildsCorrectExpression)
 {
     Json doc {fmt::format("{{\"path\": \"{}\"}}", FILE_PATH).c_str()};
 
-    auto expression = opBuilderFileOutput(doc);
+    auto expression = opBuilderFileOutput(doc, std::make_shared<defs::mocks::FailDef>());
     ASSERT_TRUE(expression->isTerm());
 }
 
@@ -72,7 +74,7 @@ TEST_F(OpBuilderFileOutputTest, BuildsOperates)
 {
     Json doc {fmt::format("{{\"path\": \"{}\"}}", FILE_PATH).c_str()};
 
-    auto expression = opBuilderFileOutput(doc)->getPtr<Term<EngineOp>>();
+    auto expression = opBuilderFileOutput(doc, std::make_shared<defs::mocks::FailDef>())->getPtr<Term<EngineOp>>();
     auto op = expression->getFn();
 
     for (auto event : std::vector<Json> {5, Json {R"({"field":"value"})"}})

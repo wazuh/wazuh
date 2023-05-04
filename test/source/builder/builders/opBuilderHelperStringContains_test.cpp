@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 
@@ -13,8 +14,10 @@ namespace bld = builder::internals::builders;
 // Build ok
 TEST(opBuilderHelperStringContains, Build)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"test_value"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"contains"},
+                                 std::vector<std::string> {"test_value"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperStringContains, tuple));
 }
@@ -22,8 +25,10 @@ TEST(opBuilderHelperStringContains, Build)
 // Build incorrect number of arguments
 TEST(opBuilderHelperStringContains, BuildManyParametersError)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"test_value", "test_value2"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"contains"},
+                                 std::vector<std::string> {"test_value", "test_value2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperStringContains, tuple), std::runtime_error);
 }
@@ -32,7 +37,10 @@ TEST(opBuilderHelperStringContains, BuildManyParametersError)
 TEST(opBuilderHelperStringContains, FailedEmptyStringValueOrReference)
 {
     // value
-    auto tuple = std::make_tuple(std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {""});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"contains"},
+                                 std::vector<std::string> {""},
+                                 std::make_shared<defs::mocks::FailDef>());
     auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
     auto event = std::make_shared<json::Json>(
         R"({"sourceField":"sample_test_value",
@@ -43,8 +51,10 @@ TEST(opBuilderHelperStringContains, FailedEmptyStringValueOrReference)
     ASSERT_FALSE(result);
 
     // reference
-    tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$reference"});
+    tuple = std::make_tuple(std::string {"/sourceField"},
+                            std::string {"contains"},
+                            std::vector<std::string> {"$reference"},
+                            std::make_shared<defs::mocks::FailDef>());
 
     op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -56,8 +66,10 @@ TEST(opBuilderHelperStringContains, FailedEmptyStringValueOrReference)
 TEST(opBuilderHelperStringContains, SuccessAndFailedUsageWithValue)
 {
     // basic value usage
-    auto tuple =
-        std::make_tuple(std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"test"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"contains"},
+                                 std::vector<std::string> {"test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -71,8 +83,10 @@ TEST(opBuilderHelperStringContains, SuccessAndFailedUsageWithValue)
 TEST(opBuilderHelperStringContains, SuccessAndFailedUsageWithReference)
 {
     // basic reference usage
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$test_reference"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"contains"},
+                                 std::vector<std::string> {"$test_reference"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -92,8 +106,10 @@ TEST(opBuilderHelperStringContains, SeveralDifferentCasesAsReferencce)
         R"(!#$%&()*+,-./0123456789:;<=>?@ ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~)"};
 
     // basic reference
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$test_reference"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"contains"},
+                                 std::vector<std::string> {"$test_reference"},
+                                 std::make_shared<defs::mocks::FailDef>());
     auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     const std::vector<std::string> textFields = {R"(ABCDEFGHIJKLMNOPQRSTUVWXYZ)",
@@ -130,8 +146,10 @@ TEST(opBuilderHelperStringContains, SeveralDifferentCasesByValue)
     for (const auto& baseText : textFields)
     {
         // basic reference
-        auto tuple = std::make_tuple(
-            std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {baseText});
+        auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                     std::string {"contains"},
+                                     std::vector<std::string> {baseText},
+                                     std::make_shared<defs::mocks::FailDef>());
         auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
         auto event = std::make_shared<json::Json>((fmt::format(R"({{"sourceField":"{}"}})", allChars)).c_str());
@@ -166,8 +184,10 @@ TEST(opBuilderHelperStringContains, NotFoundVariousCases)
     for (const auto& baseText : containsFields)
     {
         // basic reference
-        auto tuple = std::make_tuple(
-            std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {baseText});
+        auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                     std::string {"contains"},
+                                     std::vector<std::string> {baseText},
+                                     std::make_shared<defs::mocks::FailDef>());
         auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
         auto event =
@@ -184,7 +204,8 @@ TEST(opBuilderHelperStringContains, NestedReferencedStrings)
 
     auto tuple = std::make_tuple(std::string {"/rootKey1/sourceField"},
                                  std::string {"contains"},
-                                 std::vector<std::string> {"$rootKey2.ref_key"});
+                                 std::vector<std::string> {"$rootKey2.ref_key"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -204,8 +225,10 @@ TEST(opBuilderHelperStringContains, NestedReferencedStrings)
     ASSERT_TRUE(result);
 
     // Inside Array
-    tuple = std::make_tuple(
-        std::string {"/rootKey1/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$rootKey2.0.A1"});
+    tuple = std::make_tuple(std::string {"/rootKey1/sourceField"},
+                            std::string {"contains"},
+                            std::vector<std::string> {"$rootKey2.0.A1"},
+                            std::make_shared<defs::mocks::FailDef>());
 
     op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
     event = std::make_shared<json::Json>(R"(
@@ -232,8 +255,10 @@ TEST(opBuilderHelperStringContains, NestedReferencedStrings)
     ASSERT_TRUE(result);
 
     // nested vs value
-    tuple = std::make_tuple(
-        std::string {"/root/ObjA/ObjB/Field"}, std::string {"contains"}, std::vector<std::string> {"value"});
+    tuple = std::make_tuple(std::string {"/root/ObjA/ObjB/Field"},
+                            std::string {"contains"},
+                            std::vector<std::string> {"value"},
+                            std::make_shared<defs::mocks::FailDef>());
 
     op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
     event = std::make_shared<json::Json>(R"(
@@ -256,8 +281,10 @@ TEST(opBuilderHelperStringContains, NestedReferencedStrings)
 // Check different types not string
 TEST(opBuilderHelperStringContains, NotFoundDifferentTypes)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/sourceField"}, std::string {"contains"}, std::vector<std::string> {"$reference"});
+    auto tuple = std::make_tuple(std::string {"/sourceField"},
+                                 std::string {"contains"},
+                                 std::vector<std::string> {"$reference"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto op = std::apply(bld::opBuilderHelperStringContains, tuple)->getPtr<Term<EngineOp>>()->getFn();
 

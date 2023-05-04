@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 #include <utils/socketInterface/unixSecureStream.hpp>
 
 #include "opBuilderHelperUpgradeConfirmation.hpp"
@@ -34,37 +35,49 @@ class opBuilderUpgradeConfirmationTestSuite : public ::testing::Test
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, Build)
 {
-    auto tuple {
-        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {messageReferenceObject},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperSendUpgradeConfirmation, tuple));
 }
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithoutParameters)
 {
-    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_THROW(std::apply(opBuilderHelperSendUpgradeConfirmation, tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, ErrorBuildWithMoreParameters)
 {
-    auto tuple {std::make_tuple(
-        targetField, upgradeConfirmationHelperName, std::vector<std::string> {"First", "Seccond", "Third"})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {"First", "Seccond", "Third"},
+                                std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_THROW(std::apply(opBuilderHelperSendUpgradeConfirmation, tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, ErrorBuildMessageNotReference)
 {
-    auto tuple {std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {testMessage})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {testMessage},
+                                std::make_shared<defs::mocks::FailDef>())};
     ASSERT_THROW(std::apply(opBuilderHelperSendUpgradeConfirmation, tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceString)
 {
-    auto tuple {
-        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceString})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {messageReferenceString},
+                                std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendUpgradeConfirmation, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
@@ -81,8 +94,10 @@ TEST_F(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceString)
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceObject)
 {
-    auto tuple {
-        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {messageReferenceObject},
+                                std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendUpgradeConfirmation, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
@@ -115,8 +130,10 @@ TEST_F(opBuilderUpgradeConfirmationTestSuite, SendFromReferenceObject)
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, SendEmptyReferencedValueError)
 {
-    auto tuple {
-        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {messageReferenceObject},
+                                std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendUpgradeConfirmation, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
@@ -133,8 +150,10 @@ TEST_F(opBuilderUpgradeConfirmationTestSuite, SendEmptyReferencedValueError)
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, SendWrongReferenceError)
 {
-    auto tuple {std::make_tuple(
-        targetField, upgradeConfirmationHelperName, std::vector<std::string> {"$NonExistentReference"})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {"$NonExistentReference"},
+                                std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendUpgradeConfirmation, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
@@ -151,8 +170,10 @@ TEST_F(opBuilderUpgradeConfirmationTestSuite, SendWrongReferenceError)
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, EmptyObjectSent)
 {
-    auto tuple {
-        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {messageReferenceObject},
+                                std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendUpgradeConfirmation, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(WM_UPGRADE_SOCK, SOCK_STREAM);
@@ -169,8 +190,10 @@ TEST_F(opBuilderUpgradeConfirmationTestSuite, EmptyObjectSent)
 
 TEST_F(opBuilderUpgradeConfirmationTestSuite, UnsuccesfullSentMessage)
 {
-    auto tuple {
-        std::make_tuple(targetField, upgradeConfirmationHelperName, std::vector<std::string> {messageReferenceObject})};
+    auto tuple {std::make_tuple(targetField,
+                                upgradeConfirmationHelperName,
+                                std::vector<std::string> {messageReferenceObject},
+                                std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendUpgradeConfirmation, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     unlink(WM_UPGRADE_SOCK);

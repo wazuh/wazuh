@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 
@@ -12,16 +13,20 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperRegexNotMatch, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"regex_not_match"}, std::vector<std::string> {"regex_test$ 123$"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"regex_not_match"},
+                                 std::vector<std::string> {"regex_test$ 123$"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperRegexNotMatch, tuple));
 }
 
 TEST(opBuilderHelperRegexNotMatch, Exec_match_false)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"regex_not_match"}, std::vector<std::string> {"^regex_test"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"regex_not_match"},
+                                 std::vector<std::string> {"^regex_test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "regex_test 123"})");
 
@@ -34,8 +39,10 @@ TEST(opBuilderHelperRegexNotMatch, Exec_match_false)
 
 TEST(opBuilderHelperRegexNotMatch, Exec_match_true)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"regex_not_match"}, std::vector<std::string> {"regex_test$"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"regex_not_match"},
+                                 std::vector<std::string> {"regex_test$"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "regex_test 123"})");
 
@@ -50,7 +57,8 @@ TEST(opBuilderHelperRegexNotMatch, Exec_match_multilevel_false)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"regex_not_match"},
-                                 std::vector<std::string> {"^regex_test"});
+                                 std::vector<std::string> {"^regex_test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -74,7 +82,8 @@ TEST(opBuilderHelperRegexNotMatch, Exec_match_multilevel_true)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"regex_not_match"},
-                                 std::vector<std::string> {"regex_test$"});
+                                 std::vector<std::string> {"regex_test$"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
