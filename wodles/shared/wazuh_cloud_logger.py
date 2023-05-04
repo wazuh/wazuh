@@ -6,7 +6,7 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-"""This module implements the strategy pattern to provide a flexible logging solution for Wazuh Cloud Modules"""
+"""This module implements the strategy pattern to provide a flexible logging solution for Wazuh Cloud Modules."""
 
 from abc import ABC, abstractmethod
 import logging

@@ -6,7 +6,7 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-"""This module implements the GCPLogStrategy class"""
+"""This module implements the GCPLogStrategy class."""
 
 import logging
 

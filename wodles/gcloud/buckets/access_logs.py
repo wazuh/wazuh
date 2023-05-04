@@ -6,7 +6,7 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-"""This module contains the Class for getting Google Cloud Storage Access logs"""
+"""This module contains the Class for getting Google Cloud Storage Access logs."""
 
 import csv
 import logging

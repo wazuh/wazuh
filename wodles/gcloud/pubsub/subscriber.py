@@ -41,7 +41,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
             Project name.
         subscription_id : str
             Subscription ID.
-        logger: logging.Logger
+        logger: WazuhCloudLogger
             The logger that will be used to send messages to stdout.
 
         Raises

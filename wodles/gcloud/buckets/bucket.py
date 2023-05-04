@@ -6,7 +6,7 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-"""This module contains the class for getting Google Cloud Storage Bucket logs"""
+"""This module contains the class for getting Google Cloud Storage Bucket logs."""
 
 import sqlite3
 from sys import path
