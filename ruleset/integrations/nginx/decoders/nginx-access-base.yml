@@ -16,9 +16,10 @@ metadata:
 sources:
   - decoder/integrations/0
 
-check:
-  - event.module: nginx
-  - event.dataset: nginx-access
+#TODO: Once the events arrive tagged, uncomment these lines below
+# check:
+#   - event.module: nginx
+#   - event.dataset: nginx-access
 
 definitions:
   STATUS_W_BYTES: <http.response.status_code> <http.response.body.bytes>
