@@ -1,25 +1,28 @@
-import json
-import socket
-
 from wazuh.core.common import QUEUE_SOCKET
 from wazuh.core.results import WazuhResult
+from wazuh.core.wazuh_queue import WazuhAnalysisdQueue
 from wazuh.rbac.decorators import expose_resources
-from wazuh import WazuhError
 
 MSG_HEADER = '1:API-Webhook:'
 
 
 @expose_resources(actions=["event:ingest"], resources=["*:*:*"], post_proc_func=None)
 def send_event_to_analysisd(events: list) -> WazuhResult:
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    """_summary_
 
-    try:
-        sock.connect(QUEUE_SOCKET)
+    Parameters
+    ----------
+    events : list
+        _description_
+
+    Returns
+    -------
+    WazuhResult
+        _description_
+    """
+
+    with WazuhAnalysisdQueue(QUEUE_SOCKET) as queue:
         for event in events:
-            sock.send(f'{MSG_HEADER}{json.dumps(event)}'.encode())
-    except Exception as e:
-        raise WazuhError(1000, extra_message=str(e))
-    finally:
-        sock.close()
+            queue.send_msg(msg_header=MSG_HEADER, msg=event)
 
     return WazuhResult({'message': 'The events were forwarded to analisysd'})
