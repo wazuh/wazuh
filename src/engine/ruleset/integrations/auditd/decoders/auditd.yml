@@ -23,9 +23,10 @@ sources:
   - decoder/integrations/0
 
 check:
-  - event.module: auditd
-  - event.dataset: auditd.log
-  # - event.original: +regex_match/^(?:node=.*)?type=\w+ msg=audit
+  - event.original: +regex_match/^(?:node=.*)?type=\w+ msg=audit
+  #TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: auditd
+  # - event.dataset: auditd.log
 
 parse:
   logpar:
