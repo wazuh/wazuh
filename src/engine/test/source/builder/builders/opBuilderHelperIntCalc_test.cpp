@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -17,32 +18,40 @@ constexpr auto almostMinNum = INT_MIN + 1;
 
 TEST(opBuilderHelperIntCalc, Builds)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"int_calculate"}, std::vector<std::string> {"sum", "10"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sum", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperIntCalc, tuple));
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_bad_operator)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"int_calculate"}, std::vector<std::string> {"test", "10"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"test", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperIntCalc, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_zero_division)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"int_calculate"}, std::vector<std::string> {"div", "0"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"div", "0"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperIntCalc, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sum", "10"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sum", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
 
@@ -55,8 +64,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_field_not_exist)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_sum)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sum", "10"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sum", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -71,8 +82,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_sub)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sub", "10"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sub", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -87,8 +100,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sub)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_mul)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"mul", "10"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"mul", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -103,8 +118,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_mul)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_div)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"div", "10"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"div", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -119,8 +136,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_div)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sum", "$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sum", "$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield2": 10})");
@@ -134,8 +153,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_field_not_exist)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_sum)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sum", "$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sum", "$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 10})");
@@ -151,8 +172,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_sum)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_sub)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sub", "$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sub", "$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 10})");
@@ -168,8 +191,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_sub)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_mul)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"mul", "$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"mul", "$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 10})");
@@ -185,8 +210,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_mul)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_division_by_zero)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"div", "$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"div", "$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield2": 0})");
@@ -200,8 +227,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_division_by_zero)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_div)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"div", "$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"div", "$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": 10})");
@@ -219,7 +248,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"sum", "10"});
+                                 std::vector<std::string> {"sum", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -243,7 +273,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_sum)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"sum", "10"});
+                                 std::vector<std::string> {"sum", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -269,7 +300,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_sub)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"sub", "10"});
+                                 std::vector<std::string> {"sub", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -295,7 +327,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_mul)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"mul", "10"});
+                                 std::vector<std::string> {"mul", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -321,7 +354,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_div)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"div", "10"});
+                                 std::vector<std::string> {"div", "10"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -345,8 +379,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_div)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sum", "$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sum", "$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield2": 10})");
@@ -362,7 +398,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_sum)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"sum", "$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"sum", "$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -388,7 +425,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_sub)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"sub", "$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"sub", "$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -414,7 +452,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_mul)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"mul", "$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"mul", "$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -439,7 +478,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_division_by_zero)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"div", "$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"div", "$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -463,7 +503,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_div)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"div", "$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"div", "$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -489,7 +530,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_multiple_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"sum", "10", "20", "30"});
+                                 std::vector<std::string> {"sum", "10", "20", "30"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 1})");
 
@@ -506,7 +548,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_multiple_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"sub", "10", "20", "30"});
+                                 std::vector<std::string> {"sub", "10", "20", "30"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 1})");
 
@@ -523,7 +566,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_multiple_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"mul", "10", "20", "30"});
+                                 std::vector<std::string> {"mul", "10", "20", "30"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 1})");
 
@@ -540,7 +584,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_div_multiple_parameters)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"div", "10", "20", "30"});
+                                 std::vector<std::string> {"div", "10", "20", "30"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 1})");
 
@@ -557,15 +602,18 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_div_multiple_parameters)
 TEST(opBuilderHelperIntCalc, Exec_int_calc_div_by_zero_multiple_parameters)
 {
     // by value
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"div", "10", "0", "30"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"div", "10", "0", "30"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperIntCalc, tuple), std::runtime_error);
 
     // by reference
     tuple = std::make_tuple(std::string {"/field2check"},
                             std::string {"int_calculate"},
-                            std::vector<std::string> {"div", "$Object.A", "$Object.B", "$Object.C"});
+                            std::vector<std::string> {"div", "$Object.A", "$Object.B", "$Object.C"},
+                            std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                         "field2check": 10,
@@ -586,7 +634,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_div_by_zero_multiple_parameters)
     // both
     tuple = std::make_tuple(std::string {"/field2check"},
                             std::string {"int_calculate"},
-                            std::vector<std::string> {"div", "$Object.A", "0", "$Object.C"});
+                            std::vector<std::string> {"div", "$Object.A", "0", "$Object.C"},
+                            std::make_shared<defs::mocks::FailDef>());
 
     auto event2 = std::make_shared<json::Json>(R"({
                     "field2check": 10,
@@ -606,7 +655,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_division_by_zero_several_p
     auto tuple = std::make_tuple(
         std::string {"/parentObjt_1/field2check"},
         std::string {"int_calculate"},
-        std::vector<std::string> {"div", "$parentObjt_2.firstReference", "$parentObjt_2.seccondReference"});
+        std::vector<std::string> {"div", "$parentObjt_2.firstReference", "$parentObjt_2.seccondReference"},
+        std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -631,7 +681,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_multiple_parameters_values_and_re
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"sum", "10", "$Object.A", "30"});
+                                 std::vector<std::string> {"sum", "10", "$Object.A", "30"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "field2check": 10,
@@ -656,7 +707,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_several_non_existing_references)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"mul", "$Object.C", "$Object.Z"});
+                                 std::vector<std::string> {"mul", "$Object.C", "$Object.Z"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt": {
@@ -680,7 +732,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_several_different_types_reference
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"mul", "$Object.A", "$Object.B", "$Object.C", "$Object.D"});
+                                 std::vector<std::string> {"mul", "$Object.A", "$Object.B", "$Object.C", "$Object.D"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt": {
@@ -706,7 +759,8 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_several_empty_params)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"int_calculate"},
-                                 std::vector<std::string> {"mul", "10", "", ""});
+                                 std::vector<std::string> {"mul", "10", "", ""},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_1": {
@@ -718,8 +772,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_several_empty_params)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_value_error)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sum", "2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sum", "2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 =
         std::make_shared<json::Json>(fmt::format(R"({{"field2check": {}}})", std::to_string(almostMaxNum)).c_str());
@@ -735,8 +791,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_value_error)
               "[helper.int_calculate[/field2check, sum, 2]] -> Failure: operation result in "
               "integer Overflown");
 
-    auto tuple2 = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sum", "-3"});
+    auto tuple2 = std::make_tuple(std::string {"/field2check"},
+                                  std::string {"int_calculate"},
+                                  std::vector<std::string> {"sum", "-3"},
+                                  std::make_shared<defs::mocks::FailDef>());
 
     auto event2 =
         std::make_shared<json::Json>(fmt::format(R"({{"field2check": {}}})", std::to_string(-almostMaxNum)).c_str());
@@ -753,8 +811,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sum_value_error)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_value_error)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sub", "2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"sub", "2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 =
         std::make_shared<json::Json>(fmt::format(R"({{"field2check": {}}})", std::to_string(almostMinNum)).c_str());
@@ -765,8 +825,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_value_error)
 
     ASSERT_FALSE(result);
 
-    auto tuple2 = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"sub", "-2"});
+    auto tuple2 = std::make_tuple(std::string {"/field2check"},
+                                  std::string {"int_calculate"},
+                                  std::vector<std::string> {"sub", "-2"},
+                                  std::make_shared<defs::mocks::FailDef>());
 
     auto event2 =
         std::make_shared<json::Json>(fmt::format(R"({{"field2check": {}}})", std::to_string(almostMaxNum)).c_str());
@@ -780,8 +842,10 @@ TEST(opBuilderHelperIntCalc, Exec_int_calc_sub_value_error)
 
 TEST(opBuilderHelperIntCalc, Exec_int_calc_mul_value_error)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"int_calculate"}, std::vector<std::string> {"mul", "2"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"int_calculate"},
+                                 std::vector<std::string> {"mul", "2"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 =
         std::make_shared<json::Json>(fmt::format(R"({{"field2check": {}}})", std::to_string(almostMaxNum)).c_str());

@@ -4,4 +4,4 @@ add_executable(helpersFunctions_benchmarks
 
 # TODO: Because is necessary to add logicExpressions (This shoulb be changed public in builder)
 target_include_directories(helpersFunctions_benchmarks PRIVATE "${ENGINE_SOURCE_DIR}/builder")
-target_link_libraries(helpersFunctions_benchmarks benchmark::benchmark_main logicExpression builders base)
+target_link_libraries(helpersFunctions_benchmarks benchmark::benchmark_main logicExpression builders base defs::mocks)

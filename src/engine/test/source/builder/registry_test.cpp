@@ -3,10 +3,13 @@
 #include "baseTypes.hpp"
 #include "registry.hpp"
 
+#include <defs/failDef.hpp>
+#include <defs/idefinitions.hpp>
+
 using namespace builder::internals;
 using namespace base;
 
-Expression builderDummy(std::any)
+Expression builderDummy(std::any, std::shared_ptr<defs::IDefinitions>)
 {
     Expression expression;
     return expression;
@@ -74,13 +77,13 @@ TEST(RegistryTest, UseCase)
     ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test"));
     Builder builder;
     ASSERT_NO_THROW(builder = registry.getBuilder("test"));
-    ASSERT_NO_THROW(builder(std::any {}));
+    ASSERT_NO_THROW(builder(std::any {}, std::make_shared<defs::mocks::FailDef>()));
 
     ASSERT_THROW(registry.getBuilder("test2"), std::runtime_error);
 
     ASSERT_NO_THROW(registry.registerBuilder(builderDummy, "test2"));
     ASSERT_NO_THROW(builder = registry.getBuilder("test2"));
-    ASSERT_NO_THROW(builder(std::any {}));
+    ASSERT_NO_THROW(builder(std::any {}, std::make_shared<defs::mocks::FailDef>()));
 
     ASSERT_THROW(registry.registerBuilder(builderDummy, "test"), std::logic_error);
 

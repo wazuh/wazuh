@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -12,24 +13,30 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperRegexExtract, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"regex_extract"}, std::vector<std::string> {"$_field", "(regex)"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"regex_extract"},
+                                 std::vector<std::string> {"$_field", "(regex)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperRegexExtract, tuple));
 }
 
 TEST(opBuilderHelperRegexExtract, Builds_bad_parameters)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"regex_extract"}, std::vector<std::string> {"test"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"regex_extract"},
+                                 std::vector<std::string> {"test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperRegexExtract, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexExtract, Builds_incorrect_parameter_type)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"regex_extract"}, std::vector<std::string> {"test", "(regex)"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"regex_extract"},
+                                 std::vector<std::string> {"test", "(regex)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperRegexExtract, tuple), std::runtime_error);
 }
@@ -38,7 +45,8 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"regex_extract"},
-                                 std::vector<std::string> {"$fieldcheck", "(test)"});
+                                 std::vector<std::string> {"$fieldcheck", "(test)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "This is a test."})");
 
@@ -55,7 +63,8 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_ref_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"regex_extract"},
-                                 std::vector<std::string> {"$otherfield", "(test)"});
+                                 std::vector<std::string> {"$otherfield", "(test)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield2": "This is a test."})");
@@ -71,7 +80,8 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_fail)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"regex_extract"},
-                                 std::vector<std::string> {"$otherfield", "(regex)"});
+                                 std::vector<std::string> {"$otherfield", "(regex)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "This is a test."})");
@@ -87,7 +97,8 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_success)
 {
     auto tuple = std::make_tuple(std::string {"/field2check"},
                                  std::string {"regex_extract"},
-                                 std::vector<std::string> {"$otherfield", "(test)"});
+                                 std::vector<std::string> {"$otherfield", "(test)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "This is a test."})");
@@ -105,7 +116,8 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_field_not_exist)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"regex_extract"},
-                                 std::vector<std::string> {"$parentObjt_1.fieldcheck", "(test)"});
+                                 std::vector<std::string> {"$parentObjt_1.fieldcheck", "(test)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -131,7 +143,8 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_ref_field_not_ex
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_2/field2check"},
                                  std::string {"regex_extract"},
-                                 std::vector<std::string> {"$parentObjt_1.field2check", "(test)"});
+                                 std::vector<std::string> {"$parentObjt_1.field2check", "(test)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -155,7 +168,8 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_fail)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"regex_extract"},
-                                 std::vector<std::string> {"$parentObjt_2.field2check", "(regex)"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check", "(regex)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -179,7 +193,8 @@ TEST(opBuilderHelperRegexExtract, Exec_regex_extract_multilevel_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"regex_extract"},
-                                 std::vector<std::string> {"$parentObjt_2.field2check", "(test)"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check", "(test)"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

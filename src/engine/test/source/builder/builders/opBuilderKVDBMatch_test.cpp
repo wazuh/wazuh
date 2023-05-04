@@ -4,6 +4,7 @@
 
 #include "opBuilderKVDB.hpp"
 #include "testUtils.hpp"
+#include <defs/failDef.hpp>
 #include <kvdb/kvdbManager.hpp>
 
 using namespace base;
@@ -37,7 +38,7 @@ TEST_F(opBuilderKVDBMatchTest, Builds)
         "check":
             {"field2match": "+kvdb_match/TEST_DB"}
     })"};
-    ASSERT_NO_THROW(bld::opBuilderKVDBMatch(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderKVDBMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>()));
 }
 
 // Build incorrect number of arguments
@@ -47,7 +48,8 @@ TEST_F(opBuilderKVDBMatchTest, Builds_incorrect_number_of_arguments)
         "check":
             {"field2match": "+kvdb_match"}
     })"};
-    ASSERT_THROW(bld::opBuilderKVDBMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderKVDBMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 // Build invalid DB
@@ -57,7 +59,8 @@ TEST_F(opBuilderKVDBMatchTest, Builds_incorrect_invalid_db)
         "check":
             {"field2match": "+kvdb_match/INVALID_DB"}
     })"};
-    ASSERT_THROW(bld::opBuilderKVDBMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderKVDBMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 // Single level
@@ -89,7 +92,7 @@ TEST_F(opBuilderKVDBMatchTest, Single_level_target_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderKVDBMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderKVDBMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>());
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -127,7 +130,7 @@ TEST_F(opBuilderKVDBMatchTest, Multilevel_target_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderKVDBMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderKVDBMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>());
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

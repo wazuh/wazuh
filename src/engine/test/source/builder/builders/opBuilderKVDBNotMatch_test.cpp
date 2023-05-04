@@ -5,6 +5,7 @@
 #include "opBuilderKVDB.hpp"
 #include "testUtils.hpp"
 #include <kvdb/kvdbManager.hpp>
+#include <defs/failDef.hpp>
 
 using namespace base;
 namespace bld = builder::internals::builders;
@@ -37,7 +38,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds)
         "check":
             {"field2match": "+kvdb_not_match/TEST_DB"}
     })"};
-    ASSERT_NO_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>()));
 }
 
 // Build incorrect number of arguments
@@ -47,7 +48,8 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_number_of_arguments)
         "check":
             {"field2match": "+kvdb_not_match"}
     })"};
-    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 // Build invalid DB
@@ -57,7 +59,8 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
         "check":
             {"field2match": "+kvdb_not_match/INVALID_DB"}
     })"};
-    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 // Test ok: static values
@@ -93,14 +96,13 @@ TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderKVDBNotMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderKVDBNotMatch(doc.get("/check"), tr, std::make_shared<defs::mocks::FailDef>());
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/field2match").GetString(),
-                 "INEXISTENT_KEY");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2match").GetString(), "INEXISTENT_KEY");
     ASSERT_STREQ(expected[1]->getEvent()->get("/otherfield").GetString(), "KEY");
 }
 
@@ -141,8 +143,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/a/b/field2match").GetString(),
-                 "INEXISTENT_KEY");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/a/b/field2match").GetString(), "INEXISTENT_KEY");
     ASSERT_STREQ(expected[1]->getEvent()->get("/a/b/otherfield").GetString(), "KEY");
 }
 

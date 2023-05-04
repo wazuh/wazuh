@@ -4,6 +4,7 @@
 #include <any>
 
 #include <baseTypes.hpp>
+#include <defs/idefinitions.hpp>
 
 #include "expression.hpp"
 #include <utils/stringUtils.hpp>
@@ -38,7 +39,8 @@ constexpr const char* SUPPORTED_VERSION {"1"};
  */
 base::Expression opBuilderHelperSendAR(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters);
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Helper Function for creating the base event that will be sent through
@@ -58,7 +60,8 @@ base::Expression opBuilderHelperSendAR(const std::string& targetField,
  */
 base::Expression opBuilderHelperCreateAR(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters);
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions);
 
 } // namespace builder::internals::builders
 

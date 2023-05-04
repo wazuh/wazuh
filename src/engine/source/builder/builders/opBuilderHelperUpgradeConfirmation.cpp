@@ -22,7 +22,8 @@ namespace builder::internals::builders
 // field: +send_upgrade_confirmation/ar_message
 base::Expression opBuilderHelperSendUpgradeConfirmation(const std::string& targetField,
                                                         const std::string& rawName,
-                                                        const std::vector<std::string>& rawParameters)
+                                                        const std::vector<std::string>& rawParameters,
+                                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};

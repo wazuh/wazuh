@@ -4,6 +4,7 @@
 #include <any>
 #include <memory>
 
+#include <defs/idefinitions.hpp>
 #include <kvdb/kvdbManager.hpp>
 
 #include "expression.hpp"
@@ -26,6 +27,7 @@ namespace builder::internals::builders
 base::Expression KVDBGet(const std::string& targetField,
                          const std::string& rawName,
                          const std::vector<std::string>& rawParameters,
+                         std::shared_ptr<defs::IDefinitions> definitions,
                          bool merge,
                          std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
@@ -42,6 +44,7 @@ base::Expression KVDBGet(const std::string& targetField,
 base::Expression KVDBSet(const std::string& targetField,
                          const std::string& rawName,
                          const std::vector<std::string>& rawParameters,
+                         std::shared_ptr<defs::IDefinitions> definitions,
                          std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**
@@ -52,11 +55,13 @@ base::Expression KVDBSet(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @return base::Expression
  */
 base::Expression KVDBDelete(const std::string& targetField,
                             const std::string& rawName,
                             const std::vector<std::string>& rawParameters,
+                            std::shared_ptr<defs::IDefinitions> definitions,
                             std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager);
 
 /**

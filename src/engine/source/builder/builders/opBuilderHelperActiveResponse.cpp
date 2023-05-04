@@ -43,7 +43,8 @@ inline bool isStringNumber(const std::string value)
 // ar_message: +active_response_create/<command-name>/<location>/<timeout>/<extra-args>
 base::Expression opBuilderHelperCreateAR(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters)
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
@@ -289,7 +290,8 @@ base::Expression opBuilderHelperCreateAR(const std::string& targetField,
 
 base::Expression opBuilderHelperSendAR(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters)
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};

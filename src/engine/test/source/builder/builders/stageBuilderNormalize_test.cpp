@@ -8,6 +8,8 @@
 #include "builder/registry.hpp"
 #include <json/json.hpp>
 
+#include <defs/failDef.hpp>
+
 using namespace builder::internals;
 using namespace builder::internals::builders;
 using namespace json;
@@ -19,8 +21,7 @@ auto initTest()
 {
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-    registry->registerBuilder(getOperationConditionBuilder(helperRegistry),
-                              "operation.condition");
+    registry->registerBuilder(getOperationConditionBuilder(helperRegistry), "operation.condition");
     registry->registerBuilder(getOperationMapBuilder(helperRegistry), "operation.map");
     registry->registerBuilder(getStageBuilderCheck(registry), "stage.check");
     registry->registerBuilder(getStageMapBuilder(registry), "stage.map");
@@ -63,7 +64,7 @@ TEST(StageBuilderNormalizeTest, Builds)
         ]}
 ])"};
 
-    ASSERT_NO_THROW(getStageNormalizeBuilder(registry)(normalizeJson));
+    ASSERT_NO_THROW(getStageNormalizeBuilder(registry)(normalizeJson, std::make_shared<defs::mocks::FailDef>()));
 }
 
 TEST(StageBuilderNormalizeTest, UnexpectedDefinition)
@@ -71,7 +72,8 @@ TEST(StageBuilderNormalizeTest, UnexpectedDefinition)
     auto registry = initTest();
     auto normalizeJson = Json {R"({})"};
 
-    ASSERT_THROW(getStageNormalizeBuilder(registry)(normalizeJson), std::runtime_error);
+    ASSERT_THROW(getStageNormalizeBuilder(registry)(normalizeJson, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 TEST(StageBuilderNormalizeTest, ArrayWrongTypeItem)
@@ -81,7 +83,8 @@ TEST(StageBuilderNormalizeTest, ArrayWrongTypeItem)
         ["string", "value"]
 ])"};
 
-    ASSERT_THROW(getStageNormalizeBuilder(registry)(normalizeJson), std::runtime_error);
+    ASSERT_THROW(getStageNormalizeBuilder(registry)(normalizeJson, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 TEST(StageBuilderNormalizeTest, BuildsCorrectExpression)
@@ -120,7 +123,7 @@ TEST(StageBuilderNormalizeTest, BuildsCorrectExpression)
         ]}
 ])"};
 
-    auto expression = getStageNormalizeBuilder(registry)(normalizeJson);
+    auto expression = getStageNormalizeBuilder(registry)(normalizeJson, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isChain());

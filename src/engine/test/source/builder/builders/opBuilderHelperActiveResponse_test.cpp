@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
 #include <wdb/wdb.hpp>
 
@@ -50,21 +51,23 @@ protected:
 
 TEST_F(opBuilderSendARTestSuite, Builder)
 {
-    auto tuple {make_tuple(targetField, arSendHFName, vector<string> {"query params"})};
+    auto tuple {make_tuple(
+        targetField, arSendHFName, vector<string> {"query params"}, std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperSendAR, tuple));
 }
 
 TEST_F(opBuilderSendARTestSuite, BuilderNoParameterError)
 {
-    auto tuple {make_tuple(targetField, arSendHFName, vector<string> {})};
+    auto tuple {make_tuple(targetField, arSendHFName, vector<string> {}, std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_THROW(std::apply(opBuilderHelperSendAR, tuple), std::runtime_error);
 }
 
 TEST_F(opBuilderSendARTestSuite, Send)
 {
-    auto tuple {make_tuple(targetField, arSendHFName, vector<string> {"test\n123"})};
+    auto tuple {
+        make_tuple(targetField, arSendHFName, vector<string> {"test\n123"}, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
@@ -85,7 +88,8 @@ TEST_F(opBuilderSendARTestSuite, Send)
 
 TEST_F(opBuilderSendARTestSuite, SendFromReference)
 {
-    auto tuple {make_tuple(targetField, arSendHFName, vector<string> {"$wdb.query_params"})};
+    auto tuple {make_tuple(
+        targetField, arSendHFName, vector<string> {"$wdb.query_params"}, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
@@ -106,7 +110,8 @@ TEST_F(opBuilderSendARTestSuite, SendFromReference)
 
 TEST_F(opBuilderSendARTestSuite, SendEmptyReferencedValueError)
 {
-    auto tuple {make_tuple(targetField, arSendHFName, vector<string> {"$wdb.query_params"})};
+    auto tuple {make_tuple(
+        targetField, arSendHFName, vector<string> {"$wdb.query_params"}, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {make_shared<json::Json>(R"({"wdb": {"query_params": ""}})")};
@@ -116,7 +121,8 @@ TEST_F(opBuilderSendARTestSuite, SendEmptyReferencedValueError)
 
 TEST_F(opBuilderSendARTestSuite, SendEmptyReferenceError)
 {
-    auto tuple {make_tuple(targetField, arSendHFName, vector<string> {"$wdb.query_params"})};
+    auto tuple {make_tuple(
+        targetField, arSendHFName, vector<string> {"$wdb.query_params"}, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperSendAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto event {make_shared<json::Json>(R"({"wdb": {"NO_query_params": "123"}})")};
@@ -164,7 +170,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, buildMinimal)
 {
     const vector<string> arguments {commandName, location};
 
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperCreateAR, tuple));
 }
@@ -173,7 +179,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, buildWithTimeout)
 {
     const vector<string> arguments {commandName, location, timeout};
 
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperCreateAR, tuple));
 }
@@ -182,14 +188,15 @@ TEST_F(opBuilderHelperCreateARTestSuite, buildWithoutTimeoutWithExtraArgs)
 {
     const vector<string> arguments {commandName, location, "", extraArgsRef};
 
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperCreateAR, tuple));
 }
 
 TEST_F(opBuilderHelperCreateARTestSuite, buildFull)
 {
-    const auto tuple {make_tuple(targetField, arCreateHFName, arCreateCommonArguments)};
+    const auto tuple {
+        make_tuple(targetField, arCreateHFName, arCreateCommonArguments, std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperCreateAR, tuple));
 }
@@ -198,7 +205,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, checkWrongParametersQttyLess)
 {
     const vector<string> arguments {commandName};
 
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_THROW(std::apply(opBuilderHelperCreateAR, tuple), std::runtime_error);
 }
@@ -207,7 +214,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, checkWrongParametersQttyMore)
 {
     const vector<string> arguments {commandName, "dummy-location", timeout, extraArgsRef, "unexpected-arg"};
 
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
 
     ASSERT_THROW(std::apply(opBuilderHelperCreateAR, tuple), std::runtime_error);
 }
@@ -215,7 +222,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, checkWrongParametersQttyMore)
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithoutTimeoutWithoutExtraArgs)
 {
     const vector<string> arguments {commandName, location};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -234,7 +241,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithoutTimeoutWithoutExtraArgs)
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithTimeoutWithoutExtraArgs)
 {
     const vector<string> arguments {commandName, location, timeout};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -253,7 +260,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithTimeoutWithoutExtraArgs)
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithTimeoutWithEmptyExtraArgs)
 {
     const vector<string> arguments {arCreateCommonArguments};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "_extra_args": []})"};
@@ -272,7 +279,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithTimeoutWithEmptyExtraArgs)
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithoutTimeoutWithEmptyExtraArgs)
 {
     const vector<string> arguments {commandName, location, "", extraArgsRef};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "_extra_args": []})"};
@@ -291,7 +298,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithoutTimeoutWithEmptyExtraArgs)
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithUnexistentExtraArgsReferenceError)
 {
     const vector<string> arguments {commandName, location, "", extraArgsRef};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -306,7 +313,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithUnexistentExtraArgsReferenceEr
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithoutTimeoutWithExtraArgs)
 {
     const vector<string> arguments {commandName, location, "", extraArgsRef};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "_extra_args": ["test-arg","2"]})"};
@@ -326,7 +333,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithoutTimeoutWithExtraArgs)
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithErroneousExtraArgsTypeErrorI)
 {
     const vector<string> arguments {commandName, location, "", extraArgsRef};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "_extra_args": "test-arg"})"};
@@ -341,7 +348,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithErroneousExtraArgsTypeErrorI)
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithErroneousExtraArgsTypeErrorII)
 {
     const vector<string> arguments {commandName, location, "", extraArgsRef};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "_extra_args": 10})"};
@@ -356,7 +363,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithErroneousExtraArgsTypeErrorII)
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithErroneousExtraArgsTypeErrorIII)
 {
     const vector<string> arguments {commandName, location, "", extraArgsRef};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "_extra_args": {"sub_field":[]}})"};
@@ -370,7 +377,8 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithErroneousExtraArgsTypeErrorIII
 
 TEST_F(opBuilderHelperCreateARTestSuite, eventWithTimeoutWithExtraArgs)
 {
-    const auto tuple {make_tuple(targetField, arCreateHFName, arCreateCommonArguments)};
+    const auto tuple {
+        make_tuple(targetField, arCreateHFName, arCreateCommonArguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "_extra_args": ["test-arg","2"]})"};
@@ -389,7 +397,8 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventWithTimeoutWithExtraArgs)
 
 TEST_F(opBuilderHelperCreateARTestSuite, eventExtraArgsNotStringsError)
 {
-    const auto tuple {make_tuple(targetField, arCreateHFName, arCreateCommonArguments)};
+    const auto tuple {
+        make_tuple(targetField, arCreateHFName, arCreateCommonArguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "_extra_args": ["test-arg",2]})"};
@@ -404,7 +413,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventExtraArgsNotStringsError)
 TEST_F(opBuilderHelperCreateARTestSuite, eventLocalLocationWithoutAgentIDError)
 {
     const vector<string> arguments {commandName, "LOCAL"};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -419,7 +428,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventLocalLocationWithoutAgentIDError)
 TEST_F(opBuilderHelperCreateARTestSuite, eventUnexpectedLocationErrorI)
 {
     const vector<string> arguments {commandName, "DUMMY"};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -434,7 +443,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventUnexpectedLocationErrorI)
 TEST_F(opBuilderHelperCreateARTestSuite, eventUnexpectedLocationErrorII)
 {
     const vector<string> arguments {commandName, "10X"};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -449,7 +458,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventUnexpectedLocationErrorII)
 TEST_F(opBuilderHelperCreateARTestSuite, eventUnexpectedLocationErrorIII)
 {
     const vector<string> arguments {commandName, "X10"};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -464,7 +473,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventUnexpectedLocationErrorIII)
 TEST_F(opBuilderHelperCreateARTestSuite, eventUnexpectedLocationErrorIV)
 {
     const vector<string> arguments {commandName, "1X0"};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -480,7 +489,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventLocalLocation)
 {
     auto location {"LOCAL"};
     const vector<string> arguments {commandName, location};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "agent": {"id": "404"}})"};
@@ -500,7 +509,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventSpecificLocation)
 {
     auto location {"404"};
     const vector<string> arguments {commandName, location};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -520,7 +529,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventCommandNameFromReference)
 {
     auto commandName {"$cmd"};
     const vector<string> arguments {commandName, location};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "cmd": "dummy-cmd"})"};
@@ -540,7 +549,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventCommandNameFromUnexistantReference
 {
     auto commandName {"$cmd"};
     const vector<string> arguments {commandName, location};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -556,7 +565,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventLocationFromReference)
 {
     auto location {"$location"};
     const vector<string> arguments {commandName, location};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "location": "ALL"})"};
@@ -576,7 +585,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventLocationFromUnexistantReferenceErr
 {
     auto location {"$location"};
     const vector<string> arguments {commandName, location};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -592,7 +601,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventTimeoutFromReference)
 {
     const auto timeout {"$tout"};
     const vector<string> arguments {commandName, location, timeout};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "tout": "100"})"};
@@ -612,7 +621,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventInvalidTimeoutValueError)
 {
     auto timeout {"dummy"};
     const vector<string> arguments {commandName, location, timeout};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -628,7 +637,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventInvalidTimeoutFromReferenceValueEr
 {
     auto timeout {"$tout"};
     const vector<string> arguments {commandName, location, timeout};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}, "tout": "dummy"})"};
@@ -644,7 +653,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventTimeoutFromUnexistantReferenceErro
 {
     auto timeout {"$tout"};
     const vector<string> arguments {commandName, location, timeout};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {R"({"someField": "123", "obj": {"sub_field": "/"}})"};
@@ -662,7 +671,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventAllParametersFromReferencesI)
     auto location {"$loc"};
     auto timeout {"$tout"};
     const vector<string> arguments {commandName, location, timeout, extraArgsRef};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {
@@ -686,7 +695,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventAllParametersFromReferencesII)
     auto location {"$loc"};
     auto timeout {"$tout"};
     const vector<string> arguments {commandName, location, timeout, extraArgsRef};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {
@@ -710,7 +719,7 @@ TEST_F(opBuilderHelperCreateARTestSuite, eventAllParametersFromReferencesIII)
     auto location {"$loc"};
     auto timeout {"$tout"};
     const vector<string> arguments {commandName, location, timeout, extraArgsRef};
-    const auto tuple {make_tuple(targetField, arCreateHFName, arguments)};
+    const auto tuple {make_tuple(targetField, arCreateHFName, arguments, std::make_shared<defs::mocks::FailDef>())};
     auto op {std::apply(opBuilderHelperCreateAR, tuple)->getPtr<Term<EngineOp>>()->getFn()};
 
     auto originalEvent {

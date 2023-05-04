@@ -90,4 +90,5 @@ formatHelperName(const std::string& name, const std::string& targetField, const 
 
     return formattedName.str();
 }
+
 } // namespace helper::base

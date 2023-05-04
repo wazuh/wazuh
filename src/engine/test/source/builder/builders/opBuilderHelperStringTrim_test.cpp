@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -12,22 +13,30 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringTrim, Builds)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"trim"}, std::vector<std::string> {"begin", "t"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"begin", "t"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperStringTrim, tuple));
 }
 
 TEST(opBuilderHelperStringTrim, Builds_bad_parameters)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"trim"}, std::vector<std::string> {"begin"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"begin"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperStringTrim, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_field_not_exist)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field2check"}, std::string {"trim"}, std::vector<std::string> {"begin", "-"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"begin", "-"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "--test"})");
 
@@ -40,8 +49,10 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_field_not_exist)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_success)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field2check"}, std::string {"trim"}, std::vector<std::string> {"begin", "-"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"begin", "-"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "--test"})");
 
@@ -56,8 +67,10 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_end_success)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field2check"}, std::string {"trim"}, std::vector<std::string> {"end", "-"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"end", "-"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "test--"})");
 
@@ -72,8 +85,10 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_end_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_both_success)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field2check"}, std::string {"trim"}, std::vector<std::string> {"both", "-"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"both", "-"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "--test--"})");
 
@@ -88,8 +103,10 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_both_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_multilevel_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt_1/field2check"}, std::string {"trim"}, std::vector<std::string> {"begin", "-"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"begin", "-"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -111,8 +128,10 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_multilevel_field_not_exist)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_multilevel_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt_1/field2check"}, std::string {"trim"}, std::vector<std::string> {"begin", "-"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"begin", "-"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -136,8 +155,10 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_begin_multilevel_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_end_multilevel_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt_1/field2check"}, std::string {"trim"}, std::vector<std::string> {"end", "-"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"end", "-"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -161,8 +182,10 @@ TEST(opBuilderHelperStringTrim, Exec_string_trim_end_multilevel_success)
 
 TEST(opBuilderHelperStringTrim, Exec_string_trim_both_multilevel_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt_1/field2check"}, std::string {"trim"}, std::vector<std::string> {"both", "-"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"trim"},
+                                 std::vector<std::string> {"both", "-"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {

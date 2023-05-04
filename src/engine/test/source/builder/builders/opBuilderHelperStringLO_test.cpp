@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -12,23 +13,30 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringLO, Builds)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"downcase"},
+                                 std::vector<std::string> {"TEST"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperStringLO, tuple));
 }
 
 TEST(opBuilderHelperStringLO, Builds_bad_parameters)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"downcase"}, std::vector<std::string> {"test", "TEST"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"downcase"},
+                                 std::vector<std::string> {"test", "TEST"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperStringLO, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_field_not_exist)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"downcase"},
+                                 std::vector<std::string> {"TEST"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
 
@@ -41,8 +49,10 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_field_not_exist)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_success)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"downcase"},
+                                 std::vector<std::string> {"TEST"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -57,8 +67,10 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_success)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_ref_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"downcase"},
+                                 std::vector<std::string> {"$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield2": 10})");
@@ -72,8 +84,10 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_ref_field_not_exist)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_ref_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"downcase"},
+                                 std::vector<std::string> {"$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield": "TEST"})");
@@ -89,8 +103,10 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_ref_success)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt_1/field2check"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"downcase"},
+                                 std::vector<std::string> {"TEST"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -112,8 +128,10 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_field_not_exist)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_success)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/parentObjt_1/field2check"}, std::string {"downcase"}, std::vector<std::string> {"TEST"});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"downcase"},
+                                 std::vector<std::string> {"TEST"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -137,8 +155,10 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_success)
 
 TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_ref_field_not_exist)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field2check"}, std::string {"downcase"}, std::vector<std::string> {"$otherfield"});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"downcase"},
+                                 std::vector<std::string> {"$otherfield"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
                                                    "otherfield2": 10})");
@@ -154,7 +174,8 @@ TEST(opBuilderHelperStringLO, Exec_string_LO_multilevel_ref_success)
 {
     auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
                                  std::string {"downcase"},
-                                 std::vector<std::string> {"$parentObjt_2.field2check"});
+                                 std::vector<std::string> {"$parentObjt_2.field2check"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
