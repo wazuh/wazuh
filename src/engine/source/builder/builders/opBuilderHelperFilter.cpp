@@ -314,6 +314,7 @@ std::function<base::result::Result<base::Event>(base::Event)> getStringCmpFuncti
 base::Expression opBuilderComparison(const std::string& targetField,
                                      const std::string& rawName,
                                      const std::vector<std::string>& rawParameters,
+                                     std::shared_ptr<defs::IDefinitions> definitions,
                                      Operator op,
                                      Type t)
 {
@@ -350,54 +351,60 @@ base::Expression opBuilderComparison(const std::string& targetField,
 // field: +int_equal/int|$ref/
 base::Expression opBuilderHelperIntEqual(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters)
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::EQ, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::EQ, Type::INT)};
     return expression;
 }
 
 // field: +int_not_equal/int|$ref/
 base::Expression opBuilderHelperIntNotEqual(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::NE, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::NE, Type::INT)};
     return expression;
 }
 
 // field: +int_less/int|$ref/
 base::Expression opBuilderHelperIntLessThan(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::LT, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::LT, Type::INT)};
     return expression;
 }
 
 // field: +int_less_or_equal/int|$ref/
 base::Expression opBuilderHelperIntLessThanEqual(const std::string& targetField,
                                                  const std::string& rawName,
-                                                 const std::vector<std::string>& rawParameters)
+                                                 const std::vector<std::string>& rawParameters,
+                                                 std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::LE, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::LE, Type::INT)};
     return expression;
 }
 
 // field: +int_greater/int|$ref/
 base::Expression opBuilderHelperIntGreaterThan(const std::string& targetField,
                                                const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters)
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::GT, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::GT, Type::INT)};
     return expression;
 }
 
 // field: +int_greater_or_equal/int|$ref/
 base::Expression opBuilderHelperIntGreaterThanEqual(const std::string& targetField,
                                                     const std::string& rawName,
-                                                    const std::vector<std::string>& rawParameters)
+                                                    const std::vector<std::string>& rawParameters,
+                                                    std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::GE, Type::INT)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::GE, Type::INT)};
     return expression;
 }
 
@@ -408,72 +415,80 @@ base::Expression opBuilderHelperIntGreaterThanEqual(const std::string& targetFie
 // field: +string_equal/value|$ref
 base::Expression opBuilderHelperStringEqual(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::EQ, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::EQ, Type::STRING)};
     return expression;
 }
 
 // field: +string_not_equal/value|$ref
 base::Expression opBuilderHelperStringNotEqual(const std::string& targetField,
                                                const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters)
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::NE, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::NE, Type::STRING)};
     return expression;
 }
 
 // field: +string_greater/value|$ref
 base::Expression opBuilderHelperStringGreaterThan(const std::string& targetField,
                                                   const std::string& rawName,
-                                                  const std::vector<std::string>& rawParameters)
+                                                  const std::vector<std::string>& rawParameters,
+                                                  std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::GT, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::GT, Type::STRING)};
     return expression;
 }
 
 // field: +string_greater_or_equal/value|$ref
 base::Expression opBuilderHelperStringGreaterThanEqual(const std::string& targetField,
                                                        const std::string& rawName,
-                                                       const std::vector<std::string>& rawParameters)
+                                                       const std::vector<std::string>& rawParameters,
+                                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::GE, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::GE, Type::STRING)};
     return expression;
 }
 
 // field: +string_less/value|$ref
 base::Expression opBuilderHelperStringLessThan(const std::string& targetField,
                                                const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters)
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::LT, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::LT, Type::STRING)};
     return expression;
 }
 
 // field: +string_less_or_equal/value|$ref
 base::Expression opBuilderHelperStringLessThanEqual(const std::string& targetField,
                                                     const std::string& rawName,
-                                                    const std::vector<std::string>& rawParameters)
+                                                    const std::vector<std::string>& rawParameters,
+                                                    std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::LE, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::LE, Type::STRING)};
     return expression;
 }
 
 // field: +starts_with/value|$ref
 base::Expression opBuilderHelperStringStarts(const std::string& targetField,
                                              const std::string& rawName,
-                                             const std::vector<std::string>& rawParameters)
+                                             const std::vector<std::string>& rawParameters,
+                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::ST, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::ST, Type::STRING)};
     return expression;
 }
 
 // field: +contains/value|$ref
 base::Expression opBuilderHelperStringContains(const std::string& targetField,
                                                const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters)
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto expression {opBuilderComparison(targetField, rawName, rawParameters, Operator::CN, Type::STRING)};
+    auto expression {opBuilderComparison(targetField, rawName, rawParameters, definitions, Operator::CN, Type::STRING)};
     return expression;
 }
 
@@ -484,7 +499,8 @@ base::Expression opBuilderHelperStringContains(const std::string& targetField,
 // field: +regex_match/regexp
 base::Expression opBuilderHelperRegexMatch(const std::string& targetField,
                                            const std::string& rawName,
-                                           const std::vector<std::string>& rawParameters)
+                                           const std::vector<std::string>& rawParameters,
+                                           std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
@@ -535,7 +551,8 @@ base::Expression opBuilderHelperRegexMatch(const std::string& targetField,
 // field: +regex_not_match/regexp
 base::Expression opBuilderHelperRegexNotMatch(const std::string& targetField,
                                               const std::string& rawName,
-                                              const std::vector<std::string>& rawParameters)
+                                              const std::vector<std::string>& rawParameters,
+                                              std::shared_ptr<defs::IDefinitions> definitions)
 {
     // TODO: Regex parameter fails at operationBuilderSplit
 
@@ -593,7 +610,8 @@ base::Expression opBuilderHelperRegexNotMatch(const std::string& targetField,
 // field: +ip_cidr_match/192.168.0.0/255.255.0.0
 base::Expression opBuilderHelperIPCIDR(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters)
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
 
     // Identify references and build JSON pointer paths
@@ -687,7 +705,8 @@ base::Expression opBuilderHelperIPCIDR(const std::string& targetField,
 // field: +exists
 base::Expression opBuilderHelperExists(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters)
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -717,7 +736,8 @@ base::Expression opBuilderHelperExists(const std::string& targetField,
 // field: +not_exists
 base::Expression opBuilderHelperNotExists(const std::string& targetField,
                                           const std::string& rawName,
-                                          const std::vector<std::string>& rawParameters)
+                                          const std::vector<std::string>& rawParameters,
+                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -751,7 +771,8 @@ base::Expression opBuilderHelperNotExists(const std::string& targetField,
 // field: +array_contains/value1/value2/...valueN
 base::Expression opBuilderHelperContainsString(const std::string& targetField,
                                                const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters)
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersMinSize(rawName, parameters, 1);
@@ -829,7 +850,8 @@ base::Expression opBuilderHelperContainsString(const std::string& targetField,
 // field: +is_number
 base::Expression opBuilderHelperIsNumber(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters)
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -873,7 +895,8 @@ base::Expression opBuilderHelperIsNumber(const std::string& targetField,
 // field: +is_not_number
 base::Expression opBuilderHelperIsNotNumber(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -916,7 +939,8 @@ base::Expression opBuilderHelperIsNotNumber(const std::string& targetField,
 // field: +is_string
 base::Expression opBuilderHelperIsString(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters)
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -960,7 +984,8 @@ base::Expression opBuilderHelperIsString(const std::string& targetField,
 // field: +is_not_string
 base::Expression opBuilderHelperIsNotString(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1004,7 +1029,8 @@ base::Expression opBuilderHelperIsNotString(const std::string& targetField,
 // field: +is_boolean
 base::Expression opBuilderHelperIsBool(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters)
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1049,7 +1075,8 @@ base::Expression opBuilderHelperIsBool(const std::string& targetField,
 // field: +is_not_boolean
 base::Expression opBuilderHelperIsNotBool(const std::string& targetField,
                                           const std::string& rawName,
-                                          const std::vector<std::string>& rawParameters)
+                                          const std::vector<std::string>& rawParameters,
+                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1093,7 +1120,8 @@ base::Expression opBuilderHelperIsNotBool(const std::string& targetField,
 // field: +is_array
 base::Expression opBuilderHelperIsArray(const std::string& targetField,
                                         const std::string& rawName,
-                                        const std::vector<std::string>& rawParameters)
+                                        const std::vector<std::string>& rawParameters,
+                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1138,7 +1166,8 @@ base::Expression opBuilderHelperIsArray(const std::string& targetField,
 // field: +is_not_array
 base::Expression opBuilderHelperIsNotArray(const std::string& targetField,
                                            const std::string& rawName,
-                                           const std::vector<std::string>& rawParameters)
+                                           const std::vector<std::string>& rawParameters,
+                                           std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1182,7 +1211,8 @@ base::Expression opBuilderHelperIsNotArray(const std::string& targetField,
 // field: +is_object
 base::Expression opBuilderHelperIsObject(const std::string& targetField,
                                          const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters)
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1227,7 +1257,8 @@ base::Expression opBuilderHelperIsObject(const std::string& targetField,
 // field: +is_not_object
 base::Expression opBuilderHelperIsNotObject(const std::string& targetField,
                                             const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)
+                                            const std::vector<std::string>& rawParameters,
+                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1271,7 +1302,8 @@ base::Expression opBuilderHelperIsNotObject(const std::string& targetField,
 // field: +is_null
 base::Expression opBuilderHelperIsNull(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters)
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1315,7 +1347,8 @@ base::Expression opBuilderHelperIsNull(const std::string& targetField,
 // field: +is_not_null
 base::Expression opBuilderHelperIsNotNull(const std::string& targetField,
                                           const std::string& rawName,
-                                          const std::vector<std::string>& rawParameters)
+                                          const std::vector<std::string>& rawParameters,
+                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1359,7 +1392,8 @@ base::Expression opBuilderHelperIsNotNull(const std::string& targetField,
 // field: +is_true
 base::Expression opBuilderHelperIsTrue(const std::string& targetField,
                                        const std::string& rawName,
-                                       const std::vector<std::string>& rawParameters)
+                                       const std::vector<std::string>& rawParameters,
+                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1403,7 +1437,8 @@ base::Expression opBuilderHelperIsTrue(const std::string& targetField,
 // field: +is_false
 base::Expression opBuilderHelperIsFalse(const std::string& targetField,
                                         const std::string& rawName,
-                                        const std::vector<std::string>& rawParameters)
+                                        const std::vector<std::string>& rawParameters,
+                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters)};
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1441,6 +1476,83 @@ base::Expression opBuilderHelperIsFalse(const std::string& targetField,
             }
 
             return result;
+        });
+}
+
+base::Expression opBuilderHelperIn(const std::string& targetField,
+                                   const std::string& rawName,
+                                   const std::vector<std::string>& rawParameters,
+                                   std::shared_ptr<defs::IDefinitions> definitions)
+{
+    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    helper::base::checkParametersSize(rawName, parameters, 1);
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+
+    // Prepare the parameter
+    std::variant<std::string, json::Json> collection = [parameters,
+                                                        definitions]() -> std::variant<std::string, json::Json>
+    {
+        if (parameters[0].m_type == helper::base::Parameter::Type::VALUE)
+        {
+            return json::Json(parameters[0].m_value.c_str());
+        }
+        else if (parameters[0].m_type == helper::base::Parameter::Type::REFERENCE)
+        {
+            if (definitions->contains(parameters[0].m_value))
+            {
+                return definitions->get(parameters[0].m_value);
+            }
+            else
+            {
+                return std::string(parameters[0].m_value);
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Invalid parameter type");
+        }
+    }();
+
+    // Tracing
+    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto failureTrace =
+        fmt::format("[{}] -> Failure: Target field '{}' not in {}", name, targetField, parameters[0].m_value);
+    const auto failureMissingReferenceTrace =
+        fmt::format("[{}] -> Failure: Reference '{}' not found", name, parameters[0].m_value);
+    const auto targetFieldMissingTrace = fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField);
+
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=](base::Event event) -> base::result::Result<base::Event>
+        {
+            auto resolvedTarget = event->getJson(targetField);
+            if (!resolvedTarget)
+            {
+                return base::result::makeFailure(event, targetFieldMissingTrace);
+            }
+
+            if (std::holds_alternative<json::Json>(collection))
+            {
+                if (std::get<json::Json>(collection).contains(resolvedTarget.value()))
+                {
+                    return base::result::makeSuccess(event, successTrace);
+                }
+
+                return base::result::makeFailure(event, failureTrace);
+            }
+
+            auto resolvedReference = event->getJson(std::get<std::string>(collection));
+            if (!resolvedReference)
+            {
+                return base::result::makeFailure(event, failureMissingReferenceTrace);
+            }
+
+            if (resolvedReference.value().contains(resolvedTarget.value()))
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+
+            return base::result::makeFailure(event, failureTrace);
         });
 }
 

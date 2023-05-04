@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -11,42 +12,59 @@ namespace bld = builder::internals::builders;
 
 TEST(OpBuilderHelperAppendSplitString, Builds)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+split"}, std::vector<std::string> {"$ref", ","});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+split"},
+                                 std::vector<std::string> {"$ref", ","},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperAppendSplitString, tuple));
 }
 
 TEST(OpBuilderHelperAppendSplitString, WrongSizeParameters)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"+split"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+split"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
     ASSERT_THROW(std::apply(bld::opBuilderHelperAppendSplitString, tuple), std::runtime_error);
 
-    tuple = std::make_tuple(std::string {"/field"}, std::string {"+split"}, std::vector<std::string> {"$ref"});
+    tuple = std::make_tuple(std::string {"/field"},
+                            std::string {"+split"},
+                            std::vector<std::string> {"$ref"},
+                            std::make_shared<defs::mocks::FailDef>());
     ASSERT_THROW(std::apply(bld::opBuilderHelperAppendSplitString, tuple), std::runtime_error);
 
-    tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"+split"}, std::vector<std::string> {"$ref", ",", "other"});
+    tuple = std::make_tuple(std::string {"/field"},
+                            std::string {"+split"},
+                            std::vector<std::string> {"$ref", ",", "other"},
+                            std::make_shared<defs::mocks::FailDef>());
     ASSERT_THROW(std::apply(bld::opBuilderHelperAppendSplitString, tuple), std::runtime_error);
 }
 
 TEST(OpBuilderHelperAppendSplitString, NotRefParameter0)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"+split"}, std::vector<std::string> {"1", ","});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+split"},
+                                 std::vector<std::string> {"1", ","},
+                                 std::make_shared<defs::mocks::FailDef>());
     ASSERT_THROW(std::apply(bld::opBuilderHelperAppendSplitString, tuple), std::runtime_error);
 }
 
 TEST(OpBuilderHelperAppendSplitString, NotCharParameter1)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+split"}, std::vector<std::string> {"$ref", "tw"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+split"},
+                                 std::vector<std::string> {"$ref", "tw"},
+                                 std::make_shared<defs::mocks::FailDef>());
     ASSERT_THROW(std::apply(bld::opBuilderHelperAppendSplitString, tuple), std::runtime_error);
 }
 
 TEST(OpBuilderHelperAppendSplitString, Exec_append_split)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+split"}, std::vector<std::string> {"$ref", ","});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+split"},
+                                 std::vector<std::string> {"$ref", ","},
+                                 std::make_shared<defs::mocks::FailDef>());
     auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref": "1,2,3"})");
     auto event2 = std::make_shared<json::Json>(R"({"field": "2", "ref": "1,2,3"})");
     auto event3 = std::make_shared<json::Json>(R"({"field": ["0"], "ref": "1,2,3"})");
@@ -83,8 +101,10 @@ TEST(OpBuilderHelperAppendSplitString, Exec_append_split)
 
 TEST(OpBuilderHelperAppendSplitString, Exec_append_split_fail_ref)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"+split"}, std::vector<std::string> {"$ref", ","});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+split"},
+                                 std::vector<std::string> {"$ref", ","},
+                                 std::make_shared<defs::mocks::FailDef>());
     auto event1 = std::make_shared<json::Json>(R"({"field": [], "ref1": "1,2,3"})");
 
     auto op = std::apply(bld::opBuilderHelperAppendSplitString, tuple)->getPtr<Term<EngineOp>>()->getFn();

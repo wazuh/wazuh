@@ -1070,7 +1070,8 @@ std::optional<std::string> handleDumpEvent(const DecodeCxt& ctx)
 
 base::Expression opBuilderSCAdecoder(const std::string& targetField,
                                      const std::string& rawName,
-                                     const std::vector<std::string>& rawParameters)
+                                     const std::vector<std::string>& rawParameters,
+                                     std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
     const auto parameters {helper::base::processParameters(rawName, rawParameters)};

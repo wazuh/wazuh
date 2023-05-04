@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -18,7 +19,8 @@ TEST(opBuilderHelperStringReplace, build)
 {
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperStringReplace, tuple));
 }
@@ -26,7 +28,8 @@ TEST(opBuilderHelperStringReplace, build)
 TEST(opBuilderHelperStringReplace, buildNoArgumentsError)
 {
     const std::vector<std::string> arguments {};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(opBuilderHelperStringReplace, tuple), std::runtime_error);
 }
@@ -35,7 +38,8 @@ TEST(opBuilderHelperStringReplace, buildInvalidParametersAmount)
 {
     const std::vector<std::string> arguments {"only"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(opBuilderHelperStringReplace, tuple), std::runtime_error);
 }
@@ -44,7 +48,8 @@ TEST(opBuilderHelperStringReplace, OldSubstrParameterEmpty)
 {
     const std::vector<std::string> arguments {"", "NewSubstr"};
 
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(opBuilderHelperStringReplace, tuple), std::runtime_error);
 }
@@ -52,7 +57,8 @@ TEST(opBuilderHelperStringReplace, OldSubstrParameterEmpty)
 TEST(opBuilderHelperStringReplace, replaceCaseI)
 {
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"field": "Hi OldSubstr"})");
 
@@ -68,7 +74,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseI)
 TEST(opBuilderHelperStringReplace, replaceCaseII)
 {
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"field": "OldSubstr"})");
 
@@ -84,7 +91,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseII)
 TEST(opBuilderHelperStringReplace, replaceCaseIII)
 {
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"field": "SomethingOldSubstrDummy"})");
 
@@ -100,7 +108,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseIII)
 TEST(opBuilderHelperStringReplace, replaceCaseIV)
 {
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"field": "OldSubstrSomethingOldSubstrDummyOldSubstr"})");
 
@@ -116,7 +125,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseIV)
 TEST(opBuilderHelperStringReplace, replaceCaseV)
 {
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"field": "OldSubstrOldSubstrOldSubstr"})");
 
@@ -132,7 +142,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseV)
 TEST(opBuilderHelperStringReplace, replaceCaseVI)
 {
     const std::vector<std::string> arguments {"OldSubstr", "NewSubstr"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"field": "Some dummy string that should remain the same"})");
 
@@ -148,7 +159,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseVI)
 TEST(opBuilderHelperStringReplace, replaceCaseVII)
 {
     const std::vector<std::string> arguments {"OldSubstr", ""};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"field": "Some string that contains an 'OldSubstr'."})");
 
@@ -164,7 +176,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseVII)
 TEST(opBuilderHelperStringReplace, replaceCaseVIII)
 {
     const std::vector<std::string> arguments {"|", "?"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"field": "Some string that contains a symbol like '|'."})");
 
@@ -180,7 +193,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseVIII)
 TEST(opBuilderHelperStringReplace, replaceCaseIX)
 {
     const std::vector<std::string> arguments {"|", "?"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({"field": "Some string that contains a symbol like '|'."})");
 
@@ -196,7 +210,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseIX)
 TEST(opBuilderHelperStringReplace, replaceCaseX)
 {
     const std::vector<std::string> arguments {"|", "?"};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event =
         std::make_shared<json::Json>(R"({"field": "|Some|| string that| contains many |symbols| |like '|'.|"})");
@@ -214,7 +229,8 @@ TEST(opBuilderHelperStringReplace, replaceCaseX)
 TEST(opBuilderHelperStringReplace, replaceCaseXI)
 {
     const std::vector<std::string> arguments {"|", ""};
-    const auto tuple = std::make_tuple(targetField, helperFunctionName, arguments);
+    const auto tuple =
+        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>());
 
     auto event =
         std::make_shared<json::Json>(R"({"field": "|Some|| string that| contains many |symbols| |like '|'.|"})");

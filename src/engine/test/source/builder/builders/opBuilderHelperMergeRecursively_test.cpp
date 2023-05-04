@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -22,28 +23,34 @@ string targetField {"/fieldTo"};
 
 TEST(opBuilderHelperMergeRecursively, Builds)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(opBuilderHelperMergeRecursively, tuple));
 }
 
 TEST(opBuilderHelperMergeRecursively, WrongSizeParameters)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {sourceFieldRef, "dummy_param"});
+    auto tuple = std::make_tuple(targetField,
+                                 helperFunctionName,
+                                 vector<string> {sourceFieldRef, "dummy_param"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(opBuilderHelperMergeRecursively, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperMergeRecursively, WrongTypeParameter)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {sourceField});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {sourceField}, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(opBuilderHelperMergeRecursively, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperMergeRecursively, FailTargetNotFound)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
 
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
     auto event = std::make_shared<Json>(R"({
@@ -59,7 +66,8 @@ TEST(opBuilderHelperMergeRecursively, FailTargetNotFound)
 
 TEST(opBuilderHelperMergeRecursively, FailReferenceNotFound)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
 
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
     auto event = std::make_shared<Json>(R"({
@@ -75,7 +83,8 @@ TEST(opBuilderHelperMergeRecursively, FailReferenceNotFound)
 
 TEST(opBuilderHelperMergeRecursively, FailFieldsWithDifferentTypes)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
 
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
 
@@ -125,7 +134,8 @@ TEST(opBuilderHelperMergeRecursively, FailFieldsWithDifferentTypes)
 
 TEST(opBuilderHelperMergeRecursively, MergeRecursiveStringFail)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
 
     auto event = std::make_shared<Json>(R"({
@@ -139,7 +149,8 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveStringFail)
 
 TEST(opBuilderHelperMergeRecursively, MergeRecursiveIntFail)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
 
     auto event = std::make_shared<Json>(R"({
@@ -153,7 +164,8 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveIntFail)
 
 TEST(opBuilderHelperMergeRecursively, MergeRecursiveFloatFail)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
 
     auto event = std::make_shared<Json>(R"({
@@ -167,7 +179,8 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveFloatFail)
 
 TEST(opBuilderHelperMergeRecursively, MergeRecursiveBooleanFail)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
 
     auto event = std::make_shared<Json>(R"({
@@ -181,7 +194,8 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveBooleanFail)
 
 TEST(opBuilderHelperMergeRecursively, MergeRecursiveNullFail)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
 
     auto event = std::make_shared<Json>(R"({
@@ -195,7 +209,8 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveNullFail)
 
 TEST(opBuilderHelperMergeRecursively, MergeRecursiveToArray)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
 
     auto event = std::make_shared<Json>(R"({
@@ -219,7 +234,8 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveToArray)
 
 TEST(opBuilderHelperMergeRecursively, MergeRecursiveToJson)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
 
     auto event = std::make_shared<Json>(R"({
@@ -250,7 +266,8 @@ TEST(opBuilderHelperMergeRecursively, MergeRecursiveToJson)
 
 TEST(opBuilderHelperMergeRecursively, MergeRecursiveObjectsNestedMixedTypes)
 {
-    auto tuple = std::make_tuple(targetField, helperFunctionName, vector<string> {"$fieldFrom"});
+    auto tuple = std::make_tuple(
+        targetField, helperFunctionName, vector<string> {"$fieldFrom"}, std::make_shared<defs::mocks::FailDef>());
 
     const auto op = std::apply(opBuilderHelperMergeRecursively, tuple);
     auto event = std::make_shared<Json>(R"({

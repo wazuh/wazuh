@@ -5,6 +5,8 @@
 #include "builder/builders/operationBuilder.hpp"
 #include "builder/builders/stageBuilderCheck.hpp"
 #include "builder/registry.hpp"
+
+#include <defs/failDef.hpp>
 #include <json/json.hpp>
 #include <baseHelper.hpp>
 
@@ -43,14 +45,15 @@ TEST_F(StageBuilderCheckTest, ListBuilds)
         {"object": {"a": 1, "b": 2}}
     ])"};
 
-    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
+    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>()));
 }
 
 TEST_F(StageBuilderCheckTest, UnexpectedDefinition)
 {
     auto checkJson = Json {R"({})"};
 
-    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson), std::runtime_error);
+    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 TEST_F(StageBuilderCheckTest, ListArrayWrongSizeItem)
@@ -67,7 +70,8 @@ TEST_F(StageBuilderCheckTest, ListArrayWrongSizeItem)
         {"object": {"a": 1, "b": 2}}
     ])"};
 
-    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson), std::runtime_error);
+    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 TEST_F(StageBuilderCheckTest, ListArrayWrongTypeItem)
@@ -76,7 +80,8 @@ TEST_F(StageBuilderCheckTest, ListArrayWrongTypeItem)
         ["string", "value"]
     ])"};
 
-    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson), std::runtime_error);
+    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
 
 TEST_F(StageBuilderCheckTest, ListBuildsCorrectExpression)
@@ -92,7 +97,7 @@ TEST_F(StageBuilderCheckTest, ListBuildsCorrectExpression)
         {"object": {"a": 1, "b": 2}}
     ])"};
 
-    auto expression = getStageBuilderCheck(registry)(checkJson);
+    auto expression = getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isAnd());
@@ -106,7 +111,7 @@ TEST_F(StageBuilderCheckTest, ExpressionEqualOperator)
 {
     auto checkJson = Json {R"("field==value")"};
 
-    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
+    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>()));
 }
 
 TEST_F(StageBuilderCheckTest, ExpressionNotEqualOperator)

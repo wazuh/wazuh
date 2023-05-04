@@ -4,6 +4,7 @@
 #include <any>
 
 #include <baseTypes.hpp>
+#include <defs/idefinitions.hpp>
 
 #include "expression.hpp"
 
@@ -23,11 +24,13 @@ namespace builder::internals::builders
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @return base::Expression
  */
 base::Expression opBuilderHelperSaveNetInfoIPv4(const std::string& targetField,
                                                 const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters);
+                                                const std::vector<std::string>& rawParameters,
+                                                std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
  * @brief Get address, netmask and gateway fields from iface IPv6
@@ -37,11 +40,13 @@ base::Expression opBuilderHelperSaveNetInfoIPv4(const std::string& targetField,
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
  * @return base::Expression
  */
 base::Expression opBuilderHelperSaveNetInfoIPv6(const std::string& targetField,
                                                 const std::string& rawName,
-                                                const std::vector<std::string>& rawParameters);
+                                                const std::vector<std::string>& rawParameters,
+                                                std::shared_ptr<defs::IDefinitions> definitions);
 
 } // namespace builder::internals::builders
 

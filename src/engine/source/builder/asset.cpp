@@ -1,9 +1,10 @@
 #include "asset.hpp"
 
+#include <defs/defs.hpp>
 #include <fmt/format.h>
 #include <logging/logging.hpp>
 
-#include "definitions.hpp"
+#include "baseTypes.hpp"
 #include "registry.hpp"
 
 namespace builder
@@ -38,16 +39,23 @@ Asset::Asset(const json::Json& jsonDefinition,
             "The asset should be an object, but it is of type '{}'. Thus, the asset 'name' field could not be obtained",
             jsonDefinition.typeName()));
     }
-    // Process definitions
-    json::Json tmpJson {jsonDefinition};
-    internals::substituteDefinitions(tmpJson);
 
-    auto objectDefinition = tmpJson.getObject().value();
+    auto objectDefinition = jsonDefinition.getObject().value();
+
+    // Load definitions
+    std::shared_ptr<defs::Definitions> definitions = std::make_shared<defs::Definitions>();
+    auto definitionsPos = std::find_if(objectDefinition.begin(),
+                                       objectDefinition.end(),
+                                       [](auto tuple) { return std::get<0>(tuple) == "definitions"; });
+    if (objectDefinition.end() != definitionsPos)
+    {
+        definitions = std::make_shared<defs::Definitions>(std::get<1>(*definitionsPos));
+        objectDefinition.erase(definitionsPos);
+    }
 
     // Get name
-    auto namePos = std::find_if(objectDefinition.begin(),
-                                objectDefinition.end(),
-                                [](auto tuple) { return std::get<0>(tuple) == "name"; });
+    auto namePos = std::find_if(
+        objectDefinition.begin(), objectDefinition.end(), [](auto tuple) { return std::get<0>(tuple) == "name"; });
     if (objectDefinition.end() != namePos && std::get<1>(*namePos).isString())
     {
         m_name = std::get<1>(*namePos).getString().value();
@@ -63,15 +71,13 @@ Asset::Asset(const json::Json& jsonDefinition,
         throw std::runtime_error(fmt::format("Asset 'name' field is missing"));
     }
 
-    const std::string assetName {tmpJson.getString("/name").value_or("")};
+    const std::string assetName {jsonDefinition.getString("/name").value_or("")};
 
     // Get parents
-    auto sourcesPos = std::find_if(objectDefinition.begin(),
-                                   objectDefinition.end(),
-                                   [](auto tuple) {
-                                       return std::get<0>(tuple) == "sources"
-                                              || std::get<0>(tuple) == "after";
-                                   });
+    auto sourcesPos =
+        std::find_if(objectDefinition.begin(),
+                     objectDefinition.end(),
+                     [](auto tuple) { return std::get<0>(tuple) == "sources" || std::get<0>(tuple) == "after"; });
     if (objectDefinition.end() != sourcesPos)
     {
         if (!std::get<1>(*sourcesPos).isArray())
@@ -91,10 +97,8 @@ Asset::Asset(const json::Json& jsonDefinition,
     }
 
     // Get metadata
-    auto metadataPos =
-        std::find_if(objectDefinition.begin(),
-                     objectDefinition.end(),
-                     [](auto tuple) { return std::get<0>(tuple) == "metadata"; });
+    auto metadataPos = std::find_if(
+        objectDefinition.begin(), objectDefinition.end(), [](auto tuple) { return std::get<0>(tuple) == "metadata"; });
     if (objectDefinition.end() != metadataPos)
     {
         m_metadata = std::get<1>(*metadataPos);
@@ -102,17 +106,15 @@ Asset::Asset(const json::Json& jsonDefinition,
     }
 
     // Get check
-    auto checkPos = std::find_if(objectDefinition.begin(),
-                                 objectDefinition.end(),
-                                 [](auto tuple) {
-                                     return std::get<0>(tuple) == "check"
-                                            || std::get<0>(tuple) == "allow";
-                                 });
+    auto checkPos =
+        std::find_if(objectDefinition.begin(),
+                     objectDefinition.end(),
+                     [](auto tuple) { return std::get<0>(tuple) == "check" || std::get<0>(tuple) == "allow"; });
     if (objectDefinition.end() != checkPos)
     {
         try
         {
-            m_check = registry->getBuilder("stage.check")({std::get<1>(*checkPos)});
+            m_check = registry->getBuilder("stage.check")({std::get<1>(*checkPos)}, definitions);
             objectDefinition.erase(checkPos);
         }
         catch (const std::exception& e)
@@ -124,16 +126,13 @@ Asset::Asset(const json::Json& jsonDefinition,
     }
 
     // Get parse if present
-    auto parsePos =
-        std::find_if(objectDefinition.begin(),
-                     objectDefinition.end(),
-                     [](auto tuple) { return std::get<0>(tuple) == "parse"; });
+    auto parsePos = std::find_if(
+        objectDefinition.begin(), objectDefinition.end(), [](auto tuple) { return std::get<0>(tuple) == "parse"; });
     if (objectDefinition.end() != parsePos)
     {
         try
         {
-            auto parseExpression =
-                registry->getBuilder("stage.parse")({std::get<1>(*parsePos)});
+            auto parseExpression = registry->getBuilder("stage.parse")({std::get<1>(*parsePos)}, definitions);
             objectDefinition.erase(parsePos);
             if (m_check)
             {
@@ -157,7 +156,7 @@ Asset::Asset(const json::Json& jsonDefinition,
     {
         auto stageName = "stage." + std::get<0>(tuple);
         auto stageDefinition = std::get<1>(tuple);
-        auto stageExpression = registry->getBuilder(stageName)({stageDefinition});
+        auto stageExpression = registry->getBuilder(stageName)({stageDefinition}, definitions);
         asOp->getOperands().push_back(stageExpression);
     }
 }
@@ -177,8 +176,7 @@ base::Expression Asset::getExpression() const
             else
             {
                 auto trueExpression = base::Term<base::EngineOp>::create(
-                    "AcceptAll",
-                    [](auto e) { return base::result::makeSuccess(e, "AcceptAll"); });
+                    "AcceptAll", [](auto e) { return base::result::makeSuccess(e, "AcceptAll"); });
                 asset = base::Implication::create(m_name, trueExpression, m_stages);
             }
             break;

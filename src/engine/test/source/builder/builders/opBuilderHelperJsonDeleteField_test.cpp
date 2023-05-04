@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 
 #include "opBuilderHelperMap.hpp"
 
@@ -12,22 +13,30 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperJsonDeleteField, Builds)
 {
-    auto tuple = std::make_tuple(std::string {"/field"}, std::string {"delete"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"delete"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperDeleteField, tuple));
 }
 
 TEST(opBuilderHelperJsonDeleteField, Builds_bad_parameters)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/field"}, std::string {"delete"}, std::vector<std::string> {"test", "test"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"delete"},
+                                 std::vector<std::string> {"test", "test"},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperDeleteField, tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_field_not_exist)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"}, std::string {"delete"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"delete"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
 
@@ -40,7 +49,10 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_field_not_exist)
 
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_success)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"}, std::string {"delete"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"delete"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
@@ -55,8 +67,10 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_success)
 
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_field_not_exist)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/parentObjt_1/field2check"}, std::string {"delete"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"delete"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -78,8 +92,10 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_field_not
 
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_success)
 {
-    auto tuple =
-        std::make_tuple(std::string {"/parentObjt_1/field2check"}, std::string {"delete"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"delete"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
@@ -104,7 +120,10 @@ TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_success)
 // TODO This test should not be valid since the key must be unique.
 TEST(opBuilderHelperJsonDeleteField, Exec_json_delete_field_multilevel_repeat_success)
 {
-    auto tuple = std::make_tuple(std::string {"/field2check"}, std::string {"delete"}, std::vector<std::string> {});
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"delete"},
+                                 std::vector<std::string> {},
+                                 std::make_shared<defs::mocks::FailDef>());
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,"field2check": 20})");
 

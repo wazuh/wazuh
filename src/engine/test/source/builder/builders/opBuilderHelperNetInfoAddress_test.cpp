@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
+#include <defs/failDef.hpp>
 #include <testsCommon.hpp>
 #include <wdb/wdb.hpp>
 
@@ -28,7 +29,8 @@ TEST_F(opBuilderHelperNetInfoTest, Builds)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
                                        std::string {"sysc_ni_save_ipv4"},
-                                       std::vector<std::string> {"$agentID", "$scanId", "$name", "$array"});
+                                       std::vector<std::string> {"$agentID", "$scanId", "$name", "$array"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_NO_THROW(std::apply(bld::opBuilderHelperSaveNetInfoIPv4, tuple));
 }
@@ -37,7 +39,8 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_just_values)
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
                                        std::string {"sysc_ni_save_ipv6"},
-                                       std::vector<std::string> {"parameter", "agentID", "scanId", "name"});
+                                       std::vector<std::string> {"parameter", "agentID", "scanId", "name"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperSaveNetInfoIPv6, tuple), std::runtime_error);
 }
@@ -46,7 +49,8 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameter_one_not_refer
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
                                        std::string {"sysc_ni_save_ipv6"},
-                                       std::vector<std::string> {"$agentID", "$scanId", "$name", "array"});
+                                       std::vector<std::string> {"$agentID", "$scanId", "$name", "array"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperSaveNetInfoIPv6, tuple), std::runtime_error);
 }
@@ -55,7 +59,8 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_with_parameters_wrong_quanti
 {
     const auto tuple = std::make_tuple(std::string {"/field"},
                                        std::string {"sysc_ni_save_ipv6"},
-                                       std::vector<std::string> {"$agentID", "$scanId", "$name", "$array", "$array2"});
+                                       std::vector<std::string> {"$agentID", "$scanId", "$name", "$array", "$array2"},
+                                       std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::opBuilderHelperSaveNetInfoIPv6, tuple), std::runtime_error);
 }
@@ -66,7 +71,8 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_name_not_string)
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -113,7 +119,8 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_agentid_not_present)
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -159,7 +166,8 @@ TEST_F(opBuilderHelperNetInfoTest, Failed_execution_not_base_object)
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -191,7 +199,8 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_event)
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -268,7 +277,8 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_single_address_event)
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -335,7 +345,8 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_seccond_failed_event)
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -408,7 +419,8 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_signle_address_ipv6_ev
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv6"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv6"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv6"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -475,7 +487,8 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_none_ot
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -550,7 +563,8 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_with_various_addres_others_
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({
@@ -629,7 +643,8 @@ TEST_F(opBuilderHelperNetInfoTest, Correct_execution_without_broadcast_netmask)
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv4"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv4"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"(
@@ -701,7 +716,8 @@ TEST_F(opBuilderHelperNetInfoTest, False_result_when_no_address)
         std::string {"/field"},
         std::string {"sysc_ni_save_ipv6"},
         std::vector<std::string> {
-            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv6"});
+            "$agent.id", "$event.original.ID", "$event.original.iface.name", "$event.original.iface.IPv6"},
+        std::make_shared<defs::mocks::FailDef>());
 
     const auto event1 = std::make_shared<json::Json>(
         R"({

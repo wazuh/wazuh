@@ -68,6 +68,7 @@ target_include_directories(builders
 target_link_libraries(builders
   builder::ivalidator
   store::istore
+  defs
   base
   hlp2
   kvdb
@@ -75,5 +76,4 @@ target_link_libraries(builders
   logicExpression
   wdb
   OpenSSL::Crypto
-  defs
 )

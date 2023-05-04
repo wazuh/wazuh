@@ -14,7 +14,7 @@ namespace builder::internals::builders
 
 Builder getStageBuilderParse(std::shared_ptr<Registry<Builder>> registry)
 {
-    return [registry](const std::any& definition)
+    return [registry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
         // Assert value is as expected
         json::Json jsonDefinition;
@@ -24,14 +24,12 @@ Builder getStageBuilderParse(std::shared_ptr<Registry<Builder>> registry)
         }
         catch (const std::exception& e)
         {
-            throw std::runtime_error(
-                fmt::format("Definition could not be converted to json: {}", e.what()));
+            throw std::runtime_error(fmt::format("Definition could not be converted to json: {}", e.what()));
         }
         if (!jsonDefinition.isObject())
         {
             throw std::runtime_error(
-                fmt::format("Invalid json definition type: expected object but got {}",
-                            jsonDefinition.typeName()));
+                fmt::format("Invalid json definition type: expected object but got {}", jsonDefinition.typeName()));
         }
 
         std::vector<base::Expression> parserExpressions;
@@ -41,20 +39,18 @@ Builder getStageBuilderParse(std::shared_ptr<Registry<Builder>> registry)
             parseObj.begin(),
             parseObj.end(),
             std::back_inserter(parserExpressions),
-            [registry](auto& tuple)
+            [registry, definitions](auto& tuple)
             {
                 const auto& parserName = std::get<0>(tuple);
                 const auto& parserValue = std::get<1>(tuple);
                 base::Expression parserExpression;
                 try
                 {
-                    parserExpression =
-                        registry->getBuilder("parser." + parserName)(parserValue);
+                    parserExpression = registry->getBuilder("parser." + parserName)(parserValue, definitions);
                 }
                 catch (const std::exception& e)
                 {
-                    throw std::runtime_error(fmt::format(
-                        "Error building parser \"{}\": {}", parserName, e.what()));
+                    throw std::runtime_error(fmt::format("Error building parser \"{}\": {}", parserName, e.what()));
                 }
 
                 return parserExpression;
