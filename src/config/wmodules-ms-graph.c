@@ -133,7 +133,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			}
 			for (int j = 0; children[j]; j++) {
 				if (!strcmp(children[j]->element, XML_CLIENT_ID)) {
-					if (strlen(children[j]->content) == 36 ) {
+					if (strlen(children[j]->content) > 1 ) {
 						os_strdup(children[j]->content, ms_graph->auth_config.client_id);
 					}
 					else {
@@ -143,7 +143,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					}
 				}
 				else if (!strcmp(children[j]->element, XML_TENANT_ID)) {
-					if (strlen(children[j]->content) == 36) {
+					if (strlen(children[j]->content) > 1) {
 						os_strdup(children[j]->content, ms_graph->auth_config.tenant_id);
 					}
 					else {
@@ -153,7 +153,7 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 					}
 				}
 				else if (!strcmp(children[j]->element, XML_SECRET_VALUE)) {
-					if (strlen(children[j]->content) == 40) {
+					if (strlen(children[j]->content) > 1) {
 						os_strdup(children[j]->content, ms_graph->auth_config.secret_value);
 					}
 					else {
