@@ -123,15 +123,10 @@ void test_bad_tag(void **state) {
         "  <relationship>riskyUsers</relationship>\n"
         "</resource>\n"
     ;
-    fprintf(stderr, "Got here 1\n");
     test_structure *test = *state;
-    fprintf(stderr, "Got here 2\n");
     expect_string(__wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
-    fprintf(stderr, "Got here 3\n");
     test->nodes = string_to_xml_node(config, &(test->xml));
-    fprintf(stderr, "Got here 4\n");
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
-    fprintf(stderr, "Got here 5\n");
 }
 
 void test_empty_module(void **state) {
