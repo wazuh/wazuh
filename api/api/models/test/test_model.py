@@ -7,7 +7,7 @@ import sys
 from json import JSONDecodeError
 from os import listdir
 from os.path import abspath, dirname, join
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from connexion import ProblemException
@@ -16,8 +16,12 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['api.authentication'] = MagicMock()
         from api.models import base_model_ as bm
-        from wazuh import WazuhError
+        from api.models.events_ingest_model import (
+            DEFAULT_EVENTS_BULK_MAX_SIZE,
+            EventsIngestModel,
+        )
         from api.util import deserialize_model
+        from wazuh import WazuhError
 
         del sys.modules['api.authentication']
 
@@ -284,3 +288,16 @@ def test_all_models(deserialize_mock, module_name):
                 # Test the only possible overwritten method: `from_dict`
                 getattr(module_class, 'from_dict')('test')
                 deserialize_mock.assert_called_with('test', module_class)
+
+
+@pytest.mark.parametrize('size,raises', ([1, True], [2, False]))
+async def test_events_ingest_model_validation(size, raises):
+    request = {'events': [{"foo": 1}, {"bar": 2}]}
+    with patch('api.models.events_ingest_model.DEFAULT_EVENTS_BULK_MAX_SIZE', size):
+        if raises:
+            with pytest.raises(ProblemException) as exc:
+                await EventsIngestModel.get_kwargs(request)
+
+            assert exc.value.title == 'Events bulk size exceeded'
+        else:
+            await EventsIngestModel.get_kwargs(request)
