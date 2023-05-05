@@ -1,4 +1,4 @@
-name: decoder/powershell_operational/0
+name: decoder/windows_powershell_operational/0
 
 sources: 
   - decoder/windows_event_decoder/0
