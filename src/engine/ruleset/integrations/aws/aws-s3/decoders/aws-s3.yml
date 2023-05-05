@@ -29,6 +29,9 @@ sources:
 
 check:
   - wazuh.modules.aws.source: s3_server_access
+  #TODO: Once the events arrive tagged, uncomment these lines below and remove the above line
+  # - event.module: aws
+  # - event.dataset: aws.s3access
 
 parse:
   logpar:
