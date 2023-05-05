@@ -10,6 +10,7 @@ Foundation.
 import json
 import os
 import subprocess
+import multiprocessing
 from pathlib import Path
 from ci import build_tools
 
@@ -397,3 +398,16 @@ def targetList():
         - None
     """
     return TARGET_LIST
+
+def initializeCpuCores():
+    global CPU_CORES
+    CPU_CORES = multiprocessing.cpu_count()
+
+def setCpuCores(cpuCores):
+    global CPU_CORES
+    if cpuCores.isdigit():
+        CPU_CORES = cpuCores
+
+def getCpuCores():
+    global CPU_CORES
+    return CPU_CORES

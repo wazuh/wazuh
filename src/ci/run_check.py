@@ -320,7 +320,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
 
     # Running UTs and coverage
     runTests(moduleName=moduleName)
-    # TODO: technical debt. Increase the coverage for winagent
+    # The coverage for these modules in 'winagent' target will be added in #17008
     if (target == 'winagent' and moduleName == 'data_provider') or \
        (target == 'winagent' and moduleName == 'shared_modules/utils'):
         utils.printInfo(msg="Skipping coverage for {} in {} target".format(
@@ -329,7 +329,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
         runCoverage(moduleName=moduleName)
 
     # We run valgrind for all targets except Windows
-    # TODO: make it possible to run Valgrind with Wine
+    # The memory analysis for Wine will be enabled in #17018
     if target != "winagent":
         runValgrind(moduleName=moduleName)
 
@@ -352,7 +352,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
 
     # The ASAN check is in the end. It builds again the module but with the ASAN flag
     # and runs the test tool.
-    # TODO: find an alternative to ASAN in MinGW
+    # Running this type of check in Windows will be analyzed in #17019
     if moduleName != "shared_modules/utils" and target != "winagent":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)

@@ -307,7 +307,7 @@ def makeDeps(targetName, srcOnly):
     """
     utils.printSubHeader(moduleName=targetName,
                          headerKey="makeDeps")
-    makeDepsCommand = "make deps TARGET={} -j4".format(targetName)
+    makeDepsCommand = "make deps TARGET={} -j{}".format(targetName, utils.getCpuCores())
     if srcOnly:
         makeDepsCommand += " EXTERNAL_SRC_ONLY=yes"
     out = subprocess.run(makeDepsCommand,
@@ -341,7 +341,7 @@ def makeLib(moduleName):
     Example:
         makeLib("syscheckd")
     """
-    command = "make -C {} -j4".format(utils.moduleDirPathBuild(moduleName))
+    command = "make -C {} -j{}".format(utils.moduleDirPathBuild(moduleName), utils.getCpuCores())
     utils.printSubHeader(moduleName=moduleName,
                          headerKey="make")
 
@@ -385,7 +385,7 @@ def makeTarget(targetName, tests, debug):
         makeTargetCommand += " TEST=1"
     if debug:
         makeTargetCommand += " DEBUG=1"
-    makeTargetCommand += " -j4"
+    makeTargetCommand += " -j{}".format(utils.getCpuCores())
     out = subprocess.run(makeTargetCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
