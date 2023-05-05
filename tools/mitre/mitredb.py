@@ -18,8 +18,8 @@ import pwd
 import sys
 
 from sqlalchemy import create_engine, Column, DateTime, String, ForeignKey, Boolean
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker, relationship, declarative_base
+from sqlalchemy.sql.expression import select
 
 import const
 import wazuh.core.utils as core_utils
@@ -604,7 +604,7 @@ def parse_list_phases(session, phase_list):
     row = {}
 
     row[const.TECH_ID_t] = phase_list[0]
-    tactic = session.query(Tactic).filter_by(short_name=phase_list[1]).first()
+    tactic = session.scalars(select(Tactic).filter_by(short_name=phase_list[1]).limit(1)).first()
     row[const.TACTIC_ID_t] = tactic.id
 
     return row
@@ -686,23 +686,23 @@ def parse_json(pathfile, session, database):
 
         for table in relationship_table_revoked_by:
             if table[0].startswith(const.INTRUSION_SET_j):
-                groups = session.query(Group).get(table[0])
+                groups = session.get(Group, table[0])
                 groups.revoked_by = table[1]
 
             elif table[0].startswith(const.COURSE_OF_ACTION_j):
-                mitigations = session.query(Mitigation).get(table[0])
+                mitigations = session.get(Mitigation, table[0])
                 mitigations.revoked_by = table[1]
 
             elif table[0].startswith(const.MALWARE_j) or table[0].startswith(const.TOOL_j):
-                software = session.query(Software).get(table[0])
+                software = session.get(Software, table[0])
                 software.revoked_by = table[1]
 
             elif table[0].startswith(const.ATTACK_PATTERN_j):
-                technique = session.query(Technique).get(table[0])
+                technique = session.get(Technique, table[0])
                 technique.revoked_by = table[1]
 
         for table in relationship_table_subtechique_of:
-            technique = session.query(Technique).get(table[0])
+            technique = session.get(Technique, table[0])
             technique.subtechnique_of = table[1]
 
         session.bulk_insert_mappings(Mitigate, mitigate_rows_list)
