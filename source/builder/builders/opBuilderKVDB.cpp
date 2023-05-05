@@ -27,7 +27,7 @@ base::Expression KVDBGet(const std::string& targetField,
                          std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
     // Identify references and build JSON pointer paths
-    const auto parameters {processParameters(rawName, rawParameters)};
+    const auto parameters {processParameters(rawName, rawParameters, definitions)};
 
     // Assert expected number of parameters
     checkParametersSize(rawName, parameters, 2);
@@ -148,7 +148,7 @@ base::Expression existanceCheck(const std::string& targetField,
                                 std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
 
-    const auto parameters = processParameters(rawName, rawParameters);
+    const auto parameters = processParameters(rawName, rawParameters, definitions);
     checkParametersSize(rawName, parameters, 1);
     checkParameterType(rawName, parameters[0], Parameter::Type::VALUE);
     const auto name = formatHelperName(targetField, rawName, parameters);
@@ -238,7 +238,7 @@ base::Expression KVDBSet(const std::string& targetField,
                          std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
 
-    const auto parameters = processParameters(rawName, rawParameters);
+    const auto parameters = processParameters(rawName, rawParameters, definitions);
 
     checkParametersSize(rawName, parameters, 3);
     checkParameterType(rawName, parameters[0], Parameter::Type::VALUE);
@@ -367,7 +367,7 @@ base::Expression KVDBDelete(const std::string& targetField,
                             std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager)
 {
 
-    const auto parameters = processParameters(rawName, rawParameters);
+    const auto parameters = processParameters(rawName, rawParameters, definitions);
     checkParametersSize(rawName, parameters, 1);
     const auto name = formatHelperName(targetField, rawName, parameters);
 

@@ -1,24 +1,29 @@
 #include "baseHelper.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <variant>
 
 #include <fmt/format.h>
 
+#include <defs/idefinitions.hpp>
+
 #include "baseTypes.hpp"
 #include "syntax.hpp"
 
 namespace helper::base
 {
-std::vector<Parameter> processParameters(const std::string name, const std::vector<std::string>& parameters)
+std::vector<Parameter> processParameters(const std::string& name,
+                                         const std::vector<std::string>& parameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     std::vector<Parameter> newParameters;
     std::transform(parameters.begin(),
                    parameters.end(),
                    std::back_inserter(newParameters),
-                   [name](const std::string& parameter) -> Parameter
+                   [name, definitions](const std::string& parameter) -> Parameter
                    {
                        if (builder::internals::syntax::REFERENCE_ANCHOR == parameter[0])
                        {
@@ -34,6 +39,14 @@ std::vector<Parameter> processParameters(const std::string name, const std::vect
                                                                     parameter,
                                                                     e.what()));
                            }
+
+                           if (definitions->contains(pointerPath))
+                           {
+                               auto val = definitions->get(pointerPath);
+
+                               return {Parameter::Type::VALUE, val.getString().value_or(val.str())};
+                           }
+
                            return {Parameter::Type::REFERENCE, pointerPath};
                        }
                        else
@@ -45,7 +58,7 @@ std::vector<Parameter> processParameters(const std::string name, const std::vect
     return newParameters;
 }
 
-void checkParametersSize(const std::string name, const std::vector<Parameter>& parameters, size_t size)
+void checkParametersSize(const std::string& name, const std::vector<Parameter>& parameters, size_t size)
 {
     if (parameters.size() != size)
     {
@@ -53,7 +66,7 @@ void checkParametersSize(const std::string name, const std::vector<Parameter>& p
     }
 }
 
-void checkParametersMinSize(const std::string name, const std::vector<Parameter>& parameters, const size_t minSize)
+void checkParametersMinSize(const std::string& name, const std::vector<Parameter>& parameters, const size_t minSize)
 {
     if (parameters.size() < minSize)
     {
@@ -61,7 +74,7 @@ void checkParametersMinSize(const std::string name, const std::vector<Parameter>
     }
 }
 
-void checkParameterType(const std::string name, const Parameter& parameter, Parameter::Type type)
+void checkParameterType(const std::string& name, const Parameter& parameter, Parameter::Type type)
 {
     if (parameter.m_type != type)
     {

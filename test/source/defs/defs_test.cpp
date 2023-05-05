@@ -1,11 +1,11 @@
 #include <defs/defs.hpp>
 #include <gtest/gtest.h>
 
-class DefsBuildsTest : public ::testing::TestWithParam<std::tuple<json::Json, bool>>
+class DefsBuildTest : public ::testing::TestWithParam<std::tuple<json::Json, bool>>
 {
 };
 
-TEST_P(DefsBuildsTest, Builds)
+TEST_P(DefsBuildTest, Builds)
 {
     auto [definitions, shouldPass] = GetParam();
 
@@ -21,7 +21,7 @@ TEST_P(DefsBuildsTest, Builds)
 
 INSTANTIATE_TEST_SUITE_P(
     Builds,
-    DefsBuildsTest,
+    DefsBuildTest,
     ::testing::Values(std::make_tuple(json::Json(), false),
                       std::make_tuple(json::Json(R"([])"), false),
                       std::make_tuple(json::Json(R"(["a"])"), false),
@@ -38,32 +38,32 @@ INSTANTIATE_TEST_SUITE_P(
                       std::make_tuple(json::Json(R"({"$a": 1})"), false),
                       std::make_tuple(json::Json(R"({"schema.field": "value"})"), false)));
 
-struct Ret
-{
-};
-struct Input
+class DefsGetTest : public ::testing::TestWithParam<std::tuple<json::Json, std::string, json::Json, bool>>
 {
 };
 
-struct Builder
+TEST_P(DefsGetTest, Gets)
 {
-    std::variant<Ret, std::tuple<Builder, Input>> operator()(Input input)
+    auto [definitions, toGet, expected, shouldPass] = GetParam();
+    auto def = defs::Definitions(definitions);
+    if (shouldPass)
     {
-        return Ret {};
+        ASSERT_EQ(def.get(toGet), expected);
     }
-};
-
-TEST(Testt, testt)
-{
-
-    Builder initialBuilder{};
-
-    Input initialInput {};
-
-    std::variant<Ret, std::tuple<Builder, Input>> res = initialBuilder(initialInput);
-    while (std::holds_alternative<std::tuple<Builder, Input>>(res))
+    else
     {
-        auto [next, input] = std::get<std::tuple<Builder, Input>>(res);
-        res = next(input);
+        ASSERT_THROW(def.get(toGet), std::runtime_error);
     }
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    Gets,
+    DefsGetTest,
+    ::testing::Values(std::make_tuple(json::Json(R"({"a": 1})"), "/a", json::Json("1"), true),
+                      std::make_tuple(json::Json(R"({"a": "1"})"), "/a", json::Json(R"("1")"), true),
+                      std::make_tuple(json::Json(R"({"a": true})"), "/a", json::Json("true"), true),
+                      std::make_tuple(json::Json(R"({"a": false})"), "/a", json::Json("false"), true),
+                      std::make_tuple(json::Json(R"({"a": null})"), "/a", json::Json("null"), true),
+                      std::make_tuple(json::Json(R"({"a": []})"), "/a", json::Json("[]"), true),
+                      std::make_tuple(json::Json(R"({"a": {}})"), "/a", json::Json("{}"), true),
+                      std::make_tuple(json::Json(R"({"a": 1})"), "/b", json::Json(), false)));

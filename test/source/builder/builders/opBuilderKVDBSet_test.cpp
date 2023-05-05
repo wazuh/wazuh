@@ -7,7 +7,7 @@
 #include <json/json.hpp>
 
 #include <baseTypes.hpp>
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 
 #include <kvdb/kvdbManager.hpp>
 #include <opBuilderKVDB.hpp>

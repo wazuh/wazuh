@@ -4,7 +4,7 @@
 
 #include "opBuilderKVDB.hpp"
 #include "testUtils.hpp"
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 #include <kvdb/kvdbManager.hpp>
 
 using namespace base;

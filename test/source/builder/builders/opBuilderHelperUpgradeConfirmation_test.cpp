@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 #include <utils/socketInterface/unixSecureStream.hpp>
 
 #include "opBuilderHelperUpgradeConfirmation.hpp"
