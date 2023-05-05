@@ -57,6 +57,7 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar, size_
             auto itemObj = item.getObject().value();
             auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
             auto logparExpr = std::get<1>(itemObj[0]).getString().value();
+            logparExpr = definitions->replace(logparExpr);
 
             parsec::Parser<json::Json> parser;
             try

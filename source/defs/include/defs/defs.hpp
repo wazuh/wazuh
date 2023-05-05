@@ -39,6 +39,11 @@ public:
      * @copydoc IDefinitions::get
      */
     json::Json get(std::string_view name) const override;
+
+    /**
+     * @copydoc IDefinitions::replace
+     */
+    std::string replace(std::string_view input) const override;
 };
 } // namespace defs
 
