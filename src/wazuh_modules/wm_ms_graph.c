@@ -148,10 +148,8 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
     char** headers = NULL;
     curl_response* response;
 
-    //memset(url, '\0', OS_SIZE_8192);
     snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_URL, auth_config->tenant_id);
     mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Access Token URL: '%s'", url);
-    //memset(payload, '\0', OS_SIZE_8192);
     snprintf(payload, OS_SIZE_8192 - 1, WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD, auth_config->client_id, auth_config->secret_value);
     os_malloc(sizeof(char*) * 2, headers);
     os_strdup("Content-Type: application/x-www-form-urlencoded", headers[0]);
