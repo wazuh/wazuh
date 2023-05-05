@@ -257,7 +257,7 @@ int mq_log_builder_update() {
 int SendJSONtoSCK(char* message, socket_forwarder* Config) {
     time_t mtime;
     int retval = 0;
-    int __mq_rcode;
+    int rcode_send;
 
     if (!Config) {
         merror("No targets defined for a forwarder.");
@@ -301,8 +301,8 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
         }
 
         // Send msg to socket
-        if (__mq_rcode = OS_SendUnix(Config->socket, message, strlen(message)), __mq_rcode < 0) {
-            if (__mq_rcode == OS_SOCKTERR) {
+        if (rcode_send = OS_SendUnix(Config->socket, message, strlen(message)), rcode_send < 0) {
+            if (rcode_send == OS_SOCKTERR) {
                 if (mtime = time(NULL), mtime > Config->last_attempt + sock_fail_time) {
                     close(Config->socket);
 
@@ -312,19 +312,22 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
                     } else {
                         mdebug1("Connected to socket '%s' (%s)", Config->name, Config->location);
 
-                        if (OS_SendUnix(Config->socket, message, strlen(message)), __mq_rcode < 0) {
+                        if (rcode_send = OS_SendUnix(Config->socket, message, strlen(message)), rcode_send < 0) {
                             mdebug2("Cannot send message to socket '%s' due %s. (Abort).", Config->name,strerror(errno));
                             Config->last_attempt = mtime;
+                        } else {
+                            mdebug2("Message send to socket '%s' (%s) successfully.", Config->name, Config->location);
                         }
-                        mdebug2("Message send to socket '%s' (%s) successfully.", Config->name, Config->location);
                     }
                 } else {
-                    mdebug2("Discarding event from analysisd due to connection issue with '%s' due %s. (Abort).", Config->name,strerror(errno));
+                    mdebug2("Discarding event from analysisd due to connection issue with '%s', %s. (Abort).", Config->name,strerror(errno));
                 }
             } else {
                 mdebug2("Cannot send message to socket '%s' due %s. (Abort).", Config->name,strerror(errno));
             }
             retval = 1;
+        } else {
+            mdebug2("Message send to socket '%s' (%s) successfully.", Config->name, Config->location);
         }
     }
     free(message);

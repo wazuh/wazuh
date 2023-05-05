@@ -24,6 +24,7 @@ typedef struct test_struct {
     cJSON * configuration_dump;
 } test_struct_t;
 
+#define SOCKET_PATH "/tmp/socket-tmp"
 // Setup / Teardown
 
 static int test_setup(void **state) {
@@ -236,6 +237,97 @@ void test_check_send(void **state) {
     assert_int_ge(wm_fluent_send(data->fluent, msg, strlen(msg)), 0);
 }
 
+void test_send_json_message_success(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = -1;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_string_count(__wrap__mdebug1, formatted_msg, "Connected to socket 'fluentd_test' (/tmp/socket-tmp)",1);
+
+    expect_string_count(__wrap__mdebug2, formatted_msg, "Message send to socket 'fluentd_test' (/tmp/socket-tmp) successfully.",1);
+
+    int ret = SendJSONtoSCK(json_msg,socket_info);
+
+    assert_return_code(ret,1);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_null(void **state) {
+
+    socket_forwarder* socket_info = NULL;
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_any(__wrap__merror,formatted_msg);
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(json_msg);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_socket_error(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = -1;
+
+    expect_any(__wrap__merror,formatted_msg);
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_socket_error_connect(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = 0;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_any(__wrap__mdebug1,formatted_msg);
+    expect_string_count(__wrap__mdebug2, formatted_msg, "Message send to socket 'fluentd_test' (/tmp/socket-tmp) successfully.",1);
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 
@@ -268,6 +360,15 @@ int main(void) {
 
     /* Test configuration dump*/
     cmocka_unit_test_setup_teardown(test_check_config_dump, test_setup, test_teardown),
+
+    /* Test send JSON using unix socket*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_success, test_setup, test_teardown),
+    /* Test send NULL object*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_null, test_setup, test_teardown),
+    /* Test no listener*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_socket_error, test_setup, test_teardown),
+    /* Test wrong socket*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_socket_error_connect, test_setup, test_teardown)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
