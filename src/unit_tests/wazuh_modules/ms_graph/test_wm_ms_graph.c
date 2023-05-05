@@ -366,7 +366,7 @@ void test_invalid_client_id(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'client_id': invalid.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'client_id': .");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -423,7 +423,7 @@ void test_invalid_tenant_id(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'tenant_id': invalid.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'tenant_id': .");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
@@ -480,7 +480,7 @@ void test_invalid_secret_value(void **state) {
         "</resource>\n"
     ;
     test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'secret_value': invalid.");
+    expect_string(__wrap__merror, formatted_msg, "(1235): Invalid value for element 'secret_value': .");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
