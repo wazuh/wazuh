@@ -5,7 +5,7 @@
 #include "opBuilderKVDB.hpp"
 #include "testUtils.hpp"
 #include <kvdb/kvdbManager.hpp>
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 
 using namespace base;
 namespace bld = builder::internals::builders;

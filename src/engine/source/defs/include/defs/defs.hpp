@@ -8,6 +8,10 @@
 #include <defs/idefinitions.hpp>
 #include <json/json.hpp>
 
+/**
+ * @brief Namespace for the component definitions
+ *
+ */
 namespace defs
 {
 class Definitions : public IDefinitions
@@ -22,17 +26,17 @@ public:
     /**
      * @brief Construct a new Definitions object
      *
-     * @param definitions JSON object containing definitions
-     * @throw std::runtime_error if definitions is not an object or is empty, or if a definition is invalid
+     * @param definitions JSON object with the definitions.
      */
     explicit Definitions(const json::Json& definitions);
 
+    /**
+     * @copydoc IDefinitions::contains
+     */
     bool contains(std::string_view name) const override;
 
     /**
-     * @brief Get the definitions json object
-     *
-     * @return const json::Json&
+     * @copydoc IDefinitions::get
      */
     json::Json get(std::string_view name) const override;
 };

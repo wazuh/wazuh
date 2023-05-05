@@ -10,7 +10,7 @@
 #include "opBuilderFileOutput.hpp"
 #include "stageBuilderOutputs.hpp"
 
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;

@@ -112,7 +112,7 @@ base::Expression opBuilderHelperNetInfoAddress(const std::string& targetField,
                                                std::shared_ptr<defs::IDefinitions> definitions,
                                                bool isIPv6)
 {
-    const auto parameters = helper::base::processParameters(rawName, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
 
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 4);

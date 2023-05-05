@@ -47,7 +47,7 @@ base::Expression opBuilderHelperCreateAR(const std::string& targetField,
                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
 
     // Assert expected number of parameters
     helper::base::checkParametersMinSize(rawName, parameters, 2);
@@ -294,7 +294,7 @@ base::Expression opBuilderHelperSendAR(const std::string& targetField,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 1);
     // Format name for the tracer

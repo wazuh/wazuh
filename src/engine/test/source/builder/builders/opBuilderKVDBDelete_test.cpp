@@ -5,7 +5,7 @@
 #include <vector>
 
 #include <baseTypes.hpp>
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <opBuilderKVDB.hpp>

@@ -6,7 +6,7 @@
 #include "builder/builders/stageBuilderCheck.hpp"
 #include "builder/registry.hpp"
 
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
 #include <baseHelper.hpp>
 

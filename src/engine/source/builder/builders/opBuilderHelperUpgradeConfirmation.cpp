@@ -26,7 +26,7 @@ base::Expression opBuilderHelperSendUpgradeConfirmation(const std::string& targe
                                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 1);
     // Assert expected parameter type reference

@@ -320,7 +320,7 @@ base::Expression opBuilderComparison(const std::string& targetField,
 {
 
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 1);
     // Format name for the tracer
@@ -503,7 +503,7 @@ base::Expression opBuilderHelperRegexMatch(const std::string& targetField,
                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 1);
     // Parameter type check
@@ -557,7 +557,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::string& targetField,
     // TODO: Regex parameter fails at operationBuilderSplit
 
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 1);
     // Parameter type check
@@ -615,7 +615,7 @@ base::Expression opBuilderHelperIPCIDR(const std::string& targetField,
 {
 
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 2);
     // Parameter type check
@@ -708,7 +708,7 @@ base::Expression opBuilderHelperExists(const std::string& targetField,
                                        const std::vector<std::string>& rawParameters,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -739,7 +739,7 @@ base::Expression opBuilderHelperNotExists(const std::string& targetField,
                                           const std::vector<std::string>& rawParameters,
                                           std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -774,7 +774,7 @@ base::Expression opBuilderHelperContainsString(const std::string& targetField,
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersMinSize(rawName, parameters, 1);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -853,7 +853,7 @@ base::Expression opBuilderHelperIsNumber(const std::string& targetField,
                                          const std::vector<std::string>& rawParameters,
                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -898,7 +898,7 @@ base::Expression opBuilderHelperIsNotNumber(const std::string& targetField,
                                             const std::vector<std::string>& rawParameters,
                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -942,7 +942,7 @@ base::Expression opBuilderHelperIsString(const std::string& targetField,
                                          const std::vector<std::string>& rawParameters,
                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -987,7 +987,7 @@ base::Expression opBuilderHelperIsNotString(const std::string& targetField,
                                             const std::vector<std::string>& rawParameters,
                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1032,7 +1032,7 @@ base::Expression opBuilderHelperIsBool(const std::string& targetField,
                                        const std::vector<std::string>& rawParameters,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1078,7 +1078,7 @@ base::Expression opBuilderHelperIsNotBool(const std::string& targetField,
                                           const std::vector<std::string>& rawParameters,
                                           std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1123,7 +1123,7 @@ base::Expression opBuilderHelperIsArray(const std::string& targetField,
                                         const std::vector<std::string>& rawParameters,
                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1169,7 +1169,7 @@ base::Expression opBuilderHelperIsNotArray(const std::string& targetField,
                                            const std::vector<std::string>& rawParameters,
                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1214,7 +1214,7 @@ base::Expression opBuilderHelperIsObject(const std::string& targetField,
                                          const std::vector<std::string>& rawParameters,
                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1260,7 +1260,7 @@ base::Expression opBuilderHelperIsNotObject(const std::string& targetField,
                                             const std::vector<std::string>& rawParameters,
                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1305,7 +1305,7 @@ base::Expression opBuilderHelperIsNull(const std::string& targetField,
                                        const std::vector<std::string>& rawParameters,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1350,7 +1350,7 @@ base::Expression opBuilderHelperIsNotNull(const std::string& targetField,
                                           const std::vector<std::string>& rawParameters,
                                           std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1395,7 +1395,7 @@ base::Expression opBuilderHelperIsTrue(const std::string& targetField,
                                        const std::vector<std::string>& rawParameters,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1440,7 +1440,7 @@ base::Expression opBuilderHelperIsFalse(const std::string& targetField,
                                         const std::vector<std::string>& rawParameters,
                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -1484,7 +1484,7 @@ base::Expression opBuilderHelperIn(const std::string& targetField,
                                    const std::vector<std::string>& rawParameters,
                                    std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 1);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
