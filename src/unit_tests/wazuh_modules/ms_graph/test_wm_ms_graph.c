@@ -109,9 +109,9 @@ void test_bad_tag(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -153,9 +153,9 @@ void test_invalid_enabled(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -182,9 +182,9 @@ void test_invalid_only_future_events(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -211,9 +211,9 @@ void test_invalid_curl_max_size(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -240,9 +240,9 @@ void test_invalid_run_on_start(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -269,9 +269,9 @@ void test_invalid_interval(void **state) {
         "<interval>invalid</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -298,9 +298,9 @@ void test_invalid_version(void **state) {
         "<interval>5m</interval>\n"
         "<version>invalid</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -351,9 +351,9 @@ void test_invalid_client_id(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>invalid</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id></client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -380,8 +380,8 @@ void test_missing_client_id(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -408,9 +408,9 @@ void test_invalid_tenant_id(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>invalid</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id></tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -437,8 +437,8 @@ void test_missing_tenant_id(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -465,9 +465,9 @@ void test_invalid_secret_value(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>invalid</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value></secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -494,8 +494,8 @@ void test_missing_secret_value(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -522,9 +522,9 @@ void test_missing_resource(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
     ;
     test_structure *test = *state;
@@ -542,9 +542,9 @@ void test_missing_name(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <relationship>alerts_v2</relationship>\n"
@@ -570,9 +570,9 @@ void test_missing_relationship(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -599,9 +599,9 @@ void test_normal_config(void **state) {
         "<interval>5m</interval>\n"
         "<version>v1.0</version>\n"
         "<api_auth>\n"
-        "  <client_id>example_string_with_36_characters___</client_id>\n"
-        "  <tenant_id>example_string_with_36_characters___</tenant_id>\n"
-        "  <secret_value>example_string_with_40_characters_______</secret_value>\n"
+        "  <client_id>example_string</client_id>\n"
+        "  <tenant_id>example_string</tenant_id>\n"
+        "  <secret_value>example_string</secret_value>\n"
         "</api_auth>\n"
         "<resource>\n"
         "  <name>security</name>\n"
@@ -622,9 +622,9 @@ void test_normal_config(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string_with_36_characters___");
-    assert_string_equal(module_data->auth_config.client_id, "example_string_with_36_characters___");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string_with_40_characters_______");
+    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config.client_id, "example_string");
+    assert_string_equal(module_data->auth_config.secret_value, "example_string");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -680,9 +680,9 @@ void test_dump(void **state) {
     <run_on_start>yes</run_on_start>
     <version>v1.0</version>
     <api_auth>
-      <client_id>example_string_with_36_characters___</client_id>
-      <tenant_id>example_string_with_36_characters___</tenant_id>
-      <secret_value>example_string_with_40_characters_______</secret_value>
+      <client_id>example_string</client_id>
+      <tenant_id>example_string</tenant_id>
+      <secret_value>example_string</secret_value>
     </api_auth>
     <resource>
       <name>security</name>
@@ -695,9 +695,9 @@ void test_dump(void **state) {
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_string_with_36_characters___", module_data->auth_config.client_id);
-    os_strdup("example_string_with_36_characters___", module_data->auth_config.tenant_id);
-    os_strdup("example_string_with_40_characters_______", module_data->auth_config.secret_value);
+    os_strdup("example_string", module_data->auth_config.client_id);
+    os_strdup("example_string", module_data->auth_config.tenant_id);
+    os_strdup("example_string", module_data->auth_config.secret_value);
     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -708,7 +708,7 @@ void test_dump(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string_with_36_characters___\",\"tenant_id\":\"example_string_with_36_characters___\",\"secret_value\":\"example_string_with_40_characters_______\",\"name\":\"security\"},\"resources\":[{\"relationship\":\"alerts_v2\"}]}}");
+    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"example_string\",\"name\":\"security\"},\"resources\":[{\"relationship\":\"alerts_v2\"}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
