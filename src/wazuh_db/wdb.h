@@ -881,6 +881,8 @@ void wdb_close_old();
 
 int wdb_remove_database(const char * agent_id);
 
+int wdb_exists_database(const int agent_id);
+
 /**
  * @brief Checks and vacuums (if necessary) the databases in the DB pool.
  */

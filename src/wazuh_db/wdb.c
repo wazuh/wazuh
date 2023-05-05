@@ -1650,6 +1650,16 @@ int wdb_remove_database(const char * agent_id) {
     return result;
 }
 
+/* Verify if database file exists*/
+int wdb_exists_database(const int agent_id) {
+    char path[PATH_MAX];
+    struct stat stats;
+
+    snprintf(path, PATH_MAX, "%s/%03d.db", WDB2_DIR, agent_id);
+
+    return stat(path, &stats);
+}
+
 cJSON *wdb_remove_multiple_agents(char *agent_list) {
     cJSON *response = NULL;
     cJSON *json_agents = NULL;
