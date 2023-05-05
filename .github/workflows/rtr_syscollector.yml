@@ -24,7 +24,7 @@ jobs:
       - name: "Install dependencies"
         uses: ./.github/actions/install_build_deps
         with:
-          target: matrix.target
+          target: ${{ matrix.target }}
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
