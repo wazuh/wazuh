@@ -24,6 +24,8 @@ from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_now, get_utc_strptime
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
+DEFAULT_DATE: str = 'n/a'
+
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
     """
@@ -185,12 +187,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.extra_valid_requested = False
 
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
-        default_date = utils.get_date_from_timestamp(0)
-        self.integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
-        self.integrity_sync_status = {'date_start_master': default_date, 'tmp_date_start_master': default_date,
-                                      'date_end_master': default_date, 'total_extra_valid': 0,
+        self.integrity_check_status = {'date_start_master': DEFAULT_DATE, 'date_end_master': DEFAULT_DATE}
+        self.integrity_sync_status = {'date_start_master': DEFAULT_DATE, 'tmp_date_start_master': DEFAULT_DATE,
+                                      'date_end_master': DEFAULT_DATE, 'total_extra_valid': 0,
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
-        self.sync_agent_info_status = {'date_start_master': default_date, 'date_end_master': default_date,
+        self.sync_agent_info_status = {'date_start_master': DEFAULT_DATE, 'date_end_master': DEFAULT_DATE,
                                        'n_synced_chunks': 0}
         self.send_agent_groups_status = {'date_start': default_date,
                                          'date_end': default_date,
@@ -292,9 +293,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return cmd, json.dumps(res).encode()
         elif command == b'get_health':
             cmd, res = self.get_health(json.loads(data))
-            return cmd, json.dumps(
-                res, default=lambda o: "n/a" if isinstance(o, datetime) and o == utils.get_date_from_timestamp(0) else
-                (o.__str__() if isinstance(o, datetime) else None)).encode()
+            return cmd, json.dumps(res).encode()
         elif command == b'sendsync':
             self.server.sendsync.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to SendSync requests queue'
@@ -708,14 +707,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger : Logger object
             Logger to use.
         """
-        self.integrity_sync_status['date_end_master'] = utils.get_utc_now()
-        logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
-                                                   self.integrity_sync_status['tmp_date_start_master'])
-                                                  .total_seconds()))
-        self.integrity_sync_status['date_start_master'] = \
-            self.integrity_sync_status['tmp_date_start_master'].strftime(DECIMALS_DATE_FORMAT)
-        self.integrity_sync_status['date_end_master'] = \
-            self.integrity_sync_status['date_end_master'].strftime(DECIMALS_DATE_FORMAT)
+        date_end_master = utils.get_utc_now()
+        if self.integrity_sync_status['tmp_date_start_master'] == DEFAULT_DATE:
+            # This should only be a case in tests where the value has not been set beforehand
+            tmp_date_start_master = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
+        else:
+            tmp_date_start_master = datetime.strptime(self.integrity_sync_status['tmp_date_start_master'],
+                                                      DECIMALS_DATE_FORMAT)
+
+        logger.info("Finished in {:.3f}s.".format((date_end_master - tmp_date_start_master).total_seconds()))
+        self.integrity_sync_status['date_start_master'] = self.integrity_sync_status['tmp_date_start_master']
+        self.integrity_sync_status['date_end_master'] = date_end_master.strftime(DECIMALS_DATE_FORMAT)
 
     async def integrity_check(self, task_id: str, received_file: asyncio.Event):
         """Compare master and worker files and start Integrity sync if they differ.

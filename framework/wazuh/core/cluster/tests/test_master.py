@@ -16,6 +16,7 @@ import uvloop
 from freezegun import freeze_time
 
 from wazuh.core import exception
+from wazuh.core.cluster.master import DEFAULT_DATE
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -288,18 +289,18 @@ def test_master_handler_init():
         assert isinstance(master_handler.sync_integrity_free[1], datetime)
         assert master_handler.extra_valid_requested is False
         assert master_handler.integrity_check_status == {
-            'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-            'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)}
+            'date_start_master': DEFAULT_DATE,
+            'date_end_master': DEFAULT_DATE}
         assert master_handler.integrity_sync_status == {
-            'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-            'tmp_date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-            'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'date_start_master': DEFAULT_DATE,
+            'tmp_date_start_master': DEFAULT_DATE,
+            'date_end_master': DEFAULT_DATE,
             'total_extra_valid': 0,
             'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
                             'extra_valid': 0}}
         assert master_handler.sync_agent_info_status == {
-            'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-            'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+            'date_start_master': DEFAULT_DATE,
+            'date_end_master': DEFAULT_DATE,
             'n_synced_chunks': 0}
         assert master_handler.version == ""
         assert master_handler.cluster_name == ""
@@ -331,12 +332,12 @@ def test_master_handler_to_dict():
     assert output["status"]["sync_integrity_free"] == master_handler.sync_integrity_free[0]
     assert "last_check_integrity" in output["status"]
     assert output["status"]["last_check_integrity"] == {
-        'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-        'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)}
+        'date_start_master': DEFAULT_DATE,
+        'date_end_master': DEFAULT_DATE}
     assert "last_sync_integrity" in output["status"]
     assert output["status"]["last_sync_integrity"] == {
-        'date_start_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
-        'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
+        'date_start_master': DEFAULT_DATE,
+        'date_end_master': DEFAULT_DATE,
         'total_extra_valid': 0,
         'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
                         'extra_valid': 0}}
@@ -1046,11 +1047,16 @@ async def test_master_handler_sync_extra_valid(sync_worker_files_mock, logger_mo
 
     sync_worker_files_mock.assert_called_once_with("task_id", None, logging.getLogger("wazuh"))
     assert master_handler.integrity_sync_status['date_end_master'] == "2021-11-02T00:00:00.000000Z"
+    if master_handler.integrity_sync_status['tmp_date_start_master'] == DEFAULT_DATE:
+        tmp_date_start_master = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
+    else:
+        tmp_date_start_master = get_utc_strptime(master_handler.integrity_sync_status['tmp_date_start_master'],
+                                                 '%Y-%m-%dT%H:%M:%S.%fZ')
     logger_mock.assert_called_once_with(
         "Finished in {:.3f}s.".format(
             (get_utc_strptime(master_handler.integrity_sync_status['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ') -
-             master_handler.integrity_sync_status['tmp_date_start_master']).total_seconds()))
-    assert master_handler.integrity_sync_status['date_start_master'] == "1970-01-01T00:00:00.000000Z"
+             tmp_date_start_master).total_seconds()))
+    assert master_handler.integrity_sync_status['date_start_master'] == DEFAULT_DATE
     assert master_handler.extra_valid_requested is False
     assert master_handler.sync_integrity_free[0] is True
     assert isinstance(master_handler.sync_integrity_free[1], datetime)
