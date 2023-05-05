@@ -17,7 +17,7 @@ metadata:
     - https://github.com/wazuh/wazuh/issues/15500
 
 definitions:
-  full_location: "[<agent.id>] \\\\(<agent.name>\\\\) <~registered_ip>-><~origin>"
+  full_location: "[<agent.id>] \\(<agent.name>\\) <~registered_ip>-><~origin>"
 
 normalize:
   #### Full location ####

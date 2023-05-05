@@ -67,3 +67,34 @@ INSTANTIATE_TEST_SUITE_P(
                       std::make_tuple(json::Json(R"({"a": []})"), "/a", json::Json("[]"), true),
                       std::make_tuple(json::Json(R"({"a": {}})"), "/a", json::Json("{}"), true),
                       std::make_tuple(json::Json(R"({"a": 1})"), "/b", json::Json(), false)));
+
+class DefsReplaceTest : public ::testing::TestWithParam<std::tuple<json::Json, std::string, std::string>>
+{
+};
+
+TEST_P(DefsReplaceTest, Replaces)
+{
+    auto [definitions, input, expected] = GetParam();
+
+    auto def = defs::Definitions(definitions);
+    ASSERT_EQ(def.replace(input), expected);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    Replaces,
+    DefsReplaceTest,
+    ::testing::Values(std::make_tuple(json::Json(R"({"a": "value"})"), "$a", "value"),
+                      std::make_tuple(json::Json(R"({"a": 1})"), "$a", "1"),
+                      std::make_tuple(json::Json(R"({"a": true})"), "$a", "true"),
+                      std::make_tuple(json::Json(R"({"a": false})"), "$a", "false"),
+                      std::make_tuple(json::Json(R"({"a": null})"), "$a", "null"),
+                      std::make_tuple(json::Json(R"({"a": []})"), "$a", "[]"),
+                      std::make_tuple(json::Json(R"({"a": {}})"), "$a", "{}"),
+                      std::make_tuple(json::Json(R"({"a": 1, "b":"1", "c":true, "d":false, "e":null, "f":[], "g":{}})"),
+                                      "$a $b $c $d $e $f $g",
+                                      "1 1 true false null [] {}"),
+                      std::make_tuple(json::Json(R"({"a": "value"})"), "\\$a", "$a"),
+                      std::make_tuple(json::Json(R"({"a": "value"})"), "\\$a$a", "$avalue"),
+                      std::make_tuple(json::Json(R"({"a": "value", "b": "$a", "c": "$b"})"), "$c", "value"),
+                      std::make_tuple(json::Json(R"({"a": "$b", "b": "value"})"), "$a", "$b"),
+                      std::make_tuple(json::Json(R"({"a": "$a"})"), "$a", "$a")));

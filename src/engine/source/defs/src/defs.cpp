@@ -1,5 +1,6 @@
 #include "defs.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 #include <vector>
 
@@ -47,5 +48,43 @@ json::Json Definitions::get(std::string_view name) const
 bool Definitions::contains(std::string_view name) const
 {
     return m_definitions && m_definitions->exists(name);
+}
+
+std::string Definitions::replace(std::string_view input) const
+{
+    if (!m_definitions)
+    {
+        return std::string(input);
+    }
+
+    // Replace in inverse order of definition declaration, so that definitions can reference each other
+    // without causing infinite recursion
+    auto replaced = std::string(input);
+    auto defObj = m_definitions->getObject().value();
+
+    for (auto def = defObj.rbegin(); def != defObj.rend(); ++def)
+    {
+        // Find and replace every occurrence of the definition name in the input string
+        std::string defName = "$" + std::get<0>(*def);
+        std::string defValue = std::get<1>(*def).getString().value_or(std::get<1>(*def).str());
+
+        size_t pos = 0;
+        while ((pos = replaced.find(defName, pos)) != std::string::npos)
+        {
+            // Check if the found $ is escaped with '\'
+            if (pos > 0 && replaced[pos - 1] == '\\')
+            {
+                replaced.erase(pos - 1, 1); // Remove the escape character '\'
+                pos += defName.length() - 1; // Counter the erase and move over the name
+            }
+            else
+            {
+                replaced.replace(pos, defName.length(), defValue);
+                pos += defValue.length(); // Move forward to avoid infinite loop
+            }
+        }
+    }
+
+    return replaced;
 }
 } // namespace defs

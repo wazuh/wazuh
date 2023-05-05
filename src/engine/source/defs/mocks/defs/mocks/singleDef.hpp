@@ -22,6 +22,7 @@ public:
         throw std::runtime_error("Invalid definition name");
     }
     bool contains(std::string_view dotName) const override { return SingleDef::dotPathName() == dotName; }
+    std::string replace(std::string_view input) const override { return std::string(input); }
 
     static std::string name() { return "SingleDef"; }
     static std::string dotPathName() { return "/SingleDef"; }
