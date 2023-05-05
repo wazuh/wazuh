@@ -8,17 +8,17 @@ MSG_HEADER = '1:API-Webhook:'
 
 @expose_resources(actions=["event:ingest"], resources=["*:*:*"], post_proc_func=None)
 def send_event_to_analysisd(events: list) -> WazuhResult:
-    """_summary_
+    """Send events to analysisd through the socket.
 
     Parameters
     ----------
     events : list
-        _description_
+        List of events to send.
 
     Returns
     -------
     WazuhResult
-        _description_
+        A message when all goes ok.
     """
 
     with WazuhAnalysisdQueue(QUEUE_SOCKET) as queue:
