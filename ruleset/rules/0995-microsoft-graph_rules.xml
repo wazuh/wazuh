@@ -19,7 +19,7 @@
 
     <rule id="99001" level="3">
         <if_sid>99000</if_sid>
-        <field name="relationship">alerts|alerts_v2</field>
+        <field name="ms-graph.relationship">alerts|alerts_v2</field>
         <description>Alert related events</description>
     </rule>
 
