@@ -35,7 +35,13 @@ Definitions::Definitions(const json::Json& definitions)
 
 json::Json Definitions::get(std::string_view name) const
 {
-    return m_definitions->getJson(name).value();
+    auto val = m_definitions->getJson(name);
+    if (!val)
+    {
+        throw std::runtime_error(fmt::format("Definition '{}' not found", name));
+    }
+
+    return val.value();
 }
 
 bool Definitions::contains(std::string_view name) const

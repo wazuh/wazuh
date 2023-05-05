@@ -15,7 +15,7 @@ base::Expression coutOutputHelper_test(const std::string& targetField,
                                        const std::vector<std::string>& rawParameters,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
-    const auto parameters = helper::base::processParameters(rawName, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
 
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
     // Return Term

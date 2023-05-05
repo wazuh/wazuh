@@ -3,7 +3,7 @@
 #include "baseTypes.hpp"
 #include "registry.hpp"
 
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 #include <defs/idefinitions.hpp>
 
 using namespace builder::internals;

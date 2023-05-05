@@ -21,7 +21,7 @@ static inline base::Expression opBuilderWdbGenericQuery(const std::string& targe
                                                         bool doReturnPayload)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 1);
     // Format name for the tracer

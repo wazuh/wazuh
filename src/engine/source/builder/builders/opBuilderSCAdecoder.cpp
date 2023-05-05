@@ -1074,7 +1074,7 @@ base::Expression opBuilderSCAdecoder(const std::string& targetField,
                                      std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    const auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    const auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 2);
     // Parameter type check
