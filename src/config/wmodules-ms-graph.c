@@ -172,15 +172,15 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 
 			if(!ms_graph->auth_config.client_id){
 				merror(XML_NO_ELEM, XML_CLIENT_ID);
-				return OS_NOTFOUND; // OS_MISVALUE?
+				return OS_NOTFOUND;
 			}
 			else if (!ms_graph->auth_config.tenant_id){
 				merror(XML_NO_ELEM, XML_TENANT_ID);
-				return OS_NOTFOUND; // OS_MISVALUE?
+				return OS_NOTFOUND;
 			}
 			else if (!ms_graph->auth_config.secret_value){
 				merror(XML_NO_ELEM, XML_SECRET_VALUE);
-				return OS_NOTFOUND; // OS_MISVALUE?
+				return OS_NOTFOUND;
 			}
 
 		}
@@ -235,13 +235,12 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 			OS_ClearNode(children);
 
 			if(!name_set){
-				// Set the value to NULL to avoid complicating destruction logic
 				merror(XML_NO_ELEM, XML_RESOURCE_NAME);
-				return OS_NOTFOUND; // OS_MISVALUE?
+				return OS_NOTFOUND;
 			}
 			else if (ms_graph->resources[ms_graph->num_resources - 1].num_relationships == 0){
 				merror(XML_NO_ELEM, XML_RESOURCE_RELATIONSHIP);
-				return OS_NOTFOUND; // OS_MISVALUE?
+				return OS_NOTFOUND;
 			}
 		}
 		else if (!is_sched_tag(nodes[i]->element)) {
@@ -257,12 +256,12 @@ int wm_ms_graph_read(const OS_XML* xml, xml_node** nodes, wmodule* module) {
 	
 	if(!ms_graph->auth_config.client_id && !ms_graph->auth_config.tenant_id && !ms_graph->auth_config.secret_value){
 		merror(XML_NO_ELEM, XML_API_AUTH);
-		return OS_NOTFOUND; // OS_MISVALUE?
+		return OS_NOTFOUND;
 	}
 
 	if(ms_graph->num_resources == 0){
 		merror(XML_NO_ELEM, XML_RESOURCE);
-		return OS_NOTFOUND; // OS_MISVALUE?
+		return OS_NOTFOUND;
 	}
 
 	return OS_SUCCESS;
