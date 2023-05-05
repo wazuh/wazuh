@@ -1,4 +1,4 @@
-name: decoder/windows_event_decoder/0
+name: decoder/windows-event-decoder/0
 
 sources: 
   - decoder/json/0
