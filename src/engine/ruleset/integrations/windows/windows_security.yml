@@ -1,0 +1,74 @@
+name: decoder/windows_security/0
+
+sources: 
+  - decoder/windows_event_channel/0
+
+metadata:
+  description: Decoder for Windows Security events
+
+check:
+  - ~event_channel.Event.System.Provider.@Name: Microsoft-Windows-Security-Auditing
+
+
+normalize:
+ - map:
+    - event.module: security
+    - event.code: ~event_channel.Event.EventData.EventID.#text
+    - event: +kvdb_get_merge/win_security_categories/$~event_channel.Event.System.EventID.#text
+    - event.logon: +kvdb_get/win_logon_types/$~event_channel.Event.EventData.LogonType
+    
+    # NewUacValue 
+    # Correct implementation needs bitwise operations
+    - event.UserAccountControl: $~event_channel.Event.EventData.NewUacValue
+    
+    # kerberos fields
+    # TicketOptionsDescription - Needs bitwise operations
+    - event: +kvdb_get_merge/win_security_ticket_encryption_types/$~event_channel.Event.EventData.TicketEncryptionType
+    - event: +kvdb_get_merge/win_security_kerberos_status_types/$~event_channel.Event.EventData.Status
+    
+    # Service related fields
+    - event.service.name: $~event_channel.Event.EventData.ServiceName
+    - event.service: +kvdb_get_merge/win_security_service_types/$~event_channel.Event.EventData.ServiceType
+    
+    # Event sub category
+    - event: +kvdb_get_merge/win_security_category_guids/$~event_channel.Event.EventData.SubcategoryGuid
+    
+    # Failure reason for logon
+    - check:
+       - ~event_channel.Event.EventData.FailureReason: +ef_exists
+       map:
+       # event.logon.failure.reason
+        - event.logon.failure: +kvdb_get/win_failure_codes_description/$~event_channel.Event.EventData.FailureReason
+
+    # Audti Policy Changes
+    #- check:
+    #  - ~event_channel.Event.EventData.AuditPolicyChanges: +ef_exists
+    #  map:
+    #    - _tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/,
+    #    - event.AuditPolicyChangesDescription: +kvdb_for_each/win_failure_codes_description/$_tmp.array_policy_changes
+    
+    # Access List
+    #- check:
+    #  - ~event_channel.Event.EventData.AccessList: +ef_exists
+    #  map:
+    #    - _tmp.array_access_masks: +s_to_array/$~event_channel.Event.EventData.AccessMask/,
+    #    - event.AccessMask: +kvdb_for_each/win_failure_codes_description/$_tmp.array_access_masks
+    
+    # Access Mask - # Requires bitwise operations
+    #- check:
+    #  - ~event_channel.Event.EventData.AccessMask: +ef_exists
+    #  map:
+    #   - _tmp.array_policy_changes: +s_to_array/$~event_channel.Event.EventData.AuditPolicyChanges/ #whitespace spearator?
+    #   - _tmp.accesMask |= _tmp.array_policy_changes #bitwise OR add?
+    #   
+
+    # Conditional logon status and substatus
+    - check: +s_eq/event.code/4625 OR +s_eq/event.code/4776
+      map:
+        # event.logon.failure.status
+        - event.logon.failure: +kvdb_get/win_logon_status/$~event_channel.Event.EventData.Status
+        - event.logon.failure.sub_status: ~event_channel.Event.EventData.SubStatus  
+    - check:
+      - event.logon.failure: +ef_not_exists
+      map:
+        - event.logon.failure.sub_status: +kvdb_get/win_logon_substatus/$~event_channel.Event.EventData.SubStatus
