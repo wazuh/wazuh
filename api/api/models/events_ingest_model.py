@@ -1,6 +1,12 @@
-from typing import Optional, List, Dict
+from typing import List, Optional
 
+from connexion import ProblemException
+
+from api.configuration import api_conf
 from api.models.base_model_ import Body
+
+# This value will be defined based on performance. Is bypassed for that reason.
+DEFAULT_EVENTS_BULK_MAX_SIZE = 0
 
 
 class EventsIngestModel(Body):
@@ -29,4 +35,12 @@ class EventsIngestModel(Body):
         """
         :param events: Events list
         """
+        bulk_max_size = api_conf.get('events_bulk_max_size', DEFAULT_EVENTS_BULK_MAX_SIZE)
+        if bulk_max_size and len(events) > bulk_max_size:
+            raise ProblemException(
+                status=400,
+                title='Events bulk size exceeded',
+                detail='The size of the events bulk is exceding the limit'
+            )
+
         self._events = events
