@@ -36,6 +36,10 @@ target_link_libraries(MS_GRAPH_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
 # Compiling tests
+if(COMMAND cmake_policy)
+  cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
+
 list(LENGTH tests_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
