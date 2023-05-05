@@ -52,7 +52,7 @@ jsonschema==2.6.0
 libcst==0.3.20
 MarkupSafe==2.1.2
 more-itertools==8.2.0
-multidict==5.1.0
+multidict==5.2.0
 mypy-extensions==0.4.3
 numpy==1.21.6
 openapi-spec-validator==0.2.6
@@ -60,8 +60,8 @@ packaging==20.9
 pathlib==1.0.1
 protobuf==3.19.6
 proto-plus==1.19.0
-psutil==5.8.0
 pyarrow==8.0.0
+psutil==5.9.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
@@ -85,5 +85,5 @@ uvloop==0.16.0
 websocket-client==0.57.0
 Werkzeug==2.2.3
 xmltodict==0.12.0
-yarl==1.6.3
+yarl==1.7.0
 zipp==3.3.2
