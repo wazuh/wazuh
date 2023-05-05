@@ -9,7 +9,7 @@
 #include "builder/builders/opBuilderFileOutput.hpp"
 #include <fmt/format.h>
 
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 
 using namespace builder::internals::builders;
 using namespace base;

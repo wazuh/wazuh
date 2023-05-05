@@ -87,7 +87,7 @@ base::Expression opBuilderHelperStringTransformation(const std::string& targetFi
                                                      StringOperator op)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 1);
     // Format name for the tracer
@@ -440,7 +440,7 @@ base::Expression opBuilderHelperStringTrim(const std::string& targetField,
                                            std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 2);
     // Parameter type check
@@ -523,7 +523,7 @@ base::Expression opBuilderHelperStringConcat(const std::string& targetField,
 {
 
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     checkParametersMinSize(rawName, parameters, 2);
     // Format name for the tracer
@@ -598,7 +598,7 @@ base::Expression opBuilderHelperStringFromArray(const std::string& targetField,
                                                 const std::vector<std::string>& rawParameters,
                                                 std::shared_ptr<defs::IDefinitions> definitions)
 {
-    const auto parameters = helper::base::processParameters(rawName, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
     helper::base::checkParametersSize(rawName, parameters, 2);
 
     // Check Array reference parameter
@@ -663,7 +663,7 @@ base::Expression opBuilderHelperStringFromHexa(const std::string& targetField,
                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
 
-    const auto parameters = helper::base::processParameters(rawName, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
 
     helper::base::checkParametersSize(rawName, parameters, 1);
 
@@ -738,7 +738,7 @@ base::Expression opBuilderHelperHexToNumber(const std::string& targetField,
                                             const std::vector<std::string>& rawParameters,
                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
-    const auto parameters = helper::base::processParameters(rawName, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
     helper::base::checkParametersSize(rawName, parameters, 1);
     helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
     const auto sourceField = parameters[0];
@@ -790,7 +790,7 @@ base::Expression opBuilderHelperStringReplace(const std::string& targetField,
                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 2);
     // Format name for the tracer
@@ -904,7 +904,7 @@ base::Expression opBuilderHelperIntCalc(const std::string& targetField,
                                         std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     checkParametersMinSize(rawName, parameters, 2);
     // Format name for the tracer
@@ -929,7 +929,7 @@ base::Expression opBuilderHelperRegexExtract(const std::string& targetField,
                                              std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 2);
     // Parameter type check
@@ -989,7 +989,7 @@ base::Expression opBuilderHelperAppend(const std::string& targetField,
                                        const std::vector<std::string>& rawParameters,
                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters = helper::base::processParameters(rawName, rawParameters);
+    auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
 
     checkParametersMinSize(rawName, parameters, 1);
 
@@ -1047,7 +1047,7 @@ base::Expression opBuilderHelperMergeRecursively(const std::string& targetField,
                                                  const std::vector<std::string>& rawParameters,
                                                  std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters = helper::base::processParameters(rawName, rawParameters);
+    auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
     helper::base::checkParametersSize(rawName, parameters, 1);
     helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
 
@@ -1102,7 +1102,7 @@ base::Expression opBuilderHelperAppendSplitString(const std::string& targetField
                                                   const std::vector<std::string>& rawParameters,
                                                   std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters = helper::base::processParameters(rawName, rawParameters);
+    auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
     helper::base::checkParametersSize(rawName, parameters, 2);
     helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
     helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::VALUE);
@@ -1151,7 +1151,7 @@ base::Expression opBuilderHelperMerge(const std::string& targetField,
                                       const std::vector<std::string>& rawParameters,
                                       std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters = helper::base::processParameters(rawName, rawParameters);
+    auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
     helper::base::checkParametersSize(rawName, parameters, 1);
     helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
 
@@ -1211,7 +1211,7 @@ base::Expression opBuilderHelperDeleteField(const std::string& targetField,
                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number of parameters
     helper::base::checkParametersSize(rawName, parameters, 0);
     // Format name for the tracer
@@ -1257,7 +1257,7 @@ base::Expression opBuilderHelperRenameField(const std::string& targetField,
                                             std::shared_ptr<defs::IDefinitions> definitions)
 {
     // Identify references and build JSON pointer paths
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     // Assert expected number and type of parameters
     helper::base::checkParametersSize(rawName, parameters, 1);
     auto sourceField = parameters[0];
@@ -1326,7 +1326,7 @@ base::Expression opBuilderHelperIPVersionFromIPStr(const std::string& targetFiel
                                                    const std::vector<std::string>& rawParameters,
                                                    std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
 
     // Check parameters
     helper::base::checkParametersSize(rawName, parameters, 1);
@@ -1382,7 +1382,7 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetFie
                                                     const std::vector<std::string>& rawParameters,
                                                     std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters = helper::base::processParameters(rawName, rawParameters);
+    auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
 
     // Check parameters
     helper::base::checkParametersSize(rawName, parameters, 0);
@@ -1422,7 +1422,7 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
                                          const std::vector<std::string>& rawParameters,
                                          std::shared_ptr<defs::IDefinitions> definitions)
 {
-    const auto parameters = helper::base::processParameters(rawName, rawParameters);
+    const auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
 
     // Assert expected minimun number of parameters
     helper::base::checkParametersSize(rawName, parameters, 1);

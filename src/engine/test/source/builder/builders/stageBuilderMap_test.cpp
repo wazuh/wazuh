@@ -8,7 +8,7 @@
 #include "builder/registry.hpp"
 #include <json/json.hpp>
 
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;

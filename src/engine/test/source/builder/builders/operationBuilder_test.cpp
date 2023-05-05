@@ -4,7 +4,7 @@
 #include "builder/builders/operationBuilder.hpp"
 #include "builder/register.hpp"
 
-#include <defs/failDef.hpp>
+#include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
 
 using namespace builder::internals;

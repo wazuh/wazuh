@@ -5,6 +5,7 @@
 #include <variant>
 #include <vector>
 
+#include <defs/idefinitions.hpp>
 #include <hlp/hlp.hpp>
 #include <logging/logging.hpp>
 
@@ -67,9 +68,10 @@ inline std::optional<std::string> resolvedValue(const base::Event& event, const 
 base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
                                                const std::string& rawName,
                                                const std::vector<std::string>& rawParameters,
-                                               HLPParserType type)
+                                               HLPParserType type,
+                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters = helper::base::processParameters(rawName, rawParameters);
+    auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
 
     if (parameters.empty())
     {
@@ -171,7 +173,7 @@ base::Expression opBuilderSpecificHLPBoolParse(const std::string& targetField,
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BOOL);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BOOL, definitions);
 }
 
 // +parse_byte/[$ref|value]
@@ -180,7 +182,7 @@ base::Expression opBuilderSpecificHLPByteParse(const std::string& targetField,
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BYTE);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BYTE, definitions);
 }
 
 // +parse_long/[$ref|value]
@@ -189,7 +191,7 @@ base::Expression opBuilderSpecificHLPLongParse(const std::string& targetField,
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::LONG);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::LONG, definitions);
 }
 
 // +parse_float/[$ref|value]
@@ -198,7 +200,7 @@ base::Expression opBuilderSpecificHLPFloatParse(const std::string& targetField,
                                                 const std::vector<std::string>& rawParameters,
                                                 std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::FLOAT);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::FLOAT, definitions);
 }
 
 // +parse_double/[$ref|value]
@@ -207,7 +209,7 @@ base::Expression opBuilderSpecificHLPDoubleParse(const std::string& targetField,
                                                  const std::vector<std::string>& rawParameters,
                                                  std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::DOUBLE);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::DOUBLE, definitions);
 }
 
 // +parse_binary/[$ref|value]
@@ -216,7 +218,7 @@ base::Expression opBuilderSpecificHLPBinaryParse(const std::string& targetField,
                                                  const std::vector<std::string>& rawParameters,
                                                  std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BINARY);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BINARY, definitions);
 }
 
 // +parse_date/[$ref|value]
@@ -225,7 +227,7 @@ base::Expression opBuilderSpecificHLPDateParse(const std::string& targetField,
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::DATE);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::DATE, definitions);
 }
 
 // +parse_ip/[$ref|value]
@@ -234,7 +236,7 @@ base::Expression opBuilderSpecificHLPIPParse(const std::string& targetField,
                                              const std::vector<std::string>& rawParameters,
                                              std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::IP);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::IP, definitions);
 }
 
 // +parse_uri/[$ref|value]
@@ -243,7 +245,7 @@ base::Expression opBuilderSpecificHLPURIParse(const std::string& targetField,
                                               const std::vector<std::string>& rawParameters,
                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::URI);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::URI, definitions);
 }
 
 // +parse_useragent/[$ref|value]
@@ -252,7 +254,7 @@ base::Expression opBuilderSpecificHLPUserAgentParse(const std::string& targetFie
                                                     const std::vector<std::string>& rawParameters,
                                                     std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::USERAGENT);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::USERAGENT, definitions);
 }
 
 // +parse_fqdn/[$ref|value]
@@ -261,7 +263,7 @@ base::Expression opBuilderSpecificHLPFQDNParse(const std::string& targetField,
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::FQDN);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::FQDN, definitions);
 }
 
 // +parse_file/[$ref|value]
@@ -270,7 +272,7 @@ base::Expression opBuilderSpecificHLPFilePathParse(const std::string& targetFiel
                                                    const std::vector<std::string>& rawParameters,
                                                    std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::FILE);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::FILE, definitions);
 }
 
 // +parse_json/[$ref|value]
@@ -279,7 +281,7 @@ base::Expression opBuilderSpecificHLPJSONParse(const std::string& targetField,
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::JSON);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::JSON, definitions);
 }
 
 // +parse_xml/[$ref|value]
@@ -288,7 +290,7 @@ base::Expression opBuilderSpecificHLPXMLParse(const std::string& targetField,
                                               const std::vector<std::string>& rawParameters,
                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::XML);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::XML, definitions);
 }
 
 // +parse_cvs/[$ref|value]/parser options
@@ -297,7 +299,7 @@ base::Expression opBuilderSpecificHLPCSVParse(const std::string& targetField,
                                               const std::vector<std::string>& rawParameters,
                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::CSV);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::CSV, definitions);
 }
 
 // +parse_dvs/[$ref|value]/parser options
@@ -306,7 +308,7 @@ base::Expression opBuilderSpecificHLPDSVParse(const std::string& targetField,
                                               const std::vector<std::string>& rawParameters,
                                               std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::DSV);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::DSV, definitions);
 }
 
 // +parse_key_value/[$ref|value]
@@ -315,7 +317,7 @@ base::Expression opBuilderSpecificHLPKeyValueParse(const std::string& targetFiel
                                                    const std::vector<std::string>& rawParameters,
                                                    std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::KV);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::KV, definitions);
 }
 
 // +parse_quoted/[$ref|value]
@@ -324,7 +326,7 @@ base::Expression opBuilderSpecificHLPQuotedParse(const std::string& targetField,
                                                  const std::vector<std::string>& rawParameters,
                                                  std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::QUOTED);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::QUOTED, definitions);
 }
 
 base::Expression opBuilderSpecificHLPBetweenParse(const std::string& targetField,
@@ -332,7 +334,7 @@ base::Expression opBuilderSpecificHLPBetweenParse(const std::string& targetField
                                                   const std::vector<std::string>& rawParameters,
                                                   std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BETWEEN);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::BETWEEN, definitions);
 }
 
 // +parse_alphanumeric/[$ref|value]
@@ -341,6 +343,6 @@ base::Expression opBuilderSpecificHLPAlphanumericParse(const std::string& target
                                                        const std::vector<std::string>& rawParameters,
                                                        std::shared_ptr<defs::IDefinitions> definitions)
 {
-    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::ALPHANUMERIC);
+    return opBuilderSpecificHLPTypeParse(targetField, rawName, rawParameters, HLPParserType::ALPHANUMERIC, definitions);
 }
 } // namespace builder::internals::builders
