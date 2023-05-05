@@ -6,9 +6,9 @@
 #include "builder/builders/stageBuilderCheck.hpp"
 #include "builder/registry.hpp"
 
+#include <baseHelper.hpp>
 #include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
-#include <baseHelper.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;
@@ -24,8 +24,7 @@ protected:
     {
         registry = std::make_shared<Registry<builder::internals::Builder>>();
         helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-        registry->registerBuilder(getOperationConditionBuilder(helperRegistry),
-                                  "operation.condition");
+        registry->registerBuilder(getOperationConditionBuilder(helperRegistry), "operation.condition");
     }
 
     std::shared_ptr<builder::internals::Registry<builder::internals::HelperBuilder>> helperRegistry;
@@ -118,21 +117,21 @@ TEST_F(StageBuilderCheckTest, ExpressionNotEqualOperator)
 {
     auto checkJson = Json {R"("field!=value")"};
 
-    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
+    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>()));
 }
 
 class StageBuilderCheckHelperOperatorsTest
-    : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::function<Expression(const std::string& targetField,
-                                            const std::string& rawName,
-                                            const std::vector<std::string>& rawParameters)>>>
+    : public ::testing::TestWithParam<
+          std::tuple<std::string,
+                     std::string,
+                     HelperBuilder>>
 {
 protected:
     void SetUp() override
     {
         registry = std::make_shared<Registry<builder::internals::Builder>>();
         helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-        registry->registerBuilder(getOperationConditionBuilder(helperRegistry),
-                                  "operation.condition");
+        registry->registerBuilder(getOperationConditionBuilder(helperRegistry), "operation.condition");
     }
 
     std::shared_ptr<Registry<Builder>> registry;
@@ -146,7 +145,7 @@ TEST_P(StageBuilderCheckHelperOperatorsTest, CheckExpressionOperator)
     auto checkJson = Json {expression.c_str()};
 
     helperRegistry->registerBuilder(registerBuilder, builderName);
-    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson));
+    ASSERT_NO_THROW(getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>()));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -156,9 +155,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(R"("field<\"value\"")", "string_less", opBuilderHelperStringLessThan),
         std::make_tuple(R"("field<=\"value\"")", "string_less_or_equal", opBuilderHelperStringLessThanEqual),
         std::make_tuple(R"("field>\"value\"")", "string_greater", opBuilderHelperStringGreaterThan),
-        std::make_tuple(R"("field>=\"value\"")",
-                        "string_greater_or_equal",
-                        opBuilderHelperStringGreaterThanEqual),
+        std::make_tuple(R"("field>=\"value\"")", "string_greater_or_equal", opBuilderHelperStringGreaterThanEqual),
         std::make_tuple(R"("field<3")", "int_less", opBuilderHelperIntLessThan),
         std::make_tuple(R"("field<=3")", "int_less_or_equal", opBuilderHelperIntLessThanEqual),
         std::make_tuple(R"("field>3")", "int_greater", opBuilderHelperIntGreaterThan),
@@ -171,8 +168,7 @@ protected:
     {
         registry = std::make_shared<Registry<builder::internals::Builder>>();
         auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-        registry->registerBuilder(getOperationConditionBuilder(helperRegistry),
-                                  "operation.condition");
+        registry->registerBuilder(getOperationConditionBuilder(helperRegistry), "operation.condition");
     }
 
     std::shared_ptr<Registry<Builder>> registry;
@@ -184,7 +180,7 @@ TEST_P(StageBuilderCheckInvalidOperatorsTest, InvalidValuesInField)
 
     try
     {
-        getStageBuilderCheck(registry)(checkJson);
+        getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>());
     }
     catch (const std::runtime_error& e)
     {
@@ -234,7 +230,7 @@ TEST_F(StageBuilderCheckTest, InvalidOperator)
 
     try
     {
-        getStageBuilderCheck(registry)(checkJson);
+        getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>());
     }
     catch (const std::runtime_error& e)
     {
@@ -248,7 +244,7 @@ TEST_F(StageBuilderCheckTest, ObjectIntoObject)
 
     try
     {
-        getStageBuilderCheck(registry)(checkJson);
+        getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>());
     }
     catch (const std::runtime_error& e)
     {
@@ -259,10 +255,11 @@ TEST_F(StageBuilderCheckTest, ObjectIntoObject)
 namespace builder::internals::builders
 {
 base::Expression opBuilderHelperDummy(const std::string& targetField,
-                                               const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters)
+                                      const std::string& rawName,
+                                      const std::vector<std::string>& rawParameters,
+                                      std::shared_ptr<defs::IDefinitions> definitions)
 {
-    auto parameters {helper::base::processParameters(rawName, rawParameters)};
+    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 0);
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
 
@@ -284,7 +281,7 @@ base::Expression opBuilderHelperDummy(const std::string& targetField,
             return result;
         });
 }
-}
+} // namespace builder::internals::builders
 
 TEST_F(StageBuilderCheckTest, CheckExpressionHelperDummyTrue)
 {
@@ -293,7 +290,7 @@ TEST_F(StageBuilderCheckTest, CheckExpressionHelperDummyTrue)
     auto event = std::make_shared<json::Json>(R"({"field": true})");
 
     helperRegistry->registerBuilder(opBuilderHelperDummy, "dummy");
-    auto opEx = getStageBuilderCheck(registry)(checkJson);
+    auto opEx = getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_TRUE(opEx->getPtr<base::Term<base::EngineOp>>()->getFn()(event));
 }
@@ -305,7 +302,7 @@ TEST_F(StageBuilderCheckTest, CheckExpressionHelperDummyFalse)
     auto event = std::make_shared<json::Json>(R"({"field": false})");
 
     helperRegistry->registerBuilder(opBuilderHelperDummy, "dummy");
-    auto opEx = getStageBuilderCheck(registry)(checkJson);
+    auto opEx = getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_FALSE(opEx->getPtr<base::Term<base::EngineOp>>()->getFn()(event));
 }
@@ -315,5 +312,6 @@ TEST_F(StageBuilderCheckTest, CheckExpressionHelperFail)
     auto checkJson = Json {R"("+int_equal/~json/2")"};
 
     helperRegistry->registerBuilder(opBuilderHelperIntLessThanEqual, "int_less_or_equal");
-    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson), std::runtime_error);
+    ASSERT_THROW(getStageBuilderCheck(registry)(checkJson, std::make_shared<defs::mocks::FailDef>()),
+                 std::runtime_error);
 }
