@@ -21,6 +21,9 @@ sources:
 
 check:
   - wazuh.modules.aws.source: cloudtrail
+  #TODO: Once the events arrive tagged, uncomment these lines below and remove the above line
+  # - event.module: aws
+  # - event.dataset: aws.cloudtrail
 
 normalize:
   - check:
