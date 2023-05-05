@@ -72,6 +72,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
 {
     // Obtain expressionString
     auto expressionString = std::any_cast<json::Json>(definition).getString().value();
+    expressionString = definitions->replace(expressionString);
     std::string keyboarder;
 
     // Obtain field and value
@@ -146,7 +147,7 @@ base::Expression stageBuilderCheckExpression(const std::any& definition,
                     const auto suffix = ((keyboarder == "<=")   ? "less_or_equal/"
                                          : (keyboarder == ">=") ? "greater_or_equal/"
                                          : (keyboarder == "<")  ? "less/"
-                                                              : "greater/")
+                                                                : "greater/")
                                         + operand;
                     value = prefix + suffix;
                     valueJson.setString(value);

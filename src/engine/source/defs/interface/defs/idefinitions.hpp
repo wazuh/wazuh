@@ -28,6 +28,14 @@ namespace defs
          * @return false
          */
         virtual bool contains(std::string_view name) const = 0;
+
+        /**
+         * @brief Search for definitions in the input string and replace them with the corresponding values.
+         *
+         * @param input Input string.
+         * @return std::string with the definitions replaced.
+         */
+        virtual std::string replace(std::string_view input) const = 0;
     };
 }
 

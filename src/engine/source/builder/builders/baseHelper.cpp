@@ -43,7 +43,13 @@ std::vector<Parameter> processParameters(const std::string& name,
                            if (definitions->contains(pointerPath))
                            {
                                auto val = definitions->get(pointerPath);
-
+                               if (!val.isString() && !val.isNumber())
+                               {
+                                   throw std::runtime_error(fmt::format("Definition '{}' in helper '{}' is not a "
+                                                                        "string or number",
+                                                                        parameter,
+                                                                        name));
+                               }
                                return {Parameter::Type::VALUE, val.getString().value_or(val.str())};
                            }
 
