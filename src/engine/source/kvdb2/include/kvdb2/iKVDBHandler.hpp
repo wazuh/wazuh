@@ -1,0 +1,24 @@
+#ifndef _IKVDBHANDLER_H
+#define _IKVDBHANDLER_H
+
+#include <error.hpp>
+#include <string>
+#include <variant>
+
+namespace kvdbManager
+{
+
+class IKVDBHandler
+{
+public:
+    virtual ~IKVDBHandler() = 0;
+    virtual std::variant<bool, base::Error> set(const std::string& key, const std::string& value) = 0;
+    virtual bool add(const std::string& key) = 0;
+    virtual bool remove(const std::string& key) = 0;
+    virtual std::variant<bool, base::Error> contains(const std::string& key) = 0;
+    virtual std::variant<std::string, base::Error> get(const std::string& key) = 0;
+};
+
+} // namespace kvdbManager
+
+#endif // _IKVDBHANDLER_H
