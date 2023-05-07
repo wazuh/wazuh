@@ -12,7 +12,7 @@ namespace kvdbManager
 class KVDBScope : public IKVDBScope
 {
 public:
-    KVDBScope(IKVDBHandlerManager* handleManager, const std::string& name);
+    KVDBScope(IKVDBHandlerManager* handlerManager, const std::string& name);
 
     bool initialize();
 
@@ -23,7 +23,7 @@ public:
 
 private:
     bool m_initialized { false };
-    IKVDBHandlerManager* m_handleManager { nullptr };
+    IKVDBHandlerManager* m_handlerManager { nullptr };
     std::string m_name;
 };
 

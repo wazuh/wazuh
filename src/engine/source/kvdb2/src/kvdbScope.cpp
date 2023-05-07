@@ -3,8 +3,8 @@
 namespace kvdbManager
 {
 
-KVDBScope::KVDBScope(IKVDBHandlerManager* handleManager, const std::string& name)
-    : m_handleManager(handleManager)
+KVDBScope::KVDBScope(IKVDBHandlerManager* handlerManager, const std::string& name)
+    : m_handlerManager(handlerManager)
 {
     setName(name);
 }
@@ -17,7 +17,7 @@ bool KVDBScope::initialize()
 
 std::shared_ptr<IKVDBHandler> KVDBScope::getKVDBHandler(const std::string& dbName)
 {
-    return m_handleManager->getKVDBHandler(dbName, getName());
+    return m_handlerManager->getKVDBHandler(dbName, getName());
 }
 
 } // namespace kvdbManager
