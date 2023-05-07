@@ -4,7 +4,7 @@ namespace kvdbManager
 {
 
 KVDBSpace::~KVDBSpace() {
-    m_manager->removeKVDBHandler(m_spaceName, m_scopeName);
+    m_handlerManager->removeKVDBHandler(m_spaceName, m_scopeName);
 }
 
 std::variant<bool, base::Error> KVDBSpace::set(const std::string& key, const std::string& value) {
