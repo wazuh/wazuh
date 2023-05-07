@@ -28,13 +28,14 @@ namespace kvdbManager
 struct KVDBManagerOptions
 {
     std::filesystem::path dbStoragePath;
+    std::string dbName;
 };
 
 /**
  * @brief KVDBManager Entry Point class.
  *
  */
-class KVDBManager : public IKVDBManager, public IKVDBHandlerManager
+class KVDBManager final : public IKVDBManager, public IKVDBHandlerManager
 {
     WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
 
@@ -42,17 +43,19 @@ public:
     KVDBManager(const KVDBManagerOptions& options, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
     ~KVDBManager() = default;
 
-    bool initialize();
+    void initialize();
 
     std::shared_ptr<IKVDBScope> getKVDBScope(const std::string& scopeName) override;
     std::shared_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
 
-protected:
-    void setupRocksDBOptions();
-    bool createMainDB();
-
 private:
+    /**
+     * @brief Setup RocksDB Options. Populate m_rocksDBOptions with the default values.
+     *
+     */
+    void initializeOptions();
+    void initializeMainDB();
 
     friend class kvdbManager::KVDBScope;
 
@@ -71,6 +74,9 @@ private:
     rocksdb::DB* m_pRocksDB;
 
     std::unique_ptr<KVDBHandlerCollection> m_kvdbHandlerCollection;
+
+    bool m_isInitialized { false };
+    bool m_isDBLoaded { false };
 };
 
 } // namespace kvdbManager
