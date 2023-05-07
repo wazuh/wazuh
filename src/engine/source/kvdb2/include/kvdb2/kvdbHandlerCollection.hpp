@@ -3,6 +3,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 
@@ -24,6 +25,7 @@ private:
         std::shared_ptr<KVDBSpace> getHandler() const { return m_spHandler; }
         void addScope(const std::string& scopeName) { m_setScopes.insert(scopeName); }
         void removeScope(const std::string& scopeName) { m_setScopes.erase(scopeName); }
+        bool emptyScopes() const { return m_setScopes.empty(); }
     private:
         std::shared_ptr<KVDBSpace> m_spHandler;
         std::multiset<std::string> m_setScopes;
@@ -37,6 +39,7 @@ public:
 private:
     std::map<std::string, std::shared_ptr<KVDBHandlerInstance>> m_mapInstances;
     IKVDBHandlerManager* m_handleManager { nullptr };
+    std::mutex m_mutex;
 
 };
 

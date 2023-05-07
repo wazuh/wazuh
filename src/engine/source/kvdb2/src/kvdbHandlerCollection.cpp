@@ -5,6 +5,7 @@ namespace kvdbManager
 
 std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
@@ -22,4 +23,18 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(const std::s
     }
 }
 
+void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    auto it = m_mapInstances.find(dbName);
+    if (it != m_mapInstances.end())
+    {
+        auto &instance = it->second;
+        instance->removeScope(scopeName);
+        if (instance->emptyScopes())
+        {
+            m_mapInstances.erase(it);
+        }
+    }
+}
 } // namespace kvdbManager
