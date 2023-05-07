@@ -1,0 +1,57 @@
+@startuml
+
+namespace kvdbManager {
+    class IKVDBHandler {
+        +~IKVDBHandler()
+        {abstract} +set(key: const std::string&, value: const std::string&): std::variant<bool, base::Error>
+        {abstract} +add(key: const std::string&): bool
+        {abstract} +remove(key: const std::string&): bool
+        {abstract} +contains(key: const std::string&): std::variant<bool, base::Error>
+        {abstract} +get(key: const std::string&): std::variant<std::string, base::Error>
+    }
+    class IKVDBHandlerManager {
+        {abstract} +getKVDBHandler(dbName: const std::string&, scopeName: const std::string&): std::shared_ptr<IKVDBHandler>
+        {abstract} +removeKVDBHandler(dbName: const std::string&, scopeName: const std::string&): void
+    }
+    class IKVDBManager {
+        {abstract} +getKVDBScope(scopeName: const std::string&): std::shared_ptr<IKVDBScope>
+    }
+    class IKVDBScope {
+        {abstract} +setName(name: const std::string&): void
+        {abstract} +getName(): std::string
+        {abstract} +getKVDBHandler(dbName: const std::string&): std::shared_ptr<IKVDBHandler>
+    }
+    class KVDBHandlerCollection {
+        -m_mapInstances: std::map<std::string, std::shared_ptr<KVDBHandlerInstance>>
+        -m_handleManager: IKVDBHandlerManager*
+        -m_mutex: std::mutex
+        +getKVDBHandler(dbName: const std::string&, scopeName: const std::string&): std::shared_ptr<IKVDBHandler>
+        +removeKVDBHandler(dbName: const std::string&, scopeName: const std::string&): void
+    }
+    class KVDBManagedHandler {
+        -m_handlerManager: IKVDBHandlerManager*
+        -m_scopeName: std::string
+    }
+    class KVDBManager {
+        -m_mapScopes: std::map<std::string, std::shared_ptr<KVDBScope>>
+        -m_mutexScopes: std::mutex
+        -m_ManagerOptions: KVDBManagerOptions
+        -m_rocksDBOptions: rocksdb::Options
+        -m_pRocksDB: rocksdb::DB*
+        -m_kvdbHandlerCollection: std::unique_ptr<KVDBHandlerCollection>
+        -m_isInitialized: bool
+        -m_isDBLoaded: bool
+        -m_spMetricsScope: std::shared_ptr<metricsManager::IMetricsScope>
+        +initialize(): void
+        +getKVDBScope(scopeName: const std::string&): std::shared_ptr<IKVDBScope>
+        +getKVDBHandler(dbName: const std::string&, scopeName: const std::string&): std::shared_ptr<IKVDBHandler>
+        +removeKVDBHandler(dbName: const std::string&, scopeName: const std::string&): void
+    }
+    class KVDBScope {
+        -m_initialized: bool
+        -m_handlerManager: IKVDBHandlerManager*
+        -m_name: std::string
+        +getName(): std::string
+        +setName(name: const std::string&): void
+        +getKVDBHandler(dbName: const std::string&): std::shared_ptr<IKVDBHandler>
+    }

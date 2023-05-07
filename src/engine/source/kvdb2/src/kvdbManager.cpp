@@ -1,5 +1,5 @@
 #include <kvdb2/kvdbManager.hpp>
-
+#include <kvdb2/kvdbExcept.hpp>
 #include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
 
@@ -16,10 +16,11 @@ KVDBManager::KVDBManager(const KVDBManagerOptions& options, const std::shared_pt
     m_kvdbHandlerCollection = std::make_unique<KVDBHandlerCollection>(this);
 }
 
-bool KVDBManager::initialize()
+void KVDBManager::initialize()
 {
-    setupRocksDBOptions();
-    return createMainDB();
+    initializeOptions();
+    initializeMainDB();
+    m_isInitialized = true;
 }
 
 std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeName)
@@ -50,7 +51,7 @@ std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeNa
     return nullptr;
 }
 
-void KVDBManager::setupRocksDBOptions()
+void KVDBManager::initializeOptions()
 {
     m_rocksDBOptions = rocksdb::Options();
     m_rocksDBOptions.IncreaseParallelism();
@@ -58,11 +59,10 @@ void KVDBManager::setupRocksDBOptions()
     m_rocksDBOptions.create_if_missing = true;
 }
 
-bool KVDBManager::createMainDB()
+void KVDBManager::initializeMainDB()
 {
-    rocksdb::Status s = rocksdb::DB::Open(m_rocksDBOptions, m_ManagerOptions.dbStoragePath, &m_pRocksDB);
+    rocksdb::Status s = rocksdb::DB::Open(m_rocksDBOptions, m_ManagerOptions.dbName, &m_pRocksDB);
     assert(s.ok());
-    return true;
 }
 
 std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)

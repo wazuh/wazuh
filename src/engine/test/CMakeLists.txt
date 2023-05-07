@@ -26,6 +26,7 @@ add_subdirectory(${TEST_SOURCE_DIR}/hlp) # TODO Delete This and hlp from source
 add_subdirectory(${TEST_SOURCE_DIR}/hlp2)
 add_subdirectory(${TEST_SOURCE_DIR}/json)
 add_subdirectory(${TEST_SOURCE_DIR}/kvdb)
+add_subdirectory(${TEST_SOURCE_DIR}/kvdb2)
 add_subdirectory(${TEST_SOURCE_DIR}/router)
 add_subdirectory(${TEST_SOURCE_DIR}/logicExpression)
 add_subdirectory(${TEST_SOURCE_DIR}/rxbk)
