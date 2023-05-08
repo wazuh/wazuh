@@ -52,14 +52,10 @@ stages:
         <<: *webhook_response_ok
 ---
 
-test_name: POST /events EPS limit
-
-marks:
-  - usefixtures:
-      - forwarded_events
+test_name: POST /events tree times in less than a minute and trigger the EPS limit
 
 stages:
-  - name: POST /events over the EPS limit
+  - name: First request OK
     request:
       verify: false
       <<: *webhook_request
@@ -70,23 +66,13 @@ stages:
           {"gaz": 3},
           {"foo": 4},
           {"bar": 5},
-          {"gaz": 6},
-          {"foo": 7},
-          {"bar": 8},
-          {"gaz": 9},
-          {"gaz": 10},
         ]
     response:
-      verify_response_with:
-        - function: tavern_utils:assert_forwarded_events
-          extra_kwargs:
-            forwarded_events: "{forwarded_events}"
-            expected_events: 5
       status_code: 200
       json:
         <<: *webhook_response_ok
 
-  - name: POST /events under the EPS limit
+  - name: Second request OK
     request:
       verify: false
       <<: *webhook_request
@@ -99,14 +85,27 @@ stages:
           {"bar": 5},
         ]
     response:
-      verify_response_with:
-        - function: tavern_utils:assert_forwarded_events
-          extra_kwargs:
-            forwarded_events: "{forwarded_events}"
-            expected_events: 10
       status_code: 200
       json:
         <<: *webhook_response_ok
+
+  - name: Third request and get 429 code
+    request:
+      verify: false
+      <<: *webhook_request
+      json:
+        events: [
+          {"foo": 1},
+          {"bar": 2},
+          {"gaz": 3},
+          {"foo": 4},
+          {"bar": 5},
+        ]
+    response:
+      status_code: 429
+      json: &webhook_response_bad
+        detail: !anystr
+        title: !anystr
 
 
 ---
@@ -125,9 +124,9 @@ stages:
         ]
     response:
       status_code: 400
-      json: &webhook_response_bad
-        detail: !anystr
-        title: !anystr
+      json:
+        <<: *webhook_response_bad
+
 
   - name: POST /events with invalid size
     request:
@@ -136,7 +135,11 @@ stages:
       json:
         events: [
           {"foo": 1},
-          {"bar": 2}
+          {"bar": 2},
+          {"bar": 3},
+          {"bar": 4},
+          {"bar": 5},
+          {"bar": 6},
         ]
     response:
       status_code: 400
