@@ -252,13 +252,29 @@ parsec::Parser<char> pCharAlphaNum(std::string extended = "");
 template<typename T>
 parsec::Parser<T> pEof()
 {
-    return [](std::string_view text, size_t pos)
+    return [](const parsec::ParserState& state)
     {
-        if (pos == text.size())
-            return parsec::makeSuccess<T>({}, pos);
-        return parsec::makeError<T>("Expected end of input", pos);
+        auto result = parsec::ResultP<T>::failure(state);
+        if (state.getRemainingSize() == 0)
+        {
+            result.setSuccess(state, T());
+        }
+        if (state.isTraceEnabled())
+        {
+            std::string trace {};
+            if (result)
+            {
+                trace = "[success] [EOF] expected, found EOF";
+            }
+            else
+            {
+                trace = fmt::format("[failure] [EOF] expected, but found {}", state.getRemainingData());
+            }
+            result.concatenateTraces(trace);
+        }
+        return result;
     };
-};
+}
 
 /**
  * @brief Holds the literal to build a literal parser
@@ -278,10 +294,7 @@ struct FieldName
 {
     std::string value;
     bool custom;
-    bool operator==(const FieldName& other) const
-    {
-        return value == other.value && custom == other.custom;
-    }
+    bool operator==(const FieldName& other) const { return value == other.value && custom == other.custom; }
 };
 
 /**
@@ -320,10 +333,7 @@ struct Choice
 {
     Field left;
     Field right;
-    bool operator==(const Choice& other) const
-    {
-        return left == other.left && right == other.right;
-    }
+    bool operator==(const Choice& other) const { return left == other.left && right == other.right; }
 };
 
 /**
@@ -373,8 +383,8 @@ parsec::Parser<std::list<ParserInfo>> pLogpar();
 class Logpar
 {
 private:
-    using ParserBuilder = std::function<parsec::Parser<json::Json>(
-        std::string, std::list<std::string>, std::vector<std::string>)>;
+    using ParserBuilder =
+        std::function<parsec::Parser<json::Json>(std::string, std::list<std::string>, std::vector<std::string>)>;
 
     size_t m_maxGroupRecursion;
 
@@ -386,14 +396,11 @@ private:
 
     // build the parsers from the different parser info types
     parsec::Parser<json::Json> buildLiteralParser(const parser::Literal& literal) const;
-    parsec::Parser<json::Json>
-    buildFieldParser(const parser::Field& field,
-                     std::list<std::string> endTokens = {}) const;
-    parsec::Parser<json::Json>
-    buildChoiceParser(const parser::Choice& choice,
-                      std::list<std::string> endTokens = {}) const;
-    parsec::Parser<json::Json> buildGroupOptParser(const parser::Group& group,
-                                                   size_t recurLvl) const;
+    parsec::Parser<json::Json> buildFieldParser(const parser::Field& field,
+                                                std::list<std::string> endTokens = {}) const;
+    parsec::Parser<json::Json> buildChoiceParser(const parser::Choice& choice,
+                                                 std::list<std::string> endTokens = {}) const;
+    parsec::Parser<json::Json> buildGroupOptParser(const parser::Group& group, size_t recurLvl) const;
     parsec::Parser<json::Json>
 
     // build the parsers while adding the target field to the json
@@ -406,9 +413,7 @@ public:
      * @param ecsFieldTypes a json object with the schema types of the schema fields
      * @throws std::runtime_error if errors occur while initializing
      */
-    Logpar(const json::Json& ecsFieldTypes,
-           size_t maxGroupRecursion = 1,
-           size_t debugLvl = 0);
+    Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion = 1, size_t debugLvl = 0);
 
     /**
      * @brief Register a parser builder for the given parser type

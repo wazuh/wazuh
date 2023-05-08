@@ -8,49 +8,64 @@
 #include <fmt/format.h>
 #include <hlp/parsec.hpp>
 
+namespace parsec
+{
+std::size_t TraceP::s_order = 0;
+}
 namespace hlp::logpar::parser
 {
 parsec::Parser<char> pChar(std::string chars)
 {
-    return [=](std::string_view t, size_t i)
+    return [=](const parsec::ParserState& state) -> parsec::ResultP<char>
     {
-        if (i < t.size())
+        auto retResult = parsec::ResultP<char>::failure(state);
+        bool isRemaining = state.getRemainingSize() > 0;
+
+        if (isRemaining)
         {
-            if (chars.find(t[i]) != std::string::npos)
+            const auto inputChar = state.getRemainingData()[0];
+            if (chars.find(inputChar) != std::string::npos)
             {
-                return parsec::makeSuccess(char {t[i]}, i + 1);
-            }
-            else
-            {
-                return parsec::makeError<char>(fmt::format("Expected one of '{}', found '{}'", chars, t[i]), i);
+                retResult.setSuccess(state.advance(1), char(inputChar));
             }
         }
-        else
+
+        if (state.isTraceEnabled())
         {
-            return parsec::makeError<char>(fmt::format("Expected one of '{}', found EOF", chars), i);
+            std::string trace = retResult.isSuccessful() ? "[success]" : "[failure]";
+            trace += fmt::format(" pChar({}) -> ", chars);
+            trace += isRemaining ? std::string{state.getRemainingData()[0]} : "EOF";
+            retResult.concatenateTraces(trace);
         }
+
+        return retResult;
     };
 }
 
 parsec::Parser<char> pNotChar(std::string chars)
 {
-    return [=](std::string_view t, size_t i)
+    return [=](const parsec::ParserState& state) -> parsec::ResultP<char>
     {
-        if (i < t.size())
+        auto retResult = parsec::ResultP<char>::failure(state);
+        bool isRemaining = state.getRemainingSize() > 0;
+
+        if (isRemaining)
         {
-            if (chars.find(t[i]) == std::string::npos)
+            const auto inputChar = state.getRemainingData()[0];
+            if (chars.find(inputChar) == std::string::npos)
             {
-                return parsec::makeSuccess(char {t[i]}, i + 1);
-            }
-            else
-            {
-                return parsec::makeError<char>(fmt::format("Expected not one of '{}', found '{}'", chars, t[i]), i);
+                retResult.setSuccess(state.advance(1), char(inputChar));
             }
         }
-        else
+
+        if (state.isTraceEnabled())
         {
-            return parsec::makeError<char>(fmt::format("Expected not one of '{}', found EOF", chars), i);
+            std::string trace = retResult.isSuccessful() ? "[success]" : "[failure]";
+            trace += fmt::format(" pNotChar({}) -> ", chars);
+            trace += isRemaining ? std::string{state.getRemainingData()[0]} : "EOF";
+            retResult.concatenateTraces(trace);
         }
+        return retResult;
     };
 }
 
@@ -91,24 +106,27 @@ parsec::Parser<std::string> pRawLiteral1(std::string reservedChars, char esc)
 
 parsec::Parser<char> pCharAlphaNum(std::string extended)
 {
-    return [=](std::string_view t, size_t i)
+    return [=](const parsec::ParserState& state) -> parsec::ResultP<char>
     {
-        if (i < t.size())
+        auto retResult = parsec::ResultP<char>::failure(state);
+        bool isRemaining = state.getRemainingSize() > 0;
+        if (isRemaining)
         {
-            if ((t[i] >= 'a' && t[i] <= 'z') || (t[i] >= 'A' && t[i] <= 'Z') || (t[i] >= '0' && t[i] <= '9')
-                || extended.find(t[i]) != std::string::npos)
+            const auto inputChar = state.getRemainingData()[0];
+            if (std::isalnum(inputChar) || extended.find(inputChar) != std::string::npos)
             {
-                return parsec::makeSuccess(char {t[i]}, i + 1);
-            }
-            else
-            {
-                return parsec::makeError<char>(fmt::format("Expected alphanumeric, found '{}'", t[i]), i);
+                retResult.setSuccess(state.advance(1), char(inputChar));
             }
         }
-        else
-        {
-            return parsec::makeError<char>(fmt::format("Expected alphanumeric, found EOF"), i);
+
+        if (state.isTraceEnabled()) {
+            std::string trace = retResult.isSuccessful() ? "[success]" : "[failure]";
+            trace += fmt::format(" pCharAlphaNum({}) -> ", extended);
+            trace += isRemaining ? std::string {state.getRemainingData()[0]} : "EOF";
+            retResult.concatenateTraces(trace);
         }
+
+        return retResult;
     };
 }
 
@@ -122,24 +140,33 @@ parsec::Parser<parsec::Values<std::string>> pArgs()
 
 parsec::Parser<FieldName> pFieldName()
 {
-    parsec::Parser<std::string> pCustom = [](std::string_view text, size_t i)
+    parsec::Parser<std::string> pCustom = [](const parsec::ParserState& state) -> parsec::ResultP<std::string>
     {
-        if (i < text.size())
+        auto retResult = parsec::ResultP<std::string>::failure(state);
+        bool isRemaining = state.getRemainingSize() > 0;
+
+        if (isRemaining)
         {
-            if (text[i] == syntax::EXPR_CUSTOM_FIELD)
+            const auto inputChar = state.getRemainingData()[0];
+            if (syntax::EXPR_CUSTOM_FIELD == inputChar)
             {
-                return parsec::makeSuccess(std::string {text[i]}, i + 1);
+                retResult.setSuccess(state.advance(1), std::string {inputChar});
             }
             else
             {
-                return parsec::makeSuccess(std::string {}, i);
+                retResult.setSuccess(state, std::string {});
             }
         }
-        else
+
+        if (state.isTraceEnabled())
         {
-            return parsec::makeError<std::string>(fmt::format("Optional '{}', found EOF", syntax::EXPR_CUSTOM_FIELD),
-                                                  i);
+            std::string trace = retResult.isSuccessful() ? "[success]" : "[failure]";
+            trace += fmt::format(" pCustom -> ");
+            trace += isRemaining ? std::string{state.getRemainingData()[0]} : "EOF";
+            retResult.concatenateTraces(trace);
         }
+
+        return retResult;
     };
 
     std::string extendedChars = syntax::EXPR_FIELD_EXTENDED_CHARS;
@@ -207,30 +234,37 @@ parsec::Parser<Choice> pChoice()
 {
     auto p = (pField() << pChar({syntax::EXPR_OPT})) & pField();
 
-    return [=](std::string_view text, size_t i)
+    return [=](const parsec::ParserState& state)
     {
-        auto res = p(text, i);
-        if (res.failure())
+        auto res = p(state);
+        auto retResult = parsec::ResultP<Choice>::failure(state);
+
+        if (res.isSuccessful())
         {
-            return parsec::makeError<Choice>(std::string {res.error()}, i);
-        }
-        else
-        {
-            const auto& [f1, f2] = res.value();
-            if (f1.optional)
-            {
-                return parsec::makeError<Choice>(
-                    fmt::format("Expected field, found optional field '{}'", f1.name.value), i);
+            const auto [f1, f2] = res.popValue();
+
+            if (!f1.optional && !f2.optional) {
+                retResult.setSuccess(res.getParserState(), Choice {f1, f2});
             }
 
-            if (f2.optional)
+            if (state.isTraceEnabled())
             {
-                return parsec::makeError<Choice>(
-                    fmt::format("Expected field, found optional field '{}'", f2.name.value), i);
+                retResult.concatenateTraces(std::move(res));
+                std::string trace = retResult.isSuccessful() ? "[success]" : "[failure]";
+                trace += fmt::format(" pChoice -> ({}) - ({})", f1.name.value, f2.name.value);
+                if (f1.optional || f2.optional)
+                {
+                    trace += " expected: both fields to be non-optional";
+                }
+                retResult.concatenateTraces(trace);
             }
-
-            return parsec::makeSuccess(Choice {f1, f2}, res.index());
         }
+        else if (state.isTraceEnabled())
+        {
+            retResult.concatenateTraces(std::move(res)).concatenateTraces("[failure] pChoice failed");
+        }
+
+        return retResult;
     };
 }
 
@@ -246,15 +280,20 @@ parsec::Parser<parsec::Values<ParserInfo>> pExpr()
 
 namespace
 {
-parsec::Result<Group> pG(std::string_view text, size_t i)
+parsec::ResultP<Group> pG(const parsec::ParserState& state)
 {
-    auto resStart = (pChar({syntax::EXPR_GROUP_BEGIN}) & pChar({syntax::EXPR_OPT}))(text, i);
-    auto lastIdx = i;
-    if (resStart.failure())
+    auto retResult = parsec::ResultP<Group>::failure(state);
+
+    auto resStart = (pChar({syntax::EXPR_GROUP_BEGIN}) & pChar({syntax::EXPR_OPT}))(state);
+
+    if (!resStart)
     {
-        return parsec::makeError<Group>(std::string {resStart.error()}, i);
+        if (state.isTraceEnabled())
+        {
+            retResult.concatenateTraces(std::move(resStart)).concatenateTraces("[failure] pG failed -> no start");
+        }
+        return retResult;
     }
-    lastIdx = resStart.index();
 
     parsec::Parser<Group> pGfn = pG;
     auto pGmap =
@@ -271,28 +310,40 @@ parsec::Result<Group> pG(std::string_view text, size_t i)
         },
         parsec::many1(pExpr() | pGmap));
 
-    auto resBody = pBody(text, lastIdx);
-    if (resBody.failure())
+    auto resBody = pBody(resStart.getParserState());
+    if (!resBody)
     {
-        return parsec::makeError<Group>(std::string {resBody.error()}, i);
+        if (state.isTraceEnabled())
+        {
+            retResult.concatenateTraces(std::move(resStart))
+                .concatenateTraces(std::move(resBody))
+                .concatenateTraces("[failure] pG failed -> no body");
+        }
+        return retResult;
     }
-    lastIdx = resBody.index();
 
-    auto resEnd = pChar({syntax::EXPR_GROUP_END})(text, lastIdx);
-    if (resEnd.failure())
+    auto resEnd = pChar({syntax::EXPR_GROUP_END})(resBody.getParserState());
+    if (!resEnd)
     {
-        return parsec::makeError<Group>(std::string {resEnd.error()}, i);
+        if (state.isTraceEnabled())
+        {
+            retResult.concatenateTraces(std::move(resStart))
+                .concatenateTraces(std::move(resBody))
+                .concatenateTraces(std::move(resEnd))
+                .concatenateTraces("[failure] pG failed -> no end");
+        }
+        return retResult;
     }
 
-    return parsec::makeSuccess(Group {resBody.value()}, resEnd.index());
+    return retResult.setSuccess(resEnd.getParserState(), Group {resBody.popValue()});
 }
 } // namespace
 
 parsec::Parser<Group> pGroup()
 {
-    return [](std::string_view text, size_t i)
+    return [](const parsec::ParserState& state)
     {
-        return pG(text, i);
+        return pG(state);
     };
 }
 
@@ -723,13 +774,52 @@ void Logpar::registerBuilder(ParserType type, ParserBuilder builder)
 
 parsec::Parser<json::Json> Logpar::build(std::string_view logpar) const
 {
-    auto result = parser::pLogpar()(logpar, 0);
-    if (result.failure())
+    auto parserSate = parsec::ParserState(logpar, true);
+    auto result = parser::pLogpar()(parserSate);
+
+
+    if (!result)
     {
-        throw std::runtime_error(parsec::formatTrace(logpar, result.trace(), 1));
+        if (result.hasTraces())
+        {
+            auto traces = result.popTraces();
+            // Order traces by order
+            traces.sort([](const auto& a, const auto& b) -> bool { return a.getOrder() < b.getOrder(); });
+
+            std::string msg;
+
+            // concatenate traces messages
+            for (const auto& t : traces)
+            {
+                msg += std::to_string(t.getOrder()) + ": ";
+                msg += "| offset: " + std::to_string(t.getOffset()) + " | ";
+                msg += t.getMessage() + "\n";
+            }
+
+            throw std::runtime_error(msg);
+        }
+        throw std::runtime_error("Unknown error, no traces");
+    }
+    else if (result.hasTraces())
+    {
+        auto traces = result.popTraces();
+        // Order traces by order
+        traces.sort([](const auto& a, const auto& b) -> bool { return a.getOrder() < b.getOrder(); });
+
+        std::string msg;
+
+        // concatenate traces messages
+        for (const auto& t : traces)
+        {
+            msg += std::to_string(t.getOrder()) + ": ";
+            msg += "| offset: " + std::to_string(t.getOffset()) + " | ";
+            msg += t.getMessage() + "\n";
+        }
+
+        throw std::runtime_error(msg);
     }
 
-    auto parserInfos = result.value();
+    auto parserInfos = result.popValue();
     auto p = buildParsers(parserInfos, 0);
     return p << parser::pEof<json::Json>();
 }

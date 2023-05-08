@@ -1,6 +1,7 @@
 #ifndef _PARSEC_HPP_
 #define _PARSEC_HPP_
 
+#include <deque>
 #include <functional>
 #include <list>
 #include <optional>
@@ -78,6 +79,20 @@ public:
     }
 
     /**
+     * @brief Advance the current position in the data, pointing to the next character to be parsed, returning a copy
+     * of the input with the new position
+     *
+     * @param offset The offset to advance the current position in the data
+     * @return ParserState A copy of the input with the new position
+     */
+    ParserState advance(std::size_t offset) const
+    {
+        ParserState copy(*this);
+        copy.advance(offset);
+        return copy;
+    }
+
+    /**
      * @brief Get the Position in the data where the next character to be parsed is.
      *
      * @return The position in the data where the next character to be parsed is.
@@ -121,8 +136,11 @@ public:
 class TraceP
 {
 private:
-    std::string m_message; ///< The message of the trace (usually the name of the parser and message of the trace)
-    std::size_t m_offset;  ///< The offset where the parser generated the trace
+    std::string m_message;      ///< The message of the trace (usually the name of the parser and message of the trace)
+    std::size_t m_offset;       ///< The offset where the parser generated the trace
+    std::size_t m_order;        ///< The order in which the trace was created
+
+    static std::size_t s_order; ///< A static variable to keep track of the order of created instances
 
 public:
     /**
@@ -134,6 +152,7 @@ public:
     TraceP(const std::string& message, std::size_t offset)
         : m_message(message)
         , m_offset(offset)
+        , m_order(s_order++)
     {
     }
 
@@ -146,6 +165,7 @@ public:
     TraceP(std::string&& message, std::size_t offset)
         : m_message(std::move(message))
         , m_offset(offset)
+        , m_order(s_order++)
     {
     }
 
@@ -162,6 +182,13 @@ public:
      * @return std::size_t The offset where the parser generated the trace
      */
     std::size_t getOffset() const { return m_offset; }
+
+    /**
+     * @brief Get the order of the TraceP object
+     *
+     * @return std::size_t The order of the TraceP object
+     */
+    std::size_t getOrder() const { return m_order; }
 };
 
 /**
@@ -181,7 +208,7 @@ private:
      * @brief List of traces, is optional and can be empty or have multiple entries if the parser was a chain of parsers
      */
     std::optional<std::list<TraceP>> m_traces;
-    std::optional<ParserState> m_parserState; ///< The parser state if the result is successful, empty otherwise.
+    ParserState m_parserState; ///< The parser state
     std::optional<T> m_value; ///< Value of the successful result, can be empty if the parser does not return any.
 
     /**************************************************************************
@@ -193,24 +220,12 @@ private:
      *
      **************************************************************************/
     /**
-     * @brief Construct a ResultP successful result with no value and no traces
-     *
-     * @param state The state of parser
-     */
-    ResultP(ParserState state)
-        : m_value()
-        , m_traces()
-        , m_parserState(state)
-    {
-    }
-
-    /**
      * @brief Construct a ResultP successful result with a value and no traces
      *
      * @param state The state of parser
      * @param value The value of the result
      */
-    ResultP(ParserState state, T&& value)
+    ResultP(const ParserState& state, T&& value)
         : m_value(std::move(value))
         , m_traces()
         , m_parserState(state)
@@ -224,7 +239,7 @@ private:
      * @param value
      * @param trace
      */
-    ResultP(ParserState state, T&& value, TraceP&& trace)
+    ResultP(const ParserState& state, T&& value, TraceP&& trace)
         : m_value(std::move(value))
         , m_traces({std::move(trace)})
         , m_parserState(state)
@@ -238,7 +253,7 @@ private:
      * @param value
      * @param traces
      */
-    ResultP(ParserState state, T&& value, std::list<TraceP>&& traces)
+    ResultP(const ParserState& state, T&& value, std::list<TraceP>&& traces)
         : m_value(std::move(value))
         , m_traces(std::move(traces))
         , m_parserState(state)
@@ -251,10 +266,10 @@ private:
     /**
      * @brief Construct a ResultP failure result with no traces
      */
-    ResultP()
-        : m_value()
+    ResultP(const ParserState& state)
+        : m_value(std::nullopt)
         , m_traces()
-        , m_parserState()
+        , m_parserState(state)
     {
     }
 
@@ -263,10 +278,10 @@ private:
      *
      * @param trace
      */
-    ResultP(TraceP&& trace)
+    ResultP(const ParserState& state, TraceP&& trace)
         : m_value()
         , m_traces({std::move(trace)})
-        , m_parserState()
+        , m_parserState(state)
     {
     }
 
@@ -275,7 +290,7 @@ private:
      *
      * @param traces
      */
-    ResultP(std::list<TraceP>&& traces)
+    ResultP(const ParserState& state, std::list<TraceP>&& traces)
         : m_value()
         , m_traces(std::move(traces))
         , m_parserState()
@@ -325,14 +340,21 @@ public:
      * Operations of result
      **************************************************************************/
     /**
-     * @brief Check if the result is successful (has a remaining input)
+     * @brief Check if the result is successful (has a value)
      *
      * @return true if the result is successful, false otherwise
      */
-    bool isSuccessful() const { return m_parserState.has_value(); }
+    bool isSuccessful() const { return m_value.has_value(); }
 
     /**
-     * @brief Operator bool, check if the result is successful (has a remaining input)
+     * @brief Check if the result is failure (has no value)
+     *
+     * @return true if the result is failure, false otherwise
+     */
+     bool isFailure() const { return !isSuccessful(); }
+
+    /**
+     * @brief Operator bool, check if the result is successful (has a value)
      *
      * @return true if the result is successful, false otherwise
      */
@@ -344,14 +366,7 @@ public:
      * @return The state of parser
      * @throw std::runtime_error if the result is not successful
      */
-    const ParserState& getParserState() const
-    {
-        if (!m_parserState.has_value())
-        {
-            throw std::runtime_error("ResultP::getParserState() called on a failed result");
-        }
-        return m_parserState.value();
-    }
+    const ParserState& getParserState() const { return m_parserState; }
 
     /**************************************************************************
      * Operations of trace
@@ -423,17 +438,20 @@ public:
         return *this;
     }
 
+    /**
+     * @brief Concatenate a new trace with the traces of the result with a current offset of the parser
+     *
+     */
+    ResultP& concatenateTraces(const std::string& message)
+    {
+        return concatenateTraces(TraceP(message, m_parserState.getOffset()));
+    }
+
     /**************************************************************************
      * Operations of value
      **************************************************************************/
     /**
-     * @brief Check if the result has a value
-     * @return true if the result has a value, false otherwise
-     */
-    bool hasValue() const { return m_value.has_value(); }
-
-    /**
-     * @brief Pop the value of the result. The result must have a value
+     * @brief Pop the value of the result. The result must have a value (be successful)
      *
      * The result is moved, so it is not valid after this operation
      * The value is moved, not the optional value.
@@ -451,6 +469,19 @@ public:
         return std::move(retval);
     }
 
+    /**
+     * @brief Set the result as successful with no value
+     *
+     * @param state The parser state after the parsing
+     * @return ResultP& A reference to the result
+     */
+    ResultP& setSuccess(const ParserState& state, T&& value)
+    {
+        m_parserState = state;
+        m_value = std::move(value);
+        return *this;
+    }
+
     /**************************************************************************
      * Static constructors
      **************************************************************************/
@@ -461,7 +492,7 @@ public:
      * @return ResultP<T> The successful result with no value
      *
      */
-    static ResultP<T> success(const ParserState& state) { return ResultP<T>(state); }
+    static ResultP<T> success(const ParserState& state) { return ResultP<T>(state, T()); }
 
     /**
      * @brief Create a successful result with a value
@@ -503,7 +534,7 @@ public:
      *
      * @return ResultP<T> The failed result
      */
-    static ResultP<T> failure() { return ResultP<T>(); }
+    static ResultP<T> failure(const ParserState& state) { return ResultP<T>(state); }
 
     /**
      * @brief Create a failed result with a trace
@@ -511,7 +542,7 @@ public:
      * @param trace The trace
      * @return ResultP<T> The failed result with a trace
      */
-    static ResultP<T> failure(TraceP&& trace) { return ResultP<T>(std::move(trace)); }
+    static ResultP<T> failure(const ParserState& state, TraceP&& trace) { return ResultP<T>(state, std::move(trace)); }
 
     /**
      * @brief Create a failed result with a list of traces
@@ -519,7 +550,10 @@ public:
      * @param traces The list of traces
      * @return ResultP<T> The failed result with a list of traces
      */
-    static ResultP<T> failure(std::list<TraceP>&& traces) { return ResultP<T>(std::move(traces)); }
+    static ResultP<T> failure(const ParserState& state, std::list<TraceP>&& traces)
+    {
+        return ResultP<T>(state, std::move(traces));
+    }
 };
 
 /**
@@ -544,31 +578,32 @@ using Parser = std::function<ResultP<T>(ParserState)>;
  * it succeeds, or the default value if it fails.
  *
  * @tparam T type of the value returned by the parser
- * @param optParser The parser to make optional
+ * @param p The parser to make optional
  * @return Parser<T> Combined parser
  */
 template<typename T>
-Parser<T> opt(const Parser<T>& optParser)
+Parser<T> opt(const Parser<T>& p)
 {
     return [=](const ParserState& state) -> ResultP<T>
     {
         {
-            auto result = optParser(state);
+            ResultP<T> retResult = p(state);
+            bool isSuccess = retResult.isSuccessful();
+
+            if (!isSuccess)
+            {
+                retResult.setSuccess(state, T());
+            }
 
             if (state.isTraceEnabled())
             {
-                result.concatenateTraces(result
-                                             ? TraceP("Optional parser succeeded", result.getParserState().getOffset())
-                                             : TraceP("Optional parser failed", state.getOffset()));
+                std::string traceMsg = isSuccess ? "[success] [opt(P)] P succeeded" : "[success] [opt(P)] P failed";
+                retResult.concatenateTraces(traceMsg);
             }
 
-            if (result)
-            {
-                return result;
-            }
-            return ResultP<T>::success(state);
+            return retResult;
         };
-    }
+    };
 }
 
 /**
@@ -584,44 +619,45 @@ Parser<T> opt(const Parser<T>& optParser)
 template<typename L, typename R>
 Parser<L> operator<<(const Parser<L>& l, const Parser<R>& r)
 {
-    Parser<L> fn = [l, r](const ParserState& state) -> ResultP<L>
+    return [l, r](const ParserState& state) -> ResultP<L>
     {
-        auto resultL = l(state);
+        auto retResult = ResultP<L>::failure(state);
 
-        if (!resultL)
+        auto resultL = l(state);
+        if (resultL.isFailure())
         {
             if (state.isTraceEnabled())
             {
-                resultL.concatenateTraces(TraceP("L<<R, L failed", state.getOffset()));
+                retResult.concatenateTraces(std::move(resultL));
+                retResult.concatenateTraces("[failure] [L<<R] L failed");
             }
-            return resultL;
+            return retResult;
         }
 
         auto resultR = r(resultL.getParserState());
-
-        if (!resultR)
+        if (resultL.isFailure())
         {
             if (state.isTraceEnabled())
             {
-                auto offset = resultL.getParserState().getOffset();
-                return ResultP<L>::failure()
-                    .concatenateTraces(std::move(resultL))
+                retResult.concatenateTraces(std::move(resultL))
                     .concatenateTraces(std::move(resultR))
-                    .concatenate(TraceP("L<<R, R failed", offset));
+                    .concatenateTraces("[failure] [L<<R] R failed");
             }
-            return ResultP<L>::failure();
+            return retResult;
         }
+
+        // Success
+        retResult.setSuccess(resultR.getParserState(), resultL.popValue());
 
         if (state.isTraceEnabled())
         {
-            auto offset = resultR.getParserState().getOffset();
-            resultL.concatenateTraces(std::move(resultR)).concatenate(TraceP("L<<R, success", offset));
+            retResult.concatenateTraces(std::move(resultL))
+                .concatenateTraces(std::move(resultR))
+                .concatenateTraces("[success] [L<<R] L succeeded");
         }
 
-        return resultL;
+        return retResult;
     };
-
-    return fn;
 }
 
 /**
@@ -637,40 +673,44 @@ Parser<L> operator<<(const Parser<L>& l, const Parser<R>& r)
 template<typename L, typename R>
 Parser<R> operator>>(const Parser<L>& l, const Parser<R>& r)
 {
-    Parser<R> fn = [l, r](const ParserState& state)
+    return [l, r](const ParserState& state) -> ResultP<R>
     {
+        auto retResult = ResultP<R>::failure(state);
+
         auto resultL = l(state);
-        if (!resultL)
+        if (resultL.isFailure())
         {
             if (state.isTraceEnabled())
             {
-                return ResultP<R>::failure().concatenateTraces(std::move(resultL)).concatenate(
-                    TraceP("L>>R, L failed", state.getOffset()));
+                retResult.concatenateTraces(std::move(resultL));
+                retResult.concatenateTraces("[failure] [L>>R] L failed");
             }
-            return ResultP<R>::failure();
+            return retResult;
         }
 
-        auto resultR = r(state);
-        if (!resultR)
+        auto resultR = r(resultL.getParserState());
+        if (resultR.isFailure())
         {
             if (state.isTraceEnabled())
             {
-                auto offset = resultL.getParserState().getOffset();
-                resultR.concatenateTraces(std::move(resultL)).concatenateTraces(TraceP("L>>R, R failed", offset));
+                retResult.concatenateTraces(std::move(resultL))
+                    .concatenateTraces(std::move(resultR))
+                    .concatenateTraces("[failure] [L>>R] R failed");
             }
-            return resultR;
+            return retResult;
         }
+
+        // Success
+        retResult.setSuccess(resultR.getParserState(), resultR.popValue());
 
         if (state.isTraceEnabled())
         {
-            resultR.concatenateTraces(std::move(resultL))
-                .concatenate(TraceP("L>>R, success", resultR.getParserState().getOffset()));
+            retResult.concatenateTraces(std::move(resultL))
+                .concatenateTraces(std::move(resultR))
+                .concatenateTraces("[success] [L>>R] L succeeded");
         }
-
-        return resultR;
+        return retResult;
     };
-
-    return fn;
 }
 
 /**
@@ -687,36 +727,44 @@ Parser<T> operator|(const Parser<T>& l, const Parser<T>& r)
 {
     return [l, r](const ParserState& state) -> ResultP<T>
     {
+        auto retResult = ResultP<T>::failure(state);
+
         auto resultL = l(state);
-        if (resultL)
+        if (resultL.isSuccessful())
         {
+            // Success
+            retResult.setSuccess(resultL.getParserState(), resultL.popValue());
+
             if (state.isTraceEnabled())
             {
-                return resultL.concatenate(TraceP("L|R, L succeeded", resultL.getParserState().getOffset()));
+                retResult.concatenateTraces(std::move(resultL)).concatenateTraces("[success] [L|R] L succeeded");
             }
-            return resultL;
+            return retResult;
         }
 
         auto resultR = r(state);
-        if (resultR)
+        if (resultR.isSuccessful())
         {
+            // Success
+            retResult.setSuccess(resultR.getParserState(), resultR.popValue());
+
             if (state.isTraceEnabled())
             {
-                return resultR.concatenate(std::move(resultL))
-                    .concatenate(TraceP("L|R, R succeeded", resultR.getParserState().getOffset()));
+                retResult.concatenateTraces(std::move(resultL))
+                    .concatenateTraces(std::move(resultR))
+                    .concatenateTraces("[success] [L|R] R succeeded");
             }
-            return resultR;
+            return retResult;
         }
 
         if (state.isTraceEnabled())
         {
-            return ResultP<T>::failure()
-                .concatenateTraces(std::move(resultL))
+            retResult.concatenateTraces(std::move(resultL))
                 .concatenateTraces(std::move(resultR))
-                .concatenate(TraceP("L|R, both failed", state.getOffset()));
+                .concatenateTraces("[failure] [L|R] L and R failed");
         }
 
-        return ResultP<T>::failure();
+        return retResult;
     };
 }
 
@@ -742,65 +790,168 @@ Parser<std::tuple<L, R>> operator&(const Parser<L>& l, const Parser<R>& r)
 {
     return [l, r](const ParserState& state) -> ResultP<std::tuple<L, R>>
     {
+        auto retResult = ResultP<std::tuple<L, R>>::failure(state);
         auto resultL = l(state);
-        if (!resultL)
+        if (resultL.isFailure())
         {
             if (state.isTraceEnabled())
             {
-                return ResultP<std::tuple<L, R>>::failure()
-                    .concatenateTraces(std::move(resultL))
-                    .concatenate(TraceP("L&R, L failed", state.getOffset()));
+                retResult.concatenateTraces(std::move(resultL)).concatenateTraces("[failure] [L&R] L failed");
             }
-            return ResultP<std::tuple<L, R>>::failure();
+            return retResult;
         }
 
         auto resultR = r(resultL.getParserState());
-        if (!resultR)
+        if (resultR.isFailure())
         {
             if (state.isTraceEnabled())
             {
-                auto offset = resultL.getParserState().getOffset();
-                return ResultP<std::tuple<L, R>>::failure()
-                    .concatenateTraces(std::move(resultL))
+                retResult.concatenateTraces(std::move(resultL))
                     .concatenateTraces(std::move(resultR))
-                    .concatenate(TraceP("L&R, R failed", offset));
+                    .concatenateTraces("[failure] [L&R] R failed");
             }
-            return ResultP<std::tuple<L, R>>::failure();
+            return retResult;
         }
 
-        if (!resultR.hasValue() || !resultL.hasValue())
-        {
-            if (state.isTraceEnabled())
-            {
-                std::string msg = "L&R failed";
-                if (!resultL.hasValue())
-                {
-                    msg += ", L didn't return a value";
-                }
-                if (!resultR.hasValue())
-                {
-                    msg += ", R didn't return a value";
-                }
-                return ResultP<std::tuple<L, R>>::failure()
-                    .concatenateTraces(std::move(resultL))
-                    .concatenateTraces(std::move(resultR))
-                    .concatenate(TraceP(msg, state.getOffset()));
-            }
-            return ResultP<std::tuple<L, R>>::failure();
-        }
+        // Success
+        retResult.setSuccess(resultR.getParserState(), std::make_tuple(resultL.popValue(), resultR.popValue()));
 
         if (state.isTraceEnabled())
         {
-            auto offset = resultR.getParserState().getOffset();
-            return ResultP<std::tuple<L, R>>::success(resultR.getState(),
-                                                      std::make_tuple(resultL.popValue(), resultR.popValue()))
-                .concatenateTraces(std::move(resultL))
+            retResult.concatenateTraces(std::move(resultL))
                 .concatenateTraces(std::move(resultR))
-                .concatenate(TraceP("L&R, success", offset));
+                .concatenateTraces("[success] [L&R] L and R succeeded");
         }
 
-        return ResultP<std::tuple<L, R>>::success(resultR.getState(),
-                                                  std::make_tuple(resultL.popValue(), resultR.getValue()));
+        return retResult;
+    };
+}
+
+/**
+ * @brief Mergeable is a struct that contains a semantic processor and a result of the sintactic parser
+ *
+ * @details The semantic processor is a function that takes a T& and a list of tokens and process the tokens
+ * The function returns a tuple with a boolean that indicates if the process was successful
+ * and an optional TraceP that contains the error message if the process was not successful
+ * The result is the result of the semantic processor, it is a T and can be merged with other Mergeable
+ *
+ * @tparam T The type of the result of the semantic processor
+ */
+template<typename T>
+struct Mergeable
+{
+    /**
+     * @brief This is a function that takes a T& and a list of tokens and process the tokens
+     * @details The function returns a tuple with a boolean that indicates if the process was successful
+     * and an optional TraceP that contains the error message if the process was not successful
+     */
+    std::function<std::tuple<bool, std::optional<TraceP>>(T&, const std::deque<std::string_view>&, const ParserState&)>
+        m_semanticProcessor;
+    T m_result;                            ///< The result of the semantic processor
+    std::deque<std::string_view> m_tokens; ///< Store the tokens of the result the sintactic parser found
+};
+
+/**
+ * @brief This is a parser that returns a Mergeable that contains a semantic processor and a result of the sintactic
+ * parser
+ *
+ * @tparam T The type of the result of the semantic processor
+ */
+template<typename T>
+using MergeableParser = Parser<Mergeable<T>>; // This is a parser that returns a Mergeable
+
+/**
+ * @brief This is a result of a MergeableParser that contains a Mergeable that contains a semantic processor and a
+ * result of the sintactic parser
+ *
+ * @tparam T The type of the result of the semantic processor
+ */
+template<typename T>
+using MergeableResultP = ResultP<Mergeable<T>>; // This is a result of a MergeableParser
+
+/**
+ * @brief This is a function that takes a list of MergeableParser and returns a parser that executes all the parsers in
+ * the list as a sequence
+ *
+ * @details The function returns a parser that executes all the parsers in the list as a sequence, each parser has a
+ * sintactic parser and a semantic processor. The sintactic parser is executed in the order of the list, if one of the
+ * sintactic parser fails, the function returns a failure. If all the sintactic parser succeeds, the semantic processor
+ * of each parser is executed in the order of the list. If one of the semantic processor fails, the function returns a
+ * failure.
+ *
+ * @tparam T The type of the result of the semantic processor
+ * @param parsers The list of MergeableParser
+ * @return Parser<T> A parser that executes all the parsers in the list as a sequence
+ */
+template<typename T>
+Parser<T> merge(const std::list<MergeableParser<T>>& parsers)
+{
+    return [parsers](const ParserState& state) -> ResultP<T>
+    {
+        auto retResult = ResultP<T>::failure(state);
+        std::list<Mergeable<T>> mergeables;
+        auto currentState = state;
+
+        /************************************************
+                    Sintactic parser stage
+        ************************************************/
+        {
+            for (auto& parser : parsers)
+            {
+                auto result = parser(currentState);
+                if (result.isFailure())
+                {
+                    if (state.isTraceEnabled())
+                    {
+                        retResult.concatenateTraces(std::move(result))
+                            .concatenateTraces("[failure] [merge] Sintactic fail");
+                    }
+                    return retResult;
+                }
+
+                mergeables.push_back(result.popValue());        // Store the result of the sintactic parser
+                currentState = result.getParserState();         // Update the current state
+                retResult.concatenateTraces(std::move(result)); // Concatenate the traces if the state is enabled
+            }
+
+            if (state.isTraceEnabled())
+            {
+                retResult.concatenateTraces("[success] [merge] Sintactic success");
+            }
+        }
+
+        /************************************************
+                    Semantic processor stage
+        ************************************************/
+        {
+            auto finalResult = T();
+            for (auto& mergeable : mergeables)
+            {
+                auto [success, optTrace] = mergeable.m_semanticProcessor(finalResult, mergeable.m_tokens, state);
+
+                if (optTrace.has_value())
+                {
+                    retResult.concatenateTraces(std::move(*optTrace));
+                }
+
+                if (!success)
+                {
+                    if (state.isTraceEnabled())
+                    {
+                        retResult.concatenateTraces("[failure] [merge] Semantic fail");
+                    }
+                    return retResult;
+                }
+            }
+
+            retResult.setSuccess(currentState, std::move(finalResult));
+
+            if (state.isTraceEnabled())
+            {
+                retResult.concatenateTraces("[success] [merge] Semantic success");
+            }
+        }
+        return retResult;
     };
 }
 
@@ -822,32 +973,25 @@ Parser<Tx> fmap(std::function<Tx(T)> f, const Parser<T>& p)
 {
     return [f, p](const ParserState& state) -> ResultP<Tx>
     {
+        auto retResult = ResultP<Tx>::failure(state);
         auto result = p(state);
-        if (!result || !result.hasValue())
+
+        if (result.isFailure())
         {
             if (state.isTraceEnabled())
             {
-                auto msg = std::string("fmap, failed");
-                if (!result.hasValue())
-                {
-                    msg += ", P didn't return a value";
-                }
-                return ResultP<Tx>::failure().concatenateTraces(std::move(result))
-                    .concatenate(TraceP(msg, state.getOffset()));
+                retResult.concatenateTraces(std::move(result)).concatenateTraces("[failure] [fmap(P)] P failure");
             }
-            return ResultP<Tx>::failure();
+            return retResult;
         }
 
+        retResult.setSuccess(result.getParserState(), f(result.popValue()));
         if (state.isTraceEnabled())
         {
-            auto offset = result.getParserState().getOffset();
-            return ResultP<Tx>::success(result.getParserState(),
-                                        f(result.popValue()))
-                .concatenateTraces(std::move(result))
-                .concatenate(TraceP("fmap, success", offset));
+            retResult.concatenateTraces(std::move(result)).concatenateTraces("[success] [fmap(P)] P success");
         }
 
-        return ResultP<Tx>::success(result.getState(), f(result.popValue()));
+        return retResult;
     };
 }
 
@@ -858,7 +1002,8 @@ using M = std::function<Parser<Tx>(T)>;
 /**
  * @brief Creates a parser that creates a new parser from the result of the given
  * parser using the factory function f. If the given parser fails, the result will be
- * a failure.
+ * a failure. If was successful, the result of the factory function will be executed with the result of the given
+ * parser.
  *
  * @tparam Tx type of the value returned by the parser created by the factory function
  * @tparam T type of the value returned by the given parser
@@ -871,34 +1016,37 @@ Parser<Tx> operator>>=(const Parser<T>& p, M<Tx, T> f)
 {
     return [p, f](const ParserState& state) -> ResultP<Tx>
     {
-        auto result = p(state);
+        auto retResult = ResultP<Tx>::failure(state);
+        auto pResult = p(state);
 
-        if (!result || !result.hasValue()
+
+        if (pResult.isFailure())
         {
             if (state.isTraceEnabled())
             {
-                auto msg = std::string("P>>=M, P failed");
-                if (!result.hasValue())
-                {
-                    msg += ", didn't return a value";
-                }
-                return ResultP<Tx>::failure()
-                    .concatenateTraces(std::move(result))
-                    .concatenate(TraceP(msg, state.getOffset()));
+                retResult.concatenateTraces(std::move(pResult)).concatenateTraces("[failure] [P>>=M] P failure");
             }
-            return ResultP<Tx>::failure();
+            return retResult;
         }
 
-        auto newParser = f(result.popValue());
-        auto newResult = newParser(state);
+        auto newParser = f(pResult.popValue());
+        auto newResult = newParser(pResult.getParserState());
 
-        if(state.isTraceEnabled())
+        if (newResult.isSuccessful())
         {
-            auto trace = newResult ? "P>>=M, success" : "P>>=M, M failed";
-            auto offset = newResult ? newResult.getParserState().getOffset() : state.getOffset();
-            return newResult.concatenateTrace(std::move(result)).concatenate(TraceP(std::move(trace), offset));
+            retResult.setSuccess(newResult.getParserState(), newResult.popValue());
         }
-        return newResult;
+
+        if (state.isTraceEnabled())
+        {
+            auto trace = newResult ? "[success] [P>>=M] P success" : "[failure] [P>>=M] M failed";
+            auto offset = newResult ? newResult.getParserState().getOffset() : pResult.getParserState().getOffset();
+
+            retResult.concatenateTraces(std::move(pResult))
+                .concatenateTraces(std::move(newResult))
+                .concatenateTraces(TraceP{trace, offset});
+        }
+        return retResult;
     };
 }
 
@@ -921,29 +1069,23 @@ Parser<Values<T>> many(const Parser<T>& p)
     {
         Values<T> values {};
 
-        const lasState = state;
+        auto lasState = state;
         auto result = p(lasState);
 
-        while (result)
+        while (result.isSuccessful())
         {
-            if (result.hasValue())
-            {
-                values.push_back(result.popValue());
-            }
+            values.push_back(result.popValue());
             lasState = result.getParserState();
-            result = p(lasState).concatenateTrace(std::move(result));
+            result = p(lasState).concatenateTraces(std::move(result));
         }
 
+        auto retResult = ResultP<Values<T>>::success(lasState, std::move(values));
         if (state.isTraceEnabled())
         {
-            auto offset = lasState.getOffset();
-            return ResultP<Values<T>>::success(lasState,
-                                               std::move(values))
-                .concatenateTraces(std::move(result))
-                .concatenate(TraceP("MANY(P), success", offset));
+            retResult.concatenateTraces(std::move(result)).concatenateTraces("[success] [many] Success");
         }
 
-        return ResultP<Values<T>>::success(lasState, std::move(values));
+        return retResult;
     };
 }
 
@@ -962,42 +1104,35 @@ Parser<Values<T>> many1(const Parser<T>& p)
     auto manyP = many(p);
     return [manyP, p](const ParserState& state) -> ResultP<Values<T>>
     {
+        auto retResult = ResultP<Values<T>>::failure(state);
+        Values<T> values {};
+
         auto firstRes = p(state);
-        if (!firstRes)
+        if (firstRes.isFailure())
         {
             if (state.isTraceEnabled())
             {
-                return ResultP<Values<T>>::failure()
-                    .concatenateTraces(std::move(firstRes))
-                    .concatenate(TraceP("MANY1(P), failed", state.getOffset()));
+                retResult.concatenateTraces(std::move(firstRes)).concatenateTraces("[failure] [many1(P)] P failure");
             }
-            return ResultP<Values<T>>::failure();
+            return retResult;
         }
 
-        Values<T> values {};
-        if (firstRes.hasValue())
-        {
-            values.push_back(firstRes.popValue());
-        }
+        values.push_back(firstRes.popValue());
 
         auto manyRes = manyP(firstRes.getParserState());
-        if (manyRes && manyRes.hasValue())
-        {
-            values.splice(values.end(), manyRes.popValue());
-        }
+
+        // Always succeeds
+        values.splice(values.end(), manyRes.popValue());
+        retResult.setSuccess(manyRes.getParserState(), std::move(values));
 
         if (state.isTraceEnabled())
         {
-            auto offset = manyRes.getParserState().getOffset();
-            return ResultP<Values<T>>::success(manyRes.getParserState(),
-                                               std::move(values))
-                .concatenateTraces(std::move(firstRes))
+            retResult.concatenateTraces(std::move(firstRes))
                 .concatenateTraces(std::move(manyRes))
-                .concatenate(TraceP("MANY1(P), success", offset));
+                .concatenateTraces("[success] [many1(P)] Success");
         }
 
-        return ResultP<Values<T>>::success(manyRes.getParserState(), std::move(values));
-
+        return retResult;
     };
 }
 

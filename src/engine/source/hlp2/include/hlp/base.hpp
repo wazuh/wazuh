@@ -21,15 +21,15 @@ namespace hlp::internal
  * @return std::optional<parsec::Result<T>> Result<T> if index is out of range,
  * std::nullopt otherwise
  */
-template<typename T>
-std::optional<parsec::Result<T>> eofError(std::string_view txt, size_t idx)
-{
-    if (idx >= txt.size())
-    {
-        return parsec::makeError<T>("Unexpected EOF", idx);
-    }
-    return std::nullopt;
-}
+//template<typename T>
+//std::optional<parsec::Result<T>> eofError(std::string_view txt, size_t idx)
+//{
+//    if (idx >= txt.size())
+//    {
+//        return parsec::makeError<T>("Unexpected EOF", idx);
+//    }
+//    return std::nullopt;
+//}
 
 /**
  * @brief Returns the substring of the input string starting at the given index until the
@@ -48,38 +48,43 @@ std::optional<parsec::Result<T>> eofError(std::string_view txt, size_t idx)
  */
 template<typename T>
 std::optional<std::string_view>
-stopAux(std::string_view txt, size_t idx, const std::string& end)
+stopAux(const parsec::ParserState& state, const std::string& end)
 {
+    auto data = state.getRemainingData();
     if (end.empty())
     {
-        return txt.substr(idx);
+        return data;
     }
 
-    auto pos = txt.find(end, idx);
+    auto pos = data.find(end);
     if (pos == std::string::npos)
     {
         return std::nullopt;
     }
 
-    return txt.substr(idx, pos - idx);
+    return data.substr(0, pos);
 }
 
 template<typename T>
-std::variant<std::string_view, parsec::Result<T>>
-stop(std::string_view txt, size_t idx, const std::list<std::string>& end)
+std::variant<std::string_view, parsec::ResultP<T>>
+stop(const parsec::ParserState& state, const std::list<std::string>& end)
 {
     for (const auto& e : end)
     {
-        auto res = stopAux<T>(txt, idx, e);
+        auto res = stopAux<T>(state, e);
         if (res.has_value())
         {
             return res.value();
         }
     }
 
-    return parsec::makeError<T>(
-        fmt::format("Unable to stop at '{}' from '{}'", fmt::join(end, ", "), idx),
-        txt.size());
+    if (state.isTraceEnabled())
+    {
+        auto msg = fmt::format("Unable to stop at '{}' from '{}'", fmt::join(end, ", "), state.getRemainingData());
+        return parsec::ResultP<T>::failure(msg, state.getOffset());
+    }
+    return parsec::ResultP<T>::failure();
+
 }
 
 /**
@@ -96,29 +101,29 @@ stop(std::string_view txt, size_t idx, const std::list<std::string>& end)
  * @return std::variant<std::string_view, parsec::Result<T>> the substring or error
  */
 template<typename T>
-std::variant<std::string_view, parsec::Result<T>>
-preProcess(std::string_view txt, size_t idx, Stop end)
+std::variant<std::string_view, parsec::ResultP<T>>
+preProcess(const parsec::ParserState& state, const Stop& end)
 {
-    auto eof = eofError<T>(txt, idx);
-    if (eof.has_value())
+    if (state.getRemainingSize() == 0)
     {
-        return eof.value();
+       if (state.isTraceEnabled())
+        {
+            return parsec::ResultP<T>::failure(parsec::TraceP("Unexpected EOF", state.getOffset()));
+        }
+        return parsec::ResultP<T>::failure();
     }
 
     if (!end.empty())
     {
-        auto res = stop<T>(txt, idx, end);
-        if (std::holds_alternative<parsec::Result<T>>(res))
+        auto res = stop<T>(state, end);
+        if (std::holds_alternative<parsec::ResultP<T>>(res))
         {
-            return std::get<parsec::Result<T>>(res);
+            return std::get<parsec::ResultP<T>>(res);
         }
-        else
-        {
-            return std::get<std::string_view>(res);
-        }
+        return std::get<std::string_view>(res);
     }
 
-    return txt.substr(idx);
+    return state.getRemainingData();
 }
 } // namespace hlp::internal
 

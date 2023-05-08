@@ -1,6 +1,8 @@
 #include <string>
 #include <iostream>
 
+#include <arpa/inet.h>
+
 #include <benchmark/benchmark.h>
 
 #include <hlp/hlp.hpp>
@@ -8,6 +10,387 @@
 #include <json/json.hpp>
 
 
+// Namespace anonimo para parsers benchmarks
+// **********************************************************************************************************************
+namespace {
+template<typename T>
+using resultFnHandler = std::function<void(T&)>; // This is a function that takes a T& and save the result
+
+template<typename T>
+using listResultFn = std::deque<resultFnHandler<T>>; // This is a list of resultFnHandler
+
+using fnList = listResultFn<json::Json>;
+
+// parseQuotedString
+// Parser para cadenas de texto entre comillas dobles
+parsec::MergeableParser<fnList>
+getParseQuotedString(const std::string& fieldName, bool enableCapure)
+{
+
+    auto path = json::Json::formatJsonPath(fieldName);
+
+    // Semantic action
+    auto m_semanticProcessor = [path](fnList& result,
+                                      const std::deque<std::string_view>& tokens,
+                                      const parsec::ParserState& state) -> std::pair<bool, std::optional<parsec::TraceP>>
+    {
+        if (tokens.size() == 0)
+        {
+            return {true, std::nullopt};
+        }
+
+        result.push_back([path, value = std::string(tokens.front())](json::Json& json) { json.setString(value, path); });
+        return {true, std::nullopt};
+    };
+
+    // Sintactic action
+    return [m_semanticProcessor, enableCapure](const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+    {
+        auto result = parsec::MergeableResultP<fnList>::failure(state);
+
+        if (state.getRemainingSize() == 0)
+        {
+            if (state.isTraceEnabled())
+            {
+                return result.concatenateTraces("Unexpected EOF, expected '\"'");
+            }
+            return result;
+        }
+
+        auto inputStr = state.getRemainingData();
+        if (inputStr.front() != '"')
+        {
+            if (state.isTraceEnabled())
+            {
+                result.concatenateTraces("Expected '\"' but found '" + std::string(1, inputStr.front()) + "'");
+            }
+            return result;
+        }
+
+        bool isValidQuote = false;
+        std::size_t offset = 1;
+        // Search for the end the next '"' that is not escaped
+        while (offset < inputStr.size())
+        {
+            if (inputStr[offset] == '"' && inputStr[offset - 1] != '\\')
+            {
+                isValidQuote = true;
+                break;
+            }
+            offset++;
+        }
+
+        if (!isValidQuote)
+        {
+            if (state.isTraceEnabled())
+            {
+                result.concatenateTraces("Unexpected EOF, expected '\"'");
+            }
+            return result;
+        }
+
+
+        if (enableCapure)
+        {
+            result.setSuccess(state.advance(offset + 1),
+                              {m_semanticProcessor, fnList(), {inputStr.substr(1, offset - 1)}});
+        } else
+        {
+            result.setSuccess(state.advance(offset + 1),
+                              {m_semanticProcessor, fnList(), {}});
+        }
+
+        if (state.isTraceEnabled())
+        {
+            result.concatenateTraces("Found quoted string: " + std::string(inputStr.substr(1, offset - 1)));
+        }
+
+        return result;
+    };
+}
+
+// Parse a IP
+parsec::MergeableParser<fnList>
+getParserIP(const std::string& fieldName, const std::string& endToken, bool enableCapure) {
+
+        auto path = json::Json::formatJsonPath(fieldName);
+
+        // Semantic action
+        auto m_semanticProcessor =
+            [path, enableCapure](fnList& result,
+                                 const std::deque<std::string_view>& tokens,
+                                 const parsec::ParserState& state) -> std::pair<bool, std::optional<parsec::TraceP>>
+        {
+            // tokens.size() == 1
+            auto srcip = std::string(tokens.front());
+
+            // Check if the IP is valid
+            struct in_addr ipv4;
+            struct in6_addr ipv6;
+            if (inet_pton(AF_INET, srcip.c_str(), &ipv4) || inet_pton(AF_INET6, srcip.c_str(), &ipv6))
+            {
+                if (enableCapure)
+                {
+                    result.push_back([path, value = std::move(srcip)](json::Json& json) { json.setString(value, path); });
+                }
+                return {true, std::nullopt};
+            }
+
+            if (state.isTraceEnabled())
+            {
+                auto trace = fmt::format("Invalid IP address: {}", srcip);
+                auto offset = srcip.data() - state.getData().data();
+                return {false, parsec::TraceP(trace, offset)};
+            }
+
+            return {false, std::nullopt};
+        };
+
+        // Sintactic action
+        return [m_semanticProcessor, endToken] (const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+        {
+            auto result = parsec::MergeableResultP<fnList>::failure(state);
+            if (state.getRemainingSize() == 0)
+            {
+                if (state.isTraceEnabled())
+                {
+                    result.concatenateTraces("Unexpected EOF, expected IP address");
+                }
+                return result;
+            }
+
+            auto inputStr = state.getRemainingData();
+
+            auto until = endToken.size() ? inputStr.find(endToken) : inputStr.length();
+            if (until == std::string_view::npos)
+            {
+                if (state.isTraceEnabled())
+                {
+                    result.concatenateTraces(fmt::format("Unexpected EOF, expected '{}'", endToken));
+                }
+                return result;
+            }
+
+            auto IpCandidate = inputStr.substr(0, until);
+            // Check long IP
+            constexpr std::size_t IPv6Length = std::char_traits<char>::length("fd7a:115c:a1e0:ab12:4843:cd96:626d:1730");
+            if (IpCandidate.size() > IPv6Length)
+            {
+                if (state.isTraceEnabled())
+                {
+                    auto msg = "Invalid IP address: '" + std::string(IpCandidate) + "', is too long";
+                    result.concatenateTraces(parsec::TraceP(msg, state.getOffset()));
+                }
+                return result;
+            }
+
+            // Add the IP to the result
+            return parsec::MergeableResultP<fnList>::success(state.advance(until),
+                                                             {m_semanticProcessor, fnList(), {IpCandidate}});
+
+        };
+
+}
+
+// Parse a Number
+parsec::MergeableParser<fnList>
+getParseNumber(const std::string& fieldName, bool enableCapure) {
+
+        auto path = json::Json::formatJsonPath(fieldName);
+
+        // Semantic action
+        auto m_semanticProcessor =
+            [path, enableCapure](fnList& result, const std::deque<std::string_view>& tokens, const parsec::ParserState& state)
+                -> std::pair<bool, std::optional<parsec::TraceP>>
+        {
+            // tokens.size() == 1
+            auto number = std::string(tokens.front());
+
+            // Convert to int
+            try
+            {
+                auto value = std::stoi(number);
+                if (enableCapure)
+                {
+                    result.push_back([path, value](json::Json& json) { json.setInt(value, path); });
+                }
+                return {true, std::nullopt};
+            }
+            catch (const std::invalid_argument& e)
+            {
+                if (state.isTraceEnabled())
+                {
+                    auto offset = tokens.front().data() - state.getData().data();
+                    return {false, parsec::TraceP("Invalid number: '" + number + "' is not a number", offset)};
+                }
+                return {false, std::nullopt};
+            }
+            catch (const std::out_of_range& e)
+            {
+                if (state.isTraceEnabled())
+                {
+                    auto offset = tokens.front().data() - state.getData().data();
+                    return {false, parsec::TraceP("Invalid number: '" + number + "' is out of range", offset)};
+                }
+                return {false, std::nullopt};
+            }
+
+            return {false, std::nullopt};
+
+        };
+
+        // Sintactic action
+        return [m_semanticProcessor](const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+        {
+            auto result = parsec::MergeableResultP<fnList>::failure(state);
+
+            if (state.getRemainingSize() == 0)
+            {
+                if (state.isTraceEnabled())
+                {
+                    result.concatenateTraces("Unexpected EOF, expected number");
+                }
+                return result;
+            }
+
+            auto inputStr = state.getRemainingData();
+            // Check if the number is valid
+            auto until = inputStr.find_first_not_of("0123456789", inputStr[0] == '-' ? 1 : 0);
+            if (until == std::string_view::npos)
+            {
+                until = inputStr.length();
+            }
+            else if (until == 0)
+            {
+                if (state.isTraceEnabled())
+                {
+                    auto trace = fmt::format("Unexpected character '{}', expected number",
+                                             std::string(1, inputStr[0] == '-' ? inputStr[1] : inputStr[0]));
+                    result.concatenateTraces(trace);
+                }
+                return result;
+            }
+            auto numberCandidate = inputStr.substr(0, until);
+
+            // Add the number to the result
+            return parsec::MergeableResultP<fnList>::success(state.advance(until),
+                                                             {m_semanticProcessor, fnList(), {numberCandidate}});
+        };
+}
+
+// Parse any string
+parsec::MergeableParser<fnList>
+getParserAny(const std::string& fieldName, const std::string& endToken, bool enableCapure)
+{
+    auto path = json::Json::formatJsonPath(fieldName);
+
+    // Semantic action
+    auto m_semanticProcessor =
+        [path, enableCapure](fnList& result, const std::deque<std::string_view>& tokens, const parsec::ParserState& state)
+            -> std::pair<bool, std::optional<parsec::TraceP>>
+    {
+        if (enableCapure)
+        {
+            auto value = std::string(tokens.front());
+            result.push_back([path, value](json::Json& json) { json.setString(value, path); });
+        }
+        return {true, std::nullopt};
+    };
+
+    // Sintactic action
+    return [m_semanticProcessor, endToken](const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+    {
+
+        auto result = parsec::MergeableResultP<fnList>::failure(state);
+
+        if (state.getRemainingSize() == 0)
+        {
+            if (state.isTraceEnabled())
+            {
+               result.concatenateTraces("Unexpected EOF, expected string");
+            }
+            return result;
+        }
+
+        auto inputStr = state.getRemainingData();
+
+        auto until = endToken.size() ? inputStr.find(endToken) : inputStr.length();
+        if (until == std::string_view::npos)
+        {
+            if (state.isTraceEnabled())
+            {
+                result.concatenateTraces("Expected end '" + endToken + "' but not found");
+            }
+            return result;
+        }
+        auto valueCandidate = inputStr.substr(0, until);
+
+        // Add the value to the result
+        return result.setSuccess(state.advance(until), {m_semanticProcessor, fnList(), {valueCandidate}});
+    };
+}
+
+
+// Parse literal
+parsec::MergeableParser<fnList>
+getParseLiteral(const std::string& fieldName, const std::string& literal, bool enableCapure)
+{
+    auto path = json::Json::formatJsonPath(fieldName);
+
+    if (literal.empty())
+    {
+        throw std::invalid_argument("Literal cannot be empty");
+    }
+
+    // Semantic action
+    auto m_semanticProcessor =
+        [path](fnList& result, const std::deque<std::string_view>& tokens, const parsec::ParserState& state)
+            -> std::pair<bool, std::optional<parsec::TraceP>>
+    {
+        if (tokens.size() == 1) {
+            auto value = std::string(tokens.front());
+            result.push_back([path, value](json::Json& json) { json.setString(value, path); });
+        }
+        return {true, std::nullopt};
+    };
+
+    // Sintactic action
+    return [m_semanticProcessor, literal, enableCapure](const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+    {
+        auto result = parsec::MergeableResultP<fnList>::failure(state);
+       if (state.getRemainingSize() == 0)
+        {
+            if (state.isTraceEnabled())
+            {
+                result.concatenateTraces("Unexpected EOF, expected literal '" + literal + "'");
+            }
+            return result;
+        }
+
+        auto inputStr = state.getRemainingData();
+
+        // Compare the literal
+        if (inputStr.substr(0, literal.size()) != literal)
+        {
+            if (state.isTraceEnabled())
+            {
+                result.concatenateTraces("Expected literal '" + literal + "' but found '" + std::string(inputStr) + "'");
+            }
+            return result;
+        }
+
+        if (enableCapure)
+        {
+            // Add the value to the result
+            return result.setSuccess(state.advance(literal.size()), {m_semanticProcessor, fnList(), {literal}});
+        }
+        return result.setSuccess(state.advance(literal.size()), {m_semanticProcessor, fnList(), {}});
+
+    };
+}
+}
+
+// **********************************************************************************************************************
 
 static std::string getRandomString(int len,
                                    bool includeSymbols = false,
@@ -67,11 +450,13 @@ json::Json getConfig()
 hlp::logpar::Logpar getLogpar()
 {
     hlp::logpar::Logpar ret {getConfig()};
-    ret.registerBuilder(hlp::ParserType::P_LONG, hlp::getLongParser); // Number
-    ret.registerBuilder(hlp::ParserType::P_TEXT, hlp::getTextParser); // Any
-    ret.registerBuilder(hlp::ParserType::P_QUOTED, hlp::getQuotedParser);
-    ret.registerBuilder(hlp::ParserType::P_IP, hlp::getIPParser);
-    ret.registerBuilder(hlp::ParserType::P_LITERAL, hlp::getLiteralParser);
+
+    // ret.registerBuilder(hlp::ParserType::P_LONG, getParseNumber);
+    // ret.registerBuilder(hlp::ParserType::P_TEXT, getParserAny);
+    // ret.registerBuilder(hlp::ParserType::P_QUOTED, getParseQuotedString);
+    // ret.registerBuilder(hlp::ParserType::P_IP, getParserIP);
+    // ret.registerBuilder(hlp::ParserType::P_LITERAL, getParseLiteral);
+
     return ret;
 }
 
@@ -86,49 +471,34 @@ static void logpar_parse(benchmark::State& state)
     // std::string ev = "hola127.0.0.1:8080\"quoted\"";
 
     // Literal
-    std::string ev1 = getRandomString(state.range(0));
+    //std::string ev1 = getRandomString(state.range(0));
+    std::string ev1 = "hola";
     parserStr += ev1;
 
     // IP:Number
     std::string ev2 = "127.0.0.1:8080";
-    parserStr += "<~srcip/ip>:<~port/long>";
+    parserStr += "<~srcip/ip><~port/long>";
 
     // Quoted string
     std::string ev3 = "\"" + getRandomString(state.range(0)) + "\"";
     parserStr += "<~quoted/quoted>";
 
-    /*
-    try
-    {
-        auto parser = logpar.build(parserStr);
-        auto result = parser(ev, 0);
-        if (result.success())
-        {
-            std::cout << result.value().prettyStr() << std::endl;
-        }
-    }
-    catch (std::exception& e)
-    {
-        std::cout << e.what() << std::endl;
-        state.SkipWithError(e.what());
-    }
-    */
-
     auto parser = logpar.build(parserStr);
     auto ev = ev1 + ev2 + ev3;
 
 
+    auto input = parsec::ParserState(ev, false);
     for (auto _ : state)
     {
-        auto result = parser(ev, 0);
-        if (result.failure())
+        auto result = parser(input);
+        if (result.isFailure())
         {
             state.SkipWithError("Parsing failed");
         }
         benchmark::DoNotOptimize(result);
     }
 
-    // auto result = parser(ev, 0);
+    // auto result = parser(input);
     // std::cout << result.value().str() << std::endl;
 }
 BENCHMARK(logpar_parse)->Range(4, 4 << 4);
@@ -152,7 +522,7 @@ static void logpar_parse_error_IP_1(benchmark::State& state)
 
     // IP:Number
     std::string ev2 = "127.0.0.1:8080";
-    parserStr += "<~srcip/ip>:<~port/long>";
+    parserStr += "<~srcip/ip><~port/long>";
 
 
     // Quoted string
@@ -162,11 +532,12 @@ static void logpar_parse_error_IP_1(benchmark::State& state)
     auto parser = logpar.build(parserStr);
     auto ev = ev1 + ev2 + ev3;
 
+    auto input = parsec::ParserState(ev, false);
 
     for (auto _ : state)
     {
-        auto result = parser(ev, 0);
-        if (result.success())
+        auto result = parser(input);
+        if (result.isSuccessful())
         {
             state.SkipWithError("Parsing failed");
         }
@@ -204,12 +575,12 @@ static void logpar_parse_error_IP_2(benchmark::State& state)
 
     auto parser = logpar.build(parserStr);
     auto ev = ev1 + ev2 + ev3;
-
+    auto input = parsec::ParserState(ev, false);
 
     for (auto _ : state)
     {
-        auto result = parser(ev, 0);
-        if (result.success())
+        auto result = parser(input);
+        if (result.isSuccessful())
         {
             state.SkipWithError("Parsing failed");
         }
@@ -245,12 +616,12 @@ static void logpar_parse_error_IP_3(benchmark::State& state)
 
     auto parser = logpar.build(parserStr);
     auto ev = ev1 + ev2 + ev3;
-
+    auto input = parsec::ParserState(ev, false);
 
     for (auto _ : state)
     {
-        auto result = parser(ev, 0);
-        if (result.success())
+        auto result = parser(input);
+        if (result.isSuccessful())
         {
             state.SkipWithError("Parsing failed");
         }
@@ -286,12 +657,13 @@ static void logpar_parse_error_IP_4(benchmark::State& state)
 
     auto parser = logpar.build(parserStr);
     auto ev = ev1 + ev2 + ev3;
+    auto input = parsec::ParserState(ev, false);
 
 
     for (auto _ : state)
     {
-        auto result = parser(ev, 0);
-        if (result.success())
+        auto result = parser(input);
+        if (result.isSuccessful())
         {
             state.SkipWithError("Parsing failed");
         }
@@ -330,12 +702,12 @@ static void logpar_parse_error_LIT_1(benchmark::State& state)
 
     auto parser = logpar.build(parserStr);
     auto ev = ev1 + ev2 + ev3;
-
+    auto input = parsec::ParserState(ev, false);
 
     for (auto _ : state)
     {
-        auto result = parser(ev, 0);
-        if (result.success())
+        auto result = parser(input);
+        if (result.isSuccessful())
         {
             state.SkipWithError("Parsing failed");
         }
@@ -373,12 +745,12 @@ static void logpar_parse_error_LIT_2(benchmark::State& state)
 
     auto parser = logpar.build(parserStr);
     auto ev = ev1 + ev2 + ev3;
-
+    auto input = parsec::ParserState(ev, false);
 
     for (auto _ : state)
     {
-        auto result = parser(ev, 0);
-        if (result.success())
+        auto result = parser(input);
+        if (result.isSuccessful())
         {
             state.SkipWithError("Parsing failed");
         }
@@ -414,12 +786,12 @@ static void logpar_parse_error_LIT_3(benchmark::State& state)
 
     auto parser = logpar.build(parserStr);
     auto ev = ev1 + ev2 + ev3;
-
+    auto input = parsec::ParserState(ev, false);
 
     for (auto _ : state)
     {
-        auto result = parser(ev, 0);
-        if (result.success())
+        auto result = parser(input);
+        if (result.isSuccessful())
         {
             state.SkipWithError("Parsing failed");
         }
@@ -455,12 +827,12 @@ static void logpar_parse_error_LIT_4(benchmark::State& state)
 
     auto parser = logpar.build(parserStr);
     auto ev = ev1 + ev2 + ev3;
-
+    auto input = parsec::ParserState(ev, false);
 
     for (auto _ : state)
     {
-        auto result = parser(ev, 0);
-        if (result.success())
+        auto result = parser(input);
+        if (result.isSuccessful())
         {
             state.SkipWithError("Parsing failed");
         }

@@ -38,27 +38,28 @@ target_link_libraries(hlp_logpar PUBLIC hlp::parsec json base)
 add_library(hlp::logpar ALIAS hlp_logpar)
 
 add_library(hlp2 STATIC
-        src/number.cpp
-        src/number.hpp
-        src/web.cpp
-        src/file.cpp
-        src/json.cpp
-        src/xml.cpp
-        src/dsv_csv.cpp
-        src/kvmap.cpp
-        ${date_SOURCE_DIR}/src/tz.cpp
-        src/parse_field.hpp
-        src/date.cpp
-        src/parse_field.cpp
-        src/between.cpp
-        src/bool.cpp
-        src/ignore.cpp
-        src/ip.cpp
-        src/text.cpp
-        src/quoted.cpp
-        src/encodings.cpp
-        src/literal.cpp
-        src/alphanumeric.cpp)
+        # src/number.cpp
+        # src/number.hpp
+        # src/web.cpp
+        # src/file.cpp
+        # src/json.cpp
+        # src/xml.cpp
+        # src/dsv_csv.cpp
+        # src/kvmap.cpp
+        # ${date_SOURCE_DIR}/src/tz.cpp
+        # src/parse_field.hpp
+        # src/date.cpp
+        # src/parse_field.cpp
+        # src/between.cpp
+        # src/bool.cpp
+        # src/ignore.cpp
+        # src/ip.cpp
+        # src/text.cpp
+        # src/quoted.cpp
+        # src/encodings.cpp
+        # src/literal.cpp
+        # src/alphanumeric.cpp
+        )
 
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
 # This works with glibc 2.28-211.el8 RHEL 8
