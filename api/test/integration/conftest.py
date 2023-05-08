@@ -17,7 +17,7 @@ import urllib3
 import yaml
 from py.xml import html
 
-WEBHOOK_HEADER = '1:Wazuh-Webhook:'
+WEBHOOK_HEADER = '1:API-Webhook:'
 ANALYSISD_DAEMON = 'wazuh-analysisd'
 WAZUH_PATH = Path('/var/ossec')
 RELATIVE_SOCKET_PATH = Path('queue/sockets/queue')
@@ -601,7 +601,6 @@ def _analysisd_manager(action: ACTIONS) -> None:
 @pytest.fixture(name="forwarded_events")
 def fixture_forwarded_events():
     """Get forwarded events to analysisd."""
-
     _analysisd_manager(STOP_ACTION)
 
     events = []
