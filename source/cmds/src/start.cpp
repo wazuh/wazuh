@@ -13,6 +13,7 @@
 #include <api/catalog/catalog.hpp>
 #include <api/catalog/handlers.hpp>
 #include <api/config/config.hpp>
+#include <api/graph/handlers.hpp>
 #include <api/integration/handlers.hpp>
 #include <api/kvdb/handlers.hpp>
 #include <api/metrics/handlers.hpp>
@@ -312,6 +313,17 @@ void runStart(ConfHandler confManager)
                 router->clear();
                 router->addRoute(routeName, routePriority, routeFilter, routePolicy);
             }
+        }
+
+        // Graph
+        {
+            // Register the Graph command
+            api::graph::handlers::Config graphConfig {
+                store,
+                kvdb,
+            };
+            api::graph::handlers::registerHandlers(graphConfig, api);
+            LOG_DEBUG("Graph API registered.");
         }
 
         // Register Metrics commands
