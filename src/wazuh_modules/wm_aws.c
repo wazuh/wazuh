@@ -449,7 +449,7 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
 
     os_free(command);
 
-    wm_aws_parse_output(output, WM_AWS_LOGTAG);
+    wm_aws_parse_output(output, WM_AWS_LOGGING_TOKEN);
 
     if (wm_exec_ret_code != 0){
         mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
@@ -654,9 +654,7 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
             }
         }
         mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
-        mtdebug1(WM_AWS_LOGTAG, "%s ESTOY AQUI: %s", service_title, output);
     } else {
-        mtdebug2(WM_AWS_LOGTAG, "%s ESTOY AQUI 2: %s", service_title, output);
         mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
     }
 

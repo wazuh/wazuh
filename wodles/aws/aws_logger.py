@@ -11,7 +11,7 @@
 import logging
 
 # Local Imports
-from wodles.shared.wazuh_cloud_logger import WazuhLogStrategy
+from shared.wazuh_cloud_logger import WazuhLogStrategy
 
 ########################################################################################################################
 # Classes
@@ -30,7 +30,7 @@ class AWSLogStrategy(WazuhLogStrategy):
         Initialize the AWSLogStrategy class.
 
         """
-        self.logger = logging.getLogger(':aws-s3')
+        self.logger = logging.getLogger(':aws_wodle:')
 
     def info(self, message: str):
         """
