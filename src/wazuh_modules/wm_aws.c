@@ -484,10 +484,8 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
             }
         }
         mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
-        mtinfo(WM_AWS_LOGTAG, "%S ESTOY AQUI: %s", trail_title, output)
     } else {
         mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
-        mtinfo(WM_AWS_LOGTAG, "%S ESTOY en el segundo AQUI: %s", trail_title, output)
     }
 
     char *line;
