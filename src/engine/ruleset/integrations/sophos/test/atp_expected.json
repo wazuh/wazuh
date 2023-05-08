@@ -1,0 +1,99 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/sophos/xg.log",
+            "message": "device=\"SFW\" date=2020-05-18 time=14:38:34 timezone=\"CEST\" device_name=\"XG230\" device_id=1234567890123456 log_id=086504418010 log_type=\"ATP\" log_component=\"Web\" log_subtype=\"Drop\" priority=Warning user_name=\"\" protocol=\"TCP\" src_port=57579 dst_port=80 sourceip=172.16.34.24 destinationip=13.226.155.22 url=http://sophostest.com/callhome/index.html threatname=C2/Generic-A eventid=E91DAD80-BDE4-4682-B7E8-FE394B70A36C eventtype=\"Standard\" login_user=\"\" process_user=\"\" ep_uuid=\"\" execution_path=\"\"",
+            "origin": "/var/log/sophos/xg.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "sophos-atp"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "device=\"SFW\" date=2020-05-18 time=14:38:34 timezone=\"CEST\" device_name=\"XG230\" device_id=1234567890123456 log_id=086504418010 log_type=\"ATP\" log_component=\"Web\" log_subtype=\"Drop\" priority=Warning user_name=\"\" protocol=\"TCP\" src_port=57579 dst_port=80 sourceip=172.16.34.24 destinationip=13.226.155.22 url=http://sophostest.com/callhome/index.html threatname=C2/Generic-A eventid=E91DAD80-BDE4-4682-B7E8-FE394B70A36C eventtype=\"Standard\" login_user=\"\" process_user=\"\" ep_uuid=\"\" execution_path=\"\"",
+            "action": "drop",
+            "code": 86504418010,
+            "dataset": "sophos.xg",
+            "id": "E91DAD80-BDE4-4682-B7E8-FE394B70A36C",
+            "kind": "event",
+            "module": "sophos",
+            "outcome": "success",
+            "severity": 4,
+            "timezone": "CEST"
+        },
+        "host": {
+            "id": "001"
+        },
+        "destination": {
+            "ip": "13.226.155.22",
+            "port": 80
+        },
+        "fileset": {
+            "name": "xg"
+        },
+        "input": {
+            "type": "log"
+        },
+        "log": {
+            "level": "Warning"
+        },
+        "observer": {
+            "product": "XG",
+            "serial_number": 1234567890123456,
+            "type": "firewall",
+            "vendor": "Sophos"
+        },
+        "network": {
+            "transport": "tcp"
+        },
+        "service": {
+            "type": "sophos"
+        },
+        "sophos": {
+            "xg": {
+                "device": "SFW",
+                "device_name": "XG230",
+                "eventtype": "Standard",
+                "log_component": "Web",
+                "log_id": 86504418010,
+                "log_subtype": "Drop",
+                "log_type": "ATP",
+                "priority": "Warning",
+                "threatname": "C2/Generic-A"
+            }
+        },
+        "source": {
+            "ip": "172.16.34.24",
+            "port": 57579
+        },
+        "tags": [
+            "forwarded",
+            "preserve_original_event",
+            "sophos-xg"
+        ],
+        "\\@timestamp": "2020-05-18T14:38:34",
+        "url": {
+            "domain": "sophostest.com",
+            "full": "http://sophostest.com/callhome/index.html",
+            "original": "http://sophostest.com/callhome/index.html",
+            "path": "/callhome/index.html",
+            "scheme": "http"
+        },
+        "related": {
+            "ip": [
+                "13.226.155.22",
+                "172.16.34.24"
+            ]
+        }
+    }
+]

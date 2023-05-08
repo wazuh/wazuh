@@ -113,6 +113,7 @@ normalize:
       - source.port: $~tmp.src_port
       - source.user.email: $~tmp.from_email_address
       - tags: ["forwarded", "preserve_original_event", "sophos-xg"]
+      - wazuh.decoders: +array_append/sophos-antispam
       - ~log: +delete
       - ~tmp: +delete
 

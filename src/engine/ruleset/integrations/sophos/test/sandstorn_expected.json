@@ -1,0 +1,99 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/sophos/xg.log",
+            "message": "device=\"SFW\" date=2017-01-31 time=14:52:11 timezone=\"IST\" device_name=\"CR750iNG-XP\" device_id=C44310050024-P29PUA log_id=138301618041 log_type=\"Sandbox\" log_component=\"Mail\" log_subtype=\"Allowed\" priority=Information user_name=\"\" src_ip= filename=\"\" filetype=\"\" filesize=0 sha1sum=\"\" source=\"\" reason=\"eligible\" destination=\"\" subject=\"\"",
+            "origin": "/var/log/sophos/xg.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "sophos-sandstorn"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "device=\"SFW\" date=2017-01-31 time=14:52:11 timezone=\"IST\" device_name=\"CR750iNG-XP\" device_id=C44310050024-P29PUA log_id=138301618041 log_type=\"Sandbox\" log_component=\"Mail\" log_subtype=\"Allowed\" priority=Information user_name=\"\" src_ip= filename=\"\" filetype=\"\" filesize=0 sha1sum=\"\" source=\"\" reason=\"eligible\" destination=\"\" subject=\"\"",
+            "action": "Allowed",
+            "code": 138301618041,
+            "dataset": "sophos.xg",
+            "kind": "event",
+            "module": "sophos",
+            "outcome": "success",
+            "reason": "eligible",
+            "severity": 6,
+            "timezone": "IST"
+        },
+        "host": {
+            "id": "001"
+        },
+        "file": {
+            "hash": {
+                "sha": " "
+            },
+            "mime_type": " ",
+            "size": 0
+        },
+        "fileset": {
+            "name": "xg"
+        },
+        "input": {
+            "type": "log"
+        },
+        "log": {
+            "level": "Information"
+        },
+        "observer": {
+            "product": "XG",
+            "serial_number": "C44310050024-P29PUA",
+            "type": "firewall",
+            "vendor": "Sophos"
+        },
+        "related": {
+            "hash": [
+                " "
+            ],
+            "ip": [
+                null,
+                " "
+            ],
+            "user": [
+                " "
+            ]
+        },
+        "sophos": {
+            "xg": {
+                "device": "SFW",
+                "device_name": "CR750iNG-XP",
+                "log_component": "Sandbox",
+                "log_id": "Sandbox",
+                "log_subtype": "Allowed",
+                "log_type": "Sandbox",
+                "priority": "Information",
+                "source": " "
+            }
+        },
+        "source": {
+            "ip": null,
+            "user": {
+                "name": " "
+            }
+        },
+        "url": {
+            "domain": " "
+        },
+        "tags": [
+            "forwarded",
+            "preserve_original_even",
+            "sophos-xg"
+        ],
+        "\\@timestamp": "2017-01-31T14:52:11"
+    }
+]

@@ -19,7 +19,7 @@ This module has been tested against SFOS version 17.5.x and 18.0.x.
 
 Events may be collected in two ways:
 1. Logcollector Using the logcollector source localfile to ingest the logs from the agent. Add to the ossec.conf file in the monitored agent the following blocks:
-```html
+```xml
 <localfile>
   <!-- Edit location to appropriate path if needed -->
   <location>[Sophos UTM log path]</location>

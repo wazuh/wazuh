@@ -21,7 +21,7 @@ This integration has been tested against FortiOS version 6.0.x and 6.2.x.
 
 Events may be collected in two ways:
 1. Logcollector Using the logcollector source localfile to ingest the logs from the agent. Add to the ossec.conf file in the monitored agent the following blocks:
-```html
+```xml
 <localfile>
   <!-- Edit location to appropriate path if needed -->
   <location>[FortiClient log path]</location>

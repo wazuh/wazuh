@@ -16,7 +16,7 @@ sources:
   - decoder/integrations/0
 
 check:
-- event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="System Health"
+- event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:ascii:]]*? log_id\=[[:alnum:]]*? log_type\="System Health"
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
   # - event.module: sophos
   # - event.dataset: sophos.xg
@@ -107,4 +107,5 @@ normalize:
       - sophos.xg.user_cpu: $~tmp.user
       - service.type: sophos
       - tags: [forwarded, preserve_original_even, sophos-xg]
+      - wazuh.decoders: +array_append/sophos-systemhealth
       - ~tmp: +delete
