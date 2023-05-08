@@ -113,4 +113,5 @@ normalize:
       - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
       - url.full: $~tmp.url
       - user_agent.original: $~tmp.useragent
+      - wazuh.decoders: +array_append/sophos-waf
       - ~tmp: +delete

@@ -78,6 +78,7 @@ normalize:
       - source.port: $~tmp.src_port
       - tags: [fortinet.clientendpoint, forwarded]
       - user.name: $~tmp.user
+      - wazuh.decoders: +array_append/fortinet-client-endpoint
       - ~log: +delete
       - ~tmp: +delete
 

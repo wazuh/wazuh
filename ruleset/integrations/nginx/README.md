@@ -15,7 +15,7 @@ The integration was tested with logs from version 1.23.2
 
 This integration uses the logcollector source localfile to ingest the logs from /var/log/nginx/access.log and /var/log/nginx/error.log. Add to the ossec.conf file in the monitored agent the following blocks:
 
-```html
+```xml
 <localfile>
   <!-- Edit location to appropriate path if needed -->
   <location>/var/log/nginx/error.log</location>

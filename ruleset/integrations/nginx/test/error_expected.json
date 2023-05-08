@@ -1,0 +1,56 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/nginx/error.log",
+            "message": "2022/05/14 19:55:51 [error] 6689#6689: *16764375 FastCGI sent in stderr: \"PHP message: PHP Warning: Division by zero in /var/www/html/my.php on line 438\" while reading upstream, client: 10.1.1.1, server: mytest.com, request: \"GET /my.php HTTP/1.1\", upstream: \"fastcgi://unix:/run/php/php7.2-fpm.sock:\", host: \"my.test.com\"",
+            "origin": "/var/log/nginx/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "nginx-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2022/05/14 19:55:51 [error] 6689#6689: *16764375 FastCGI sent in stderr: \"PHP message: PHP Warning: Division by zero in /var/www/html/my.php on line 438\" while reading upstream, client: 10.1.1.1, server: mytest.com, request: \"GET /my.php HTTP/1.1\", upstream: \"fastcgi://unix:/run/php/php7.2-fpm.sock:\", host: \"my.test.com\"",
+            "start": "2022-05-14T19:55:51.000Z",
+            "module": "nginx",
+            "kind": "event",
+            "category": [
+                "web"
+            ],
+            "type": [
+                "error"
+            ]
+        },
+        "host": {
+            "id": "001"
+        },
+        "log": {
+            "level": "error"
+        },
+        "process": {
+            "pid": 6689,
+            "thread": {
+                "id": 6689
+            }
+        },
+        "~nginx": {
+            "error": {
+                "connection_id": 16764375
+            }
+        },
+        "message": "FastCGI sent in stderr: \"PHP message: PHP Warning: Division by zero in /var/www/html/my.php on line 438\" while reading upstream, client: 10.1.1.1, server: mytest.com, request: \"GET /my.php HTTP/1.1\", upstream: \"fastcgi://unix:/run/php/php7.2-fpm.sock:\", host: \"my.test.com\"",
+        "service": {
+            "type": "nginx"
+        }
+    }
+]

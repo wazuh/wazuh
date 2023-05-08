@@ -1,0 +1,5 @@
+type=CRED_DISP msg=audit(1681997462.455:741): pid=3926 subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+type=TEST_GROUP msg=audit(1610903123.444:555): pid=2940 uid=0 auid=1000 ses=14 msg="op=adding group to /etc/group id=1004 exe='/usr/sbin/groupadd' hostname=ubuntu-bionic addr=127.0.0.1 terminal=pts/2 res=success"
+node=localhost.localdomain type=SERVICE_START msg=audit(1594053514.709:6): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg="unit=auditd comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" hostname=? addr=? terminal=? res=success"
+type=USER_CHAUTHTOK msg=audit(1610903123.444:555): pid=2953 uid=0 auid=1000 ses=14 msg='op=PAM:chauthtok acct="charlie" exe="/usr/bin/passwd" hostname=ubuntu-bionic addr=127.0.0.1 terminal=pts/2 res=success'
+type=SYSCALL msg=audit(1234567890.404:1992): arch=c000003e syscall=42 success=no exit=-112 a0=4 a1=5f563c6007a0 a2=10 a3=4 items=0 ppid=1 pid=6969 auid=3238672382 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=3238672382 comm="google_ip_forwa" exe="/usr/bin/python3.7" key="key=net"

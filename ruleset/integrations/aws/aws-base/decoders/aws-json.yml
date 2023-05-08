@@ -13,6 +13,7 @@ metadata:
 sources:
   - decoder/integrations/0
 
+#TODO: Note this decoder accept all JSON events.
 check:
   - event.original: +starts_with/{
 

@@ -1,0 +1,1 @@
+Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:06" fw=89.160.20.156 pri=6 c=262144 m=98 msg="Connection Opened" n=23419 src=2.2.2.2:36701:WAN dst=89.160.20.156:50000:WAN proto=tcp/50000
