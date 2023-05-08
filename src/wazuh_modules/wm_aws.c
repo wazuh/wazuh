@@ -31,6 +31,8 @@ static void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *bucket);       // R
 static void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *service);// Run a AWS service such as Inspector
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
+static void wm_aws_parse_output(char *output, char *tag);
+
 // Command module context definition
 
 const wm_context WM_AWS_CONTEXT = {
@@ -447,6 +449,10 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
 
     os_free(command);
 
+    wm_aws_parse_output(output, WM_AWS_BUCKET_LOGTAG);
+
+    mtinfo(WM_AWS_LOGTAG, "this is the code: ", wm_exec_ret_code)
+
     if (wm_exec_ret_code != 0){
         mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
         os_free(trail_title);
@@ -480,8 +486,10 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
             }
         }
         mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
+        mtinfo(WM_AWS_LOGTAG, "%S ESTOY AQUI: %s", trail_title, output)
     } else {
         mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
+        mtinfo(WM_AWS_LOGTAG, "%S ESTOY en el segundo AQUI: %s", trail_title, output)
     }
 
     char *line;
@@ -489,6 +497,7 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
+
 
     os_free(trail_title);
     os_free(output);
@@ -649,7 +658,9 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
             }
         }
         mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
+        mtdebug1(WM_AWS_LOGTAG, "%s ESTOY AQUI: %s", service_title, output);
     } else {
+        mtdebug2(WM_AWS_LOGTAG, "%s ESTOY AQUI 2: %s", service_title, output);
         mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
     }
 
@@ -663,3 +674,61 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
 
     os_free(output);
 }
+
+
+static void wm_aws_parse_output(char *output, char *tag){
+    char *line;
+    char * parsing_output = output;
+    int debug_level = isDebug();
+
+    mtinfo(WM_AWS_LOGTAG, "NIVEL ES: ", debug_level)
+
+    for (line = strstr(parsing_output, WM_AWS_LOGGING_TOKEN); line; line = strstr(parsing_output, WM_AWS_LOGGING_TOKEN)) {
+        char * tokenized_line;
+        os_calloc(WM_STRING_MAX, sizeof(char), tokenized_line);
+        char * next_lines;
+
+        line += strlen(WM_AWS_LOGGING_TOKEN);
+        next_lines = strstr(line, WM_AWS_LOGGING_TOKEN);
+
+        int next_lines_chars = next_lines == NULL ? 0 : strlen(next_lines);
+
+        // 1 is added because it's mandatory to consider the null byte
+        int cp_length = 1 + strlen(line) - next_lines_chars > WM_STRING_MAX ? WM_STRING_MAX : 1 + strlen(line) - next_lines_chars;
+        snprintf(tokenized_line, cp_length, "%s", line);
+        if (tokenized_line[cp_length - 2] == '\n') tokenized_line[cp_length - 2] = '\0';
+
+        char *p_line = NULL;
+
+        if (debug_level >= 2) {
+            if ((p_line = strstr(tokenized_line, "- DEBUG - "))) {
+                p_line += 10;
+                mtdebug1(tag, "%s", p_line);
+            }
+        }
+        if (debug_level >= 1) {
+            if ((p_line = strstr(tokenized_line, "- INFO - "))) {
+                p_line += 9;
+                mtinfo(tag, "%s", p_line);
+            }
+        }
+        if (debug_level >= 0) {
+            if ((p_line = strstr(tokenized_line, "- CRITICAL - "))) {
+                p_line += 13;
+                mterror(tag, "%s", p_line);
+            }
+            if ((p_line = strstr(tokenized_line, "- ERROR - "))) {
+                p_line += 10;
+                mterror(tag, "%s", p_line);
+            }
+            if ((p_line = strstr(tokenized_line, "- WARNING - "))) {
+                p_line += 12;
+                mtwarn(tag, "%s", p_line);
+            }
+        }
+
+        parsing_output += cp_length + strlen(WM_AWS_LOGGING_TOKEN) - 1;
+        os_free(tokenized_line);
+    }
+}
+
