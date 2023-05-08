@@ -376,23 +376,6 @@ base::Expression opBuilderHelperContainsString(const std::string& targetField,
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions);
 
-/**
- * @brief Create `in` helper function that filters events if the parameter contains the target field value.
- * The parameter can be a reference or definition of a list, or a list of values.
- *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
- * @return base::Expression
- *
- * @throws std::runtime_error if cannot create the filter.
- */
-base::Expression opBuilderHelperIn(const std::string& targetField,
-                                   const std::string& rawName,
-                                   const std::vector<std::string>& rawParameters,
-                                   std::shared_ptr<defs::IDefinitions> definitions);
-
 //*************************************************
 //*                Type filters                   *
 //*************************************************
