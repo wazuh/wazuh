@@ -36,7 +36,6 @@ TEST(RegisterTest, AllHelperBuildersRegistered)
     ASSERT_NO_THROW(helperRegistry->getBuilder("regex_not_match"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("ip_cidr_match"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("array_contains"));
-    ASSERT_NO_THROW(helperRegistry->getBuilder("in"));
 
     ASSERT_NO_THROW(helperRegistry->getBuilder("int_calculate"));
     ASSERT_NO_THROW(helperRegistry->getBuilder("upcase"));
