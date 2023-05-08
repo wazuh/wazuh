@@ -140,7 +140,14 @@ public:
         auto nameOpt = jsonDefinition.getString("/name");
         if (!nameOpt)
         {
-            throw std::runtime_error("Policy name is not a string");
+            if (jsonDefinition.exists("/name"))
+            {
+                throw std::runtime_error("Policy /name is not a string");
+            }
+            else
+            {
+                throw std::runtime_error("Policy /name is not defined");
+            }
         }
         m_name = nameOpt.value();
 
@@ -155,7 +162,14 @@ public:
             auto integrations = jsonDefinition.getArray(integrationsPath);
             if (!integrations)
             {
-                throw std::runtime_error("Integrations is not an array");
+                if (jsonDefinition.exists(integrationsPath))
+                {
+                    throw std::runtime_error("Field /integrations is not an array");
+                }
+                else
+                {
+                    throw std::runtime_error("Field /integrations is not defined");
+                }
             }
 
             for (auto& integration : integrations.value())
