@@ -30,7 +30,7 @@ class AWSLogStrategy(WazuhLogStrategy):
         Initialize the AWSLogStrategy class.
 
         """
-        self.logger = logging.getLogger(":aws-s3")
+        self.logger = logging.getLogger(':aws_wodle:')
 
     def info(self, message: str):
         """
