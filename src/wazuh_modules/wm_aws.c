@@ -449,7 +449,7 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
 
     os_free(command);
 
-    wm_aws_parse_output(output, WM_AWS_LOGGING_TOKEN);
+    wm_aws_parse_output(output, WM_AWS_LOGTAG);
 
     if (wm_exec_ret_code != 0){
         mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
@@ -698,13 +698,11 @@ static void wm_aws_parse_output(char *output, char *tag){
                 mtdebug1(tag, "%s", p_line);
             }
         }
-        if (debug_level >= 1) {
+        if (debug_level >= 0) {
             if ((p_line = strstr(tokenized_line, "- INFO - "))) {
                 p_line += 9;
                 mtinfo(tag, "%s", p_line);
             }
-        }
-        if (debug_level >= 0) {
             if ((p_line = strstr(tokenized_line, "- CRITICAL - "))) {
                 p_line += 13;
                 mterror(tag, "%s", p_line);

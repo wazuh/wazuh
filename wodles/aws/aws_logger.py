@@ -30,7 +30,7 @@ class AWSLogStrategy(WazuhLogStrategy):
         Initialize the AWSLogStrategy class.
 
         """
-        self.logger = logging.getLogger(':aws_wodle:')
+        self.logger = logging.getLogger(":aws-s3")
 
     def info(self, message: str):
         """
@@ -41,7 +41,7 @@ class AWSLogStrategy(WazuhLogStrategy):
         message : str
             The message to be logged.
         """
-        self.logger.info("aws.py: info: " + message)
+        self.logger.info(message)
 
     def debug(self, message: str):
         """
@@ -52,7 +52,7 @@ class AWSLogStrategy(WazuhLogStrategy):
         message : str
             The message to be logged.
         """
-        self.logger.debug("aws.py: debug: " + message)
+        self.logger.debug(message)
 
     def warning(self, message: str):
         """
@@ -63,7 +63,7 @@ class AWSLogStrategy(WazuhLogStrategy):
         message : str
             The message to be logged.
         """
-        self.logger.warning("aws.py: warning: " + message)
+        self.logger.warning(message)
 
     def error(self, message: str):
         """
@@ -74,7 +74,7 @@ class AWSLogStrategy(WazuhLogStrategy):
         message : str
             The message to be logged.
         """
-        self.logger.error("aws.py: error: " + message)
+        self.logger.error(message)
 
     def critical(self, message: str):
         """
@@ -85,4 +85,4 @@ class AWSLogStrategy(WazuhLogStrategy):
         message : str
             The message to be logged.
         """
-        self.logger.critical("aws.py: critical: " + message)
+        self.logger.critical(message)
