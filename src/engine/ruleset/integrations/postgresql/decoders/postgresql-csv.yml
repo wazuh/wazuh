@@ -43,7 +43,9 @@ parse:
 normalize:
   - map:
       - event.category: +array_append/database
+      - event.dataset: postgresql.log
       - event.kind: event
+      - event.module: postgresql
       - fileset.name: log                 #assumed fixed value
       - input.type: log                   #assumed fixed value
       - postgresql.log.timestamp: $~timestamp
