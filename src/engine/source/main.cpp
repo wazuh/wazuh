@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     // Configure each subcommand
     cmd::server::configure(app);
     cmd::test::configure(app); //TODO: Create a test command using the new API
-    cmd::graph::configure(app); //TODO: Create a graph command using the new API
+    cmd::graph::configure(app);
     cmd::kvdb::configure(app);
     cmd::catalog::configure(app);
     cmd::config::configure(app);

@@ -33,6 +33,7 @@ constexpr auto ENGINE_SRV_API_TIMEOUT = 1000;
 constexpr auto ENGINE_SRV_API_TIMEOUT_ENV = "WZE_API_TIMEOUT";
 
 // Store module
+constexpr auto ENGINE_DEFAULT_POLICY = "policy/wazuh/0";
 constexpr auto ENGINE_STORE_PATH = "/var/ossec/engine/store";
 constexpr auto ENGINE_STORE_PATH_ENV = "WZE_STORE_PATH";
 
@@ -62,7 +63,6 @@ constexpr auto ENGINE_QUEUE_FLOOD_SLEEP_ENV = "WZE_QUEUE_FLOOD_SLEEP";
 /******************************************************************************
  *  Test
  ******************************************************************************/
-constexpr auto ENGINE_ENVIRONMENT_TEST = "policy/wazuh/0";
 constexpr auto ENGINE_KVDB_TEST_PATH = "/var/ossec/etc/kvdb_test/";
 constexpr auto ENGINE_PROTOCOL_QUEUE = 1;
 constexpr auto ENGINE_PROTOCOL_LOCATION = "/dev/stdin";
