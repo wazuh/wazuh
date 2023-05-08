@@ -33,7 +33,56 @@ checks:
   # 1.1 Filesystem Configuration.
   ############################################################
   # 1.1.1.1 Ensure mounting of squashfs filesystems is disabled. (Automated) - Not Implemented
+  - id: 31001
+    title: "Ensure mounting of squashfs filesystems is disabled."
+    description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A squashfs image can be used without having to first decompress the image."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    impact: 'As Snap packages utilizes squashfs as a compressed filesystem, disabling squashfs will cause Snap packages to fail. Snap application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software''s end-user. Snaps themselves have no dependency on any external store ("App store"), can be obtained from any source and can be therefore used for upstream software deployment.'
+    remediation: "Run the following script to disable squashfs: #!/usr/bin/env bash { l_mname=\"squashfs\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\b$l_mname)\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \/bin\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \"$l_mname\" to be not loadable\" echo -e \"install $l_mname \/bin\/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \"$l_mname\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\b\"; then echo -e \" - deny listing \"$l_mname\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/ $l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \"$l_mname\" doesn't exist on the system\" fi}."
+    compliance:
+      - cis: ["1.1.1.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - nist_sp_800-53: ["CM-7"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+      - mitre_techniques: ["T1005"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1050"]
+    condition: all
+    rules:
+      - "c:modprobe -n -v squashfs -> r:install /bin/false|Module squashfs not found"
+      - "not c:lsmod -> r:squashfs"
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*squashfs'
+
   # 1.1.1.2 Ensure mounting of udf filesystems is disabled. (Automated) - Not Implemented
+  - id: 31002
+    title: "Ensure mounting of udf filesystems is disabled."
+    description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    impact: "Microsoft Azure requires the usage of udf. udf should not be disabled on systems run on Microsoft Azure."
+    remediation: "Run the following script to disable the udf filesystem: #!/usr/bin/env bash { l_mname=\"udf\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h +Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then \\# Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\b$l_mname)\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \/bin\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \"$l_mname\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> \/etc\/modprobe.d\/\"$l_mname\".conf fi \\# Remediate loaded if lsmod | grep \"$l_mname\" > \/dev\/null 2>&1; then echo -e \" - unloading module \"$l_mname\"\" modprobe -r \"$l_mname\" fi \\# Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\b\"; then echo -e \" - deny listing \"$l_mname\"\" echo -e \"blacklist $l_mname\" >> \/etc/modprobe.d\/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \"$l_mname\" doesn't exist on the system\" fi }."
+    compliance:
+      - cis: ["1.1.1.2"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - nist_sp_800-53: ["CM-7"]
+      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+      - mitre_techniques: ["T1005"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_mitigations: ["M1050"]
+    condition: all
+    rules:
+      - "c:modprobe -n -v udf -> r:install /bin/false|Module udf not found"
+      - "not c:lsmod -> r:udf"
+      - 'd:/etc/modprobe.d -> r:\.*.conf -> r:blacklist\t*\s*udf'
 
   # 1.1.2.1 Ensure /tmp is a separate partition. (Automated)
   - id: 31003
@@ -151,7 +200,7 @@ checks:
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - nist_sp_800-53: ["MP-2", "AC-3"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
@@ -226,7 +275,7 @@ checks:
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - nist_sp_800-53: ["CM-6"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
@@ -322,7 +371,7 @@ checks:
       - cis: ["1.1.5.1"]
       - cis_csc_v8: ["8.3"]
       - cis_csc_v7: ["6.4"]
-      - nist_sp_800-53: ["AU-4"]
+      - nist_sp_800-53: ["CM-6"]
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
@@ -418,7 +467,7 @@ checks:
       - cis: ["1.1.6.1"]
       - cis_csc_v8: ["8.3"]
       - cis_csc_v7: ["6.4"]
-      - nist_sp_800-53: ["AU-4"]
+      - nist_sp_800-53: ["CM-6"]
       - iso_27001-2013: ["A.12.4.1"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
@@ -443,7 +492,7 @@ checks:
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
@@ -491,7 +540,7 @@ checks:
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
@@ -518,7 +567,7 @@ checks:
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
       - iso_27001-2013: ["A.9.1.1"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - nist_sp_800-53: ["CM-6"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
@@ -746,6 +795,7 @@ checks:
       - soc_2: ["CC6.1"]
       - mitre_techniques: ["T1565", "T1565.001"]
       - mitre_tactics: ["TA0001"]
+      - mitre_mitigations: ["M1022"]
     condition: all
     rules:
       - "c:rpm -q aide -> r:aide-"
@@ -847,8 +897,10 @@ checks:
     rules:
       - 'c:stat -L /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 1.5.1 Ensure core dump storage is disabled. (Automated)
-  - id: 31041
+  # 1.5.1 Ensure address space layout randomization (ASLR) is enabled. (Automated) - Not Implemented
+  # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
+  # 1.5.3 Ensure core dump storage is disabled. (Automated)
+  - id: 31042
     title: "Ensure core dump storage is disabled."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
     rationale: "A core dump includes a memory image taken at the time the operating system terminates an application. The memory image could contain sensitive data and is generally useful only for developers trying to debug problems."
@@ -856,14 +908,18 @@ checks:
     references:
       - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
     compliance:
-      - cis: ["1.5.1"]
+      - cis: ["1.5.3"]
+      - cis_csc_v7: ["13.2"]
+      - cmmc_v2.0: ["AM.3.036"]
+      - nist_sp_800-53: ["CM-7"]
       - mitre_techniques: ["T1005"]
       - mitre_tactics: ["TA0007"]
+      - mitre_mitigations: ["M1057"]
     condition: all
     rules:
-      - "f:/etc/systemd/coredump.conf -> r:Storage=none"
+      - "f:/etc/systemd/coredump.conf -> r:Storage=0"
 
-  # 1.5.2 Ensure core dump backtraces are disabled. (Automated)
+  # 1.5.4 Ensure core dump backtraces are disabled. (Automated)
   - id: 31042
     title: "Ensure core dump backtraces are disabled."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
@@ -872,15 +928,16 @@ checks:
     references:
       - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
     compliance:
-      - cis: ["1.5.2"]
-      - nist_sp_800-53: ["CM-6b"]
+      - cis: ["1.5.4"]
+      - cis_csc_v7: ["13.2"]
+      - cmmc_v2.0: ["AM.3.036"]
+      - nist_sp_800-53: ["CM-6"]
       - mitre_techniques: ["T1005"]
       - mitre_tactics: ["TA0007"]
+      - mitre_mitigations: ["M1057"]
     condition: all
     rules:
       - "f:/etc/systemd/coredump.conf -> r:ProcessSizeMax=0"
-
-  # 1.5.3 Ensure address space layout randomization (ASLR) is enabled. (Automated) - Not Implemented
 
   # 1.6.1.1 Ensure SELinux is installed. (Automated)
   - id: 31044
