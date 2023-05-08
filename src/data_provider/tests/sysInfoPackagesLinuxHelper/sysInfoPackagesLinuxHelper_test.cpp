@@ -585,7 +585,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapCorrectMapping)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("gnome-3-38-2004", jsPackageInfo["name"]);
     EXPECT_EQ(363151360, jsPackageInfo["size"]);
-    EXPECT_EQ("2022-11-23T20:33:59.025662696-03:00", jsPackageInfo["install_time"]);
+    EXPECT_EQ("2022/11/23 20:33:59", jsPackageInfo["install_time"]);
     EXPECT_EQ(" ", jsPackageInfo["groups"]);
     EXPECT_EQ("0+git.6f39565", jsPackageInfo["version"]);
     EXPECT_EQ(" ", jsPackageInfo["architecture"]);
