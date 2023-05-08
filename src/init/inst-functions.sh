@@ -397,6 +397,16 @@ WriteAgent()
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Localfile extra
+    LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.agent.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    if [ ! "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
+
     echo "  <!-- Active response -->" >> $NEWCONFIG
 
     echo "  <active-response>" >> $NEWCONFIG
@@ -533,6 +543,17 @@ WriteManager()
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Localfile extra
+    LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    if [ ! "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
+    
+
     # Writting rules configuration
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -653,6 +674,16 @@ WriteLocal()
     fi
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
+
+    # Localfile extra
+    LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    if [ ! "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
 
     # Writting rules configuration
     cat ${RULES_TEMPLATE} >> $NEWCONFIG

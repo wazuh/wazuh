@@ -29,6 +29,7 @@ static void wm_aws_setup(wm_aws *_aws_config);          // Setup module
 static void wm_aws_check();                             // Check configuration, disable flag
 static void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *bucket);       // Run a s3 bucket
 static void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *service);// Run a AWS service such as Inspector
+static void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *subscriber); //Run an AWS subscriber
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
 // Command module context definition
@@ -52,6 +53,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 #endif
     wm_aws_bucket *cur_bucket;
     wm_aws_service *cur_service;
+    wm_aws_subscriber *cur_subscriber;
     char *log_info;
     char * timestamp = NULL;
 
@@ -171,6 +173,31 @@ void* wm_aws_main(wm_aws *aws_config) {
             free(log_info);
         }
 
+        for (cur_subscriber = aws_config->subscribers; cur_subscriber; cur_subscriber = cur_subscriber->next) {
+            log_info = NULL;
+
+            wm_strcat(&log_info, "Executing Subscriber fetch: (Type and SQS:", '\0');
+            if (cur_subscriber->type) {
+                wm_strcat(&log_info, cur_subscriber->type, ' ');
+            }
+            else {
+                wm_strcat(&log_info, "unknown_type", ' ');
+            }
+
+            if (cur_subscriber->sqs_name) {
+                wm_strcat(&log_info, cur_subscriber->sqs_name, ' ');
+            }
+            else {
+                wm_strcat(&log_info, "unknown_queue", ' ');
+            }
+
+            wm_strcat(&log_info, ")", '\0');
+
+            mtinfo(WM_AWS_LOGTAG, "%s", log_info);
+            wm_aws_run_subscriber(aws_config, cur_subscriber);
+            free(log_info);
+        }
+
         mtinfo(WM_AWS_LOGTAG, "Fetching logs finished.");
 
     } while (FOREVER());
@@ -255,6 +282,26 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             cJSON_free(arr_services);
         }
     }
+    if (aws_config->subscribers) {
+    wm_aws_subscriber *iter;
+        cJSON *arr_subscribers = cJSON_CreateArray();
+        for (iter = aws_config->subscribers; iter; iter = iter->next) {
+            cJSON *subscriber = cJSON_CreateObject();
+            if (iter->type) cJSON_AddStringToObject(subscriber,"type",iter->type);
+            if (iter->sqs_name) cJSON_AddStringToObject(subscriber,"sqs_name",iter->sqs_name);
+            if (iter->external_id) cJSON_AddStringToObject(subscriber,"external_id",iter->external_id);
+            if (iter->iam_role_arn) cJSON_AddStringToObject(subscriber,"iam_role_arn",iter->iam_role_arn);
+            if (iter->iam_role_duration) cJSON_AddStringToObject(subscriber, "iam_role_duration",iter->iam_role_duration);
+            if (iter->sts_endpoint) cJSON_AddStringToObject(subscriber,"sts_endpoint",iter->sts_endpoint);
+            if (iter->service_endpoint) cJSON_AddStringToObject(subscriber,"service_endpoint",iter->service_endpoint);
+            cJSON_AddItemToArray(arr_subscribers,subscriber);
+        }
+        if (cJSON_GetArraySize(arr_subscribers) > 0) {
+            cJSON_AddItemToObject(wm_aws,"subscribers",arr_subscribers);
+        } else {
+            cJSON_free(arr_subscribers);
+        }
+    }
     cJSON_AddItemToObject(root,"aws-s3",wm_aws);
 
     return root;
@@ -301,8 +348,8 @@ void wm_aws_check() {
 
     // Check if there are buckets or services
 
-    if (!aws_config->buckets && !aws_config->services) {
-        mtwarn(WM_AWS_LOGTAG, "No AWS buckets or services defined. Exiting...");
+    if (!aws_config->buckets && !aws_config->services && !aws_config->subscribers) {
+        mtwarn(WM_AWS_LOGTAG, "No AWS buckets, services or subscribers defined. Exiting...");
         pthread_exit(NULL);
     }
 
@@ -654,6 +701,137 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     }
 
     os_free(service_title);
+
+    char *line;
+    char *save_ptr = NULL;
+    for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
+        wm_sendmsg(usec, aws_config->queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
+    }
+
+    os_free(output);
+}
+
+// Run a subscriber parsing
+void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscriber) {
+    int status;
+    char *output = NULL;
+    char *command = NULL;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
+    // Create arguments
+    mtdebug2(WM_AWS_LOGTAG, "Create argument list");
+
+    // script path
+    char * script = NULL;
+    os_calloc(PATH_MAX, sizeof(char), script);
+
+    snprintf(script, PATH_MAX, "%s", WM_AWS_SCRIPT_PATH);
+
+    wm_strcat(&command, script, '\0');
+    os_free(script);
+
+    // subscriber
+    wm_strcat(&command, "--subscriber", ' ');
+    wm_strcat(&command, exec_subscriber->type, ' ');
+
+    wm_strcat(&command, "--queue", ' ');
+    wm_strcat(&command, exec_subscriber->sqs_name, ' ');
+
+    // subscriber arguments
+    if (exec_subscriber->external_id) {
+        wm_strcat(&command, "--external_id", ' ');
+        wm_strcat(&command, exec_subscriber->external_id, ' ');
+    }
+    if (exec_subscriber->iam_role_arn) {
+        wm_strcat(&command, "--iam_role_arn", ' ');
+        wm_strcat(&command, exec_subscriber->iam_role_arn, ' ');
+    }
+    if (exec_subscriber->iam_role_duration){
+        wm_strcat(&command, "--iam_role_duration", ' ');
+        wm_strcat(&command, exec_subscriber->iam_role_duration, ' ');
+    }
+    if (exec_subscriber->sts_endpoint){
+        wm_strcat(&command, "--sts_endpoint", ' ');
+        wm_strcat(&command, exec_subscriber->sts_endpoint, ' ');
+    }
+    if (exec_subscriber->service_endpoint){
+        wm_strcat(&command, "--service_endpoint", ' ');
+        wm_strcat(&command, exec_subscriber->service_endpoint, ' ');
+    }
+
+    if (isDebug()) {
+        wm_strcat(&command, "--debug", ' ');
+        if (isDebug() > 2) {
+            wm_strcat(&command, "3", ' ');
+        } else if (isDebug() > 1) {
+            wm_strcat(&command, "2", ' ');
+        } else {
+            wm_strcat(&command, "1", ' ');
+        }
+    }
+
+    if (aws_config->skip_on_error) {
+        wm_strcat(&command, "--skip_on_error", ' ');
+    }
+    if (wm_state_io(WM_AWS_CONTEXT.name, WM_IO_READ, &aws_config->state, sizeof(aws_config->state)) < 0) {
+        memset(&aws_config->state, 0, sizeof(aws_config->state));
+    }
+
+    // Execute
+    char *subscriber_title = NULL;
+    wm_strcat(&subscriber_title, "Subscriber:", ' ');
+    wm_strcat(&subscriber_title, exec_subscriber->type, ' ');
+    wm_strcat(&subscriber_title, exec_subscriber->sqs_name, ' ');
+
+    wm_strcat(&subscriber_title, " - ", ' ');
+
+    mtdebug1(WM_AWS_LOGTAG, "Launching Security Lake Subscriber Command: %s", command);
+
+    const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
+
+    os_free(command);
+
+    if (wm_exec_ret_code) {
+        mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
+        os_free(subscriber_title);
+
+        if (wm_exec_ret_code > 0) {
+            os_free(output);
+        }
+        pthread_exit(NULL);
+    } else if (status > 0) {
+        mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", subscriber_title, status);
+        if(status == 1) {
+            char * unknown_error_msg = strstr(output,"Unknown error");
+            if (unknown_error_msg == NULL)
+                mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", subscriber_title);
+            else
+                mtwarn(WM_AWS_LOGTAG, "%s %s", subscriber_title, unknown_error_msg);
+        } else if(status == 2) {
+            char * ptr;
+            if (ptr = strstr(output, "aws.py: error:"), ptr) {
+                ptr += 14;
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", subscriber_title, ptr);
+            } else {
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", subscriber_title);
+            }
+        } else {
+            char * ptr;
+            if (ptr = strstr(output, "ERROR: "), ptr) {
+                ptr += 7;
+                mtwarn(WM_AWS_LOGTAG, "%s %s", subscriber_title, ptr);
+            } else {
+                mtwarn(WM_AWS_LOGTAG, "%s %s", subscriber_title, output);
+            }
+        }
+        mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", subscriber_title, output);
+    } else {
+        mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", subscriber_title, output);
+    }
+
+    os_free(subscriber_title);
 
     char *line;
     char *save_ptr = NULL;
