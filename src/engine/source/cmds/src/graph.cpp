@@ -1,146 +1,60 @@
 #include <cmds/graph.hpp>
 
-#include <filesystem>
-#include <fstream>
-#include <memory>
+#include <eMessages/graph.pb.h>
 
-#include <cmds/details/stackExecutor.hpp>
-#include <hlp/logpar.hpp>
-#include <hlp/registerParsers.hpp>
-#include <kvdb/kvdbManager.hpp>
-#include <logging/logging.hpp>
-#include <rxbk/rxFactory.hpp>
-#include <schemf/schema.hpp>
-#include <store/drivers/fileDriver.hpp>
-
-#include "base/utils/getExceptionStack.hpp"
-#include "builder.hpp"
 #include "defaultSettings.hpp"
-#include "metrics/metricsManager.hpp"
-#include "register.hpp"
-#include "registry.hpp"
 #include "utils.hpp"
-
-namespace
-{
-cmd::details::StackExecutor g_exitHanlder {};
-constexpr auto POLICY_GRAPH = "policy_graph.dot";
-constexpr auto POLICY_EXPR_GRAPH = "policy_expr_graph.dot";
-} // namespace
 
 namespace cmd::graph
 {
-void run(const Options& options)
+
+namespace eGraph = ::com::wazuh::api::engine::graph;
+namespace eEngine = ::com::wazuh::api::engine;
+
+void getGraph(std::shared_ptr<apiclnt::Client> client, const Options& options)
 {
-    // Logging init
-    logging::LoggingConfig logConfig;
-    logConfig.logLevel = options.logLevel;
+    using RequestType = eGraph::GraphGet_Request;
+    using ResponseType = eGraph::GraphGet_Response;
+    const std::string command = "graph.resource/get";
 
-    logging::loggingInit(logConfig);
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_policy(options.policyName);
+    eRequest.set_type(options.graphType);
 
-    auto metricsManager = std::make_shared<metricsManager::MetricsManager>();
-    auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath, metricsManager);
-    g_exitHanlder.add([kvdb]() { kvdb->clear(); });
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
-    auto store = std::make_shared<store::FileDriver>(options.fileStorage);
-    base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
-    auto hlpParsers = store->get(hlpConfigFileName);
-    if (std::holds_alternative<base::Error>(hlpParsers))
-    {
-        auto msg = fmt::format("Unable to load Wazuh Logpar schema from store because {}",
-                               std::get<base::Error>(hlpParsers).message);
-        throw ClientException(msg, ClientException::Type::PATH_ERROR);
-    }
-    auto logpar = std::make_shared<hlp::logpar::Logpar>(std::get<json::Json>(hlpParsers));
-    hlp::registerParsers(logpar);
-
-    auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    try
-    {
-
-        builder::internals::dependencies deps;
-        deps.logparDebugLvl = 0;
-        deps.logpar = logpar;
-        deps.kvdbManager = kvdb;
-        deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
-        deps.schema = std::make_shared<schemf::Schema>();
-        builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
-        builder::internals::registerBuilders(registry, deps);
-    }
-    catch (const std::exception& e)
-    {
-        auto msg = fmt::format("Error registering builders because {}", e.what());
-        throw ClientException(msg, ClientException::Type::INVALID_ARGUMENT);
-    }
-
-    builder::Builder _builder(store, registry);
-    decltype(_builder.buildPolicy({options.policy})) policy;
-    try
-    {
-        policy = _builder.buildPolicy({options.policy});
-    }
-    catch (const std::exception& e)
-    {
-        auto msg = fmt::format("Error building the policy because {}", e.what());
-        throw ClientException(msg, ClientException::Type::INVALID_ARGUMENT);
-    }
-
-    if (std::string("policy").compare({options.graph}) == 0)
-    {
-        std::cout << policy.getGraphivzStr();
-        return;
-    }
-
-    base::Expression policyExpression;
-    try
-    {
-        policyExpression = policy.getExpression();
-    }
-    catch (const std::exception& e)
-    {
-        auto msg = fmt::format("Error getting the policy expression because {]", e.what());
-        throw ClientException(msg, ClientException::Type::INVALID_ARGUMENT);
-    }
-
-    std::cout << base::toGraphvizStr(policyExpression);
-
-    g_exitHanlder.execute();
+    // Print the dump
+    const auto& dump = eResponse.content();
+    std::cout << dump << std::endl;
 }
 
 void configure(CLI::App_p app)
 {
     auto options = std::make_shared<Options>();
 
-    auto graphApp = app->add_subcommand("graph", "Generate a dot description of a policy.");
+    auto graphApp = app->add_subcommand(details::API_GRAPH_SUBCOMMAND, "Generate a dot description of a policy.");
 
-    // Log level
-    graphApp->add_option("-l, --log_level", options->logLevel, "Sets the logging level.")
-        ->default_val(ENGINE_LOG_LEVEL)
-        ->check(CLI::IsMember({"trace", "debug", "info", "warning", "error", "critical", "off"}));
-
-    // KVDB path
-    graphApp->add_option("-k, --kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
-        ->default_val(ENGINE_KVDB_TEST_PATH)
-        ->check(CLI::ExistingDirectory);
-
-    // File storage
-    graphApp
-        ->add_option("-f, --file_storage",
-                     options->fileStorage,
-                     "Sets the path to the folder where the assets are located (store).")
-        ->default_val(ENGINE_STORE_PATH)
-        ->check(CLI::ExistingDirectory);
+    graphApp->add_option("-a, --api_socket", options->serverApiSock, "engine api address")
+        ->default_val(ENGINE_SRV_API_SOCK);
+    const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock);
 
     // Environment
-    graphApp->add_option("--policy", options->policy, "Name of the policy to be used.")
-        ->default_val(ENGINE_ENVIRONMENT_TEST);
+    graphApp->add_option("--policy", options->policyName, "Name of the policy to be used.")
+        ->default_val(ENGINE_DEFAULT_POLICY);
 
     // Graph dir
     graphApp
-        ->add_option("-g, --graph", options->graph, "Graph. Choose between [policy, expressions]. Defaults to policy.")
-        ->default_val("policy");
+        ->add_option(
+            "-g, --graph", options->graphType, "Graph. Choose between [policy, expressions]. Defaults to 'policy'.")
+        ->default_val("policy")
+        ->check(CLI::IsMember({"policy", "expressions"}));;
 
     // Register callback
-    graphApp->callback([options]() { run(*options); });
+    graphApp->callback([client, options]() { getGraph(client, *options); });
 }
+
 } // namespace cmd::graph

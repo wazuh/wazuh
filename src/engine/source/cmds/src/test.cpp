@@ -334,7 +334,7 @@ void configure(CLI::App_p app)
 
     // Policy
     logtestApp->add_option("--policy", options->policy, "Name of the policy to be used.")
-        ->default_val(ENGINE_ENVIRONMENT_TEST);
+        ->default_val(ENGINE_DEFAULT_POLICY);
 
     // Protocol queue
     logtestApp
