@@ -681,8 +681,6 @@ static void wm_aws_parse_output(char *output, char *tag){
     char * parsing_output = output;
     int debug_level = isDebug();
 
-    mtinfo(WM_AWS_LOGTAG, "NIVEL ES: ", debug_level)
-
     for (line = strstr(parsing_output, WM_AWS_LOGGING_TOKEN); line; line = strstr(parsing_output, WM_AWS_LOGGING_TOKEN)) {
         char * tokenized_line;
         os_calloc(WM_STRING_MAX, sizeof(char), tokenized_line);
