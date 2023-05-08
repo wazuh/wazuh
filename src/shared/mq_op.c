@@ -294,7 +294,7 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
                 }
                 mdebug1("Connected to socket '%s' (%s)", Config->name, Config->location);
             } else {
-                mdebug2("Discarding event from '%s' due to connection issue with '%s'", message, Config->name);
+                mdebug2("Discarding event '%s' due to connection issue with '%s'", message, Config->name);
                 free(message);
                 return 1;
             }
