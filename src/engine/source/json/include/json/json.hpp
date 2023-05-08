@@ -563,12 +563,6 @@ public:
      */
     std::optional<base::Error> checkDuplicateKeys() const;
 
-    bool contains(const json::Json& value, std::string_view path = "") const
-    {
-        // TODO implement
-        return true;
-    }
-
     /************************************************************************************/
     // Setters
     /************************************************************************************/

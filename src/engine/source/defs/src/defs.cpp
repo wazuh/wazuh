@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <stdexcept>
-#include <vector>
 
 #include <fmt/format.h>
 
