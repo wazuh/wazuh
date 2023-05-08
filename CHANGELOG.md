@@ -26,10 +26,6 @@ All notable changes to this project will be documented in this file.
 - Fixed permission error when producing FIM alerts. [#14019](https://github.com/wazuh/wazuh/pull/14019)
 - Fixed memory leaks wazuh-authd. [#15164](https://github.com/wazuh/wazuh/pull/15164)
 
-### Agent
-
-#### Added
-
 - Added Audit policy change detection in FIM for Windows. [#14763](https://github.com/wazuh/wazuh/pull/14763)
 
 #### Changed
@@ -54,8 +50,52 @@ All notable changes to this project will be documented in this file.
 - The SSHD decoder has been improved to catch disconnection events. [#14138](https://github.com/wazuh/wazuh/pull/14138)
 
 
-
 ## [v4.4.2]
+
+### Manager
+
+### Fixed
+
+- Fixed a bug causing agent groups tasks status in the cluster not to be stored. ([#16394](https://github.com/wazuh/wazuh/pull/16394))
+- Fixed memory leaks in Vulnerability Detector after disk failures. ([#16478](https://github.com/wazuh/wazuh/pull/16478))
+- Remove unused variable in wazuh-authd to fix a `String not null terminated` coverity finding. ([#15957](https://github.com/wazuh/wazuh/pull/15957))
+- Fixed a pre-decoder problem with the + symbol in the macOS ULS timestamp. ([#16530](https://github.com/wazuh/wazuh/pull/16530))
+
+### Agent
+
+#### Added
+
+- Added a new module to integrate with Amazon Security Lake as a subscriber. ([#16515](https://github.com/wazuh/wazuh/pull/16515))
+- Added support for localfile blocks deployment. ([#16847](https://github.com/wazuh/wazuh/pull/16847))
+
+#### Changed
+
+- Changed netstat command on macOS agents. ([#16743](https://github.com/wazuh/wazuh/pull/16743)) 
+
+### Fixed
+
+- Fixed an issue with MAC address reporting on Windows systems. ([#16517](https://github.com/wazuh/wazuh/pull/16517)) 
+- Fixed Windows unit tests hanging during execution. ([#16857](https://github.com/wazuh/wazuh/pull/16857))  
+
+### RESTful API
+
+#### Fixed
+
+- Fixed agent insertion when no key is specified using `POST /agents/insert` endpoint. ([#16381](https://github.com/wazuh/wazuh/pull/16381)) 
+
+### Ruleset 
+
+#### Added
+
+- Added macOS 13.0 Ventura SCA policy. ([#15566](https://github.com/wazuh/wazuh/pull/15566)) 
+- Added new ruleset for macOS 13 Ventura and older versions. ([#15567](https://github.com/wazuh/wazuh/pull/15567)) 
+- Added new base ruleset for log sources collected from Amazon Security Lake. ([#16549](https://github.com/wazuh/wazuh/pull/16549))
+
+### Other
+
+#### Added
+
+- Added `pyarrow` and `numpy` Python dependencies. ([#16692](https://github.com/wazuh/wazuh/pull/16692))
 
 
 ## [v4.4.1] - 2023-04-12
@@ -376,6 +416,15 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed Makefile to detect CPU archivecture on Gentoo Linux. ([#14165](https://github.com/wazuh/wazuh/pull/14165))
+
+
+## [v4.3.11] - 2023-04-24
+
+### Manager
+
+#### Fixed
+
+- Fixed a dead code bug that might cause wazuh-db to crash. ([#16752](https://github.com/wazuh/wazuh/pull/16752))
 
 
 ## [v4.3.10] - 2022-11-16
