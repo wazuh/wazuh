@@ -1,6 +1,6 @@
 ---
 - actions:
-  - event:create
+  - event:ingest
   resources:
   - "*:*:*"
   effect: deny
