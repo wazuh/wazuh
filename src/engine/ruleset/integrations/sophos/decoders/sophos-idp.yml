@@ -108,4 +108,5 @@ normalize:
       - source.port: $~tmp.src_port
       - tags: [forwarded, preserve_original_even, sophos-xg]
       - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
+      - wazuh.decoders: +array_append/sophos-idp
       - ~tmp: +delete

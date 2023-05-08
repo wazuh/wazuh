@@ -19,7 +19,7 @@ This integration has been tested against F5 BIG-IP version 16.1.0
 
 Events may be collected in two ways:
 1. Logcollector Using the logcollector source localfile to ingest the logs from the agent. Add to the ossec.conf file in the monitored agent the following blocks:
-```html
+```xml
 <localfile>
   <!-- Edit location to appropriate path if needed -->
   <location>[AFM log path]</location>

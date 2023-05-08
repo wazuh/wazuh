@@ -17,19 +17,14 @@ This integration has been tested with logs from version 6.5
 
 Events may be collected in two ways:
 1. Logcollector Using the logcollector source localfile to ingest the logs from the agent. Add to the ossec.conf file in the monitored agent the following block:
-
-```html
-<localfile>
+```xml <localfile>
   <!-- Edit location to appropriate path if needed -->
   <location>[SonicWall Firewall log path]</location>
   <log_format>json</log_format>
   <label key="event.module">sonicwall</label>
   <label key="event.dataset">sonicwall.firewall</label>
-</localfile>
-```
-
+</localfile> ```
 2. Remote Syslog
-
 #TODO: Add remote syslog configuration
 
 
@@ -39,6 +34,7 @@ Events may be collected in two ways:
 
 | Name | Description |
 |---|---|
+| decoder/sonicwall-syslog/0 | Syslog header |
 | decoder/sonicwall-firewall-generated/0 | Decoder for generated Firmware module logs belonging to Sonicwall |
 | decoder/sonicwall-firewall/0 | Decoder for Firmware module logs belonging to Sonicwall |
 ## Changelog

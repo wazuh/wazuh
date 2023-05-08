@@ -15,7 +15,7 @@ All Redis versions
 
 This integration uses the logcollector source localfile to ingest the logs from the agent. Add to the ossec.conf file in the monitored agent the following block:
 
-```html
+```xml
 <localfile>
   <!-- Edit location to appropriate path if needed -->
   <location>/var/log/redis/redis-server.log</location>

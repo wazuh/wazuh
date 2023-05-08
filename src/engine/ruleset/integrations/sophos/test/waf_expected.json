@@ -1,0 +1,107 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/sophos/xg.log",
+            "message": "device=\"SFW\" date=2020-05-18 time=14:38:46 timezone=\"CEST\" device_name=\"XG230\" device_id=1234567890123456 log_id=075000617071 log_type=\"WAF\" log_component=\"Web Application Firewall\" priority=Information user_name=\"-\" server=webmail.elasticuser.com sourceip=216.160.83.61 localip=185.8.209.207 ws_protocol=\"HTTP/1.1\" url=/mapi/nspi/ querystring=?MailboxId=642ea57c-90ab-4571-8e05-c6997b2256f8@elastic.user.com cookie=\"MapiContext=MAPIAAAAAPaw98Xx0uDQ4tL/z/rX59b2x/LI+8z2x/+lhrKGtIO7jbmBsxYNAAAAAAAA;MapiRouting=UlVNOjdmNWY0OGE3LTM5OWItNDc4Yi04ZDgwLWFmZTRmMzAyZTViMDoAitM4bv3XCA==;MapiSequence=10-GtgsIA==;X-BackEndCookie=642ea57c-90ab-4571-8e05-c6997b2256f8=u56Lnp2ejJqByZrHyZ7Mys7Sm8zJnNLLnM3J0sbJxsvSnZzIxs2ans+ezMrLgYHNz83P0s/J0s3Pq87Pxc7PxcrL\" referer=- method=POST httpstatus=401 reason=\"-\" extra=\"-\" contenttype=\"-\" useragent=\"Microsoft Office/16.0 (Windows NT 10.0; Microsoft Outlook 16.0.4954; Pro)\" host=216.160.83.61 responsetime=11199 bytessent=5669 bytesrcv=1419 fw_rule_id=79",
+            "origin": "/var/log/sophos/xg.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "sophos-waf"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "device=\"SFW\" date=2020-05-18 time=14:38:46 timezone=\"CEST\" device_name=\"XG230\" device_id=1234567890123456 log_id=075000617071 log_type=\"WAF\" log_component=\"Web Application Firewall\" priority=Information user_name=\"-\" server=webmail.elasticuser.com sourceip=216.160.83.61 localip=185.8.209.207 ws_protocol=\"HTTP/1.1\" url=/mapi/nspi/ querystring=?MailboxId=642ea57c-90ab-4571-8e05-c6997b2256f8@elastic.user.com cookie=\"MapiContext=MAPIAAAAAPaw98Xx0uDQ4tL/z/rX59b2x/LI+8z2x/+lhrKGtIO7jbmBsxYNAAAAAAAA;MapiRouting=UlVNOjdmNWY0OGE3LTM5OWItNDc4Yi04ZDgwLWFmZTRmMzAyZTViMDoAitM4bv3XCA==;MapiSequence=10-GtgsIA==;X-BackEndCookie=642ea57c-90ab-4571-8e05-c6997b2256f8=u56Lnp2ejJqByZrHyZ7Mys7Sm8zJnNLLnM3J0sbJxsvSnZzIxs2ans+ezMrLgYHNz83P0s/J0s3Pq87Pxc7PxcrL\" referer=- method=POST httpstatus=401 reason=\"-\" extra=\"-\" contenttype=\"-\" useragent=\"Microsoft Office/16.0 (Windows NT 10.0; Microsoft Outlook 16.0.4954; Pro)\" host=216.160.83.61 responsetime=11199 bytessent=5669 bytesrcv=1419 fw_rule_id=79",
+            "action": "denied",
+            "code": 75000617071,
+            "dataset": "sophos.xg",
+            "duration": "11199000",
+            "kind": "alert",
+            "module": "sophos",
+            "severity": 6,
+            "timezone": "CEST",
+            "type": [
+                "connection",
+                "denied"
+            ]
+        },
+        "host": {
+            "id": "001"
+        },
+        "destination": {
+            "bytes": 401,
+            "ip": "185.8.209.207"
+        },
+        "fileset": {
+            "name": "xg"
+        },
+        "http": {
+            "request": {
+                "method": "POST"
+            },
+            "version": "HTTP/1.1"
+        },
+        "input": {
+            "type\"": "log"
+        },
+        "observer": {
+            "product": "XG",
+            "serial_number": 1234567890123456,
+            "type": "firewall",
+            "vendor": "Sophos"
+        },
+        "related": {
+            "ip": [
+                "185.8.209.207",
+                "216.160.83.61"
+            ]
+        },
+        "service": {
+            "type": "sophos"
+        },
+        "sophos": {
+            "xg": {
+                "cookie": "MapiContext=MAPIAAAAAPaw98Xx0uDQ4tL/z/rX59b2x/LI+8z2x/+lhrKGtIO7jbmBsxYNAAAAAAAA;MapiRouting=UlVNOjdmNWY0OGE3LTM5OWItNDc4Yi04ZDgwLWFmZTRmMzAyZTViMDoAitM4bv3XCA==;MapiSequence=10-GtgsIA==;X-BackEndCookie=642ea57c-90ab-4571-8e05-c6997b2256f8=u56Lnp2ejJqByZrHyZ7Mys7Sm8zJnNLLnM3J0sbJxsvSnZzIxs2ans+ezMrLgYHNz83P0s/J0s3Pq87Pxc7PxcrL",
+                "device": "SFW",
+                "device_name": "XG230",
+                "extra": "-",
+                "fw_rule_id": 79,
+                "host": "216.160.83.61",
+                "log_component": "Web Application Firewall",
+                "log_id": 75000617071,
+                "log_type": "WAF",
+                "priority": "Information",
+                "querystring": "?MailboxId=642ea57c-90ab-4571-8e05-c6997b2256f8@elastic.user.com",
+                "server": "webmail.elasticuser.com"
+            }
+        },
+        "source": {
+            "as": {
+                "number": "209"
+            },
+            "bytes": 1419,
+            "ip": "216.160.83.61"
+        },
+        "tags": [
+            "forwarded",
+            "preserve_original_even",
+            "sophos-xg"
+        ],
+        "\\@timestamp": "2020-05-18T14:38:46",
+        "url": {
+            "full": "/mapi/nspi/"
+        },
+        "user_agent": {
+            "original": "Microsoft Office/16.0 (Windows NT 10.0; Microsoft Outlook 16.0.4954; Pro)"
+        }
+    }
+]

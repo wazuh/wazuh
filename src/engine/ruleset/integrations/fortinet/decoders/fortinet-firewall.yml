@@ -145,6 +145,7 @@ normalize:
     - dns.question.name: $~tmp.qname
     - dns.question.type: $~tmp.qtype
     - related.hosts: [$~tmp.qname]
+    - wazuh.decoders: +array_append/fortinet-firewall
     # TODO: it does't work: the hf can't parse the special char /.
     # We cannot use a temporary variable to store the special character since the second argument to hf expects a character.
     - ~tmp.agent_array: +split/$~tmp.agent/\/

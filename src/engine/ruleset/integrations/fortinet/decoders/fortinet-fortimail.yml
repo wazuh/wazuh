@@ -139,6 +139,7 @@ normalize:
     - rsa.misc.virusname: $~log.rsa.misc.virusname
     - rsa.network.domain: $server.domain
     - rsa.web.fqdn: $~log.rsa.web.fqdn
+    - wazuh.decoders: +array_append/fortinet-fortimail
 
   - check:
       - rsa.internal.event_desc: +exists

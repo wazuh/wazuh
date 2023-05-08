@@ -14,7 +14,7 @@ None
 ## Configuration
 
 Add to the ossec.conf file in the monitored agent the following configuration block to enable the integration with CloudTrail:
-```html
+```xml
 <wodle name="aws-s3">
   <disabled>no</disabled>
   <interval>10m</interval>
