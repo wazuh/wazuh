@@ -26,9 +26,7 @@ class AzureLogStrategy(WazuhLogStrategy):
     """
 
     def __init__(self):
-        self.logger = logging.getLogger('azure')
-        self.formatter = '%(asctime)s azure: %(levelname)s: %(message)s'
-        self.datefmt = '%Y/%m/%d %I:%M:%S'
+        self.logger = logging.getLogger(":azure_wodle:")
 
     def info(self, message: str):
         """

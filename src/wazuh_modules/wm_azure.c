@@ -29,6 +29,9 @@ static void wm_azure_graphs(wm_azure_api_t *graph);                     // Run g
 static void wm_azure_storage(wm_azure_storage_t *storage);              // Run storage queries
 cJSON *wm_azure_dump(const wm_azure_t *azure);                          // Dump configuration to a JSON structure
 
+
+static void wm_azure_parse_output(char *output, char *tag);
+
 //  Azure module context definition
 
 const wm_context WM_AZURE_CONTEXT = {
@@ -187,6 +190,8 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         }
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for request '%s'.", curr_request->tag);
+
+        wm_azure_parse_output(output, WM_AZURE_LOGGING_TOKEN);
 
         os_free(command);
         os_free(output);
@@ -509,6 +514,62 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
 
     free(azure_config);
 }
+
+
+static void wm_azure_parse_output(char *output, char *tag){
+    char *line;
+    char * parsing_output = output;
+    int debug_level = isDebug();
+
+    for (line = strstr(parsing_output, WM_AZURE_LOGGING_TOKEN); line; line = strstr(parsing_output, WM_AZURE_LOGGING_TOKEN)) {
+        char * tokenized_line;
+        os_calloc(WM_STRING_MAX, sizeof(char), tokenized_line);
+        char * next_lines;
+
+        line += strlen(WM_AZURE_LOGGING_TOKEN);
+        next_lines = strstr(line, WM_AZURE_LOGGING_TOKEN);
+
+        int next_lines_chars = next_lines == NULL ? 0 : strlen(next_lines);
+
+        // 1 is added because it's mandatory to consider the null byte
+        int cp_length = 1 + strlen(line) - next_lines_chars > WM_STRING_MAX ? WM_STRING_MAX : 1 + strlen(line) - next_lines_chars;
+        snprintf(tokenized_line, cp_length, "%s", line);
+        if (tokenized_line[cp_length - 2] == '\n') tokenized_line[cp_length - 2] = '\0';
+
+        char *p_line = NULL;
+
+        if (debug_level >= 2) {
+            if ((p_line = strstr(tokenized_line, "- DEBUG - "))) {
+                p_line += 10;
+                mtdebug1(tag, "%s", p_line);
+            }
+        }
+        if (debug_level >= 1) {
+            if ((p_line = strstr(tokenized_line, "- INFO - "))) {
+                p_line += 9;
+                mtinfo(tag, "%s", p_line);
+            }
+        }
+        if (debug_level >= 0) {
+            if ((p_line = strstr(tokenized_line, "- CRITICAL - "))) {
+                p_line += 13;
+                mterror(tag, "%s", p_line);
+            }
+            if ((p_line = strstr(tokenized_line, "- ERROR - "))) {
+                p_line += 10;
+                mterror(tag, "%s", p_line);
+            }
+            if ((p_line = strstr(tokenized_line, "- WARNING - "))) {
+                p_line += 12;
+                mtwarn(tag, "%s", p_line);
+            }
+        }
+
+        parsing_output += cp_length + strlen(WM_AZURE_LOGGING_TOKEN) - 1;
+        os_free(tokenized_line);
+    }
+}
+
 
 
 // Get configuration data in JSON format
