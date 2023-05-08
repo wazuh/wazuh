@@ -131,7 +131,10 @@ class WazuhCloudLogger:
             Configured handler instance.
         """
         handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter('%(name)s - %(levelname)s - %(message)s'))
+        formatter = self.strategy.formatter if hasattr(self.strategy,
+                                                       'formatter') else '%(name)s - %(levelname)s - %(message)s'
+        datefmt = self.strategy.datefmt if hasattr(self.strategy, 'datefmt') else None
+        handler.setFormatter(logging.Formatter(formatter, datefmt=datefmt))
         return handler
 
     def info(self, message: str):

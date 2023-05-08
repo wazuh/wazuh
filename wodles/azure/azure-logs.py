@@ -36,7 +36,8 @@ import orm
 
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from utils import ANALYSISD
-
+from azure_logger import AzureLogStrategy
+from wodles.shared.wazuh_cloud_logger import WazuhCloudLogger
 
 # URLs
 URL_LOGGING = 'https://login.microsoftonline.com'
@@ -57,6 +58,10 @@ LOG_LEVELS = {0: logging.WARNING,
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
+
+azure_logger = WazuhCloudLogger(
+    strategy=AzureLogStrategy()
+)
 
 
 def set_logger():
@@ -139,7 +144,6 @@ def get_script_arguments():
     parser.add_argument("--storage_time_offset", metavar="time", type=str, required=False,
                         help="Time range for the request.")
     parser.add_argument('-p', '--prefix', dest='prefix', help='The relative path to the logs', type=str, required=False)
-
 
     # General parameters #
     parser.add_argument('--reparse', action='store_true', dest='reparse',
@@ -598,8 +602,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
 
 def start_storage():
     """Get access and content of the storage accounts."""
-    logging.info("Azure Storage starting.")
-
+    azure_logger.info("Azure Storage starting.")
     # Read credentials
     logging.info("Storage: Authenticating.")
     if args.storage_auth_path:
@@ -873,6 +876,7 @@ def offset_to_datetime(offset: str):
 if __name__ == "__main__":
     args = get_script_arguments()
     set_logger()
+
 
     if not orm.check_database_integrity():
         sys.exit(1)
