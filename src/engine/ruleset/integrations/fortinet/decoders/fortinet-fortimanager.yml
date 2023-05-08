@@ -203,4 +203,5 @@ normalize:
     map:
       - network.protocol: prm
   - map:
+    - wazuh.decoders: +array_append/fortinet-fortimanager
     - ~kvMap: +delete

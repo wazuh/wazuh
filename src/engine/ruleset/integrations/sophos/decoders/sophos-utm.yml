@@ -183,4 +183,5 @@ normalize:
       - rsa.internal.messageid: $~tmp.event.code
       - service.type: sophos
       - tags: +array_append/forwarded/sophos.utm
+      - wazuh.decoders: +array_append/sophos-utm
       - ~tmp: +delete

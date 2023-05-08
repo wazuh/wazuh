@@ -1,0 +1,100 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/sophos/xg.log",
+            "message": "device=\"SFW\" date=2020-05-18 time=14:38:35 timezone=\"CEST\" device_name=\"XG230\" device_id=1234567890123457 log_id=031106210001 log_type=\"Anti-Virus\" log_component=\"SMTP\" log_subtype=\"Virus\" status=\"\" priority=Critical fw_rule_id=22 user_name=\"\" av_policy_name=\"default-smtp-av\" from_email_address=\"info@farasamed.com\" to_email_address=\"info@elastic-user.local\" subject=\"ZAHLUNG (PROFORMA INVOICE)\" mailid=\"<20200520004312.Horde.lEUeVf2I6PwO5K5TtMndnC7@webmail.sevengayr\" mailsize=2254721 virus=\"TR/AD.AgentTesla.eaz\" filename=\"\" quarantine=\"\" src_domainname=\"farasamed.com\" dst_domainname=\"\" src_ip=1.128.3.4 src_country_code=DEU dst_ip=186.8.209.194 dst_country_code=DEU protocol=\"TCP\" src_port=56336 dst_port=25 sent_bytes=0 recv_bytes=0 quarantine_reason=\"Infected\"",
+            "origin": "/var/log/sophos/xg.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "sophos-antivirus"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "device=\"SFW\" date=2020-05-18 time=14:38:35 timezone=\"CEST\" device_name=\"XG230\" device_id=1234567890123457 log_id=031106210001 log_type=\"Anti-Virus\" log_component=\"SMTP\" log_subtype=\"Virus\" status=\"\" priority=Critical fw_rule_id=22 user_name=\"\" av_policy_name=\"default-smtp-av\" from_email_address=\"info@farasamed.com\" to_email_address=\"info@elastic-user.local\" subject=\"ZAHLUNG (PROFORMA INVOICE)\" mailid=\"<20200520004312.Horde.lEUeVf2I6PwO5K5TtMndnC7@webmail.sevengayr\" mailsize=2254721 virus=\"TR/AD.AgentTesla.eaz\" filename=\"\" quarantine=\"\" src_domainname=\"farasamed.com\" dst_domainname=\"\" src_ip=1.128.3.4 src_country_code=DEU dst_ip=186.8.209.194 dst_country_code=DEU protocol=\"TCP\" src_port=56336 dst_port=25 sent_bytes=0 recv_bytes=0 quarantine_reason=\"Infected\"",
+            "action": "virus",
+            "code": 31106210001,
+            "dataset": "sophos.xg",
+            "kind": "event",
+            "module": "sophos",
+            "outcome": "success",
+            "severity": 2,
+            "timezone": "CEST"
+        },
+        "host": {
+            "id": "001"
+        },
+        "destination": {
+            "bytes": 0,
+            "ip": "186.8.209.194",
+            "port": 25,
+            "user": {
+                "email": "info@elastic-user.local"
+            }
+        },
+        "fileset": {
+            "name": "xg"
+        },
+        "input": {
+            "type": "log"
+        },
+        "log": {
+            "level": "Critical"
+        },
+        "observer": {
+            "product": "XG",
+            "serial_number": 1234567890123457,
+            "type": "firewall",
+            "vendor": "Sophos"
+        },
+        "network": {
+            "transport": "tcp"
+        },
+        "service": {
+            "type": "sophos"
+        },
+        "sophos": {
+            "xg": {
+                "av_policy_name": "default-smtp-av",
+                "device": "SFW",
+                "device_name": "XG230",
+                "dst_country_code": "DEU",
+                "log_component": "SMTP",
+                "log_id": 31106210001,
+                "log_subtype": "Virus",
+                "log_type": "Anti-Virus",
+                "mailid": "<20200520004312.Horde.lEUeVf2I6PwO5K5TtMndnC7@webmail.sevengayr",
+                "mailsize": 2254721,
+                "priority": "Critical",
+                "quarantine_reason": "Infected",
+                "src_country_code": "DEU",
+                "subject": "ZAHLUNG (PROFORMA INVOICE)",
+                "virus": "TR/AD.AgentTesla.eaz"
+            }
+        },
+        "source": {
+            "bytes": 0,
+            "domain": "farasamed.com",
+            "ip": "1.128.3.4",
+            "port": 56336,
+            "user": {
+                "email": "info@farasamed.com"
+            }
+        },
+        "tags": [
+            "forwarded",
+            "preserve_original_event",
+            "sophos-xg"
+        ],
+        "\\@timestamp": "2020-05-18T14:38:35"
+    }
+]

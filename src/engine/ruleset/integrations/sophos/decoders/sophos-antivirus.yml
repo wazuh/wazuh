@@ -105,4 +105,5 @@ normalize:
       - source.user.email: $~tmp.from_email_address
       - tags: [forwarded, preserve_original_event, sophos-xg]
       - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
+      - wazuh.decoders: +array_append/sophos-antivirus
       - ~tmp: +delete

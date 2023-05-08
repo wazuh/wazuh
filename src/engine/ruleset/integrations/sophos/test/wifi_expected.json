@@ -1,0 +1,74 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/sophos/xg.log",
+            "message": "device=\"SFW\" date=2017-02-01 time=14:17:35 timezone=\"IST\" device_name=\"SG115\" device_id=S110016E28BA631 log_id=106025618011 log_type=\"Wireless Protection\" log_component=\"Wireless Protection\" log_subtype=\"Information\" priority=Information ap=A40024A636F7862 ssid=SPIDIGO2015 clients_conn_SSID=2",
+            "origin": "/var/log/sophos/xg.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "sophos-wifi"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "device=\"SFW\" date=2017-02-01 time=14:17:35 timezone=\"IST\" device_name=\"SG115\" device_id=S110016E28BA631 log_id=106025618011 log_type=\"Wireless Protection\" log_component=\"Wireless Protection\" log_subtype=\"Information\" priority=Information ap=A40024A636F7862 ssid=SPIDIGO2015 clients_conn_SSID=2",
+            "kind": "event",
+            "module": "sophos",
+            "dataset": "sophos.xg",
+            "outcome": "success",
+            "severity": 6,
+            "timezone": "IST"
+        },
+        "host": {
+            "id": "001",
+            "name": "firewall.localgroup.local"
+        },
+        "fileset": {
+            "name": "xg"
+        },
+        "input": {
+            "type": "log"
+        },
+        "\\@timestamp": "2017-02-01T14:17:35",
+        "log": {
+            "level": "Information"
+        },
+        "observer": {
+            "product": "XG",
+            "serial_number": "S110016E28BA631",
+            "type": "firewall",
+            "vendor": "Sophos"
+        },
+        "sophos": {
+            "xg": {
+                "log_id": 106025618011,
+                "device_name": "SG115",
+                "log_type": "Wireless Protection",
+                "log_component": "Wireless Protection",
+                "log_subtype": "Information",
+                "priority": "Information",
+                "ap": "A40024A636F7862",
+                "ssid": "SPIDIGO2015"
+            }
+        },
+        "related": {
+            "host": [
+                "firewall.localgroup.local"
+            ]
+        },
+        "tags": [
+            "forwarded",
+            "preserve_original_even",
+            "sophos-xg"
+        ]
+    }
+]

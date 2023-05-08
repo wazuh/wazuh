@@ -13,7 +13,7 @@ metadata:
     - https://www.sonicwall.com/es-mx/support/technical-documentation
 
 sources:
-  - decoder/integrations/0
+  - decoder/sonicwall-syslog/0
 
 # Since the event is first parsed by the syslog, event.original is
 # not used here but the message field where the syslog saved the rest of the event information.

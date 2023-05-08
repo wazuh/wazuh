@@ -1,0 +1,4 @@
+undeom id=emullamc sn=tec time="2019/04/15 07:40:49" fw=10.29.118.7 pri=medium c=mveleum m=537 msg="accept1" f=exercita n=sBonorum src= 10.132.171.15 dst= 10.107.216.138:3147:lo5057:ugitsedq5067.internal.test proto=rdp sent=5943 rcvd=1635
+id=uaturve sn=amquisno time="2019/05/13 21:45:57" fw=10.123.74.66 pri=very-high c=mquiad m=351 msg="CSe" n=lors src=10.135.70.159 dst=10.195.223.82
+id=ritin sn=temporin time="2018-4-22 11:36:32" fw=10.122.76.148 pri=high c=tdol m=794 msg="upt" sid=mex spycat=tatem spypri=untutlab pktdatId=amcor n=ica src=10.13.66.97:2000:enp0s5411 dst=10.176.209.227:6362:eth7037 proto=ipv6/siu fw_action="allow"
+id=undeo sn=loremip time="2016-8-16 8:45:59" fw=10.134.0.141 pri=very-high c=uis m=1149 msg="idolore" n=onse fw_action="cancel"
