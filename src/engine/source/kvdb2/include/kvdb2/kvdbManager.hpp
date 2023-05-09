@@ -16,6 +16,8 @@
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 
+constexpr static const char* DEFAULT_CF_NAME {"default"};
+
 namespace metricsManager
 {
     class IMetricsManager;
@@ -44,6 +46,7 @@ public:
     ~KVDBManager() = default;
 
     void initialize();
+    void finalize();
 
     std::shared_ptr<IKVDBScope> getKVDBScope(const std::string& scopeName) override;
     std::shared_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
@@ -56,6 +59,7 @@ private:
      */
     void initializeOptions();
     void initializeMainDB();
+    void finalizeMainDB();
 
     friend class kvdbManager::KVDBScope;
 
@@ -72,8 +76,10 @@ private:
 
     rocksdb::Options m_rocksDBOptions;
     rocksdb::DB* m_pRocksDB;
-
     std::unique_ptr<KVDBHandlerCollection> m_kvdbHandlerCollection;
+    std::vector<rocksdb::ColumnFamilyDescriptor> m_cfDescriptors;
+    std::vector<rocksdb::ColumnFamilyHandle*> m_cfHandles;
+    std::map<std::string, rocksdb::ColumnFamilyHandle*> m_mapCFHandles;
 
     bool m_isInitialized { false };
     bool m_isDBLoaded { false };
