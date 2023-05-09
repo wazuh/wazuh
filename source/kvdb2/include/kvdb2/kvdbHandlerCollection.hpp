@@ -33,7 +33,7 @@ private:
 
 public:
     KVDBHandlerCollection(IKVDBHandlerManager* handleManager) : m_handleManager(handleManager) {}
-    std::shared_ptr<IKVDBHandler> getKVDBHandler(rocksdb::ColumnFamilyHandle* cfHandle, const std::string& dbName, const std::string& scopeName);
+    std::shared_ptr<IKVDBHandler> getKVDBHandler(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cfHandle, const std::string& dbName, const std::string& scopeName);
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName);
 
 private:
