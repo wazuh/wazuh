@@ -191,7 +191,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for request '%s'.", curr_request->tag);
 
-        wm_azure_parse_output(output, WM_AZURE_LOGGING_TOKEN);
+        wm_azure_parse_output(output, WM_AZURE_LOGTAG);
 
         os_free(command);
         os_free(output);
