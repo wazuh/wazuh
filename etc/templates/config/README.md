@@ -36,6 +36,8 @@
 
         localfile-commands.template
 
+        localfile-extra.template
+
         rules.template
     </ossec_config>
 
@@ -70,6 +72,8 @@
         localfile-logs*
 
         localfile-commands.template
+
+        localfile-extra.template
 
         <active-response>
           <disabled>no</disabled>

@@ -38,18 +38,17 @@ def cleanAll():
     Raises:
         - ValueError: Raises an exception.
     """
-    os.chdir(utils.rootPath())
     out = subprocess.run("make clean",
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True,
+                         check=False,
                          text=True)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanAll: PASSED]")
     else:
         print("make clean")
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[CleanAll: FAILED]")
         errorString = "Error Running CleanAll: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -72,12 +71,12 @@ def cleanExternals():
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0 and not out.stderr:
         utils.printGreen("[CleanExternals: PASSED]")
     else:
         print("rm -rf ./external/*")
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[CleanExternals: FAILED]")
         errorString = "Error Running CleanExternals: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -109,12 +108,12 @@ def cleanFolder(moduleName, additionalFolder, folderName=""):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              shell=True,
-                             check=True)
+                             check=False)
         if out.returncode == 0 and not out.stderr:
             utils.printGreen(msg="[Cleanfolder {}: PASSED]".format(folderName))
         else:
             print(cleanFolderCommand)
-            print(out.stderr)
+            print(out.stderr.decode('utf-8','replace'))
             utils.printFail(msg="[Cleanfolder {}: FAILED]".format(folderName))
             errorString = "Error Running Cleanfolder: {}".format(
                 out.returncode)
@@ -144,17 +143,45 @@ def cleanInternals():
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True,
+                         check=False,
                          text=True)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanInternals: PASSED]")
     else:
         print("make clean-internals")
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[CleanInternals: FAILED]")
         errorString = "Error Running CleanInternals: {}".format(out.returncode)
         raise ValueError(errorString)
 
+def cleanWindows():
+    """
+    Execute the command 'make clean-windows' in the operating system.
+
+    Args:
+        - None
+
+    Returns:
+        - None
+
+    Raises:
+        - ValueError: Raises an exception.
+    """
+    os.chdir(utils.rootPath())
+    out = subprocess.run("make clean-windows",
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         shell=True,
+                         check=False,
+                         text=True)
+    if out.returncode == 0:
+        utils.printGreen(msg="[CleanWindows: PASSED]")
+    else:
+        print("make clean-windows")
+        print(out.stderr.decode('utf-8','replace'))
+        utils.printFail(msg="[CleanWindows: FAILED]")
+        errorString = "Error Running CleanWindows: {}".format(out.returncode)
+        raise ValueError(errorString)
 
 def cleanLib(moduleName):
     """
@@ -177,12 +204,12 @@ def cleanLib(moduleName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         utils.printGreen(msg="[CleanLib: PASSED]")
     else:
         print("make -C {} clean".format(moduleName))
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[CleanLib: FAILED]")
         errorString = "Error Running CleanLib: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -231,13 +258,13 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     os.chdir(utils.rootPath())
     if out.returncode == 0 and not out.stderr:
         utils.printGreen(msg="[ConfigureCMake: PASSED]")
     else:
         print(configureCMakeCommand)
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[ConfigureCMake: FAILED]")
         errorString = "Error Running ConfigureCMake: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -280,19 +307,19 @@ def makeDeps(targetName, srcOnly):
     """
     utils.printSubHeader(moduleName=targetName,
                          headerKey="makeDeps")
-    makeDepsCommand = "make deps TARGET={} -j4".format(targetName)
+    makeDepsCommand = "make deps TARGET={} -j{}".format(targetName, utils.getCpuCores())
     if srcOnly:
         makeDepsCommand += " EXTERNAL_SRC_ONLY=yes"
     out = subprocess.run(makeDepsCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         utils.printGreen(msg="[MakeDeps: PASSED]")
     else:
         print(makeDepsCommand)
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[MakeDeps: FAILED]")
         errorString = "Error Running MakeDeps: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -314,7 +341,7 @@ def makeLib(moduleName):
     Example:
         makeLib("syscheckd")
     """
-    command = "make -C {}".format(utils.moduleDirPathBuild(moduleName))
+    command = "make -C {} -j{}".format(utils.moduleDirPathBuild(moduleName), utils.getCpuCores())
     utils.printSubHeader(moduleName=moduleName,
                          headerKey="make")
 
@@ -322,11 +349,11 @@ def makeLib(moduleName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode != 0:
         print(command)
-        print(out.stdout)
-        print(out.stderr)
+        print(out.stdout.decode('utf-8','replace'))
+        print(out.stderr.decode('utf-8','replace'))
         errorString = "Error compiling library: {}".format(out.returncode)
         raise ValueError(errorString)
     utils.printGreen(msg="[make: PASSED]")
@@ -358,17 +385,17 @@ def makeTarget(targetName, tests, debug):
         makeTargetCommand += " TEST=1"
     if debug:
         makeTargetCommand += " DEBUG=1"
-    makeTargetCommand += " -j4"
+    makeTargetCommand += " -j{}".format(utils.getCpuCores())
     out = subprocess.run(makeTargetCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         utils.printGreen(msg="[MakeTarget: PASSED]")
     else:
         print(makeTargetCommand)
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[MakeTarget: FAILED]")
         errorString = "Error Running MakeTarget: {}".format(out.returncode)
         raise ValueError(errorString)

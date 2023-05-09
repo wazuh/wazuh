@@ -75,10 +75,6 @@ def runASAN(moduleName, testToolConfig):
     """
     utils.printHeader(moduleName,
                       headerKey="asan")
-    build_tools.cleanInternals()
-    build_tools.makeTarget(targetName="agent",
-                           tests=False,
-                           debug=True)
     build_tools.cleanFolder(moduleName=moduleName,
                             additionalFolder="build")
     build_tools.configureCMake(moduleName=moduleName,
@@ -128,7 +124,7 @@ def runAStyleCheck(moduleName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0 and not out.stderr:
         stdoutString = str(out.stdout)
 
@@ -144,7 +140,7 @@ def runAStyleCheck(moduleName):
             raise ValueError("Code is not complaint with the expected \
                               guidelines")
     else:
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[AStyle Check: FAILED]")
         errorString = "Error Running AStyle: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -173,11 +169,11 @@ def runAStyleFormat(moduleName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0 and not out.stderr:
         utils.printGreen(msg="[AStyle Format: PASSED]")
     else:
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[AStyle Format: FAILED]")
         errorString = "Error Running AStyle Format: {}"\
                       .format(out.returncode)
@@ -235,11 +231,11 @@ def runCoverage(moduleName):
     out = subprocess.run(coverageCommand,
                          stdout=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         utils.printGreen(msg="[lcov info: GENERATED]")
     else:
-        print(out.stdout)
+        print(out.stdout.decode('utf-8','replace'))
         utils.printFail(msg="[lcov: FAILED]")
         errorString = "Error Running lcov: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -248,12 +244,12 @@ def runCoverage(moduleName):
     out = subprocess.run(genhtmlCommand,
                          stdout=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         utils.printGreen(msg="[genhtml info: GENERATED]")
         utils.printGreen(msg="Report: {}/index.html".format(reportFolder))
     else:
-        print(out.stdout)
+        print(out.stdout.decode('utf-8','replace'))
         utils.printFail(msg="[genhtml: FAILED]")
         errorString = "Error Running genhtml: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -283,11 +279,12 @@ def runCppCheck(moduleName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0 and not out.stderr:
         utils.printGreen(msg="[Cppcheck: PASSED]")
     else:
-        print(out.stderr)
+        print(out.stdout.decode('utf-8','replace'))
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[Cppcheck: FAILED]")
         errorString = "Error Running cppcheck: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -300,62 +297,65 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     Args:
         - moduleName: Library to be built and analyzed.
         - clean: Delete logs.
-        - target: Build type. <agent, winagent, manager>
+        - target: Build type. <agent, winagent, server>
 
     Returns:
         - None
     """
     utils.printHeader(moduleName=moduleName,
                       headerKey="rtr")
+
+    # We first run the fastest tests
     runCppCheck(moduleName=moduleName)
     runAStyleCheck(moduleName=moduleName)
+
+    # Making a full clean, downloading external dependencies and
+    # building the corresponding target with tests flag enabled
     build_tools.cleanAll()
     build_tools.makeDeps(targetName=target,
                          srcOnly=False)
     build_tools.makeTarget(targetName=target,
                            tests=True,
                            debug=True)
+
+    # Running UTs and coverage
     runTests(moduleName=moduleName)
-    build_tools.cleanFolder(moduleName=moduleName,
-                            additionalFolder="build")
-    build_tools.configureCMake(moduleName=moduleName,
-                               debugMode=True,
-                               testMode=(False, True)
-                               [moduleName != "shared_modules/utils"],
-                               withAsan=False)
-    if target != "winagent":
-        build_tools.makeLib(moduleName=moduleName)
-        runValgrind(moduleName=moduleName)
+    # The coverage for these modules in 'winagent' target will be added in #17008
+    if (target == 'winagent' and moduleName == 'data_provider') or \
+       (target == 'winagent' and moduleName == 'shared_modules/utils'):
+        utils.printInfo(msg="Skipping coverage for {} in {} target".format(
+                        moduleName, target))
+    else:
         runCoverage(moduleName=moduleName)
+
+    # We run valgrind for all targets except Windows
+    # The memory analysis for Wine will be enabled in #17018
+    if target != "winagent":
+        runValgrind(moduleName=moduleName)
+
+    # For the following tests we don't require the tests flag
+    build_tools.cleanInternals()
+    if target == "winagent":
+        build_tools.cleanWindows()
+    build_tools.makeTarget(targetName=target,
+                           tests=False,
+                           debug=True)
+
     configPath = os.path.join(utils.currentPath(),
                               "input/test_tool_config.json")
     smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
-    if target == "winagent":
-        build_tools.cleanAll()
-        build_tools.cleanExternals()
-        build_tools.makeDeps(targetName="agent", srcOnly=False)
-        build_tools.makeTarget(targetName="agent", tests=False, debug=True)
-        build_tools.cleanFolder(moduleName=moduleName,
-                                additionalFolder="build")
-    if moduleName != "shared_modules/utils":
-        runASAN(moduleName=moduleName,
-                testToolConfig=smokeTestConfig)
-    if moduleName == "syscheckd":
+    # We run the test tool for syscheckd in Windows
+    if moduleName == 'syscheckd' and target == 'winagent':
         runTestToolForWindows(moduleName=moduleName,
                               testToolConfig=smokeTestConfig)
         runTestToolCheck(moduleName=moduleName)
-    if moduleName != "syscheckd":
-        build_tools.cleanAll()
-        build_tools.cleanExternals()
-    if target != "winagent":
-        utils.printHeader(moduleName=moduleName,
-                          headerKey="winagentTests")
-        build_tools.makeDeps(targetName="winagent",
-                             srcOnly=False)
-        build_tools.makeTarget(targetName="winagent",
-                               tests=True,
-                               debug=True)
-        runTests(moduleName=moduleName)
+
+    # The ASAN check is in the end. It builds again the module but with the ASAN flag
+    # and runs the test tool.
+    # Running this type of check in Windows will be analyzed in #17019
+    if moduleName != "shared_modules/utils" and target != "winagent":
+        runASAN(moduleName=moduleName,
+                testToolConfig=smokeTestConfig)
     if clean:
         os.chdir(os.path.join(utils.rootPath(), moduleName))
         utils.deleteLogs(moduleName=moduleName)
@@ -386,6 +386,7 @@ def runScanBuild(targetName):
     build_tools.makeTarget(targetName=targetName,
                            tests=False,
                            debug=True)
+    # We don't call cleanWindows() for scan-build.
     build_tools.cleanInternals()
     if targetName == "winagent":
         scanBuildCommand = "scan-build --status-bugs \
@@ -403,14 +404,14 @@ def runScanBuild(targetName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode != 0:
         utils.printFail(msg="[ScanBuild: FAILED]")
         print(scanBuildCommand)
         if out.returncode == 1:
-            print(out.stdout)
+            print(out.stdout.decode('utf-8','replace'))
         else:
-            print(out.stderr)
+            print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[SCANBUILD: FAILED]")
         errorString = "Error Running Scan-build: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -458,11 +459,11 @@ def runTestTool(moduleName, testToolCommand, element):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     os.chdir(cwd)
     if out.returncode != 0:
         print(testToolCommand)
-        print(out.stderr)
+        print(out.stderr.decode('utf-8','replace'))
         utils.printFail(msg="[TestTool: FAILED]")
         errorString = "Error Running TestTool: {}".format(out.returncode)
         raise ValueError(errorString)
@@ -483,35 +484,29 @@ def runTestToolForWindows(moduleName, testToolConfig):
     Raises:
         - None
     """
-    utils.printHeader(moduleName, headerKey="wintests")
-    build_tools.cleanAll()
-    build_tools.cleanExternals()
-    build_tools.makeDeps(targetName="winagent",
-                         srcOnly=False)
-    build_tools.makeTarget(targetName="winagent",
-                           tests=False,
-                           debug=True)
+    utils.printHeader(moduleName, headerKey="wintesttool")
     winModuleName = "win" + moduleName
     module = testToolConfig[winModuleName]
     rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
                             "bin")
-    if moduleName == "syscheckd":
-        libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
-                                path=utils.rootPath())
-        rsync = utils.findFile(name="rsync.dll",
-                               path=utils.rootPath())
-        dbsync = utils.findFile(name="dbsync.dll",
-                                path=utils.rootPath())
-        stdcpp = utils.findFile(name="libstdc++-6.dll",
-                                path=utils.rootPath())
-        shutil.copyfile(libgcc,
-                        os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
-        shutil.copyfile(rsync,
-                        os.path.join(rootPath, "rsync.dll"))
-        shutil.copyfile(dbsync,
-                        os.path.join(rootPath, "dbsync.dll"))
-        shutil.copyfile(stdcpp,
-                        os.path.join(rootPath, "libstdc++-6.dll"))
+
+    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
+                            path=utils.rootPath())
+    rsync = utils.findFile(name="rsync.dll",
+                            path=utils.rootPath())
+    dbsync = utils.findFile(name="dbsync.dll",
+                            path=utils.rootPath())
+    stdcpp = utils.findFile(name="libstdc++-6.dll",
+                            path=utils.rootPath())
+    shutil.copyfile(libgcc,
+                    os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
+    shutil.copyfile(rsync,
+                    os.path.join(rootPath, "rsync.dll"))
+    shutil.copyfile(dbsync,
+                    os.path.join(rootPath, "dbsync.dll"))
+    shutil.copyfile(stdcpp,
+                    os.path.join(rootPath, "libstdc++-6.dll"))
+
     for element in module:
         path = os.path.join(rootPath, element['test_tool_name'])
         args = " ".join(element['args'])
@@ -554,6 +549,8 @@ def runTests(moduleName):
     for entry in objects:
         if entry.is_file() and bool(re.match(reg, entry.name)):
             tests.append(entry.name)
+
+    cwd = os.getcwd()
     if len(tests) > 0:
         os.chdir(currentDir)
         for test in tests:
@@ -586,12 +583,12 @@ def runTests(moduleName):
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
                                  shell=True,
-                                 check=True)
+                                 check=False)
             if out.returncode == 0:
                 utils.printGreen(msg="[{}: PASSED]".format(test))
             else:
-                print(out.stdout)
-                print(out.stderr)
+                print(out.stdout.decode('utf-8','replace'))
+                print(out.stderr.decode('utf-8','replace'))
                 utils.printFail(msg="[{}: FAILED]".format(test))
                 errorString = "Error Running test: {}".format(out.returncode)
                 raise ValueError(errorString)
@@ -601,6 +598,8 @@ def runTests(moduleName):
     else:
         errorString = "Error Running tests"
         raise ValueError(errorString)
+
+    os.chdir(cwd)
 
 
 def runTestToolCheck(moduleName):
@@ -632,7 +631,7 @@ def runTestToolCheck(moduleName):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              shell=True,
-                             check=True)
+                             check=False)
         if out.returncode == 0:
             utils.printGreen(msg="[TestTool check: PASSED]")
     except Exception as e:
@@ -682,12 +681,12 @@ def runValgrind(moduleName):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              shell=True,
-                             check=True)
+                             check=False)
         if out.returncode == 0:
             utils.printGreen(msg="[{} : PASSED]".format(test))
         else:
-            print(out.stdout)
-            print(out.stderr)
+            print(out.stdout.decode('utf-8','replace'))
+            print(out.stderr.decode('utf-8','replace'))
             utils.printFail(msg="[{} : FAILED]".format(test))
             errorString = "Error Running valgrind: {}".format(out.returncode)
             raise ValueError(errorString)

@@ -75,7 +75,7 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     module->data = azure;
 
     if (!nodes) {
-        mwarn("Empty configuration at module '%s'.", WM_AZURE_CONTEXT.name);
+        merror("Empty configuration at module '%s'.", WM_AZURE_CONTEXT.name);
         return OS_INVALID;
     }
 

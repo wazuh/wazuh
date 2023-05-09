@@ -872,27 +872,59 @@ def check_remote_commands(data: str):
         check_section(command_section, section='wodle_command', split_section='<wodle name=\"command\">')
 
 
-def check_disabled_limits_in_conf(data):
-    """Check if Wazuh limits are allowed.
+def check_wazuh_limits_unchanged(new_conf, original_conf):
+    """Check if Wazuh limits remain unchanged.
 
     Parameters
     ----------
-    data : str
-        Configuration file.
+    new_conf : str
+        New configuration file.
+    original_conf : str
+        Original configuration file.
 
     Raises
     -------
     WazuhError(1127)
-        Raised if one of the disabled limits is present in the configuration to upload.
+        Raised if one of the protected limits is modified in the configuration to upload.
     """
-    def check_section(section_name):
-        if re.findall(pattern=r'<global>.*<limits>.*<{0}>.*</{0}>.*</limits>.*</global>'.format(section_name),
-                      string=data, flags=re.MULTILINE | re.DOTALL | re.IGNORECASE):
-            raise WazuhError(1127, extra_message=f"global > limits > {section_name}")
 
-    blocked_configurations = configuration.api_conf['upload_configuration']
-    for disabled_limit in [conf for conf, allowed in blocked_configurations['limits'].items() if not allowed['allow']]:
-        check_section(disabled_limit)
+    def xml_to_dict(conf, section_name):
+        """Convert XML to list of dictionaries.
+
+        Parameters
+        ----------
+        conf : str
+            XML configuration file.
+        section_name : str
+            Name of the section to extract from the configuration file.
+
+        Returns
+        -------
+        matched_configurations : list
+            Dictionaries with the configuration.
+        """
+        matched_configurations = []
+
+        for str_conf in re.findall(r'<ossec_config>.*?</ossec_config>', conf, re.MULTILINE | re.DOTALL | re.IGNORECASE):
+            ossec_config_section = fromstring(str_conf)
+            for global_section in ossec_config_section.iter('global'):
+                for limits_section in global_section.iter('limits'):
+                    for section in limits_section.iter(section_name):
+                        section_dict = {section.tag: {}}
+                        for config in section:
+                            section_dict[section.tag].update({config.tag: {'attrib': config.attrib,
+                                                                           'value': config.text.strip()}})
+                        matched_configurations.append(section_dict)
+
+        return matched_configurations
+
+    limits_configuration = configuration.api_conf['upload_configuration']['limits']
+    for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
+        new_limits = xml_to_dict(new_conf, disabled_limit)
+        original_limits = xml_to_dict(original_conf, disabled_limit)
+
+        if len(new_limits) != len(original_limits) or any(x != y for x, y in zip(new_limits, original_limits)):
+            raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
 
 
 def load_wazuh_xml(xml_path, data=None):
@@ -1901,7 +1933,9 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         # Check if remote commands are allowed if it is a configuration file
         if config_file:
             check_remote_commands(final_xml)
-            check_disabled_limits_in_conf(final_xml)
+            with open(common.OSSEC_CONF, 'r') as f:
+                current_xml = f.read()
+            check_wazuh_limits_unchanged(final_xml, current_xml)
         # Check xml format
         load_wazuh_xml(xml_path='', data=final_xml)
     except ExpatError:

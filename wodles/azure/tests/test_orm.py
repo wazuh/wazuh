@@ -123,7 +123,9 @@ def test_update_row_ko(create_and_teardown_db):
     (os.path.join(test_last_dates_path, 'last_dates_log_analytics.json')),
     (os.path.join(test_last_dates_path, 'last_dates_storage.json')),
     (os.path.join(test_last_dates_path, 'last_dates_old.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_clean.json'))
+    (os.path.join(test_last_dates_path, 'last_dates_clean.json')),
+    (os.path.join(test_last_dates_path, 'last_dates_with_invalid_min_max.json')),
+    (os.path.join(test_last_dates_path, 'last_dates_old_invalid_value.json'))
 ])
 def test_load_dates_json(last_dates_file_path):
     """Check the load_dates_json function properly loads the contents of the files, regardless of their structure as
@@ -213,3 +215,50 @@ def test_migrate_from_last_dates_file(last_dates_file_path, create_and_teardown_
                 except (KeyError, TypeError):
                     # Old last_dates.json structure
                     assert test_file_contents[table.__tablename__][item.md5] == item.max_processed_date
+
+
+def test_min_max_valid():
+    json_content = {"min": "2022-03-07T15:12:56.98Z", "max": "2022-03-17T15:12:56.98Z"}
+
+    result = orm.get_min_max_values(json_content)
+    assert result == json_content
+
+
+def test_min_max_invalid_min():
+    json_content = {"min": "0", "max": "2022-03-17T15:12:56.98Z"}
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": json_content["max"], "max": json_content["max"]}
+
+
+def test_min_max_invalid_max():
+    json_content = {"min": "2022-03-17T15:12:56.98Z", "max": "0"}
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": json_content["min"], "max": json_content["min"]}
+
+
+def test_min_max_invalid_max_and_min(monkeypatch):
+    json_content = {"min": "0", "max": "0"}
+    expected_value = orm.get_default_min_max_values()
+    monkeypatch.setattr(orm, "get_default_min_max_values", lambda: expected_value)
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": expected_value, "max": expected_value}
+
+
+def test_min_max_valid_old_format():
+    json_content = "2022-03-04T15:12:56.98Z"
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": json_content, "max": json_content}
+
+
+def test_min_max_invalid_old_format(monkeypatch):
+    json_content = "0"
+    expected_value = orm.get_default_min_max_values()
+    monkeypatch.setattr(orm, "get_default_min_max_values", lambda: expected_value)
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": expected_value, "max": expected_value}
+

@@ -77,7 +77,7 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
     gcp = module->data;
 
     if (!nodes) {
-        mwarn("Empty configuration at module '%s'.", WM_GCP_PUBSUB_CONTEXT.name);
+        merror("Empty configuration at module '%s'.", WM_GCP_PUBSUB_CONTEXT.name);
         return OS_INVALID;
     }
 
@@ -126,14 +126,14 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
             } else {
                 const char * const realpath_buffer_ref = realpath(nodes[i]->content, realpath_buffer);
                 if (!realpath_buffer_ref) {
-                    mwarn("File '%s' from tag '%s' not found.", realpath_buffer, XML_CREDENTIALS_FILE);
+                    merror("File '%s' from tag '%s' not found.", realpath_buffer, XML_CREDENTIALS_FILE);
                     return OS_INVALID;
                 }
             }
 
             // Beware of IsFile inverted, twisted logic.
             if (IsFile(realpath_buffer)) {
-                mwarn("File '%s' not found. Check your configuration.", realpath_buffer);
+                merror("File '%s' not found. Check your configuration.", realpath_buffer);
                 return OS_INVALID;
             }
 
@@ -237,7 +237,7 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     gcp = module->data;
 
     if (!nodes) {
-        mwarn("Empty configuration at module '%s'.", WM_GCP_BUCKET_CONTEXT.name);
+        merror("Empty configuration at module '%s'.", WM_GCP_BUCKET_CONTEXT.name);
         return OS_INVALID;
     }
 
@@ -370,7 +370,7 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                     } else {
                         const char * const realpath_buffer_ref = realpath(children[j]->content, realpath_buffer);
                         if (!realpath_buffer_ref) {
-                            mwarn("File '%s' from tag '%s' not found.", realpath_buffer, XML_CREDENTIALS_FILE);
+                            merror("File '%s' from tag '%s' not found.", realpath_buffer, XML_CREDENTIALS_FILE);
                             OS_ClearNode(children);
                             return OS_INVALID;
                         }
@@ -378,7 +378,7 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
 
                     // Beware of IsFile inverted, twisted logic.
                     if (IsFile(realpath_buffer)) {
-                        mwarn("File '%s' not found. Check your configuration.", realpath_buffer);
+                        merror("File '%s' not found. Check your configuration.", realpath_buffer);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
@@ -416,7 +416,7 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         return OS_INVALID;
     }
     if (!gcp->buckets) {
-        mwarn("No buckets or services definitions found at module '%s'.", WM_GCP_BUCKET_CONTEXT.name);
+        merror("No buckets or services definitions found at module '%s'.", WM_GCP_BUCKET_CONTEXT.name);
         return OS_INVALID;
     }
 

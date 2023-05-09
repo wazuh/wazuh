@@ -97,6 +97,10 @@ typedef struct _Eventinfo {
     EventNode *node;
     // Process thread id
     int tid;
+
+    /* Pointer to the previous rule matched */
+    void *prev_rule;
+
 } Eventinfo;
 
 /* Events List structure */
