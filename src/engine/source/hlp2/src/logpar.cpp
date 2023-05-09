@@ -854,7 +854,6 @@ parsec::Parser<jFnList> Logpar::build(std::string_view logpar) const
                 msg += "| offset: " + std::to_string(t.getOffset()) + " | ";
                 msg += t.getMessage() + "\n";
             }
-
             throw std::runtime_error(msg);
         }
         throw std::runtime_error("Unknown error, no traces");

@@ -123,27 +123,27 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderHelperSaveNetInfoIPv4, "sysc_ni_save_ipv4");
     helperRegistry->registerBuilder(builders::opBuilderHelperSaveNetInfoIPv6, "sysc_ni_save_ipv6");
 
-    // High level parsers
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBoolParse, "parse_bool");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPByteParse, "parse_byte");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPLongParse, "parse_long");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPFloatParse, "parse_float");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPDoubleParse, "parse_double");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBinaryParse, "parse_binary");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPDateParse, "parse_date");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPIPParse, "parse_ip");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPURIParse, "parse_uri");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPUserAgentParse, "parse_useragent");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPFQDNParse, "parse_fqdn");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPFilePathParse, "parse_file");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPJSONParse, "parse_json");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPXMLParse, "parse_xml");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPCSVParse, "parse_csv");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPDSVParse, "parse_dsv");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPKeyValueParse, "parse_key_value");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPQuotedParse, "parse_quoted");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBetweenParse, "parse_between");
-    helperRegistry->registerBuilder(builders::opBuilderSpecificHLPAlphanumericParse, "parse_alphanumeric");
+    // High level parsers TODO: Fixed whens the parsers are fixed 
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBoolParse, "parse_bool");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPByteParse, "parse_byte");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPLongParse, "parse_long");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPFloatParse, "parse_float");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPDoubleParse, "parse_double");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBinaryParse, "parse_binary");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPDateParse, "parse_date");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPIPParse, "parse_ip");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPURIParse, "parse_uri");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPUserAgentParse, "parse_useragent");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPFQDNParse, "parse_fqdn");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPFilePathParse, "parse_file");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPJSONParse, "parse_json");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPXMLParse, "parse_xml");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPCSVParse, "parse_csv");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPDSVParse, "parse_dsv");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPKeyValueParse, "parse_key_value");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPQuotedParse, "parse_quoted");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPBetweenParse, "parse_between");
+    // helperRegistry->registerBuilder(builders::opBuilderSpecificHLPAlphanumericParse, "parse_alphanumeric");
 
     // Upgrade Confirmation
     helperRegistry->registerBuilder(builders::opBuilderHelperSendUpgradeConfirmation, "send_upgrade_confirmation");

@@ -13,7 +13,7 @@
 // **********************************************************************************************************************
 namespace {
 
-using jFnList = hlp::logpar::fnList<json::Json>;
+using jFnList = hlp::jFnList;
 
 // parseQuotedString
 // Parser para cadenas de texto entre comillas dobles

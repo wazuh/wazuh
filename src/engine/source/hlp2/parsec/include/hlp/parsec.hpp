@@ -40,7 +40,6 @@ class ParserState final
 private:
     std::string_view m_data; ///< The stream of data to be parsed
     std::size_t m_pos;       ///< The current position in the data, pointing to the next character to be parsed
-    std::size_t m_maxPos;    ///< The maximum position in the data, this is used to limit the parser to a certain size
     bool m_enableTraces;     ///< Enable traces for the input
 
 public:
@@ -55,7 +54,6 @@ public:
     ParserState(std::string_view data, bool enableTraces = false)
         : m_data(data)
         , m_pos(0)
-        , m_maxPos(data.size())
         , m_enableTraces(enableTraces) {};
 
     /**
@@ -67,12 +65,12 @@ public:
     ParserState& advance(std::size_t offset)
     {
         m_pos += offset;
-        if (m_pos > m_maxPos)
+        if (m_pos > m_data.size())
         {
             throw std::runtime_error(fmt::format("ParserState::advance: The position '{}' is greater than the maximum "
                                                  "position '{}' for the input: '{}'",
                                                  m_pos,
-                                                 m_maxPos,
+                                                 m_data.size(),
                                                  m_data));
         }
         return *this;
@@ -119,7 +117,7 @@ public:
      *
      * @return std::size_t
      */
-    std::size_t getRemainingSize() const { return m_maxPos - m_pos; }
+    std::size_t getRemainingSize() const { return m_data.size() - m_pos; }
 
     /**
      * @brief Check if the trace is enabled
@@ -393,6 +391,15 @@ public:
         auto traces = std::move(m_traces.value());
         m_traces.reset();
         return std::move(traces);
+    }
+
+    const std::list<TraceP>& getTraces() const
+    {
+        if (!m_traces.has_value())
+        {
+            throw std::runtime_error("ResultP::getTraces() called on a result with no traces");
+        }
+        return m_traces.value();
     }
 
     /**

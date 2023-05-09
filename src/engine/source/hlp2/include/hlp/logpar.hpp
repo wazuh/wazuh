@@ -10,6 +10,8 @@
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
 
+#include "commonDef.hpp"
+
 namespace hlp
 {
 /**
@@ -225,16 +227,6 @@ constexpr auto strToParserType(std::string_view str)
 
 namespace logpar
 {
-/**
- * @brief Result of a mergeable parser, returns a list of a callback functions to be called
- *       when the parser is finished to get the result in one object.
- *
- * @tparam T Type of the result
- */
-template<typename T>
-using fnList = std::deque<std::function<void(T&)>>;
-using jFnList = fnList<json::Json>;
-
 
 namespace syntax
 {

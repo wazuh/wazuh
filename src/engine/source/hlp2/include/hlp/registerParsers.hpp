@@ -8,6 +8,7 @@ namespace hlp
 {
 inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
 {
+    /*
     // Numeric
     logpar->registerBuilder(ParserType::P_LONG, hlp::getLongParser);
     logpar->registerBuilder(ParserType::P_DOUBLE, hlp::getDoubleParser);
@@ -37,6 +38,7 @@ inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
     logpar->registerBuilder(ParserType::P_FILE, hlp::getFilePathParser);
     logpar->registerBuilder(ParserType::P_IGNORE, hlp::getIgnoreParser);
     logpar->registerBuilder(ParserType::P_ALPHANUMERIC, hlp::getAlphanumericParser);
+    */
 }
 
 } // namespace hlp

@@ -92,7 +92,8 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
         hlpOptionsList.emplace_back(parameter.m_value);
     }
 
-    parsec::Parser<json::Json> parser;
+    parsec::Parser<hlp::jFnList> parser;
+    /*
     switch (type)
     {
         case HLPParserType::ALPHANUMERIC: parser = hlp::getAlphanumericParser({}, {""}, hlpOptionsList); break;
@@ -118,7 +119,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
         case HLPParserType::KV: parser = hlp::getKVParser({}, {""}, hlpOptionsList); break;
         default: throw std::logic_error("Invalid HLP parser type");
     }
-
+    */
     const std::string traceName {helper::base::formatHelperName(rawName, targetField, parameters)};
     const std::string successTrace {fmt::format("[{}] -> Success", traceName)};
     const std::string failureTrace {fmt::format("[{}] -> Failure: ", traceName)};
@@ -141,20 +142,39 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
             }
 
             // Parse source
-            const auto result = parser(sourceValue.value(), 0);
-            if (result.failure())
+            auto state = parsec::ParserState(sourceValue.value(), false); // Debug level
+            const auto result = parser(state);
+            // TODO: move this to a function in parsec
+            std::string trace {};
+            if (result.hasTraces())
             {
-                return base::result::makeFailure(event, failureTrace + result.error());
+                trace += ":\n";
+                for (const auto& t : result.getTraces())
+                {
+                    // TODO: check if the order is necesary
+                    // Format: [order]: | offset: [offset] | [message]
+                    trace += fmt::format("{:4}: | offset: {:3} | {}\n", t.getOrder(), t.getOffset(), t.getMessage());
+                }
+                trace.pop_back(); // Remove last \n
+            }
+
+            if (result.isFailure())
+            {
+                return base::result::makeFailure(event, failureTrace + trace);
             }
 
             // Check if has a remaining string
-            if (result.index() != sourceValue.value().size())
+            if (result.getParserState().getRemainingSize() != 0)
             {
                 return base::result::makeFailure(event, failureTrace3);
             }
 
             // Add result to event
-            event->set(targetField, result.value());
+
+            for (const auto& fn : result.getValue())
+            {
+                fn(*event); // The target field is set in parser builder
+            }
             return base::result::makeSuccess(event, successTrace);
         });
 }

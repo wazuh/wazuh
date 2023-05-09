@@ -11,6 +11,7 @@ namespace builder::internals::builders
 
 Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t debugLvl)
 {
+    // TODO: Implement debug level
     if (debugLvl != 0 && debugLvl != 1)
     {
         throw std::runtime_error("[builder::opBuilderLogParser] Invalid debug level: expected 0 or 1");
@@ -59,7 +60,7 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar, size_
             auto logparExpr = std::get<1>(itemObj[0]).getString().value();
             logparExpr = definitions->replace(logparExpr);
 
-            parsec::Parser<json::Json> parser;
+            parsec::Parser<hlp::jFnList> parser;
             try
             {
                 parser = logpar->build(logparExpr);
@@ -98,27 +99,36 @@ Builder getOpBuilderLogParser(std::shared_ptr<hlp::logpar::Logpar> logpar, size_
                         }
 
                         auto ev = event->getString(field).value();
-                        auto parseResult = parser(ev, 0);
-                        if (parseResult.failure())
-                        {
-                            return base::result::makeFailure(
-                                std::move(event),
-                                failureTrace2 + parsec::formatTrace(ev, parseResult.trace(), debugLvl));
-                        }
+                        auto parseResult = parser(parsec::ParserState(ev, debugLvl));
 
-                        auto val = parseResult.value();
-                        if (!val.isNull() && val.size() > 0)
+
+                        // TODO: move this to a function in parsec
+                        std::string trace {};
+                        if (parseResult.hasTraces())
                         {
-                            // event->merge(val);
-                            auto obj = val.getObject().value();
-                            for (auto& [key, value] : obj)
+                            trace += "\n";
+                            for (const auto& t : parseResult.getTraces())
                             {
-                                auto formatKey = json::Json::formatJsonPath(key);
-                                event->set(formatKey, value);
+                                // TODO: check if the order is necesary
+                                // Format: [order]: | offset: [offset] | [message]
+                                trace += fmt::format(
+                                    "{:4}: | offset: {:3} | {}\n", t.getOrder(), t.getOffset(), t.getMessage());
                             }
                         }
 
-                        return base::result::makeSuccess(std::move(event), successTrace);
+                        if (parseResult.isFailure())
+                        {
+                            trace = failureTrace2 + (trace.empty() ? "No traces" : trace);
+                            return base::result::makeFailure(std::move(event), trace);
+                        }
+
+                        auto listFn = parseResult.popValue();
+                        for(const auto& fn : listFn) {
+                            fn(*event); // TODO: check if this is the correct way to do it
+                        }
+
+                        // TODO Implement a better way to get the optional trace
+                        return base::result::makeSuccess(std::move(event), successTrace + trace);
                     });
             }
             catch (const std::exception& e)
