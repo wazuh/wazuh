@@ -10,8 +10,8 @@ using namespace metricsManager;
 namespace
 {
 
-const std::string KVDB_PATH {"/tmp/"};
-const std::string KVDB_DB_FILENAME {"testDB"};
+const std::string KVDB_PATH {"/tmp/kvdbTestSuitePath/"};
+const std::string KVDB_DB_FILENAME {"TEST_DB"};
 
 class KVDB2Test : public ::testing::Test
 {
@@ -58,8 +58,8 @@ TEST_F(KVDB2Test, ScopeTest)
 {
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
     auto handler = scope->getKVDBHandler("db_test");
-    bool result = handler->add("key1");
-    ASSERT_TRUE(result);
+    auto result = handler->add("key1");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
 
     auto result1 = handler->contains("key1");
     ASSERT_TRUE(std::holds_alternative<bool>(result1));
@@ -70,6 +70,8 @@ TEST_F(KVDB2Test, ScopeTest)
     auto result3 = handler->get("key1");
     ASSERT_TRUE(std::holds_alternative<std::string>(result3));
     ASSERT_EQ(std::get<std::string>(result3), "value");
+
+    m_spKVDBManager->removeKVDBHandler("db_test", "scope1");
 }
 
 } // namespace
