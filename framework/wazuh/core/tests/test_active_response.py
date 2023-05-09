@@ -69,6 +69,25 @@ def agent_config(expected_exception):
 
 # Tests
 
+@pytest.mark.parametrize('agent_version, builder_type', [
+    ('Wazuh v4.2.0', active_response.ARJsonMessage),
+    ('Wazuh v4.3.0', active_response.ARJsonMessage),
+    ('Wazuh v4.1.0', active_response.ARStrMessage)
+])
+def test_correct_builder_is_used(agent_version, builder_type):
+    """Test if the correct builder is used based on the agent version.
+
+    Parameters
+    ----------
+    agent_version : str
+        The version of the agent.
+    builder_type : Type[active_response.ARMessageBuilder]
+        The expected type of the builder based on the agent version.
+    """
+    builder = active_response.ARMessageBuilder.choose_builder(agent_version)
+    assert isinstance(builder, builder_type)
+
+
 @pytest.mark.parametrize('expected_exception, command, arguments, custom', [
     (1650, None, [], False),
     (1652, 'random', [], False),

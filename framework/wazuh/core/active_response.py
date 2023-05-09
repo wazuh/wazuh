@@ -115,7 +115,7 @@ class ARMessageBuilder:
             if subclass.can_handle(agent_version):
                 return subclass()
 
-        raise ValueError("No suitable message builder found for agent version: {}".format(agent_version))
+        raise WazuhError(1000 ,"No suitable message builder found for agent version: {}".format(agent_version))
 
 
 class ARStrMessage(ARMessageBuilder):
