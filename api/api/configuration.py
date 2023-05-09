@@ -84,7 +84,8 @@ default_api_configuration = {
                 "allow": True
             }
         }
-    }
+    },
+    "events_bulk_max_size": 0
 }
 
 
@@ -105,7 +106,7 @@ def dict_to_lowercase(mydict: Dict):
 
 def append_wazuh_prefixes(dictionary: Dict, path_fields: Dict[Any, List[Tuple[str, str]]]) -> None:
     """Append Wazuh prefix to all path fields in a dictionary.
-    
+
     Parameters
     ----------
     dictionary : dict
