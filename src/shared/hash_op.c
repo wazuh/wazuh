@@ -671,11 +671,11 @@ void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_fu
 }
 
 
-/** int OSHash_GetIndex(OSHash *self, char *key)
- * Returns -1 on error (not found).
+/*
+ * Returns the index of the key.
  * Key must not be NULL.
  */
-int OSHash_GetIndex(OSHash *self, const char *key)
+unsigned int OSHash_GetIndex(OSHash *self, const char *key)
 {
     unsigned int hash_key;
     unsigned int index;

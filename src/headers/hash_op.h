@@ -98,6 +98,6 @@ void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_fu
 /*
  * Returns the index of the key.
 */
-int OSHash_GetIndex(OSHash *self, const char *key);
+unsigned int OSHash_GetIndex(OSHash *self, const char *key);
 
 #endif /* OS_HASHOP */
