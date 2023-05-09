@@ -97,9 +97,9 @@ def test_create_message(expected_exception, command, arguments, custom):
     """
     if expected_exception:
         with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
-            active_response.create_message(command=command, arguments=arguments, custom=custom)
+            active_response.ARStrMessage().create_message(command=command, arguments=arguments, custom=custom)
     else:
-        ret = active_response.create_message(command=command, arguments=arguments, custom=custom)
+        ret = active_response.ARStrMessage().create_message(command=command, arguments=arguments, custom=custom)
         assert command in ret, f'Command not being returned'
         if arguments:
             assert (arg in ret for arg in arguments), f'Arguments not being added'
@@ -134,9 +134,9 @@ def test_create_json_message(expected_exception, command, arguments, alert):
     """
     if expected_exception:
         with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
-            active_response.create_json_message(command=command, arguments=arguments, alert=alert)
+            active_response.ARJsonMessage().create_message(command=command, arguments=arguments, alert=alert)
     else:
-        ret = json.loads(active_response.create_json_message(command=command, arguments=arguments, alert=alert))
+        ret = json.loads(active_response.ARJsonMessage().create_message(command=command, arguments=arguments, alert=alert))
         assert ret["version"] == 1, f'Wrong message version'
         assert command in ret["command"], f'Command not being returned'
         if arguments:
