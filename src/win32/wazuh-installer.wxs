@@ -681,6 +681,6 @@
             <ComponentRef Id="W2016_CONF_PROFILE" />
             <ComponentRef Id="W2019_CONF_PROFILE" />
         </Feature>
-        <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
+        <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
     </Product>
 </Wix>

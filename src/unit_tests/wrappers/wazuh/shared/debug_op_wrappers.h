@@ -86,4 +86,6 @@ void __wrap__mwarn(const char * file,
                    const char * func,
                    const char *msg, ...);
 
+char * __wrap_win_strerror(unsigned long error);
+
 #endif

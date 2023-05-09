@@ -33,7 +33,7 @@ unsigned int hourly_alerts;
 static pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Hourly alerts mutex */
-static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
+extern pthread_mutex_t hourly_alert_mutex;
 
 w_queue_t * writer_queue_log_fts;
 
@@ -2175,8 +2175,6 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
     ruleinfo_pt->compiled_rule = NULL;
     ruleinfo_pt->lists = NULL;
 
-    ruleinfo_pt->prev_rule = NULL;
-
     ruleinfo_pt->internal_saving = false;
 
     ruleinfo_pt->rule_overwrite = NULL;
@@ -3112,8 +3110,8 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                                              fts_store, save_fts_value,
                                              rules_debug_list);
             if (child_rule != NULL) {
-                if (!child_rule->prev_rule) {
-                    child_rule->prev_rule = rule;
+                if (!lf->prev_rule) {
+                    lf->prev_rule = rule;
                 }
                 return (child_rule);
             }
@@ -3127,9 +3125,7 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         return (NULL);
     }
 
-    w_mutex_lock(&hourly_alert_mutex);
-    hourly_alerts++;
-    w_mutex_unlock(&hourly_alert_mutex);
+    w_guard_mutex_variable(hourly_alert_mutex, (hourly_alerts++));
     w_mutex_lock(&rule->mutex);
     rule->firedtimes++;
     lf->r_firedtimes = rule->firedtimes;
