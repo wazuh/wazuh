@@ -6,16 +6,20 @@
 
 using resT = int;
 static const resT valTest = 1;
+std::size_t parsec::TraceP::s_order = 0;
+
+
 // TODO: add proper index to parsers and possibly modify input text on tests
-parsec::Parser<resT> getSuccessParser(resT val = 0)
+parsec::Parser<resT> getSuccessParser(resT val = 0, int offset = 1)
 {
-    return [val](const parsec::ParserState& state)
+    return [val, offset](const parsec::ParserState& state)
     {
+        auto ret = parsec::ResultP<resT>::success(state.advance(offset), resT(val));
         if (state.isTraceEnabled())
         {
-            ret.concatenateTraces("ok");
+            ret.concatenateTraces("test");
         }
-        return parsec::ResultP<resT>::success(state, resT(val));
+        return ret;
     };
 }
 
@@ -179,8 +183,9 @@ TEST(ParsecTraceTest, InnerTracesMove)
 /****************************************************************************************/
 // Result type tests
 /****************************************************************************************/
-TEST(ParsecResultTest, BuildsDefault)
 /*
+TEST(ParsecResultTest, BuildsDefault)
+
 {
     ASSERT_NO_THROW(parsec::Result<resT> {});
 }
@@ -300,66 +305,86 @@ TEST(ParsecResultTest, MakeError)
 /****************************************************************************************/
 // Parser combinator tests
 /****************************************************************************************/
-TEST(ParsecCombinatorTest, Optional)
+TEST(ParsecCombinatorTest, Optional_wTrace)
 {
     auto p = getSuccessParser();
-    auto pResult = p({"test"});
+    auto pResult = p({"test", true});
 
     auto optP = parsec::opt(p);
-    auto expectedTrace = p({"test"}).trace();
-    ASSERT_NO_THROW(result = optP({"test"});
-    ASSERT_TRUE(result.success());
-    ASSERT_EQ(pResult.value(), result.value());
-    ASSERT_EQ(expectedTrace, result.trace().innerTraces().value()[0]);
-    ASSERT_EQ(expectedTrace.index(), result.index());
+    auto result = p({"test", true});
+
+    ASSERT_NO_THROW(result = optP(parsec::ParserState{"test", true}));
+    ASSERT_TRUE(result.isSuccessful());
+
+    ASSERT_EQ(pResult.getValue(), result.getValue());
+    ASSERT_TRUE(pResult.hasTraces());
+    ASSERT_TRUE(pResult.hasTraces());
+
+    // TODO: Test trace
+    ASSERT_EQ(result.popTraces().front().getMessage(), "test");
 
     p = getErrorParser();
     optP = parsec::opt(p);
-    expectedTrace = p("test", 0).trace();
-    ASSERT_NO_THROW(result = optP("text", 0));
-    ASSERT_TRUE(result.success());
-    ASSERT_EQ(expectedTrace, result.trace().innerTraces().value()[0]);
-    ASSERT_EQ(0, result.index());
+
+    ASSERT_NO_THROW(result = optP(parsec::ParserState{"test", true}));
+    ASSERT_TRUE(result.isSuccessful());
+
+    ASSERT_EQ(result.getValue(), 0);
 }
 
-TEST(ParsecCombinatorTest, OperatorLeftShift)
+
+// TODO: Test trace
+TEST(ParsecCombinatorTest, OperatorLeftShift_wTrace)
 {
-    auto pL = getSuccessParser();
-    auto expectedTraceL = pL("test", 0).trace();
-    auto resultL = pL("test", 0);
-    auto pR = getSuccessParser();
-    auto expectedTraceR = pR("test", 0).trace();
+    // Both parsers success
+    auto pL = getSuccessParser(1, 1);
+    auto resultL = pL({"test", true});
+    auto pR = getSuccessParser(1, 1);
+
     auto p = pL << pR;
-    parsec::Result<resT> result;
-    ASSERT_NO_THROW(result = p("test", 0));
-    ASSERT_TRUE(result.success());
-    ASSERT_EQ(result.value(), resultL.value());
-    ASSERT_EQ(expectedTraceL, result.trace().innerTraces().value()[0]);
-    ASSERT_EQ(expectedTraceR, result.trace().innerTraces().value()[1]);
-    ASSERT_EQ(expectedTraceR.index(), result.index());
+    parsec::ResultP<resT> result = p({"test", true});
 
+    ASSERT_TRUE(result.isSuccessful());
+    ASSERT_EQ(result.getValue(), resultL.getValue());
+
+    ASSERT_EQ(result.getParserState().getOffset(), 2);
+
+    // Left parser success, right parser failure
     pL = getErrorParser();
-    expectedTraceL = pL("test", 0).trace();
-    pR = getSuccessParser();
-    expectedTraceR = pR("test", 0).trace();
-    p = pL << pR;
-    ASSERT_NO_THROW(result = p("test", 0));
-    ASSERT_FALSE(result.success());
-    ASSERT_EQ(expectedTraceL, result.trace().innerTraces().value()[0]);
-    ASSERT_EQ(expectedTraceL.index(), result.index());
+    pR = getSuccessParser(1, 1);
 
-    pL = getSuccessParser();
-    expectedTraceL = pL("test", 0).trace();
-    pR = getErrorParser();
-    expectedTraceR = pR("test", 0).trace();
     p = pL << pR;
-    ASSERT_NO_THROW(result = p("test", 0));
-    ASSERT_FALSE(result.success());
-    ASSERT_EQ(expectedTraceL, result.trace().innerTraces().value()[0]);
-    ASSERT_EQ(expectedTraceR, result.trace().innerTraces().value()[1]);
-    ASSERT_EQ(expectedTraceR.index(), result.index());
+    ASSERT_NO_THROW(result = p({"test", true}));
+
+    ASSERT_FALSE(result.isSuccessful());
+    ASSERT_THROW(result.getValue(), std::runtime_error);
+    ASSERT_EQ(result.getParserState().getOffset(), 0);
+
+    // Left parser failure, right parser success
+    pL = getSuccessParser(1, 1);
+    pR = getErrorParser();
+
+    p = pL << pR;
+    ASSERT_NO_THROW(result = p({"test", true}));
+
+    ASSERT_FALSE(result.isSuccessful());
+    ASSERT_THROW(result.getValue(), std::runtime_error);
+    ASSERT_EQ(result.getParserState().getOffset(), 0);
+
+    // Both parsers failure
+    pL = getErrorParser();
+    pR = getErrorParser();
+
+    p = pL << pR;
+    ASSERT_NO_THROW(result = p({"test", true}));
+
+    ASSERT_FALSE(result.isSuccessful());
+    ASSERT_THROW(result.getValue(), std::runtime_error);
+    ASSERT_EQ(result.getParserState().getOffset(), 0);
+
 }
 
+/*
 TEST(ParsecCombinatorTest, OperatorRightShift)
 {
     auto pL = getSuccessParser();
@@ -671,3 +696,4 @@ TEST(ParsecCombinatorTest, Replace)
     ASSERT_NO_THROW(result = p("text", 0));
     ASSERT_FALSE(result.success());
 }
+*/

@@ -9,28 +9,23 @@
 #include <hlp/logpar.hpp>
 #include <json/json.hpp>
 
-
 // Namespace anonimo para parsers benchmarks
 // **********************************************************************************************************************
 namespace {
-template<typename T>
-using resultFnHandler = std::function<void(T&)>; // This is a function that takes a T& and save the result
 
-template<typename T>
-using listResultFn = std::deque<resultFnHandler<T>>; // This is a list of resultFnHandler
-
-using fnList = listResultFn<json::Json>;
+using jFnList = hlp::logpar::fnList<json::Json>;
 
 // parseQuotedString
 // Parser para cadenas de texto entre comillas dobles
-parsec::MergeableParser<fnList>
-getParseQuotedString(const std::string& fieldName, bool enableCapure)
+parsec::MergeableParser<jFnList>
+getParseQuotedString(std::string name, std::string path, std::list<std::string> endTokens, std::vector<std::string> lst)
 {
 
-    auto path = json::Json::formatJsonPath(fieldName);
+    path = json::Json::formatJsonPath(path);
+    auto enableCapure = true;
 
     // Semantic action
-    auto m_semanticProcessor = [path](fnList& result,
+    auto m_semanticProcessor = [path](jFnList& result,
                                       const std::deque<std::string_view>& tokens,
                                       const parsec::ParserState& state) -> std::pair<bool, std::optional<parsec::TraceP>>
     {
@@ -44,9 +39,9 @@ getParseQuotedString(const std::string& fieldName, bool enableCapure)
     };
 
     // Sintactic action
-    return [m_semanticProcessor, enableCapure](const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+    return [m_semanticProcessor, enableCapure](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
-        auto result = parsec::MergeableResultP<fnList>::failure(state);
+        auto result = parsec::MergeableResultP<jFnList>::failure(state);
 
         if (state.getRemainingSize() == 0)
         {
@@ -93,11 +88,11 @@ getParseQuotedString(const std::string& fieldName, bool enableCapure)
         if (enableCapure)
         {
             result.setSuccess(state.advance(offset + 1),
-                              {m_semanticProcessor, fnList(), {inputStr.substr(1, offset - 1)}});
+                              {m_semanticProcessor, jFnList(), {inputStr.substr(1, offset - 1)}});
         } else
         {
             result.setSuccess(state.advance(offset + 1),
-                              {m_semanticProcessor, fnList(), {}});
+                              {m_semanticProcessor, jFnList(), {}});
         }
 
         if (state.isTraceEnabled())
@@ -110,14 +105,25 @@ getParseQuotedString(const std::string& fieldName, bool enableCapure)
 }
 
 // Parse a IP
-parsec::MergeableParser<fnList>
-getParserIP(const std::string& fieldName, const std::string& endToken, bool enableCapure) {
+parsec::MergeableParser<jFnList>
+getParserIP(std::string name, std::string path, std::list<std::string> endTokens, std::vector<std::string> lst) {
 
-        auto path = json::Json::formatJsonPath(fieldName);
+        path = json::Json::formatJsonPath(path);
+        bool enableCapure = true;
+
+        if (endTokens.empty())
+        {
+            throw std::runtime_error("IP parser needs a stop string");
+        }
+
+        if (lst.size() > 0)
+        {
+            throw std::runtime_error("The IP parser does not accept any argument");
+        }
 
         // Semantic action
         auto m_semanticProcessor =
-            [path, enableCapure](fnList& result,
+            [path, enableCapure](jFnList& result,
                                  const std::deque<std::string_view>& tokens,
                                  const parsec::ParserState& state) -> std::pair<bool, std::optional<parsec::TraceP>>
         {
@@ -147,9 +153,9 @@ getParserIP(const std::string& fieldName, const std::string& endToken, bool enab
         };
 
         // Sintactic action
-        return [m_semanticProcessor, endToken] (const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+        return [m_semanticProcessor, endToken = endTokens.front()] (const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
         {
-            auto result = parsec::MergeableResultP<fnList>::failure(state);
+            auto result = parsec::MergeableResultP<jFnList>::failure(state);
             if (state.getRemainingSize() == 0)
             {
                 if (state.isTraceEnabled())
@@ -185,22 +191,23 @@ getParserIP(const std::string& fieldName, const std::string& endToken, bool enab
             }
 
             // Add the IP to the result
-            return parsec::MergeableResultP<fnList>::success(state.advance(until),
-                                                             {m_semanticProcessor, fnList(), {IpCandidate}});
+            return parsec::MergeableResultP<jFnList>::success(state.advance(until),
+                                                             {m_semanticProcessor, jFnList(), {IpCandidate}});
 
         };
 
 }
 
 // Parse a Number
-parsec::MergeableParser<fnList>
-getParseNumber(const std::string& fieldName, bool enableCapure) {
+parsec::MergeableParser<jFnList>
+getParseNumber(std::string name, std::string path, std::list<std::string> endTokens, std::vector<std::string> lst) {
 
-        auto path = json::Json::formatJsonPath(fieldName);
+        path = json::Json::formatJsonPath(path);
+        bool enableCapure = true;
 
         // Semantic action
         auto m_semanticProcessor =
-            [path, enableCapure](fnList& result, const std::deque<std::string_view>& tokens, const parsec::ParserState& state)
+            [path, enableCapure](jFnList& result, const std::deque<std::string_view>& tokens, const parsec::ParserState& state)
                 -> std::pair<bool, std::optional<parsec::TraceP>>
         {
             // tokens.size() == 1
@@ -240,9 +247,9 @@ getParseNumber(const std::string& fieldName, bool enableCapure) {
         };
 
         // Sintactic action
-        return [m_semanticProcessor](const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+        return [m_semanticProcessor](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
         {
-            auto result = parsec::MergeableResultP<fnList>::failure(state);
+            auto result = parsec::MergeableResultP<jFnList>::failure(state);
 
             if (state.getRemainingSize() == 0)
             {
@@ -273,20 +280,26 @@ getParseNumber(const std::string& fieldName, bool enableCapure) {
             auto numberCandidate = inputStr.substr(0, until);
 
             // Add the number to the result
-            return parsec::MergeableResultP<fnList>::success(state.advance(until),
-                                                             {m_semanticProcessor, fnList(), {numberCandidate}});
+            return parsec::MergeableResultP<jFnList>::success(state.advance(until),
+                                                             {m_semanticProcessor, jFnList(), {numberCandidate}});
         };
 }
 
 // Parse any string
-parsec::MergeableParser<fnList>
-getParserAny(const std::string& fieldName, const std::string& endToken, bool enableCapure)
+parsec::MergeableParser<jFnList>
+getParserAny(std::string name, std::string path, std::list<std::string> endTokens, std::vector<std::string> lst)
 {
-    auto path = json::Json::formatJsonPath(fieldName);
+    path = json::Json::formatJsonPath(path);
+    bool enableCapure = true;
+
+    if (endTokens.empty())
+    {
+        throw std::runtime_error("Invalid end tokens, cannot be empty");
+    }
 
     // Semantic action
     auto m_semanticProcessor =
-        [path, enableCapure](fnList& result, const std::deque<std::string_view>& tokens, const parsec::ParserState& state)
+        [path, enableCapure](jFnList& result, const std::deque<std::string_view>& tokens, const parsec::ParserState& state)
             -> std::pair<bool, std::optional<parsec::TraceP>>
     {
         if (enableCapure)
@@ -298,10 +311,10 @@ getParserAny(const std::string& fieldName, const std::string& endToken, bool ena
     };
 
     // Sintactic action
-    return [m_semanticProcessor, endToken](const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+    return [m_semanticProcessor, endToken = endTokens.front()](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
 
-        auto result = parsec::MergeableResultP<fnList>::failure(state);
+        auto result = parsec::MergeableResultP<jFnList>::failure(state);
 
         if (state.getRemainingSize() == 0)
         {
@@ -326,38 +339,33 @@ getParserAny(const std::string& fieldName, const std::string& endToken, bool ena
         auto valueCandidate = inputStr.substr(0, until);
 
         // Add the value to the result
-        return result.setSuccess(state.advance(until), {m_semanticProcessor, fnList(), {valueCandidate}});
+        return result.setSuccess(state.advance(until), {m_semanticProcessor, jFnList(), {valueCandidate}});
     };
 }
 
 
 // Parse literal
-parsec::MergeableParser<fnList>
-getParseLiteral(const std::string& fieldName, const std::string& literal, bool enableCapure)
+parsec::MergeableParser<jFnList>
+getParseLiteral(std::string name, std::string path, std::list<std::string>, std::vector<std::string> lst)
 {
-    auto path = json::Json::formatJsonPath(fieldName);
-
-    if (literal.empty())
+    if (lst.size() != 1)
     {
-        throw std::invalid_argument("Literal cannot be empty");
+        throw(std::runtime_error("Literal parser requires exactly one option"));
     }
 
+
     // Semantic action
-    auto m_semanticProcessor =
-        [path](fnList& result, const std::deque<std::string_view>& tokens, const parsec::ParserState& state)
-            -> std::pair<bool, std::optional<parsec::TraceP>>
+    auto m_semanticProcessor = [](jFnList&,
+                                      const std::deque<std::string_view>&,
+                                      const parsec::ParserState&) -> std::pair<bool, std::optional<parsec::TraceP>>
     {
-        if (tokens.size() == 1) {
-            auto value = std::string(tokens.front());
-            result.push_back([path, value](json::Json& json) { json.setString(value, path); });
-        }
         return {true, std::nullopt};
     };
 
     // Sintactic action
-    return [m_semanticProcessor, literal, enableCapure](const parsec::ParserState& state) -> parsec::MergeableResultP<fnList>
+    return [m_semanticProcessor, literal = lst[0]](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
-        auto result = parsec::MergeableResultP<fnList>::failure(state);
+        auto result = parsec::MergeableResultP<jFnList>::failure(state);
        if (state.getRemainingSize() == 0)
         {
             if (state.isTraceEnabled())
@@ -379,12 +387,7 @@ getParseLiteral(const std::string& fieldName, const std::string& literal, bool e
             return result;
         }
 
-        if (enableCapure)
-        {
-            // Add the value to the result
-            return result.setSuccess(state.advance(literal.size()), {m_semanticProcessor, fnList(), {literal}});
-        }
-        return result.setSuccess(state.advance(literal.size()), {m_semanticProcessor, fnList(), {}});
+        return result.setSuccess(state.advance(literal.size()), {m_semanticProcessor, jFnList(), {}});
 
     };
 }
@@ -451,11 +454,11 @@ hlp::logpar::Logpar getLogpar()
 {
     hlp::logpar::Logpar ret {getConfig()};
 
-    // ret.registerBuilder(hlp::ParserType::P_LONG, getParseNumber);
-    // ret.registerBuilder(hlp::ParserType::P_TEXT, getParserAny);
-    // ret.registerBuilder(hlp::ParserType::P_QUOTED, getParseQuotedString);
-    // ret.registerBuilder(hlp::ParserType::P_IP, getParserIP);
-    // ret.registerBuilder(hlp::ParserType::P_LITERAL, getParseLiteral);
+    ret.registerBuilder(hlp::ParserType::P_LONG, getParseNumber);
+    ret.registerBuilder(hlp::ParserType::P_TEXT, getParserAny);
+    ret.registerBuilder(hlp::ParserType::P_QUOTED, getParseQuotedString);
+    ret.registerBuilder(hlp::ParserType::P_IP, getParserIP);
+    ret.registerBuilder(hlp::ParserType::P_LITERAL, getParseLiteral);
 
     return ret;
 }
@@ -471,13 +474,13 @@ static void logpar_parse(benchmark::State& state)
     // std::string ev = "hola127.0.0.1:8080\"quoted\"";
 
     // Literal
-    //std::string ev1 = getRandomString(state.range(0));
-    std::string ev1 = "hola";
+    std::string ev1 = getRandomString(state.range(0));
+    //std::string ev1 = "hola";
     parserStr += ev1;
 
     // IP:Number
     std::string ev2 = "127.0.0.1:8080";
-    parserStr += "<~srcip/ip><~port/long>";
+    parserStr += "<~srcip/ip>:<~port/long>";
 
     // Quoted string
     std::string ev3 = "\"" + getRandomString(state.range(0)) + "\"";
@@ -498,8 +501,16 @@ static void logpar_parse(benchmark::State& state)
         benchmark::DoNotOptimize(result);
     }
 
-    // auto result = parser(input);
-    // std::cout << result.value().str() << std::endl;
+    /*
+    auto result = parser(input);
+    auto listCallback = result.popValue();
+    json::Json jres {};
+    for (auto& cb : listCallback)
+    {
+        cb(jres);
+    }
+    std::cout << jres.prettyStr() << std::endl;
+    */
 }
 BENCHMARK(logpar_parse)->Range(4, 4 << 4);
 
@@ -522,7 +533,7 @@ static void logpar_parse_error_IP_1(benchmark::State& state)
 
     // IP:Number
     std::string ev2 = "127.0.0.1:8080";
-    parserStr += "<~srcip/ip><~port/long>";
+    parserStr += "<~srcip/ip>:<~port/long>";
 
 
     // Quoted string

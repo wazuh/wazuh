@@ -366,6 +366,46 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
            << pEof<std::list<ParserInfo>>();
 }
 
+
+// TODO add header and doc
+parsec::MergeableParser<jFnList> pToMergeable(const parsec::Parser<jFnList>& p) {
+
+    parsec::MergeableParser<jFnList> mP = [p](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
+    {
+        auto result = parsec::MergeableResultP<jFnList>::failure(state);
+        auto jResult = p(state);
+
+        if (jResult.isSuccessful())
+        {
+            parsec::Mergeable<jFnList> value;
+            value.m_result = jResult.popValue();
+            value.m_tokens = {};
+            value.m_mergeFunction = [](jFnList& dst, jFnList& src) -> void
+            {
+                dst.insert(dst.end(), std::make_move_iterator(src.begin()), std::make_move_iterator(src.end()));
+            };
+            value.m_semanticProcessor =
+                [](jFnList& r,
+                   const std::deque<std::string_view>& t,
+                   const parsec::ParserState& s) -> std::tuple<bool, std::optional<parsec::TraceP>>
+            {
+                return {true, std::nullopt};
+            };
+
+            result.setSuccess(jResult.getParserState(), std::move(value));
+
+        }
+        if (state.isTraceEnabled())
+        {
+            result.concatenateTraces(std::move(jResult));
+        }
+
+        return result;
+    };
+
+    return mP;
+}
+
 } // namespace hlp::logpar::parser
 
 namespace hlp::logpar
@@ -439,17 +479,17 @@ Logpar::Logpar(const json::Json& ecsFieldTypes, size_t maxGroupRecursion, size_t
     m_parserBuilders = {};
 }
 
-parsec::Parser<json::Json> Logpar::buildLiteralParser(const parser::Literal& literal) const
+parsec::MergeableParser<jFnList> Logpar::buildLiteralParser(const parser::Literal& literal) const
 {
     if (m_parserBuilders.count(ParserType::P_LITERAL) == 0)
     {
         throw std::runtime_error(fmt::format("Parser type '{}' not found", parserTypeToStr(ParserType::P_LITERAL)));
     }
 
-    return m_parserBuilders.at(ParserType::P_LITERAL)(literal.value, {}, {literal.value});
+    return m_parserBuilders.at(ParserType::P_LITERAL)(literal.value, {},  {}, {literal.value});
 }
 
-parsec::Parser<json::Json> Logpar::buildFieldParser(const parser::Field& field, std::list<std::string> endTokens) const
+parsec::MergeableParser<jFnList> Logpar::buildFieldParser(const parser::Field& field, std::list<std::string> endTokens) const
 {
     // Get type of the parser to be built
     ParserType type;
@@ -496,31 +536,8 @@ parsec::Parser<json::Json> Logpar::buildFieldParser(const parser::Field& field, 
     }
 
     // Get parser from type
-    auto p = m_parserBuilders.at(type)(field.toStr(), endTokens, args);
-    parsec::Parser<json::Json> ret;
-
-    // Build target field
-    // Special case <~> -> If name is ~, ignore output
-    if (field.name.value == std::string {syntax::EXPR_CUSTOM_FIELD})
-    {
-        ret = parsec::replace<json::Json, json::Json>(p, {});
-    }
-    // Build json object -> {"name": value}
-    else
-    {
-        auto targetField = field.name.value;
-        targetField = json::Json::formatJsonPath(targetField, true);
-
-        ret = parsec::fmap<json::Json, json::Json>(
-            [targetField](auto v)
-            {
-                json::Json doc;
-                // TODO: make moveable
-                doc.set(targetField, v);
-                return doc;
-            },
-            p);
-    }
+    // TODO, Add arg, if is custom field, then args capture should be false
+    parsec::MergeableParser<jFnList> ret = m_parserBuilders.at(type)(field.toStr(), field.name.value, endTokens, args);
 
     // If field is optional, wrap in optional parser
     if (field.optional)
@@ -531,29 +548,120 @@ parsec::Parser<json::Json> Logpar::buildFieldParser(const parser::Field& field, 
     return ret;
 }
 
-parsec::Parser<json::Json> Logpar::buildChoiceParser(const parser::Choice& choice,
+parsec::MergeableParser<jFnList> Logpar::buildChoiceParser(const parser::Choice& choice,
                                                      std::list<std::string> endTokens) const
 {
     auto p1 = buildFieldParser(choice.left, endTokens);
     auto p2 = buildFieldParser(choice.right, endTokens);
 
-    return p1 | p2;
+    auto choiseParser = [p1, p2] (const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
+    {
+        auto result = parsec::MergeableResultP<jFnList>::failure(state);
+        parsec::Mergeable<jFnList> value = {};
+
+        auto parcialResult1 = p1(state);
+        if (parcialResult1.isSuccessful())
+        {
+            auto mergeableP1 = parcialResult1.popValue();
+            auto stateP1 = parcialResult1.getParserState();
+
+            jFnList tmpValue = {};
+
+            auto [success, trace] = mergeableP1.m_semanticProcessor(tmpValue, mergeableP1.m_tokens, stateP1);
+
+            if (state.isTraceEnabled())
+            {
+                result.concatenateTraces("[success] Sintactic choice P1 ");
+                result.concatenateTraces(std::move(parcialResult1));
+                if (trace.has_value())
+                {
+                    result.concatenateTraces(std::move(trace.value()));
+                }
+                std::string trace =  success ? "[success] Semantic choice P1" : "[failure] Semantic choice P1";
+                result.concatenateTraces(trace);
+            }
+
+            if (success)
+            {
+                // if success, then tmpValue is valid and can be moved to value
+                value.m_result = std::move(tmpValue);
+                if (mergeableP1.m_mergeFunction.has_value())
+                {
+                    mergeableP1.m_mergeFunction.value()(value.m_result, mergeableP1.m_result);
+                }
+                result.setSuccess(stateP1, std::move(value));
+                return result;
+            }
+        }
+
+
+        if (state.isTraceEnabled())
+        {
+            result.concatenateTraces(std::move(parcialResult1));
+            result.concatenateTraces("[failure] Sintactic choice P1 ");
+        }
+
+        auto parcialResult2 = p2(state);
+        if (parcialResult2.isSuccessful())
+        {
+            auto mergeableP2 = parcialResult2.popValue();
+            auto stateP2 = parcialResult2.getParserState();
+
+            jFnList tmpValue = {};
+
+            auto [success, trace] = mergeableP2.m_semanticProcessor(tmpValue, mergeableP2.m_tokens, stateP2);
+
+            if (state.isTraceEnabled())
+            {
+                result.concatenateTraces("[success] Sintactic choice P2 ");
+                result.concatenateTraces(std::move(parcialResult2));
+                if (trace.has_value())
+                {
+                    result.concatenateTraces(std::move(trace.value()));
+                }
+                std::string trace =  success ? "[success] Semantic choice P2" : "[failure] Semantic choice P2";
+                result.concatenateTraces(trace);
+            }
+
+            if (success)
+            {
+                // if success, then tmpValue is valid and can be moved to value
+                value.m_result = std::move(tmpValue);
+                if (mergeableP2.m_mergeFunction.has_value())
+                {
+                    mergeableP2.m_mergeFunction.value()(value.m_result, mergeableP2.m_result);
+                }
+                result.setSuccess(stateP2, std::move(value));
+                return result;
+            }
+        }
+
+        if (state.isTraceEnabled())
+        {
+            result.concatenateTraces(std::move(parcialResult2));
+            result.concatenateTraces("[failure] Sintactic choice P2");
+        }
+
+        return result;
+    };
+    return choiseParser;
 }
 
-parsec::Parser<json::Json> Logpar::buildGroupOptParser(const parser::Group& group, size_t recurLvl) const
+parsec::MergeableParser<jFnList> Logpar::buildGroupOptParser(const parser::Group& group, size_t recurLvl) const
 {
     auto p = buildParsers(group.children, recurLvl);
-    return parsec::opt(p);
+    auto mP = parser::pToMergeable(p);
+    return parsec::opt(mP);
 }
 
-parsec::Parser<json::Json> Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos, size_t recurLvl) const
+parsec::Parser<jFnList> Logpar::buildParsers(const std::list<parser::ParserInfo>& parserInfos, size_t recurLvl) const
 {
     if (recurLvl > m_maxGroupRecursion)
     {
         throw std::runtime_error("Max group recursion level reached");
     }
 
-    std::list<parsec::Parser<json::Json>> parsers;
+    std::list<parsec::MergeableParser<jFnList>> parsers;
     for (auto parserInfo = parserInfos.begin(); parserInfo != parserInfos.end(); ++parserInfo)
     {
         auto groupEndToken = [](const parser::Group& group, auto& ref) -> std::list<std::string>
@@ -654,30 +762,10 @@ parsec::Parser<json::Json> Logpar::buildParsers(const std::list<parser::ParserIn
 
                 // Dependendant of recursion allowed, as for now we only allow one
                 auto pF = buildFieldParser(std::get<parser::Field>(*parserInfo), {endTokens.front()});
-                auto pG = buildParsers(group.children, recurLvl + 1);
-                auto choice1 = parsec::fmap<json::Json, std::tuple<json::Json, json::Json>>(
-                    [](auto&& t) -> json::Json
-                    {
-                        auto& [a, b] = t;
-                        if (a.isObject() && b.isObject())
-                        {
-                            a.merge(json::NOT_RECURSIVE, b);
-                            return a;
-                        }
-                        else if (a.isObject())
-                        {
-                            return a;
-                        }
-                        else if (b.isObject())
-                        {
-                            return b;
-                        }
-                        else
-                        {
-                            return json::Json();
-                        }
-                    },
-                    pF& pG);
+                auto pGBuilded = buildParsers(group.children, recurLvl + 1);
+                auto pG = parser::pToMergeable(pGBuilded);
+
+                auto choice1 = parsec::andMergeable(pF, pG);
                 auto endToken2 = getEndToken(parserInfos, next, getEndToken);
                 auto choice2 = buildFieldParser(std::get<parser::Field>(*parserInfo), endToken2);
 
@@ -730,36 +818,7 @@ parsec::Parser<json::Json> Logpar::buildParsers(const std::list<parser::ParserIn
     }
 
     // return parsers;
-    auto p = parsers.back();
-    parsers.pop_back();
-    for (auto it = parsers.rbegin(); it != parsers.rend(); it++)
-    {
-        p = parsec::fmap<json::Json, std::tuple<json::Json, json::Json>>(
-            [](auto t) -> json::Json
-            {
-                auto& [a, b] = t;
-                if (a.isObject() && b.isObject())
-                {
-                    a.merge(json::NOT_RECURSIVE, b);
-                    return a;
-                }
-                else if (a.isObject())
-                {
-                    return a;
-                }
-                else if (b.isObject())
-                {
-                    return b;
-                }
-                else
-                {
-                    return json::Json();
-                }
-            },
-            *it& p);
-    }
-
-    return p;
+    return parsec::merge<jFnList>(parsers);
 }
 
 void Logpar::registerBuilder(ParserType type, ParserBuilder builder)
@@ -772,7 +831,7 @@ void Logpar::registerBuilder(ParserType type, ParserBuilder builder)
     m_parserBuilders[type] = builder;
 }
 
-parsec::Parser<json::Json> Logpar::build(std::string_view logpar) const
+parsec::Parser<jFnList> Logpar::build(std::string_view logpar) const
 {
     auto parserSate = parsec::ParserState(logpar, true);
     auto result = parser::pLogpar()(parserSate);
@@ -800,28 +859,10 @@ parsec::Parser<json::Json> Logpar::build(std::string_view logpar) const
         }
         throw std::runtime_error("Unknown error, no traces");
     }
-    else if (result.hasTraces())
-    {
-        auto traces = result.popTraces();
-        // Order traces by order
-        traces.sort([](const auto& a, const auto& b) -> bool { return a.getOrder() < b.getOrder(); });
-
-        std::string msg;
-
-        // concatenate traces messages
-        for (const auto& t : traces)
-        {
-            msg += std::to_string(t.getOrder()) + ": ";
-            msg += "| offset: " + std::to_string(t.getOffset()) + " | ";
-            msg += t.getMessage() + "\n";
-        }
-
-        throw std::runtime_error(msg);
-    }
 
     auto parserInfos = result.popValue();
     auto p = buildParsers(parserInfos, 0);
-    return p << parser::pEof<json::Json>();
+    return p << parser::pEof<jFnList>(); // TODO Add to mergeable sintactic parse
 }
 
 } // namespace hlp::logpar

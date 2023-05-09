@@ -225,6 +225,17 @@ constexpr auto strToParserType(std::string_view str)
 
 namespace logpar
 {
+/**
+ * @brief Result of a mergeable parser, returns a list of a callback functions to be called
+ *       when the parser is finished to get the result in one object.
+ *
+ * @tparam T Type of the result
+ */
+template<typename T>
+using fnList = std::deque<std::function<void(T&)>>;
+using jFnList = fnList<json::Json>;
+
+
 namespace syntax
 {
 constexpr auto EXPR_BEGIN = '<';
@@ -242,6 +253,7 @@ constexpr auto EXPR_FIELD_EXTENDED_CHARS = "_@#";
 
 namespace parser
 {
+
 // Basic parsers
 parsec::Parser<char> pChar(std::string chars);
 parsec::Parser<char> pNotChar(std::string chars);
@@ -373,6 +385,9 @@ parsec::Parser<Group> pGroup();
 // Logpar parser
 parsec::Parser<std::list<ParserInfo>> pLogpar();
 
+// Tranform a parser to a mergeable parser (execute the parser and return a list of functions)
+parsec::MergeableParser<jFnList> pToMergeable(const parsec::Parser<jFnList>& p);
+
 }; // namespace parser
 
 /**
@@ -383,8 +398,10 @@ parsec::Parser<std::list<ParserInfo>> pLogpar();
 class Logpar
 {
 private:
+
+    // Todo add capture flag
     using ParserBuilder =
-        std::function<parsec::Parser<json::Json>(std::string, std::list<std::string>, std::vector<std::string>)>;
+        std::function<parsec::MergeableParser<jFnList>(std::string, std::string, std::list<std::string>, std::vector<std::string>)>;
 
     size_t m_maxGroupRecursion;
 
@@ -395,16 +412,14 @@ private:
     std::unordered_map<ParserType, ParserBuilder> m_parserBuilders;
 
     // build the parsers from the different parser info types
-    parsec::Parser<json::Json> buildLiteralParser(const parser::Literal& literal) const;
-    parsec::Parser<json::Json> buildFieldParser(const parser::Field& field,
+    parsec::MergeableParser<jFnList> buildLiteralParser(const parser::Literal& literal) const;
+    parsec::MergeableParser<jFnList> buildFieldParser(const parser::Field& field,
                                                 std::list<std::string> endTokens = {}) const;
-    parsec::Parser<json::Json> buildChoiceParser(const parser::Choice& choice,
+    parsec::MergeableParser<jFnList> buildChoiceParser(const parser::Choice& choice,
                                                  std::list<std::string> endTokens = {}) const;
-    parsec::Parser<json::Json> buildGroupOptParser(const parser::Group& group, size_t recurLvl) const;
-    parsec::Parser<json::Json>
-
-    // build the parsers while adding the target field to the json
-    buildParsers(const std::list<parser::ParserInfo>& parserInfos, size_t recurLvl) const;
+    parsec::MergeableParser<jFnList> buildGroupOptParser(const parser::Group& group, size_t recurLvl) const;
+    // build the final parser from the list of parser infos
+    parsec::Parser<jFnList> buildParsers(const std::list<parser::ParserInfo>& parserInfos, size_t recurLvl) const;
 
 public:
     /**
@@ -433,7 +448,7 @@ public:
      * @return parsec::Parser<json::Json> the parser
      * @throws std::runtime_error if errors occur while building the parser
      */
-    parsec::Parser<json::Json> build(std::string_view logpar) const;
+    parsec::Parser<jFnList> build(std::string_view logpar) const;
 };
 } // namespace logpar
 } // namespace hlp

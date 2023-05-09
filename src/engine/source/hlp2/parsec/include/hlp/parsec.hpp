@@ -85,7 +85,7 @@ public:
      * @param offset The offset to advance the current position in the data
      * @return ParserState A copy of the input with the new position
      */
-    ParserState advance(std::size_t offset) const
+     [[nodiscard]] ParserState advance(std::size_t offset) const
     {
         ParserState copy(*this);
         copy.advance(offset);
@@ -469,6 +469,15 @@ public:
         return std::move(retval);
     }
 
+    const T& getValue () const
+    {
+        if (!m_value.has_value())
+        {
+            throw std::runtime_error("ResultP::getValue() called on a result with no value");
+        }
+        return m_value.value();
+    }
+
     /**
      * @brief Set the result as successful with no value
      *
@@ -635,7 +644,7 @@ Parser<L> operator<<(const Parser<L>& l, const Parser<R>& r)
         }
 
         auto resultR = r(resultL.getParserState());
-        if (resultL.isFailure())
+        if (resultR.isFailure())
         {
             if (state.isTraceEnabled())
             {
@@ -849,6 +858,7 @@ struct Mergeable
         m_semanticProcessor;
     T m_result;                            ///< The result of the semantic processor
     std::deque<std::string_view> m_tokens; ///< Store the tokens of the result the sintactic parser found
+    std::optional<std::function<void(T& dst, T& src)>> m_mergeFunction; ///< The function that merges two Mergeable
 };
 
 /**
@@ -942,6 +952,11 @@ Parser<T> merge(const std::list<MergeableParser<T>>& parsers)
                     }
                     return retResult;
                 }
+
+                if (mergeable.m_mergeFunction.has_value())
+                {
+                    (*mergeable.m_mergeFunction)(finalResult, mergeable.m_result);
+                }
             }
 
             retResult.setSuccess(currentState, std::move(finalResult));
@@ -955,6 +970,100 @@ Parser<T> merge(const std::list<MergeableParser<T>>& parsers)
     };
 }
 
+
+template<typename T>
+MergeableParser<T> andMergeable(const MergeableParser<T>& l, const MergeableParser<T>& r)
+{
+    return [l, r](const ParserState& state) -> MergeableResultP<T> {
+
+        auto result = MergeableResultP<T>::failure(state);
+
+        /***********************
+        * Sintactic parser stage
+        ************************/
+        auto lResult = l(state);
+        if (lResult.isFailure())
+        {
+            if (state.isTraceEnabled())
+            {
+                result.concatenateTraces(std::move(lResult))
+                    .concatenateTraces("[failure] [mergebleAnd] Left parser fail");
+            }
+            return result;
+        }
+
+        auto rResult = r(lResult.getParserState());
+        if (rResult.isFailure())
+        {
+            if (state.isTraceEnabled())
+            {
+                result.concatenateTraces(std::move(lResult))
+                    .concatenateTraces(std::move(rResult))
+                    .concatenateTraces("[failure] [mergebleAnd] Right parser fail");
+            }
+            return result;
+        }
+
+        // Candidate of state
+        auto candidateState = rResult.getParserState();
+
+        /***********************
+         * Semantic processor stage
+         * **********************/
+        auto lMerable {lResult.popValue()};
+        auto rMerable {rResult.popValue()};
+
+        // Concatenate the traces if the state is enabled
+        if (state.isTraceEnabled())
+        {
+            result.concatenateTraces(std::move(lResult))
+                .concatenateTraces(std::move(rResult))
+                .concatenateTraces("[success] [mergebleAnd] Sintactic success");
+        }
+
+        // Value of the result
+        Mergeable<T> valueResult;
+        valueResult.m_tokens = {};
+
+        // Merge the results of the sintactic parsers if the merge function is defined
+        valueResult.m_result = {};
+        if (lMerable.m_mergeFunction.has_value())
+        {
+            (*lMerable.m_mergeFunction)(valueResult.m_result, lMerable.m_result);
+            valueResult.m_mergeFunction = lMerable.m_mergeFunction;
+        }
+        if (rMerable.m_mergeFunction.has_value())
+        {
+            (*rMerable.m_mergeFunction)(valueResult.m_result, rMerable.m_result);
+            if (!valueResult.m_mergeFunction.has_value())
+            {
+                valueResult.m_mergeFunction = rMerable.m_mergeFunction;
+            }
+        }
+
+        // Define the semantic processor
+        valueResult.m_semanticProcessor = [lMerable, rMerable](T& finalResult, const std::deque<std::string_view>& tokens, const ParserState& state) -> std::tuple<bool, std::optional<TraceP>>
+        {
+            auto lResult = lMerable.m_semanticProcessor(finalResult, lMerable.m_tokens, state);
+            if (!std::get<0>(lResult))
+            {
+                return lResult;
+            }
+
+            auto rResult = rMerable.m_semanticProcessor(finalResult, rMerable.m_tokens, state);
+            if (!std::get<0>(rResult))
+            {
+                return rResult;
+            }
+
+            return {true, {}}; // Success
+        };
+
+        result.setSuccess(candidateState, std::move(valueResult));
+        return result;
+    };
+
+}
 /**
  * @brief Creates a parser that executes the function f on the result of the given
  * parser and returns the result of the function. If the given parser fails, the
