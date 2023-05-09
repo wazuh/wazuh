@@ -16,7 +16,7 @@ sources:
   - decoder/integrations/0
 
 check:
-  - event.original: +starts_with/{
+  - event.module: windows
 
 parse:
   logpar:
