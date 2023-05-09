@@ -5,9 +5,6 @@ from connexion import ProblemException
 from api.configuration import api_conf
 from api.models.base_model_ import Body
 
-# This value will be defined based on performance. Is bypassed for that reason.
-DEFAULT_EVENTS_BULK_MAX_SIZE = 0
-
 
 class EventsIngestModel(Body):
 
@@ -35,7 +32,7 @@ class EventsIngestModel(Body):
         """
         :param events: Events list
         """
-        bulk_max_size = api_conf.get('events_bulk_max_size', DEFAULT_EVENTS_BULK_MAX_SIZE)
+        bulk_max_size = api_conf.get('events_bulk_max_size')
         if bulk_max_size and len(events) > bulk_max_size:
             raise ProblemException(
                 status=400,

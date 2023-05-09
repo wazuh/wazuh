@@ -17,7 +17,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         sys.modules['api.authentication'] = MagicMock()
         from api.models import base_model_ as bm
         from api.models.events_ingest_model import (
-            DEFAULT_EVENTS_BULK_MAX_SIZE,
             EventsIngestModel,
         )
         from api.util import deserialize_model
@@ -293,7 +292,7 @@ def test_all_models(deserialize_mock, module_name):
 @pytest.mark.parametrize('size,raises', ([1, True], [2, False]))
 async def test_events_ingest_model_validation(size, raises):
     request = {'events': [{"foo": 1}, {"bar": 2}]}
-    with patch('api.models.events_ingest_model.DEFAULT_EVENTS_BULK_MAX_SIZE', size):
+    with patch.dict('api.models.events_ingest_model.api_conf', {'events_bulk_max_size': size}):
         if raises:
             with pytest.raises(ProblemException) as exc:
                 await EventsIngestModel.get_kwargs(request)
