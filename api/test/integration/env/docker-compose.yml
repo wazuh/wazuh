@@ -2,9 +2,6 @@ version: '3.7'
 
 services:
   wazuh-master:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
@@ -38,6 +35,8 @@ services:
       - wazuh-master
       - worker1
       - worker
+    depends_on:
+      - wazuh-master
 
   wazuh-worker2:
     profiles:
@@ -55,11 +54,10 @@ services:
       - wazuh-master
       - worker2
       - worker
+    depends_on:
+      - wazuh-master
 
   wazuh-agent1:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/new.Dockerfile
@@ -76,9 +74,6 @@ services:
       - nginx-lb
 
   wazuh-agent2:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/new.Dockerfile
@@ -96,9 +91,6 @@ services:
       - nginx-lb
 
   wazuh-agent3:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/new.Dockerfile
@@ -116,9 +108,6 @@ services:
       - nginx-lb
 
   wazuh-agent4:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/new.Dockerfile
@@ -136,9 +125,6 @@ services:
       - nginx-lb
 
   wazuh-agent5:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/old.Dockerfile
@@ -157,9 +143,6 @@ services:
       - nginx-lb
 
   wazuh-agent6:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/old.Dockerfile
@@ -178,9 +161,6 @@ services:
       - nginx-lb
 
   wazuh-agent7:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/old.Dockerfile
@@ -199,9 +179,6 @@ services:
       - nginx-lb
 
   wazuh-agent8:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/old.Dockerfile
@@ -220,9 +197,6 @@ services:
       - nginx-lb
 
   nginx-lb:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: ./base/nginx-lb
     image: integration_test_nginx-lb
