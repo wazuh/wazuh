@@ -8,6 +8,7 @@ from .cmds.generate_doc import configure as generate_doc_configure
 from .cmds.generate_graph import configure as generate_graph_configure
 from .cmds.generate_manifest import configure as generate_manifest_configure
 from .cmds.add import configure as add_configure
+from .cmds.remove import configure as rm_configure
 
 
 def parse_args():
@@ -15,6 +16,9 @@ def parse_args():
     parser = argparse.ArgumentParser(prog='engine-integration')
     parser.add_argument('--version', action='version',
                         version=f'%(prog)s {meta.get("Version")}')
+    parser.add_argument(
+        '-v', '--verbose', help=f'Print traceback on error messages',
+                        action='store_true', dest='verbose')
 
     # dest used because of bug: https://bugs.python.org/issue29298
     subparsers = parser.add_subparsers(
@@ -24,12 +28,17 @@ def parse_args():
     generate_graph_configure(subparsers)
     generate_manifest_configure(subparsers)
     add_configure(subparsers)
+    rm_configure(subparsers)
 
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+
+    if not args.verbose:
+        sys.tracebacklimit = 0
+
     resource_handler = rs.ResourceHandler()
     args.func(vars(args), resource_handler)
 
