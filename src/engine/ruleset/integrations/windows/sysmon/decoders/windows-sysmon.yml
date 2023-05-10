@@ -14,7 +14,7 @@ metadata:
     date: 2023/01/23
   references:
     - https://learn.microsoft.com/es-es/sysinternals/downloads/sysmon
-  versions: [Vista,7,8,10,11, Server 2012,Server 2016, Server 2019,Server 2022]
+  versions: [Vista, 7, 8, 10, 11, Server 2012, Server 2016, Server 2019, Server 2022]
 
 check:
   - ~windows.Event.System.Provider.@Name: Microsoft-Windows-Sysmon
