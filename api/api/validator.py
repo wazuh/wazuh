@@ -192,7 +192,7 @@ api_config_schema = {
                 }
             }
         },
-        "events_bulk_max_size": {"type": "integer", "minimum": 0},
+        "max_events_per_request": {"type": "integer", "minimum": 0},
     },
 }
 
