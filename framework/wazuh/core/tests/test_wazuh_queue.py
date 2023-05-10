@@ -185,12 +185,12 @@ def test_WazuhAnalysisdQueue_send_msg(mock_send, mock_conn):
     queue = WazuhAnalysisdQueue('test_path')
 
     msg_header = '1:Head:'
-    msg = {'foo': 1}
+    msg = "{'foo': 1}"
 
     queue.send_msg(msg_header=msg_header, msg=msg)
 
     mock_conn.assert_called_once_with('test_path')
-    mock_send.assert_called_once_with(f'{msg_header}{json.dumps(msg)}'.encode())
+    mock_send.assert_called_once_with(f'{msg_header}{msg}'.encode())
 
 
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
@@ -201,6 +201,6 @@ def test_WazuhAnalysisdQueue_send_msg_to_agent_ko(mock_send, mock_conn):
     queue = WazuhAnalysisdQueue('test_path')
 
     with pytest.raises(WazuhException, match=f'.* {1014} .*'):
-        queue.send_msg(msg_header='1:Head:', msg={'foo': 1})
+        queue.send_msg(msg_header='1:Head:', msg="{'foo': 1}")
 
     mock_conn.assert_called_once_with('test_path')
