@@ -36,7 +36,7 @@ async def test_forward_event(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
             mock_dapi.assert_called_once_with(
                 f=send_event_to_analysisd,
                 f_kwargs=mock_remove.return_value,
-                request_type='local_master',
+                request_type='local_any',
                 is_async=False,
                 wait_for_complete=False,
                 logger=ANY,
