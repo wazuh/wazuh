@@ -183,7 +183,7 @@ class WazuhAnalysisdQueue(BaseQueue):
         ----------
         msg_header : str
             Header message to attach.
-        mesg : dict
+        msg : dict
             Message to send.
 
         Raises
@@ -191,10 +191,6 @@ class WazuhAnalysisdQueue(BaseQueue):
         WazuhError(1014)
             If there was an error communicating with socket.
 
-        Returns
-        -------
-        str
-            Message confirming the message has been sent.
         """
         try:
             socket_msg = (f"{msg_header}{json.dumps(msg)}")

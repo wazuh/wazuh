@@ -19069,7 +19069,7 @@ paths:
       tags:
       - Webhook
       summary: "Ingest events"
-      description: "Ingest security events to analysisd"
+      description: "Send security events to analysisd"
       operationId: api.controllers.event_controller.forward_event
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/event:ingest'
@@ -19090,11 +19090,10 @@ paths:
                       type: object
                 required:
                 - events
-              example:
-                events: [
-                  {"someKey": "Event value 1"},
-                  {"someKey": "Event value 2"},
-                ]
+            example:
+              events: 
+                - someKey: "Event value 1"
+                - someKey: "Event value 2"
       responses:
         '202':
           description: "Events accepted"
