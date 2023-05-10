@@ -1,3 +1,138 @@
+powershell.sequence:
+  description: >
+            Sequence number of the powershell execution.
+  type: long
+
+powershell.total:
+  description: >
+            Total number of messages in the sequence.
+  type: long
+
+powershell.id:
+  description: >
+            Shell Id.
+  type: keyword
+
+powershell.engine.version:
+  description: >
+            Version of the PowerShell engine version used to execute the command.
+  type: keyword
+
+powershell.engine.new_state:
+  description: >
+            New state of the PowerShell engine.
+  type: keyword
+
+powershell.provider.new_state:
+  description: >
+            New state of the PowerShell provider.
+  type: keyword
+
+powershell.provider.name:
+  description: >
+            Provider name.
+  type: keyword
+
+powershell.engine.previous_state:
+  description: >
+            Previous state of the PowerShell engine.
+  type: keyword
+
+powershell.pipeline_id:
+  description: >
+            Pipeline id.
+  type: keyword
+
+powershell.runspace_id:
+  description: >
+            Runspace id.
+  type: keyword
+
+powershell.process.executable_version:
+  description: >
+          Version of the engine hosting process executable.
+  type: keyword
+
+powershell.command.value:
+  description: >
+          The invoked command.
+  type: keyword
+
+powershell.command.path:
+  description: >
+          Path of the executed command.
+  type: keyword
+
+powershell.command.name:
+  description: >
+    Name of the executed command.
+  type: keyword
+
+powershell.command.type:
+  description: Type of the executed command.
+  type: keyword
+
+powershell.file.script_block_id:
+  description: Id of the executed script block.
+  type: keyword
+
+powershell.file.script_block_text:
+  description: Text of the executed script block.
+  type: keyword
+
+sysmon.dns.status:
+  description: Windows status code returned for the DNS query.
+  type: keyword
+
+sysmon.file.archived:
+  description: Indicates if the deleted file was archived.
+  type: keyword
+
+sysmon.file.is_executable:
+  description: Indicates if the deleted file was an executable.
+  type: keyword
+
+winlog.message:
+  description: >
+            Event messsage
+  type: keyword
+
+winlog.channel:
+  description: >
+            The name of the channel from which this record was read.
+  type: keyword
+
+winlog.process.pid:
+  description: >
+              Process id that generated the log
+  type: long
+
+winlog.process.thread.id:
+  description: >
+              Thread id that generated the log
+  type: long
+
+winlog.record_id:
+  description: >
+            The record ID of the event log record. The first record written
+            to an event log is record number 1, and other records are numbered
+            sequentially. If the record number reaches the maximum value (2^32^
+            for the Event Logging API and 2^64^ for the Windows Event Log API),
+            the next record number will be 0.
+  type: keyword
+
+winlog.original_event_data:
+  description: >
+            This is a non-exhaustive list of parameters that are used in
+            Windows events.
+  type: object
+  array: true
+
+winlog.level:
+  description: >
+            Log level, one of AUDIT, INFORMATIONAL, CRITICAL, ERROR, VERBOSE
+  type: keyword
+
 winlog.event_data.UserAccountControl:
   description: >
             List of changes in userAccountControl attribute. You will see a line of
