@@ -365,7 +365,7 @@ default_policies:
         effect: allow
 
   events_ingest:
-    description: Allow ingesting events to analysisd.
+    description: Allow ingesting events.
     policies:
       resourceless:
         actions:
