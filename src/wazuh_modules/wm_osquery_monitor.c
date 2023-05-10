@@ -416,15 +416,15 @@ char * wm_osquery_already_running(char * text) {
     char * end;
 
     // Find "osqueryd (xxxx) is already running"
-   if (text != NULL) {
-       if (begin = strstr(text, PATTERNS[0]), begin && (end = strstr(begin += strlen(PATTERNS[0]), PATTERNS[1]), end)) {
-           *end = '\0';
-           os_strdup(begin, text);
-           *end = *PATTERNS[1];
+    if (text != NULL) {
+        if (begin = strstr(text, PATTERNS[0]), begin && (end = strstr(begin += strlen(PATTERNS[0]), PATTERNS[1]), end)) {
+            *end = '\0';
+            os_strdup(begin, text);
+            *end = *PATTERNS[1];
 
-           // Find "Pidfile::Error::Busy"
+            // Find "Pidfile::Error::Busy"
         } else if (strstr(text, PATTERNS[2]) != NULL) {
-           os_strdup("unknown", text);
+            os_strdup("unknown", text);
         }
     }
     return text;
