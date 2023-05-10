@@ -18,7 +18,7 @@ def send_event_to_analysisd(events: list) -> WazuhResult:
     Returns
     -------
     WazuhResult
-        A message when all goes ok.
+        Confirmation message.
     """
 
     with WazuhAnalysisdQueue(QUEUE_SOCKET) as queue:

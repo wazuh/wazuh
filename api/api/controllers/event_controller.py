@@ -16,19 +16,18 @@ from api.util import raise_if_exc, remove_nones_to_dict
 logger = logging.getLogger('wazuh-api')
 
 
-async def forward_event(request, pretty=False, wait_for_complete=False):
+async def forward_event(request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await EventsIngestModel.get_kwargs(request)
 
-    dapi = DistributedAPI(
-        f=send_event_to_analysisd,
-        f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
-        is_async=False,
-        wait_for_complete=wait_for_complete,
-        logger=logger,
-        rbac_permissions=request['token_info']['rbac_policies']
-    )
+    dapi = DistributedAPI(f=send_event_to_analysisd,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
 
     data = raise_if_exc(await dapi.distribute_function())
 

@@ -37,7 +37,7 @@ class EventsIngestModel(Body):
             raise ProblemException(
                 status=400,
                 title='Events bulk size exceeded',
-                detail='The size of the events bulk is exceding the limit'
+                detail='The size of the events bulk is exceeding the limit'
             )
 
         self._events = events
