@@ -390,10 +390,8 @@ parsec::MergeableParser<jFnList> pToMergeable(const parsec::Parser<jFnList>& p);
 class Logpar
 {
 private:
-
     // Todo add capture flag
-    using ParserBuilder =
-        std::function<parsec::MergeableParser<jFnList>(std::string, std::string, std::list<std::string>, std::vector<std::string>)>;
+    using ParserBuilder = std::function<parsec::MergeableParser<jFnList>(ParserSpec)>;
 
     size_t m_maxGroupRecursion;
 
@@ -405,10 +403,8 @@ private:
 
     // build the parsers from the different parser info types
     parsec::MergeableParser<jFnList> buildLiteralParser(const parser::Literal& literal) const;
-    parsec::MergeableParser<jFnList> buildFieldParser(const parser::Field& field,
-                                                std::list<std::string> endTokens = {}) const;
-    parsec::MergeableParser<jFnList> buildChoiceParser(const parser::Choice& choice,
-                                                 std::list<std::string> endTokens = {}) const;
+    parsec::MergeableParser<jFnList> buildFieldParser(const parser::Field& field, Stop endTokens = {}) const;
+    parsec::MergeableParser<jFnList> buildChoiceParser(const parser::Choice& choice, Stop endTokens = {}) const;
     parsec::MergeableParser<jFnList> buildGroupOptParser(const parser::Group& group, size_t recurLvl) const;
     // build the final parser from the list of parser infos
     parsec::Parser<jFnList> buildParsers(const std::list<parser::ParserInfo>& parserInfos, size_t recurLvl) const;

@@ -14,19 +14,6 @@
 namespace hlp
 {
 
-using Stop = std::list<std::string>;
-using Options = std::vector<std::string>;
-
-/**
- * @brief Result of a mergeable parser, returns a list of a callback functions to be called
- *       when the parser is finished to get the result in one object.
- *
- * @tparam T Type of the result
- */
-template<typename T>
-using fnList = std::deque<std::function<void(T&)>>;
-using jFnList = fnList<json::Json>;
-
 /**
  * @brief Returns a parser which will accept a string between two substrings.
  *

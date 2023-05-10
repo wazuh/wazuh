@@ -83,7 +83,7 @@ public:
      * @param offset The offset to advance the current position in the data
      * @return ParserState A copy of the input with the new position
      */
-     [[nodiscard]] ParserState advance(std::size_t offset) const
+    [[nodiscard]] ParserState advance(std::size_t offset) const
     {
         ParserState copy(*this);
         copy.advance(offset);
@@ -207,7 +207,7 @@ private:
      */
     std::optional<std::list<TraceP>> m_traces;
     ParserState m_parserState; ///< The parser state
-    std::optional<T> m_value; ///< Value of the successful result, can be empty if the parser does not return any.
+    std::optional<T> m_value;  ///< Value of the successful result, can be empty if the parser does not return any.
 
     /**************************************************************************
      * Success Constructors
@@ -349,7 +349,7 @@ public:
      *
      * @return true if the result is failure, false otherwise
      */
-     bool isFailure() const { return !isSuccessful(); }
+    bool isFailure() const { return !isSuccessful(); }
 
     /**
      * @brief Operator bool, check if the result is successful (has a value)
@@ -476,7 +476,7 @@ public:
         return std::move(retval);
     }
 
-    const T& getValue () const
+    const T& getValue() const
     {
         if (!m_value.has_value())
         {
@@ -861,7 +861,7 @@ struct Mergeable
      * @details The function returns a tuple with a boolean that indicates if the process was successful
      * and an optional TraceP that contains the error message if the process was not successful
      */
-    std::function<std::tuple<bool, std::optional<TraceP>>(T&, const std::deque<std::string_view>&, const ParserState&)>
+    std::function<std::pair<bool, std::optional<TraceP>>(T&, const std::deque<std::string_view>&, const ParserState&)>
         m_semanticProcessor;
     T m_result;                            ///< The result of the semantic processor
     std::deque<std::string_view> m_tokens; ///< Store the tokens of the result the sintactic parser found
@@ -977,17 +977,16 @@ Parser<T> merge(const std::list<MergeableParser<T>>& parsers)
     };
 }
 
-
 template<typename T>
 MergeableParser<T> andMergeable(const MergeableParser<T>& l, const MergeableParser<T>& r)
 {
-    return [l, r](const ParserState& state) -> MergeableResultP<T> {
-
+    return [l, r](const ParserState& state) -> MergeableResultP<T>
+    {
         auto result = MergeableResultP<T>::failure(state);
 
         /***********************
-        * Sintactic parser stage
-        ************************/
+         * Sintactic parser stage
+         ************************/
         auto lResult = l(state);
         if (lResult.isFailure())
         {
@@ -1049,7 +1048,10 @@ MergeableParser<T> andMergeable(const MergeableParser<T>& l, const MergeablePars
         }
 
         // Define the semantic processor
-        valueResult.m_semanticProcessor = [lMerable, rMerable](T& finalResult, const std::deque<std::string_view>& tokens, const ParserState& state) -> std::tuple<bool, std::optional<TraceP>>
+        valueResult.m_semanticProcessor = [lMerable,
+                                           rMerable](T& finalResult,
+                                                     const std::deque<std::string_view>& tokens,
+                                                     const ParserState& state) -> std::pair<bool, std::optional<TraceP>>
         {
             auto lResult = lMerable.m_semanticProcessor(finalResult, lMerable.m_tokens, state);
             if (!std::get<0>(lResult))
@@ -1069,7 +1071,6 @@ MergeableParser<T> andMergeable(const MergeableParser<T>& l, const MergeablePars
         result.setSuccess(candidateState, std::move(valueResult));
         return result;
     };
-
 }
 /**
  * @brief Creates a parser that executes the function f on the result of the given
@@ -1135,7 +1136,6 @@ Parser<Tx> operator>>=(const Parser<T>& p, M<Tx, T> f)
         auto retResult = ResultP<Tx>::failure(state);
         auto pResult = p(state);
 
-
         if (pResult.isFailure())
         {
             if (state.isTraceEnabled())
@@ -1160,7 +1160,7 @@ Parser<Tx> operator>>=(const Parser<T>& p, M<Tx, T> f)
 
             retResult.concatenateTraces(std::move(pResult))
                 .concatenateTraces(std::move(newResult))
-                .concatenateTraces(TraceP{trace, offset});
+                .concatenateTraces(TraceP {trace, offset});
         }
         return retResult;
     };

@@ -34,7 +34,7 @@ parsec::Parser<char> pChar(std::string chars)
         {
             std::string trace = retResult.isSuccessful() ? "[success]" : "[failure]";
             trace += fmt::format(" pChar({}) -> ", chars);
-            trace += isRemaining ? std::string{state.getRemainingData()[0]} : "EOF";
+            trace += isRemaining ? std::string {state.getRemainingData()[0]} : "EOF";
             retResult.concatenateTraces(trace);
         }
 
@@ -62,7 +62,7 @@ parsec::Parser<char> pNotChar(std::string chars)
         {
             std::string trace = retResult.isSuccessful() ? "[success]" : "[failure]";
             trace += fmt::format(" pNotChar({}) -> ", chars);
-            trace += isRemaining ? std::string{state.getRemainingData()[0]} : "EOF";
+            trace += isRemaining ? std::string {state.getRemainingData()[0]} : "EOF";
             retResult.concatenateTraces(trace);
         }
         return retResult;
@@ -119,7 +119,8 @@ parsec::Parser<char> pCharAlphaNum(std::string extended)
             }
         }
 
-        if (state.isTraceEnabled()) {
+        if (state.isTraceEnabled())
+        {
             std::string trace = retResult.isSuccessful() ? "[success]" : "[failure]";
             trace += fmt::format(" pCharAlphaNum({}) -> ", extended);
             trace += isRemaining ? std::string {state.getRemainingData()[0]} : "EOF";
@@ -162,7 +163,7 @@ parsec::Parser<FieldName> pFieldName()
         {
             std::string trace = retResult.isSuccessful() ? "[success]" : "[failure]";
             trace += fmt::format(" pCustom -> ");
-            trace += isRemaining ? std::string{state.getRemainingData()[0]} : "EOF";
+            trace += isRemaining ? std::string {state.getRemainingData()[0]} : "EOF";
             retResult.concatenateTraces(trace);
         }
 
@@ -243,7 +244,8 @@ parsec::Parser<Choice> pChoice()
         {
             const auto [f1, f2] = res.popValue();
 
-            if (!f1.optional && !f2.optional) {
+            if (!f1.optional && !f2.optional)
+            {
                 retResult.setSuccess(res.getParserState(), Choice {f1, f2});
             }
 
@@ -366,9 +368,9 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
            << pEof<std::list<ParserInfo>>();
 }
 
-
 // TODO add header and doc
-parsec::MergeableParser<jFnList> pToMergeable(const parsec::Parser<jFnList>& p) {
+parsec::MergeableParser<jFnList> pToMergeable(const parsec::Parser<jFnList>& p)
+{
 
     parsec::MergeableParser<jFnList> mP = [p](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
@@ -387,13 +389,12 @@ parsec::MergeableParser<jFnList> pToMergeable(const parsec::Parser<jFnList>& p) 
             value.m_semanticProcessor =
                 [](jFnList& r,
                    const std::deque<std::string_view>& t,
-                   const parsec::ParserState& s) -> std::tuple<bool, std::optional<parsec::TraceP>>
+                   const parsec::ParserState& s) -> std::pair<bool, std::optional<parsec::TraceP>>
             {
                 return {true, std::nullopt};
             };
 
             result.setSuccess(jResult.getParserState(), std::move(value));
-
         }
         if (state.isTraceEnabled())
         {
@@ -486,10 +487,12 @@ parsec::MergeableParser<jFnList> Logpar::buildLiteralParser(const parser::Litera
         throw std::runtime_error(fmt::format("Parser type '{}' not found", parserTypeToStr(ParserType::P_LITERAL)));
     }
 
-    return m_parserBuilders.at(ParserType::P_LITERAL)(literal.value, {},  {}, {literal.value});
+    ParserSpec spec {.m_name = literal.value, .m_args = {literal.value}, .m_capture = false};
+    return m_parserBuilders.at(ParserType::P_LITERAL)(spec);
 }
 
-parsec::MergeableParser<jFnList> Logpar::buildFieldParser(const parser::Field& field, std::list<std::string> endTokens) const
+parsec::MergeableParser<jFnList> Logpar::buildFieldParser(const parser::Field& field,
+                                                          std::deque<std::string> endTokens) const
 {
     // Get type of the parser to be built
     ParserType type;
@@ -536,8 +539,14 @@ parsec::MergeableParser<jFnList> Logpar::buildFieldParser(const parser::Field& f
     }
 
     // Get parser from type
-    // TODO, Add arg, if is custom field, then args capture should be false
-    parsec::MergeableParser<jFnList> ret = m_parserBuilders.at(type)(field.toStr(), field.name.value, endTokens, args);
+    ParserSpec spec {
+        .m_name = field.toStr(),
+        .m_path = json::Json::formatJsonPath(field.name.value, true),
+        .m_endTokens = endTokens,
+        .m_args = args,
+        .m_capture = (field.name.value == std::string {syntax::EXPR_CUSTOM_FIELD}),
+    };
+    parsec::MergeableParser<jFnList> ret = m_parserBuilders.at(type)(spec);
 
     // If field is optional, wrap in optional parser
     if (field.optional)
@@ -549,12 +558,12 @@ parsec::MergeableParser<jFnList> Logpar::buildFieldParser(const parser::Field& f
 }
 
 parsec::MergeableParser<jFnList> Logpar::buildChoiceParser(const parser::Choice& choice,
-                                                     std::list<std::string> endTokens) const
+                                                           std::deque<std::string> endTokens) const
 {
     auto p1 = buildFieldParser(choice.left, endTokens);
     auto p2 = buildFieldParser(choice.right, endTokens);
 
-    auto choiseParser = [p1, p2] (const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
+    auto choiseParser = [p1, p2](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
         auto result = parsec::MergeableResultP<jFnList>::failure(state);
         parsec::Mergeable<jFnList> value = {};
@@ -577,7 +586,7 @@ parsec::MergeableParser<jFnList> Logpar::buildChoiceParser(const parser::Choice&
                 {
                     result.concatenateTraces(std::move(trace.value()));
                 }
-                std::string trace =  success ? "[success] Semantic choice P1" : "[failure] Semantic choice P1";
+                std::string trace = success ? "[success] Semantic choice P1" : "[failure] Semantic choice P1";
                 result.concatenateTraces(trace);
             }
 
@@ -593,7 +602,6 @@ parsec::MergeableParser<jFnList> Logpar::buildChoiceParser(const parser::Choice&
                 return result;
             }
         }
-
 
         if (state.isTraceEnabled())
         {
@@ -619,7 +627,7 @@ parsec::MergeableParser<jFnList> Logpar::buildChoiceParser(const parser::Choice&
                 {
                     result.concatenateTraces(std::move(trace.value()));
                 }
-                std::string trace =  success ? "[success] Semantic choice P2" : "[failure] Semantic choice P2";
+                std::string trace = success ? "[success] Semantic choice P2" : "[failure] Semantic choice P2";
                 result.concatenateTraces(trace);
             }
 
@@ -664,10 +672,10 @@ parsec::Parser<jFnList> Logpar::buildParsers(const std::list<parser::ParserInfo>
     std::list<parsec::MergeableParser<jFnList>> parsers;
     for (auto parserInfo = parserInfos.begin(); parserInfo != parserInfos.end(); ++parserInfo)
     {
-        auto groupEndToken = [](const parser::Group& group, auto& ref) -> std::list<std::string>
+        auto groupEndToken = [](const parser::Group& group, auto& ref) -> std::deque<std::string>
         {
             auto it = group.children.cbegin();
-            std::list<std::string> endTokens;
+            std::deque<std::string> endTokens;
             if (std::holds_alternative<parser::Literal>(*it))
             {
                 endTokens.push_back(std::get<parser::Literal>(*it).value);
@@ -677,11 +685,13 @@ parsec::Parser<jFnList> Logpar::buildParsers(const std::list<parser::ParserInfo>
                 // If a group is the first element of a group, then resolve its end token
                 // recursively and ensure there is a literal after any succesion of groups
                 // and each group can resolve its end token
-                std::list<std::string> insideTokens;
+                std::deque<std::string> insideTokens;
 
                 while (it != group.children.cend() && std::holds_alternative<parser::Group>(*it))
                 {
-                    insideTokens.splice(insideTokens.end(), ref(std::get<parser::Group>(*it), ref));
+                    insideTokens.insert(insideTokens.end(),
+                                        ref(std::get<parser::Group>(*it), ref).begin(),
+                                        ref(std::get<parser::Group>(*it), ref).end());
                     it = std::next(it);
                 }
                 if (std::holds_alternative<parser::Literal>(*it))
@@ -693,7 +703,7 @@ parsec::Parser<jFnList> Logpar::buildParsers(const std::list<parser::ParserInfo>
                     throw std::runtime_error("Group must be followed by a literal");
                 }
 
-                endTokens.splice(endTokens.end(), insideTokens);
+                endTokens.insert(endTokens.end(), insideTokens.begin(), insideTokens.end());
             }
             else
             {
@@ -712,9 +722,9 @@ parsec::Parser<jFnList> Logpar::buildParsers(const std::list<parser::ParserInfo>
         // If next is none of the above, no end token is used (empty list)
         auto getEndToken = [&](const std::list<parser::ParserInfo>& infos,
                                decltype(infos.begin()) it,
-                               auto& ref) -> std::list<std::string>
+                               auto& ref) -> std::deque<std::string>
         {
-            std::list<std::string> endTokens {};
+            std::deque<std::string> endTokens {};
             auto next = std::next(it);
             if (next == infos.end())
             {
@@ -727,8 +737,8 @@ parsec::Parser<jFnList> Logpar::buildParsers(const std::list<parser::ParserInfo>
             }
             else if (std::holds_alternative<parser::Group>(*next))
             {
-                std::list<std::string> afterTokens;
-                std::list<std::string> insideTokens;
+                std::deque<std::string> afterTokens;
+                std::deque<std::string> insideTokens;
 
                 // Recursively get end token after the group
                 afterTokens = ref(infos, next, ref);
@@ -740,8 +750,8 @@ parsec::Parser<jFnList> Logpar::buildParsers(const std::list<parser::ParserInfo>
                     // Throws on errors
                     insideTokens = groupEndToken(group, groupEndToken);
 
-                    endTokens.splice(endTokens.end(), insideTokens);
-                    endTokens.splice(endTokens.end(), afterTokens);
+                    endTokens.insert(endTokens.end(), insideTokens.begin(), insideTokens.end());
+                    endTokens.insert(endTokens.end(), afterTokens.begin(), afterTokens.end());
                 }
             }
 
@@ -776,7 +786,7 @@ parsec::Parser<jFnList> Logpar::buildParsers(const std::list<parser::ParserInfo>
             }
 
             // Normal case
-            std::list<std::string> endTokens = getEndToken(parserInfos, parserInfo, getEndToken);
+            std::deque<std::string> endTokens = getEndToken(parserInfos, parserInfo, getEndToken);
 
             parsers.push_back(buildFieldParser(std::get<parser::Field>(*parserInfo), endTokens));
         }
@@ -788,7 +798,7 @@ parsec::Parser<jFnList> Logpar::buildParsers(const std::list<parser::ParserInfo>
         // Choice
         else if (std::holds_alternative<parser::Choice>(*parserInfo))
         {
-            std::list<std::string> endTokens = getEndToken(parserInfos, parserInfo, getEndToken);
+            std::deque<std::string> endTokens = getEndToken(parserInfos, parserInfo, getEndToken);
 
             parsers.push_back(buildChoiceParser(std::get<parser::Choice>(*parserInfo), endTokens));
         }
@@ -835,7 +845,6 @@ parsec::Parser<jFnList> Logpar::build(std::string_view logpar) const
 {
     auto parserSate = parsec::ParserState(logpar, true);
     auto result = parser::pLogpar()(parserSate);
-
 
     if (!result)
     {
