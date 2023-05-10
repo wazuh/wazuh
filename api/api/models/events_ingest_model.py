@@ -9,8 +9,15 @@ from api.models.base_model_ import Body
 class EventsIngestModel(Body):
 
     def __init__(self, events: Optional[list] = None) -> None:
+        """EventsIngestModel body model.
+
+        Parameters
+        ----------
+        events : Optional[list], optional
+            List of events, by default None.
+        """
         self.swagger_types = {
-            'events': List[dict],
+            'events': List[str],
         }
 
         self.attribute_map = {
