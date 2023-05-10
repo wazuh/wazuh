@@ -19095,17 +19095,16 @@ paths:
                   events:
                     description: "Bulk of events"
                     type: array
-                    format: events
                     items:
-                      type: object
+                      type: string
                 required:
                 - events
-            example:
-              events: 
-                - someKey: "Event value 1"
-                - someKey: "Event value 2"
+              example:
+                events:
+                  - "Event value 1"
+                  - "{\"someKey\": \"Event value 2\"}"
       responses:
-        '202':
+        '200':
           description: "Events accepted"
           content:
             application/json:
