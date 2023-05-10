@@ -292,7 +292,7 @@ def test_all_models(deserialize_mock, module_name):
 @pytest.mark.parametrize('size,raises', ([1, True], [2, False]))
 async def test_events_ingest_model_validation(size, raises):
     request = {'events': [{"foo": 1}, {"bar": 2}]}
-    with patch.dict('api.models.events_ingest_model.api_conf', {'events_bulk_max_size': size}):
+    with patch.dict('api.models.events_ingest_model.api_conf', {'max_events_per_request': size}):
         if raises:
             with pytest.raises(ProblemException) as exc:
                 await EventsIngestModel.get_kwargs(request)

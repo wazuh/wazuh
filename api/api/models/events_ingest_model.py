@@ -32,7 +32,7 @@ class EventsIngestModel(Body):
         """
         :param events: Events list
         """
-        bulk_max_size = api_conf.get('events_bulk_max_size')
+        bulk_max_size = api_conf.get('max_events_per_request')
         if bulk_max_size and len(events) > bulk_max_size:
             raise ProblemException(
                 status=400,

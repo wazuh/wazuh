@@ -85,7 +85,7 @@ default_api_configuration = {
             }
         }
     },
-    "events_bulk_max_size": 0
+    "max_events_per_request": 0
 }
 
 
