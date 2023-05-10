@@ -135,10 +135,18 @@ class ResourceHandler:
             command = 'add'
         elif command == 'put':
             command = 'update'
-        response = json.loads(resp_message)
-        if response['data']['status'] != 'OK':
-            raise Exception(
-                f'Could not execute {command} {name} due to: {response["data"]["error"]}')
+
+        if not len(resp_message):
+            raise Exception(f'Catalog command [{command}] received an empty response.')
+
+        try:
+            response = json.loads(resp_message)
+            if response['data']['status'] != 'OK':
+                raise Exception(
+                    f'Could not execute [{command}] [{name}] due to: {response["data"]["error"]}')
+        except:
+            raise Exception(f'Could not parse response message "{resp_message}".')
+
 
     def update_catalog_file(self, path: str, name: str, content: dict, format: Format):
         self._base_catalog_command(path, type, name, content, format, 'put')
@@ -205,14 +213,16 @@ class ResourceHandler:
         resp_size = int.from_bytes(data[:4], 'little')
         resp_message = data[4:resp_size+4].decode('UTF-8')
 
-        response = json.loads(resp_message)
+        if not len(resp_message):
+            raise Exception(f'KVDB command [{subcommand}] received an empty response.')
+
         try:
-            if response['data']['status'] != 'OK':
+            resp_message = json.loads(resp_message)
+            if resp_message['data']['status'] != 'OK':
                 raise Exception(
-                    f'Could not execute [{subcommand}] command in "{name}" due to: {response["data"]["error"]}')
+                    f'Could not execute [{subcommand}] in [{name}] due to: {resp_message["data"]["error"]}')
         except:
-            raise Exception(
-                f'Could not execute [{subcommand}] command in "{name}" due to: {response["message"]}')
+            raise Exception(f'Could not parse response message "{resp_message}".')
 
     def create_kvdb(self, api_socket: str, name: str, path: str):
         self._base_command_kvdb(api_socket, name, path, 'post')
@@ -262,8 +272,10 @@ class ResourceHandler:
                             f'Applying {command} command to {name} {type[:-1]}')
                     self._base_catalog_command(
                         api_socket, type[:-1], name, component, Format.YML, command)
+                else:
+                    raise Exception(f'{entry} is not a file.')
         else:
-            raise Exception(f'{path_str}/{type} does not exist')
+            raise Exception(f'{path_str}/{type} does not exist.')
 
     def recursive_load_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
         self._recursive_command_to_catalog(

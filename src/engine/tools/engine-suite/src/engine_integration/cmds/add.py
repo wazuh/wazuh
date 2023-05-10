@@ -79,20 +79,21 @@ def run(args, resource_handler: rs.ResourceHandler):
     # Create kvdbs
     pos = cm.add_command(func_to_recursive_create_kvdbs(api_socket, working_path, True),
                          func_to_recursive_delete_kvdbs(api_socket, working_path, True))
-    print(f'Kvdbs creation,  \texecution order: {pos}')
+    print(f'[{pos}]\tKvdbs creation')
+
     # Recursively add all components to the catalog
     pos = cm.add_command(func_to_recursive_load_catalog(api_socket, working_path, 'decoders', True),
                          func_to_recursive_delete_catalog(api_socket, working_path, 'decoders', True))
-    print(f'Decoders creation,\texecution order: {pos}')
+    print(f'[{pos}]\tDecoders creation')
     pos = cm.add_command(func_to_recursive_load_catalog(api_socket, working_path, 'rules', True),
                          func_to_recursive_delete_catalog(api_socket, working_path, 'rules', True))
-    print(f'Rules creation,  \texecution order: {pos}')
+    print(f'[{pos}]\tRules creation')
     pos = cm.add_command(func_to_recursive_load_catalog(api_socket, working_path, 'outputs', True),
                          func_to_recursive_delete_catalog(api_socket, working_path, 'outputs', True))
-    print(f'Outputs creation,\texecution order: {pos}')
+    print(f'[{pos}]\tOutputs creation')
     pos = cm.add_command(func_to_recursive_load_catalog(api_socket, working_path, 'filters', True),
                          func_to_recursive_delete_catalog(api_socket, working_path, 'filters', True))
-    print(f'Filters creation,\texecution order: {pos}')
+    print(f'[{pos}]\tFilters creation')
 
     if cm.execute() == 0:
         # Creates a manifest.yml if it doesn't exists
@@ -121,16 +122,11 @@ def run(args, resource_handler: rs.ResourceHandler):
 
 def configure(subparsers):
     parser_add = subparsers.add_parser(
-        'add', help='Add integration components to the Engine\' Catalog')
+        'add', help='Add integration components to the Engine Catalog. If a step fails it will undo the previous ones')
     parser_add.add_argument('-a', '--api-sock', type=str, default=DEFAULT_API_SOCK, dest='api_sock',
                             help=f'[default="{DEFAULT_API_SOCK}"] Engine instance API socket path')
 
     parser_add.add_argument('-p', '--integration-path', type=str, dest='integration-path',
                             help=f'[default=current directory] Integration directory path')
-
-    #bool
-    # parser_add.add_argument('-v', '--verbose', type=str, help=f'prints Traceback on error messages')
-    # TODO: check if this is a clearer approach
-    # sys.tracebacklimit = 0
 
     parser_add.set_defaults(func=run)
