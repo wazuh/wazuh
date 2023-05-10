@@ -10,7 +10,7 @@
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
 
-#include "commonDef.hpp"
+#include <hlp/commonDef.hpp>
 
 namespace hlp
 {

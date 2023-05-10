@@ -857,12 +857,16 @@ template<typename T>
 struct Mergeable
 {
     /**
-     * @brief This is a function that takes a T& and a list of tokens and process the tokens
-     * @details The function returns a tuple with a boolean that indicates if the process was successful
-     * and an optional TraceP that contains the error message if the process was not successful
+     * @brief The semantic processor takes a T& and a list of tokens and process the tokens.
+     * The function returns a tuple with a boolean that indicates if the process was successful and
+     * result of the semantic processor, it is a T and can be merged with other Mergeable
+     * an optional TraceP that contains the error message if the process was not successful.
+     * The state is only used for the trace, it is not modified.
      */
-    std::function<std::pair<bool, std::optional<TraceP>>(T&, const std::deque<std::string_view>&, const ParserState&)>
-        m_semanticProcessor;
+    using semanticProcessor = std::function<std::pair<bool, std::optional<TraceP>>(
+        T&, const std::deque<std::string_view>&, const ParserState&)>;
+
+    semanticProcessor m_semanticProcessor; ///< The semantic processor
     T m_result;                            ///< The result of the semantic processor
     std::deque<std::string_view> m_tokens; ///< Store the tokens of the result the sintactic parser found
     std::optional<std::function<void(T& dst, T& src)>> m_mergeFunction; ///< The function that merges two Mergeable

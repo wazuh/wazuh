@@ -46,6 +46,7 @@ target_link_libraries(hlp_logpar PUBLIC hlp::parsec json base)
 add_library(hlp::logpar ALIAS hlp_logpar)
 
 add_library(hlp2 STATIC
+        src/base.cpp
         # src/number.cpp
         # src/number.hpp
         # src/web.cpp
@@ -61,11 +62,11 @@ add_library(hlp2 STATIC
         # src/between.cpp
         # src/bool.cpp
         # src/ignore.cpp
-        # src/ip.cpp
+        src/ip.cpp
         # src/text.cpp
         # src/quoted.cpp
         # src/encodings.cpp
-        # src/literal.cpp
+        src/literal.cpp
         # src/alphanumeric.cpp
         )
 

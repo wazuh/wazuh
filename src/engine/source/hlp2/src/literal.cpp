@@ -12,32 +12,55 @@
 
 namespace hlp
 {
-parsec::Parser<json::Json> getLiteralParser(std::string name, Stop, Options lst)
+parsec::MergeableParser<jFnList> getLiteralParser(const ParserSpec& spec)
 {
-    if (lst.size() != 1)
+    if (spec.args().size() != 1)
     {
         throw(std::runtime_error("Literal parser requires exactly one option"));
     }
 
-    return [literal = lst[0], name](std::string_view txt, size_t idx)
+    return [spec](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
-        auto eof = internal::eofError<json::Json>(txt, idx);
-        if (eof.has_value())
+        auto result = parsec::MergeableResultP<jFnList>::failure(state);
+
+        if (state.getRemainingSize() == 0)
         {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Expected literal '{}' but found 'EOF'", name, literal),
-                idx);
+            if (state.isTraceEnabled())
+            {
+                auto trace =
+                    fmt::format("[failure] {} -> Unexpected EOF, expected literal '{}'", spec.name(), spec.args()[0]);
+                result.concatenateTraces(trace);
+            }
+            return result;
         }
 
-        if (txt.substr(idx, literal.size()) == literal)
+        auto inputStr = state.getRemainingData();
+
+        // Fail
+        if (inputStr.substr(0, spec.args()[0].size()) != spec.args()[0])
         {
-            return parsec::makeSuccess<json::Json>({}, idx + literal.size());
+            if (state.isTraceEnabled())
+            {
+                auto trace = fmt::format("[failure] {} -> Unexpected literal '{}', expected literal '{}'",
+                                         spec.name(),
+                                         inputStr,
+                                         spec.args()[0]);
+                result.concatenateTraces(trace);
+            }
+            return result;
         }
-        else
+
+        // Success
+        parsec::Mergeable<jFnList> mergeable {.m_semanticProcessor = internal::semanticProcessorPass};
+        result.setSuccess(state.advance(spec.args()[0].size()), std::move(mergeable));
+
+        if (state.isTraceEnabled())
         {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Expected literal '{}'", name, literal), idx);
+            auto trace = fmt::format("[success] {} -> Literal '{}'", spec.name(), spec.args()[0]);
+            result.concatenateTraces(trace);
         }
+
+        return result;
     };
 }
 } // namespace hlp

@@ -23,7 +23,7 @@ parsec::MergeableParser<jFnList> getParseQuotedString(const hlp::ParserSpec spec
 
     // Semantic action
     auto m_semanticProcessor =
-        [path = spec.m_path](jFnList& result,
+        [path = spec.targetField()](jFnList& result,
                const std::deque<std::string_view>& tokens,
                const parsec::ParserState& state) -> std::pair<bool, std::optional<parsec::TraceP>>
     {
@@ -38,7 +38,7 @@ parsec::MergeableParser<jFnList> getParseQuotedString(const hlp::ParserSpec spec
     };
 
     // Sintactic action
-    return [m_semanticProcessor, enableCapure = spec.m_capture](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
+    return [m_semanticProcessor, enableCapure = spec.capture()](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
         auto result = parsec::MergeableResultP<jFnList>::failure(state);
 
@@ -107,19 +107,19 @@ parsec::MergeableParser<jFnList>
 getParserIP(const hlp::ParserSpec& spec)
 {
 
-    if (spec.m_endTokens.empty())
+    if (spec.endTokens().empty())
     {
         throw std::runtime_error("IP parser needs a stop string");
     }
 
-    if (spec.m_args.size() > 0)
+    if (spec.args().size() > 0)
     {
         throw std::runtime_error("The IP parser does not accept any argument");
     }
 
     // Semantic action
     auto m_semanticProcessor =
-        [path = spec.m_path, enableCapure = spec.m_capture](jFnList& result,
+        [path = spec.targetField(), enableCapure = spec.capture()](jFnList& result,
                              const std::deque<std::string_view>& tokens,
                              const parsec::ParserState& state) -> std::pair<bool, std::optional<parsec::TraceP>>
     {
@@ -150,7 +150,7 @@ getParserIP(const hlp::ParserSpec& spec)
 
     // Sintactic action
     return [m_semanticProcessor,
-            endToken = spec.m_endTokens.front()](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
+            endToken = spec.endTokens().front()](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
         auto result = parsec::MergeableResultP<jFnList>::failure(state);
         if (state.getRemainingSize() == 0)
@@ -200,7 +200,7 @@ getParseNumber(const hlp::ParserSpec& spec)
 
     // Semantic action
     auto m_semanticProcessor =
-        [path = spec.m_path, enableCapure = spec.m_capture](jFnList& result,
+        [path = spec.targetField(), enableCapure = spec.capture()](jFnList& result,
                              const std::deque<std::string_view>& tokens,
                              const parsec::ParserState& state) -> std::pair<bool, std::optional<parsec::TraceP>>
     {
@@ -283,7 +283,7 @@ parsec::MergeableParser<jFnList>
 getParserAny(const hlp::ParserSpec& spec)
 {
 
-    if (spec.m_endTokens.empty())
+    if (spec.endTokens().empty())
     {
         throw std::runtime_error("Invalid end tokens, cannot be empty");
     }
@@ -293,7 +293,7 @@ getParserAny(const hlp::ParserSpec& spec)
 
     // Semantic action
     auto m_semanticProcessor =
-        [path = spec.m_path, enableCapure = spec.m_capture](jFnList& result,
+        [path = spec.targetField(), enableCapure = spec.capture()](jFnList& result,
                              const std::deque<std::string_view>& tokens,
                              const parsec::ParserState& state) -> std::pair<bool, std::optional<parsec::TraceP>>
     {
@@ -307,7 +307,7 @@ getParserAny(const hlp::ParserSpec& spec)
 
     // Sintactic action
     return [m_semanticProcessor,
-            endToken = spec.m_endTokens.front()](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
+            endToken = spec.endTokens().front()](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
         auto result = parsec::MergeableResultP<jFnList>::failure(state);
 
@@ -342,7 +342,7 @@ getParserAny(const hlp::ParserSpec& spec)
 parsec::MergeableParser<jFnList>
 getParseLiteral(const hlp::ParserSpec& spec)
 {
-    if (spec.m_args.size() != 1)
+    if (spec.args().size() != 1)
     {
         throw(std::runtime_error("Literal parser requires exactly one option"));
     }
@@ -357,7 +357,7 @@ getParseLiteral(const hlp::ParserSpec& spec)
 
     // Sintactic action
     return
-        [m_semanticProcessor, literal = spec.m_args[0]](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
+        [m_semanticProcessor, literal = spec.args()[0]](const parsec::ParserState& state) -> parsec::MergeableResultP<jFnList>
     {
         auto result = parsec::MergeableResultP<jFnList>::failure(state);
         if (state.getRemainingSize() == 0)

@@ -9,7 +9,7 @@
 #include <hlp/parsec.hpp>
 #include <json/json.hpp>
 
-#include "commonDef.hpp"
+#include <hlp/commonDef.hpp>
 
 namespace hlp
 {
@@ -132,7 +132,7 @@ std::string formatDateFromSample(std::string dateSample, std::string locale);
  * @param lst list of field names
  * @return
  */
-parsec::Parser<json::Json> getIPParser(std::string name, Stop endTokens, Options lst);
+parsec::MergeableParser<jFnList> getIPParser(const hlp::ParserSpec& spec);
 
 /**
  * Returns a parser which will accept a string
@@ -278,8 +278,7 @@ parsec::Parser<json::Json> getKVParser(std::string name, Stop endTokens, Options
  * @param lst a list with one element, the literal to parse
  * @return parsec::Parser<json::Json> the parser
  */
-parsec::Parser<json::Json>
-getLiteralParser(std::string name, Stop endTokens, Options lst);
+parsec::MergeableParser<jFnList> getLiteralParser(const ParserSpec& spec);
 
 /**
  * @brief Returns a parser that will ignore a string, which may be repeated 0 or more

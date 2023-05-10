@@ -487,7 +487,7 @@ parsec::MergeableParser<jFnList> Logpar::buildLiteralParser(const parser::Litera
         throw std::runtime_error(fmt::format("Parser type '{}' not found", parserTypeToStr(ParserType::P_LITERAL)));
     }
 
-    ParserSpec spec {.m_name = literal.value, .m_args = {literal.value}, .m_capture = false};
+    auto spec = ParserSpec().name(literal.value).args({literal.value}).capture(false);
     return m_parserBuilders.at(ParserType::P_LITERAL)(spec);
 }
 

@@ -9,6 +9,8 @@
 #include <hlp/hlp.hpp>
 #include <hlp/parsec.hpp>
 
+#include <hlp/commonDef.hpp>
+
 namespace hlp::internal
 {
 
@@ -66,8 +68,8 @@ stopAux(const parsec::ParserState& state, const std::string& end)
 }
 
 template<typename T>
-std::variant<std::string_view, parsec::ResultP<T>>
-stop(const parsec::ParserState& state, const std::list<std::string>& end)
+std::variant<std::string_view, parsec::MergeableResultP<T>>
+stop(const parsec::ParserState& state, const Stop& end)
 {
     for (const auto& e : end)
     {
@@ -81,10 +83,9 @@ stop(const parsec::ParserState& state, const std::list<std::string>& end)
     if (state.isTraceEnabled())
     {
         auto msg = fmt::format("Unable to stop at '{}' from '{}'", fmt::join(end, ", "), state.getRemainingData());
-        return parsec::ResultP<T>::failure(msg, state.getOffset());
+        return parsec::MergeableResultP<T>::failure(state, parsec::TraceP {msg, state.getOffset()});
     }
-    return parsec::ResultP<T>::failure();
-
+    return parsec::MergeableResultP<T>::failure(state);
 }
 
 /**
@@ -101,30 +102,47 @@ stop(const parsec::ParserState& state, const std::list<std::string>& end)
  * @return std::variant<std::string_view, parsec::Result<T>> the substring or error
  */
 template<typename T>
-std::variant<std::string_view, parsec::ResultP<T>>
+std::variant<std::string_view, parsec::MergeableResultP<T>>
 preProcess(const parsec::ParserState& state, const Stop& end)
 {
     if (state.getRemainingSize() == 0)
     {
        if (state.isTraceEnabled())
         {
-            return parsec::ResultP<T>::failure(parsec::TraceP("Unexpected EOF", state.getOffset()));
+            return parsec::MergeableResultP<T>::failure(state, parsec::TraceP("Unexpected EOF", state.getOffset()));
         }
-        return parsec::ResultP<T>::failure();
+        return parsec::MergeableResultP<T>::failure(state);
     }
 
     if (!end.empty())
     {
         auto res = stop<T>(state, end);
-        if (std::holds_alternative<parsec::ResultP<T>>(res))
+        if (std::holds_alternative<parsec::MergeableResultP<T>>(res))
         {
-            return std::get<parsec::ResultP<T>>(res);
+            return std::get<parsec::MergeableResultP<T>>(res);
         }
         return std::get<std::string_view>(res);
     }
 
     return state.getRemainingData();
 }
+
+/**
+ * @brief Concatenates two jFnList by moving the elements of the source to the destination
+ *
+ * @param destination Destination list
+ * @param source Source list
+ */
+void concatenateJFnList(jFnList& dst, jFnList& src);
+
+/**
+ * @brief The semantic parser for always true results
+ *
+ * @return std::pair<bool, std::optional<parsec::TraceP>>
+ */
+std::pair<bool, std::optional<parsec::TraceP>>
+semanticProcessorPass(jFnList&, const std::deque<std::string_view>&, const parsec::ParserState&);
+
 } // namespace hlp::internal
 
 #endif // _HLP_BASE_HPP
