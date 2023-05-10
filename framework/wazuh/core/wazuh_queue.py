@@ -176,14 +176,14 @@ class WazuhAnalysisdQueue(BaseQueue):
     WazuhAnalysisdQueue Object.
     """
 
-    def send_msg(self, msg_header: str, msg: Any):
+    def send_msg(self, msg_header: str, msg: str):
         """Send message to analysisd.
 
         Parameters
         ----------
         msg_header : str
             Header message to attach.
-        msg : dict
+        msg : str
             Message to send.
 
         Raises
@@ -193,7 +193,7 @@ class WazuhAnalysisdQueue(BaseQueue):
 
         """
         try:
-            socket_msg = (f"{msg_header}{json.dumps(msg)}")
+            socket_msg = (f"{msg_header}{msg}")
             # Send message
             self._send(socket_msg.encode())
         except Exception as e:
