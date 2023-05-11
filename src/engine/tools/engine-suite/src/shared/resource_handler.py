@@ -24,10 +24,18 @@ class ResourceHandler:
         self._files = files('engine-suite')
 
     def _read_json(self, content: str) -> dict:
-        return json.loads(content)
+        try:
+            read = json.loads(content)
+        except ValueError:  # includes simplejson.decoder.JSONDecodeError
+            print('Error while reading JSON file')
+        return read
 
     def _read_yml(self, content: str) -> dict:
-        return yaml.load(content, Loader=Loader)
+        try:
+            read = yaml.load(content, Loader=Loader)  # yaml.SafeLoader
+        except yaml.YAMLError:
+            print("Error while reading YAML file")
+        return read
 
     def _read(self, content: str, format: Format) -> dict:
         if Format.JSON == format:
@@ -68,18 +76,17 @@ class ResourceHandler:
 
         readed = self._read(file.text, format)
         if not readed:
-            raise Exception(f'Failed to read {full_name}')
-
+            raise Exception(f'Failed to read {file.name}')
         return readed
 
     def _load_file(self, path: Path, format: Format = Format.YML) -> dict:
         content = path.read_text()
-
-        readed = self._read(content, format)
-        if not readed:
-            raise Exception(f'Failed to read {full_name}')
-
-        return readed
+        read = {}
+        try:
+            read = self._read(content, format)
+        except:
+            raise Exception(f'Failed to read {path.name}')
+        return read
 
     def load_file(self, path_str: str, format: Format = Format.YML) -> dict:
         path = Path(path_str)
@@ -137,7 +144,8 @@ class ResourceHandler:
             command = 'update'
 
         if not len(resp_message):
-            raise Exception(f'Catalog command [{command}] received an empty response.')
+            raise Exception(
+                f'Catalog command [{command}] received an empty response.')
 
         try:
             response = json.loads(resp_message)
@@ -145,8 +153,8 @@ class ResourceHandler:
                 raise Exception(
                     f'Could not execute [{command}] [{name}] due to: {response["data"]["error"]}')
         except:
-            raise Exception(f'Could not parse response message "{resp_message}".')
-
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
 
     def update_catalog_file(self, path: str, name: str, content: dict, format: Format):
         self._base_catalog_command(path, type, name, content, format, 'put')
@@ -214,7 +222,8 @@ class ResourceHandler:
         resp_message = data[4:resp_size+4].decode('UTF-8')
 
         if not len(resp_message):
-            raise Exception(f'KVDB command [{subcommand}] received an empty response.')
+            raise Exception(
+                f'KVDB command [{subcommand}] received an empty response.')
 
         try:
             resp_message = json.loads(resp_message)
@@ -222,7 +231,8 @@ class ResourceHandler:
                 raise Exception(
                     f'Could not execute [{subcommand}] in [{name}] due to: {resp_message["data"]["error"]}')
         except:
-            raise Exception(f'Could not parse response message "{resp_message}".')
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
 
     def create_kvdb(self, api_socket: str, name: str, path: str):
         self._base_command_kvdb(api_socket, name, path, 'post')
