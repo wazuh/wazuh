@@ -67,61 +67,60 @@ void KVDBManager::initializeOptions()
 
 void KVDBManager::initializeMainDB()
 {
+    auto dbStoragePath = m_ManagerOptions.dbStoragePath.string();
+
+    std::filesystem::create_directories(dbStoragePath);
+
+    auto dbNameFullPath = fmt::format("{}{}", dbStoragePath, m_ManagerOptions.dbName);
+
     std::vector<std::string> columnNames;
+    auto listStatus = rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), dbNameFullPath, &columnNames);
 
-    auto dbPath = fmt::format("{}{}", m_ManagerOptions.dbStoragePath.string(), m_ManagerOptions.dbName);
-
-    std::filesystem::create_directories(dbPath);
-
-    auto listStatus = rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), dbPath, &columnNames);
+    std::vector<rocksdb::ColumnFamilyDescriptor> cfDescriptors;
+    std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
 
     if (listStatus.ok())
     {
         for (auto cfName : columnNames)
         {
             auto newDescriptor = rocksdb::ColumnFamilyDescriptor(cfName, rocksdb::ColumnFamilyOptions());
-            m_cfDescriptors.push_back(newDescriptor);
+            cfDescriptors.push_back(newDescriptor);
         }
     }
-    else
-    {
-        auto newDescriptor = rocksdb::ColumnFamilyDescriptor(DEFAULT_CF_NAME, rocksdb::ColumnFamilyOptions());
-        m_cfDescriptors.push_back(newDescriptor);
-    }
 
-    auto openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbPath, m_cfDescriptors, &m_cfHandles, &m_pRocksDB);
+    auto openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
 
-    for (int k=0; k<m_cfDescriptors.size(); k++)
+    for (int k = 0; k<cfDescriptors.size(); k++)
     {
-        m_mapCFHandles.insert(std::make_pair(m_cfDescriptors[k].name, m_cfHandles[k]));
+        m_mapCFHandles.insert(std::make_pair(cfDescriptors[k].name, cfHandles[k]));
     }
 
     assert(openStatus.ok());
+    assert(m_pRocksDB);
 }
 
 void KVDBManager::finalizeMainDB()
 {
-    rocksdb::Status s;
+    rocksdb::Status opStatus;
 
-    for (auto handle : m_cfHandles)
+    for (auto entry : m_mapCFHandles)
     {
-        s = m_pRocksDB->DestroyColumnFamilyHandle(handle);
+        auto cfHandle = entry.second;
+        opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
         assert(s.ok());
     }
 
-    m_cfHandles.clear();
-    m_cfDescriptors.clear();
     m_mapCFHandles.clear();
 
-    s = m_pRocksDB->Close();
-    assert(s.ok());
+    opStatus = m_pRocksDB->Close();
+    assert(opStatus.ok());
+
     delete m_pRocksDB;
 }
 
 std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
-    rocksdb::ColumnFamilyHandle* cfHandle = nullptr;
-    std::shared_ptr<IKVDBHandler> result = nullptr;
+    rocksdb::ColumnFamilyHandle* cfHandle;
 
     if (m_mapCFHandles.count(dbName))
     {
@@ -131,35 +130,25 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbN
     {
         rocksdb::Status s = m_pRocksDB->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), dbName, &cfHandle);
         assert(s.ok());
-
-        auto newDescriptor = rocksdb::ColumnFamilyDescriptor(dbName, rocksdb::ColumnFamilyOptions());
-        m_cfDescriptors.push_back(newDescriptor);
-
-        m_cfHandles.push_back(cfHandle);
         m_mapCFHandles.insert(std::make_pair(dbName, cfHandle));
     }
 
-    result = m_kvdbHandlerCollection->getKVDBHandler(m_pRocksDB, cfHandle, dbName, scopeName);
+    auto retHandler = m_kvdbHandlerCollection->getKVDBHandler(m_pRocksDB, cfHandle, dbName, scopeName);
+    assert(retHandler);
 
-    return result;
+    return retHandler;
 }
 
 void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
-    //TODO: check cfhandler is use for other scope
-
-    if (m_mapCFHandles.find(dbName) != m_mapCFHandles.end())
+    bool isRemoved = false;
+    m_kvdbHandlerCollection->removeKVDBHandler(dbName, scopeName, isRemoved);
+    if (isRemoved)
     {
-        auto it = std::remove_if(m_cfHandles.begin(),
-                                 m_cfHandles.end(),
-                                 [&](auto const& cf)
-                                 { return cf->GetName() == dbName; });
-        m_cfHandles.erase(it);
-        m_kvdbHandlerCollection->removeKVDBHandler(dbName, scopeName);
-
-        auto s = m_pRocksDB->DestroyColumnFamilyHandle(m_mapCFHandles[dbName]);
+        auto cfHandle = m_mapCFHandles[dbName];
+        assert(cfHandle);
+        rocksdb::Status s = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
         assert(s.ok());
-
         m_mapCFHandles.erase(dbName);
     }
 }
