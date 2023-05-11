@@ -11,7 +11,7 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
     {
         auto &instance = it->second;
         instance->addScope(scopeName);
-        return it->second->getHandler();
+        return instance->getHandler();
     }
     else
     {
@@ -23,9 +23,10 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
     }
 }
 
-void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
+void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const std::string& scopeName, bool &isRemoved)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
+    isRemoved = false;
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
@@ -34,6 +35,7 @@ void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const s
         if (instance->emptyScopes())
         {
             m_mapInstances.erase(it);
+            isRemoved = true;
         }
     }
 }
