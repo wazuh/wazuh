@@ -20,7 +20,16 @@
 #include <thread>
 #include <unordered_map>
 
-using FullLogFunction = auto (*)(const char* log_level, const char* tag, const char* file, int line, const char* func, const char* msg, ...) -> void;
+enum class LogLevel : int
+{
+    DEBUG_LOG = 0,
+    DEBUG_VERBOSE_LOG,
+    INFO_LOG,
+    WARNING_LOG,
+    ERROR_LOG
+};
+
+using FullLogFunction = auto (*)(int log_level, const char* tag, const char* file, int line, const char* func, const char* msg, ...) -> void;
 // We can't use std::source_location until C++20
 #define LogEndl Log::sourceFile {__FILE__, __LINE__, __func__}
 
@@ -42,7 +51,7 @@ namespace Log
             std::string m_tag;
 
         protected:
-            std::string m_logType;
+            int m_logLevel;
             Logger() = default;
 
         public:
@@ -82,7 +91,7 @@ namespace Log
                 {
                     std::lock_guard<std::mutex> lockGuard(logMutex);
                     auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_logType.c_str(), logObject.m_tag.c_str(), __FILE__, __LINE__, __func__, logObject.m_threadsBuffers[threadId].c_str());
+                    logObject.m_logFunction(logObject.m_logLevel, logObject.m_tag.c_str(), __FILE__, __LINE__, __func__, logObject.m_threadsBuffers[threadId].c_str());
                     logObject.m_threadsBuffers.erase(threadId);
                 }
 
@@ -98,7 +107,7 @@ namespace Log
                 {
                     std::lock_guard<std::mutex> lockGuard(logMutex);
                     auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_logType.c_str(), logObject.m_tag.c_str(), sourceLocation.file, sourceLocation.line, sourceLocation.func, logObject.m_threadsBuffers[threadId].c_str());
+                    logObject.m_logFunction(logObject.m_logLevel, logObject.m_tag.c_str(), sourceLocation.file, sourceLocation.line, sourceLocation.func, logObject.m_threadsBuffers[threadId].c_str());
                     logObject.m_threadsBuffers.erase(threadId);
                 }
 
@@ -111,7 +120,7 @@ namespace Log
         public:
             Info() : Logger()
             {
-                m_logType = "info";
+                m_logLevel = static_cast<int>(LogLevel::INFO_LOG);
             };
 
             static Info& instance()
@@ -126,7 +135,7 @@ namespace Log
         public:
             Error() : Logger()
             {
-                m_logType = "error";
+                m_logLevel = static_cast<int>(LogLevel::ERROR_LOG);
             };
 
             static Error& instance()
@@ -141,7 +150,7 @@ namespace Log
         public:
             Debug() : Logger()
             {
-                m_logType = "debug";
+                m_logLevel = static_cast<int>(LogLevel::DEBUG_LOG);
             };
 
             static Debug& instance()
@@ -156,7 +165,7 @@ namespace Log
         public:
             DebugVerbose() : Logger()
             {
-                m_logType = "debug_verbose";
+                m_logLevel = static_cast<int>(LogLevel::DEBUG_VERBOSE_LOG);
             };
 
             static DebugVerbose& instance()
@@ -171,7 +180,7 @@ namespace Log
         public:
             Warning() : Logger()
             {
-                m_logType = "warning";
+                m_logLevel = static_cast<int>(LogLevel::WARNING_LOG);
             };
 
             static Warning& instance()

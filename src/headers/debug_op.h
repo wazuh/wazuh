@@ -38,6 +38,19 @@
 #endif
 #endif
 
+/**
+ * @brief Enumeration of the different log levels.
+ *
+ */
+typedef enum {
+    DEBUG_LOG = 0,
+    DEBUG_VERBOSE_LOG,
+    INFO_LOG,
+    WARNING_LOG,
+    ERROR_LOG
+} log_level_t;
+
+
 #define mdebug1(msg, ...) _mdebug1(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define plain_mdebug1(msg, ...) _plain_mdebug1(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mtdebug1(tag, msg, ...) _mtdebug1(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
@@ -86,14 +99,14 @@ void _mlerror_exit(const int level, const char * file, int line, const char * fu
 /**
  * @brief Wrapper function for all the _mt variants of the logging functions. It calls the appropriate function based on the level parameter.
  *
- * @param level Log level (error, warning, info, debug, debug_verbose).
+ * @param level Log level in log_level_t (DEBUG_LOG, DEBUG_VERBOSE_LOG, INFO_LOG, WARNING_LOG or ERROR_LOG).
  * @param tag The name of the module that is logging the message.
  * @param file The name of the file where logging has been done.
  * @param line The line number where logging has been done.
  * @param func The name of the function where logging has been done.
  * @param msg Log message.
  */
-void mt_log_wrapper(const char* level, const char *tag, const char * file, int line, const char * func, const char *msg, ...);
+void mt_log_wrapper(int level, const char *tag, const char * file, int line, const char * func, const char *msg, ...);
 
 /**
  * @brief Logging module initializer
