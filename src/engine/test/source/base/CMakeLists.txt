@@ -72,3 +72,7 @@ add_executable(parseEvent_test
 )
 target_link_libraries(parseEvent_test gtest_main base)
 gtest_discover_tests(parseEvent_test)
+
+add_executable(dotPath_test dotPath_test.cpp)
+target_link_libraries(dotPath_test gtest_main base)
+gtest_discover_tests(dotPath_test)

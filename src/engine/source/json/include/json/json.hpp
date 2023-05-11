@@ -2,12 +2,12 @@
 #define _JSON_H
 
 #include <algorithm>
+#include <cmath>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <cmath>
 
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
@@ -36,6 +36,21 @@ public:
         Number,
         Boolean
     };
+
+    friend std::ostream& operator<<(std::ostream& os, Type type)
+    {
+        switch (type)
+        {
+            case Type::Null: os << "Null"; break;
+            case Type::Object: os << "Object"; break;
+            case Type::Array: os << "Array"; break;
+            case Type::String: os << "String"; break;
+            case Type::Number: os << "Number"; break;
+            case Type::Boolean: os << "Boolean"; break;
+        }
+
+        return os;
+    }
 
 private:
     rapidjson::Document m_document;
@@ -192,8 +207,7 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    bool equals(std::string_view basePointerPath,
-                std::string_view referencePointerPath) const;
+    bool equals(std::string_view basePointerPath, std::string_view referencePointerPath) const;
 
     /**
      * @brief Set the value of the field with the given pointer path.
@@ -337,8 +351,7 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    std::optional<std::vector<std::tuple<std::string, Json>>>
-    getObject(std::string_view path = "") const;
+    std::optional<std::vector<std::tuple<std::string, Json>>> getObject(std::string_view path = "") const;
 
     /**
      * @brief Get Json prettyfied string.
@@ -727,7 +740,6 @@ public:
      * - If Json Values are not the same type.
      */
     void merge(const bool isRecursive, std::string_view other, std::string_view path = "");
-
 };
 
 } // namespace json
