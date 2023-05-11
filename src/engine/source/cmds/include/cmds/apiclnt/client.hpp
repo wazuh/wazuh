@@ -93,12 +93,12 @@ public:
         clientHandle->on<uvw::DataEvent>(
             [&response](const uvw::DataEvent& event, uvw::PipeHandle& handle)
             {
-                static int32_t size = 0;
+                static uint32_t size = 0;
                 if (0 == size)
                 {
-                    memcpy(&size, event.data.get(), sizeof(int32_t));
-                    response = std::string(event.data.get() + sizeof(int), event.length - sizeof(int));
-                    size -= (event.length - sizeof(int));
+                    memcpy(&size, event.data.get(), sizeof(uint32_t));
+                    response = std::string(event.data.get() + sizeof(uint32_t), event.length - sizeof(uint32_t));
+                    size -= (event.length - sizeof(uint32_t));
                 }
                 else
                 {
