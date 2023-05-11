@@ -30,6 +30,7 @@ add_library(api STATIC
     ${ENGINE_API_SOURCE_DIR}/metrics/handlers.cpp
     ${ENGINE_API_SOURCE_DIR}/registry.cpp
     ${ENGINE_API_SOURCE_DIR}/router/handlers.cpp
+    ${ENGINE_API_SOURCE_DIR}/graph/handlers.cpp
 )
 
 target_include_directories(api

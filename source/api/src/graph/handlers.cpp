@@ -1,5 +1,6 @@
 
 #include "api/graph/handlers.hpp"
+#include "api/router/handlers.hpp"
 
 #include <api/adapter.hpp>
 #include <eMessages/eMessage.h>
@@ -19,6 +20,8 @@ enum class GraphType
     EXPRESSIONS
 };
 }
+
+using namespace api::router::handlers;
 
 namespace api::graph::handlers
 {
@@ -142,7 +145,6 @@ api::Handler resourceGet(const Config& config)
         }
 
         eResponse.set_status(eEngine::ReturnStatus::OK);
-
         return ::api::adapter::toWazuhResponse(eResponse);
     };
 }
