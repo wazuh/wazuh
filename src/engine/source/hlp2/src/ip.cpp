@@ -55,7 +55,7 @@ parsec::MergeableParser<jFnList> getIPParser(const hlp::ParserSpec& spec)
         if (state.isTraceEnabled())
         {
             auto trace = fmt::format("[failed] {} -> Invalid IP address: '{}'", spec.name(), srcip);
-            auto offset = srcip.data() - state.getData().data();
+            auto offset = tokens.front().data() + tokens.front().size() - state.getData().data();
             return {false, parsec::TraceP(trace, offset)};
         }
 

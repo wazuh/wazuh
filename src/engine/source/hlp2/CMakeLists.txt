@@ -47,8 +47,8 @@ add_library(hlp::logpar ALIAS hlp_logpar)
 
 add_library(hlp2 STATIC
         src/base.cpp
-        # src/number.cpp
-        # src/number.hpp
+        src/number.cpp
+        src/number.hpp
         # src/web.cpp
         # src/file.cpp
         # src/json.cpp

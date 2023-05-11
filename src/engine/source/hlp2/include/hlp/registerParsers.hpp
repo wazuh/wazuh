@@ -10,11 +10,11 @@ inline void registerParsers(std::shared_ptr<logpar::Logpar> logpar)
 {
 
     // Numeric
-    // logpar->registerBuilder(ParserType::P_LONG, hlp::getLongParser);
-    // logpar->registerBuilder(ParserType::P_DOUBLE, hlp::getDoubleParser);
-    // logpar->registerBuilder(ParserType::P_FLOAT, hlp::getFloatParser);
-    // logpar->registerBuilder(ParserType::P_SCALED_FLOAT, hlp::getScaledFloatParser);
-    // logpar->registerBuilder(ParserType::P_BYTE, hlp::getByteParser);
+    logpar->registerBuilder(ParserType::P_LONG, hlp::getLongParser);
+    logpar->registerBuilder(ParserType::P_DOUBLE, hlp::getDoubleParser);
+    logpar->registerBuilder(ParserType::P_FLOAT, hlp::getFloatParser);
+    logpar->registerBuilder(ParserType::P_SCALED_FLOAT, hlp::getScaledFloatParser);
+    logpar->registerBuilder(ParserType::P_BYTE, hlp::getByteParser);
 
     // String
     // logpar->registerBuilder(ParserType::P_TEXT, hlp::getTextParser);

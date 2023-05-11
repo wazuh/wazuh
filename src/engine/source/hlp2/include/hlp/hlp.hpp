@@ -43,12 +43,11 @@ parsec::Parser<json::Json> getBoolParser(std::string name, Stop endTokens, Optio
  * @param lst
  * @return
  */
-parsec::Parser<json::Json> getByteParser(std::string name, Stop endTokens, Options lst);
-parsec::Parser<json::Json> getLongParser(std::string name, Stop endTokens, Options lst);
-parsec::Parser<json::Json> getFloatParser(std::string name, Stop endTokens, Options lst);
-parsec::Parser<json::Json> getDoubleParser(std::string name, Stop endTokens, Options lst);
-parsec::Parser<json::Json>
-getScaledFloatParser(std::string name, Stop endTokens, Options lst);
+parsec::MergeableParser<jFnList> getByteParser(const ParserSpec& spec);
+parsec::MergeableParser<jFnList> getLongParser(const ParserSpec& spec);
+parsec::MergeableParser<jFnList> getFloatParser(const ParserSpec& spec);
+parsec::MergeableParser<jFnList> getDoubleParser(const ParserSpec& spec);
+parsec::MergeableParser<jFnList> getScaledFloatParser(const ParserSpec& spec);
 
 /**
  * Returns a parser which will accept any text until it finds the

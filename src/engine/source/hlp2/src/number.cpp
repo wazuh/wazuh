@@ -11,24 +11,24 @@
 
 namespace utils
 {
-void setNumber(json::Json& doc, int8_t val)
+std::function<void(json::Json&)> setNumberHandler(const std::string& path, int8_t val)
 {
-    doc.setInt(val);
+    return [path, val](json::Json& doc) { doc.setInt(val, path); };
 }
 
-void setNumber(json::Json& doc, int64_t val)
+std::function<void(json::Json&)> setNumberHandler(const std::string& path, int64_t val)
 {
-    doc.setInt64(val);
+    return [path, val](json::Json& doc) { doc.setInt64(val, path); };
 }
 
-void setNumber(json::Json& doc, float_t val)
+std::function<void(json::Json&)> setNumberHandler(const std::string& path, float_t val)
 {
-    doc.setFloat(val);
+    return [path, val](json::Json& doc) { doc.setFloat(val, path); };
 }
 
-void setNumber(json::Json& doc, double_t val)
+std::function<void(json::Json&)> setNumberHandler(const std::string& path, double_t val)
 {
-    doc.setDouble(val);
+    return [path, val](json::Json& doc) { doc.setDouble(val, path); };
 }
 
 std::from_chars_result from_chars(const char* first, const char* last, int8_t& val)
@@ -58,29 +58,29 @@ std::from_chars_result from_chars(const char* first, const char* last, double& v
 namespace hlp
 {
 
-parsec::Parser<json::Json> getByteParser(std::string name, Stop endTokens, Options lst)
+parsec::MergeableParser<jFnList> getByteParser(const ParserSpec& spec)
 {
-    return getNumericParser<int8_t>(name, endTokens, lst);
+    return getNumericParser<int8_t>(spec);
 }
 
-parsec::Parser<json::Json> getLongParser(std::string name, Stop endTokens, Options lst)
+parsec::MergeableParser<jFnList> getLongParser(const ParserSpec& spec)
 {
-    return getNumericParser<int64_t>(name, endTokens, lst);
+    return getNumericParser<int64_t>(spec);
 }
 
-parsec::Parser<json::Json> getFloatParser(std::string name, Stop endTokens, Options lst)
+parsec::MergeableParser<jFnList> getFloatParser(const ParserSpec& spec)
 {
-    return getNumericParser<float_t>(name, endTokens, lst);
+    return getNumericParser<float_t>(spec);
 }
 
-parsec::Parser<json::Json> getDoubleParser(std::string name, Stop endTokens, Options lst)
+parsec::MergeableParser<jFnList> getDoubleParser(const ParserSpec& spec)
 {
-    return getNumericParser<double_t>(name, endTokens, lst);
+    return getNumericParser<double_t>(spec);
 }
 
-parsec::Parser<json::Json> getScaledFloatParser(std::string name, Stop endTokens, Options lst)
+parsec::MergeableParser<jFnList> getScaledFloatParser(const ParserSpec& spec)
 {
-    return getNumericParser<double_t>(name, endTokens, lst);
+    return getNumericParser<double_t>(spec);
 }
 
 } // namespace hlp

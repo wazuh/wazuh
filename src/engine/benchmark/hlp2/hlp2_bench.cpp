@@ -1,3 +1,6 @@
+#ifndef __HLP2_BENCH_H__
+#define __HLP2_BENCH_H__
+
 #include <iostream>
 #include <string>
 
@@ -818,3 +821,5 @@ static void logpar_parse_error_LIT_4(benchmark::State& state)
     }
 }
 BENCHMARK(logpar_parse_error_LIT_4)->Range(4, 4 << 4);
+
+#endif // __HLP2_BENCH_H__

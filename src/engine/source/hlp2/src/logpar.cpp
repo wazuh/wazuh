@@ -544,7 +544,7 @@ parsec::MergeableParser<jFnList> Logpar::buildFieldParser(const parser::Field& f
         .m_path = json::Json::formatJsonPath(field.name.value, true),
         .m_endTokens = endTokens,
         .m_args = args,
-        .m_capture = (field.name.value == std::string {syntax::EXPR_CUSTOM_FIELD}),
+        .m_capture = (field.name.value != std::string {syntax::EXPR_CUSTOM_FIELD}),
     };
     parsec::MergeableParser<jFnList> ret = m_parserBuilders.at(type)(spec);
 
