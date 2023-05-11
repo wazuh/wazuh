@@ -1,0 +1,11 @@
+{
+    "metadata": {
+        "author": {
+            "date": "2022/11/08",
+            "name": "Wazuh, Inc.",
+            "url": "https://wazuh.com"
+        },
+        "description": "Default filter to allow all events (for default ruleset)"
+    },
+    "name": "filter/allow-all/0"
+}
