@@ -49,6 +49,9 @@ public:
     void finalize();
 
     std::shared_ptr<IKVDBScope> getKVDBScope(const std::string& scopeName) override;
+    std::map<std::string, RefInfo> getKVDBScopesInfo() override;
+    std::map<std::string, RefInfo> getKVDBHandlersInfo() override;
+
     std::shared_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     std::vector<std::string> listDBs(const bool loaded) override;
