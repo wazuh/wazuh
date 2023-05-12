@@ -22,8 +22,8 @@
 
 enum class LogLevel : int
 {
-    DEBUG_LOG = 0,
-    DEBUG_VERBOSE_LOG,
+    DEBUG_VERBOSE_LOG = 0,
+    DEBUG_LOG,
     INFO_LOG,
     WARNING_LOG,
     ERROR_LOG
@@ -115,32 +115,17 @@ namespace Log
             }
     };
 
-    class Info : public Logger
+    class DebugVerbose : public Logger
     {
         public:
-            Info() : Logger()
+            DebugVerbose() : Logger()
             {
-                m_logLevel = static_cast<int>(LogLevel::INFO_LOG);
+                m_logLevel = static_cast<int>(LogLevel::DEBUG_VERBOSE_LOG);
             };
 
-            static Info& instance()
+            static DebugVerbose& instance()
             {
-                static Info logInstance;
-                return logInstance;
-            }
-    };
-
-    class Error : public Logger
-    {
-        public:
-            Error() : Logger()
-            {
-                m_logLevel = static_cast<int>(LogLevel::ERROR_LOG);
-            };
-
-            static Error& instance()
-            {
-                static Error logInstance;
+                static DebugVerbose logInstance;
                 return logInstance;
             }
     };
@@ -160,17 +145,17 @@ namespace Log
             }
     };
 
-    class DebugVerbose : public Logger
+    class Info : public Logger
     {
         public:
-            DebugVerbose() : Logger()
+            Info() : Logger()
             {
-                m_logLevel = static_cast<int>(LogLevel::DEBUG_VERBOSE_LOG);
+                m_logLevel = static_cast<int>(LogLevel::INFO_LOG);
             };
 
-            static DebugVerbose& instance()
+            static Info& instance()
             {
-                static DebugVerbose logInstance;
+                static Info logInstance;
                 return logInstance;
             }
     };
@@ -190,11 +175,26 @@ namespace Log
             }
     };
 
-    static Info& info = Info::instance();
-    static Error& error = Error::instance();
-    static Debug& debug = Debug::instance();
+    class Error : public Logger
+    {
+        public:
+            Error() : Logger()
+            {
+                m_logLevel = static_cast<int>(LogLevel::ERROR_LOG);
+            };
+
+            static Error& instance()
+            {
+                static Error logInstance;
+                return logInstance;
+            }
+    };
+
     static DebugVerbose& debugVerbose = DebugVerbose::instance();
+    static Debug& debug = Debug::instance();
+    static Info& info = Info::instance();
     static Warning& warning = Warning::instance();
+    static Error& error = Error::instance();
 
 } // namespace Log
 #endif // LOGGER_HELPER_H

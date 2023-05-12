@@ -43,8 +43,8 @@
  *
  */
 typedef enum {
-    DEBUG_LOG = 0,
-    DEBUG_VERBOSE_LOG,
+    DEBUG_VERBOSE_LOG = 0,
+    DEBUG_LOG,
     INFO_LOG,
     WARNING_LOG,
     ERROR_LOG
