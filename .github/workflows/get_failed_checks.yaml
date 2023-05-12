@@ -1,0 +1,34 @@
+name: Get failed tests
+  on:
+    pull_request:
+      branches:
+        - *
+
+  jobs:
+    get_checks:
+      name: Get failed tests from PR
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+
+        - name: Wait for build to succeed
+          uses: fountainhead/action-wait-for-check@v1.0.0
+          id: wait-for-build-deb
+          with:
+            token: ${{ secrets.GITHUB_TOKEN }}
+            checkName: 'Build Linux amd64 agent deb package'
+            ref: ${{ github.event.pull_request.head.sha || github.sha }}
+            timeoutSeconds: 3600
+            intervalSeconds: 60
+
+        - name: Fail after timeout
+          if: steps.wait-for-build.outputs.conclusion == 'timed_out'
+          run: exit 1
+
+        - name: Exit after failure
+          if: steps.wait-for-build.outputs.conclusion == 'failure'
+          run: exit 1
+        
+        - name: Exit after success
+          if: steps.wait-for-build.outputs.conclusion == 'success'
+          run: exit 0
