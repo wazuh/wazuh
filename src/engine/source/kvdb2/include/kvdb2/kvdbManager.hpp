@@ -1,5 +1,5 @@
-#ifndef _KVDBMANAGER_H
-#define _KVDBMANAGER_H
+#ifndef _KVDBMANAGER_2_H
+#define _KVDBMANAGER_2_H
 
 #include <filesystem>
 #include <map>
@@ -25,6 +25,8 @@ namespace metricsManager
 namespace kvdbManager
 {
 
+constexpr static const char* DEFAULT_CF_NAME {"default"};
+
 struct KVDBManagerOptions
 {
     std::filesystem::path dbStoragePath;
@@ -49,6 +51,8 @@ public:
     std::shared_ptr<IKVDBScope> getKVDBScope(const std::string& scopeName) override;
     std::shared_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
+    std::vector<std::string> listDBs(const bool loaded) override;
+    std::optional<base::Error> deleteDB(const std::string& name) override;
 
 private:
     /**

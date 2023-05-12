@@ -43,4 +43,4 @@ target_include_directories(api
     ${ENGINE_API_SOURCE_DIR}/integration
 )
 
-target_link_libraries(api base json builder::ivalidator store::istore yaml-cpp fmt kvdb router eMessages metrics)
+target_link_libraries(api base json builder::ivalidator store::istore yaml-cpp fmt kvdb2 router eMessages metrics)
