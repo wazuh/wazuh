@@ -10,6 +10,7 @@ from freezegun import freeze_time
 from wazuh.core.exception import WazuhPermissionError, WazuhTooManyRequests
 
 from api.middlewares import (
+    MAX_REQUESTS_EVENTS_DEFAULT,
     _cleanup_detail_field,
     events_endpoint_rate_limiter,
     prevent_bruteforce_attack,
@@ -164,5 +165,5 @@ async def test_middlewares_security_middleware(
         if expected_mock == "denial_mock":
             denial_mock.assert_called_once_with(request, max_requests=max_req)
         elif expected_mock == "events_limit_mock":
-            events_limit_mock.assert_called_once_with(request, max_requests=max_req)
+            events_limit_mock.assert_called_once_with(request)
         unlock_mock.assert_called_once_with(request, block_time=block_time)

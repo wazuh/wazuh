@@ -18,7 +18,7 @@ from wazuh.core.utils import get_utc_now
 
 
 MAX_REQUESTS_DEFAULT = 300
-EVENTS_LIMIT_PERCENTAGE = 0.1
+MAX_REQUESTS_EVENTS_DEFAULT = 30  # This value isn't definitive. It will be defined based on performance tests.
 
 # API secure headers
 secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
@@ -145,10 +145,11 @@ async def prevent_denial_of_service(request: web_request.BaseRequest, max_reques
 
 @web.middleware
 async def events_endpoint_rate_limiter(
-    request: web_request.BaseRequest, max_requests: int = MAX_REQUESTS_DEFAULT
+    request: web_request.BaseRequest, max_requests: int = MAX_REQUESTS_EVENTS_DEFAULT
 ) -> None:
     """Rate limiter for the events ingestion endpoint.
-    This takes a percentage, defined in EVENTS_LIMIT_PERCENTAGE, from the max requests parameter.
+    This function checks that the maximum number of requests per minute passed in `max_requests` is not exceeded.
+
 
     Parameters
     ----------
@@ -168,7 +169,7 @@ async def events_endpoint_rate_limiter(
         events_request_counter = 0
         events_current_time = get_utc_now().timestamp()
 
-    if events_request_counter > int(max_requests * EVENTS_LIMIT_PERCENTAGE):
+    if events_request_counter > max_requests:
         logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
         raise_if_exc(WazuhTooManyRequests(6001))
 
@@ -180,7 +181,7 @@ async def security_middleware(request, handler):
         if request.path != '/events':
             await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
         else:
-            await events_endpoint_rate_limiter(request, max_requests=access_conf['max_request_per_minute'])
+            await events_endpoint_rate_limiter(request)
     await unlock_ip(request, block_time=access_conf['block_time'])
 
     return await handler(request)
