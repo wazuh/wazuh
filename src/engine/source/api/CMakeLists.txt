@@ -51,7 +51,7 @@ target_link_libraries(api
     eMessages
     fmt
     json
-    kvdb
+    kvdb2
     metrics
     router
     store::fileDriver
