@@ -6,6 +6,9 @@
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 
+#include <fmt/format.h>
+#include <optional>
+
 namespace kvdbManager
 {
 
@@ -151,5 +154,23 @@ void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string
         assert(s.ok());
         m_mapCFHandles.erase(dbName);
     }
+}
+
+std::vector<std::string> KVDBManager::listDBs(const bool loaded)
+{
+    // TODO: return handles loaded
+    std::vector<std::string> spaces;
+
+    for(auto cf : m_mapCFHandles)
+    {
+        spaces.push_back(cf.first);
+    }
+
+    return spaces;
+}
+
+std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
+{
+    return base::Error { fmt::format("Not yet implemented.") };
 }
 } // namespace kvdbManager

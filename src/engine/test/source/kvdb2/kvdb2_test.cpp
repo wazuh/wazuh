@@ -70,8 +70,6 @@ TEST_F(KVDB2Test, ScopeTest)
     auto result3 = handler->get("key1");
     ASSERT_TRUE(std::holds_alternative<std::string>(result3));
     ASSERT_EQ(std::get<std::string>(result3), "value");
-
-    m_spKVDBManager->removeKVDBHandler("db_test", "scope1");
 }
 
 } // namespace
