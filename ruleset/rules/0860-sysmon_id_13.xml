@@ -92,4 +92,24 @@
     </mitre>
   </rule>
 
+  <rule id="92308" level="3">
+    <if_sid>61615</if_sid>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)CLSID.*LocalServer</field>
+    <options>no_full_log</options>
+    <description>Possible COM Hijacking evidence found in registry under $(win.eventdata.targetObject) binary is: $(win.eventdata.details)</description>
+    <mitre>
+      <id>T1546.015</id>
+    </mitre>
+  </rule>
+
+  <rule id="92309" level="15">
+    <if_sid>92308</if_sid>
+    <field name="win.eventdata.details" type="pcre2">(?i)AppData</field>
+    <options>no_full_log</options>
+    <description> COM Hijacking evidence found in registry under $(win.eventdata.targetObject) suspicious binary is: $(win.eventdata.details)</description>
+    <mitre>
+      <id>T1546.015</id>
+    </mitre>
+  </rule>
+
 </group>
