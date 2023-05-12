@@ -46,9 +46,15 @@ public:
     /**
      * @brief Initialize all the logs functions used by RSync with a full log function.
      *
-     * @param log_function Function pointer to the log function.
+     * @param debugVerboseFunction Function pointer to the debug verbose log function.
+     * @param debugFunction Function pointer to the debug log function.
+     * @param infoFunction Function pointer to the info log function.
+     * @param warningFunction Function pointer to the warning function.
+     * @param errorFunction Function pointer to the error function.
      */
-    static void initializeFullLogFunction(full_log_fnc_t log_function);
+    static void initializeFullLogFunction(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
+                                          full_log_fnc_t infoFunction, full_log_fnc_t warningFunction,
+                                          full_log_fnc_t errorFunction);
 
     /**
      * @brief Remote sync initializes the instance.

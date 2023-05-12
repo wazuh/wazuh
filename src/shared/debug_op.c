@@ -666,30 +666,3 @@ char * win_strerror(unsigned long error) {
     return messageBuffer;
 }
 #endif
-
-void mt_log_wrapper(int level, const char *tag, const char * file, int line, const char * func, const char *msg, ...){
-    va_list args;
-    va_start(args, msg);
-
-    switch (level) {
-        case DEBUG_VERBOSE_LOG:
-            _mtdebug2(tag, file, line, func, msg, args);
-            break;
-        case DEBUG_LOG:
-            _mtdebug1(tag, file, line, func, msg, args);
-            break;
-        case INFO_LOG:
-            _mtinfo(tag, file, line, func, msg, args);
-            break;
-        case WARNING_LOG:
-            _mtwarn(tag, file, line, func, msg, args);
-            break;
-        case ERROR_LOG:
-            _mterror(tag, file, line, func, msg, args);
-            break;
-        default:
-            _mtdebug2(tag, file, line, func, msg, args);
-    }
-
-    va_end(args);
-}

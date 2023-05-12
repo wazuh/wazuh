@@ -42,9 +42,11 @@ EXPORTED void rsync_initialize(log_fnc_t log_function)
     });
 }
 
-EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t log_function)
+EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
+                                                 full_log_fnc_t infoFunction, full_log_fnc_t warningFunction,
+                                                 full_log_fnc_t errorFunction)
 {
-    RemoteSync::initializeFullLogFunction(log_function);
+    RemoteSync::initializeFullLogFunction(debugVerboseFunction, debugFunction, infoFunction, warningFunction, errorFunction);
 }
 
 EXPORTED void rsync_teardown(void)
@@ -222,13 +224,14 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
     }
 }
 
-void RemoteSync::initializeFullLogFunction(full_log_fnc_t log_function)
+void RemoteSync::initializeFullLogFunction(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
+                                           full_log_fnc_t infoFunction, full_log_fnc_t warningFunction, full_log_fnc_t errorFunction )
 {
-    Log::debug.assignLogFunction(log_function, "rsync");
-    Log::debugVerbose.assignLogFunction(log_function, "rsync");
-    Log::info.assignLogFunction(log_function, "rsync");
-    Log::warning.assignLogFunction(log_function, "rsync");
-    Log::error.assignLogFunction(log_function, "rsync");
+    Log::debugVerbose.assignLogFunction(debugVerboseFunction, "rsync");
+    Log::debug.assignLogFunction(debugFunction, "rsync");
+    Log::info.assignLogFunction(infoFunction, "rsync");
+    Log::warning.assignLogFunction(warningFunction, "rsync");
+    Log::error.assignLogFunction(errorFunction, "rsync");
 }
 
 void RemoteSync::teardown()

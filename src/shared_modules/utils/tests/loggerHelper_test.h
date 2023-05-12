@@ -14,7 +14,11 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-void logTestFunction(int log_level, const char* tag, const char* file, int line, const char* func, const char* msg, ...);
+void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
+void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
+void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
+void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
+void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
 std::stringstream ssOutput;
 
 class LoggerHelperTest : public ::testing::Test
@@ -25,11 +29,11 @@ class LoggerHelperTest : public ::testing::Test
 
         static void SetUpTestSuite()
         {
-            Log::debugVerbose.assignLogFunction(logTestFunction, "Tag");
-            Log::debug.assignLogFunction(logTestFunction, "Tag");
-            Log::info.assignLogFunction(logTestFunction, "Tag");
-            Log::warning.assignLogFunction(logTestFunction, "Tag");
-            Log::error.assignLogFunction(logTestFunction, "Tag");
+            Log::debugVerbose.assignLogFunction(debugVerboseTestFunction, "Tag");
+            Log::debug.assignLogFunction(debugTestFunction, "Tag");
+            Log::info.assignLogFunction(infoTestFunction, "Tag");
+            Log::warning.assignLogFunction(warningTestFunction, "Tag");
+            Log::error.assignLogFunction(errorTestFunction, "Tag");
         }
 
         virtual void SetUp()

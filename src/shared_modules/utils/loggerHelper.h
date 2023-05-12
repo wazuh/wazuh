@@ -19,17 +19,8 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
+#include "commonDefs.h"
 
-enum class LogLevel : int
-{
-    DEBUG_VERBOSE_LOG = 0,
-    DEBUG_LOG,
-    INFO_LOG,
-    WARNING_LOG,
-    ERROR_LOG
-};
-
-using FullLogFunction = auto (*)(int log_level, const char* tag, const char* file, int line, const char* func, const char* msg, ...) -> void;
 // We can't use std::source_location until C++20
 #define LogEndl Log::sourceFile {__FILE__, __LINE__, __func__}
 
@@ -46,12 +37,11 @@ namespace Log
     class Logger
     {
         private:
-            FullLogFunction m_logFunction;
+            full_log_fnc_t m_logFunction;
             std::unordered_map<std::thread::id, std::string> m_threadsBuffers;
             std::string m_tag;
 
         protected:
-            int m_logLevel;
             Logger() = default;
 
         public:
@@ -59,9 +49,9 @@ namespace Log
             Logger& operator=(const Logger& other) = delete;
             Logger(const Logger& other) = delete;
 
-            Logger& assignLogFunction(FullLogFunction logFunction, const std::string& tag)
+            Logger& assignLogFunction(full_log_fnc_t logFunction, const std::string& tag)
             {
-                if (!m_logFunction)
+                if (!m_logFunction && logFunction)
                 {
                     m_logFunction = logFunction;
                     m_tag = tag;
@@ -91,7 +81,7 @@ namespace Log
                 {
                     std::lock_guard<std::mutex> lockGuard(logMutex);
                     auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_logLevel, logObject.m_tag.c_str(), __FILE__, __LINE__, __func__, logObject.m_threadsBuffers[threadId].c_str());
+                    logObject.m_logFunction(logObject.m_tag.c_str(), __FILE__, __LINE__, __func__, logObject.m_threadsBuffers[threadId].c_str());
                     logObject.m_threadsBuffers.erase(threadId);
                 }
 
@@ -107,7 +97,7 @@ namespace Log
                 {
                     std::lock_guard<std::mutex> lockGuard(logMutex);
                     auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_logLevel, logObject.m_tag.c_str(), sourceLocation.file, sourceLocation.line, sourceLocation.func, logObject.m_threadsBuffers[threadId].c_str());
+                    logObject.m_logFunction(logObject.m_tag.c_str(), sourceLocation.file, sourceLocation.line, sourceLocation.func, logObject.m_threadsBuffers[threadId].c_str());
                     logObject.m_threadsBuffers.erase(threadId);
                 }
 
@@ -118,11 +108,6 @@ namespace Log
     class DebugVerbose : public Logger
     {
         public:
-            DebugVerbose() : Logger()
-            {
-                m_logLevel = static_cast<int>(LogLevel::DEBUG_VERBOSE_LOG);
-            };
-
             static DebugVerbose& instance()
             {
                 static DebugVerbose logInstance;
@@ -133,11 +118,6 @@ namespace Log
     class Debug : public Logger
     {
         public:
-            Debug() : Logger()
-            {
-                m_logLevel = static_cast<int>(LogLevel::DEBUG_LOG);
-            };
-
             static Debug& instance()
             {
                 static Debug logInstance;
@@ -148,11 +128,6 @@ namespace Log
     class Info : public Logger
     {
         public:
-            Info() : Logger()
-            {
-                m_logLevel = static_cast<int>(LogLevel::INFO_LOG);
-            };
-
             static Info& instance()
             {
                 static Info logInstance;
@@ -163,11 +138,6 @@ namespace Log
     class Warning : public Logger
     {
         public:
-            Warning() : Logger()
-            {
-                m_logLevel = static_cast<int>(LogLevel::WARNING_LOG);
-            };
-
             static Warning& instance()
             {
                 static Warning logInstance;
@@ -178,11 +148,6 @@ namespace Log
     class Error : public Logger
     {
         public:
-            Error() : Logger()
-            {
-                m_logLevel = static_cast<int>(LogLevel::ERROR_LOG);
-            };
-
             static Error& instance()
             {
                 static Error logInstance;

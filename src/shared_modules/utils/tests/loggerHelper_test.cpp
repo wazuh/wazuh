@@ -33,18 +33,29 @@ constexpr auto DEBUG_REGEX_THREAD = "debug Tag .+\\.cpp \\d+ operator\\(\\) Test
 constexpr auto DEBUG_VERBOSE_REGEX_THREAD = "debug_verbose Tag .+\\.cpp \\d+ operator\\(\\) Testing Debug Verbose log";
 constexpr auto WARNING_REGEX_THREAD = "warning Tag .+\\.cpp \\d+ operator\\(\\) Testing Warning log";
 
-void logTestFunction(int log_level, const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
 {
-    std::map<int, std::string> logLevelStrMap =
-    {
-        {0, "debug_verbose"},
-        {1, "debug"},
-        {2, "info"},
-        {3, "warning"},
-        {4, "error"}
-    };
+    ssOutput << "debug_verbose" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+}
 
-    ssOutput << logLevelStrMap[log_level] << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+{
+    ssOutput << "debug" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+}
+
+void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+{
+    ssOutput << "info" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+}
+
+void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+{
+    ssOutput << "warning" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+}
+
+void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+{
+    ssOutput << "error" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
 }
 
 TEST_F(LoggerHelperTest, simpleInfoTest)
