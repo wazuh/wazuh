@@ -39,4 +39,30 @@ void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const s
         }
     }
 }
+
+std::vector<std::string> KVDBHandlerCollection::getDBNames()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    std::vector<std::string> dbNames;
+    for (const auto& instance : m_mapInstances)
+    {
+        dbNames.push_back(instance.first);
+    }
+    return dbNames;
+}
+
+std::map<std::string, int> KVDBHandlerCollection::getRefMap(const std::string& dbName)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    auto it = m_mapInstances.find(dbName);
+    if (it != m_mapInstances.end())
+    {
+        return it->second->getRefMap();
+    }
+    else
+    {
+        return std::map<std::string, int>();
+    }
+}
+
 } // namespace kvdbManager

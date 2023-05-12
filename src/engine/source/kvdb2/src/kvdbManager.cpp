@@ -90,6 +90,11 @@ void KVDBManager::initializeMainDB()
             cfDescriptors.push_back(newDescriptor);
         }
     }
+    else
+    {
+        auto newDescriptor = rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions());
+        cfDescriptors.push_back(newDescriptor);
+    }
 
     auto openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
 
@@ -110,7 +115,7 @@ void KVDBManager::finalizeMainDB()
     {
         auto cfHandle = entry.second;
         opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
-        assert(s.ok());
+        assert(opStatus.ok());
     }
 
     m_mapCFHandles.clear();
@@ -173,4 +178,55 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 {
     return base::Error { fmt::format("Not yet implemented.") };
 }
+std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
+{
+    std::map<std::string, kvdbManager::RefInfo> retValue;
+    std::map<std::string, kvdbManager::RefInfo> handlersInfo = getKVDBHandlersInfo();
+    std::map<std::string, kvdbManager::RefCounter> refCounterMap;
+    std::vector<std::string> scopeNames;
+
+    for (auto &entry : handlersInfo)
+    {
+        auto dbName = entry.first;
+        auto refInfo = entry.second;
+
+        for (auto &scopeEntry : refInfo )
+        {
+            std::string scopeName = scopeEntry.first;
+            int scopeRefCounter = scopeEntry.second;
+            auto counterMap = refCounterMap[scopeName];
+
+            for (int k=0; k<scopeRefCounter; k++)
+            {
+                counterMap.addRef(dbName);
+            }
+
+            refCounterMap[scopeName] = counterMap;
+        }
+    }
+
+    for (auto &entry : refCounterMap)
+    {
+        auto scopeName = entry.first;
+        auto refCounter = entry.second;
+        auto refInfo = refCounter.getRefMap();
+        retValue.insert(std::make_pair(scopeName, refInfo));
+    }
+
+    return retValue;
+}
+
+std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBHandlersInfo()
+{
+    std::map<std::string, kvdbManager::RefInfo> retValue;
+    auto dbNames = m_kvdbHandlerCollection->getDBNames();
+    for (auto dbName : dbNames)
+    {
+        auto refInfo = m_kvdbHandlerCollection->getRefMap(dbName);
+        retValue.insert(std::make_pair(dbName, refInfo));
+    }
+    return retValue;
+}
+
+
 } // namespace kvdbManager

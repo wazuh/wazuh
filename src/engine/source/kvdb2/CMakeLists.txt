@@ -30,7 +30,7 @@ add_library(kvdb2 STATIC
     ${ENGINE_KVDB2_SOURCE_DIR}/kvdbScope.cpp
     ${ENGINE_KVDB2_SOURCE_DIR}/kvdbSpace.cpp
     ${ENGINE_KVDB2_SOURCE_DIR}/kvdbHandlerCollection.cpp
-    ${ENGINE_KVDB2_SOURCE_DIR}/scopeCounter.cpp
+    ${ENGINE_KVDB2_SOURCE_DIR}/refCounter.cpp
 )
 
 target_link_libraries(kvdb2 PRIVATE rocksdb base metrics)

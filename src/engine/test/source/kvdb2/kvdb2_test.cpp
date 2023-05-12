@@ -47,11 +47,23 @@ protected:
             std::filesystem::remove_all(KVDB_PATH);
         }
     };
+
+    void dumpScopeInfo(std::map<std::string, kvdbManager::RefInfo>  & scopeInfo)
+    {
+        for (auto& scope : scopeInfo)
+        {
+            std::cout << fmt::format("Scope: {}", scope.first) << std::endl;
+            for (auto& handler : scope.second)
+            {
+                std::cout << fmt::format("Handler: {}", handler.first) << std::endl;
+            }
+        }
+    }
 };
 
 TEST_F(KVDB2Test, Startup)
 {
-
+    ASSERT_NE(m_spKVDBManager, nullptr);
 }
 
 TEST_F(KVDB2Test, ScopeTest)
@@ -70,6 +82,31 @@ TEST_F(KVDB2Test, ScopeTest)
     auto result3 = handler->get("key1");
     ASSERT_TRUE(std::holds_alternative<std::string>(result3));
     ASSERT_EQ(std::get<std::string>(result3), "value");
+}
+
+
+TEST_F(KVDB2Test, ScopeInfoEmpty)
+{
+    auto scope = m_spKVDBManager->getKVDBScope("scope1");
+    auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
+    ASSERT_EQ(scopeInfo.size(), 0);
+}
+
+TEST_F(KVDB2Test, ScopeInfoSingle)
+{
+    auto scope = m_spKVDBManager->getKVDBScope("scope1");
+    auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
+    dumpScopeInfo(scopeInfo);
+    ASSERT_EQ(scopeInfo.size(), 0);
+}
+
+TEST_F(KVDB2Test, ScopeInfoSingleOneHandler)
+{
+    auto scope = m_spKVDBManager->getKVDBScope("scope1");
+    auto handler = scope->getKVDBHandler("db_test");
+    auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
+    dumpScopeInfo(scopeInfo);
+    ASSERT_EQ(scopeInfo.size(), 1);
 }
 
 } // namespace
