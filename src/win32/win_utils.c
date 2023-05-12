@@ -400,7 +400,7 @@ int MQReconnectPredicated(__attribute__((unused)) const char *path, __attribute_
     return (0);
 }
 
-char *get_agent_ip()
+char *get_agent_ip_legacy_win32()
 {
     char agent_ip[IPSIZE + 1] = { '\0' };
     cJSON *object;
