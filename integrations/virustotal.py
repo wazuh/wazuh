@@ -110,7 +110,6 @@ def process_args(args: list[str]) -> None:
         debug("# ERROR: Empty message")
         raise Exception
 
-    debug(f"# Sending message {msg} from VirusTotal server")
     send_msg(msg, json_alert["agent"])
 
 def debug(msg: str) -> None:
@@ -240,7 +239,7 @@ def send_msg(msg: any, agent:any = None) -> None:
         location    = location.replace("|", "||").replace(":", "|:")
         string      = '1:{0}->virustotal:{1}'.format(location, json.dumps(msg))
 
-    debug("# Final message to send: %s" % string)
+    debug("# Request result from VT server: %s" % string)
     try:
         sock = socket(AF_UNIX, SOCK_DGRAM)
         sock.connect(SOCKET_ADDR)
