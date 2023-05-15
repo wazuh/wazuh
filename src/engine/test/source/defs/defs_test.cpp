@@ -35,8 +35,7 @@ INSTANTIATE_TEST_SUITE_P(
                       std::make_tuple(json::Json(R"({"a": {}})"), true),
                       std::make_tuple(json::Json(R"({"a": 1, "b":"1", "c":true, "d":false, "e":null, "f":[], "g":{}})"),
                                       true),
-                      std::make_tuple(json::Json(R"({"$a": 1})"), false),
-                      std::make_tuple(json::Json(R"({"schema.field": "value"})"), false)));
+                      std::make_tuple(json::Json(R"({"$a": 1})"), false)));
 
 class DefsGetTest : public ::testing::TestWithParam<std::tuple<json::Json, std::string, json::Json, bool>>
 {

@@ -16,6 +16,7 @@
 #include <name.hpp>
 #include <rxbk/rxFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
+#include <schemf/schema.hpp>
 
 #include "base/parseEvent.hpp"
 #include "base/utils/getExceptionStack.hpp"
@@ -79,6 +80,7 @@ void run(const Options& options)
         deps.logpar = logpar;
         deps.kvdbManager = kvdb;
         deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
+        deps.schema = std::make_shared<schemf::Schema>();
         builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
         builder::internals::registerBuilders(registry, deps);
     }

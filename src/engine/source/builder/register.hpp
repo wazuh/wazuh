@@ -3,6 +3,7 @@
 
 #include <hlp/logpar.hpp>
 #include <kvdb/kvdbManager.hpp>
+#include <schemf/ischema.hpp>
 
 #include "builders/opBuilderFileOutput.hpp"
 #include "builders/opBuilderHelperActiveResponse.hpp"
@@ -31,6 +32,7 @@ struct dependencies
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
     std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
+    std::shared_ptr<schemf::ISchema> schema;
 };
 
 static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
@@ -152,8 +154,9 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
 static void registerBuilders(std::shared_ptr<Registry<Builder>> registry, const dependencies& dependencies = {})
 {
     // Basic operations
-    registry->registerBuilder(builders::getOperationMapBuilder(dependencies.helperRegistry), "operation.map");
-    registry->registerBuilder(builders::getOperationConditionBuilder(dependencies.helperRegistry),
+    registry->registerBuilder(builders::getOperationMapBuilder(dependencies.helperRegistry, dependencies.schema),
+                              "operation.map");
+    registry->registerBuilder(builders::getOperationConditionBuilder(dependencies.helperRegistry, dependencies.schema),
                               "operation.condition");
 
     // Stages

@@ -4,6 +4,7 @@
 #include <router/router.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <defs/idefinitions.hpp>
+#include <schemf/mocks/emptySchema.hpp>
 namespace aux
 {
 
@@ -41,6 +42,7 @@ std::shared_ptr<builder::Builder> getFakeBuilder()
     builder::internals::dependencies dependencies;
     dependencies.helperRegistry = helperRegistry;
     dependencies.logparDebugLvl = 0;
+    dependencies.schema = schemf::mocks::EmptySchema::create();
     builder::internals::registerHelperBuilders(helperRegistry);
     builder::internals::registerBuilders(registry, dependencies);
 

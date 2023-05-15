@@ -46,7 +46,6 @@ add_library(builders OBJECT
   builders/stageBuilderNormalize.cpp
   builders/stageBuilderOutputs.cpp
   builders/stageBuilderParse.cpp
-  definitions.cpp
   policy.cpp
   registry.cpp
 )
@@ -76,4 +75,5 @@ target_link_libraries(builders
   logicExpression
   wdb
   OpenSSL::Crypto
+  schemf::ischema
 )
