@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include "field.hpp"
 
 namespace schemf
@@ -27,6 +29,44 @@ Field::Field(const Parameters& parameters)
     m_type = parameters.type;
     m_properties = parameters.properties;
     m_itemsType = parameters.itemsType;
+}
+
+Field::Field(const json::Json& value)
+{
+    if (value.type() == json::Json::Type::Null)
+    {
+        throw std::runtime_error("Cannot create field with null type");
+    }
+
+    m_type = value.type();
+    m_itemsType = JType::Null;
+    m_properties = {};
+
+    if (m_type == JType::Object)
+    {
+        auto properties = value.getObject().value();
+        for (const auto& [name, value] : properties)
+        {
+            m_properties[name] = Field(value);
+        }
+    }
+    else if (m_type == JType::Array)
+    {
+        if (value.size() < 1)
+        {
+            throw std::runtime_error("Cannot create array field without items type");
+        }
+
+        m_itemsType = value.getArray().value()[0].type();
+        if (m_itemsType == JType::Object)
+        {
+            auto properties = value.getArray().value()[0].getObject().value();
+            for (const auto& [name, value] : properties)
+            {
+                m_properties[name] = Field(value);
+            }
+        }
+    }
 }
 
 json::Json::Type Field::type() const
@@ -75,4 +115,5 @@ json::Json::Type Field::itemsType() const
     }
     return m_itemsType;
 }
+
 } // namespace schemf

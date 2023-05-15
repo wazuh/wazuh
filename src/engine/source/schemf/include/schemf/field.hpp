@@ -2,10 +2,12 @@
 #define _SCHEMF_FIELD_HPP
 
 #include <map>
-#include <stack>
+#include <optional>
 #include <string>
 
 #include <json/json.hpp>
+
+#include "error.hpp"
 
 namespace schemf
 {
@@ -56,6 +58,13 @@ public:
      * @throw std::runtime_error If the parameters are invalid.
      */
     explicit Field(const Parameters& parameters);
+
+    /**
+     * @brief Construct a new Field object
+     *
+     * @param value The json value from which to construct the field.
+     */
+    explicit Field(const json::Json& value);
 
     Field() = default;
     ~Field() = default;

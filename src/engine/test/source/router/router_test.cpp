@@ -10,11 +10,11 @@
 
 #include <metrics/metricsManager.hpp>
 #include <mocks/fakeMetric.hpp>
+#include <schemf/mocks/emptySchema.hpp>
 #include <testsCommon.hpp>
 
 using namespace metricsManager;
 // TODO actually fake the store
-
 
 class Router : public ::testing::Test
 {
@@ -27,7 +27,7 @@ protected:
 TEST_F(Router, build_ok)
 {
     auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry);
+    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
@@ -37,7 +37,7 @@ TEST_F(Router, build_ok)
 TEST_F(Router, build_fail)
 {
     auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry);
+    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
@@ -87,7 +87,7 @@ TEST_F(Router, build_fail)
 TEST_F(Router, add_list_remove_routes)
 {
     auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry);
+    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
@@ -143,7 +143,7 @@ TEST_F(Router, add_list_remove_routes)
 TEST_F(Router, priorityChanges)
 {
     auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry);
+    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 
@@ -246,7 +246,6 @@ TEST_F(Router, priorityChanges)
     ASSERT_EQ(std::get<1>(list[1]), p_e_wazuh_queue);
 }
 
-
 TEST_F(Router, checkRouting)
 {
     const auto sleepTime = (const struct timespec[]) {{0, 100000000L}};
@@ -256,7 +255,7 @@ TEST_F(Router, checkRouting)
     const auto PATH_DECODER = json::Json::formatJsonPath("~decoder");
 
     auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-    builder::internals::registerBuilders(registry);
+    builder::internals::registerBuilders(registry, {.schema = schemf::mocks::EmptySchema::create()});
     auto builder = aux::getFakeBuilder();
     auto store = aux::getFakeStore();
 

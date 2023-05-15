@@ -26,7 +26,7 @@ include_directories(
 )
 
 # TODO do this better
-link_libraries(gtest_main gtest base builders metrics defs::mocks)
+link_libraries(gtest_main gtest base builders metrics defs::mocks schemf::mocks)
 
 # ###################################################################################################
 # Builder targets
@@ -190,12 +190,6 @@ gtest_discover_tests(opBuilderHelperActiveResponse_test)
 # ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBNotMatch_test.cpp
 # )
 # gtest_discover_tests(opBuilderKVDBTest)
-
-# Definitions test
-add_executable(definitions_test
-  ${BUILDER_TEST_SOURCE_DIR}/definitions_test.cpp
-)
-gtest_discover_tests(definitions_test)
 
 # Register test
 add_executable(register_test

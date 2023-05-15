@@ -9,6 +9,7 @@
 #include <baseHelper.hpp>
 #include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
+#include <schemf/mocks/emptySchema.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;
@@ -24,7 +25,8 @@ protected:
     {
         registry = std::make_shared<Registry<builder::internals::Builder>>();
         helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-        registry->registerBuilder(getOperationConditionBuilder(helperRegistry), "operation.condition");
+        registry->registerBuilder(getOperationConditionBuilder(helperRegistry, schemf::mocks::EmptySchema::create()),
+                                  "operation.condition");
     }
 
     std::shared_ptr<builder::internals::Registry<builder::internals::HelperBuilder>> helperRegistry;
@@ -121,17 +123,15 @@ TEST_F(StageBuilderCheckTest, ExpressionNotEqualOperator)
 }
 
 class StageBuilderCheckHelperOperatorsTest
-    : public ::testing::TestWithParam<
-          std::tuple<std::string,
-                     std::string,
-                     HelperBuilder>>
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string, HelperBuilder>>
 {
 protected:
     void SetUp() override
     {
         registry = std::make_shared<Registry<builder::internals::Builder>>();
         helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-        registry->registerBuilder(getOperationConditionBuilder(helperRegistry), "operation.condition");
+        registry->registerBuilder(getOperationConditionBuilder(helperRegistry, schemf::mocks::EmptySchema::create()),
+                                  "operation.condition");
     }
 
     std::shared_ptr<Registry<Builder>> registry;
@@ -168,7 +168,8 @@ protected:
     {
         registry = std::make_shared<Registry<builder::internals::Builder>>();
         auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-        registry->registerBuilder(getOperationConditionBuilder(helperRegistry), "operation.condition");
+        registry->registerBuilder(getOperationConditionBuilder(helperRegistry, schemf::mocks::EmptySchema::create()),
+                                  "operation.condition");
     }
 
     std::shared_ptr<Registry<Builder>> registry;

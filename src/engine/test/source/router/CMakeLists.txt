@@ -11,7 +11,7 @@ target_include_directories(router_test
   PRIVATE
   ${TEST_SOURCE_DIR}/common
 )
-target_link_libraries(router_test gtest_main base router builders rxbk store::fileDriver test_mocks defs::mocks)
+target_link_libraries(router_test gtest_main base router builders rxbk store::fileDriver test_mocks defs::mocks schemf::mocks)
 gtest_discover_tests(router_test)
 
 # Runtime environment test

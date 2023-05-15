@@ -25,6 +25,7 @@ target_link_libraries(cmds
     conf::iconf
     eMessages
     metrics
+    schemf
 )
 
 target_include_directories(cmds
