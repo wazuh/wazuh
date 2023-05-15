@@ -218,7 +218,7 @@ void runStart(ConfHandler confManager)
 
         // KVDB
         {
-            kvdbManager::KVDBManagerOptions kvdbOptions { kvdbPath, "kvdb" };
+            kvdbManager::KVDBManagerOptions kvdbOptions { "/var/ossec/etc/kvdb2", "kvdb" };
             kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
@@ -231,6 +231,10 @@ void runStart(ConfHandler confManager)
 
             auto kvdbScope = kvdbManager->getKVDBScope("api");
             api::kvdb::handlers::registerHandlers(kvdbManager, kvdbScope, api);
+
+            // KVDB1
+            _kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metrics);
+
             LOG_DEBUG("KVDB API registered.");
         }
 
