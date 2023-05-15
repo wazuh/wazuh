@@ -25,6 +25,7 @@ public:
     std::variant<bool, base::Error> remove(const std::string& key) override;
     std::variant<bool, base::Error> contains(const std::string& key) override;
     std::variant<std::string, base::Error> get(const std::string& key) override;
+    std::variant<std::unordered_map<std::string, std::string>, base::Error> dump() override;
 protected:
     std::string m_spaceName;
     rocksdb::ColumnFamilyHandle* m_pCFhandle;

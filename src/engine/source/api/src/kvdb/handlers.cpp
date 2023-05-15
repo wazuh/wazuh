@@ -35,14 +35,14 @@ api::Handler managerGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
         const auto& eRequest = std::get<RequestType>(res);
         ResponseType eResponse;
 
-        // TODO: The filter should be applied in the KVDB manager not here
-        //auto kvdbLists = kvdbManager->listDBs(eRequest.must_be_loaded());
         auto kvdbLists = kvdbManager->listDBs(eRequest.must_be_loaded());
         auto eList = eResponse.mutable_dbs();
+
         for (const std::string& dbName : kvdbLists)
         {
             eList->Add(dbName.c_str());
         }
+
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
         // Adapt the response to wazuh api
@@ -107,22 +107,21 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
             return ::api::adapter::genericError<ResponseType>("Missing /name");
         }
 
-        // Adapt the response to wazuh api
-        //auto result = kvdbManager->deleteDB(eRequest.name());
         auto result = kvdbManager->deleteDB(eRequest.name());
+
         if (result.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(result.value().message);
         }
+
         return ::api::adapter::genericSuccess<ResponseType>();
     };
 }
 
-api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
+api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
-    return [kvdbManager](api::wpRequest wRequest) -> api::wpResponse
+    return [kvdbScope](api::wpRequest wRequest) -> api::wpResponse
     {
-        /*
         using RequestType = eKVDB::managerDump_Request;
         using ResponseType = eKVDB::managerDump_Response;
         auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
@@ -140,7 +139,8 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
             return ::api::adapter::genericError<ResponseType>("Missing /name");
         }
 
-        auto dumpRes = kvdbManager->rDumpDB(eRequest.name());
+        auto handler = kvdbScope->getKVDBHandler(eRequest.name());
+        auto dumpRes = handler->dump();
 
         if (std::holds_alternative<base::Error>(dumpRes))
         {
@@ -169,14 +169,13 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
 
         // Adapt the response to wazuh api
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
-        */
     };
 }
 
 /* Specific DB endpoint */
-api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
-    return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
+    return [kvdbScope](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eKVDB::dbGet_Request;
         using ResponseType = eKVDB::dbGet_Response;
@@ -200,6 +199,7 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
 
         auto handler = kvdbScope->getKVDBHandler(eRequest.name());
         auto result = handler->get(eRequest.key());
+
         if (std::holds_alternative<base::Error>(result))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(result).message);
@@ -222,9 +222,9 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
     };
 }
 
-api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
-    return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
+    return [kvdbScope](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eKVDB::dbDelete_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -248,6 +248,7 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
 
         auto handler = kvdbScope->getKVDBHandler(eRequest.name());
         auto result = handler->remove(eRequest.key());
+
         if (std::holds_alternative<base::Error>(result))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(result).message);
@@ -257,9 +258,9 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
     };
 }
 
-api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
-    return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
+    return [kvdbScope](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eKVDB::dbPut_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -308,11 +309,11 @@ void registerHandlers(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
     const bool ok = api->registerHandler("kvdb.manager/post", managerPost(kvdbManager))
                     && api->registerHandler("kvdb.manager/delete", managerDelete(kvdbManager))
                     && api->registerHandler("kvdb.manager/get", managerGet(kvdbManager))
-                    && api->registerHandler("kvdb.manager/dump", managerDump(kvdbManager)) &&
+                    && api->registerHandler("kvdb.manager/dump", managerDump(kvdbScope)) &&
                     // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
-                    api->registerHandler("kvdb.db/put", dbPut(kvdbManager, kvdbScope))
-                    && api->registerHandler("kvdb.db/delete", dbDelete(kvdbManager, kvdbScope))
-                    && api->registerHandler("kvdb.db/get", dbGet(kvdbManager, kvdbScope));
+                    api->registerHandler("kvdb.db/put", dbPut(kvdbScope))
+                    && api->registerHandler("kvdb.db/delete", dbDelete(kvdbScope))
+                    && api->registerHandler("kvdb.db/get", dbGet(kvdbScope));
 
     if (!ok)
     {
