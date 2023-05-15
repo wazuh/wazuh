@@ -9,6 +9,7 @@
 #include <json/json.hpp>
 
 #include <defs/mocks/failDef.hpp>
+#include <schemf/mocks/emptySchema.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;
@@ -21,8 +22,10 @@ auto initTest()
 {
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-    registry->registerBuilder(getOperationConditionBuilder(helperRegistry), "operation.condition");
-    registry->registerBuilder(getOperationMapBuilder(helperRegistry), "operation.map");
+    registry->registerBuilder(getOperationConditionBuilder(helperRegistry, schemf::mocks::EmptySchema::create()),
+                              "operation.condition");
+    registry->registerBuilder(getOperationMapBuilder(helperRegistry, schemf::mocks::EmptySchema::create()),
+                              "operation.map");
     registry->registerBuilder(getStageBuilderCheck(registry), "stage.check");
     registry->registerBuilder(getStageMapBuilder(registry), "stage.map");
     return registry;

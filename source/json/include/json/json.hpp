@@ -41,15 +41,47 @@ public:
     {
         switch (type)
         {
-            case Type::Null: os << "Null"; break;
-            case Type::Object: os << "Object"; break;
-            case Type::Array: os << "Array"; break;
-            case Type::String: os << "String"; break;
-            case Type::Number: os << "Number"; break;
-            case Type::Boolean: os << "Boolean"; break;
+            case Type::Null: os << "null"; break;
+            case Type::Object: os << "object"; break;
+            case Type::Array: os << "array"; break;
+            case Type::String: os << "string"; break;
+            case Type::Number: os << "number"; break;
+            case Type::Boolean: os << "boolean"; break;
         }
 
         return os;
+    }
+
+    static constexpr Type strToType(const char* str)
+    {
+        if (strcmp(str, "null") == 0)
+        {
+            return Type::Null;
+        }
+        else if (strcmp(str, "object") == 0)
+        {
+            return Type::Object;
+        }
+        else if (strcmp(str, "array") == 0)
+        {
+            return Type::Array;
+        }
+        else if (strcmp(str, "string") == 0)
+        {
+            return Type::String;
+        }
+        else if (strcmp(str, "number") == 0)
+        {
+            return Type::Number;
+        }
+        else if (strcmp(str, "boolean") == 0)
+        {
+            return Type::Boolean;
+        }
+        else
+        {
+            throw std::runtime_error("Unknown type");
+        }
     }
 
 private:

@@ -9,6 +9,7 @@
 #include <json/json.hpp>
 
 #include <defs/mocks/failDef.hpp>
+#include <schemf/mocks/emptySchema.hpp>
 
 using namespace builder::internals;
 using namespace builder::internals::builders;
@@ -21,7 +22,8 @@ TEST(StageBuilderMapTest, Builds)
 {
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-    registry->registerBuilder(getOperationMapBuilder(helperRegistry), "operation.map");
+    registry->registerBuilder(getOperationMapBuilder(helperRegistry, schemf::mocks::EmptySchema::create()),
+                              "operation.map");
     auto mapJson = Json {R"([
         {"string": "value"},
         {"int": 1},
@@ -40,7 +42,8 @@ TEST(StageBuilderMapTest, UnexpectedDefinition)
 {
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-    registry->registerBuilder(getOperationMapBuilder(helperRegistry), "operation.map");
+    registry->registerBuilder(getOperationMapBuilder(helperRegistry, schemf::mocks::EmptySchema::create()),
+                              "operation.map");
     auto mapJson = Json {R"({})"};
 
     ASSERT_THROW(getStageMapBuilder(registry)(mapJson, std::make_shared<defs::mocks::FailDef>()), std::runtime_error);
@@ -50,7 +53,8 @@ TEST(StageBuilderMapTest, BuildsCorrectExpression)
 {
     auto registry = std::make_shared<Registry<builder::internals::Builder>>();
     auto helperRegistry = std::make_shared<Registry<builder::internals::HelperBuilder>>();
-    registry->registerBuilder(getOperationMapBuilder(helperRegistry), "operation.map");
+    registry->registerBuilder(getOperationMapBuilder(helperRegistry, schemf::mocks::EmptySchema::create()),
+                              "operation.map");
     auto mapJson = Json {R"([
         {"string": "value"},
         {"int": 1},

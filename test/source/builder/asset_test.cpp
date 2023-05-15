@@ -9,6 +9,7 @@
 #include "builder/registry.hpp"
 #include <json/json.hpp>
 #include <testsCommon.hpp>
+#include <schemf/mocks/emptySchema.hpp>
 
 using namespace builder;
 using namespace builder::internals;
@@ -24,6 +25,7 @@ auto initTest()
     dependencies deps;
     deps.helperRegistry = helperRegistry;
     deps.logparDebugLvl = 0;
+    deps.schema = schemf::mocks::EmptySchema::create();
     registerBuilders(registry, deps);
     return registry;
 }

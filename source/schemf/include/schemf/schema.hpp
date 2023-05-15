@@ -2,9 +2,12 @@
 #define _SCHEMF_SCHEMA_HPP
 
 #include <map>
+#include <optional>
+#include <string>
 
 #include <schemf/ischema.hpp>
 
+#include "error.hpp"
 #include "field.hpp"
 
 namespace schemf
@@ -20,7 +23,21 @@ private:
 
     const Field& get(const DotPath& name) const;
 
+    /**
+     * @brief Convert a field JSON entry to a Schema Field object.
+     *
+     * @param name Entry field's name.
+     * @param entry JSON entry with the field description.
+     * @return Field The Schema Field object.
+     *
+     * @throw std::runtime_error If the entry is invalid.
+     */
+    Field entryToField(const std::string& name, const json::Json& entry) const;
+
 public:
+    Schema() = default;
+    ~Schema() = default;
+
     /**
      * @brief Add a field to the schema. Parent fields will be created if they do not exist.
      *
@@ -59,6 +76,28 @@ public:
      * @copydoc ISchema::hasField
      */
     bool hasField(const DotPath& name) const override;
+
+    /**
+     * @copydoc ISchema::validate
+     */
+    std::optional<base::Error> validate(const DotPath& target, const json::Json& value) const override;
+
+    /**
+     * @copydoc ISchema::validate
+     */
+    std::optional<base::Error> validate(const DotPath& target, const DotPath& reference) const override;
+
+    /**
+     * @copydoc ISchema::getRuntimeValidator
+     */
+    RuntimeValidator getRuntimeValidator(const DotPath& target) const override;
+
+    /**
+     * @brief Load a schema from a JSON object, adding each field to the schema.
+     *
+     * @param json The JSON object schema.
+     */
+    void load(const json::Json& json);
 };
 } // namespace schemf
 

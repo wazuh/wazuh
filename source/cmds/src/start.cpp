@@ -28,8 +28,9 @@
 #include <parseEvent.hpp> // Event
 #include <router/router.hpp>
 #include <rxbk/rxFactory.hpp>
-#include <server/endpoints/unixDatagram.hpp> // Event
-#include <server/endpoints/unixStream.hpp>   //API
+#include <schemf/schema.hpp>
+#include <server/endpoints/unixDatagram.hpp>   // Event
+#include <server/endpoints/unixStream.hpp>     //API
 #include <server/engineServer.hpp>
 #include <server/protocolHandlers/wStream.hpp> //API
 #include <store/drivers/fileDriver.hpp>
@@ -175,6 +176,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<kvdb_manager::KVDBManager> kvdb;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
     std::shared_ptr<base::queue::ConcurrentQueue<base::Event>> eventQueue;
+    std::shared_ptr<schemf::Schema> schema;
 
     try
     {
@@ -236,6 +238,24 @@ void runStart(ConfHandler confManager)
             LOG_INFO("HLP initialized.");
         }
 
+        // Schema
+        {
+            // TODO schema initialization
+            schema = std::make_shared<schemf::Schema>();
+            auto result = store->get("internal/schema/definition/0");
+            if (std::holds_alternative<base::Error>(result))
+            {
+                LOG_WARNING("Error loading schema definition: {}", std::get<base::Error>(result).message);
+                LOG_WARNING("Engine running without schema, consistency with indexer mappings is not guaranteed.");
+            }
+            else
+            {
+                auto schemaJson = std::get<json::Json>(result);
+                schema->load(schemaJson);
+            }
+            LOG_INFO("Schema initialized.");
+        }
+
         // Builder and registry
         {
             auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
@@ -244,6 +264,7 @@ void runStart(ConfHandler confManager)
             deps.logpar = logpar;
             deps.kvdbManager = kvdb;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
+            deps.schema = schema;
             builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
             builder::internals::registerBuilders(registry, deps);
             LOG_DEBUG("Builders registered.");
