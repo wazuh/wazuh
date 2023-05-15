@@ -113,7 +113,9 @@ class ResourceHandler:
     def _base_catalog_command(self, path: str, type: str, name: str, content: dict, format: Format, command: str):
         raw_message = ''
         format_str = ''
-        if format is Format.JSON:
+        if command == 'get':
+            format_str = 'yaml'
+        elif format is Format.JSON:
             raw_message = json.dumps(content)
             format_str = 'json'
         elif format is Format.YML:
@@ -130,9 +132,12 @@ class ResourceHandler:
 
         data = b''
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-            s.connect(path)
-            s.sendall(request_bytes)
-            data = s.recv(65507)
+            try:
+                s.connect(path)
+                s.sendall(request_bytes)
+                data = s.recv(65507)
+            except:
+                raise Exception(f'Could not connect and send information throug [{path}]')
 
         resp_size = int.from_bytes(data[:4], 'little')
         resp_message = data[4:resp_size+4].decode('UTF-8')
@@ -147,16 +152,22 @@ class ResourceHandler:
             raise Exception(
                 f'Catalog command [{command}] received an empty response.')
 
+        response = ''
         try:
             response = json.loads(resp_message)
-            if response['data']['status'] != 'OK':
-                raise Exception(
-                    f'Could not execute [{command}] [{name}] due to: {response["data"]["error"]}')
         except:
             raise Exception(
                 f'Could not parse response message "{resp_message}".')
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'Could not execute [{command}] to [{name}] due to: {response["data"]["error"]}')
+        elif command == 'get':
+            if format is Format.JSON:
+                return response
+            else:
+                return yaml.dump(resp_message, Dumper=Dumper, sort_keys=False)
 
-    def update_catalog_file(self, path: str, name: str, content: dict, format: Format):
+    def update_catalog_file(self, path: str, type: str, name: str, content: dict, format: Format):
         self._base_catalog_command(path, type, name, content, format, 'put')
 
     def add_catalog_file(self, path: str, type: str, name: str, content: dict, format: Format):
@@ -164,6 +175,9 @@ class ResourceHandler:
 
     def delete_catalog_file(self, path: str, type: str, name: str):
         self._base_catalog_command(path, type, name, [], format, 'delete')
+
+    def get_catalog_file(self, path: str, type: str, name: str, format: Format):
+        return self._base_catalog_command(path, type, name, [] , format, 'get')
 
     def save_plain_text_file(self, path_str: str, name: str, content: str):
         path = Path(path_str)
@@ -282,18 +296,10 @@ class ResourceHandler:
                             f'Applying {command} command to {name} {type[:-1]}')
                     self._base_catalog_command(
                         api_socket, type[:-1], name, component, Format.YML, command)
-                else:
-                    raise Exception(f'{entry} is not a file.')
-        else:
-            raise Exception(f'{path_str}/{type} does not exist.')
 
     def recursive_load_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
         self._recursive_command_to_catalog(
             api_socket, path_str, type, 'post', print_name)
-
-    def recursive_update_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
-        self._recursive_command_to_catalog(
-            api_socket, path_str, type, 'put', print_name)
 
     def recursive_delete_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
         self._recursive_command_to_catalog(

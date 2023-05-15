@@ -14,13 +14,13 @@ class CommandsManager:
         return len(self.commands_list) - 1
 
     def execute(self):
-        for idx, tup in enumerate(self.commands_list):
+        for idx, pair in enumerate(self.commands_list):
             try:
-                tup[0]()
                 print(f'Executing {idx}')
-            except:
+                pair[0]()
+            except Exception as err_inst:
                 self.last_command = idx
-                print('Error, undoing from: ' + str(self.last_command))
+                print(f'Undoing from N°{self.last_command}, due to error: "{err_inst}"')
                 self.undo()
                 return 1
         return 0
@@ -29,8 +29,8 @@ class CommandsManager:
         undo_list = self.commands_list[:(
             self.last_command+1)]
         undo_list.reverse()
-        for tup in undo_list:
-            tup[1]()
+        for pair in undo_list:
+            pair[1]()
 
 
 def run(args, resource_handler: rs.ResourceHandler):

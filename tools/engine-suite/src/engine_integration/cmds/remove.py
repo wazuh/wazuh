@@ -27,7 +27,6 @@ def run(args, resource_handler: rs.ResourceHandler):
         resource_handler.recursive_delete_kvdbs(api_socket, working_path, True)
     except Exception:
         print('Could not delete kvdb moving to the next step')
-        pass
 
     # Recursively delete all components from the catalog
     print(f'Deleting Decoders')
@@ -36,7 +35,6 @@ def run(args, resource_handler: rs.ResourceHandler):
         api_socket, working_path, 'decoders', True)
     except Exception:
         print('Could not delete Decoders moving to the next step')
-        pass
 
     print(f'Deleting Rules')
     try:
@@ -44,7 +42,6 @@ def run(args, resource_handler: rs.ResourceHandler):
         api_socket, working_path, 'rules', True)
     except Exception:
         print('Could not delete Rules moving to the next step')
-        pass
 
     print(f'Deleting Outputs')
     try:
@@ -52,7 +49,6 @@ def run(args, resource_handler: rs.ResourceHandler):
         api_socket, working_path, 'outputs', True)
     except Exception:
         print('Could not delete Outputs Outputs moving to the next step')
-        pass
 
     print(f'Deleting Filters')
     try:
@@ -60,7 +56,6 @@ def run(args, resource_handler: rs.ResourceHandler):
         api_socket, working_path, 'filters', True)
     except Exception:
         print('Could not delete Filters moving to the next step')
-        pass
 
     # integration name is taken from the directory name
     path = Path(working_path)
