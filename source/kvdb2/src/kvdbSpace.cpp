@@ -57,5 +57,24 @@ std::variant<std::string, base::Error> KVDBSpace::get(const std::string& key)
     return base::Error { fmt::format("Cannot get key '{}'. Error: {}", value, key, status.getState()) };
 }
 
+std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBSpace::dump()
+{
+    std::unordered_map<std::string, std::string> content {};
+    std::shared_ptr<rocksdb::Iterator> iter(m_pRocksDB->NewIterator(rocksdb::ReadOptions(), m_pCFhandle));
+
+    for (iter->SeekToFirst(); iter->Valid(); iter->Next())
+    {
+        content[iter->key().ToString()] = iter->value().ToString();
+    }
+
+    if (!iter->status().ok())
+    {
+        return base::Error { fmt::format("Database '{}': Couldn't iterate over database: '{}'", m_spaceName, iter->status().ToString()) };
+    }
+
+    iter->Reset();
+
+    return content;
+}
 
 } // namespace kvdbManager
