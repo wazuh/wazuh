@@ -33,7 +33,7 @@ def run(_, resource_handler: rs.ResourceHandler):
     try:
         schema = resource_handler.load_file('fields.yml', rs.Format.YML)
     except:
-        pass
+        pass #TODO: error message?
     else:
         readme_str += f'| Field | Description | Type |\n'
         readme_str += f'|---|---|---|\n'
@@ -88,7 +88,7 @@ def run(_, resource_handler: rs.ResourceHandler):
         try:
             readme_str += f'| {item["version"]} | {item["short"]} | {item["pr"]} |\n'
         except:
-            pass
+            pass #TODO: error message?
 
     resource_handler.create_file('README.md', readme_str)
 

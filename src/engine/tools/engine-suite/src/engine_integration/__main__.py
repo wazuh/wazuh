@@ -9,6 +9,7 @@ from .cmds.generate_graph import configure as generate_graph_configure
 from .cmds.generate_manifest import configure as generate_manifest_configure
 from .cmds.add import configure as add_configure
 from .cmds.remove import configure as rm_configure
+from .cmds.update import configure as update_configure
 
 
 def parse_args():
@@ -29,6 +30,7 @@ def parse_args():
     generate_manifest_configure(subparsers)
     add_configure(subparsers)
     rm_configure(subparsers)
+    update_configure(subparsers)
 
     return parser.parse_args()
 
