@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <expression.hpp>
+#include <schemf/ischema.hpp>
 
 #include "registry.hpp"
 
@@ -17,7 +18,8 @@ namespace builder::internals::builders
  * @param helperRegistry Registry of helper builders.
  * @return Builder
  */
-Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry);
+Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
+                                     std::shared_ptr<schemf::ISchema> schema);
 
 /**
  * @brief Get the Operation Map Builder
@@ -25,7 +27,8 @@ Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> he
  * @param helperRegistry Registry of helper builders.
  * @return Builder
  */
-Builder getOperationMapBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry);
+Builder getOperationMapBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
+                               std::shared_ptr<schemf::ISchema> schema);
 
 } // namespace builder::internals::builders
 

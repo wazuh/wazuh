@@ -192,3 +192,41 @@ INSTANTIATE_TEST_SUITE_P(FieldTest,
                                            BuildsParamsTuple({.type = JType::Object, .properties = {{}}}, true),
                                            BuildsParamsTuple({JType::Array, JType::Object, {{}}}, true),
                                            BuildsParamsTuple({JType::Array, JType::Boolean, {{}}}, false)));
+
+using BuildsFromJsonTuple = std::tuple<std::string, Field::Parameters, bool>;
+class BuildsFromJson : public ::testing::TestWithParam<BuildsFromJsonTuple>
+{
+};
+
+TEST_P(BuildsFromJson, BuildsJson)
+{
+    auto [jsonStr, parameters, shouldPass] = GetParam();
+    Field field;
+    json::Json json(jsonStr.c_str());
+    if (shouldPass)
+    {
+        ASSERT_NO_THROW(field = Field(json));
+        auto expected = Field(parameters);
+        ASSERT_EQ(field, expected);
+    }
+    else
+    {
+        ASSERT_THROW(field = Field(json), std::runtime_error);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(FieldTest,
+                         BuildsFromJson,
+                         ::testing::Values(BuildsFromJsonTuple("{}", {JType::Object}, true),
+                                           BuildsFromJsonTuple("[]", {JType::Array}, false),
+                                           BuildsFromJsonTuple("1", {JType::Number}, true),
+                                           BuildsFromJsonTuple("1.1", {JType::Number}, true),
+                                           BuildsFromJsonTuple("true", {JType::Boolean}, true),
+                                           BuildsFromJsonTuple("false", {JType::Boolean}, true),
+                                           BuildsFromJsonTuple("null", {JType::Null}, false),
+                                           BuildsFromJsonTuple("\"\"", {JType::String}, true),
+                                           BuildsFromJsonTuple("[\"\"]", {JType::Array, JType::String}, true),
+                                           BuildsFromJsonTuple("{\"a\": \"b\"}",
+                                                               {.type = JType::Object,
+                                                                .properties = {{"a", Field({JType::String})}}},
+                                                               true)));
