@@ -306,13 +306,13 @@ char * FTS(Eventinfo *lf, OSList **fts_list, OSHash **fts_store)
         }
     }
 
-    w_mutex_lock(&fts_write_lock);
-
     /** Check if FTS is already present **/
     if (OSHash_Get_ex(*fts_store, _line)) {
         free(_line);
         return NULL;
     }
+
+    w_mutex_lock(&fts_write_lock);
 
     /* Check if from the last FTS events, we had at least 3 "similars" before.
      * If yes, we just ignore it.
@@ -340,6 +340,7 @@ char * FTS(Eventinfo *lf, OSList **fts_list, OSHash **fts_store)
         if (!line_for_list) {
             merror(MEM_ERROR, errno, strerror(errno));
             free(_line);
+            w_mutex_unlock(&fts_write_lock);
             return NULL;
         }
 
@@ -347,6 +348,7 @@ char * FTS(Eventinfo *lf, OSList **fts_list, OSHash **fts_store)
         if (!fts_node) {
             free(line_for_list);
             free(_line);
+            w_mutex_unlock(&fts_write_lock);
             return NULL;
         }
     }
