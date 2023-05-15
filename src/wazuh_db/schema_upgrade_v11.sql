@@ -2,7 +2,7 @@
  * SQL Schema for upgrading databases
  * Copyright (C) 2015, Wazuh Inc.
  *
- * Febrary 1, 2023.
+ * February 1, 2023.
  *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
