@@ -15,7 +15,7 @@ metadata:
     - https://documentation.wazuh.com/current/development/message-format.html#secure-message-format
 
 sources:
-  - decoder/core-ossec-message/0
+  - decoder/core-wazuh-message/0
 
 check:
   - wazuh.queue: 52

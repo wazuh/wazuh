@@ -44,3 +44,14 @@ def build_field_tree(flat_definition: dict) -> FieldTree:
         fieldTree.add_field(name_path, _flat_entry_to_field(name_path, entry))
 
     return fieldTree
+
+def to_engine_schema(flat_definition: dict) -> dict:
+    engine_schema = dict()
+
+    for name_path, entry in flat_definition.items():
+        field = _flat_entry_to_field(name_path, entry)
+        engine_schema[field.name] = dict()
+        engine_schema[field.name]['type'] = str(field.json_type)
+        engine_schema[field.name]['array'] = field.array
+
+    return engine_schema

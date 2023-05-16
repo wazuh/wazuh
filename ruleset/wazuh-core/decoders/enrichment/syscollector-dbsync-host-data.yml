@@ -35,7 +35,7 @@ normalize:
       - host.os.type: +downcase/$~json.data.sysname
       - host.os.version: $~json.data.os_version
   - check:
-      - $~json.data.os_display_version: +exists
+      - ~json.data.os_display_version: +exists
     map:
       - host.os.type: windows
 

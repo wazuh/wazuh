@@ -15,7 +15,7 @@ metadata:
     - https://documentation.wazuh.com/current/user-manual/reference/core-options.html
 
 sources:
-  - decoder/core-ossec-message/0
+  - decoder/core-wazuh-message/0
 
 check:
   - wazuh.queue: 51
