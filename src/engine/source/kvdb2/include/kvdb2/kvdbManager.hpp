@@ -56,6 +56,8 @@ public:
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     std::vector<std::string> listDBs(const bool loaded) override;
     std::optional<base::Error> deleteDB(const std::string& name) override;
+    std::optional<base::Error> createDB(const std::string& name) override;
+    std::optional<base::Error> existsDB(const std::string& name) override;
 
 private:
     /**
@@ -65,6 +67,7 @@ private:
     void initializeOptions();
     void initializeMainDB();
     void finalizeMainDB();
+    rocksdb::ColumnFamilyHandle* createColumnFamily(const std::string& name);
 
     std::unique_ptr<KVDBHandlerCollection> m_kvdbHandlerCollection;
 
