@@ -16,7 +16,7 @@ metadata:
     - https://www.json.org
 
 sources:
-  - decoder/core-ossec-message/0
+  - decoder/core-wazuh-message/0
 
 check:
   - wazuh.queue: 117 # UPGRADE_MQ 'u'

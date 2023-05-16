@@ -16,7 +16,7 @@ def make_error(msg):
     exit(1)
 
 
-def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandler) -> Tuple[dict, dict, dict]:
+def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandler) -> Tuple[dict, dict, dict, dict]:
 
     print(f'Using target ECS version: {ecs_version}')
 
@@ -38,6 +38,13 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
     field_tree.add_logpar_overrides(logpar_template['fields'])
     print('Success.')
 
+    # Engine schema
+    print('Generating engine schema...')
+    engine_schema = dict()
+    engine_schema['name'] = 'internal/schema/definition/0'
+    engine_schema['fields'] = dict()
+    engine_schema['fields'] = ecs.to_engine_schema(ecs_flat)
+
     # Add modules
     for module in modules:
         print(f'Adding module {module}...')
@@ -51,6 +58,9 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
             module_tree.add_logpar_overrides(logpar_overrides)
         print('Merging module...')
         field_tree.merge(module_tree)
+        print('Adding to engine schema...')
+        engine_schema['fields'] = {
+            **engine_schema['fields'], **wazuh.to_engine_schema(fields_definition, module_name)}
         print('Success.')
 
     # Get schema properties
@@ -72,4 +82,4 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
     logpar_template['fields'] = field_tree.get_jlogpar()
     print('Success.')
 
-    return fields_template, mappings_template, logpar_template
+    return fields_template, mappings_template, logpar_template, engine_schema

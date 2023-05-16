@@ -1,0 +1,6013 @@
+{
+    "name": "internal/schema/definition/0",
+    "fields": {
+        "@timestamp": {
+            "type": "string",
+            "array": false
+        },
+        "agent.build.original": {
+            "type": "string",
+            "array": false
+        },
+        "agent.ephemeral_id": {
+            "type": "string",
+            "array": false
+        },
+        "agent.id": {
+            "type": "string",
+            "array": false
+        },
+        "agent.name": {
+            "type": "string",
+            "array": false
+        },
+        "agent.type": {
+            "type": "string",
+            "array": false
+        },
+        "agent.version": {
+            "type": "string",
+            "array": false
+        },
+        "client.address": {
+            "type": "string",
+            "array": false
+        },
+        "client.as.number": {
+            "type": "number",
+            "array": false
+        },
+        "client.as.organization.name": {
+            "type": "string",
+            "array": false
+        },
+        "client.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "client.domain": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.city_name": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.continent_code": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.continent_name": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.country_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.country_name": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.location": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.name": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.postal_code": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.region_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.region_name": {
+            "type": "string",
+            "array": false
+        },
+        "client.geo.timezone": {
+            "type": "string",
+            "array": false
+        },
+        "client.ip": {
+            "type": "string",
+            "array": false
+        },
+        "client.mac": {
+            "type": "string",
+            "array": false
+        },
+        "client.nat.ip": {
+            "type": "string",
+            "array": false
+        },
+        "client.nat.port": {
+            "type": "number",
+            "array": false
+        },
+        "client.packets": {
+            "type": "number",
+            "array": false
+        },
+        "client.port": {
+            "type": "number",
+            "array": false
+        },
+        "client.registered_domain": {
+            "type": "string",
+            "array": false
+        },
+        "client.subdomain": {
+            "type": "string",
+            "array": false
+        },
+        "client.top_level_domain": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.domain": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.email": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.full_name": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.group.domain": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.hash": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.id": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.name": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.risk.calculated_level": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.risk.calculated_score": {
+            "type": "number",
+            "array": false
+        },
+        "client.user.risk.calculated_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "client.user.risk.static_level": {
+            "type": "string",
+            "array": false
+        },
+        "client.user.risk.static_score": {
+            "type": "number",
+            "array": false
+        },
+        "client.user.risk.static_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "client.user.roles": {
+            "type": "string",
+            "array": true
+        },
+        "cloud.account.id": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.account.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.availability_zone": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.instance.id": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.instance.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.machine.type": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.account.id": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.account.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.availability_zone": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.instance.id": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.instance.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.machine.type": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.project.id": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.project.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.provider": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.region": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.origin.service.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.project.id": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.project.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.provider": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.region": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.service.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.account.id": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.account.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.availability_zone": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.instance.id": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.instance.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.machine.type": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.project.id": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.project.name": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.provider": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.region": {
+            "type": "string",
+            "array": false
+        },
+        "cloud.target.service.name": {
+            "type": "string",
+            "array": false
+        },
+        "container.cpu.usage": {
+            "type": "number",
+            "array": false
+        },
+        "container.disk.read.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "container.disk.write.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "container.id": {
+            "type": "string",
+            "array": false
+        },
+        "container.image.hash.all": {
+            "type": "string",
+            "array": true
+        },
+        "container.image.name": {
+            "type": "string",
+            "array": false
+        },
+        "container.image.tag": {
+            "type": "string",
+            "array": true
+        },
+        "container.labels": {
+            "type": "object",
+            "array": false
+        },
+        "container.memory.usage": {
+            "type": "number",
+            "array": false
+        },
+        "container.name": {
+            "type": "string",
+            "array": false
+        },
+        "container.network.egress.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "container.network.ingress.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "container.runtime": {
+            "type": "string",
+            "array": false
+        },
+        "data_stream.dataset": {
+            "type": "string",
+            "array": false
+        },
+        "data_stream.namespace": {
+            "type": "string",
+            "array": false
+        },
+        "data_stream.type": {
+            "type": "string",
+            "array": false
+        },
+        "destination.address": {
+            "type": "string",
+            "array": false
+        },
+        "destination.as.number": {
+            "type": "number",
+            "array": false
+        },
+        "destination.as.organization.name": {
+            "type": "string",
+            "array": false
+        },
+        "destination.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "destination.domain": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.city_name": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.continent_code": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.continent_name": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.country_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.country_name": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.location": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.name": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.postal_code": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.region_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.region_name": {
+            "type": "string",
+            "array": false
+        },
+        "destination.geo.timezone": {
+            "type": "string",
+            "array": false
+        },
+        "destination.ip": {
+            "type": "string",
+            "array": false
+        },
+        "destination.mac": {
+            "type": "string",
+            "array": false
+        },
+        "destination.nat.ip": {
+            "type": "string",
+            "array": false
+        },
+        "destination.nat.port": {
+            "type": "number",
+            "array": false
+        },
+        "destination.packets": {
+            "type": "number",
+            "array": false
+        },
+        "destination.port": {
+            "type": "number",
+            "array": false
+        },
+        "destination.registered_domain": {
+            "type": "string",
+            "array": false
+        },
+        "destination.subdomain": {
+            "type": "string",
+            "array": false
+        },
+        "destination.top_level_domain": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.domain": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.email": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.full_name": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.group.domain": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.hash": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.id": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.name": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.risk.calculated_level": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.risk.calculated_score": {
+            "type": "number",
+            "array": false
+        },
+        "destination.user.risk.calculated_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "destination.user.risk.static_level": {
+            "type": "string",
+            "array": false
+        },
+        "destination.user.risk.static_score": {
+            "type": "number",
+            "array": false
+        },
+        "destination.user.risk.static_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "destination.user.roles": {
+            "type": "string",
+            "array": true
+        },
+        "dll.code_signature.digest_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "dll.code_signature.exists": {
+            "type": "boolean",
+            "array": false
+        },
+        "dll.code_signature.signing_id": {
+            "type": "string",
+            "array": false
+        },
+        "dll.code_signature.status": {
+            "type": "string",
+            "array": false
+        },
+        "dll.code_signature.subject_name": {
+            "type": "string",
+            "array": false
+        },
+        "dll.code_signature.team_id": {
+            "type": "string",
+            "array": false
+        },
+        "dll.code_signature.timestamp": {
+            "type": "string",
+            "array": false
+        },
+        "dll.code_signature.trusted": {
+            "type": "boolean",
+            "array": false
+        },
+        "dll.code_signature.valid": {
+            "type": "boolean",
+            "array": false
+        },
+        "dll.hash.md5": {
+            "type": "string",
+            "array": false
+        },
+        "dll.hash.sha1": {
+            "type": "string",
+            "array": false
+        },
+        "dll.hash.sha256": {
+            "type": "string",
+            "array": false
+        },
+        "dll.hash.sha384": {
+            "type": "string",
+            "array": false
+        },
+        "dll.hash.sha512": {
+            "type": "string",
+            "array": false
+        },
+        "dll.hash.ssdeep": {
+            "type": "string",
+            "array": false
+        },
+        "dll.hash.tlsh": {
+            "type": "string",
+            "array": false
+        },
+        "dll.name": {
+            "type": "string",
+            "array": false
+        },
+        "dll.path": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.company": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.description": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.file_version": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.imphash": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.original_file_name": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.pehash": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.product": {
+            "type": "string",
+            "array": false
+        },
+        "dns.answers": {
+            "type": "object",
+            "array": true
+        },
+        "dns.answers.class": {
+            "type": "string",
+            "array": false
+        },
+        "dns.answers.data": {
+            "type": "string",
+            "array": false
+        },
+        "dns.answers.name": {
+            "type": "string",
+            "array": false
+        },
+        "dns.answers.ttl": {
+            "type": "number",
+            "array": false
+        },
+        "dns.answers.type": {
+            "type": "string",
+            "array": false
+        },
+        "dns.header_flags": {
+            "type": "string",
+            "array": true
+        },
+        "dns.id": {
+            "type": "string",
+            "array": false
+        },
+        "dns.op_code": {
+            "type": "string",
+            "array": false
+        },
+        "dns.question.class": {
+            "type": "string",
+            "array": false
+        },
+        "dns.question.name": {
+            "type": "string",
+            "array": false
+        },
+        "dns.question.registered_domain": {
+            "type": "string",
+            "array": false
+        },
+        "dns.question.subdomain": {
+            "type": "string",
+            "array": false
+        },
+        "dns.question.top_level_domain": {
+            "type": "string",
+            "array": false
+        },
+        "dns.question.type": {
+            "type": "string",
+            "array": false
+        },
+        "dns.resolved_ip": {
+            "type": "string",
+            "array": true
+        },
+        "dns.response_code": {
+            "type": "string",
+            "array": false
+        },
+        "dns.type": {
+            "type": "string",
+            "array": false
+        },
+        "ecs.version": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments": {
+            "type": "object",
+            "array": true
+        },
+        "email.attachments.file.extension": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.hash.md5": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.hash.sha1": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.hash.sha256": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.hash.sha384": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.hash.sha512": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.hash.ssdeep": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.hash.tlsh": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.mime_type": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.name": {
+            "type": "string",
+            "array": false
+        },
+        "email.attachments.file.size": {
+            "type": "number",
+            "array": false
+        },
+        "email.bcc.address": {
+            "type": "string",
+            "array": true
+        },
+        "email.cc.address": {
+            "type": "string",
+            "array": true
+        },
+        "email.content_type": {
+            "type": "string",
+            "array": false
+        },
+        "email.delivery_timestamp": {
+            "type": "string",
+            "array": false
+        },
+        "email.direction": {
+            "type": "string",
+            "array": false
+        },
+        "email.from.address": {
+            "type": "string",
+            "array": true
+        },
+        "email.local_id": {
+            "type": "string",
+            "array": false
+        },
+        "email.message_id": {
+            "type": "string",
+            "array": false
+        },
+        "email.origination_timestamp": {
+            "type": "string",
+            "array": false
+        },
+        "email.reply_to.address": {
+            "type": "string",
+            "array": true
+        },
+        "email.sender.address": {
+            "type": "string",
+            "array": false
+        },
+        "email.subject": {
+            "type": "string",
+            "array": false
+        },
+        "email.to.address": {
+            "type": "string",
+            "array": true
+        },
+        "email.x_mailer": {
+            "type": "string",
+            "array": false
+        },
+        "error.code": {
+            "type": "string",
+            "array": false
+        },
+        "error.id": {
+            "type": "string",
+            "array": false
+        },
+        "error.message": {
+            "type": "string",
+            "array": false
+        },
+        "error.stack_trace": {
+            "type": "string",
+            "array": false
+        },
+        "error.type": {
+            "type": "string",
+            "array": false
+        },
+        "event.action": {
+            "type": "string",
+            "array": false
+        },
+        "event.agent_id_status": {
+            "type": "string",
+            "array": false
+        },
+        "event.category": {
+            "type": "string",
+            "array": true
+        },
+        "event.code": {
+            "type": "string",
+            "array": false
+        },
+        "event.created": {
+            "type": "string",
+            "array": false
+        },
+        "event.dataset": {
+            "type": "string",
+            "array": false
+        },
+        "event.duration": {
+            "type": "number",
+            "array": false
+        },
+        "event.end": {
+            "type": "string",
+            "array": false
+        },
+        "event.hash": {
+            "type": "string",
+            "array": false
+        },
+        "event.id": {
+            "type": "string",
+            "array": false
+        },
+        "event.ingested": {
+            "type": "string",
+            "array": false
+        },
+        "event.kind": {
+            "type": "string",
+            "array": false
+        },
+        "event.module": {
+            "type": "string",
+            "array": false
+        },
+        "event.original": {
+            "type": "string",
+            "array": false
+        },
+        "event.outcome": {
+            "type": "string",
+            "array": false
+        },
+        "event.provider": {
+            "type": "string",
+            "array": false
+        },
+        "event.reason": {
+            "type": "string",
+            "array": false
+        },
+        "event.reference": {
+            "type": "string",
+            "array": false
+        },
+        "event.risk_score": {
+            "type": "number",
+            "array": false
+        },
+        "event.risk_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "event.sequence": {
+            "type": "number",
+            "array": false
+        },
+        "event.severity": {
+            "type": "number",
+            "array": false
+        },
+        "event.start": {
+            "type": "string",
+            "array": false
+        },
+        "event.timezone": {
+            "type": "string",
+            "array": false
+        },
+        "event.type": {
+            "type": "string",
+            "array": true
+        },
+        "event.url": {
+            "type": "string",
+            "array": false
+        },
+        "faas.coldstart": {
+            "type": "boolean",
+            "array": false
+        },
+        "faas.execution": {
+            "type": "string",
+            "array": false
+        },
+        "faas.id": {
+            "type": "string",
+            "array": false
+        },
+        "faas.name": {
+            "type": "string",
+            "array": false
+        },
+        "faas.trigger": {
+            "type": "object",
+            "array": false
+        },
+        "faas.trigger.request_id": {
+            "type": "string",
+            "array": false
+        },
+        "faas.trigger.type": {
+            "type": "string",
+            "array": false
+        },
+        "faas.version": {
+            "type": "string",
+            "array": false
+        },
+        "file.accessed": {
+            "type": "string",
+            "array": false
+        },
+        "file.attributes": {
+            "type": "string",
+            "array": true
+        },
+        "file.code_signature.digest_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "file.code_signature.exists": {
+            "type": "boolean",
+            "array": false
+        },
+        "file.code_signature.signing_id": {
+            "type": "string",
+            "array": false
+        },
+        "file.code_signature.status": {
+            "type": "string",
+            "array": false
+        },
+        "file.code_signature.subject_name": {
+            "type": "string",
+            "array": false
+        },
+        "file.code_signature.team_id": {
+            "type": "string",
+            "array": false
+        },
+        "file.code_signature.timestamp": {
+            "type": "string",
+            "array": false
+        },
+        "file.code_signature.trusted": {
+            "type": "boolean",
+            "array": false
+        },
+        "file.code_signature.valid": {
+            "type": "boolean",
+            "array": false
+        },
+        "file.created": {
+            "type": "string",
+            "array": false
+        },
+        "file.ctime": {
+            "type": "string",
+            "array": false
+        },
+        "file.device": {
+            "type": "string",
+            "array": false
+        },
+        "file.directory": {
+            "type": "string",
+            "array": false
+        },
+        "file.drive_letter": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.byte_order": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.cpu_type": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.creation_date": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.exports": {
+            "type": "object",
+            "array": true
+        },
+        "file.elf.header.abi_version": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.header.class": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.header.data": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.header.entrypoint": {
+            "type": "number",
+            "array": false
+        },
+        "file.elf.header.object_version": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.header.os_abi": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.header.type": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.header.version": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.imports": {
+            "type": "object",
+            "array": true
+        },
+        "file.elf.sections": {
+            "type": "object",
+            "array": true
+        },
+        "file.elf.sections.chi2": {
+            "type": "number",
+            "array": false
+        },
+        "file.elf.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.elf.sections.flags": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.sections.physical_offset": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "file.elf.sections.type": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.sections.virtual_address": {
+            "type": "number",
+            "array": false
+        },
+        "file.elf.sections.virtual_size": {
+            "type": "number",
+            "array": false
+        },
+        "file.elf.segments": {
+            "type": "object",
+            "array": true
+        },
+        "file.elf.segments.sections": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.segments.type": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.shared_libraries": {
+            "type": "string",
+            "array": true
+        },
+        "file.elf.telfhash": {
+            "type": "string",
+            "array": false
+        },
+        "file.extension": {
+            "type": "string",
+            "array": false
+        },
+        "file.fork_name": {
+            "type": "string",
+            "array": false
+        },
+        "file.gid": {
+            "type": "string",
+            "array": false
+        },
+        "file.group": {
+            "type": "string",
+            "array": false
+        },
+        "file.hash.md5": {
+            "type": "string",
+            "array": false
+        },
+        "file.hash.sha1": {
+            "type": "string",
+            "array": false
+        },
+        "file.hash.sha256": {
+            "type": "string",
+            "array": false
+        },
+        "file.hash.sha384": {
+            "type": "string",
+            "array": false
+        },
+        "file.hash.sha512": {
+            "type": "string",
+            "array": false
+        },
+        "file.hash.ssdeep": {
+            "type": "string",
+            "array": false
+        },
+        "file.hash.tlsh": {
+            "type": "string",
+            "array": false
+        },
+        "file.inode": {
+            "type": "string",
+            "array": false
+        },
+        "file.mime_type": {
+            "type": "string",
+            "array": false
+        },
+        "file.mode": {
+            "type": "string",
+            "array": false
+        },
+        "file.mtime": {
+            "type": "string",
+            "array": false
+        },
+        "file.name": {
+            "type": "string",
+            "array": false
+        },
+        "file.owner": {
+            "type": "string",
+            "array": false
+        },
+        "file.path": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.company": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.description": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.file_version": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.imphash": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.original_file_name": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.pehash": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.product": {
+            "type": "string",
+            "array": false
+        },
+        "file.size": {
+            "type": "number",
+            "array": false
+        },
+        "file.target_path": {
+            "type": "string",
+            "array": false
+        },
+        "file.type": {
+            "type": "string",
+            "array": false
+        },
+        "file.uid": {
+            "type": "string",
+            "array": false
+        },
+        "file.x509.alternative_names": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.issuer.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.issuer.country": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.issuer.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "file.x509.issuer.locality": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.issuer.organization": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.issuer.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.issuer.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.not_after": {
+            "type": "string",
+            "array": false
+        },
+        "file.x509.not_before": {
+            "type": "string",
+            "array": false
+        },
+        "file.x509.public_key_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "file.x509.public_key_curve": {
+            "type": "string",
+            "array": false
+        },
+        "file.x509.public_key_exponent": {
+            "type": "number",
+            "array": false
+        },
+        "file.x509.public_key_size": {
+            "type": "number",
+            "array": false
+        },
+        "file.x509.serial_number": {
+            "type": "string",
+            "array": false
+        },
+        "file.x509.signature_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "file.x509.subject.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.subject.country": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.subject.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "file.x509.subject.locality": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.subject.organization": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.subject.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.subject.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "file.x509.version_number": {
+            "type": "string",
+            "array": false
+        },
+        "group.domain": {
+            "type": "string",
+            "array": false
+        },
+        "group.id": {
+            "type": "string",
+            "array": false
+        },
+        "group.name": {
+            "type": "string",
+            "array": false
+        },
+        "host.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "host.boot.id": {
+            "type": "string",
+            "array": false
+        },
+        "host.cpu.usage": {
+            "type": "number",
+            "array": false
+        },
+        "host.disk.read.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "host.disk.write.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "host.domain": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.city_name": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.continent_code": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.continent_name": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.country_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.country_name": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.location": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.name": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.postal_code": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.region_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.region_name": {
+            "type": "string",
+            "array": false
+        },
+        "host.geo.timezone": {
+            "type": "string",
+            "array": false
+        },
+        "host.hostname": {
+            "type": "string",
+            "array": false
+        },
+        "host.id": {
+            "type": "string",
+            "array": false
+        },
+        "host.ip": {
+            "type": "string",
+            "array": true
+        },
+        "host.mac": {
+            "type": "string",
+            "array": true
+        },
+        "host.name": {
+            "type": "string",
+            "array": false
+        },
+        "host.network.egress.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "host.network.egress.packets": {
+            "type": "number",
+            "array": false
+        },
+        "host.network.ingress.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "host.network.ingress.packets": {
+            "type": "number",
+            "array": false
+        },
+        "host.os.family": {
+            "type": "string",
+            "array": false
+        },
+        "host.os.full": {
+            "type": "string",
+            "array": false
+        },
+        "host.os.kernel": {
+            "type": "string",
+            "array": false
+        },
+        "host.os.name": {
+            "type": "string",
+            "array": false
+        },
+        "host.os.platform": {
+            "type": "string",
+            "array": false
+        },
+        "host.os.type": {
+            "type": "string",
+            "array": false
+        },
+        "host.os.version": {
+            "type": "string",
+            "array": false
+        },
+        "host.pid_ns_ino": {
+            "type": "string",
+            "array": false
+        },
+        "host.risk.calculated_level": {
+            "type": "string",
+            "array": false
+        },
+        "host.risk.calculated_score": {
+            "type": "number",
+            "array": false
+        },
+        "host.risk.calculated_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "host.risk.static_level": {
+            "type": "string",
+            "array": false
+        },
+        "host.risk.static_score": {
+            "type": "number",
+            "array": false
+        },
+        "host.risk.static_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "host.type": {
+            "type": "string",
+            "array": false
+        },
+        "host.uptime": {
+            "type": "number",
+            "array": false
+        },
+        "http.request.body.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "http.request.body.content": {
+            "type": "string",
+            "array": false
+        },
+        "http.request.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "http.request.id": {
+            "type": "string",
+            "array": false
+        },
+        "http.request.method": {
+            "type": "string",
+            "array": false
+        },
+        "http.request.mime_type": {
+            "type": "string",
+            "array": false
+        },
+        "http.request.referrer": {
+            "type": "string",
+            "array": false
+        },
+        "http.response.body.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "http.response.body.content": {
+            "type": "string",
+            "array": false
+        },
+        "http.response.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "http.response.mime_type": {
+            "type": "string",
+            "array": false
+        },
+        "http.response.status_code": {
+            "type": "number",
+            "array": false
+        },
+        "http.version": {
+            "type": "string",
+            "array": false
+        },
+        "labels": {
+            "type": "object",
+            "array": false
+        },
+        "log.file.path": {
+            "type": "string",
+            "array": false
+        },
+        "log.level": {
+            "type": "string",
+            "array": false
+        },
+        "log.logger": {
+            "type": "string",
+            "array": false
+        },
+        "log.origin.file.line": {
+            "type": "number",
+            "array": false
+        },
+        "log.origin.file.name": {
+            "type": "string",
+            "array": false
+        },
+        "log.origin.function": {
+            "type": "string",
+            "array": false
+        },
+        "log.syslog": {
+            "type": "object",
+            "array": false
+        },
+        "log.syslog.appname": {
+            "type": "string",
+            "array": false
+        },
+        "log.syslog.facility.code": {
+            "type": "number",
+            "array": false
+        },
+        "log.syslog.facility.name": {
+            "type": "string",
+            "array": false
+        },
+        "log.syslog.hostname": {
+            "type": "string",
+            "array": false
+        },
+        "log.syslog.msgid": {
+            "type": "string",
+            "array": false
+        },
+        "log.syslog.priority": {
+            "type": "number",
+            "array": false
+        },
+        "log.syslog.procid": {
+            "type": "string",
+            "array": false
+        },
+        "log.syslog.severity.code": {
+            "type": "number",
+            "array": false
+        },
+        "log.syslog.severity.name": {
+            "type": "string",
+            "array": false
+        },
+        "log.syslog.structured_data": {
+            "type": "object",
+            "array": false
+        },
+        "log.syslog.version": {
+            "type": "string",
+            "array": false
+        },
+        "message": {
+            "type": "string",
+            "array": false
+        },
+        "network.application": {
+            "type": "string",
+            "array": false
+        },
+        "network.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "network.community_id": {
+            "type": "string",
+            "array": false
+        },
+        "network.direction": {
+            "type": "string",
+            "array": false
+        },
+        "network.forwarded_ip": {
+            "type": "string",
+            "array": false
+        },
+        "network.iana_number": {
+            "type": "string",
+            "array": false
+        },
+        "network.inner": {
+            "type": "object",
+            "array": false
+        },
+        "network.inner.vlan.id": {
+            "type": "string",
+            "array": false
+        },
+        "network.inner.vlan.name": {
+            "type": "string",
+            "array": false
+        },
+        "network.name": {
+            "type": "string",
+            "array": false
+        },
+        "network.packets": {
+            "type": "number",
+            "array": false
+        },
+        "network.protocol": {
+            "type": "string",
+            "array": false
+        },
+        "network.transport": {
+            "type": "string",
+            "array": false
+        },
+        "network.type": {
+            "type": "string",
+            "array": false
+        },
+        "network.vlan.id": {
+            "type": "string",
+            "array": false
+        },
+        "network.vlan.name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.egress": {
+            "type": "object",
+            "array": false
+        },
+        "observer.egress.interface.alias": {
+            "type": "string",
+            "array": false
+        },
+        "observer.egress.interface.id": {
+            "type": "string",
+            "array": false
+        },
+        "observer.egress.interface.name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.egress.vlan.id": {
+            "type": "string",
+            "array": false
+        },
+        "observer.egress.vlan.name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.egress.zone": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.city_name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.continent_code": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.continent_name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.country_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.country_name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.location": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.postal_code": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.region_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.region_name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.geo.timezone": {
+            "type": "string",
+            "array": false
+        },
+        "observer.hostname": {
+            "type": "string",
+            "array": false
+        },
+        "observer.ingress": {
+            "type": "object",
+            "array": false
+        },
+        "observer.ingress.interface.alias": {
+            "type": "string",
+            "array": false
+        },
+        "observer.ingress.interface.id": {
+            "type": "string",
+            "array": false
+        },
+        "observer.ingress.interface.name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.ingress.vlan.id": {
+            "type": "string",
+            "array": false
+        },
+        "observer.ingress.vlan.name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.ingress.zone": {
+            "type": "string",
+            "array": false
+        },
+        "observer.ip": {
+            "type": "string",
+            "array": true
+        },
+        "observer.mac": {
+            "type": "string",
+            "array": true
+        },
+        "observer.name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.os.family": {
+            "type": "string",
+            "array": false
+        },
+        "observer.os.full": {
+            "type": "string",
+            "array": false
+        },
+        "observer.os.kernel": {
+            "type": "string",
+            "array": false
+        },
+        "observer.os.name": {
+            "type": "string",
+            "array": false
+        },
+        "observer.os.platform": {
+            "type": "string",
+            "array": false
+        },
+        "observer.os.type": {
+            "type": "string",
+            "array": false
+        },
+        "observer.os.version": {
+            "type": "string",
+            "array": false
+        },
+        "observer.product": {
+            "type": "string",
+            "array": false
+        },
+        "observer.serial_number": {
+            "type": "string",
+            "array": false
+        },
+        "observer.type": {
+            "type": "string",
+            "array": false
+        },
+        "observer.vendor": {
+            "type": "string",
+            "array": false
+        },
+        "observer.version": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.api_version": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.cluster.id": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.cluster.name": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.cluster.url": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.cluster.version": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.namespace": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.organization": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.resource.id": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.resource.ip": {
+            "type": "string",
+            "array": true
+        },
+        "orchestrator.resource.name": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.resource.parent.type": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.resource.type": {
+            "type": "string",
+            "array": false
+        },
+        "orchestrator.type": {
+            "type": "string",
+            "array": false
+        },
+        "organization.id": {
+            "type": "string",
+            "array": false
+        },
+        "organization.name": {
+            "type": "string",
+            "array": false
+        },
+        "package.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "package.build_version": {
+            "type": "string",
+            "array": false
+        },
+        "package.checksum": {
+            "type": "string",
+            "array": false
+        },
+        "package.description": {
+            "type": "string",
+            "array": false
+        },
+        "package.install_scope": {
+            "type": "string",
+            "array": false
+        },
+        "package.installed": {
+            "type": "string",
+            "array": false
+        },
+        "package.license": {
+            "type": "string",
+            "array": false
+        },
+        "package.name": {
+            "type": "string",
+            "array": false
+        },
+        "package.path": {
+            "type": "string",
+            "array": false
+        },
+        "package.reference": {
+            "type": "string",
+            "array": false
+        },
+        "package.size": {
+            "type": "number",
+            "array": false
+        },
+        "package.type": {
+            "type": "string",
+            "array": false
+        },
+        "package.version": {
+            "type": "string",
+            "array": false
+        },
+        "process.args": {
+            "type": "string",
+            "array": true
+        },
+        "process.args_count": {
+            "type": "number",
+            "array": false
+        },
+        "process.code_signature.digest_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "process.code_signature.exists": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.code_signature.signing_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.code_signature.status": {
+            "type": "string",
+            "array": false
+        },
+        "process.code_signature.subject_name": {
+            "type": "string",
+            "array": false
+        },
+        "process.code_signature.team_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.code_signature.timestamp": {
+            "type": "string",
+            "array": false
+        },
+        "process.code_signature.trusted": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.code_signature.valid": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.command_line": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.byte_order": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.cpu_type": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.creation_date": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.exports": {
+            "type": "object",
+            "array": true
+        },
+        "process.elf.header.abi_version": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.header.class": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.header.data": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.header.entrypoint": {
+            "type": "number",
+            "array": false
+        },
+        "process.elf.header.object_version": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.header.os_abi": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.header.type": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.header.version": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.imports": {
+            "type": "object",
+            "array": true
+        },
+        "process.elf.sections": {
+            "type": "object",
+            "array": true
+        },
+        "process.elf.sections.chi2": {
+            "type": "number",
+            "array": false
+        },
+        "process.elf.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.elf.sections.flags": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.sections.physical_offset": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.elf.sections.type": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.sections.virtual_address": {
+            "type": "number",
+            "array": false
+        },
+        "process.elf.sections.virtual_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.elf.segments": {
+            "type": "object",
+            "array": true
+        },
+        "process.elf.segments.sections": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.segments.type": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.shared_libraries": {
+            "type": "string",
+            "array": true
+        },
+        "process.elf.telfhash": {
+            "type": "string",
+            "array": false
+        },
+        "process.end": {
+            "type": "string",
+            "array": false
+        },
+        "process.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.args": {
+            "type": "string",
+            "array": true
+        },
+        "process.entry_leader.args_count": {
+            "type": "number",
+            "array": false
+        },
+        "process.entry_leader.attested_groups.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.attested_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.attested_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.command_line": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.entry_meta.source.ip": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.entry_meta.type": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.executable": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.interactive": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.entry_leader.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.parent.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.parent.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.entry_leader.parent.session_leader.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.parent.session_leader.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.entry_leader.parent.session_leader.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.parent.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.entry_leader.real_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.real_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.real_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.real_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.same_as_process": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.entry_leader.saved_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.saved_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.saved_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.saved_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.supplemental_groups.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.supplemental_groups.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.tty": {
+            "type": "object",
+            "array": false
+        },
+        "process.entry_leader.tty.char_device.major": {
+            "type": "number",
+            "array": false
+        },
+        "process.entry_leader.tty.char_device.minor": {
+            "type": "number",
+            "array": false
+        },
+        "process.entry_leader.user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.entry_leader.working_directory": {
+            "type": "string",
+            "array": false
+        },
+        "process.env_vars": {
+            "type": "string",
+            "array": true
+        },
+        "process.executable": {
+            "type": "string",
+            "array": false
+        },
+        "process.exit_code": {
+            "type": "number",
+            "array": false
+        },
+        "process.group_leader.args": {
+            "type": "string",
+            "array": true
+        },
+        "process.group_leader.args_count": {
+            "type": "number",
+            "array": false
+        },
+        "process.group_leader.command_line": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.executable": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.interactive": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.group_leader.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.group_leader.real_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.real_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.real_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.real_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.same_as_process": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.group_leader.saved_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.saved_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.saved_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.saved_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.supplemental_groups.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.supplemental_groups.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.tty": {
+            "type": "object",
+            "array": false
+        },
+        "process.group_leader.tty.char_device.major": {
+            "type": "number",
+            "array": false
+        },
+        "process.group_leader.tty.char_device.minor": {
+            "type": "number",
+            "array": false
+        },
+        "process.group_leader.user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.group_leader.working_directory": {
+            "type": "string",
+            "array": false
+        },
+        "process.hash.md5": {
+            "type": "string",
+            "array": false
+        },
+        "process.hash.sha1": {
+            "type": "string",
+            "array": false
+        },
+        "process.hash.sha256": {
+            "type": "string",
+            "array": false
+        },
+        "process.hash.sha384": {
+            "type": "string",
+            "array": false
+        },
+        "process.hash.sha512": {
+            "type": "string",
+            "array": false
+        },
+        "process.hash.ssdeep": {
+            "type": "string",
+            "array": false
+        },
+        "process.hash.tlsh": {
+            "type": "string",
+            "array": false
+        },
+        "process.interactive": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.args": {
+            "type": "string",
+            "array": true
+        },
+        "process.parent.args_count": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.code_signature.digest_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.code_signature.exists": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.parent.code_signature.signing_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.code_signature.status": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.code_signature.subject_name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.code_signature.team_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.code_signature.timestamp": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.code_signature.trusted": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.parent.code_signature.valid": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.parent.command_line": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.byte_order": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.cpu_type": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.creation_date": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.exports": {
+            "type": "object",
+            "array": true
+        },
+        "process.parent.elf.header.abi_version": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.header.class": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.header.data": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.header.entrypoint": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.elf.header.object_version": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.header.os_abi": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.header.type": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.header.version": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.imports": {
+            "type": "object",
+            "array": true
+        },
+        "process.parent.elf.sections": {
+            "type": "object",
+            "array": true
+        },
+        "process.parent.elf.sections.chi2": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.elf.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.elf.sections.flags": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.sections.physical_offset": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.elf.sections.type": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.sections.virtual_address": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.elf.sections.virtual_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.elf.segments": {
+            "type": "object",
+            "array": true
+        },
+        "process.parent.elf.segments.sections": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.segments.type": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.shared_libraries": {
+            "type": "string",
+            "array": true
+        },
+        "process.parent.elf.telfhash": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.end": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.executable": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.exit_code": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.group_leader.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.group_leader.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.group_leader.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.hash.md5": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.hash.sha1": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.hash.sha256": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.hash.sha384": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.hash.sha512": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.hash.ssdeep": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.hash.tlsh": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.interactive": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.parent.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.company": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.description": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.file_version": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.imphash": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.original_file_name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.pehash": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.product": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pgid": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.real_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.real_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.real_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.real_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.saved_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.saved_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.saved_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.saved_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.supplemental_groups.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.supplemental_groups.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.thread.id": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.thread.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.title": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.tty": {
+            "type": "object",
+            "array": false
+        },
+        "process.parent.tty.char_device.major": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.tty.char_device.minor": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.uptime": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.working_directory": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.company": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.description": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.file_version": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.imphash": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.original_file_name": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.pehash": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.product": {
+            "type": "string",
+            "array": false
+        },
+        "process.pgid": {
+            "type": "number",
+            "array": false
+        },
+        "process.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.previous.args": {
+            "type": "string",
+            "array": true
+        },
+        "process.previous.args_count": {
+            "type": "number",
+            "array": false
+        },
+        "process.previous.executable": {
+            "type": "string",
+            "array": false
+        },
+        "process.real_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.real_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.real_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.real_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.saved_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.saved_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.saved_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.saved_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.args": {
+            "type": "string",
+            "array": true
+        },
+        "process.session_leader.args_count": {
+            "type": "number",
+            "array": false
+        },
+        "process.session_leader.command_line": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.executable": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.interactive": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.session_leader.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.parent.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.parent.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.session_leader.parent.session_leader.entity_id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.parent.session_leader.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.session_leader.parent.session_leader.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.parent.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.pid": {
+            "type": "number",
+            "array": false
+        },
+        "process.session_leader.real_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.real_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.real_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.real_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.same_as_process": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.session_leader.saved_group.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.saved_group.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.saved_user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.saved_user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.supplemental_groups.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.supplemental_groups.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.tty": {
+            "type": "object",
+            "array": false
+        },
+        "process.session_leader.tty.char_device.major": {
+            "type": "number",
+            "array": false
+        },
+        "process.session_leader.tty.char_device.minor": {
+            "type": "number",
+            "array": false
+        },
+        "process.session_leader.user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.session_leader.working_directory": {
+            "type": "string",
+            "array": false
+        },
+        "process.start": {
+            "type": "string",
+            "array": false
+        },
+        "process.supplemental_groups.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.supplemental_groups.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.thread.id": {
+            "type": "number",
+            "array": false
+        },
+        "process.thread.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.title": {
+            "type": "string",
+            "array": false
+        },
+        "process.tty": {
+            "type": "object",
+            "array": false
+        },
+        "process.tty.char_device.major": {
+            "type": "number",
+            "array": false
+        },
+        "process.tty.char_device.minor": {
+            "type": "number",
+            "array": false
+        },
+        "process.tty.columns": {
+            "type": "number",
+            "array": false
+        },
+        "process.tty.rows": {
+            "type": "number",
+            "array": false
+        },
+        "process.uptime": {
+            "type": "number",
+            "array": false
+        },
+        "process.user.id": {
+            "type": "string",
+            "array": false
+        },
+        "process.user.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.working_directory": {
+            "type": "string",
+            "array": false
+        },
+        "registry.data.bytes": {
+            "type": "string",
+            "array": false
+        },
+        "registry.data.strings": {
+            "type": "string",
+            "array": true
+        },
+        "registry.data.type": {
+            "type": "string",
+            "array": false
+        },
+        "registry.hive": {
+            "type": "string",
+            "array": false
+        },
+        "registry.key": {
+            "type": "string",
+            "array": false
+        },
+        "registry.path": {
+            "type": "string",
+            "array": false
+        },
+        "registry.value": {
+            "type": "string",
+            "array": false
+        },
+        "related.hash": {
+            "type": "string",
+            "array": true
+        },
+        "related.hosts": {
+            "type": "string",
+            "array": true
+        },
+        "related.ip": {
+            "type": "string",
+            "array": true
+        },
+        "related.user": {
+            "type": "string",
+            "array": true
+        },
+        "rule.author": {
+            "type": "string",
+            "array": true
+        },
+        "rule.category": {
+            "type": "string",
+            "array": false
+        },
+        "rule.description": {
+            "type": "string",
+            "array": false
+        },
+        "rule.id": {
+            "type": "string",
+            "array": false
+        },
+        "rule.license": {
+            "type": "string",
+            "array": false
+        },
+        "rule.name": {
+            "type": "string",
+            "array": false
+        },
+        "rule.reference": {
+            "type": "string",
+            "array": false
+        },
+        "rule.ruleset": {
+            "type": "string",
+            "array": false
+        },
+        "rule.uuid": {
+            "type": "string",
+            "array": false
+        },
+        "rule.version": {
+            "type": "string",
+            "array": false
+        },
+        "server.address": {
+            "type": "string",
+            "array": false
+        },
+        "server.as.number": {
+            "type": "number",
+            "array": false
+        },
+        "server.as.organization.name": {
+            "type": "string",
+            "array": false
+        },
+        "server.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "server.domain": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.city_name": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.continent_code": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.continent_name": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.country_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.country_name": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.location": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.name": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.postal_code": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.region_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.region_name": {
+            "type": "string",
+            "array": false
+        },
+        "server.geo.timezone": {
+            "type": "string",
+            "array": false
+        },
+        "server.ip": {
+            "type": "string",
+            "array": false
+        },
+        "server.mac": {
+            "type": "string",
+            "array": false
+        },
+        "server.nat.ip": {
+            "type": "string",
+            "array": false
+        },
+        "server.nat.port": {
+            "type": "number",
+            "array": false
+        },
+        "server.packets": {
+            "type": "number",
+            "array": false
+        },
+        "server.port": {
+            "type": "number",
+            "array": false
+        },
+        "server.registered_domain": {
+            "type": "string",
+            "array": false
+        },
+        "server.subdomain": {
+            "type": "string",
+            "array": false
+        },
+        "server.top_level_domain": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.domain": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.email": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.full_name": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.group.domain": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.hash": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.id": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.name": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.risk.calculated_level": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.risk.calculated_score": {
+            "type": "number",
+            "array": false
+        },
+        "server.user.risk.calculated_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "server.user.risk.static_level": {
+            "type": "string",
+            "array": false
+        },
+        "server.user.risk.static_score": {
+            "type": "number",
+            "array": false
+        },
+        "server.user.risk.static_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "server.user.roles": {
+            "type": "string",
+            "array": true
+        },
+        "service.address": {
+            "type": "string",
+            "array": false
+        },
+        "service.environment": {
+            "type": "string",
+            "array": false
+        },
+        "service.ephemeral_id": {
+            "type": "string",
+            "array": false
+        },
+        "service.id": {
+            "type": "string",
+            "array": false
+        },
+        "service.name": {
+            "type": "string",
+            "array": false
+        },
+        "service.node.name": {
+            "type": "string",
+            "array": false
+        },
+        "service.node.role": {
+            "type": "string",
+            "array": false
+        },
+        "service.node.roles": {
+            "type": "string",
+            "array": true
+        },
+        "service.origin.address": {
+            "type": "string",
+            "array": false
+        },
+        "service.origin.environment": {
+            "type": "string",
+            "array": false
+        },
+        "service.origin.ephemeral_id": {
+            "type": "string",
+            "array": false
+        },
+        "service.origin.id": {
+            "type": "string",
+            "array": false
+        },
+        "service.origin.name": {
+            "type": "string",
+            "array": false
+        },
+        "service.origin.node.name": {
+            "type": "string",
+            "array": false
+        },
+        "service.origin.node.role": {
+            "type": "string",
+            "array": false
+        },
+        "service.origin.node.roles": {
+            "type": "string",
+            "array": true
+        },
+        "service.origin.state": {
+            "type": "string",
+            "array": false
+        },
+        "service.origin.type": {
+            "type": "string",
+            "array": false
+        },
+        "service.origin.version": {
+            "type": "string",
+            "array": false
+        },
+        "service.state": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.address": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.environment": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.ephemeral_id": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.id": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.name": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.node.name": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.node.role": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.node.roles": {
+            "type": "string",
+            "array": true
+        },
+        "service.target.state": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.type": {
+            "type": "string",
+            "array": false
+        },
+        "service.target.version": {
+            "type": "string",
+            "array": false
+        },
+        "service.type": {
+            "type": "string",
+            "array": false
+        },
+        "service.version": {
+            "type": "string",
+            "array": false
+        },
+        "source.address": {
+            "type": "string",
+            "array": false
+        },
+        "source.as.number": {
+            "type": "number",
+            "array": false
+        },
+        "source.as.organization.name": {
+            "type": "string",
+            "array": false
+        },
+        "source.bytes": {
+            "type": "number",
+            "array": false
+        },
+        "source.domain": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.city_name": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.continent_code": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.continent_name": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.country_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.country_name": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.location": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.name": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.postal_code": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.region_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.region_name": {
+            "type": "string",
+            "array": false
+        },
+        "source.geo.timezone": {
+            "type": "string",
+            "array": false
+        },
+        "source.ip": {
+            "type": "string",
+            "array": false
+        },
+        "source.mac": {
+            "type": "string",
+            "array": false
+        },
+        "source.nat.ip": {
+            "type": "string",
+            "array": false
+        },
+        "source.nat.port": {
+            "type": "number",
+            "array": false
+        },
+        "source.packets": {
+            "type": "number",
+            "array": false
+        },
+        "source.port": {
+            "type": "number",
+            "array": false
+        },
+        "source.registered_domain": {
+            "type": "string",
+            "array": false
+        },
+        "source.subdomain": {
+            "type": "string",
+            "array": false
+        },
+        "source.top_level_domain": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.domain": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.email": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.full_name": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.group.domain": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.hash": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.id": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.name": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.risk.calculated_level": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.risk.calculated_score": {
+            "type": "number",
+            "array": false
+        },
+        "source.user.risk.calculated_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "source.user.risk.static_level": {
+            "type": "string",
+            "array": false
+        },
+        "source.user.risk.static_score": {
+            "type": "number",
+            "array": false
+        },
+        "source.user.risk.static_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "source.user.roles": {
+            "type": "string",
+            "array": true
+        },
+        "span.id": {
+            "type": "string",
+            "array": false
+        },
+        "tags": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments": {
+            "type": "object",
+            "array": true
+        },
+        "threat.enrichments.indicator": {
+            "type": "object",
+            "array": false
+        },
+        "threat.enrichments.indicator.as.number": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.as.organization.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.confidence": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.description": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.email.address": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.accessed": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.attributes": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.code_signature.digest_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.code_signature.exists": {
+            "type": "boolean",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.code_signature.signing_id": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.code_signature.status": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.code_signature.subject_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.code_signature.team_id": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.code_signature.timestamp": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.code_signature.trusted": {
+            "type": "boolean",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.code_signature.valid": {
+            "type": "boolean",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.created": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.ctime": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.device": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.directory": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.drive_letter": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.byte_order": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.cpu_type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.creation_date": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.exports": {
+            "type": "object",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.elf.header.abi_version": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.header.class": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.header.data": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.header.entrypoint": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.header.object_version": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.header.os_abi": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.header.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.header.version": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.imports": {
+            "type": "object",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.elf.sections": {
+            "type": "object",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.elf.sections.chi2": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.sections.flags": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.sections.physical_offset": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.sections.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.sections.virtual_address": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.sections.virtual_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.segments": {
+            "type": "object",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.elf.segments.sections": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.segments.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.shared_libraries": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.elf.telfhash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.extension": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.fork_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.gid": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.group": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.hash.md5": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.hash.sha1": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.hash.sha256": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.hash.sha384": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.hash.sha512": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.hash.ssdeep": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.hash.tlsh": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.inode": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.mime_type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.mode": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.mtime": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.owner": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.path": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.company": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.description": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.file_version": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.imphash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.original_file_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.pehash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.product": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.target_path": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.uid": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.alternative_names": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.issuer.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.issuer.country": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.issuer.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.issuer.locality": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.issuer.organization": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.issuer.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.issuer.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.not_after": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.not_before": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.public_key_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.public_key_curve": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.public_key_exponent": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.public_key_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.serial_number": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.signature_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.subject.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.subject.country": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.subject.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.x509.subject.locality": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.subject.organization": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.subject.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.subject.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.x509.version_number": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.first_seen": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.city_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.continent_code": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.continent_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.country_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.country_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.location": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.postal_code": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.region_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.region_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.geo.timezone": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.ip": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.last_seen": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.marking.tlp": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.modified_at": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.port": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.provider": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.reference": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.registry.data.bytes": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.registry.data.strings": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.registry.data.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.registry.hive": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.registry.key": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.registry.path": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.registry.value": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.scanner_stats": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.sightings": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.domain": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.extension": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.fragment": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.full": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.original": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.password": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.path": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.port": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.query": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.registered_domain": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.scheme": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.subdomain": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.top_level_domain": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.url.username": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.alternative_names": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.issuer.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.issuer.country": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.issuer.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.issuer.locality": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.issuer.organization": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.issuer.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.issuer.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.not_after": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.not_before": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.public_key_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.public_key_curve": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.public_key_exponent": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.public_key_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.serial_number": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.signature_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.subject.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.subject.country": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.subject.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.x509.subject.locality": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.subject.organization": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.subject.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.subject.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "threat.enrichments.indicator.x509.version_number": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.matched.atomic": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.matched.field": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.matched.id": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.matched.index": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.matched.occurred": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.matched.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.feed.dashboard_id": {
+            "type": "string",
+            "array": false
+        },
+        "threat.feed.description": {
+            "type": "string",
+            "array": false
+        },
+        "threat.feed.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.feed.reference": {
+            "type": "string",
+            "array": false
+        },
+        "threat.framework": {
+            "type": "string",
+            "array": false
+        },
+        "threat.group.alias": {
+            "type": "string",
+            "array": true
+        },
+        "threat.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "threat.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.group.reference": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.as.number": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.as.organization.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.confidence": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.description": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.email.address": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.accessed": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.attributes": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.code_signature.digest_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.code_signature.exists": {
+            "type": "boolean",
+            "array": false
+        },
+        "threat.indicator.file.code_signature.signing_id": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.code_signature.status": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.code_signature.subject_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.code_signature.team_id": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.code_signature.timestamp": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.code_signature.trusted": {
+            "type": "boolean",
+            "array": false
+        },
+        "threat.indicator.file.code_signature.valid": {
+            "type": "boolean",
+            "array": false
+        },
+        "threat.indicator.file.created": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.ctime": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.device": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.directory": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.drive_letter": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.byte_order": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.cpu_type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.creation_date": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.exports": {
+            "type": "object",
+            "array": true
+        },
+        "threat.indicator.file.elf.header.abi_version": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.header.class": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.header.data": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.header.entrypoint": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.elf.header.object_version": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.header.os_abi": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.header.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.header.version": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.imports": {
+            "type": "object",
+            "array": true
+        },
+        "threat.indicator.file.elf.sections": {
+            "type": "object",
+            "array": true
+        },
+        "threat.indicator.file.elf.sections.chi2": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.elf.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.elf.sections.flags": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.sections.physical_offset": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.elf.sections.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.sections.virtual_address": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.elf.sections.virtual_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.elf.segments": {
+            "type": "object",
+            "array": true
+        },
+        "threat.indicator.file.elf.segments.sections": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.segments.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.shared_libraries": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.elf.telfhash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.extension": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.fork_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.gid": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.group": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.hash.md5": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.hash.sha1": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.hash.sha256": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.hash.sha384": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.hash.sha512": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.hash.ssdeep": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.hash.tlsh": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.inode": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.mime_type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.mode": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.mtime": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.owner": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.path": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.architecture": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.company": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.description": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.file_version": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.imphash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.original_file_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.pehash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.product": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.target_path": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.uid": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.x509.alternative_names": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.issuer.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.issuer.country": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.issuer.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.x509.issuer.locality": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.issuer.organization": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.issuer.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.issuer.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.not_after": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.x509.not_before": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.x509.public_key_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.x509.public_key_curve": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.x509.public_key_exponent": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.x509.public_key_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.x509.serial_number": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.x509.signature_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.x509.subject.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.subject.country": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.subject.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.x509.subject.locality": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.subject.organization": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.subject.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.subject.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.file.x509.version_number": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.first_seen": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.city_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.continent_code": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.continent_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.country_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.country_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.location": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.postal_code": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.region_iso_code": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.region_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.geo.timezone": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.ip": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.last_seen": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.marking.tlp": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.modified_at": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.port": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.provider": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.reference": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.registry.data.bytes": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.registry.data.strings": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.registry.data.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.registry.hive": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.registry.key": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.registry.path": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.registry.value": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.scanner_stats": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.sightings": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.domain": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.extension": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.fragment": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.full": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.original": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.password": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.path": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.port": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.url.query": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.registered_domain": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.scheme": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.subdomain": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.top_level_domain": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.url.username": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.x509.alternative_names": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.issuer.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.issuer.country": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.issuer.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.x509.issuer.locality": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.issuer.organization": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.issuer.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.issuer.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.not_after": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.x509.not_before": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.x509.public_key_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.x509.public_key_curve": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.x509.public_key_exponent": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.x509.public_key_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.x509.serial_number": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.x509.signature_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.x509.subject.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.subject.country": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.subject.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.x509.subject.locality": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.subject.organization": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.subject.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.subject.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "threat.indicator.x509.version_number": {
+            "type": "string",
+            "array": false
+        },
+        "threat.software.alias": {
+            "type": "string",
+            "array": true
+        },
+        "threat.software.id": {
+            "type": "string",
+            "array": false
+        },
+        "threat.software.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.software.platforms": {
+            "type": "string",
+            "array": true
+        },
+        "threat.software.reference": {
+            "type": "string",
+            "array": false
+        },
+        "threat.software.type": {
+            "type": "string",
+            "array": false
+        },
+        "threat.tactic.id": {
+            "type": "string",
+            "array": true
+        },
+        "threat.tactic.name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.tactic.reference": {
+            "type": "string",
+            "array": true
+        },
+        "threat.technique.id": {
+            "type": "string",
+            "array": true
+        },
+        "threat.technique.name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.technique.reference": {
+            "type": "string",
+            "array": true
+        },
+        "threat.technique.subtechnique.id": {
+            "type": "string",
+            "array": true
+        },
+        "threat.technique.subtechnique.name": {
+            "type": "string",
+            "array": true
+        },
+        "threat.technique.subtechnique.reference": {
+            "type": "string",
+            "array": true
+        },
+        "tls.cipher": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.certificate": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.certificate_chain": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.hash.md5": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.hash.sha1": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.hash.sha256": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.issuer": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.ja3": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.not_after": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.not_before": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.server_name": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.subject": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.supported_ciphers": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.alternative_names": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.issuer.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.issuer.country": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.issuer.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.x509.issuer.locality": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.issuer.organization": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.issuer.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.issuer.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.not_after": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.x509.not_before": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.x509.public_key_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.x509.public_key_curve": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.x509.public_key_exponent": {
+            "type": "number",
+            "array": false
+        },
+        "tls.client.x509.public_key_size": {
+            "type": "number",
+            "array": false
+        },
+        "tls.client.x509.serial_number": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.x509.signature_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.x509.subject.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.subject.country": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.subject.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "tls.client.x509.subject.locality": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.subject.organization": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.subject.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.subject.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "tls.client.x509.version_number": {
+            "type": "string",
+            "array": false
+        },
+        "tls.curve": {
+            "type": "string",
+            "array": false
+        },
+        "tls.established": {
+            "type": "boolean",
+            "array": false
+        },
+        "tls.next_protocol": {
+            "type": "string",
+            "array": false
+        },
+        "tls.resumed": {
+            "type": "boolean",
+            "array": false
+        },
+        "tls.server.certificate": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.certificate_chain": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.hash.md5": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.hash.sha1": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.hash.sha256": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.issuer": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.ja3s": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.not_after": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.not_before": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.subject": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.x509.alternative_names": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.issuer.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.issuer.country": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.issuer.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.x509.issuer.locality": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.issuer.organization": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.issuer.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.issuer.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.not_after": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.x509.not_before": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.x509.public_key_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.x509.public_key_curve": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.x509.public_key_exponent": {
+            "type": "number",
+            "array": false
+        },
+        "tls.server.x509.public_key_size": {
+            "type": "number",
+            "array": false
+        },
+        "tls.server.x509.serial_number": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.x509.signature_algorithm": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.x509.subject.common_name": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.subject.country": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.subject.distinguished_name": {
+            "type": "string",
+            "array": false
+        },
+        "tls.server.x509.subject.locality": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.subject.organization": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.subject.organizational_unit": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.subject.state_or_province": {
+            "type": "string",
+            "array": true
+        },
+        "tls.server.x509.version_number": {
+            "type": "string",
+            "array": false
+        },
+        "tls.version": {
+            "type": "string",
+            "array": false
+        },
+        "tls.version_protocol": {
+            "type": "string",
+            "array": false
+        },
+        "trace.id": {
+            "type": "string",
+            "array": false
+        },
+        "transaction.id": {
+            "type": "string",
+            "array": false
+        },
+        "url.domain": {
+            "type": "string",
+            "array": false
+        },
+        "url.extension": {
+            "type": "string",
+            "array": false
+        },
+        "url.fragment": {
+            "type": "string",
+            "array": false
+        },
+        "url.full": {
+            "type": "string",
+            "array": false
+        },
+        "url.original": {
+            "type": "string",
+            "array": false
+        },
+        "url.password": {
+            "type": "string",
+            "array": false
+        },
+        "url.path": {
+            "type": "string",
+            "array": false
+        },
+        "url.port": {
+            "type": "number",
+            "array": false
+        },
+        "url.query": {
+            "type": "string",
+            "array": false
+        },
+        "url.registered_domain": {
+            "type": "string",
+            "array": false
+        },
+        "url.scheme": {
+            "type": "string",
+            "array": false
+        },
+        "url.subdomain": {
+            "type": "string",
+            "array": false
+        },
+        "url.top_level_domain": {
+            "type": "string",
+            "array": false
+        },
+        "url.username": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.domain": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.email": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.full_name": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.group.domain": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.hash": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.id": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.name": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.risk.calculated_level": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.risk.calculated_score": {
+            "type": "number",
+            "array": false
+        },
+        "user.changes.risk.calculated_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "user.changes.risk.static_level": {
+            "type": "string",
+            "array": false
+        },
+        "user.changes.risk.static_score": {
+            "type": "number",
+            "array": false
+        },
+        "user.changes.risk.static_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "user.changes.roles": {
+            "type": "string",
+            "array": true
+        },
+        "user.domain": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.domain": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.email": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.full_name": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.group.domain": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.hash": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.id": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.name": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.risk.calculated_level": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.risk.calculated_score": {
+            "type": "number",
+            "array": false
+        },
+        "user.effective.risk.calculated_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "user.effective.risk.static_level": {
+            "type": "string",
+            "array": false
+        },
+        "user.effective.risk.static_score": {
+            "type": "number",
+            "array": false
+        },
+        "user.effective.risk.static_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "user.effective.roles": {
+            "type": "string",
+            "array": true
+        },
+        "user.email": {
+            "type": "string",
+            "array": false
+        },
+        "user.full_name": {
+            "type": "string",
+            "array": false
+        },
+        "user.group.domain": {
+            "type": "string",
+            "array": false
+        },
+        "user.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "user.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "user.hash": {
+            "type": "string",
+            "array": false
+        },
+        "user.id": {
+            "type": "string",
+            "array": false
+        },
+        "user.name": {
+            "type": "string",
+            "array": false
+        },
+        "user.risk.calculated_level": {
+            "type": "string",
+            "array": false
+        },
+        "user.risk.calculated_score": {
+            "type": "number",
+            "array": false
+        },
+        "user.risk.calculated_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "user.risk.static_level": {
+            "type": "string",
+            "array": false
+        },
+        "user.risk.static_score": {
+            "type": "number",
+            "array": false
+        },
+        "user.risk.static_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "user.roles": {
+            "type": "string",
+            "array": true
+        },
+        "user.target.domain": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.email": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.full_name": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.group.domain": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.group.id": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.group.name": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.hash": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.id": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.name": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.risk.calculated_level": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.risk.calculated_score": {
+            "type": "number",
+            "array": false
+        },
+        "user.target.risk.calculated_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "user.target.risk.static_level": {
+            "type": "string",
+            "array": false
+        },
+        "user.target.risk.static_score": {
+            "type": "number",
+            "array": false
+        },
+        "user.target.risk.static_score_norm": {
+            "type": "number",
+            "array": false
+        },
+        "user.target.roles": {
+            "type": "string",
+            "array": true
+        },
+        "user_agent.device.name": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.name": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.original": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.os.family": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.os.full": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.os.kernel": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.os.name": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.os.platform": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.os.type": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.os.version": {
+            "type": "string",
+            "array": false
+        },
+        "user_agent.version": {
+            "type": "string",
+            "array": false
+        },
+        "vulnerability.category": {
+            "type": "string",
+            "array": true
+        },
+        "vulnerability.classification": {
+            "type": "string",
+            "array": false
+        },
+        "vulnerability.description": {
+            "type": "string",
+            "array": false
+        },
+        "vulnerability.enumeration": {
+            "type": "string",
+            "array": false
+        },
+        "vulnerability.id": {
+            "type": "string",
+            "array": false
+        },
+        "vulnerability.reference": {
+            "type": "string",
+            "array": false
+        },
+        "vulnerability.report_id": {
+            "type": "string",
+            "array": false
+        },
+        "vulnerability.scanner.vendor": {
+            "type": "string",
+            "array": false
+        },
+        "vulnerability.score.base": {
+            "type": "number",
+            "array": false
+        },
+        "vulnerability.score.environmental": {
+            "type": "number",
+            "array": false
+        },
+        "vulnerability.score.temporal": {
+            "type": "number",
+            "array": false
+        },
+        "vulnerability.score.version": {
+            "type": "string",
+            "array": false
+        },
+        "vulnerability.severity": {
+            "type": "string",
+            "array": false
+        },
+        "wazuh.queue": {
+            "type": "number",
+            "array": false
+        },
+        "wazuh.location": {
+            "type": "string",
+            "array": false
+        },
+        "wazuh.message": {
+            "type": "string",
+            "array": false
+        },
+        "wazuh.origin": {
+            "type": "string",
+            "array": false
+        },
+        "wazuh.registered_ip": {
+            "type": "string",
+            "array": false
+        },
+        "wazuh.decoders": {
+            "type": "string",
+            "array": true
+        },
+        "wazuh.source": {
+            "type": "string",
+            "array": false
+        },
+        "wazuh.syscollector.hardware": {
+            "type": "object",
+            "array": false
+        },
+        "wazuh.syscollector.hotfix": {
+            "type": "object",
+            "array": false
+        },
+        "wazuh.syscollector.netinfo.addr": {
+            "type": "object",
+            "array": false
+        },
+        "wazuh.syscollector.netinfo.iface": {
+            "type": "object",
+            "array": false
+        },
+        "wazuh.syscollector.netinfo.proto": {
+            "type": "object",
+            "array": false
+        },
+        "wazuh.syscollector.os": {
+            "type": "object",
+            "array": false
+        },
+        "wazuh.syscollector.port": {
+            "type": "object",
+            "array": false
+        },
+        "wazuh.syscollector.process": {
+            "type": "object",
+            "array": false
+        },
+        "wazuh.syscollector.program": {
+            "type": "object",
+            "array": false
+        },
+        "wazuh.rootcheck": {
+            "type": "object",
+            "array": false
+        }
+    }
+}

@@ -1,4 +1,4 @@
-name: decoder/core-ossec-message/0
+name: decoder/core-wazuh-message/0
 # module: wazuh
 
 metadata:
@@ -30,7 +30,7 @@ normalize:
 
   - map:
       - event.original: $wazuh.message
-      - wazuh.decoders: +array_append/core-ossec-message
+      - wazuh.decoders: +array_append/core-wazuh-message
 
   - check:
       - agent: +exists

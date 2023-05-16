@@ -16,7 +16,7 @@ metadata:
     - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/rootcheck.html
 
 sources:
-  - decoder/core-ossec-message/0
+  - decoder/core-wazuh-message/0
 
 check:
   - wazuh.queue: 57
