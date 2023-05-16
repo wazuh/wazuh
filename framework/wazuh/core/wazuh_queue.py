@@ -190,7 +190,6 @@ class WazuhAnalysisdQueue(BaseQueue):
         ------
         WazuhError(1014)
             If there was an error communicating with socket.
-
         """
         try:
             socket_msg = (f"{msg_header}{msg}")
