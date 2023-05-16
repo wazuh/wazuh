@@ -7037,6 +7037,8 @@ tags:
     description: "Tasks information"
   - name: Vulnerability
     description: "Vulnerabilities information"
+  - name: Webhook
+    description: "Integration endpoints"
 
 security:
   - jwt: []
