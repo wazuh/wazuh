@@ -19,7 +19,7 @@ namespace builder::internals::builders
  * @return Builder
  */
 Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
-                                     std::shared_ptr<schemf::ISchema> schema);
+                                     std::shared_ptr<schemf::ISchema> schema, bool forceFieldNaming = false);
 
 /**
  * @brief Get the Operation Map Builder
@@ -28,7 +28,7 @@ Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> he
  * @return Builder
  */
 Builder getOperationMapBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
-                               std::shared_ptr<schemf::ISchema> schema);
+                               std::shared_ptr<schemf::ISchema> schema, bool forceFieldNaming = false);
 
 } // namespace builder::internals::builders
 
