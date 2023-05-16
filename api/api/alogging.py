@@ -61,17 +61,36 @@ class AccessLogger(AbstractAccessLogger):
         hash_auth_context : str, optional
             Hash representing the authorization context. Default: ''
         """
+        events_debug_info = None
+        events_json_debug = None
+
         if not hash_auth_context:
             log_info = f'{user} {remote} "{method} {path}" with parameters {json.dumps(query)} ' \
-                       f'and body {json.dumps(body)} done in {time:.3f}s: {status}'
-            json_info = {'user': user,
-                         'ip': remote,
-                         'http_method': method,
-                         'uri': f'{method} {path}',
-                         'parameters': query,
-                         'body': body,
-                         'time': f'{time:.3f}s',
-                         'status_code': status}
+                    f'and body {json.dumps(body)} done in {time:.3f}s: {status}'
+            json_info = {
+                'user': user,
+                'ip': remote,
+                'http_method': method,
+                'uri': f'{method} {path}',
+                'parameters': query,
+                'body': body,
+                'time': f'{time:.3f}s',
+                'status_code': status
+            }
+
+            if path == '/events' and self.logger.level >= 20:
+                # If log level is info simplify the messages and remove the body value.
+                number_of_events = len(body.get('events', []))
+                log_info = (
+                    f'{user} {remote} "{method} {path}" with parameters {json.dumps(query)} '
+                    f'and {number_of_events} events, done in {time:.3f}s: {status}'
+                )
+                json_info.pop('body')
+                json_info['number_of_events'] = number_of_events
+            elif path == '/events' and self.logger.level <= 10:
+                # For log level debug show the full request info.
+                events_debug_info = log_info
+                events_json_debug = json_info
         else:
             log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" with parameters {json.dumps(query)} ' \
                        f'and body {json.dumps(body)} done in {time:.3f}s: {status}'
@@ -85,8 +104,14 @@ class AccessLogger(AbstractAccessLogger):
                          'time': f'{time:.3f}s',
                          'status_code': status}
 
-        self.logger.info(log_info, extra={'log_type': 'log'})
-        self.logger.info(json_info, extra={'log_type': 'json'})
+        if events_debug_info is None and events_json_debug is None:
+            self.logger.info(log_info, extra={'log_type': 'log'})
+            self.logger.info(json_info, extra={'log_type': 'json'})
+        else:
+            self.logger.debug(events_debug_info, extra={'log_type': 'log'})
+            self.logger.debug(events_json_debug, extra={'log_type': 'json'})
+
+
 
     def log(self, request: web_request.BaseRequest, response: web_request.StreamResponse, time: float):
         """Override the log method to log messages.
