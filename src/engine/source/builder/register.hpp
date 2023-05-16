@@ -33,6 +33,7 @@ struct dependencies
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
     std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
     std::shared_ptr<schemf::ISchema> schema;
+    bool forceFieldNaming = false; // TODO remove once test use proper naming for fields
 };
 
 static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
@@ -154,9 +155,11 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
 static void registerBuilders(std::shared_ptr<Registry<Builder>> registry, const dependencies& dependencies = {})
 {
     // Basic operations
-    registry->registerBuilder(builders::getOperationMapBuilder(dependencies.helperRegistry, dependencies.schema),
+    registry->registerBuilder(builders::getOperationMapBuilder(
+                                  dependencies.helperRegistry, dependencies.schema, dependencies.forceFieldNaming),
                               "operation.map");
-    registry->registerBuilder(builders::getOperationConditionBuilder(dependencies.helperRegistry, dependencies.schema),
+    registry->registerBuilder(builders::getOperationConditionBuilder(
+                                  dependencies.helperRegistry, dependencies.schema, dependencies.forceFieldNaming),
                               "operation.condition");
 
     // Stages
