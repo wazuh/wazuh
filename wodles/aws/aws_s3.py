@@ -16,10 +16,7 @@
 #   8 - Failed to decompress file
 #   9 - Failed to parse file
 #   10 - pyarrow module missing
-#   11 - Unable to connect to Wazuh
 #   12 - Invalid type of bucket
-#   13 - Unexpected error sending message to Wazuh
-#   14 - Empty bucket
 #   15 - Invalid endpoint URL
 #   16 - Throttling error
 #   17 - Invalid key format
