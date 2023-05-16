@@ -3,7 +3,7 @@ decoders:
 - decoder/core-ciscat/0
 - decoder/integrations/0
 - decoder/core-rootcheck/0
-- decoder/core-ossec-message/0
+- decoder/core-wazuh-message/0
 - decoder/core-windows/0
 - decoder/core-sca/0
 - decoder/core-dbsync/0

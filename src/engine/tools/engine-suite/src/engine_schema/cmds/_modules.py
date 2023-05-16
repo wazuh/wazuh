@@ -8,4 +8,7 @@ def configure(subparsers):
 
 
 def get_args(args):
-    return args['integrations_path']
+    if 'integrations_path' in args:
+        return args['integrations_path']
+    else:
+        return list()

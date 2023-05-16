@@ -93,4 +93,4 @@ normalize:
 
   - map:
       - ~query: +concat/agent /$agent.id/ ciscat save /$~json.scan_id/|/$~json.cis.timestamp/|/$~json.cis.benchmark/|/$~json.cis.profile/|/$~json.cis.pass/|/$~json.cis.fail/|/$~json.cis.error/|/$~json.cis.notchecked/|/$~json.cis.unknown/|/$~json.cis.score
-      - ~query_response: +wdb_update/$_query
+      - ~query_response: +wdb_update/$~query

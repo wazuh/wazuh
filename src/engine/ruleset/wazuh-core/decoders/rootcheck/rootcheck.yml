@@ -26,23 +26,23 @@ normalize:
       - ~time: +system_epoch
       - ~query: +concat/agent /$agent.id/ rootcheck save /$~time/ /$event.original
       - ~result: +wdb_query/$~query
-      - wazuh.rootcheck.file: +regex_extract/$event.original/(?:f|F)ile '(.*?)'
+      - ~wazuh.rootcheck.file: +regex_extract/$event.original/(?:f|F)ile '(.*?)'
       - ~title: "+regex_extract/$event.original/(.*?)(?:(?: {)|$)"
 
   - check:
       - ~result: "2"
     map:
-      - wazuh.rootcheck.fts: true
+      - ~wazuh.rootcheck.fts: true
 
   - check:
       - ~result: "1"
     map:
-      - wazuh.rootcheck.update: true
+      - ~wazuh.rootcheck.update: true
 
   - check:
-      - wazuh.rootcheck.file: +not_exists
+      - ~wazuh.rootcheck.file: +not_exists
     map:
-      - wazuh.rootcheck.file: "+regex_extract/$event.original/File: (.*?)(?:(?:\\. )|(?:\\.$))"
+      - ~wazuh.rootcheck.file: "+regex_extract/$event.original/File: (.*?)(?:(?:\\. )|(?:\\.$))"
 
   - map:
       - ~title: "+regex_extract/$~title/System Audit: (.*? - .*)"
@@ -60,4 +60,4 @@ normalize:
   - check:
       - ~title: "+regex_match/.+"
     map:
-      - wazuh.rootcheck.title: +rename/$~title
+      - ~wazuh.rootcheck.title: +rename/$~title
