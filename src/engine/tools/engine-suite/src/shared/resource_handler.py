@@ -244,6 +244,8 @@ class ResourceHandler:
             if resp_message['data']['status'] != 'OK':
                 raise Exception(
                     f'Could not execute [{subcommand}] in [{name}] due to: {resp_message["data"]["error"]}')
+            elif subcommand == 'get':
+                return resp_message
         except:
             raise Exception(
                 f'Could not parse response message "{resp_message}".')
@@ -253,6 +255,9 @@ class ResourceHandler:
 
     def delete_kvdb(self, api_socket: str, name: str, path: str):
         self._base_command_kvdb(api_socket, name, path, 'delete')
+
+    def get_kvdb_list(self, api_socket: str):
+        return self._base_command_kvdb(api_socket, '', '', 'get')
 
     def _base_recursive_command_on_kvdbs(self, api_socket: str, path_str: str, command: str, print_name: bool = False):
         path = Path(path_str) / 'kvdbs'
