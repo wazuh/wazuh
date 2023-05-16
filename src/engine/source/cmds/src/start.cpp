@@ -202,7 +202,7 @@ void runStart(ConfHandler confManager)
 
         // KVDB
         {
-            kvdbManager::KVDBManagerOptions kvdbOptions { "/var/ossec/etc/kvdb2", "kvdb" };
+            kvdbManager::KVDBManagerOptions kvdbOptions { "/var/ossec/etc/kvdb2/", "kvdb" };
             kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
