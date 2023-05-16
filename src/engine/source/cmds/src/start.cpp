@@ -242,7 +242,7 @@ void runStart(ConfHandler confManager)
         {
             // TODO schema initialization
             schema = std::make_shared<schemf::Schema>();
-            auto result = store->get("internal/schema/definition/0");
+            auto result = store->get("schema/engine-schema/0");
             if (std::holds_alternative<base::Error>(result))
             {
                 LOG_WARNING("Error loading schema definition: {}", std::get<base::Error>(result).message);
@@ -265,6 +265,7 @@ void runStart(ConfHandler confManager)
             deps.kvdbManager = kvdb;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             deps.schema = schema;
+            deps.forceFieldNaming = true;
             builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
             builder::internals::registerBuilders(registry, deps);
             LOG_DEBUG("Builders registered.");

@@ -57,7 +57,6 @@ Expression conditionValueBuilder(std::string&& field, Json&& value)
     const auto successTrace {fmt::format("[{}] -> Success", name)};
     const auto failureTrace {fmt::format("[{}] -> Failure", name)};
 
-
     return Term<EngineOp>::create(name,
                                   [=](Event event)
                                   {
@@ -141,7 +140,8 @@ Expression operationBuilder(const std::any& definition,
                             std::shared_ptr<defs::IDefinitions> definitions,
                             OperationType type,
                             std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
-                            std::shared_ptr<schemf::ISchema> schema)
+                            std::shared_ptr<schemf::ISchema> schema,
+                            bool forceFieldNaming)
 {
     if (helperRegistry == nullptr)
     {
@@ -170,11 +170,30 @@ Expression operationBuilder(const std::any& definition,
         throw std::runtime_error(std::string("Error trying to obtain the arguments: ") + e.what());
     }
 
+    // Check target field is a schema field or a custom field
+    if (forceFieldNaming && !schema->hasField(targetField) && targetField[0] != syntax::CUSTOM_FIELD_ANCHOR)
+    {
+        throw std::runtime_error(fmt::format(
+            "Operation '{}' failed schema validation: target field '{}' is not a schema field nor a custom field",
+            operationName,
+            targetField));
+    }
+
     // Call apropiate builder based on value
     if (value.isString() && value.getString().value().front() == syntax::REFERENCE_ANCHOR)
     {
         auto reference = value.getString().value().substr(1);
         auto referencePath = Json::formatJsonPath(reference);
+
+        // Check reference is a schema field or a custom field
+        if (forceFieldNaming && !schema->hasField(reference) && !definitions->contains(referencePath)
+            && reference[0] != syntax::CUSTOM_FIELD_ANCHOR)
+        {
+            throw std::runtime_error(fmt::format(
+                "Operation '{}' failed schema validation: reference '{}' is not a schema field nor a custom field",
+                operationName,
+                reference));
+        }
 
         // If it is a definition call value builder
         if (definitions->contains(referencePath))
@@ -212,6 +231,23 @@ Expression operationBuilder(const std::any& definition,
         helperName = helperArgs.at(0);
         helperArgs.erase(helperArgs.begin());
 
+        // Check if there are invalid references in the arguments
+        for (const auto& arg : helperArgs)
+        {
+            if (forceFieldNaming && arg[0] == syntax::REFERENCE_ANCHOR)
+            {
+                auto argPath = Json::formatJsonPath(arg.substr(1));
+                if (!schema->hasField(arg.substr(1)) && !definitions->contains(argPath)
+                    && arg[1] != syntax::CUSTOM_FIELD_ANCHOR)
+                {
+                    throw std::runtime_error(fmt::format("Operation '{}' failed schema validation: argument '{}' is "
+                                                         "not a schema field nor a custom field",
+                                                         operationName,
+                                                         arg));
+                }
+            }
+        }
+
         try
         {
             return helperRegistry->getBuilder(helperName)(targetFieldPath, helperName, helperArgs, definitions);
@@ -236,7 +272,7 @@ Expression operationBuilder(const std::any& definition,
         {
             auto path = targetField + syntax::JSON_PATH_SEPARATOR + std::to_string(i);
             expressions.push_back(
-                operationBuilder(std::make_tuple(path, array[i]), definitions, type, helperRegistry, schema));
+                operationBuilder(std::make_tuple(path, array[i]), definitions, type, helperRegistry, schema, forceFieldNaming));
         }
 
         switch (type)
@@ -257,7 +293,7 @@ Expression operationBuilder(const std::any& definition,
         {
             auto path = targetField + syntax::JSON_PATH_SEPARATOR + key;
             expressions.push_back(
-                operationBuilder(std::make_tuple(path, value), definitions, type, helperRegistry, schema));
+                operationBuilder(std::make_tuple(path, value), definitions, type, helperRegistry, schema, forceFieldNaming));
         }
 
         switch (type)
@@ -288,20 +324,25 @@ namespace builder::internals::builders
 {
 
 Builder getOperationConditionBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
-                                     std::shared_ptr<schemf::ISchema> schema)
+                                     std::shared_ptr<schemf::ISchema> schema,
+                                     bool forceFieldNaming)
 {
-    return [helperRegistry, schema](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
+    return
+        [helperRegistry, schema, forceFieldNaming](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return operationBuilder(definition, definitions, OperationType::FILTER, helperRegistry, schema);
+        return operationBuilder(
+            definition, definitions, OperationType::FILTER, helperRegistry, schema, forceFieldNaming);
     };
 }
 
 Builder getOperationMapBuilder(std::shared_ptr<Registry<HelperBuilder>> helperRegistry,
-                               std::shared_ptr<schemf::ISchema> schema)
+                               std::shared_ptr<schemf::ISchema> schema,
+                               bool forceFieldNaming)
 {
-    return [helperRegistry, schema](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
+    return
+        [helperRegistry, schema, forceFieldNaming](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return operationBuilder(definition, definitions, OperationType::MAP, helperRegistry, schema);
+        return operationBuilder(definition, definitions, OperationType::MAP, helperRegistry, schema, forceFieldNaming);
     };
 }
 
