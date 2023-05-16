@@ -17,7 +17,7 @@ metadata:
     - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/how-to-configure.html
 
 sources:
-  - decoder/core-ossec-message/0
+  - decoder/core-wazuh-message/0
 
 check:
   - wazuh.queue: 112

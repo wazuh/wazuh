@@ -21,7 +21,7 @@ ECS field modules and apply changes on an engine instance through the API socket
     ecs_version = args['ecs_version']
     output_dir = args['output_dir']
     modules = modules_get_args(args)
-    jproperties, jmappings, jlogpar = generate(
+    jproperties, jmappings, jlogpar, jengine = generate(
         ecs_version, modules, resource_handler)
 
     # Save generated files
@@ -32,6 +32,8 @@ ECS field modules and apply changes on an engine instance through the API socket
         output_dir, 'wazuh-template', jmappings, rs.Format.JSON)
     resource_handler.save_file(
         output_dir, 'wazuh-logpar-types', jlogpar, rs.Format.JSON)
+    resource_handler.save_file(
+        output_dir, 'wazuh-engine', jengine, rs.Format.JSON)
     print('Success.')
 
 

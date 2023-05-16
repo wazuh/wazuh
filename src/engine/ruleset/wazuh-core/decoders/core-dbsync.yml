@@ -16,7 +16,7 @@ metadata:
     - https://github.com/wazuh/wazuh/issues/13521
 
 sources:
-  - decoder/core-ossec-message/0
+  - decoder/core-wazuh-message/0
 
 check:
   - wazuh.queue: 53
