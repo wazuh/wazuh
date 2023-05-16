@@ -70,7 +70,7 @@ def run(args, resource_handler: rs.ResourceHandler):
 
 def configure(subparsers):
     parser_rm = subparsers.add_parser(
-        'rm', help='Remove integration components from the Engine Catalog. If a step fails it continue with the next')
+        'delete', help='Delete integration components from the Engine Catalog. If a step fails it continue with the next')
     parser_rm.add_argument('-a', '--api-sock', type=str, default=DEFAULT_API_SOCK, dest='api_sock',
                             help=f'[default="{DEFAULT_API_SOCK}"] Engine instance API socket path')
 
