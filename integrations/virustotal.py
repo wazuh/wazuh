@@ -138,7 +138,7 @@ def request_virustotal_info(alert, apikey):
         return None
 
     # If the md5_after field is not a md5 hash checksum. Exit
-    if len(re.findall(r'\b([a-f\d]{32}|[A-F\d]{32})\b', alert["syscheck"]["md5_after"])) != 1 :
+    if not (isinstance(alert["syscheck"]["md5_after"],str) is True and len(re.findall(r'\b([a-f\d]{32}|[A-F\d]{32})\b', alert["syscheck"]["md5_after"])) == 1) :
         debug("# md5_after field in the alert is not a md5 hash checksum")
         return None
 
