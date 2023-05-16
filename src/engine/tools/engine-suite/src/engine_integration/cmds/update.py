@@ -110,6 +110,7 @@ def run(args, resource_handler: rs.ResourceHandler):
                                      func_to_func_delete_kvdb(api_socket, entry.stem, str(entry)))
                 print(f' KVDB "{entry.stem}"[{pos}] will be added.')
 
+
     # Iterate over all the possible assets
     asset_type = ['decoders', 'rules', 'outputs', 'filters']
 
@@ -166,8 +167,6 @@ def run(args, resource_handler: rs.ResourceHandler):
                 print(f'Asset[{pos}] {asset_name} will be added.')
 
     print(f'Result {cm.execute()}')
-
-    # TODO: integration update (?)
 
 
 def configure(subparsers):
