@@ -32,6 +32,22 @@ void KVDBManager::finalize()
     m_isInitialized = false;
 }
 
+rocksdb::ColumnFamilyHandle* KVDBManager::createColumnFamily(const std::string& name)
+{
+    rocksdb::ColumnFamilyHandle* cfHandle;
+    rocksdb::Status s = m_pRocksDB->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), name, &cfHandle);
+
+    if (s.ok())
+    {
+        m_mapCFHandles.insert(std::make_pair(name, cfHandle));
+        return cfHandle;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeName)
 {
     const std::lock_guard<std::mutex> lock(m_mutexScopes);
@@ -136,9 +152,8 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbN
     }
     else
     {
-        rocksdb::Status s = m_pRocksDB->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), dbName, &cfHandle);
-        assert(s.ok());
-        m_mapCFHandles.insert(std::make_pair(dbName, cfHandle));
+        cfHandle = createColumnFamily(dbName);
+        assert(cfHandle == nullptr);
     }
 
     auto retHandler = m_kvdbHandlerCollection->getKVDBHandler(m_pRocksDB, cfHandle, dbName, scopeName);
@@ -178,6 +193,33 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 {
     return base::Error { fmt::format("Not yet implemented.") };
 }
+
+std::optional<base::Error> KVDBManager::createDB(const std::string& name)
+{
+    auto cfHandle = createColumnFamily(name);
+
+    if (cfHandle != nullptr)
+    {
+        return std::nullopt;
+    }
+    else
+    {
+        return base::Error { fmt::format("Could not create DB.") };
+    }
+}
+
+std::optional<base::Error> KVDBManager::existsDB(const std::string& name)
+{
+    if (m_mapCFHandles.count(name))
+    {
+        return std::nullopt;
+    }
+    else
+    {
+        return base::Error { fmt::format("The DB not exists.") };
+    }
+}
+
 std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
 {
     std::map<std::string, kvdbManager::RefInfo> retValue;
