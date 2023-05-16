@@ -148,8 +148,8 @@ async def events_endpoint_rate_limiter(
     request: web_request.BaseRequest, max_requests: int = MAX_REQUESTS_EVENTS_DEFAULT
 ) -> None:
     """Rate limiter for the events ingestion endpoint.
-    This function checks that the maximum number of requests per minute passed in `max_requests` is not exceeded.
 
+    This function checks that the maximum number of requests per minute passed in `max_requests` is not exceeded.
 
     Parameters
     ----------
