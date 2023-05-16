@@ -26,7 +26,8 @@ class CommandsManager:
                 pair[0]()
             except Exception as err_inst:
                 self.last_command = idx
-                print(f'Undoing from N°{self.last_command}, due to error: "{err_inst}"')
+                print(
+                    f'Undoing from N°{self.last_command}, due to error: "{err_inst}"')
                 self.undo()
                 return 1
         return 0
@@ -78,10 +79,38 @@ def run(args, resource_handler: rs.ResourceHandler):
             resource_handler.delete_catalog_file(api_socket, type, name)
         return delete_catalog
 
-    # 1rst approach: Delete and then add kvdbs from file
-    # 2nd: get kvdbs, store each key, the ones from new json not present, then insert with value
-    print(f'Checking Kvdbs')
+    # KVDB Functions to functions for undo / redo
+    def func_to_func_create_kvdb(api_socket: str, name: str, path: str):
+        def func_create_kvdb():
+            resource_handler.create_kvdb(api_socket, name, path)
+        return func_create_kvdb
 
+    def func_to_func_delete_kvdb(api_socket: str, name: str, path: str):
+        def func_delete_kvdb():
+            resource_handler.delete_kvdb(api_socket, name, path)
+        return func_delete_kvdb
+
+    # Check if any of the KVDB can collide and if is the case inform which
+    print(f'Checking Kvdbs')
+    kvdb_available_list = []
+    asset_available_json = resource_handler.get_kvdb_list(api_socket)
+    for asset in asset_available_json['data']['dbs']:
+        name = asset.split('/')[-1]
+        kvdb_available_list.append(name)
+
+    # get decoder from directory and clasiffy if present in store
+    add_kvdbs = []
+    path = Path(working_path) / 'kvdbs'
+    if path.exists():
+        for entry in path.rglob('*.json'):
+            if entry.is_file() and entry.stem in kvdb_available_list:
+                print(f'Manually check for no missing data in "{entry.stem}"')
+            else:
+                pos = cm.add_command(func_to_func_create_kvdb(api_socket, entry.stem, str(entry)),
+                                     func_to_func_delete_kvdb(api_socket, entry.stem, str(entry)))
+                print(f' KVDB "{entry.stem}"[{pos}] will be added.')
+
+    # Iterate over all the possible assets
     asset_type = ['decoders', 'rules', 'outputs', 'filters']
 
     for type_name in asset_type:
@@ -92,7 +121,7 @@ def run(args, resource_handler: rs.ResourceHandler):
         asset_available_list = []
         try:
             asset_available_json = resource_handler.get_catalog_file(
-                api_socket, '', type_name[:-1], rs.Format.JSON)  # TODO make it variable type
+                api_socket, '', type_name[:-1], rs.Format.JSON)
             for asset in asset_available_json['data']['content'].split('\n'):
                 name = asset.split('/')[-1]
                 asset_available_list.append(name)
@@ -106,7 +135,8 @@ def run(args, resource_handler: rs.ResourceHandler):
             for entry in path.rglob('*'):
                 if entry.is_file():
                     old_content = ''
-                    new_content = resource_handler.load_file(entry, rs.Format.YML)
+                    new_content = resource_handler.load_file(
+                        entry, rs.Format.YML)
                     if entry.stem in asset_available_list:
                         # Must update
                         old_content = resource_handler.get_catalog_file(
@@ -125,19 +155,19 @@ def run(args, resource_handler: rs.ResourceHandler):
             if updateable:
                 old_content_yml = yaml.load(asset_old_content, Loader=Loader)
                 pos = cm.add_command(func_to_update_catalog(api_socket, f'{type_name[:-1]}/{asset_name}/0',
-                                    f'{type_name[:-1]}/{asset_name}/0', asset_new_content, rs.Format.YML),  # update to new
-                                    func_to_update_catalog(api_socket, f'{type_name[:-1]}/{asset_name}/0',
-                                    f'{type_name[:-1]}/{asset_name}/0', old_content_yml, rs.Format.YML))  # revert to old
+                                                            f'{type_name[:-1]}/{asset_name}/0', asset_new_content, rs.Format.YML),  # update to new
+                                     func_to_update_catalog(api_socket, f'{type_name[:-1]}/{asset_name}/0',
+                                                            f'{type_name[:-1]}/{asset_name}/0', old_content_yml, rs.Format.YML))  # revert to old
                 print(f'Asset[{pos}] {asset_name} is updatable.')
             else:
                 pos = cm.add_command(func_to_add_catalog(api_socket, type_name[:-1], f'{type_name[:-1]}/{asset_name}/0',
-                                    asset_new_content, rs.Format.YML),
-                                    func_to_delete_catalog(api_socket, type_name[:-1], f'{type_name[:-1]}/{asset_name}/0'))
+                                                         asset_new_content, rs.Format.YML),
+                                     func_to_delete_catalog(api_socket, type_name[:-1], f'{type_name[:-1]}/{asset_name}/0'))
                 print(f'Asset[{pos}] {asset_name} will be added.')
 
     print(f'Result {cm.execute()}')
 
-    # integration update (?)
+    # TODO: integration update (?)
 
 
 def configure(subparsers):
