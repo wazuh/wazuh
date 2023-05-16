@@ -82,7 +82,7 @@ STATIC OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi,
                     goto error;
                 }
 
-                if ((tmp_node->osdecoder->regex || tmp_node->osdecoder->plugindecoder) 
+                if ((tmp_node->osdecoder->regex || tmp_node->osdecoder->plugindecoder)
                     && (pi->regex || pi->plugindecoder)) {
                     tmp_node->osdecoder->get_next = 1;
                 } else {
@@ -155,7 +155,7 @@ int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
                 tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi, log_msg);
                 if (!tmp_node->child) {
                     smerror(log_msg, DEC_PLUGIN_ERR);
-                    return (0);
+                    return -added;
                 }
                 added = 1;
             }
@@ -169,7 +169,7 @@ int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
                 tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi, log_msg);
                 if (!tmp_node->child) {
                     smerror(log_msg, DEC_PLUGIN_ERR);
-                    return (0);
+                    return -added;
                 }
                 added = 1;
             }
