@@ -11,8 +11,9 @@ namespace kvdbManager
 class IKVDBHandlerManager
 {
 public:
-    virtual std::shared_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName, const std::string& scopeName) = 0;
+    virtual KVDBHandler getKVDBHandler(const std::string& dbName, const std::string& scopeName) = 0;
     virtual void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) = 0;
+    virtual bool skipAutoRemoveEnabled() = 0;
 };
 
 } // namespace kvdbManager

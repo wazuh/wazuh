@@ -18,7 +18,10 @@ public:
 
     virtual ~KVDBManagedHandler()
     {
-        m_handlerManager->removeKVDBHandler(m_dbName, m_scopeName);
+        if (!m_handlerManager->skipAutoRemoveEnabled())
+        {
+            m_handlerManager->removeKVDBHandler(m_dbName, m_scopeName);
+        }
     }
 
 protected:
