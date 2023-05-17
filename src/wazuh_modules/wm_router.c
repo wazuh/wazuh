@@ -94,4 +94,3 @@ cJSON* wm_router_dump()
     cJSON_AddItemToObject(root, "wazuh_control", wm_wd);
     return root;
 }
-

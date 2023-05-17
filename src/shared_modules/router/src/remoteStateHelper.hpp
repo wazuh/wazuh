@@ -18,7 +18,7 @@
 #include <iostream>
 #include <string>
 
-constexpr auto REMOTE_SUBSCRIPTION_ENDPOINT {"/tmp/wazuh-remote-subscription.sock"};
+constexpr auto REMOTE_SUBSCRIPTION_ENDPOINT {"queue/router/subscription.sock"};
 
 class RemoteStateHelper final
 {

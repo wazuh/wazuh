@@ -20,8 +20,6 @@ extern const wm_context WM_ROUTER_CONTEXT;
 
 typedef struct wm_router_t
 {
-    unsigned int enabled : 1;
-    unsigned int run_on_start : 1;
 } wm_router_t;
 
 wmodule* wm_router_read();

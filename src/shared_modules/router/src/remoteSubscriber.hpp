@@ -43,17 +43,32 @@ public:
         m_socketClient->connect(
             [&, callback](const char* body, uint32_t bodySize, const char*, uint32_t)
             {
-                static const std::string OK {"OK"};
                 if (!m_isRegistered)
                 {
-                    if (bodySize != OK.size() || std::string(body, body + bodySize).compare(OK) != 0)
+                    if (bodySize == 0)
                     {
                         promise.set_exception(std::make_exception_ptr(std::runtime_error("Connection refused")));
                     }
                     else
                     {
-                        m_isRegistered = true;
-                        promise.set_value();
+                        nlohmann::json jsonMessage;
+                        try
+                        {
+                            jsonMessage = nlohmann::json::parse(body, body + bodySize);
+                            if (jsonMessage.at("Result").get_ref<const std::string&>() == "OK")
+                            {
+                                m_isRegistered = true;
+                                promise.set_value();
+                            }
+                            else
+                            {
+                                throw std::runtime_error("Connection refused");
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            promise.set_exception(std::make_exception_ptr(std::runtime_error(e.what())));
+                        }
                     }
                 }
                 else
