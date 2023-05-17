@@ -63,7 +63,7 @@ protected:
         return api::wpRequest::create(rCommand, rOrigin, data);
     }
 
-    api::wpRequest postWRequest(const std::string& kvdbName)
+    api::wpRequest commonWRequest(const std::string& kvdbName)
     {
         // create request
         json::Json data {};
@@ -72,7 +72,7 @@ protected:
         return api::wpRequest::create(rCommand, rOrigin, data);
     }
 
-    api::wpRequest postWRequest()
+    api::wpRequest commonWRequest()
     {
         // create request
         json::Json data {};
@@ -132,7 +132,6 @@ TEST_F(KVDBApiTest, managerGet)
 
 TEST_F(KVDBApiTest, managerGetWitMultipleDBsLoaded)
 {
-    /*TODO double free or corruption (fasttop)
     api::Handler cmd;
 
     kvdbManager->getKVDBHandler("test2", "test");
@@ -145,7 +144,6 @@ TEST_F(KVDBApiTest, managerGetWitMultipleDBsLoaded)
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
-    */
 }
 
 TEST_F(KVDBApiTest, managerPostOk)
@@ -157,7 +155,7 @@ TEST_F(KVDBApiTest, managerPostNameMissing)
 {
 api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
-    const auto response = cmd(postWRequest());
+    const auto response = cmd(commonWRequest());
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Missing /name"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -170,8 +168,8 @@ TEST_F(KVDBApiTest, managerPostNameEmpty)
 {
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
-    const auto response = cmd(postWRequest(""));
-    const auto expectedData = json::Json {R"({"status":"OK"})"};
+    const auto response = cmd(commonWRequest(""));
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Database name is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -183,8 +181,87 @@ TEST_F(KVDBApiTest, managerPost)
 {
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
-    const auto response = cmd(postWRequest("test1"));
+    const auto response = cmd(commonWRequest("test1"));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerDeleteOk)
+{
+    ASSERT_NO_THROW(managerDelete(KVDBApiTest::kvdbManager));
+}
+
+TEST_F(KVDBApiTest, managerDeleteNameMissing)
+{
+api::Handler cmd;
+    ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest());
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Missing /name"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerDeleteNameEmpty)
+{
+    api::Handler cmd;
+    ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest(""));
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Database name is empty"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerDumpOk)
+{
+    auto kvdbScope = kvdbManager->getKVDBScope("test");
+    ASSERT_NO_THROW(managerDump(KVDBApiTest::kvdbManager, kvdbScope));
+}
+
+TEST_F(KVDBApiTest, managerDumpNameMissing)
+{
+api::Handler cmd;
+    auto kvdbScope = kvdbManager->getKVDBScope("test");
+    ASSERT_NO_THROW(cmd = managerDump(KVDBApiTest::kvdbManager, kvdbScope));
+    const auto response = cmd(commonWRequest());
+    const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Missing /name"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerDumpNameEmpty)
+{
+    api::Handler cmd;
+    auto kvdbScope = kvdbManager->getKVDBScope("test");
+    ASSERT_NO_THROW(cmd = managerDump(KVDBApiTest::kvdbManager, kvdbScope));
+    const auto response = cmd(commonWRequest(""));
+    const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Database name is empty"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerDump)
+{
+    api::Handler cmd;
+    auto kvdbScope = kvdbManager->getKVDBScope("test");
+    ASSERT_NO_THROW(cmd = managerDump(KVDBApiTest::kvdbManager, kvdbScope));
+    const auto response = cmd(commonWRequest("default"));
+    const auto expectedData = json::Json {R"({"status":"OK","entries":[]})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -355,7 +432,6 @@ TEST_F(KVDBApiTest, dbGetMoreThanOneKey)
 
 TEST_F(KVDBApiTest, dbGetKeyDBNotExists)
 {
-    /* TODO double free or corruption (fasttop)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
@@ -371,12 +447,10 @@ TEST_F(KVDBApiTest, dbGetKeyDBNotExists)
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
-    */
 }
 
 TEST_F(KVDBApiTest, dbGetOneKeyNotExists)
 {
-    /* TODO double free or corruption (fasttop)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
@@ -389,7 +463,6 @@ TEST_F(KVDBApiTest, dbGetOneKeyNotExists)
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
-    */
 }
 
 TEST_F(KVDBApiTest, dbDeleteOk)
@@ -554,7 +627,6 @@ TEST_F(KVDBApiTest, dbDeleteMoreThanOneKey)
 
 TEST_F(KVDBApiTest, dbDeleteKeyDBNotExists)
 {
-    /*TODO double free or corruption (fasttop)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
@@ -570,12 +642,10 @@ TEST_F(KVDBApiTest, dbDeleteKeyDBNotExists)
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
-    */
 }
 
 TEST_F(KVDBApiTest, dbDeleteOneKeyNotExists)
 {
-    /*TODO double free or corruption (fasttop)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
@@ -588,7 +658,6 @@ TEST_F(KVDBApiTest, dbDeleteOneKeyNotExists)
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
-    */
 }
 
 TEST_F(KVDBApiTest, dbPutOk)
@@ -696,7 +765,6 @@ TEST_F(KVDBApiTest, dbPutValueMissing)
 
 TEST_F(KVDBApiTest, dbPutValueEmpty)
 {
-    /*TODO: double free or corruption (fasttop)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
@@ -709,12 +777,11 @@ TEST_F(KVDBApiTest, dbPutValueEmpty)
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
-    */
+
 }
 
 TEST_F(KVDBApiTest, dbPutOneKey)
 {
-    /*TODO: double free or corruption (fasttop)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
@@ -727,12 +794,10 @@ TEST_F(KVDBApiTest, dbPutOneKey)
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
-    */
 }
 
 TEST_F(KVDBApiTest, dbPutRepeatKeyNoError)
 {
-    /*TODO: double free or corruption (fasttop)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
@@ -752,7 +817,7 @@ TEST_F(KVDBApiTest, dbPutRepeatKeyNoError)
     ASSERT_EQ(response2.error(), 0);
     ASSERT_FALSE(response2.message().has_value());
     ASSERT_EQ(response2.data(), expectedData);
-    */
+
 }
 
 TEST_F(KVDBApiTest, dbPutMoreThanOneKey)
