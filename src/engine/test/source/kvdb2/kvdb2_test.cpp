@@ -58,12 +58,14 @@ protected:
 
     void dumpScopeInfo(std::map<std::string, kvdbManager::RefInfo>  & scopeInfo)
     {
+        std::cout << "Dump Scopes Information: " << std::endl;
+
         for (auto& scope : scopeInfo)
         {
             std::cout << fmt::format("Scope: {}", scope.first) << std::endl;
             for (auto& handler : scope.second)
             {
-                std::cout << fmt::format("Handler: {}", handler.first) << std::endl;
+                std::cout << fmt::format("    Handler: {}", handler.first) << std::endl;
             }
         }
     }

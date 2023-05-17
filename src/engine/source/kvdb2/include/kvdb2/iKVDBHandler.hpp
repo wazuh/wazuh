@@ -4,6 +4,7 @@
 #include <error.hpp>
 #include <string>
 #include <variant>
+#include <memory>
 
 #include <unordered_map>
 
@@ -20,6 +21,8 @@ public:
     virtual std::variant<std::string, base::Error> get(const std::string& key) = 0;
     virtual std::variant<std::unordered_map<std::string, std::string>, base::Error> dump() = 0;
 };
+
+using KVDBHandler = std::unique_ptr<IKVDBHandler>;
 
 } // namespace kvdbManager
 
