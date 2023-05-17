@@ -152,6 +152,66 @@ def test_accesslogger_log_hash_auth_context(request_path, token_info, request_bo
             assert 'hash_auth_context' not in message_api_json
 
 
+@pytest.mark.parametrize('request_path,request_body,log_level,log_key,json_key', [
+    ('/events', {"events": ["foo", "bar"]}, 20, 'events,', 'number_of_events'),
+    ('/events', {"events": ["foo", "bar"]}, 5, 'body', 'body'),
+    ('/agents', {}, 20, 'body', 'body'),
+    ('/agents', {}, 5, 'body', 'body')
+])
+@patch('logging.Logger.info')
+@patch('logging.Logger.debug')
+def test_accesslogger_log_events_correctly(
+    mock_logger_debug, mock_logger_info, request_path, request_body, log_level, log_key, json_key
+):
+    """Test that the authorization context hash is logged properly when using log().
+
+    Parameters
+    ----------
+    request_path : str
+        Path used in the custom request.
+    request_body : dict
+        Request body used in the custom request.
+    log_level: int
+        Log level used un the custom request.
+    """
+
+    # Create a class with custom methods for request
+    class CustomRequest:
+        def __init__(self):
+            self.request_dict = {}
+            self.path = request_path
+            self.body = request_body
+            self.query = {}
+            self.remote = 'test'
+            self.method = 'test'
+            self.user = 'test'
+
+        def __contains__(self, key):
+            return key in self.request_dict
+
+        def __getitem__(self, key):
+            return self.request_dict[key]
+
+        def get(self, *args, **kwargs):
+            return getattr(self, args[0]) if args[0] in self.__dict__.keys() else args[1]
+
+    # Create an AccessLogger object and log a mocked call
+    request = CustomRequest()
+    test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
+    test_access_logger.logger.setLevel(log_level)
+    test_access_logger.log(request=request, response=MagicMock(), time=0.0)
+
+    if log_level > 10 or request_path != '/events':
+        message_api_log = mock_logger_info.call_args_list[0][0][0].split(" ")
+        message_api_json = mock_logger_info.call_args_list[1][0][0]
+    else:
+        message_api_log = mock_logger_debug.call_args_list[0][0][0].split(" ")
+        message_api_json = mock_logger_debug.call_args_list[1][0][0]
+
+    assert log_key in message_api_log
+    assert json_key in message_api_json
+
+
 @pytest.mark.parametrize('json_log', [
     False,
     True
