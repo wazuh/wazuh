@@ -1,0 +1,448 @@
+name: decoder/windows-security/0
+
+sources:
+  - decoder/windows-event-decoder/0
+
+metadata:
+  description: Decoder for Windows Security events
+  module: Windows Security
+  title: Decoder for Windows Security and Windows Eventlog auditing
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/23
+  references:
+    - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/security-auditing-overview
+  versions: [Vista, 7, 8, 10, 11, Server 2012, Server 2016, Server 2019, Server 2022]
+
+check: winlog.channel==Security AND (event.provider==Microsoft-Windows-Security-Auditing OR event.provider==Microsoft-Windows-Eventlog)
+
+
+normalize:
+ - map:
+    - wazuh.decoders: +array_append/windows-security
+    - event.dataset: security
+
+    # Set categorization fields
+    - event.id: +kvdb_get_merge/win_security_categories/$event.id
+
+    # Set User Account Control
+    #- event.UserAccountControl: $~windows.Event.EventData.NewUacValue
+    - winlog.event_data.UserAccountControl: +split/$~windows.Event.EventData.UserAccountControl/%
+
+    # Set Kerberos Ticket Options
+    # TicketOptionsDescription - Needs bitwise operations
+
+    # Set Kerberos Ticket Status Codes
+    - winlog.event_data.StatusDescription: +kvdb_get_merge/kerberos_tickets_status_codes/$~windows.Event.EventData.Status
+
+    # Set Service Type and Name
+    # Service related fields
+    - service.name: $~windows.Event.EventData.ServiceName
+
+    # Set Audit Information
+    # Event sub category
+    - winlog.event_data.Category: +kvdb_get_merge/audit_category/$~windows.Event.EventData.SubcategoryGuid
+    - winlog.event_data.SubCategory: +kvdb_get_merge/audit_subcategory/$~windows.Event.EventData.SubcategoryGuid
+
+    # Set Trust Attributes
+    - winlog.trustAttribute: +kvdb_get/win_trust_attributes/$~windows.Event.EventData.TdoAttributes
+
+    - winlog.logon.id: $~windows.Event.EventData.SubjectLogonId
+
+    - winlog.event_data.PrivilegeList: '+split/$~windows.Event.EventData.PrivilegeList/ '
+
+    - user.target.name: $~windows.Event.EventData.OldTargetUserName
+    - user.changes.name: $~windows.Event.EventData.NewTargetUserName
+    - related.user: +array_append/$~windows.Event.EventData.NewTargetUserName
+    - related.user: +array_append/$~windows.Event.EventData.OldTargetUserName
+
+    # map helper arrays
+    - ~temp.id_target_user_array: ["4624","4625","4634","4647","4648","4768","4769","4770","4771","4776","4964"]
+    - ~temp.id_memberName_array: ["4727", "4728", "4729", "4730", "4731", "4732", "4733", "4734", "4735",
+                              "4737", "4744", "4745", "4746", "4747", "4748", "4749", "4750", "4751",
+                              "4752", "4753", "4754", "4755", "4756", "4757", "4758", "4759", "4760",
+                              "4761", "4762", "4763", "4764", "4799"]
+    - ~temp.id_copy_subject_user_array: ["4657", "4670", "4672", "4673", "4674", "4688", "4689", "4697",
+              "4698", "4699", "4700", "4701", "4702", "4706", "4707", "4713",
+              "4716", "4717", "4718", "4719", "4720", "4722", "4723", "4724",
+              "4725", "4726", "4727", "4728", "4729", "4730", "4731", "4732",
+              "4733", "4734", "4735", "4737", "4738", "4739", "4740", "4741",
+              "4742", "4743", "4744", "4745", "4746", "4747", "4748", "4749",
+              "4750", "4751", "4752", "4753", "4754", "4755", "4756", "4757",
+              "4758", "4759", "4760", "4761", "4762", "4763", "4764", "4767",
+              "4781", "4798", "4799", "4817", "4904", "4905", "4907", "4912",
+              "4648"]
+    - ~temp.id_copy_target_user_array: ["4670", "4720", "4722", "4723", "4724", "4725",
+              "4726", "4738", "4740", "4767", "4798", "4817", "4907"]
+    - ~temp.id_rename_common_auth_fields: ["1100", "1102", "1104", "1105", "1108", "4624", "4648", "4625",
+              "4670", "4673", "4674", "4689", "4697", "4719", "4720", "4722",
+              "4723", "4724", "4725", "4726", "4727", "4728", "4729", "4730",
+              "4731", "4732", "4733", "4734", "4735", "4737", "4738", "4740",
+              "4741", "4742", "4743", "4744", "4745", "4746", "4747", "4748",
+              "4749", "4750", "4751", "4752", "4753", "4754", "4755", "4756",
+              "4757", "4758", "4759", "4760", "4761", "4762", "4763", "4764",
+              "4767", "4768", "4769", "4770", "4771", "4798", "4799", "4817",
+              "4904", "4905", "4907", "4912"]
+    - ~temp.id_related_user:  ["4688", "4720", "4722", "4723", "4724", "4725", "4726", "4738",
+         "4740", "4767", "4798"]
+
+    # Decode message table
+    # Failure reason for logon
+ - check:
+       - ~windows.Event.EventData.FailureReason: +exists
+   map:
+        - winlog.logon.failure.reason: +kvdb_get/failure_codes_descriptions/$~windows.Event.EventData.FailureReason
+
+    # Conditional logon status and substatus
+    # 4625 and 4776 Set Status and SubStatus
+ - check: event.code==4625 OR event.code==4776
+   map:
+        - winlog.logon.failure.status: +kvdb_get/win_logon_status/$~windows.Event.EventData.Status
+        - winlog.logon.failure.sub_status: +kvdb_get/win_logon_status/$~windows.Event.EventData.SubStatus
+
+    # Add Session Events
+ - check: event.code==4778 OR event.code==4779
+   map:
+        # AccountName to user.name and related.user
+        - user.name: $~windows.Event.EventData.AccountName
+        - related.user: +array_append/$~windows.Event.EventData.AccountName
+        # AccountDomain to user.domain
+        - user.domain: $~windows.Event.EventData.AccountDomain
+        # ClientAddress to source.ip and related.ip
+        - source.ip: $~windows.Event.EventData.ClientAddress
+        - related.ip: +array_append/$~windows.Event.EventData.ClientAddress
+        # ClientName to source.domain
+        - source.domain: $~windows.Event.EventData.ClientName
+        # LogonID to winlog.logon.id
+        - winlog.logon.id: $~windows.Event.EventData.LogonID
+
+    # Copy Target User
+    # TargetUserSid to user.id or user.target.id
+ - check: +not_exists/$user.id AND +array_contains/~temp.id_target_user_array/$event.code
+   map:
+        - user.id: $~windows.Event.EventData.TargetUserSid
+        - user.id: $~windows.Event.EventData.TargetSid
+ - check: +exists/$user.id AND +array_contains/~temp.id_target_user_array/$event.code
+   map:
+        - user.target.id: $~windows.Event.EventData.TargetUserSid
+        - user.target.id: $~windows.Event.EventData.TargetSid
+
+ # TargetUserName to related.user and user.name or user.target.name
+ - check: +not_exists/$user.name AND +array_contains/~temp.id_target_user_array/$event.code
+   map:
+        - user.name: $~windows.Event.EventData.TargetUserName
+ - check: +exists/$user.name AND +array_contains/~temp.id_target_user_array/$event.code
+   map:
+        - user.target.name: $~windows.Event.EventData.TargetUserName
+
+ - check: +string_not_equal/~windows.Event.EventData.TargetUserName/- AND +array_contains/~temp.id_target_user_array/$event.code
+   map:
+        - related.user: +array_append/$~windows.Event.EventData.TargetUserName 
+
+    # TargetUserDomain to user.domain or user.target.domain
+ - check: +not_exists/$user.domain AND +array_contains/~temp.id_target_user_array/$event.code
+   map:
+        - user.domain: $~windows.Event.EventData.TargetDomainName
+ - check: +exists/$user.domain AND +array_contains/~temp.id_target_user_array/$event.code
+   map:
+        - user.target.domain: $~windows.Event.EventData.TargetDomainName
+
+    # Copy MemberName to User and User to Group
+ - check:
+        - ~temp.id_memberName_array: +array_contains/event.code
+   map:
+        - ~temp.split_memberName: +split/$~windows.Event.EventData.MemberName/,
+        - ~temp.split_memberName.0: '+replace/CN=/'
+        - user.target.name: $~temp.split_memberName.0
+        - related.user: +array_append/$~temp.split_memberName.0
+        - group.id: $~windows.Event.EventData.TargetUserSid
+        - group.id: $~windows.Event.EventData.TargetSid
+        - group.name: $~windows.Event.EventData.TargetUserName
+        - ~windows.Event.EventData.TargetDomainName: '+replace/DC=/'
+        - group.domain: $~windows.Event.EventData.TargetDomainName
+        - user.target.group.id: $group.id
+        - user.target.group.name: $group.name
+        - user.target.group.domain: $group.domain
+        - ~temp.split_memberName.3: '+replace/DC=/'
+        - user.target.domain: $~temp.split_memberName.3
+
+ # Copy Target User to Computer Object
+ - check: event.code==4741 OR event.code==4742 OR event.code==4743
+   map:
+    - winlog.computerObject.id: $~windows.Event.EventData.TargetSid
+    - winlog.computerObject.name: $~windows.Event.EventData.TargetUserName
+    - winlog.computerObject.domain: $~windows.Event.EventData.TargetDomainName
+
+ - check: event.code==4634 OR event.code==4647 OR event.code==4964
+   map:
+    - winlog.logon.id: $~windows.Event.EventData.TargetLogonId
+
+ # Copy Subject User from Event Data
+ - check:
+     - ~temp.id_copy_subject_user_array: +array_contains/$event.code
+   map:
+     - user.id: $~windows.Event.EventData.SubjectUserSid
+     - user.name: $~windows.Event.EventData.SubjectUserName
+     - related.user: +array_append/$~windows.Event.EventData.SubjectUserName
+     - user.domain: $~windows.Event.EventData.SubjectDomainName
+
+ # Copy Target User to Target
+ - check:
+    - ~temp.id_copy_target_user_array: +array_contains/$event.code
+   map:
+     - user.target.id: $~windows.Event.EventData.TargetSid
+     - ~temp.name_part: +split/$~windows.Event.EventData.TargetUserName/@
+     - user.target.name: $~temp.name_part.0
+     - related.user: +array_append/$event.user.target.name
+     - user.target.domain: $~windows.Event.EventData.TargetDomainName
+
+# Copy Target User to Effective
+ - check: event.code==4648 OR event.code==4688
+   map:
+     - user.effective.id: $~windows.Event.EventData.TargetUserSid
+
+
+ - check: +string_not_equal/$~windows.Event.EventData.TargetUserName/- AND  (event.code==4648 OR event.code==4688)
+   map:
+     - ~temp.name_part: +split/$~windows.Event.EventData.TargetUserName/@
+     - user.effective.name: $temp.~name_part.0
+     - related.user: +array_append/$event.user.effective.name
+
+
+ - check: +string_not_equal/$~windows.Event.EventData.TargetDomainName/- AND  (event.code==4648 OR event.code==4688)
+   map:
+     - user.effective.domain: $~windows.Event.EventData.TargetDomainName
+
+# Copy Subject User from user_data
+ - check: event.code==1102
+   map:
+     - user.id: $~windows.Event.UserData.LogFileCleared.SubjectUserSid.#text
+     - user.name: $~windows.Event.UserData.LogFileCleared.SubjectUserName.#text
+     - related.user: +array_append/$~windows.Event.UserData.LogFileCleared.SubjectUserName.#text
+     - user.domain: $~windows.Event.UserData.LogFileCleared.SubjectDomainName.#text
+     - winlog.logon.id: $~windows.Event.UserData.LogFileCleared.SubjectLogonId.#text
+     - winlog.task: Log clear
+
+
+# Rename Common Auth Fields
+ - check:
+     - ~temp.id_rename_common_auth_fields: +array_contains/$event.code
+   map:
+     - process.pid: +hex_to_number/$~windows.Event.EventData.ProcessId
+     - process.executable: $~windows.Event.EventData.ProcessName
+     - ~temp.file_data: +parse_file/$~windows.Event.EventData.ProcessName
+     - process.name: $~temp.file_data.name
+     - source.ip: $~windows.Event.EventData.IpAddress
+     - source.port: $~windows.Event.EventData.IpPort
+     - source.domain: $~windows.Event.EventData.WorkstationName
+     - related.ip: $~windows.Event.EventData.ClientAddress
+
+
+# Process Event 4688
+ - check: event.code==4688
+   map:
+     - process.args: '+split/$~windows.Event.EventData.CommandLine/ '
+     - process.pid: +hex_to_number/$~windows.Event.EventData.NewProcessId
+     - process.executable: $~windows.Event.EventData.NewProcessName
+     - ~temp.file_data: +parse_file/$~windows.Event.EventData.NewProcessName
+     - process.name: $~temp.file_data.name
+     - process.parent.pid: +hex_to_number/$~windows.Event.EventData.ProcessId
+     - process.parent.executable:  $~windows.Event.EventData.ParentProcessName
+     - ~temp.file_data: +parse_file/$~windows.Event.EventData.ParentProcessName
+     - process.parent.name: $~temp.file_data.name
+     - process.command_line: $~windows.Event.EventData.CommandLine
+
+ - check: event.code==4624 OR event.code==4648
+   map:
+     - related.user: $~windows.Event.EventData.SubjectUserName
+
+ - check: event.code==1105
+   map:
+     - winlog.task: Log automatic backup
+     - winlog.user_data.BackupPath: $~windows.Event.UserData.AutoBackup.BackupPath.#text
+     - winlog.user_data.Channel: $~windows.Event.UserData.AutoBackup.Channel.#text
+
+ - check:
+      - ~temp.id_related_user: +array_contains/$event.code
+   map:
+      - related.user: +array_append/$~windows.Event.EventData.TargetUserName
+
+ - map:
+     - related.ip: $event.source.ip
+
+ # Object Policy Change and SidListDesc
+ # Cant be correctly parsed, at least keep recors from original log
+ - check: event.code==4670 OR event.code==4817 OR event.code==4907 OR event.code==4808
+   map:
+     - winlog.event_data.NewSd: $~windows.Event.EventData.NewSd
+     - winlog.event_data.OldSd: $~windows.Event.EventData.OldSd
+     - winlog.event_data.ObjectType: $~windows.Event.EventData.ObjectType
+     - winlog.event_data.ObjectServer: $~windows.Event.EventData.ObjectServer
+     - winlog.event_data.ObjectName: $~windows.Event.EventData.ObjectName
+
+# Set Service Type
+ - check:
+    - ~windows.Event.EventData.ServiceType: "0x1"
+   map:
+    - service.type: "Kernel Driver"
+
+ - check:
+    - ~windows.Event.EventData.ServiceType: "0x2"
+   map:
+    - service.type: "File System Driver"
+
+ - check:
+    - ~windows.Event.EventData.ServiceType: "0x8"
+   map:
+    - service.type: "Recognizer Driver"
+
+ - check:
+    - ~windows.Event.EventData.ServiceType: "0x10"
+   map:
+    - service.type: "Win32 Own Process"
+
+ - check:
+    - ~windows.Event.EventData.ServiceType: "0x20"
+   map:
+    - service.type: "Win32 Share Process"
+
+ - check:
+    - ~windows.Event.EventData.ServiceType: "0x110"
+   map:
+    - service.type: "Interactive Own Process"
+
+ - check:
+    - ~windows.Event.EventData.ServiceType: "0x120"
+   map:
+    - service.type: "Interactive Share Process"
+
+  # Set Kerberos Encryption Types
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x1"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "DES-CBC-CRC"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x3"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "DES-CBC-MD5"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x11"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "AES128-CTS-HMAC-SHA1-96"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x12"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "AES256-CTS-HMAC-SHA1-96"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x17"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "RC4-HMAC"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0x18"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "RC4-HMAC-EXP"
+
+ - check:
+    - ~windows.Event.EventData.TicketEncryptionType: "0xffffffff"
+   map:
+    - winlog.event_data.TicketEncryptionTypeDescription: "FAIL"
+
+# Set Trust Direction
+ - check:
+    - ~windows.Event.EventData.TdoDirection: "0"
+   map:
+    - winlog.trustDirection: "TRUST_DIRECTION_DISABLED"
+
+ - check:
+    - ~windows.Event.EventData.TdoDirection: "1"
+   map:
+    - winlog.trustDirection: "TRUST_DIRECTION_INBOUND"
+
+ - check:
+    - ~windows.Event.EventData.TdoDirection: "2"
+   map:
+    - winlog.trustDirection: "TRUST_DIRECTION_OUTBOUND"
+
+ - check:
+    - ~windows.Event.EventData.TdoDirection: "3"
+   map:
+    - winlog.trustDirection: "TRUST_DIRECTION_BIDIRECTIONAL"
+
+# Set trust type
+ - check:
+    - ~windows.Event.EventData.TdoType: "1"
+   map:
+    - winlog.trustType: "TRUST_TYPE_DOWNLEVEL"
+
+ - check:
+    - ~windows.Event.EventData.TdoType: "2"
+   map:
+    - winlog.trustType: "TRUST_TYPE_UPLEVEL"
+
+ - check:
+    - ~windows.Event.EventData.TdoType: "3"
+   map:
+    - winlog.trustType: "TRUST_TYPE_MIT"
+
+ - check:
+    - ~windows.Event.EventData.TdoType: "4"
+   map:
+    - winlog.trustType: "TRUST_TYPE_DCE"
+
+# Set Logon Type
+ - check:
+    - ~windows.Event.EventData.LogonType: "2"
+   map:
+    - winlog.logon.type: "Interactive"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "3"
+   map:
+    - winlog.logon.type: "Network"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "4"
+   map:
+    - winlog.logon.type: "Batch"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "5"
+   map:
+    - winlog.logon.type: "Service"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "7"
+   map:
+    - winlog.logon.type: "Unlock"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "8"
+   map:
+    - winlog.logon.type: "NetworkCleartext"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "9"
+   map:
+    - winlog.logon.type: "NewCredentials"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "10"
+   map:
+    - winlog.logon.type: "RemoteInteractive"
+
+ - check:
+    - ~windows.Event.EventData.LogonType: "11"
+   map:
+    - winlog.logon.type: "CachedInteractive"
+
+# Cleanup
+ - map:
+   - ~temp: +delete
+   - ~windows: +delete
