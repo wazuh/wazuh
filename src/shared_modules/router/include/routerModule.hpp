@@ -28,8 +28,9 @@
 class EXPORTED RouterModule final : public Singleton<RouterModule>
 {
 public:
-    void initialize(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction);
-    void destroy();
+    static void initialize(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction);
+    void start();
+    void stop();
 };
 
 #endif //_ROUTER_MODULE_HPP

@@ -27,6 +27,11 @@ extern "C"
 {
 #endif
     /**
+     * @brief Represents the handle associated with router manipulation.
+     */
+    typedef void* ROUTER_PROVIDER_HANDLE;
+
+    /**
      * @brief Log callback function.
      *
      * @param level Log level.
@@ -36,24 +41,66 @@ extern "C"
     typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 
     /**
-     * @brief Start router mechanism.
+     * @brief Initialize router mechanism.
      *
      * @param callbackLog Log callback function.
      */
-    EXPORTED void router_start(log_callback_t callbackLog);
+    EXPORTED int router_initialize(log_callback_t callbackLog);
+
+    /**
+     * @brief Start router mechanism.
+     *
+     */
+    EXPORTED int router_start();
 
     /**
      * @brief Stop router mechanism.
      *
      */
-    EXPORTED void router_stop();
+    EXPORTED int router_stop();
+
+    /**
+     * @brief Create a router provider.
+     *
+     * @param name Name of the router provider.
+     * @return ROUTER_PROVIDER_HANDLE Handle to the router provider.
+     */
+    EXPORTED ROUTER_PROVIDER_HANDLE router_provider_create(const char* name);
+
+    /**
+     * @brief Send a message to the router provider.
+     *
+     * @param handle Handle to the router provider.
+     * @param message Message to send.
+     * @param message_size Size of the message.
+     * @return true if the message was sent successfully.
+     * @return false if the message was not sent successfully.
+     */
+    EXPORTED int router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* message, unsigned int message_size);
+
+    /**
+     * @brief Destroy a router provider.
+     *
+     * @param handle Handle to the router provider.
+     */
+    EXPORTED void router_provider_destroy(ROUTER_PROVIDER_HANDLE handle);
 
 #ifdef __cplusplus
 }
 #endif
 
-typedef void (*router_start_func)(log_callback_t callbackLog);
+typedef int (*router_initialize_func)(log_callback_t callbackLog);
 
-typedef void (*router_stop_func)();
+typedef int (*router_start_func)();
+
+typedef int (*router_stop_func)();
+
+typedef ROUTER_PROVIDER_HANDLE (*router_provider_create_func)(const char* name);
+
+typedef bool (*router_provider_send_func)(ROUTER_PROVIDER_HANDLE handle,
+                                          const char* message,
+                                          unsigned int message_size);
+
+typedef void (*router_provider_destroy_func)(ROUTER_PROVIDER_HANDLE handle);
 
 #endif // _ROUTER_H

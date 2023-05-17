@@ -20,6 +20,8 @@ static void wm_router_stop();
 static void* wm_router_main();
 
 void* router_module = NULL;
+
+router_initialize_func router_initialize_ptr = NULL;
 router_start_func router_start_ptr = NULL;
 router_stop_func router_stop_ptr = NULL;
 
@@ -40,10 +42,21 @@ void* wm_router_main()
     {
         router_start_ptr = so_get_function_sym(router_module, "router_start");
         router_stop_ptr = so_get_function_sym(router_module, "router_stop");
+        router_initialize_ptr = so_get_function_sym(router_module, "router_initialize");
+
+        if (router_initialize_ptr)
+        {
+            router_initialize_ptr();
+        }
+        else
+        {
+            mtwarn(WM_ROUTER_LOGTAG, "Unable to initialize router module.");
+            return NULL;
+        }
 
         if (router_start_ptr)
         {
-            router_start_ptr(NULL);
+            router_start_ptr();
         }
         else
         {

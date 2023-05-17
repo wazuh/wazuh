@@ -22,28 +22,28 @@ TEST(RouterModuleInterfaceTest, TestInitializeAndDestroy)
 {
     auto& routerModule = RouterModule::instance();
     EXPECT_NO_THROW({
-        routerModule.initialize(nullptr);
-        routerModule.destroy();
+        routerModule.start();
+        routerModule.stop();
     });
 }
 
 TEST(RouterModuleInterfaceTest, TestDoubleInitialize)
 {
     auto& routerModule = RouterModule::instance();
-    EXPECT_NO_THROW({ routerModule.initialize(nullptr); });
+    EXPECT_NO_THROW({ routerModule.start(); });
 
-    EXPECT_THROW({ routerModule.initialize(nullptr); }, std::runtime_error);
+    EXPECT_THROW({ routerModule.start(); }, std::runtime_error);
 
-    EXPECT_NO_THROW({ routerModule.destroy(); });
+    EXPECT_NO_THROW({ routerModule.stop(); });
 }
 
 TEST(RouterModuleInterfaceTest, TestDoubleDestroy)
 {
     auto& routerModule = RouterModule::instance();
     EXPECT_NO_THROW({
-        routerModule.initialize(nullptr);
-        routerModule.destroy();
+        routerModule.start();
+        routerModule.stop();
     });
 
-    EXPECT_THROW({ routerModule.destroy(); }, std::runtime_error);
+    EXPECT_THROW({ routerModule.stop(); }, std::runtime_error);
 }
