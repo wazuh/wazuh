@@ -71,9 +71,10 @@ include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)
 include_directories(${SRC_FOLDER}/shared_modules/content_manager/include)
 include_directories(${SRC_FOLDER}/headers)
-include_directories(${SRC_FOLDER}/external)
+include_directories(${SRC_FOLDER}/)
 include_directories(${SRC_FOLDER}/external/cJSON)
 
 add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 add_subdirectory(shared_modules/router)
-
+add_subdirectory(shared_modules/content_manager)
+add_subdirectory(wazuh_modules/vulnerability_scanner)

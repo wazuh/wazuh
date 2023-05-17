@@ -13,9 +13,9 @@
 #define _REMOTE_STATE_HELPER_HPP
 
 #include "socketClient.hpp"
+#include <external/nlohmann/json.hpp>
 #include <future>
 #include <iostream>
-#include <nlohmann/json.hpp>
 #include <string>
 
 constexpr auto REMOTE_SUBSCRIPTION_ENDPOINT {"/tmp/wazuh-remote-subscription.sock"};
