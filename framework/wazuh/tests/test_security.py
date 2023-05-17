@@ -13,6 +13,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy import orm as sqlalchemy_orm
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.sql import text
 from yaml import safe_load
 
 from wazuh.core.exception import WazuhError
@@ -46,7 +47,7 @@ def create_memory_db(sql_file, session):
         for line in f.readlines():
             line = line.strip()
             if '* ' not in line and '/*' not in line and '*/' not in line and line != '':
-                session.execute(line)
+                session.execute(text(line))
                 session.commit()
 
 
@@ -77,6 +78,7 @@ def db_setup():
                     # Clear mappers
                     sqlalchemy_orm.clear_mappers()
                     # Invalidate in-memory database
+                    orm.db_manager.close_sessions()
                     orm.db_manager.connect(orm.DB_FILE)
                     orm.db_manager.sessions[orm.DB_FILE].close()
                     orm.db_manager.engines[orm.DB_FILE].dispose()
@@ -98,6 +100,7 @@ def db_setup():
         pass
 
     yield security, WazuhResult, core_security
+    orm.db_manager.close_sessions()
 
 
 @pytest.fixture(scope='function')
