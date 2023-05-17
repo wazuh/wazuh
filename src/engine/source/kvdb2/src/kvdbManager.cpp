@@ -185,7 +185,6 @@ void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string
 
 std::vector<std::string> KVDBManager::listDBs(const bool loaded)
 {
-    // TODO: return handles loaded -> m_kvdbHandlerCollection
     std::vector<std::string> spaces;
 
     for(auto cf : m_mapCFHandles)
@@ -198,7 +197,27 @@ std::vector<std::string> KVDBManager::listDBs(const bool loaded)
 
 std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 {
-    return base::Error { fmt::format("Not yet implemented.") };
+    auto handlersInfo = getKVDBHandlersInfo();
+
+    if (handlersInfo.count(name))
+    {
+        return base::Error { fmt::format("Can not remove the DB. This is in use.") };
+    }
+
+    auto it = m_mapCFHandles.find(name);
+    if (it != m_mapCFHandles.end())
+    {
+        auto cfHandle = it->second;
+        auto opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
+        assert(opStatus.ok());
+        m_mapCFHandles.erase(it);
+    }
+    else
+    {
+        return base::Error { fmt::format("The DB not exists.") };
+    }
+
+    return std::nullopt;
 }
 
 std::optional<base::Error> KVDBManager::createDB(const std::string& name)
