@@ -14,7 +14,7 @@ namespace api::graph::handlers
  */
 struct Config
 {
-    std::shared_ptr<store::FileDriver> store;
+    std::shared_ptr<store::IStore> store;
 
     std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
 };
