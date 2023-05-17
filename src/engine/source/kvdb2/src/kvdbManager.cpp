@@ -28,6 +28,7 @@ void KVDBManager::initialize()
 
 void KVDBManager::finalize()
 {
+    std::cout << "KVDB Manager: Finalizing..." << std::endl;
     finalizeMainDB();
     m_isInitialized = false;
 }
@@ -144,6 +145,7 @@ void KVDBManager::finalizeMainDB()
 
 std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
+    std::cout << fmt::format("KVDB Manager: Get KVDB Handler for DB: {} Scope: {}", dbName, scopeName) << std::endl;
     rocksdb::ColumnFamilyHandle* cfHandle;
 
     if (m_mapCFHandles.count(dbName))
@@ -164,9 +166,10 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbN
 
 void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
+    std::cout << fmt::format("KVDB Manager: Remove KVDB Handler for DB: {} Scope: {}", dbName, scopeName) << std::endl;
     bool isRemoved = false;
     m_kvdbHandlerCollection->removeKVDBHandler(dbName, scopeName, isRemoved);
-    if (isRemoved)
+    if (isRemoved && m_mapCFHandles.size())
     {
         auto cfHandle = m_mapCFHandles[dbName];
         assert(cfHandle);
@@ -222,10 +225,10 @@ std::optional<base::Error> KVDBManager::existsDB(const std::string& name)
 
 std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
 {
+    // List reverse lookup of getKVDBHandlersInfo. List of scopes and DBs that are using them.
     std::map<std::string, kvdbManager::RefInfo> retValue;
     std::map<std::string, kvdbManager::RefInfo> handlersInfo = getKVDBHandlersInfo();
     std::map<std::string, kvdbManager::RefCounter> refCounterMap;
-    std::vector<std::string> scopeNames;
 
     for (auto &entry : handlersInfo)
     {
@@ -260,6 +263,7 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
 
 std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBHandlersInfo()
 {
+    // List of DBs and the scopes referencing them.
     std::map<std::string, kvdbManager::RefInfo> retValue;
     auto dbNames = m_kvdbHandlerCollection->getDBNames();
     for (auto dbName : dbNames)
