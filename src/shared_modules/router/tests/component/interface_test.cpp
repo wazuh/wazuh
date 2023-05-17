@@ -18,11 +18,11 @@
 
 void RouterInterfaceTest::SetUp()
 {
-    RouterModule::instance().initialize(nullptr);
+    RouterModule::instance().start();
 };
 void RouterInterfaceTest::TearDown()
 {
-    RouterModule::instance().destroy();
+    RouterModule::instance().stop();
 };
 
 TEST_F(RouterInterfaceTest, TestCreateProviderSubscriberSimple)

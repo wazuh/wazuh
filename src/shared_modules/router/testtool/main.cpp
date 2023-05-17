@@ -11,22 +11,11 @@ int main()
 {
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
     auto provider = std::make_unique<RouterProvider>("test");
-    RouterModule::instance().initialize([](const modules_log_level_t level, const std::string& log)
-                                        { std::cout << "Log: " << log << std::endl; });
+    RouterModule::instance().start();
     std::cout << "Initialized" << std::endl;
-    // Router::instance().providerInit("test");
     provider->start();
-    // RouterProvider::instance().initLocal("test");
     std::cout << "Provider initialized" << std::endl;
-
     std::atomic<size_t> count = 0;
-    // RouterSubscriber::instance().addLocal("test", [&](std::shared_ptr<std::vector<char>> data) { ++count; });
-    /*RouterSubscriber::instance().addLocal("test",
-                                                 [&](std::shared_ptr<std::vector<char>> data)
-                                                 {
-                                                     ++count;
-                                                     std::cout << "Data: " << data->data() << std::endl;
-                                                 });*/
 
     subscriptor->subscribe(
         [&](const std::vector<char>& message)
@@ -49,6 +38,6 @@ int main()
     std::this_thread::sleep_for(std::chrono::seconds(5));
 
     std::cout << "Destroying " << count << std::endl;
-    RouterModule::instance().destroy();
+    RouterModule::instance().stop();
     return 0;
 }

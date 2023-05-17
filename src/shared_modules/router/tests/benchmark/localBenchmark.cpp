@@ -14,8 +14,7 @@ protected:
 public:
     void SetUp(const ::benchmark::State& state) override
     {
-        RouterModule::instance().initialize([](const modules_log_level_t level, const std::string& log)
-                                            { std::cout << "Log: " << log << std::endl; });
+        RouterModule::instance().start();
 
         publisher = std::make_unique<RouterProvider>("test");
         publisher->start();
@@ -30,7 +29,7 @@ public:
 
     void TearDown(const ::benchmark::State& state) override
     {
-        RouterModule::instance().destroy();
+        RouterModule::instance().stop();
     }
 
 private:
