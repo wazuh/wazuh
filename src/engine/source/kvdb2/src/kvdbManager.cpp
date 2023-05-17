@@ -153,7 +153,7 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbN
     else
     {
         cfHandle = createColumnFamily(dbName);
-        assert(cfHandle == nullptr);
+        assert(cfHandle);
     }
 
     auto retHandler = m_kvdbHandlerCollection->getKVDBHandler(m_pRocksDB, cfHandle, dbName, scopeName);
@@ -178,7 +178,7 @@ void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string
 
 std::vector<std::string> KVDBManager::listDBs(const bool loaded)
 {
-    // TODO: return handles loaded
+    // TODO: return handles loaded -> m_kvdbHandlerCollection
     std::vector<std::string> spaces;
 
     for(auto cf : m_mapCFHandles)
