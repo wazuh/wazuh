@@ -43,7 +43,6 @@ class KVDBManager final : public IKVDBManager, public IKVDBHandlerManager
 
 public:
     KVDBManager(const KVDBManagerOptions& options, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
-    ~KVDBManager() = default;
 
     void initialize();
     void finalize();
@@ -67,7 +66,6 @@ private:
     void initializeOptions();
     void initializeMainDB();
     void finalizeMainDB();
-    rocksdb::ColumnFamilyHandle* createColumnFamily(const std::string& name);
 
     std::unique_ptr<KVDBHandlerCollection> m_kvdbHandlerCollection;
 
@@ -77,6 +75,7 @@ private:
 
     std::map<std::string, std::shared_ptr<KVDBScope>> m_mapScopes;
 
+    rocksdb::ColumnFamilyHandle* createColumnFamily(const std::string& name);
 
     KVDBManagerOptions m_ManagerOptions;
 

@@ -1,10 +1,18 @@
 #include <kvdb2/kvdbHandlerCollection.hpp>
+#include <logging/logging.hpp>
+#include <fmt/format.h>
 
 namespace kvdbManager
 {
 
+KVDBHandlerCollection::KVDBHandlerInstance::~KVDBHandlerInstance()
+{
+    std::cout << fmt::format("KVDBHandlerInstance::~KVDBHandlerInstance") << std::endl;
+}
+
 std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cfHandle, const std::string& dbName, const std::string& scopeName)
 {
+    std::cout << fmt::format("KVDBHandlerCollection::getKVDBHandler - dbName {}, scopeName {}", dbName.c_str(), scopeName.c_str()) << std::endl;
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
@@ -16,21 +24,22 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
     else
     {
         auto spHandler = std::make_shared<KVDBSpace>(m_handleManager, db, cfHandle, dbName, scopeName);
-        auto spInstance = std::make_shared<KVDBHandlerInstance>(spHandler);
+        auto spInstance = std::make_shared<KVDBHandlerInstance>(std::move(spHandler));
         spInstance->addScope(scopeName);
-        m_mapInstances.insert(std::make_pair(dbName, spInstance));
+        m_mapInstances.insert(std::make_pair(dbName, std::move(spInstance)));
         return spHandler;
     }
 }
 
 void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const std::string& scopeName, bool &isRemoved)
 {
+    std::cout << fmt::format("KVDBHandlerCollection::removeKVDBHandler - dbName {}, scopeName {}", dbName.c_str(), scopeName.c_str()) << std::endl;
     std::lock_guard<std::mutex> lock(m_mutex);
     isRemoved = false;
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
-        auto &instance = it->second;
+        auto instance = it->second;
         instance->removeScope(scopeName);
         if (instance->emptyScopes())
         {

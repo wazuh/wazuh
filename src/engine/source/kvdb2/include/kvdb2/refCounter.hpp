@@ -13,6 +13,10 @@ class RefCounter
 public:
     RefCounter() = default;
     RefCounter(const RefCounter&);
+    ~RefCounter()
+    {
+        m_refMap.clear();
+    }
     void addRef(const std::string& name);
     void removeRef(const std::string& name);
     int count(const std::string& name) const;

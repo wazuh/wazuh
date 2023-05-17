@@ -9,10 +9,22 @@ namespace kvdbManager
 class KVDBManagedHandler
 {
 public:
-    KVDBManagedHandler(IKVDBHandlerManager* manager, const std::string& scopeName) : m_handlerManager(manager), m_scopeName(scopeName) {}
+    KVDBManagedHandler(IKVDBHandlerManager* manager, const std::string& dbName, const std::string& scopeName):
+        m_handlerManager(manager),
+        m_dbName(dbName),
+        m_scopeName(scopeName)
+    {
+    }
+
+    virtual ~KVDBManagedHandler()
+    {
+        m_handlerManager->removeKVDBHandler(m_dbName, m_scopeName);
+    }
+
 protected:
     IKVDBHandlerManager* m_handlerManager { nullptr };
     std::string m_scopeName;
+    std::string m_dbName;
 };
 
 } // namespace kvdbManager
