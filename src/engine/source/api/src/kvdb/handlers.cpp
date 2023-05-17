@@ -216,6 +216,16 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
 
+        if (eRequest.name() == "")
+        {
+            return ::api::adapter::genericError<ResponseType>("Database name is empty");
+        }
+
+        if (eRequest.key() == "")
+        {
+            return ::api::adapter::genericError<ResponseType>("Key is empty");
+        }
+
         auto exists = kvdbManager->existsDB(eRequest.name());
 
         if (exists.has_value())
@@ -264,12 +274,22 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        auto errorMsg = !eRequest.has_name()  ? std::make_optional("Missing /name")
+        auto errorMsg = !eRequest.has_name() ? std::make_optional("Missing /name")
                         : !eRequest.has_key() ? std::make_optional("Missing /key")
                                               : std::nullopt;
         if (errorMsg.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
+        }
+
+        if (eRequest.name() == "")
+        {
+            return ::api::adapter::genericError<ResponseType>("Database name is empty");
+        }
+
+        if (eRequest.key() == "")
+        {
+            return ::api::adapter::genericError<ResponseType>("Key is empty");
         }
 
         auto exists = kvdbManager->existsDB(eRequest.name());
@@ -321,6 +341,21 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
         if (std::holds_alternative<base::Error>(value)) // Should not happen but just in case
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(value).message);
+        }
+
+        if (eRequest.name() == "")
+        {
+            return ::api::adapter::genericError<ResponseType>("Database name is empty");
+        }
+
+        if (eRequest.entry().key() == "")
+        {
+            return ::api::adapter::genericError<ResponseType>("Key is empty");
+        }
+
+        if (std::get<std::string>(value) == "")
+        {
+            return ::api::adapter::genericError<ResponseType>("Value is empty");
         }
 
         auto exists = kvdbManager->existsDB(eRequest.name());
