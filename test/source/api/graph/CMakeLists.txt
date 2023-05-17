@@ -11,5 +11,5 @@ target_include_directories(graph_handler_test
   ${TEST_SOURCE_DIR}/api/graph/assets/filter/allow-all
 )
 
-target_link_libraries(graph_handler_test gtest_main api)
+target_link_libraries(graph_handler_test gtest_main gmock_main api test_mocks)
 gtest_discover_tests(graph_handler_test)
