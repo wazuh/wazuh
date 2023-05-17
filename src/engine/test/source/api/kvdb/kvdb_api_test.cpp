@@ -190,6 +190,22 @@ TEST_F(KVDBApiTest, managerPost)
     ASSERT_EQ(response.data(), expectedData);
 }
 
+TEST_F(KVDBApiTest, managerPostDBExists)
+{
+    api::Handler cmd;
+
+    kvdbManager->createDB("test1");
+
+    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest("test1"));
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The DB already exists."})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
 TEST_F(KVDBApiTest, managerDeleteOk)
 {
     ASSERT_NO_THROW(managerDelete(KVDBApiTest::kvdbManager));
@@ -214,6 +230,34 @@ TEST_F(KVDBApiTest, managerDeleteNameEmpty)
     ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest(""));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Database name is empty"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerDelete)
+{
+    api::Handler cmd;
+    kvdbManager->createDB("test1");
+    ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest("test1"));
+    const auto expectedData = json::Json {R"({"status":"OK"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerDeleteDBNotExists)
+{
+    api::Handler cmd;
+    kvdbManager->createDB("test2");
+    ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest("test1"));
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The DB not exists."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
