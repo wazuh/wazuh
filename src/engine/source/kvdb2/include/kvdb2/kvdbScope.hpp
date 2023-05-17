@@ -20,7 +20,7 @@ public:
     std::string getName() const override { return m_name; }
     void setName(const std::string& name) override { m_name = name; }
 
-    std::shared_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName) override;
+    KVDBHandler getKVDBHandler(const std::string& dbName) override;
 
 private:
     bool m_initialized { false };

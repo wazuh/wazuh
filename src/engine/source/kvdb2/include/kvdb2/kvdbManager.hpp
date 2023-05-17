@@ -1,6 +1,7 @@
 #ifndef _KVDBMANAGER_2_H
 #define _KVDBMANAGER_2_H
 
+#include <atomic>
 #include <filesystem>
 #include <map>
 #include <mutex>
@@ -51,8 +52,10 @@ public:
     std::map<std::string, RefInfo> getKVDBScopesInfo() override;
     std::map<std::string, RefInfo> getKVDBHandlersInfo() override;
 
-    std::shared_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
+    KVDBHandler getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
+    bool skipAutoRemoveEnabled() override;
+
     std::vector<std::string> listDBs(const bool loaded) override;
     std::optional<base::Error> deleteDB(const std::string& name) override;
     std::optional<base::Error> createDB(const std::string& name) override;
@@ -86,8 +89,9 @@ private:
 
     std::mutex m_mutexScopes;
 
-    bool m_isInitialized { false };
-    bool m_isDBLoaded { false };
+    std::atomic<bool> m_isInitialized { false };
+    std::atomic<bool> m_isShuttingDown { false };
+    std::atomic<bool> m_isDBLoaded { false };
 };
 
 } // namespace kvdbManager

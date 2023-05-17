@@ -15,12 +15,10 @@ KVDBSpace::KVDBSpace(IKVDBHandlerManager* manager,
     , m_pRocksDB(db)
     , m_pCFhandle(cfHandle)
 {
-    std::cout << fmt::format("KVDBSpace::KVDBSpace - spaceName {} - scopeName {} ", m_dbName.c_str(), m_scopeName.c_str()) << std::endl;
 }
 
 KVDBSpace::~KVDBSpace()
 {
-    std::cout << fmt::format("KVDBSpace::~KVDBSpace - spaceName {} - scopeName {} ", m_dbName.c_str(), m_scopeName.c_str()) << std::endl;
 }
 
 std::variant<bool, base::Error> KVDBSpace::set(const std::string& key, const std::string& value)
