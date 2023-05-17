@@ -4,8 +4,6 @@
 #include <memory>
 
 #include <api/api.hpp>
-// TODO: KVDB: remove when refactor ut
-#include <kvdb/kvdbManager.hpp>
 #include <kvdb2/iKVDBManager.hpp>
 
 namespace api::kvdb::handlers
