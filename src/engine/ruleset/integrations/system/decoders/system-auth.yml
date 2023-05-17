@@ -1,0 +1,63 @@
+name: decoder/system-auth/0
+
+sources:
+  - decoder/syslog/0
+
+metadata:
+  module: system-auth
+  title: system-auth logs
+  description: Decoder for system athenticated action logs.
+  compatibility: This integration was tested with logs from OSes like Ubuntu 12.04, Centos 7, and macOS Sierra.
+  versions:
+    - "any"
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2023-05-15
+  references:
+    - https://www.loggly.com/ultimate-guide/linux-logging-basics/
+
+check:
+  - process.name: +exists
+
+normalize:
+  - map:
+      - wazuh.decoders: +array_append/system-auth
+
+  - check:
+      - process.name: "sshd"
+    logpar:
+      - message: <~system.auth.ssh.event> <~system.auth.ssh.method> for <user.name> from <source.ip> port <source.port> ssh2(?:<~>)
+      - message: <~system.auth.ssh.event> user <user.name> from <source.ip> port <source.port>
+      - message: Did not receive identification string from <source.ip>
+
+  - check:
+      - process.name: "sudo"
+    logpar:
+      - message: "<user.name> :(? <~system.auth.sudo.error> ;) TTY=<~system.auth.sudo.tty> ; PWD=<~system.auth.sudo.pwd> ; USER=<~system.auth.sudo.pwd> ; COMMAND=<~system.auth.sudo.command>"
+
+  - check:
+      - message: +contains/pam_unix(
+    logpar:
+      - message: for user <user.name> by <~system.auth.pam.byuser>(?\(uid=<~system.auth.pam.byuid>\))
+
+  - check: process.name=="groupadd" OR process.name=="useradd"
+    logpar:
+      - message: "new group: name=<group.name>, GID=<group.id>"
+      - message: "new user: name=<user.name>, UID=<user.id>, GID=<group.id>, home=<~system.auth.useradd.home>, shell=<~system.auth.useradd.shell>(?,<~>)"
+      - message: "group added to <file.name>: name=<group.name>(?, GID=<group.id>)"
+
+  - check:
+      - ~system.auth.ssh.event: "Accepted"
+    map:
+      - event.type: +array_append/info
+      - event.category: +array_append/authentication/session
+      - event.action: "ssh_login"
+      - event.outcome: "success"
+
+  - check: ~system.auth.ssh.event=="Invalid" OR ~system.auth.ssh.event=="Failed"
+    map:
+      - event.type: +array_append/info
+      - event.category: +array_append/authentication
+      - event.action: "ssh_login"
+      - event.outcome: "failure"
