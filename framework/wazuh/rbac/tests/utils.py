@@ -5,6 +5,7 @@ from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import orm as sqlalchemy_orm
+from sqlalchemy.sql import text
 
 
 def create_memory_db(sql_file, session, test_data_path):
@@ -12,7 +13,7 @@ def create_memory_db(sql_file, session, test_data_path):
         for line in f.readlines():
             line = line.strip()
             if '* ' not in line and '/*' not in line and '*/' not in line and line != '':
-                session.execute(line)
+                session.execute(text(line))
                 session.commit()
 
 
