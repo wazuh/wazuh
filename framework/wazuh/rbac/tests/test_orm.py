@@ -13,6 +13,7 @@ import yaml
 from sqlalchemy import create_engine, Column, String
 from sqlalchemy import orm as sqlalchemy_orm
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.sql import text
 
 from wazuh.core.utils import get_utc_now
 from wazuh.rbac.tests.utils import init_db
@@ -1003,7 +1004,7 @@ def test_databasemanager_rollback(fresh_in_memory_db):
 def test_databasemanager_set_database_version(fresh_in_memory_db):
     """Test `set_database_version` method for class `DatabaseManager`."""
     fresh_in_memory_db.db_manager.set_database_version(in_memory_db_path, 555)
-    assert fresh_in_memory_db.db_manager.sessions[in_memory_db_path].execute("pragma user_version").first()[0] == 555
+    assert fresh_in_memory_db.db_manager.sessions[in_memory_db_path].execute(text("pragma user_version")).first()[0] == 555
 
 
 @patch("wazuh.rbac.orm.safe_move")

@@ -19,9 +19,10 @@ from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String
 from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import backref, Session, sessionmaker, relationship
+from sqlalchemy.orm import Session, sessionmaker, relationship, declarative_base, Mapped
 from sqlalchemy.orm.exc import UnmappedInstanceError
+from sqlalchemy.sql.expression import select, delete
+from sqlalchemy.sql import text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
@@ -93,8 +94,8 @@ class RolesRules(_Base):
     created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('role_id', 'rule_id', name='role_rule'),)
 
-    roles = relationship("Roles", backref=backref("rules_associations", cascade="all,delete"))
-    rules = relationship("Rules", backref=backref("roles_associations", cascade="all,delete"))
+    roles = relationship("Roles", back_populates="rules_associations")
+    rules = relationship("Rules", back_populates="roles_associations")
 
 
 class RolesPolicies(_Base):
@@ -117,8 +118,8 @@ class RolesPolicies(_Base):
     created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),)
 
-    roles = relationship("Roles", backref=backref("policies_associations", cascade="all,delete"))
-    policies = relationship("Policies", backref=backref("roles_associations", cascade="all,delete"))
+    roles = relationship("Roles", back_populates="policies_associations")
+    policies = relationship("Policies", back_populates="roles_associations")
 
 
 class UserRoles(_Base):
@@ -141,8 +142,8 @@ class UserRoles(_Base):
     created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('user_id', 'role_id', name='user_role'),)
 
-    users = relationship("User", backref=backref("roles_associations", cascade="all,delete"))
-    roles = relationship("Roles", backref=backref("users_associations", cascade="all,delete"))
+    users = relationship("User", back_populates="roles_associations")
+    roles = relationship("Roles", back_populates="users_associations")
 
 
 # Blacklists
@@ -259,7 +260,10 @@ class User(_Base):
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
 
     # Relations
-    roles = relationship("Roles", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
+    roles = relationship("Roles", secondary='user_roles', passive_deletes=True,
+                         cascade="all,delete", lazy="dynamic", overlaps="roles_associations,users,roles")
+    roles_associations = relationship("UserRoles", back_populates="users",
+                                      cascade="all,delete", overlaps="users")
 
     def __init__(self, username: str, password: str, allow_run_as: bool = False, created_at: datetime = None,
                  user_id: int = None):
@@ -359,10 +363,19 @@ class Roles(_Base):
                       CheckConstraint('length(name) <= 64'))
 
     # Relations
-    policies = relationship("Policies", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
-                            lazy="dynamic")
-    users = relationship("User", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
-    rules = relationship("Rules", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
+    policies = relationship("Policies", secondary='roles_policies', passive_deletes=True,
+                            cascade="all,delete", lazy="dynamic", overlaps="policies_associations,roles,policies")
+    users = relationship("User", secondary='user_roles', passive_deletes=True,
+                         cascade="all,delete", lazy="dynamic", overlaps="users_associations,roles,users")
+    rules = relationship("Rules", secondary='roles_rules', passive_deletes=True,
+                         cascade="all,delete", lazy="dynamic", overlaps="roles_associations,roles,rules")
+
+    policies_associations = relationship("RolesPolicies", back_populates="roles", cascade="all,delete",
+                                         overlaps="roles,policies")
+    users_associations = relationship("UserRoles", back_populates="roles", cascade="all,delete",
+                                      overlaps="users,roles")
+    rules_associations = relationship("RolesRules", back_populates="roles", cascade="all,delete",
+                                      overlaps="roles,rules")
 
     def __init__(self, name: str, role_id: int = None, created_at: datetime = None):
         """Class constructor.
@@ -440,7 +453,10 @@ class Rules(_Base):
                       UniqueConstraint('rule', name='rule_definition'))
 
     # Relations
-    roles = relationship("Roles", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
+    roles = relationship("Roles", secondary='roles_rules', back_populates="rules", passive_deletes=True,
+                         cascade="all,delete", lazy="dynamic", overlaps="roles_associations,rules,roles")
+    roles_associations = relationship("RolesRules", back_populates="rules", cascade="all,delete",
+                                      overlaps="roles")
 
     def __init__(self, name: str, rule: str, rule_id: int = None, created_at: datetime = None):
         """Class constructor.
@@ -501,8 +517,10 @@ class Policies(_Base):
                       UniqueConstraint('policy', name='policy_definition'))
 
     # Relations
-    roles = relationship("Roles", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
-                         lazy="dynamic")
+    roles = relationship("Roles", secondary='roles_policies', passive_deletes=True,
+                         cascade="all,delete", lazy="dynamic", overlaps="roles_associations,policies,roles")
+    roles_associations = relationship("RolesPolicies", back_populates="policies", cascade="all,delete",
+                                      overlaps="policies")
 
     def __init__(self, name: str, policy: str, policy_id: int = None, created_at: datetime = None):
         """Class constructor.
@@ -599,8 +617,8 @@ class TokenManager(RBACManager):
             True if the token is valid, False otherwise.
         """
         try:
-            user_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_id).first()
-            role_rule = self.session.query(RolesTokenBlacklist).filter_by(role_id=role_id).first()
+            user_rule = self.session.scalars(select(UsersTokenBlacklist).filter_by(user_id=user_id).limit(1)).first()
+            role_rule = self.session.scalars(select(RolesTokenBlacklist).filter_by(role_id=role_id).limit(1)).first()
             runas_rule = self.session.query(RunAsTokenBlacklist).first()
             return (not user_rule or (token_nbf_time > user_rule.nbf_invalid_until)) and \
                    (not role_rule or (token_nbf_time > role_rule.nbf_invalid_until)) and \
@@ -621,8 +639,8 @@ class TokenManager(RBACManager):
         """
         try:
             users_format_rules, roles_format_rules, runas_format_rule = dict(), dict(), dict()
-            users_rules = map(UsersTokenBlacklist.to_dict, self.session.query(UsersTokenBlacklist).all())
-            roles_rules = map(RolesTokenBlacklist.to_dict, self.session.query(RolesTokenBlacklist).all())
+            users_rules = map(UsersTokenBlacklist.to_dict, self.session.scalars(select(UsersTokenBlacklist)).all())
+            roles_rules = map(RolesTokenBlacklist.to_dict, self.session.scalars(select(RolesTokenBlacklist)).all())
             runas_rule = self.session.query(RunAsTokenBlacklist).first()
             if runas_rule:
                 runas_rule = runas_rule.to_dict()
@@ -698,8 +716,8 @@ class TokenManager(RBACManager):
             True if the operation was done successfully or a SecurityError code if it failed.
         """
         try:
-            self.session.query(UsersTokenBlacklist).filter_by(user_id=user_id).delete()
-            self.session.query(RolesTokenBlacklist).filter_by(role_id=role_id).delete()
+            self.session.execute(delete(UsersTokenBlacklist).filter_by(user_id=user_id))
+            self.session.execute(delete(RolesTokenBlacklist).filter_by(role_id=role_id))
             if run_as:
                 run_as_rule = self.session.query(RunAsTokenBlacklist).first()
                 run_as_rule and self.session.delete(run_as_rule)
@@ -721,14 +739,14 @@ class TokenManager(RBACManager):
         try:
             list_users, list_roles = list(), list()
             current_time = int(time())
-            users_tokens_in_blacklist = self.session.query(UsersTokenBlacklist).all()
+            users_tokens_in_blacklist = self.session.scalars(select(UsersTokenBlacklist)).all()
             for user_token in users_tokens_in_blacklist:
                 token_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_token.user_id)
                 if token_rule.first() and current_time > token_rule.first().is_valid_until:
                     token_rule.delete()
                     self.session.commit()
                     list_users.append(user_token.user_id)
-            roles_tokens_in_blacklist = self.session.query(RolesTokenBlacklist).all()
+            roles_tokens_in_blacklist = self.session.scalars(select(RolesTokenBlacklist)).all()
             for role_token in roles_tokens_in_blacklist:
                 token_rule = self.session.query(RolesTokenBlacklist).filter_by(role_id=role_token.role_id)
                 if token_rule.first() and current_time > token_rule.first().is_valid_until:
@@ -755,8 +773,9 @@ class TokenManager(RBACManager):
         """
         try:
             list_users, list_roles = list(), list()
-            users_tokens_in_blacklist = self.session.query(UsersTokenBlacklist).all()
-            roles_tokens_in_blacklist = self.session.query(RolesTokenBlacklist).all()
+            users_tokens_in_blacklist = self.session.scalars(select(UsersTokenBlacklist)).all()
+            roles_tokens_in_blacklist = self.session.scalars(select(RolesTokenBlacklist)).all()
+
             clean = False
             for user_token in users_tokens_in_blacklist:
                 list_roles.append(user_token.user_id)
@@ -800,7 +819,7 @@ class AuthenticationManager(RBACManager):
             code if the specified value is not correct.
         """
         try:
-            user = self.session.query(User).filter_by(id=user_id).first()
+            user = self.session.scalars(select(User).filter_by(id=user_id).limit(1)).first()
             if user is not None:
                 if isinstance(allow_run_as, bool):
                     user.allow_run_as = allow_run_as
@@ -871,7 +890,7 @@ class AuthenticationManager(RBACManager):
             True if the user has been modified successfully. False otherwise.
         """
         try:
-            user = self.session.query(User).filter_by(id=user_id).first()
+            user = self.session.scalars(select(User).filter_by(id=user_id).limit(1)).first()
             if user is not None:
                 if name is not None:
                     user.username = name
@@ -900,7 +919,7 @@ class AuthenticationManager(RBACManager):
         """
         try:
             if user_id > MAX_ID_RESERVED:
-                user = self.session.query(User).filter_by(id=user_id).first()
+                user = self.session.scalars(select(User).filter_by(id=user_id).limit(1)).first()
                 if user is None:
                     return False
                 self.session.delete(user)
@@ -926,7 +945,7 @@ class AuthenticationManager(RBACManager):
         bool
             True if username and password matches. False otherwise.
         """
-        user = self.session.query(User).filter_by(username=username).first()
+        user = self.session.scalars(select(User).filter_by(username=username).limit(1)).first()
         return check_password_hash(user.password, password) if user else False
 
     def get_user(self, username: str = None) -> Union[dict, bool]:
@@ -944,7 +963,8 @@ class AuthenticationManager(RBACManager):
         """
         try:
             if username is not None:
-                return self.session.query(User).filter_by(username=username).first().to_dict(self.session)
+                return self.session.scalars(select(User).filter_by(username=username).limit(1)
+                                            ).first().to_dict(self.session)
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -964,7 +984,8 @@ class AuthenticationManager(RBACManager):
         """
         try:
             if user_id is not None:
-                return self.session.query(User).filter_by(id=user_id).first().to_dict(self.session)
+                return self.session.scalars(select(User).filter_by(id=user_id).limit(1)
+                                            ).first().to_dict(self.session)
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -984,7 +1005,9 @@ class AuthenticationManager(RBACManager):
         """
         try:
             if username is not None:
-                return self.session.query(User).filter_by(username=username).first().get_user()['allow_run_as']
+                return self.session.scalars(select(User).filter_by(username=username).limit(1)
+                                            ).first().get_user()['allow_run_as']
+
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -998,7 +1021,7 @@ class AuthenticationManager(RBACManager):
             List of dictionaries representing the system users or False in case of integrity errors.
         """
         try:
-            users = self.session.query(User).all()
+            users = self.session.scalars(select(User)).all()
         except IntegrityError:
             self.session.rollback()
             return False
@@ -1033,7 +1056,7 @@ class RolesManager(RBACManager):
             Dictionary with the information of the role or a SecurityError code.
         """
         try:
-            role = self.session.query(Roles).filter_by(name=name).first()
+            role = self.session.scalars(select(Roles).filter_by(name=name).limit(1)).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
             return role.to_dict(self.session)
@@ -1054,7 +1077,7 @@ class RolesManager(RBACManager):
             Dictionary with the information of the role or a SecurityError code.
         """
         try:
-            role = self.session.query(Roles).filter_by(id=role_id).first()
+            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
             return role.to_dict(self.session)
@@ -1070,7 +1093,7 @@ class RolesManager(RBACManager):
             List of Roles objects or a SecurityError code.
         """
         try:
-            roles = self.session.query(Roles).all()
+            roles = self.session.scalars(select(Roles)).all()
             return roles
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
@@ -1124,7 +1147,7 @@ class RolesManager(RBACManager):
         """
         try:
             if role_id > MAX_ID_RESERVED:
-                role = self.session.query(Roles).filter_by(id=role_id).first()
+                role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
                 if role is None:
                     return False
                 self.session.delete(role)
@@ -1150,7 +1173,7 @@ class RolesManager(RBACManager):
         """
         try:
             if self.get_role(role_name) is not None and self.get_role(role_name)['id'] > MAX_ID_RESERVED:
-                role_id = self.session.query(Roles).filter_by(name=role_name).first().id
+                role_id = self.session.scalars(select(Roles).filter_by(name=role_name).limit(1)).first().id
                 if role_id:
                     self.delete_role(role_id=role_id)
                     return True
@@ -1169,10 +1192,10 @@ class RolesManager(RBACManager):
         """
         try:
             list_roles = list()
-            roles = self.session.query(Roles).all()
+            roles = self.session.scalars(select(Roles)).all()
             for role in roles:
                 if int(role.id) > MAX_ID_RESERVED:
-                    self.session.delete(self.session.query(Roles).filter_by(id=role.id).first())
+                    self.session.delete(self.session.scalars(select(Roles).filter_by(id=role.id).limit(1)).first())
                     self.session.commit()
                     list_roles.append(int(role.id))
             return list_roles
@@ -1196,7 +1219,7 @@ class RolesManager(RBACManager):
             Return True if the role was updated successfully or a SecurityError code.
         """
         try:
-            role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
+            role_to_update = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
             if role_to_update and role_to_update is not None:
                 if role_to_update.id > MAX_ID_RESERVED:
                     # Change the name of the role
@@ -1230,7 +1253,7 @@ class RulesManager(RBACManager):
             Dictionary with the information of the rule or a SecurityError code.
         """
         try:
-            rule = self.session.query(Rules).filter_by(id=rule_id).first()
+            rule = self.session.scalars(select(Rules).filter_by(id=rule_id).limit(1)).first()
             if not rule:
                 return SecurityError.RULE_NOT_EXIST
             return rule.to_dict()
@@ -1251,7 +1274,7 @@ class RulesManager(RBACManager):
             Dictionary with the information of the rule or a SecurityError code.
         """
         try:
-            rule = self.session.query(Rules).filter_by(name=rule_name).first()
+            rule = self.session.scalars(select(Rules).filter_by(name=rule_name).limit(1)).first()
             if not rule:
                 return SecurityError.RULE_NOT_EXIST
             return rule.to_dict()
@@ -1267,7 +1290,7 @@ class RulesManager(RBACManager):
             List of all the Rules objects or a SecurityError code.
         """
         try:
-            rules = self.session.query(Rules).all()
+            rules = self.session.scalars(select(Rules)).all()
             return rules
         except IntegrityError:
             return SecurityError.RULE_NOT_EXIST
@@ -1326,7 +1349,7 @@ class RulesManager(RBACManager):
         """
         try:
             if rule_id > MAX_ID_RESERVED:
-                rule = self.session.query(Rules).filter_by(id=rule_id).first()
+                rule = self.session.scalars(select(Rules).filter_by(id=rule_id).limit(1)).first()
                 if rule is None:
                     return False
                 self.session.delete(rule)
@@ -1353,7 +1376,7 @@ class RulesManager(RBACManager):
         try:
             if self.get_rule_by_name(rule_name) is not None and \
                     self.get_rule_by_name(rule_name)['id'] > MAX_ID_RESERVED:
-                rule_id = self.session.query(Rules).filter_by(name=rule_name).first().id
+                rule_id = self.session.scalars(select(Rules).filter_by(name=rule_name).limit(1)).first().id
                 if rule_id:
                     self.delete_rule(rule_id=rule_id)
                     return True
@@ -1372,10 +1395,10 @@ class RulesManager(RBACManager):
         """
         try:
             list_rules = list()
-            rules = self.session.query(Rules).all()
+            rules = self.session.scalars(select(Rules)).all()
             for rule in rules:
                 if int(rule.id) > MAX_ID_RESERVED:
-                    self.session.delete(self.session.query(Rules).filter_by(id=rule.id).first())
+                    self.session.delete(self.session.scalars(select(Rules).filter_by(id=rule.id).limit(1)).first())
                     self.session.commit()
                     list_rules.append(int(rule.id))
             return list_rules
@@ -1401,7 +1424,7 @@ class RulesManager(RBACManager):
             True if the rule was updated successfully or a SecurityError code otherwise.
         """
         try:
-            rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
+            rule_to_update = self.session.scalars(select(Rules).filter_by(id=rule_id).limit(1)).first()
             if rule_to_update and rule_to_update is not None:
                 if rule_to_update.id > MAX_ID_RESERVED:
                     # Rule is not a valid json
@@ -1448,7 +1471,7 @@ class PoliciesManager(RBACManager):
             Dictionary with the policy information or a SecurityError code.
         """
         try:
-            policy = self.session.query(Policies).filter_by(name=name).first()
+            policy = self.session.scalars(select(Policies).filter_by(name=name).limit(1)).first()
             if not policy:
                 return SecurityError.POLICY_NOT_EXIST
             return policy.to_dict(self.session)
@@ -1469,7 +1492,7 @@ class PoliciesManager(RBACManager):
             Dictionary with the policy information or a SecurityError code.
         """
         try:
-            policy = self.session.query(Policies).filter_by(id=policy_id).first()
+            policy = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first()
             if not policy:
                 return SecurityError.POLICY_NOT_EXIST
             return policy.to_dict(self.session)
@@ -1485,7 +1508,7 @@ class PoliciesManager(RBACManager):
             List with all the Policies objects or a SecurityError code.
         """
         try:
-            policies = self.session.query(Policies).all()
+            policies = self.session.scalars(select(Policies)).all()
             return policies
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
@@ -1566,7 +1589,7 @@ class PoliciesManager(RBACManager):
         """
         try:
             if int(policy_id) > MAX_ID_RESERVED:
-                policy = self.session.query(Policies).filter_by(id=policy_id).first()
+                policy = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first()
                 if policy is None:
                     return False
                 self.session.delete(policy)
@@ -1593,7 +1616,7 @@ class PoliciesManager(RBACManager):
         try:
             if self.get_policy(policy_name) is not None and \
                     self.get_policy(name=policy_name)['id'] > MAX_ID_RESERVED:
-                policy_id = self.session.query(Policies).filter_by(name=policy_name).first().id
+                policy_id = self.session.scalars(select(Policies).filter_by(name=policy_name).limit(1)).first().id
                 if policy_id:
                     self.delete_policy(policy_id=policy_id)
                     return True
@@ -1612,10 +1635,10 @@ class PoliciesManager(RBACManager):
         """
         try:
             list_policies = list()
-            policies = self.session.query(Policies).all()
+            policies = self.session.scalars(select(Policies)).all()
             for policy in policies:
                 if int(policy.id) > MAX_ID_RESERVED:
-                    self.session.delete(self.session.query(Policies).filter_by(id=policy.id).first())
+                    self.session.delete(self.session.scalars(select(Policies).filter_by(id=policy.id).limit(1)).first())
                     self.session.commit()
                     list_policies.append(int(policy.id))
             return list_policies
@@ -1644,7 +1667,7 @@ class PoliciesManager(RBACManager):
             True if the policy was updated successfully, False if the operation failed, or a SecurityError code.
         """
         try:
-            policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
+            policy_to_update = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first()
             if policy_to_update and policy_to_update is not None:
                 if policy_to_update.id > MAX_ID_RESERVED or not check_default:
                     # Policy is not a valid json
@@ -1703,17 +1726,20 @@ class UserRolesManager(RBACManager):
         try:
             # Create a role-policy relationship if both exist
             if user_id > MAX_ID_RESERVED or force_admin:
-                user = self.session.query(User).filter_by(id=user_id).first()
+                user = self.session.scalars(select(User).filter_by(id=user_id).limit(1)).first()
                 if user is None:
                     return SecurityError.USER_NOT_EXIST
-                role = self.session.query(Roles).filter_by(id=role_id).first()
+                role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
                 if position is not None or \
-                        self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first() is None:
+                        self.session.scalars(select(UserRoles).filter_by(user_id=user_id, role_id=role_id).limit(1)
+                                             ).first() is None:
                     if position is not None and \
-                            self.session.query(UserRoles).filter_by(user_id=user_id, level=position).first() and \
-                            self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first() is None:
+                            self.session.scalars(select(UserRoles).filter_by(user_id=user_id, level=position).limit(1)
+                                                 ).first() and \
+                            self.session.scalars(select(UserRoles).filter_by(user_id=user_id, role_id=role_id).limit(1)
+                                                 ).first() is None:
                         user_roles = [row for row in self.session.query(
                             UserRoles).filter(UserRoles.user_id == user_id, UserRoles.level >= position
                                               ).order_by(UserRoles.level).all()]
@@ -1723,7 +1749,8 @@ class UserRolesManager(RBACManager):
                             new_level += 1
 
                     user.roles.append(role)
-                    user_role = self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first()
+                    user_role = self.session.scalars(
+                        select(UserRoles).filter_by(user_id=user_id, role_id=role_id).limit(1)).first()
                     if position is None:
                         roles = user.get_roles()
                         position = len(roles) - 1
@@ -1782,10 +1809,11 @@ class UserRolesManager(RBACManager):
             List of the roles related to the specified user or False if the operation failed.
         """
         try:
-            user_roles = self.session.query(UserRoles).filter_by(user_id=user_id).order_by(UserRoles.level).all()
+            user_roles = self.session.scalars(select(UserRoles).filter_by(user_id=user_id).order_by(UserRoles.level)
+                                              ).all()
             roles = list()
             for relation in user_roles:
-                roles.append(self.session.query(Roles).filter_by(id=relation.role_id).first())
+                roles.append(self.session.scalars(select(Roles).filter_by(id=relation.role_id).limit(1)).first())
             return roles
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -1805,7 +1833,7 @@ class UserRolesManager(RBACManager):
             List of the users related to the specified user or False if the operation failed.
         """
         try:
-            role = self.session.query(Roles).filter_by(id=role_id).first()
+            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
             return map(partial(User.to_dict, session=self.session), role.users)
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -1827,10 +1855,10 @@ class UserRolesManager(RBACManager):
             True if the relationship exists, False if the relationship does not exist, or a SecurityError code.
         """
         try:
-            user = self.session.query(User).filter_by(id=user_id).first()
+            user = self.session.scalars(select(User).filter_by(id=user_id).limit(1)).first()
             if user is None:
                 return SecurityError.USER_NOT_EXIST
-            role = self.session.query(Roles).filter_by(id=role_id).first()
+            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
             if role is None:
                 return SecurityError.ROLE_NOT_EXIST
             role = user.roles.filter_by(id=role_id).first()
@@ -1878,15 +1906,16 @@ class UserRolesManager(RBACManager):
         """
         try:
             if user_id > MAX_ID_RESERVED:  # Administrator
-                user = self.session.query(User).filter_by(id=user_id).first()
+                user = self.session.scalars(select(User).filter_by(id=user_id).limit(1)).first()
                 if user is None:
                     return SecurityError.USER_NOT_EXIST
-                role = self.session.query(Roles).filter_by(id=role_id).first()
+                role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
-                if self.session.query(UserRoles).filter_by(user_id=user_id, role_id=role_id).first() is not None:
-                    user = self.session.query(User).get(user_id)
-                    role = self.session.query(Roles).get(role_id)
+                if self.session.scalars(select(UserRoles).filter_by(user_id=user_id, role_id=role_id).limit(1)
+                                        ).first() is not None:
+                    user = self.session.get(User, user_id)
+                    role = self.session.get(Roles, role_id)
                     user.roles.remove(role)
                     atomic and self.session.commit()
                     return True
@@ -1932,7 +1961,7 @@ class UserRolesManager(RBACManager):
         """
         try:
             if user_id > MAX_ID_RESERVED:
-                roles = self.session.query(User).filter_by(id=user_id).first().roles
+                roles = self.session.scalars(select(User).filter_by(id=user_id).limit(1)).first().roles
                 for role in roles:
                     self.remove_role_in_user(user_id=user_id, role_id=role.id, atomic=False)
                 self.session.commit()
@@ -1956,7 +1985,7 @@ class UserRolesManager(RBACManager):
         """
         try:
             if int(role_id) > MAX_ID_RESERVED:
-                users = self.session.query(Roles).filter_by(id=role_id).first().users
+                users = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first().users
                 for user in users:
                     if self.remove_user_in_role(user_id=user.id, role_id=role_id, atomic=False) is not True:
                         return SecurityError.RELATIONSHIP_ERROR
@@ -1987,7 +2016,7 @@ class UserRolesManager(RBACManager):
             True if the relationship was replaced successfully, False if the operation failed, or a SecurityError code.
         """
         if user_id > MAX_ID_RESERVED and self.exist_user_role(user_id=user_id, role_id=actual_role_id) and \
-                self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
+                self.session.scalars(select(Roles).filter_by(id=new_role_id).limit(1)).first() is not None:
             if self.remove_role_in_user(user_id=user_id, role_id=actual_role_id, atomic=False) is not True or \
                     self.add_user_to_role(user_id=user_id, role_id=new_role_id, position=position,
                                           atomic=False) is not True:
@@ -2042,23 +2071,27 @@ class RolesPoliciesManager(RBACManager):
             int
                 Highest level of the role relationships with its policies.
             """
-            return max([r.level for r in self.session.query(RolesPolicies).filter_by(role_id=role_id_filter).all()])
+            return max(
+                [r.level for r in self.session.scalars(select(RolesPolicies).filter_by(role_id=role_id_filter)).all()])
 
         try:
             # Create a role-policy relationship if both exist
             if int(role_id) > MAX_ID_RESERVED or force_admin:
-                role = self.session.query(Roles).filter_by(id=role_id).first()
+                role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
-                policy = self.session.query(Policies).filter_by(id=policy_id).first()
+                policy = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first()
                 if policy is None:
                     return SecurityError.POLICY_NOT_EXIST
-                if position is not None or self.session.query(
-                        RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is None:
+                if position is not None or self.session.scalars(
+                        select(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).limit(1)).first() is None:
                     if position is not None and \
-                            self.session.query(RolesPolicies).filter_by(role_id=role_id, level=position).first() and \
-                            self.session.query(RolesPolicies).filter_by(role_id=role_id,
-                                                                        policy_id=policy_id).first() is None:
+                            self.session.scalars(
+                                select(RolesPolicies).filter_by(role_id=role_id, level=position).limit(1)
+                            ).first() and \
+                            self.session.scalars(select(RolesPolicies).filter_by(role_id=role_id,
+                                                                                 policy_id=policy_id).limit(
+                                1)).first() is None:
                         role_policies = [row for row in self.session.query(
                             RolesPolicies).filter(RolesPolicies.role_id == role_id, RolesPolicies.level >= position
                                                   ).order_by(RolesPolicies.level).all()]
@@ -2068,13 +2101,15 @@ class RolesPoliciesManager(RBACManager):
                             new_level += 1
 
                     role.policies.append(policy)
-                    role_policy = self.session.query(RolesPolicies).filter_by(role_id=role_id,
-                                                                              policy_id=policy_id).first()
+                    role_policy = self.session.scalars(select(RolesPolicies).filter_by(role_id=role_id,
+                                                                                       policy_id=policy_id).limit(1)
+                                                       ).first()
                     if position is None or position > check_max_level(role_id) + 1:
                         position = len(role.get_policies()) - 1
                     else:
-                        max_position = max([row.level for row in self.session.query(RolesPolicies).filter_by(
-                            role_id=role_id).all()])
+                        max_position = max([row.level for row in self.session.scalars(select(RolesPolicies).
+                                                                                      filter_by(role_id=role_id)
+                                                                                      ).all()])
                         if max_position == 0 and len(list(role.policies)) - 1 == 0:
                             position = 0
                         elif position > max_position + 1:
@@ -2133,11 +2168,11 @@ class RolesPoliciesManager(RBACManager):
             List of policies related to the role or False if the operation failed.
         """
         try:
-            role_policies = self.session.query(RolesPolicies).filter_by(role_id=role_id).order_by(
-                RolesPolicies.level).all()
+            role_policies = self.session.scalars(select(RolesPolicies).filter_by(role_id=role_id).order_by(
+                RolesPolicies.level)).all()
             policies = list()
             for relation in role_policies:
-                policy = self.session.query(Policies).filter_by(id=relation.policy_id).first()
+                policy = self.session.scalars(select(Policies).filter_by(id=relation.policy_id).limit(1)).first()
                 if policy:
                     policies.append(policy)
             return policies
@@ -2159,7 +2194,7 @@ class RolesPoliciesManager(RBACManager):
             List of roles having the specified policy or False if the operation failed.
         """
         try:
-            policy = self.session.query(Policies).filter_by(id=policy_id).first()
+            policy = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first()
             roles = policy.roles
             return roles
         except (IntegrityError, AttributeError):
@@ -2182,10 +2217,10 @@ class RolesPoliciesManager(RBACManager):
             True if the relationship exists, False if the relationship does not exist, or a SecurityError code.
         """
         try:
-            role = self.session.query(Roles).filter_by(id=role_id).first()
+            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
             if role is None:
                 return SecurityError.ROLE_NOT_EXIST
-            policy = self.session.query(Policies).filter_by(id=policy_id).first()
+            policy = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first()
             if policy is None:
                 return SecurityError.POLICY_NOT_EXIST
             policy = role.policies.filter_by(id=policy_id).first()
@@ -2233,19 +2268,20 @@ class RolesPoliciesManager(RBACManager):
         """
         try:
             if int(role_id) > MAX_ID_RESERVED:  # Administrator
-                role = self.session.query(Roles).filter_by(id=role_id).first()
+                role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
-                policy = self.session.query(Policies).filter_by(id=policy_id).first()
+                policy = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first()
                 if policy is None:
                     return SecurityError.POLICY_NOT_EXIST
 
-                role_policy = self.session.query(RolesPolicies).filter_by(role_id=role_id,
-                                                                          policy_id=policy_id).first()
+                role_policy = self.session.scalars(
+                    select(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).limit(1)
+                ).first()
 
                 if role_policy is not None:
-                    role = self.session.query(Roles).get(role_id)
-                    policy = self.session.query(Policies).get(policy_id)
+                    role = self.session.get(Roles, role_id)
+                    policy = self.session.get(Policies, policy_id)
                     role.policies.remove(policy)
 
                     # Update position value
@@ -2300,7 +2336,7 @@ class RolesPoliciesManager(RBACManager):
         """
         try:
             if int(role_id) > MAX_ID_RESERVED:
-                policies = self.session.query(Roles).filter_by(id=role_id).first().policies
+                policies = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first().policies
                 for policy in policies:
                     if self.remove_policy_in_role(role_id=role_id, policy_id=policy.id, atomic=False) is not True:
                         return SecurityError.RELATIONSHIP_ERROR
@@ -2325,7 +2361,7 @@ class RolesPoliciesManager(RBACManager):
         """
         try:
             if int(policy_id) > MAX_ID_RESERVED:
-                roles = self.session.query(Policies).filter_by(id=policy_id).first().roles
+                roles = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first().roles
                 for rol in roles:
                     self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id, atomic=False)
                 self.session.commit()
@@ -2353,7 +2389,7 @@ class RolesPoliciesManager(RBACManager):
         """
         if int(role_id) > MAX_ID_RESERVED and \
                 self.exist_role_policy(role_id=role_id, policy_id=current_policy_id) and \
-                self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
+                self.session.scalars(select(Policies).filter_by(id=new_policy_id).limit(1)).first() is not None:
             if self.remove_policy_in_role(role_id=role_id, policy_id=current_policy_id, atomic=False) is not True or \
                     self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id, atomic=False) is not True:
                 return SecurityError.RELATIONSHIP_ERROR
@@ -2394,16 +2430,19 @@ class RolesRulesManager(RBACManager):
         try:
             # Create a rule-role relationship if both exist
             if int(rule_id) > MAX_ID_RESERVED or force_admin:
-                rule = self.session.query(Rules).filter_by(id=rule_id).first()
+                rule = self.session.scalars(select(Rules).filter_by(id=rule_id).limit(1)).first()
                 if rule is None:
                     return SecurityError.RULE_NOT_EXIST
-                role = self.session.query(Roles).filter_by(id=role_id).first()
+                role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
 
-                if self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first() is None:
+                if self.session.scalars(select(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).limit(1)
+                                        ).first() is None:
                     role.rules.append(rule)
-                    role_rule = self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first()
+                    role_rule = self.session.scalars(
+                        select(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).limit(1)
+                    ).first()
                     role_rule.created_at = created_at or get_utc_now()
                     atomic and self.session.commit()
                     return True
@@ -2428,10 +2467,11 @@ class RolesRulesManager(RBACManager):
             List of rules related to the role or False if the operation failed.
         """
         try:
-            rule_roles = self.session.query(RolesRules).filter_by(role_id=role_id).order_by(RolesRules.id).all()
+            rule_roles = self.session.scalars(
+                select(RolesRules).filter_by(role_id=role_id).order_by(RolesRules.id)).all()
             rules = list()
             for relation in rule_roles:
-                rules.append(self.session.query(Rules).filter_by(id=relation.rule_id).first())
+                rules.append(self.session.scalars(select(Rules).filter_by(id=relation.rule_id).limit(1)).first())
             return rules
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -2451,10 +2491,11 @@ class RolesRulesManager(RBACManager):
             List of roles related to the rule or False if the operation failed.
         """
         try:
-            role_rules = self.session.query(RolesRules).filter_by(rule_id=rule_id).order_by(RolesRules.id).all()
+            role_rules = self.session.scalars(
+                select(RolesRules).filter_by(rule_id=rule_id).order_by(RolesRules.id)).all()
             roles = list()
             for relation in role_rules:
-                roles.append(self.session.query(Roles).filter_by(id=relation.role_id).first())
+                roles.append(self.session.scalars(select(Roles).filter_by(id=relation.role_id).limit(1)).first())
             return roles
         except (IntegrityError, AttributeError):
             self.session.rollback()
@@ -2476,10 +2517,10 @@ class RolesRulesManager(RBACManager):
             True if the relationship exists, False or a SecurityError code otherwise.
         """
         try:
-            rule = self.session.query(Rules).filter_by(id=rule_id).first()
+            rule = self.session.scalars(select(Rules).filter_by(id=rule_id).limit(1)).first()
             if rule is None:
                 return SecurityError.RULE_NOT_EXIST
-            role = self.session.query(Roles).filter_by(id=role_id).first()
+            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
             if role is None:
                 return SecurityError.ROLE_NOT_EXIST
             match = role.rules.filter_by(id=rule_id).first()
@@ -2510,15 +2551,16 @@ class RolesRulesManager(RBACManager):
         """
         try:
             if int(rule_id) > MAX_ID_RESERVED:  # Required rule
-                rule = self.session.query(Rules).filter_by(id=rule_id).first()
+                rule = self.session.scalars(select(Rules).filter_by(id=rule_id).limit(1)).first()
                 if rule is None:
                     return SecurityError.RULE_NOT_EXIST
-                role = self.session.query(Roles).filter_by(id=role_id).first()
+                role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
                 if role is None:
                     return SecurityError.ROLE_NOT_EXIST
-                if self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first() is not None:
-                    rule = self.session.query(Rules).get(rule_id)
-                    role = self.session.query(Roles).get(role_id)
+                if self.session.scalars(select(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).limit(1)
+                                        ).first() is not None:
+                    rule = self.session.get(Rules, rule_id)
+                    role = self.session.get(Roles, role_id)
                     rule.roles.remove(role)
                     atomic and self.session.commit()
                     return True
@@ -2564,7 +2606,7 @@ class RolesRulesManager(RBACManager):
         """
         try:
             if int(rule_id) > MAX_ID_RESERVED:
-                self.session.query(Rules).filter_by(id=rule_id).first().roles = list()
+                self.session.scalars(select(Rules).filter_by(id=rule_id).limit(1)).first().roles = list()
                 self.session.commit()
                 return True
             return SecurityError.ADMIN_RESOURCES
@@ -2587,7 +2629,7 @@ class RolesRulesManager(RBACManager):
         """
         try:
             if int(role_id) > MAX_ID_RESERVED:
-                self.session.query(Roles).filter_by(id=role_id).first().rules = list()
+                self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first().rules = list()
                 self.session.commit()
                 return True
         except (IntegrityError, TypeError):
@@ -2612,7 +2654,7 @@ class RolesRulesManager(RBACManager):
             True if the relationship was replaced successfully, False or a SecurityError code otherwise.
         """
         if current_role_id > MAX_ID_RESERVED and self.exist_role_rule(rule_id=rule_id, role_id=current_role_id) \
-                and self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
+                and self.session.session.scalars(select(Roles).filter_by(id=new_role_id).limit(1)).first() is not None:
             if self.remove_role_in_rule(rule_id=rule_id, role_id=current_role_id, atomic=False) is not True or \
                     self.add_rule_to_role(rule_id=rule_id, role_id=new_role_id, atomic=False) is not True:
                 return SecurityError.RELATIONSHIP_ERROR
@@ -2673,7 +2715,7 @@ class DatabaseManager:
         str
             Database version.
         """
-        return str(self.sessions[database].execute("pragma user_version").first()[0])
+        return str(self.sessions[database].execute(text("pragma user_version")).first()[0])
 
     def insert_default_resources(self, database: str):
         """Insert default security resources into the given database.
@@ -2876,8 +2918,8 @@ class DatabaseManager:
                                    "Attempting to migrate relationships")
                     roles_rules = self.get_table(self.sessions[source], RolesRules).filter(
                         RolesRules.rule_id == rule.id).order_by(RolesRules.id.asc()).all()
-                    new_rule_id = self.sessions[target].query(Rules).filter_by(
-                        rule=str(rule.rule)).first().id
+                    new_rule_id = self.sessions[target].scalars(select(Rules).filter_by(rule=str(rule.rule)).limit(1)
+                                                                ).first().id
                     with RolesRulesManager(self.sessions[target]) as role_rules_manager:
                         for role_rule in roles_rules:
                             role_rules_manager.add_rule_to_role(role_id=role_rule.role_id,
@@ -2901,8 +2943,9 @@ class DatabaseManager:
                                    "Attempting to migrate relationships")
                     roles_policies = self.get_table(self.sessions[source], RolesPolicies).filter(
                         RolesPolicies.policy_id == policy.id).order_by(RolesPolicies.id.asc()).all()
-                    new_policy_id = self.sessions[target].query(Policies).filter_by(
-                        policy=str(policy.policy)).first().id
+                    new_policy_id = self.sessions[target].scalars(select(Policies).
+                                                                  filter_by(policy=str(policy.policy)).limit(1)
+                                                                  ).first().id
                     with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
                         for role_policy in roles_policies:
                             role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
@@ -3031,7 +3074,7 @@ class DatabaseManager:
         version : int
             New database version.
         """
-        self.sessions[database].execute(f'pragma user_version={version}')
+        self.sessions[database].execute(text(f'pragma user_version={version}'))
 
 
 def check_database_integrity():
