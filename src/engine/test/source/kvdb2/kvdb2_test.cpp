@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <kvdb2/kvdbManager.hpp>
+#include <kvdb2/kvdbExcept.hpp>
 #include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
@@ -40,7 +41,14 @@ protected:
 
     void TearDown() override
     {
-        m_spKVDBManager->finalize();
+        try
+        {
+            m_spKVDBManager->finalize();
+        }
+        catch (kvdbManager::KVDBException& e)
+        {
+            FAIL() << "KVDBException: " << e.what();
+        }
 
         if (std::filesystem::exists(KVDB_PATH))
         {
