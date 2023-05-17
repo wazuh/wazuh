@@ -23,14 +23,20 @@ void KVDBManager::initialize()
 {
     initializeOptions();
     initializeMainDB();
+    m_isShuttingDown = false;
     m_isInitialized = true;
 }
 
 void KVDBManager::finalize()
 {
-    std::cout << "KVDB Manager: Finalizing..." << std::endl;
+    m_isShuttingDown = true;
     finalizeMainDB();
     m_isInitialized = false;
+}
+
+bool KVDBManager::skipAutoRemoveEnabled()
+{
+    return m_isShuttingDown;
 }
 
 rocksdb::ColumnFamilyHandle* KVDBManager::createColumnFamily(const std::string& name)
@@ -143,9 +149,8 @@ void KVDBManager::finalizeMainDB()
     delete m_pRocksDB;
 }
 
-std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
+KVDBHandler KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
-    std::cout << fmt::format("KVDB Manager: Get KVDB Handler for DB: {} Scope: {}", dbName, scopeName) << std::endl;
     rocksdb::ColumnFamilyHandle* cfHandle;
 
     if (m_mapCFHandles.count(dbName))
@@ -166,7 +171,6 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbN
 
 void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
-    std::cout << fmt::format("KVDB Manager: Remove KVDB Handler for DB: {} Scope: {}", dbName, scopeName) << std::endl;
     bool isRemoved = false;
     m_kvdbHandlerCollection->removeKVDBHandler(dbName, scopeName, isRemoved);
     if (isRemoved && m_mapCFHandles.size())
@@ -273,6 +277,5 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBHandlersInfo()
     }
     return retValue;
 }
-
 
 } // namespace kvdbManager
