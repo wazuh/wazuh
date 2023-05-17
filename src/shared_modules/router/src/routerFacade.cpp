@@ -13,7 +13,7 @@
 #include "observer.hpp"
 #include "socketServer.hpp"
 #include "subscriber.hpp"
-#include <nlohmann/json.hpp>
+#include <external/nlohmann/json.hpp>
 
 constexpr auto DEFAULT_SOCKET_PATH = "/tmp/";
 

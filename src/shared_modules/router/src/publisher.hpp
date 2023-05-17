@@ -16,8 +16,8 @@
 #include "provider.hpp"
 #include "socketServer.hpp"
 #include "subscriber.hpp"
+#include <external/nlohmann/json.hpp>
 #include <memory>
-#include <nlohmann/json.hpp>
 #include <vector>
 
 class Publisher final : public Provider<const std::vector<char>&>

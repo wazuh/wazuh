@@ -13,11 +13,11 @@
 #define _REMOTE_PROVIDER_HPP
 
 #include "epollWrapper.hpp"
-#include "nlohmann/json.hpp"
 #include "observer.hpp"
 #include "remoteStateHelper.hpp"
 #include "routerProvider.hpp"
 #include "socketClient.hpp"
+#include <external/nlohmann/json.hpp>
 #include <functional>
 
 class RemoteProvider final
