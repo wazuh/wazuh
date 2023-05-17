@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <chrono>
 #include <cstring>
+#include <filesystem>
 #include <functional>
 #include <iomanip>
 #include <iostream>
@@ -483,6 +484,19 @@ public:
             {
                 closeSocket();
                 throw std::runtime_error {"Failed to set socket options"};
+            }
+
+            if (connectInfo.type == SocketType::UNIX)
+            {
+                // If the parent directory not exists. Create it.
+                auto sunAddr = reinterpret_cast<const sockaddr_un*>(connectInfo.addr);
+
+                std::filesystem::path path {sunAddr->sun_path};
+                // if not exists create it.
+                if (!std::filesystem::exists(path.parent_path()))
+                {
+                    std::filesystem::create_directories(path.parent_path());
+                }
             }
 
             if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) == 0 && T::listen(m_sock, SOMAXCONN) == 0)

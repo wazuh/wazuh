@@ -20,17 +20,32 @@
 #define EXPORTED
 #endif
 
+#include "logging_helper.h"
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
-#include "logging_helper.h"
-
+    /**
+     * @brief Log callback function.
+     *
+     * @param level Log level.
+     * @param log Log message.
+     * @param tag Log tag.
+     */
     typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 
+    /**
+     * @brief Start router mechanism.
+     *
+     * @param callbackLog Log callback function.
+     */
     EXPORTED void router_start(log_callback_t callbackLog);
 
+    /**
+     * @brief Stop router mechanism.
+     *
+     */
     EXPORTED void router_stop();
 
 #ifdef __cplusplus

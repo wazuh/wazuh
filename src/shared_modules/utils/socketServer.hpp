@@ -100,10 +100,7 @@ public:
     void listen(const std::function<void(const int, const char*, uint32_t, const char*, uint32_t)>& onRead)
     {
         // Remove any existing socket file
-        if (!std::filesystem::remove(m_socketPath))
-        {
-            std::cerr << "Failed to remove existing socket file: " << m_socketPath << std::endl;
-        }
+        std::filesystem::remove(m_socketPath);
 
         // Build the address.
         auto unixAddress {UnixAddress::builder().address(m_socketPath).build()};

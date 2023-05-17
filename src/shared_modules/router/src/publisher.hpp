@@ -57,7 +57,9 @@ public:
                         [this, fd](const std::vector<char>& message)
                         { m_socketServer->send(fd, message.data(), message.size()); },
                         jsonBody.at("subscriberId").get_ref<const std::string&>()));
-                    m_socketServer->send(fd, "OK", 2);
+
+                    const std::string responseString = R"({"Result":"OK"})";
+                    m_socketServer->send(fd, responseString.c_str(), responseString.size());
                 }
             });
     }

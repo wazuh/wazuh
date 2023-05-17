@@ -15,7 +15,7 @@
 #include "subscriber.hpp"
 #include <external/nlohmann/json.hpp>
 
-constexpr auto DEFAULT_SOCKET_PATH = "/tmp/";
+constexpr auto DEFAULT_SOCKET_PATH = "queue/router/";
 
 void RouterFacade::initialize()
 {
