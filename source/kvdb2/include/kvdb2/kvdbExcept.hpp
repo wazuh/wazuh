@@ -16,7 +16,8 @@ public:
     enum class Type {
         // 0 is reserved for success
         UNKNOWN_ERROR = 1,            ///< Unknown error (default)
-        FILESYSTEM_ERROR             ///< Filesystem related error
+        FILESYSTEM_ERROR,             ///< Filesystem related error
+        DATABASE_IN_USE_ERROR         ///< Database is in use
     };
 
     /**

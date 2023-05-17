@@ -1,13 +1,26 @@
 #include <kvdb2/kvdbSpace.hpp>
-
+#include <logging/logging.hpp>
 #include <fmt/format.h>
 
 namespace kvdbManager
 {
 
+// create KVDBSpace constructor with parameters inside declaration
+KVDBSpace::KVDBSpace(IKVDBHandlerManager* manager,
+                     rocksdb::DB* db,
+                     rocksdb::ColumnFamilyHandle* cfHandle,
+                     const std::string& spaceName,
+                     const std::string& scopeName)
+    : KVDBManagedHandler(manager, spaceName, scopeName)
+    , m_pRocksDB(db)
+    , m_pCFhandle(cfHandle)
+{
+    std::cout << fmt::format("KVDBSpace::KVDBSpace - spaceName {} - scopeName {} ", m_dbName.c_str(), m_scopeName.c_str()) << std::endl;
+}
+
 KVDBSpace::~KVDBSpace()
 {
-    m_handlerManager->removeKVDBHandler(m_spaceName, m_scopeName);
+    std::cout << fmt::format("KVDBSpace::~KVDBSpace - spaceName {} - scopeName {} ", m_dbName.c_str(), m_scopeName.c_str()) << std::endl;
 }
 
 std::variant<bool, base::Error> KVDBSpace::set(const std::string& key, const std::string& value)
@@ -69,7 +82,7 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBSpac
 
     if (!iter->status().ok())
     {
-        return base::Error { fmt::format("Database '{}': Couldn't iterate over database: '{}'", m_spaceName, iter->status().ToString()) };
+        return base::Error { fmt::format("Database '{}': Couldn't iterate over database: '{}'", m_dbName, iter->status().ToString()) };
     }
 
     iter->Reset();
