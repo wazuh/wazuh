@@ -5,9 +5,12 @@ $TMP_BACKUP_DIR               = "wazuh_backup_tmp"
 $Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\"
 $Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
 
+# Delete previous upgrade.log
+Remove-Item -Path ".\upgrade\upgrade.log" -ErrorAction SilentlyContinue
+
 # Select powershell
 if (Test-Path "$env:windir\sysnative") {
-    write-output "$(Get-Date -format u) Sysnative Powershell will be used to access the registry." >> .\upgrade\upgrade.log
+    write-output "$(Get-Date -format u) - Sysnative Powershell will be used to access the registry." >> .\upgrade\upgrade.log
     Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 } else {
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -229,7 +232,7 @@ function install
 
 # Get current version
 $current_version = (Get-Content VERSION)
-write-output "$(Get-Date -format u) - Current version: $($current_version)." > .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
 
 # Get process name
 $current_process = "wazuh-agent"
