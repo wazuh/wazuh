@@ -1,4 +1,0 @@
-name: integration/windows-base/0
-decoders:
-- decoder/windows-json/0
-- decoder/windows-event-decoder/0
