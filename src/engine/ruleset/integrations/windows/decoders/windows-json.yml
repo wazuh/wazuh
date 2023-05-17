@@ -17,7 +17,7 @@ sources:
   - decoder/integrations/0
 
 check:
-  - event.module: windows
+  - wazuh.origin: EventChannel
 
 parse:
   logpar:
