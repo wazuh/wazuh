@@ -8,7 +8,7 @@ from commands import EngineCommand
 
 class EngineRequestBuilder:
     """ Represents a request to the engine"""
-    def __init__(self, version: str):
+    def __init__(self, version: int):
         """
         Initialize the EngineRequestBuilder object.
 
@@ -46,19 +46,17 @@ class EngineRequestBuilder:
         """
         self.internal_dict["command"] = command.value
 
-    def add_parameter(self, key: str, value: Any):
+    def add_parameters(self, parameters: Dict[str, Any]):
         """
         Add a parameter to the engine request.
 
         Parameters
         ----------
-        key : str
-            The key of the parameter.
-        value : Any
-            The value of the parameter.
+        parameters: Dict[str, Any]
+            Dictionary with the parameters to add
         """
         self.internal_dict.setdefault("parameters", {})
-        self.internal_dict["parameters"][key] = value
+        self.internal_dict["parameters"].update(parameters)
 
     def to_dict(self) -> Dict[str, Any]:
         """
