@@ -23,7 +23,6 @@
 #include <cmds/details/stackExecutor.hpp>
 #include <hlp/logpar.hpp>
 #include <hlp/registerParsers.hpp>
-// TODO: KVDB: remove this reference -> refactor builder
 #include <kvdb/kvdbManager.hpp>
 #include <kvdb2/kvdbManager.hpp>
 #include <logging/logging.hpp>
@@ -176,9 +175,8 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<router::Router> router;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
+    std::shared_ptr<kvdb_manager::KVDBManager> kvdb;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
-    // TODO: KVDB: remove this reference. Refactor builder
-    std::shared_ptr<kvdb_manager::KVDBManager> _kvdb;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
     std::shared_ptr<base::queue::ConcurrentQueue<base::Event>> eventQueue;
     std::shared_ptr<schemf::Schema> schema;
@@ -220,11 +218,10 @@ void runStart(ConfHandler confManager)
             api::kvdb::handlers::registerHandlers(kvdbManager, kvdbScope, api);
 
             // KVDB1
-            _kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metrics);
+            kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metrics);
 
             LOG_DEBUG("KVDB API registered.");
         }
-
         // Store
         {
             store = std::make_shared<store::FileDriver>(fileStorage);
@@ -274,8 +271,7 @@ void runStart(ConfHandler confManager)
             builder::internals::dependencies deps;
             deps.logparDebugLvl = 0;
             deps.logpar = logpar;
-            // TODO: KVDB: change this reference to kvdb2 -> refactor builder
-            deps.kvdbManager = _kvdb;
+            deps.kvdbManager = kvdb;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             deps.schema = schema;
             deps.forceFieldNaming = true;
@@ -332,7 +328,7 @@ void runStart(ConfHandler confManager)
             // Register the Graph command
             api::graph::handlers::Config graphConfig {
                 store,
-                _kvdb,
+                kvdb,
             };
             api::graph::handlers::registerHandlers(graphConfig, api);
             LOG_DEBUG("Graph API registered.");

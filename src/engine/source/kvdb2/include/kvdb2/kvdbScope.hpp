@@ -13,6 +13,7 @@ class KVDBScope : public IKVDBScope
 {
 public:
     KVDBScope(IKVDBHandlerManager* handlerManager, const std::string& name);
+    ~KVDBScope();
 
     bool initialize();
 
