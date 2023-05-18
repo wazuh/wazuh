@@ -22,8 +22,12 @@ runs:
       shell: bash
       run: |
         if [[ "${{ inputs.target }}" == "winagent" ]]; then
-          sudo dpkg --add-architecture i386 && sudo apt-get update
-          sudo apt-get install -y --install-recommends wine-stable wine32
+          sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources
+          sudo apt-get update
+          sudo apt-get install -y --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine-stable-i386 wine-stable-amd64 winehq-stable
         else
           echo "Skipping wine installation for this target"
         fi
