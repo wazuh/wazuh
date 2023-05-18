@@ -15,8 +15,6 @@ namespace kvdbManager
 class IKVDBScope
 {
 public:
-    virtual void setName(const std::string& name) = 0;
-    virtual std::string getName() const = 0;
     virtual KVDBHandler getKVDBHandler(const std::string& dbName) = 0;
 };
 

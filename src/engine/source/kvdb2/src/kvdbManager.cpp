@@ -74,9 +74,6 @@ std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeNa
                 std::make_shared<KVDBScope>(this, scopeName)));
 
         auto& retScope = m_mapScopes[scopeName];
-
-        retScope->initialize();
-
         return retScope;
     }
 

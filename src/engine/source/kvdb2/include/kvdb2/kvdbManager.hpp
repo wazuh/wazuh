@@ -91,7 +91,7 @@ private:
 
     std::atomic<bool> m_isInitialized { false };
     std::atomic<bool> m_isShuttingDown { false };
-    std::atomic<bool> m_isDBLoaded { false };
+
 };
 
 } // namespace kvdbManager
