@@ -5,17 +5,14 @@
 import logging
 from typing import Optional
 
-from wazuh.engine.request_builder import EngineRequestBuilder
-from wazuh.engine.commands import MetricCommand
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.engine import metrics
+from api.util import raise_if_exc
 
 logger = logging.getLogger('wazuh-api')
 
-# TODO Redefine HARDCODED values
 # TODO Define the max number of limit
 HARDCODED_VALUE_TO_SPECIFY = 10000
-HARDCODED_ORIGIN_NAME = "metric"
-HARDCODED_ORIGIN_MODULE = "metric"
-ENGINE_METRICS_VERSION = 1
 
 
 async def get_metrics(request, scope_name: Optional[str] = None,  instrument_name: Optional[str] = None,
@@ -50,20 +47,26 @@ async def get_metrics(request, scope_name: Optional[str] = None,  instrument_nam
     -------
     TODO
     """
-    request_builder = EngineRequestBuilder(ENGINE_METRICS_VERSION)
-    request_builder.add_origin(name=HARDCODED_ORIGIN_NAME, module=HARDCODED_ORIGIN_MODULE)
 
-    if scope_name is None and instrument_name is None:
-        request_builder.add_command(command=MetricCommand.DUMP)
-    elif scope_name is None:
-        #TODO Error Instrument name must be None too
-        return
-    elif instrument_name is None:
-        #TODO Error Scope name must be None too
-        return
-    else:
-        request_builder.add_command(command=MetricCommand.LIST)
-        request_builder.add_parameters(parameters={"scopeName": scope_name, "instrumentName": instrument_name})
+    f_kwargs = {
+        'scope_name': scope_name,
+        'instrument_name': instrument_name,
+        'select': select,
+        'sort': sort,
+        'search': search,
+        'offset': offset,
+        'limit': limit
+    }
+
+    dapi = DistributedAPI(f=metrics.get_metrics,
+                          f_kwargs=f_kwargs,
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+
+    data = raise_if_exc(await dapi.distribute_function())
 
     return
 
@@ -93,9 +96,23 @@ async def get_instruments(request, select: Optional[str] = None, sort: Optional[
     -------
     TODO
     """
-    request_builder = EngineRequestBuilder(version=ENGINE_METRICS_VERSION)
-    request_builder.add_origin(name=HARDCODED_ORIGIN_NAME, module=HARDCODED_ORIGIN_MODULE)
-    request_builder.add_command(command=MetricCommand.LIST)
+    f_kwargs = {
+        'select': select,
+        'sort': sort,
+        'search': search,
+        'offset': offset,
+        'limit': limit
+    }
+
+    dapi = DistributedAPI(f=metrics.get_instruments,
+                          f_kwargs=f_kwargs,
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+
+    data = raise_if_exc(await dapi.distribute_function())
 
     return
 
@@ -121,19 +138,26 @@ async def enable_metric(request, scope_name: Optional[str] = None, instrument_na
     -------
     TODO
     """
-    request_builder = EngineRequestBuilder(version=ENGINE_METRICS_VERSION)
-    request_builder.add_origin(name=HARDCODED_ORIGIN_NAME, module=HARDCODED_ORIGIN_MODULE)
-    request_builder.add_command(command=MetricCommand.ENABLE)
-    request_builder.add_parameters({
-        "scopeName": scope_name,
-        "instrumentName": instrument_name,
-        "status": enable
-    })
+    f_kwargs = {
+        'scope_name': scope_name,
+        'instrument_name': instrument_name,
+        'enable': enable
+    }
+
+    dapi = DistributedAPI(f=metrics.enable_metric,
+                          f_kwargs=f_kwargs,
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+
+    data = raise_if_exc(await dapi.distribute_function())
 
     return
 
 
-async def test_dummy_metric(request):
+async def get_test_dummy_metric(request):
     """Generate dummy metrics for testing.
 
     Parameters
@@ -144,8 +168,14 @@ async def test_dummy_metric(request):
     -------
     TODO
     """
-    request_builder = EngineRequestBuilder(version=ENGINE_METRICS_VERSION)
-    request_builder.add_origin(name=HARDCODED_ORIGIN_NAME, module=HARDCODED_ORIGIN_MODULE)
-    request_builder.add_command(command=MetricCommand.TEST)
+    dapi = DistributedAPI(f=metrics.get_test_dummy_metric,
+                          f_kwargs={},
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+
+    data = raise_if_exc(await dapi.distribute_function())
 
     return
