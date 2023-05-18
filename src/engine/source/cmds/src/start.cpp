@@ -208,7 +208,6 @@ void runStart(ConfHandler confManager)
                 [kvdbManager]()
                 {
                     LOG_INFO("KVDB terminated.");
-                    kvdbManager->finalize();
                 });
 
             auto kvdbScope = kvdbManager->getKVDBScope("api");
