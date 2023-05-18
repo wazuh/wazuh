@@ -14,7 +14,7 @@ metadata:
     date: 2023/01/23
   references:
     - https://learn.microsoft.com/es-es/sysinternals/downloads/sysmon
-  versions: [Vista, 7, 8, 10, 11, Server 2012, Server 2016, Server 2019, Server 2022]
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 check:
   - ~windows.Event.System.Provider.@Name: Microsoft-Windows-Sysmon
@@ -27,8 +27,6 @@ normalize:
     - event.kind: event
 
     # Add categorization fields
-    - event:  +kvdb_get_merge/sysmon_categories/$event.code
-
     - rule.name: $~windows.Event.EventData.RuleName
     - event.hash: $~windows.Event.EventData.Hash
     - ~temp.hashes: +parse_key_value/$~windows.Event.EventData.Hashes/=/,/'/'
@@ -55,11 +53,8 @@ normalize:
     - process.name: $~temp.file_data.name
     - ~temp.file_data: +parse_file/$process.parent.executable
     - process.parent.name: $~temp.file_data.name
-    #- process.args: +regex_extract/$process.command_line/("[^"]+"|[^\s"]+) # ideally with a regex to array
     - process.args: '+split/$process.command_line/ '
-    # - process.args_count
     - process.parent.args: '+split/$process.parent.command_line/ '
-    #- process.parent.args_count
 
 
   ## File fields
@@ -132,11 +127,6 @@ normalize:
  - check: event.code==22
    map:
     - network.protocol: dns
-  # Splits the QueryResults field that contains the DNS responses.
- #- check: $~windows.Event.EventData.QueryResults
- #  map:
- #   - ~temp.QueryRresultsArray: $~windows.Event.EventData.QueryResults
-    # Needs parsing each element of the array
 
  - check: $~windows.Event.EventData.SignatureStatus==Valid
    map:
@@ -161,7 +151,6 @@ normalize:
  - check: event.code==1 OR event.code==23  OR event.code==24 OR event.code==25 OR event.code==26
    map:
     - process.hash: $~temp.hashes
-    #- process.pe.imphash: process.hash.imphash
 
  - check: event.code==6 OR event.code==7  OR event.code==15
    map:
@@ -177,9 +166,7 @@ normalize:
     - ~temp.registry.array.0: +delete
     - registry.key: +join/$~temp.registry.array/\\
     - registry.value: +regex_extract/$registry.path/^.*\\\\(.*)$
-    # This could be better than what is done in line 181:
-    # - ~temp.is_binary_data: +r_match/~windows.Event.EventData.Details/^Binary Data/
-
+    
  - check: (event.code==12 OR event.code==13  OR event.code==14) AND +starts_with/~windows.Event.EventData.Details/QWORD
    map:
     - registry.data.type: SZ_QWORD
