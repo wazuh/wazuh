@@ -15,18 +15,18 @@ metadata:
   description: Decoder for Suricata solution
 
 definitions:
-  is_good_appProto: +s_ne/suricata.eve.app_proto/failed AND +s_ne/suricata.eve.app_proto/template AND +s_ne/suricata.eve.app_proto/template-rust
+  is_good_appProto: +string_not_equal/suricata.eve.app_proto/failed AND +string_not_equal/suricata.eve.app_proto/template AND +string_not_equal/suricata.eve.app_proto/template-rust
 
 check:
-  - ~json.event_type: +ef_exists
+  - ~json.event_type: +exists
 
 normalize:
   - map:
       - suricata.eve: $~json
-      - ~json: +ef_delete
+      - ~json: +delete
       - event.module: suricata
       - event.kind: event
-      - event.category: +a_append/network
+      - event.category: +array_append/network
       - event.created: $suricata.eve.timestamp
       - source.address: $suricata.eve.src_ip
       - source.ip: $suricata.eve.src_ip
@@ -37,20 +37,20 @@ normalize:
       - network.transport: $suricata.eve.proto
 
   - map:
-      - suricata.eve.app_proto: +s_lo/$suricata.eve.app_proto
+      - suricata.eve.app_proto: +downcase/$suricata.eve.app_proto
 
   - check: $is_good_appProto
     map:
       - network.protocol: $suricata.eve.app_proto
 
   - check:
-      - suricata.eve.app_proto: +s_eq/ftp-data
+      - suricata.eve.app_proto: +string_equal/ftp-data
     map:
       - network.protocol: ftp
 
-      - suricata.eve.event_type: +s_lo/$suricata.eve.event_type
-      - suricata.eve.netwrok.transport: +s_lo/$suricata.eve.network.transport
-      - suricata.eve.proto: +s_lo/$suricata.eve.proto
+      - suricata.eve.event_type: +downcase/$suricata.eve.event_type
+      - suricata.eve.netwrok.transport: +downcase/$suricata.eve.network.transport
+      - suricata.eve.proto: +downcase/$suricata.eve.proto
 
       - destination.bytes: $suricata.eve.flow.bytes_toclient
       - destination.mac: $suricata.eve.ether.dest_mac
@@ -62,6 +62,6 @@ normalize:
       - event.end: $suricata.eve.flow.end
 
   - check:
-      - suricata.eve.flow.state: +s_eq/new
+      - suricata.eve.flow.state: +string_equal/new
     map:
-      - event.type: +a_append/end
+      - event.type: +array_append/end
