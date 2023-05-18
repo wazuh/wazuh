@@ -3,7 +3,7 @@ import pytest
 import os
 
 from wazuh_testing import session_parameters
-from wazuh_testing.tools import config, utils, file, services
+from wazuh_testing.utils import config, file, services
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH, ALERTS_JSON_PATH
@@ -37,7 +37,7 @@ def set_wazuh_configuration(configuration):
 @pytest.fixture
 def truncate_monitored_files():
     """Truncate all the log files and json alerts files before and after the test execution"""
-    if utils.get_service() == 'wazuh-manager':
+    if services.get_service() == 'wazuh-manager':
         log_files = [OSSEC_LOG_PATH, ALERTS_JSON_PATH]
     else:
         log_files = [OSSEC_LOG_PATH]
@@ -106,7 +106,7 @@ def pytest_collection_modifyitems(session, config, items):
         if supported_platforms and plat not in supported_platforms:
             selected = False
 
-        host_type = 'agent' if 'agent' in utils.get_service() else 'server'
+        host_type = 'agent' if 'agent' in services.get_service() else 'server'
         supported_types = _host_types.intersection(
             mark.name for mark in item.iter_markers())
         if supported_types and host_type not in supported_types:
