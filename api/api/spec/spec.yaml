@@ -19103,7 +19103,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "The events will be forwarded to analisysd"
+                message: "The events were forwarded to analisysd"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
