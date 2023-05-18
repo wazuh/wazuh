@@ -222,91 +222,95 @@ void run(const Options& options)
     // TODO: fix logger
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
+    std::cout << std::endl << std::endl << "Enter a log in single line (Crtl+C to exit):" << std::endl << std::endl;
+
     // Stdin loop
-    while (gs_doRun)
+    std::string line;
+    while (gs_doRun && std::getline(std::cin, line))
     {
-        std::cout << std::endl << std::endl << "Enter a log in single line (Crtl+C to exit):" << std::endl << std::endl;
-        std::string line;
-        std::getline(std::cin, line);
-        if (line.empty())
+        if (!line.empty())
         {
-            continue;
-        }
-        try
-        {
-            // Clear outputs
-            history.clear();
-            output.str("");
-            output.clear();
-
-            // Send event
-            auto event = fmt::format("{}:{}:{}", options.protocolQueue, options.protocolLocation, line);
-            auto result = base::result::makeSuccess(base::parseEvent::parseOssecEvent(event));
-            controller.ingestEvent(std::make_shared<base::result::Result<base::Event>>(std::move(result)));
-
-            // Decoder history
-            if (options.debugLevel > 0)
+            try
             {
-                std::cerr << std::endl << std::endl << "DECODERS:" << std::endl;
-                std::string indent = "  ";
-                for (auto& [asset, condition] : history)
-                {
-                    if (builder::Asset::Type::DECODER == env.assets()[asset]->m_type)
-                    {
-                        std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition) << std::endl;
-                        if (traceBuffer.find(asset) != traceBuffer.end())
-                        {
-                            std::string line;
-                            while (std::getline(traceBuffer[asset], line))
-                            {
-                                std::cerr << indent << indent << line << std::endl;
-                            }
-                        }
-                        // Clear trace buffer
-                        traceBuffer[asset].str("");
-                        traceBuffer[asset].clear();
-                        if ("success" == condition)
-                        {
-                            indent += indent;
-                        }
-                    }
-                }
-                // Rule history
-                std::cerr << std::endl << "RULES:" << std::endl;
-                indent = "  ";
-                for (auto& [asset, condition] : history)
-                {
-                    if (builder::Asset::Type::RULE == env.assets()[asset]->m_type)
-                    {
-                        std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition) << std::endl;
-                        if (traceBuffer.find(asset) != traceBuffer.end())
-                        {
-                            std::string line;
-                            while (std::getline(traceBuffer[asset], line))
-                            {
-                                std::cerr << indent << indent << line << std::endl;
-                            }
-                        }
+                // Clear outputs
+                history.clear();
+                output.str("");
+                output.clear();
 
-                        // Clear trace buffer
-                        traceBuffer[asset].str("");
-                        traceBuffer[asset].clear();
-                        if ("success" == condition)
+                // Send event
+                auto event = fmt::format("{}:{}:{}", options.protocolQueue, options.protocolLocation, line);
+                auto result = base::result::makeSuccess(base::parseEvent::parseOssecEvent(event));
+                controller.ingestEvent(std::make_shared<base::result::Result<base::Event>>(std::move(result)));
+
+                // Decoder history
+                if (options.debugLevel > 0)
+                {
+                    std::cerr << std::endl << std::endl << "DECODERS:" << std::endl;
+                    std::string indent = "  ";
+                    for (auto& [asset, condition] : history)
+                    {
+                        if (builder::Asset::Type::DECODER == env.assets()[asset]->m_type)
                         {
-                            indent += indent;
+                            std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition) << std::endl;
+                            if (traceBuffer.find(asset) != traceBuffer.end())
+                            {
+                                std::string line;
+                                while (std::getline(traceBuffer[asset], line))
+                                {
+                                    std::cerr << indent << indent << line << std::endl;
+                                }
+                            }
+                            // Clear trace buffer
+                            traceBuffer[asset].str("");
+                            traceBuffer[asset].clear();
+                            if ("success" == condition)
+                            {
+                                indent += indent;
+                            }
+                        }
+                    }
+                    // Rule history
+                    std::cerr << std::endl << "RULES:" << std::endl;
+                    indent = "  ";
+                    for (auto& [asset, condition] : history)
+                    {
+                        if (builder::Asset::Type::RULE == env.assets()[asset]->m_type)
+                        {
+                            std::cerr << fmt::format("{}{}  ->  {}", indent, asset, condition) << std::endl;
+                            if (traceBuffer.find(asset) != traceBuffer.end())
+                            {
+                                std::string line;
+                                while (std::getline(traceBuffer[asset], line))
+                                {
+                                    std::cerr << indent << indent << line << std::endl;
+                                }
+                            }
+
+                            // Clear trace buffer
+                            traceBuffer[asset].str("");
+                            traceBuffer[asset].clear();
+                            if ("success" == condition)
+                            {
+                                indent += indent;
+                            }
                         }
                     }
                 }
+
+                // Output
+                std::cerr << std::endl << std::endl << "OUTPUT:" << std::endl << std::endl;
+                std::cerr << output.str() << std::endl;
             }
-
-            // Output
-            std::cerr << std::endl << std::endl << "OUTPUT:" << std::endl << std::endl;
-            std::cerr << output.str() << std::endl;
+            catch (const std::exception& e)
+            {
+                LOG_ERROR("Engine 'test' command: An error occurred while parsing a message: {}.", e.what());
+            }
         }
-        catch (const std::exception& e)
+        else
         {
-            LOG_ERROR("Engine 'test' command: An error occurred while parsing a message: {}.", e.what());
+            std::cout << std::endl << std::endl << "Enter a log in single line (Crtl+C to exit):" << std::endl << std::endl;
         }
+
     }
 
     g_exitHanlder.execute();
