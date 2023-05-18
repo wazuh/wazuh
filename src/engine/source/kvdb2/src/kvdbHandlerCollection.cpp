@@ -66,4 +66,30 @@ std::map<std::string, int> KVDBHandlerCollection::getRefMap(const std::string& d
     }
 }
 
+
+void KVDBHandlerCollection::KVDBHandlerInstance::addScope(const std::string& scopeName)
+{
+    m_scopeCounter.addRef(scopeName);
+}
+
+void KVDBHandlerCollection::KVDBHandlerInstance::removeScope(const std::string& scopeName)
+{
+    m_scopeCounter.removeRef(scopeName);
+}
+
+bool KVDBHandlerCollection::KVDBHandlerInstance::emptyScopes() const
+{
+    return m_scopeCounter.empty();
+}
+
+std::vector<std::string> KVDBHandlerCollection::KVDBHandlerInstance::getRefNames() const
+{
+    return m_scopeCounter.getRefNames();
+}
+
+std::map<std::string, int> KVDBHandlerCollection::KVDBHandlerInstance::getRefMap() const
+{
+    return m_scopeCounter.getRefMap();
+}
+
 } // namespace kvdbManager
