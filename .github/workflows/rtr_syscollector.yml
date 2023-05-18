@@ -9,6 +9,8 @@ on:
       - "src/shared_modules/**"
       - "src/wazuh_modules/syscollector/**"
       - "src/Makefile"
+      - ".github/workflows/rtr_syscollector.yml"
+      - ".github/actions/**"
 
 jobs:
   rtr:
@@ -17,7 +19,8 @@ jobs:
           matrix:
               module: [wazuh_modules/syscollector, shared_modules/dbsync, shared_modules/rsync, shared_modules/utils, data_provider]
               target: [agent, winagent]
-    runs-on: ubuntu-latest
+    # We don't use ubuntu-latest because the install_build_deps action adds a fixed repository for Wine
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

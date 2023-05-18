@@ -8,6 +8,8 @@ on:
       - "src/syscheckd/**"
       - "src/unit_tests/syscheckd/**"
       - "src/Makefile"
+      - ".github/workflows/rtr_syscheck.yml"
+      - ".github/actions/**"
 
 jobs:
   rtr:
@@ -16,7 +18,8 @@ jobs:
           matrix:
               module: [syscheckd]
               target: [agent, winagent]
-    runs-on: ubuntu-latest
+    # We don't use ubuntu-latest because the install_build_deps action adds a fixed repository for Wine
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
