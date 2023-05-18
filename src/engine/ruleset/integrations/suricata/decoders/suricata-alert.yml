@@ -1,0 +1,68 @@
+name: decoder/suricata-alert/0
+
+sources:
+  - decoder/suricata/0
+
+metadata:
+  module: suricata
+  compatibility: <= v7
+  author:
+    name: Wazuh Inc, info@wazuh.com
+    date: Nov 18 2022
+  references:
+    - https://suricata.readthedocs.io/en/suricata-6.0.8/output/eve/eve-json-format.html?highlight=eve%20format
+  title: Suricata decoder
+  description: Decoder for Suricata solution
+
+definitions:
+  ttotalBytes: +int_calculate/sum/$source.bytes
+  totalBytes: +int_calculate/sum/$destination.bytes
+  ttotalPackets: +int_calculate/sum/$source.packets
+  totalPackets: +int_calculate/sum/$destination.packets
+  ttotalTraffic: +int_calculate/sum/$totalBytes
+  totalTraffic: +int_calculate/sum/$totalPackets
+
+check:
+  - suricata.eve.event_type: +string_equal/alert
+
+normalize:
+  - check: +int_greater/totalBytes/0
+    map:
+      - network.bytes: $totalBytes
+
+  - check: +int_greater/totalPackets/0
+    map:
+      - network.packets: $totalPackets
+
+  - map:
+      - event.kind: alert
+      - event.category: +array_append/intrusion_detection
+      - rule.category: $suricata.eve.alert.category
+      - rule.id: $suricata.eve.alert.signature_id
+      - rule.name: $suricata.eve.alert.signature
+      - event.severity: $suricata.eve.alert.severity
+      - threat.tactic.id: $suricata.eve.alert.metadata.mitre_attack
+      - threat.tactic.name: $suricata.eve.alert.metadata.mitre_tactic_name
+      - threat.technique.id: $suricata.eve.alert.metadata.mitre_technique_id
+      - threat.technique.name: $suricata.eve.alert.metadata.mitre_techinique_name
+      - file.name: $suricata.eve.alert.metadata.filename
+
+  - check:
+      - threat.tactic.id: +is_null
+    map:
+      - threat.tactic.id: $suricata.eve.alert.metadata.mitre_attack_id
+
+  - check:
+      - suricata.eve.alert.action: +string_equal/bloqued
+    map:
+      - suricata.eve.alert.action: denied
+
+  - check:
+      - suricata.eve.alert.action: +is_not_null
+    map:
+      - event.type: +array_append/$suricata.eve.alert.action
+
+  - check:
+      - suricata.eve.event_type: "alert"
+    map:
+      - event.type: ["detail"]

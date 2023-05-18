@@ -1,0 +1,31 @@
+name: decoder/suricata-http/0
+
+sources:
+  - decoder/suricata/0
+
+metadata:
+  module: suricata
+  compatibility: <= v7
+  author:
+    name: Wazuh Inc, info@wazuh.com
+    date: Nov 18 2022
+  references:
+    - https://suricata.readthedocs.io/en/suricata-6.0.8/output/eve/eve-json-format.html?highlight=eve%20format
+  title: Suricata decoder
+  description: Decoder for Suricata solution
+
+definitions:
+  is_http_success: +string_equal/suricata.eve.event_type/http AND +is_number/suricata.eve.http.status AND +int_less/suricata.eve.http.status/400
+  is_http_failure: +string_equal/suricata.eve.event_type/http AND +is_number/suricata.eve.http.status AND +int_greater_or_equal/suricata.eve.http.status/400
+
+check:
+  - suricata.eve.event_type: +string_equal/http
+
+normalize:
+  - check: $is_http_success
+    map:
+      - event.outcome: success
+
+  - check: $is_http_failure
+    map:
+      - event.outcome: failure

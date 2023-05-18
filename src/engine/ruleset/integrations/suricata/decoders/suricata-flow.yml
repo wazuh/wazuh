@@ -1,0 +1,33 @@
+name: decoder/suricata-flow/0
+
+sources:
+  - decoder/suricata/0
+
+metadata:
+  module: suricata
+  compatibility: <= v7
+  author:
+    name: Wazuh Inc, info@wazuh.com
+    date: Nov 18 2022
+  references:
+    - https://suricata.readthedocs.io/en/suricata-6.0.8/output/eve/eve-json-format.html?highlight=eve%20format
+  title: Suricata decoder
+  description: Decoder for Suricata solution
+
+check:
+  - suricata.eve.event_type: +string_equal/flow
+
+normalize:
+  - check:
+      - suricata.eve.flow.state: new
+    map:
+      - event.type: +array_append/start
+
+  - check:
+      - suricata.eve.flow.state: closed
+    map:
+      - event.type: +array_append/end
+
+  - map:
+      - file.path: $suricata.eve.fileinfo.filename
+      - file.size: $suricata.eve.fileinfo.size

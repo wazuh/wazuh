@@ -10894,6 +10894,41 @@
                 "string"
             ],
             "pattern": "^[\\+\\$].+"
+        },
+        "suricata.eve": {
+            "description": "Module: suricata\nIndexerType: object\nArray: False\n\nSuricata log entry.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "additionalProperties": false,
+            "properties": {
+                "app_proto": {
+                    "description": "Module: suricata\nIndexerType: keyword\nArray: False\n\nApplication protocol.",
+                    "type": [
+                        "string"
+                    ]
+                },
+                "event_type": {
+                    "description": "Module: suricata\nIndexerType: keyword\nArray: False\n\nEvent type.",
+                    "type": [
+                        "string"
+                    ]
+                },
+                "netwrok.transport": {
+                    "description": "Module: suricata\nIndexerType: keyword\nArray: False\n\nTransport layer.",
+                    "type": [
+                        "string"
+                    ]
+                },
+                "proto": {
+                    "description": "Module: suricata\nIndexerType: keyword\nArray: False\n\nProtocol name.",
+                    "type": [
+                        "string"
+                    ]
+                }
+            }
         }
     }
 }
