@@ -5,7 +5,6 @@
 namespace kvdbManager
 {
 
-// create KVDBSpace constructor with parameters inside declaration
 KVDBSpace::KVDBSpace(IKVDBHandlerManager* manager,
                      rocksdb::DB* db,
                      rocksdb::ColumnFamilyHandle* cfHandle,
