@@ -10,8 +10,8 @@ class IKVDBHandlerManager;
 class KVDBScope : public IKVDBScope
 {
 public:
-    KVDBScope(IKVDBHandlerManager* handlerManager, const std::string& name): 
-        m_handlerManager(handlerManager), 
+    KVDBScope(IKVDBHandlerManager* handlerManager, const std::string& name):
+        m_handlerManager(handlerManager),
         m_name(name) {}
     KVDBHandler getKVDBHandler(const std::string& dbName) override;
 private:
