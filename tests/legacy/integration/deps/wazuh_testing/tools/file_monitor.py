@@ -4,7 +4,7 @@ import time
 
 from typing import Callable, Tuple, Union
 
-from .file import get_file_encoding
+from ..utils.file import get_file_encoding
 
 
 class FileMonitor:
