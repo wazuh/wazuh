@@ -590,6 +590,19 @@ base::Expression opBuilderHelperIsFalse(const std::string& targetField,
                                         const std::vector<std::string>& rawParameters,
                                         std::shared_ptr<defs::IDefinitions> definitions);
 
+//*************************************************
+//*              Definition filters               *
+//*************************************************
+
+/**
+ * @brief 
+ * 
+ */
+base::Expression opBuilderHelperDefinitionMatchValue(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H

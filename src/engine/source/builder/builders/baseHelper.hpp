@@ -58,6 +58,10 @@ std::vector<Parameter> processParameters(const std::string& name,
                                          const std::vector<std::string>& parameters,
                                          std::shared_ptr<defs::IDefinitions> definitions);
 
+std::vector<Parameter> processDefinitionParameters(const std::string& name,
+                                         const std::vector<std::string>& parameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions);
+
 /**
  * @brief Check that the number of parameters is correct and throw otherwise.
  *

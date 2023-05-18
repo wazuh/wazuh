@@ -64,6 +64,60 @@ std::vector<Parameter> processParameters(const std::string& name,
     return newParameters;
 }
 
+std::vector<Parameter> processDefinitionParameters(const std::string& name,
+                                         const std::vector<std::string>& parameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions)
+{
+    std::vector<Parameter> newParameters;
+    std::transform(parameters.begin(),
+                   parameters.end(),
+                   std::back_inserter(newParameters),
+                   [name, definitions](const std::string& parameter) -> Parameter
+                   {
+                       if (builder::internals::syntax::REFERENCE_ANCHOR == parameter[0])
+                       {
+                           std::string pointerPath;
+                           try
+                           {
+                               pointerPath = json::Json::formatJsonPath(parameter.substr(1));
+                           }
+                           catch (const std::exception& e)
+                           {
+                               throw std::runtime_error(fmt::format("Cannot format parameter \"{}\" from to "
+                                                                    "Json pointer path: {}",
+                                                                    parameter,
+                                                                    e.what()));
+                           }
+
+                           if (definitions->contains(pointerPath))
+                           {
+                               auto val = definitions->get(pointerPath);
+                               if (!val.isObject() && !val.isArray())
+                               {
+                                   throw std::runtime_error(fmt::format("Definition '{}' in helper '{}' is not an "
+                                                                        "object or array",
+                                                                        parameter,
+                                                                        name));
+                               }
+                               return {Parameter::Type::REFERENCE, pointerPath};
+                           }
+                           else
+                           {
+                                throw std::runtime_error(fmt::format("Definition '{}' in helper '{}' not found",
+                                                                    parameter,
+                                                                    name));
+                           }
+                       }
+                       else
+                       {
+                           throw std::runtime_error(fmt::format(
+                               "Definition '{}' in helper '{}' must be passed as a reference", parameter, name));
+                       }
+                   });
+
+    return newParameters;
+}
+
 void checkParametersSize(const std::string& name, const std::vector<Parameter>& parameters, size_t size)
 {
     if (parameters.size() != size)
