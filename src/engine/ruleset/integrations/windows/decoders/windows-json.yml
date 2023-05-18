@@ -11,7 +11,7 @@ metadata:
   title: This decoder processes event coming through Windows Event Channel queue
   references:
     - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
-  versions: [Vista, 7, 8, 10, 11, Server 2012, Server 2016, Server 2019, Server 2022]
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 sources:
   - decoder/integrations/0
