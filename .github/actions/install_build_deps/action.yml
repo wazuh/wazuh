@@ -23,7 +23,7 @@ runs:
       run: |
         if [[ "${{ inputs.target }}" == "winagent" ]]; then
           sudo dpkg --add-architecture i386 && sudo apt-get update
-          sudo apt-get install -y --install-recommends wine-stable
+          sudo apt-get install -y --install-recommends wine-stable wine32
         else
           echo "Skipping wine installation for this target"
         fi
