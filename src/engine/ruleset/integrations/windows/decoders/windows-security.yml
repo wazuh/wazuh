@@ -14,7 +14,7 @@ metadata:
     date: 2023/01/23
   references:
     - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/security-auditing-overview
-  versions: [Vista, 7, 8, 10, 11, Server 2012, Server 2016, Server 2019, Server 2022]
+  versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
 check: winlog.channel==Security AND (event.provider==Microsoft-Windows-Security-Auditing OR event.provider==Microsoft-Windows-Eventlog)
 
@@ -28,11 +28,7 @@ normalize:
     - event.id: +kvdb_get_merge/win_security_categories/$event.id
 
     # Set User Account Control
-    #- event.UserAccountControl: $~windows.Event.EventData.NewUacValue
     - winlog.event_data.UserAccountControl: +split/$~windows.Event.EventData.UserAccountControl/%
-
-    # Set Kerberos Ticket Options
-    # TicketOptionsDescription - Needs bitwise operations
 
     # Set Kerberos Ticket Status Codes
     - winlog.event_data.StatusDescription: +kvdb_get_merge/kerberos_tickets_status_codes/$~windows.Event.EventData.Status
@@ -50,7 +46,6 @@ normalize:
     - winlog.trustAttribute: +kvdb_get/win_trust_attributes/$~windows.Event.EventData.TdoAttributes
 
     - winlog.logon.id: $~windows.Event.EventData.SubjectLogonId
-
     - winlog.event_data.PrivilegeList: '+split/$~windows.Event.EventData.PrivilegeList/ '
 
     - user.target.name: $~windows.Event.EventData.OldTargetUserName
