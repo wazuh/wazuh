@@ -153,7 +153,7 @@ def test_accesslogger_log_hash_auth_context(request_path, token_info, request_bo
 
 
 @pytest.mark.parametrize('request_path,request_body,log_level,log_key,json_key', [
-    ('/events', {"events": ["foo", "bar"]}, 20, 'events,', 'number_of_events'),
+    ('/events', {"events": ["foo", "bar"]}, 20, 'events', 'number_of_events'),
     ('/events', {"events": ["foo", "bar"]}, 5, 'body', 'body'),
     ('/agents', {}, 20, 'body', 'body'),
     ('/agents', {}, 5, 'body', 'body')
@@ -201,12 +201,8 @@ def test_accesslogger_log_events_correctly(
     test_access_logger.logger.setLevel(log_level)
     test_access_logger.log(request=request, response=MagicMock(), time=0.0)
 
-    if log_level > 10 or request_path != '/events':
-        message_api_log = mock_logger_info.call_args_list[0][0][0].split(" ")
-        message_api_json = mock_logger_info.call_args_list[1][0][0]
-    else:
-        message_api_log = mock_logger_debug.call_args_list[0][0][0].split(" ")
-        message_api_json = mock_logger_debug.call_args_list[1][0][0]
+    message_api_log = mock_logger_info.call_args_list[0][0][0].split(" ")
+    message_api_json = mock_logger_info.call_args_list[1][0][0]
 
     assert log_key in message_api_log
     assert json_key in message_api_json
