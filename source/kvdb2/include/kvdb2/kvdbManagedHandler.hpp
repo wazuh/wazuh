@@ -14,13 +14,17 @@ public:
         m_dbName(dbName),
         m_scopeName(scopeName)
     {
+        //TODO: Add simple validation. Nullptrs, lengths, etc.
     }
 
     virtual ~KVDBManagedHandler()
     {
-        if (!m_handlerManager->skipAutoRemoveEnabled())
+        if (m_handlerManager)
         {
-            m_handlerManager->removeKVDBHandler(m_dbName, m_scopeName);
+            if (!m_handlerManager->skipAutoRemoveEnabled())
+            {
+                m_handlerManager->removeKVDBHandler(m_dbName, m_scopeName);
+            }
         }
     }
 
