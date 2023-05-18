@@ -20,7 +20,7 @@ void runAdd(std::shared_ptr<apiclnt::Client> client,
             const std::string& nameStr,
             int priority,
             const std::string& filterName,
-            const std::string& environment);
+            const std::string& policy);
 void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr);
 void runUpdate(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr, int priority);
 void runIngest(std::shared_ptr<apiclnt::Client> client, const std::string& event);

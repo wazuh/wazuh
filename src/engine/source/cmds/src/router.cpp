@@ -14,7 +14,7 @@ struct Options
     std::string name;
     std::string filterName;
     int priority {};
-    std::string environment;
+    std::string policy;
     std::string event;
 };
 } // namespace
@@ -76,7 +76,7 @@ void runAdd(std::shared_ptr<apiclnt::Client> client,
             const std::string& nameStr,
             int priority,
             const std::string& filterName,
-            const std::string& environment)
+            const std::string& policy)
 {
     using RequestType = eRouter::RoutePost_Request;
     using ResponseType = eEngine::GenericStatus_Response;
@@ -87,7 +87,7 @@ void runAdd(std::shared_ptr<apiclnt::Client> client,
     eRequest.mutable_route()->set_name(nameStr);
     eRequest.mutable_route()->set_priority(priority);
     eRequest.mutable_route()->set_filter(filterName);
-    eRequest.mutable_route()->set_policy(environment);
+    eRequest.mutable_route()->set_policy(policy);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -166,16 +166,16 @@ void configure(CLI::App_p app)
 
     // Add
     auto addSubcommand = routerApp->add_subcommand(
-        "add", "Activate a new route, filter and environment asset must exist in the catalog");
+        "add", "Activate a new route, filter and policy asset must exist in the catalog");
     addSubcommand->add_option("name", options->name, "Name or identifier of the route.")->required();
     addSubcommand->add_option("filter", options->filterName, "Name of the filter to use.")->required();
     addSubcommand->add_option("priority", options->priority, "Priority of the route.")
         ->required()
         ->check(CLI::Range(0, 255));
-    addSubcommand->add_option("environment", options->environment, "Target environment of the route.")->required();
+    addSubcommand->add_option("policy", options->policy, "Target policy of the route.")->required();
     addSubcommand->callback(
         [options, client]()
-        { runAdd(client, options->name, options->priority, options->filterName, options->environment); });
+        { runAdd(client, options->name, options->priority, options->filterName, options->policy); });
 
     // Delete
     auto deleteSubcommand = routerApp->add_subcommand("delete", "Deactivate a route.");
