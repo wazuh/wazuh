@@ -1,0 +1,33 @@
+"""
+Global variables related to wazuh-daemons
+"""
+
+LOGCOLLECTOR_DAEMON = 'wazuh-logcollector'
+AGENTLESS_DAEMON = 'wazuh-agentlessd'
+CSYSLOG_DAEMON = 'wazuh-csyslogd'
+REMOTE_DAEMON = 'wazuh-remoted'
+ANALYSISD_DAEMON = 'wazuh-analysisd'
+API_DAEMON = 'wazuh-apid'
+MAIL_DAEMON = 'wazuh-maild'
+SYSCHECK_DAEMON = 'wazuh-syscheckd'
+EXEC_DAEMON = 'wazuh-execd'
+MODULES_DAEMON = 'wazuh-modulesd'
+CLUSTER_DAEMON = 'wazuh-clusterd'
+INTEGRATOR_DAEMON = 'wazuh-integratord'
+MONITOR_DAEMON = 'wazuh-monitord'
+WAZUH_DB_DAEMON = 'wazuh-db'
+AGENT_DAEMON = 'wazuh-agentd'
+
+
+WAZUH_AGENT_DAEMONS = [LOGCOLLECTOR_DAEMON, SYSCHECK_DAEMON,
+                       EXEC_DAEMON, MODULES_DAEMON, AGENT_DAEMON]
+WAZUH_MANAGER_DAEMONS = [LOGCOLLECTOR_DAEMON, AGENTLESS_DAEMON, CSYSLOG_DAEMON, REMOTE_DAEMON, ANALYSISD_DAEMON,
+                         API_DAEMON, MAIL_DAEMON, SYSCHECK_DAEMON, EXEC_DAEMON, MODULES_DAEMON, CLUSTER_DAEMON,
+                         INTEGRATOR_DAEMON, MONITOR_DAEMON, WAZUH_DB_DAEMON]
+
+API_DAEMONS_REQUIREMENTS = [API_DAEMON, WAZUH_DB_DAEMON,
+                            EXEC_DAEMON, ANALYSISD_DAEMON, REMOTE_DAEMON, MODULES_DAEMON]
+
+
+WAZUH_UNIX_USER = 'wazuh'
+WAZUH_UNIX_GROUP = 'wazuh'
