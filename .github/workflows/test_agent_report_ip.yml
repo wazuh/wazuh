@@ -1,0 +1,120 @@
+name: Test for agent reported IP
+
+on:
+  push:
+    paths:
+      - ".github/workflows/test_agent_report_ip.yml"
+    branches:
+      - "dev-testip"
+
+jobs:
+  run_manager:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Get public IP"
+        run: |
+          curl -s https://ipinfo.io/ip > public_ip
+      - name: "Uploading IP"
+        uses: actions/upload-artifact@v3
+        with:
+          name: public_ip
+          path: public_ip
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: "Install dependencies"
+        uses: ./.github/actions/install_build_deps
+        with:
+          target: server
+      - name: "Compile server"
+        run: |
+          make deps -j$(nproc) TARGET=server -C src
+          make build -j$(nproc) TARGET=server -C src
+      - name: "Install server"
+        run : |
+          echo 'USER_LANGUAGE="en"
+          USER_NO_STOP="y"
+          USER_INSTALL_TYPE="server"
+          USER_DIR="/var/ossec"
+          USER_ENABLE_EMAIL="n"
+          USER_ENABLE_SYSCHECK="n"
+          USER_ENABLE_ROOTCHECK="n"
+          USER_ENABLE_OPENSCAP="n"
+          USER_WHITE_LIST="n"
+          USER_ENABLE_SYSLOG="n"
+          USER_ENABLE_AUTHD="y"
+          USER_AUTO_START="y"' > etc/preloaded-vars.conf
+          sed -i "s/authd.debug=0/authd.debug=2/g" etc/internal_options.conf
+          sed -i "s/remoted.debug=0/remoted.debug=2/g" etc/internal_options.conf
+          sudo ./install.sh
+      - name: "Wait for the logs to be generated"
+        run: |
+          sleep 360
+      - name: "Prepare logs to be uploaded"
+        if: always()
+        run: |
+          mkdir /tmp/logs
+          sudo cp -r /var/ossec/logs/ossec.log /tmp/logs/
+          sudo chown -R runner:runner /tmp/logs/
+      - name: Uploading logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: server-logs
+          path: /tmp/logs/
+
+  run_agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: "Install dependencies"
+        uses: ./.github/actions/install_build_deps
+        with:
+          target: agent
+      - name: "Compile agent"
+        run: |
+          make deps -j$(nproc) TARGET=agent -C src
+          make build -j$(nproc) TARGET=agent -C src
+      - name: "Install agent"
+        run: |
+          echo 'USER_LANGUAGE="en"
+          USER_NO_STOP="y"
+          USER_INSTALL_TYPE="agent"
+          USER_DIR="/var/ossec"
+          USER_ENABLE_EMAIL="n"
+          USER_ENABLE_SYSCHECK="n"
+          USER_ENABLE_ROOTCHECK="n"
+          USER_ENABLE_OPENSCAP="n"
+          USER_WHITE_LIST="n"
+          USER_ENABLE_SYSLOG="n"
+          USER_ENABLE_AUTHD="n"
+          USER_AUTO_START="n"' > etc/preloaded-vars.conf
+          sed -i "s/agent.debug=0/agent.debug=2/g" etc/internal_options.conf
+          sudo ./install.sh
+      - name: Download public_ip
+        uses: actions/download-artifact@v3
+        with:
+          name: public_ip
+          path: public_ip
+      - name: "Configure agent"
+        run: |
+          MANAGER_IP=$(cat public_ip/public_ip)
+          sudo sed -i "s*<address></address>*<address>$MANAGER_IP</address>*g" /var/ossec/etc/ossec.conf
+      - name: "Start agent"
+        run: |
+          sudo /var/ossec/bin/wazuh-control start
+      - name: "Wait for the logs to be generated"
+        run: |
+          sleep 360
+      - name: "Prepare logs to be uploaded"
+        if: always()
+        run: |
+          mkdir /tmp/logs
+          sudo cp -r /var/ossec/logs/ossec.log /tmp/logs/
+          sudo chown -R runner:runner /tmp/logs/
+      - name: Uploading logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: agent-logs
+          path: /tmp/logs/
