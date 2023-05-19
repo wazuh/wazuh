@@ -57,4 +57,5 @@ target_link_libraries(api
     store::fileDriver
     store::istore
     yaml-cpp
+    schemf
 )
