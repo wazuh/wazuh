@@ -49,7 +49,7 @@ int clear_icanon(bool flag)
         return 0;
     }
 
-    if (true == flag)
+    if (flag)
     {
         settings.c_lflag &= ~ICANON;
     }
