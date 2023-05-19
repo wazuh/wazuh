@@ -311,5 +311,6 @@ extern const char *__local_name;
 #include "../shared_modules/rsync/include/rsync.h"
 #include "../shared_modules/dbsync/include/dbsync.h"
 #include "limits_op.h"
+#include "binaries_op.h"
 
 #endif /* SHARED_H */

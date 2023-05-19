@@ -13,7 +13,7 @@
 #include "dll_load_notify.h"
 
 #define RULE_NAME "WAZUH ACTIVE RESPONSE BLOCKED IP"
-#define NETSH     "C:\\Windows\\System32\\netsh.exe"
+#define NETSH     "%%WINDIR%%\\system32\\netsh.exe"
 #define REG       "C:\\Windows\\System32\\reg.exe"
 
 #define PATH_FIREWALL_PROFILES_REG_DEFAULT "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\"

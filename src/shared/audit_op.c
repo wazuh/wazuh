@@ -215,7 +215,12 @@ int audit_restart(void) {
     wfd_t * wfd;
     int status;
     char buffer[4096];
-    char * command[] = { "service", "auditd", "restart", NULL };
+    char service_path[PATH_MAX + 1] = {0};
+
+    if (get_binary_path("service", service_path) < 0) {
+        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", service_path);
+    }
+    char * command[] = { service_path, "auditd", "restart", NULL };
 
     if (wfd = wpopenv(*command, command, W_BIND_STDERR), !wfd) {
         merror("Could not launch command to restart Auditd: %s (%d)", strerror(errno), errno);

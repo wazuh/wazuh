@@ -539,7 +539,14 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         // by one and fail after MAX_ITERACTION
         if (i >= max_iteration) {
             bool kill = false;
-            char *command_ex_1[4] = { "pgrep", "-f", (char *)proc_name, NULL };
+            char cmd_path[PATH_MAX + 1] = {0};
+
+            if (get_binary_path("pgrep", cmd_path) < 0) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                write_debug_file(log_path, log_msg);
+            }
+            char *command_ex_1[4] = { cmd_path, "-f", (char *)proc_name, NULL };
 
             wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
             if (!wfd) {
@@ -552,7 +559,14 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                         char pid_str[10];
                         memset(pid_str, '\0', 10);
                         snprintf(pid_str, 9, "%d", pid);
-                        char *command_ex_2[4] = { "kill", "-9", pid_str, NULL };
+
+                        memset(cmd_path, '\0', PATH_MAX + 1);
+                        if (get_binary_path("kill", cmd_path) < 0) {
+                            memset(log_msg, '\0', OS_MAXSTR);
+                            snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+                            write_debug_file(log_path, log_msg);
+                        }
+                        char *command_ex_2[4] = { cmd_path, "-9", pid_str, NULL };
 
                         wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
                         if (!wfd2) {
