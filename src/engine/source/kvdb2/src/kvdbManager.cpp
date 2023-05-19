@@ -50,10 +50,8 @@ rocksdb::ColumnFamilyHandle* KVDBManager::createColumnFamily(const std::string& 
         m_mapCFHandles.insert(std::make_pair(name, cfHandle));
         return cfHandle;
     }
-    else
-    {
-        return nullptr;
-    }
+
+    return nullptr;
 }
 
 std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeName)
@@ -118,9 +116,13 @@ void KVDBManager::initializeMainDB()
 
     auto openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
 
-    for (int k = 0; k < cfDescriptors.size(); k++)
+    // rocksdb::DB::Open returns two vectors.
+    // One with the descriptors containing the names of the DBs. (cfDescriptors)
+    // Plus one with the internal handles to the DB. (cfHandles)
+    // In this procedure we join these vectors into a map.
+    for (int cfDescriptorIndex = 0; cfDescriptorIndex < cfDescriptors.size(); cfDescriptorIndex++)
     {
-        m_mapCFHandles.insert(std::make_pair(cfDescriptors[k].name, cfHandles[k]));
+        m_mapCFHandles.insert(std::make_pair(cfDescriptors[cfDescriptorIndex].name, cfHandles[cfDescriptorIndex]));
     }
 
     assert(openStatus.ok());
@@ -221,14 +223,12 @@ std::optional<base::Error> KVDBManager::createDB(const std::string& name)
 {
     auto cfHandle = createColumnFamily(name);
 
-    if (cfHandle != nullptr)
+    if (nullptr != cfHandle)
     {
         return std::nullopt;
     }
-    else
-    {
-        return base::Error {fmt::format("Could not create DB.")};
-    }
+
+    return base::Error {fmt::format("Could not create DB.")};
 }
 
 std::optional<base::Error> KVDBManager::existsDB(const std::string& name)
@@ -237,35 +237,42 @@ std::optional<base::Error> KVDBManager::existsDB(const std::string& name)
     {
         return std::nullopt;
     }
-    else
-    {
-        return base::Error {fmt::format("The DB not exists.")};
-    }
+
+    return base::Error {fmt::format("The DB not exists.")};
 }
 
 std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
 {
     // List reverse lookup of getKVDBHandlersInfo. List of scopes and DBs that are using them.
     std::map<std::string, kvdbManager::RefInfo> retValue;
+
+    // Retrieve the list of DBs and scopes that are using them.
     std::map<std::string, kvdbManager::RefInfo> handlersInfo = getKVDBHandlersInfo();
+
+    // Create a temporal map with the reverse lookup indexed by Scope instead of Database.
     std::map<std::string, kvdbManager::RefCounter> refCounterMap;
 
-    for (auto& entry : handlersInfo)
+    // Iterate over the map of DBs and scopes that are using them.
+    for (auto& dbEntry : handlersInfo)
     {
-        auto dbName = entry.first;
-        auto refInfo = entry.second;
+        auto dbName = dbEntry.first;
+        auto scopesUsingDB = dbEntry.second;
 
-        for (auto& scopeEntry : refInfo)
+        // Iterate over the scopes that are using thisDB.
+        for (auto& scopeEntry : scopesUsingDB)
         {
             std::string scopeName = scopeEntry.first;
-            int scopeRefCounter = scopeEntry.second;
+            int countDBsUsingScope = scopeEntry.second;
+            // Get the current refCounter for this scope.
             auto counterMap = refCounterMap[scopeName];
 
-            for (int k = 0; k < scopeRefCounter; k++)
+            // Use internals of RefCounter to insert one by one the current DB to the current scope.
+            for (int tmpDBUsageCounter = 0; tmpDBUsageCounter < countDBsUsingScope; tmpDBUsageCounter++)
             {
                 counterMap.addRef(dbName);
             }
 
+            // Update the refCounter for this scope.
             refCounterMap[scopeName] = counterMap;
         }
     }
