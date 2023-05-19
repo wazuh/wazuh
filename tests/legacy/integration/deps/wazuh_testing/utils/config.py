@@ -4,8 +4,9 @@ from typing import List
 
 import xml.etree.ElementTree as ET
 
-from ..constants.paths.configurations import WAZUH_CONF_PATH
-from .. import session_parameters
+from wazuh_testing.constants.paths.configurations import WAZUH_CONF_PATH
+from wazuh_testing import session_parameters
+
 from . import file
 
 

@@ -4,7 +4,7 @@ import time
 
 from typing import Callable, Tuple, Union
 
-from ..utils.file import get_file_encoding
+from wazuh_testing.utils.file import get_file_encoding
 
 
 class FileMonitor:
