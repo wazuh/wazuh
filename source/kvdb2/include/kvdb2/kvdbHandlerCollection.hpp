@@ -19,21 +19,22 @@ class IKVDBHandlerManager;
 class KVDBHandlerCollection
 {
 public:
-    KVDBHandlerCollection(IKVDBHandlerManager* handleManager) : m_handleManager(handleManager) {}
+    KVDBHandlerCollection(IKVDBHandlerManager* handleManager)
+        : m_handleManager(handleManager)
+    {
+    }
 
     KVDBHandler getKVDBHandler(rocksdb::DB* db,
                                rocksdb::ColumnFamilyHandle* cfHandle,
                                const std::string& dbName,
                                const std::string& scopeName);
 
-    void removeKVDBHandler(const std::string& dbName,
-                           const std::string& scopeName,
-                           bool &isRemoved);
+    void removeKVDBHandler(const std::string& dbName, const std::string& scopeName, bool& isRemoved);
 
     std::vector<std::string> getDBNames();
     std::map<std::string, int> getRefMap(const std::string& dbName);
-private:
 
+private:
     class KVDBHandlerInstance
     {
     public:
@@ -42,6 +43,7 @@ private:
         bool emptyScopes() const;
         std::vector<std::string> getRefNames() const;
         std::map<std::string, int> getRefMap() const;
+
     private:
         RefCounter m_scopeCounter;
     };
@@ -49,7 +51,7 @@ private:
 private:
     std::map<std::string, std::shared_ptr<KVDBHandlerInstance>> m_mapInstances;
 
-    IKVDBHandlerManager* m_handleManager { nullptr };
+    IKVDBHandlerManager* m_handleManager {nullptr};
     std::mutex m_mutex;
 };
 

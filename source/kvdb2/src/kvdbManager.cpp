@@ -1,5 +1,5 @@
-#include <kvdb2/kvdbManager.hpp>
 #include <kvdb2/kvdbExcept.hpp>
+#include <kvdb2/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
 
@@ -12,7 +12,8 @@
 namespace kvdbManager
 {
 
-KVDBManager::KVDBManager(const KVDBManagerOptions& options, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
+KVDBManager::KVDBManager(const KVDBManagerOptions& options,
+                         const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager)
 {
     m_ManagerOptions = options;
     m_spMetricsScope = metricsManager->getMetricsScope("KVDB");
@@ -68,10 +69,8 @@ std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeNa
     {
         LOG_INFO("KVDB Manager: Created new KVDB Scope : ({})", scopeName);
 
-        m_mapScopes.insert(
-            std::make_pair<std::string, std::shared_ptr<KVDBScope>>(
-                std::string(scopeName),
-                std::make_shared<KVDBScope>(this, scopeName)));
+        m_mapScopes.insert(std::make_pair<std::string, std::shared_ptr<KVDBScope>>(
+            std::string(scopeName), std::make_shared<KVDBScope>(this, scopeName)));
 
         auto& retScope = m_mapScopes[scopeName];
         return retScope;
@@ -112,13 +111,14 @@ void KVDBManager::initializeMainDB()
     }
     else
     {
-        auto newDescriptor = rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions());
+        auto newDescriptor =
+            rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions());
         cfDescriptors.push_back(newDescriptor);
     }
 
     auto openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
 
-    for (int k = 0; k<cfDescriptors.size(); k++)
+    for (int k = 0; k < cfDescriptors.size(); k++)
     {
         m_mapCFHandles.insert(std::make_pair(cfDescriptors[k].name, cfHandles[k]));
     }
@@ -184,7 +184,7 @@ std::vector<std::string> KVDBManager::listDBs(const bool loaded)
 {
     std::vector<std::string> spaces;
 
-    for(auto cf : m_mapCFHandles)
+    for (auto cf : m_mapCFHandles)
     {
         spaces.push_back(cf.first);
     }
@@ -198,7 +198,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 
     if (handlersInfo.count(name))
     {
-        return base::Error { fmt::format("Can not remove the DB. This is in use.") };
+        return base::Error {fmt::format("Can not remove the DB. This is in use.")};
     }
 
     auto it = m_mapCFHandles.find(name);
@@ -211,7 +211,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
     }
     else
     {
-        return base::Error { fmt::format("The DB not exists.") };
+        return base::Error {fmt::format("The DB not exists.")};
     }
 
     return std::nullopt;
@@ -227,7 +227,7 @@ std::optional<base::Error> KVDBManager::createDB(const std::string& name)
     }
     else
     {
-        return base::Error { fmt::format("Could not create DB.") };
+        return base::Error {fmt::format("Could not create DB.")};
     }
 }
 
@@ -239,7 +239,7 @@ std::optional<base::Error> KVDBManager::existsDB(const std::string& name)
     }
     else
     {
-        return base::Error { fmt::format("The DB not exists.") };
+        return base::Error {fmt::format("The DB not exists.")};
     }
 }
 
@@ -250,18 +250,18 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
     std::map<std::string, kvdbManager::RefInfo> handlersInfo = getKVDBHandlersInfo();
     std::map<std::string, kvdbManager::RefCounter> refCounterMap;
 
-    for (auto &entry : handlersInfo)
+    for (auto& entry : handlersInfo)
     {
         auto dbName = entry.first;
         auto refInfo = entry.second;
 
-        for (auto &scopeEntry : refInfo )
+        for (auto& scopeEntry : refInfo)
         {
             std::string scopeName = scopeEntry.first;
             int scopeRefCounter = scopeEntry.second;
             auto counterMap = refCounterMap[scopeName];
 
-            for (int k=0; k<scopeRefCounter; k++)
+            for (int k = 0; k < scopeRefCounter; k++)
             {
                 counterMap.addRef(dbName);
             }
@@ -270,7 +270,7 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
         }
     }
 
-    for (auto &entry : refCounterMap)
+    for (auto& entry : refCounterMap)
     {
         auto scopeName = entry.first;
         auto refCounter = entry.second;

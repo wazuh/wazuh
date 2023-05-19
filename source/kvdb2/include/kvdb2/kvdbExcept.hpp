@@ -10,14 +10,16 @@ namespace kvdbManager
 /**
  * @brief Exception thrown when the KVDB Manager Fails
  */
-class KVDBException : public std::exception {
+class KVDBException : public std::exception
+{
 
 public:
-    enum class Type {
+    enum class Type
+    {
         // 0 is reserved for success
-        UNKNOWN_ERROR = 1,            ///< Unknown error (default)
-        FILESYSTEM_ERROR,             ///< Filesystem related error
-        DATABASE_IN_USE_ERROR         ///< Database is in use
+        UNKNOWN_ERROR = 1,    ///< Unknown error (default)
+        FILESYSTEM_ERROR,     ///< Filesystem related error
+        DATABASE_IN_USE_ERROR ///< Database is in use
     };
 
     /**
@@ -60,19 +62,17 @@ public:
      */
     std::string getErrorTypeDescription() const
     {
-        switch (m_errorType) {
-        case Type::UNKNOWN_ERROR:
-            return "Unknown error";
-        case Type::FILESYSTEM_ERROR:
-            return "Filesystem error";
-        default:
-            return "Invalid error type";
+        switch (m_errorType)
+        {
+            case Type::UNKNOWN_ERROR: return "Unknown error";
+            case Type::FILESYSTEM_ERROR: return "Filesystem error";
+            default: return "Invalid error type";
         }
     }
 
 private:
     std::string m_errorMsg; ///< Error message
-    Type m_errorType;  ///< Error type
+    Type m_errorType;       ///< Error type
 };
 
 } // namespace kvdbManager
