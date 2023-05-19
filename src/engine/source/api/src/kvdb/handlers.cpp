@@ -74,14 +74,14 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
 
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Database name is empty");
+            return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
 
         auto exists = kvdbManager->existsDB(eRequest.name());
 
         if (!exists.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>("The DB already exists.");
+            return ::api::adapter::genericError<ResponseType>("The Database already exists.");
         }
 
         const auto path = eRequest.has_path() ? eRequest.path() : std::string {""};
@@ -119,7 +119,7 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
 
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Database name is empty");
+            return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
 
         auto exists = kvdbManager->existsDB(eRequest.name());
@@ -162,7 +162,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         }
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Database name is empty");
+            return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
 
         auto exists = kvdbManager->existsDB(eRequest.name());
@@ -232,12 +232,12 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
 
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Database name is empty");
+            return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
 
         if (eRequest.key() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Key is empty");
+            return ::api::adapter::genericError<ResponseType>("/key is empty");
         }
 
         auto exists = kvdbManager->existsDB(eRequest.name());
@@ -298,12 +298,12 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
 
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Database name is empty");
+            return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
 
         if (eRequest.key() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Key is empty");
+            return ::api::adapter::genericError<ResponseType>("/key is empty");
         }
 
         auto exists = kvdbManager->existsDB(eRequest.name());
@@ -359,17 +359,17 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
 
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Database name is empty");
+            return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
 
         if (eRequest.entry().key() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Key is empty");
+            return ::api::adapter::genericError<ResponseType>("/key is empty");
         }
 
         if (std::get<std::string>(value) == "")
         {
-            return ::api::adapter::genericError<ResponseType>("Value is empty");
+            return ::api::adapter::genericError<ResponseType>("/value is empty");
         }
 
         auto exists = kvdbManager->existsDB(eRequest.name());

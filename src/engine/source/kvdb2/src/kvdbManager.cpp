@@ -146,7 +146,7 @@ void KVDBManager::finalizeMainDB()
     delete m_pRocksDB;
 }
 
-KVDBHandler KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
+std::unique_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
     rocksdb::ColumnFamilyHandle* cfHandle;
 
