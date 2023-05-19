@@ -1,7 +1,6 @@
 import os
 
-from ..constants.paths import WAZUH_PATH
-from ..constants.paths.sockets import WAZUH_SOCKETS
+from wazuh_testing.constants.paths import WAZUH_PATH
 
 
 def delete_sockets(path=None):

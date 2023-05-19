@@ -1,13 +1,13 @@
 import os
 import platform
-import sys
-import subprocess
-
 import psutil
+import subprocess
+import sys
+
+from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants.paths.sockets import WAZUH_SOCKETS
 
 from .sockets import delete_sockets
-from ..constants.paths import WAZUH_PATH
-from ..constants.paths.sockets import WAZUH_SOCKETS
 
 
 def get_service():
