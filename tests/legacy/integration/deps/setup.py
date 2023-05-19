@@ -1,9 +1,22 @@
 # Copyright (C) 2015-2023, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-from setuptools import setup, find_namespace_packages
+import os
 import shutil
-import glob
+
+from setuptools import setup, find_packages
+
+
+package_data_list = []
+scripts_list = []
+
+
+def get_files_from_directory(directory):
+    paths = []
+    for (path, directories, filenames) in os.walk(directory):
+        for filename in filenames:
+            paths.append(os.path.join('..', path, filename))
+    return paths
 
 
 setup(
@@ -14,12 +27,14 @@ setup(
     author='Wazuh',
     author_email='hello@wazuh.com',
     license='GPLv2',
-    package_dir={'': 'wazuh_testing'},
-    packages=find_namespace_packages(where='wazuh_testing'),
+    packages=find_packages(),
+    package_data={'wazuh_testing': package_data_list},
+    entry_points={'console_scripts': scripts_list},
+    include_package_data=True,
     zip_safe=False
 )
 
-
-# # Clean build files
+# Clean build files
 shutil.rmtree('dist', ignore_errors=True)
 shutil.rmtree('build', ignore_errors=True)
+shutil.rmtree('wazuh_testing.egg-info', ignore_errors=True)
