@@ -13,13 +13,6 @@
 #include "os_net/os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING
-// Remove static qualifier when unit testing
-#define STATIC
-#else
-#define STATIC static
-#endif
-
-#ifdef WAZUH_UNIT_TESTING
     // Remove static qualifier when unit testing
     #define STATIC
     #ifdef WIN32

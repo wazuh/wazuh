@@ -39,6 +39,8 @@ char *getsharedfiles()
     return (ret);
 }
 
+#define IP_ERROR_TAG "Err"
+
 char *get_agent_ip()
 {
     char agent_ip[IPSIZE + 1] = { '\0' };
@@ -57,6 +59,10 @@ char *get_agent_ip()
                 get_ipv6_string(((struct sockaddr_in6 *)&sas)->sin6_addr, agent_ip, IPSIZE);
                 break;
         }
+    } 
+    else
+    {
+        strcpy(agent_ip, IP_ERROR_TAG);
     }
 #endif
     return strdup(agent_ip);
@@ -163,7 +169,7 @@ void run_notify()
         }
     }
     /* Create message */
-    if(*agent_ip != '\0' && strcmp(agent_ip, "Err")) {
+    if(*agent_ip != '\0' && strcmp(agent_ip, IP_ERROR_TAG)) {
         char label_ip[60];
         snprintf(label_ip, sizeof label_ip, "#\"_agent_ip\":%s", agent_ip);
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
