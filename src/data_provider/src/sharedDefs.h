@@ -38,7 +38,7 @@ constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
 
 
-enum OSType
+enum OSPlatformType
 {
     LINUX,
     BSDBASED,

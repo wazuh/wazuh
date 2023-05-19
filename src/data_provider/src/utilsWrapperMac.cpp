@@ -1,7 +1,7 @@
 /*
  * Wazuh SysInfo
  * Copyright (C) 2015, Wazuh Inc.
- * December 22, 2021.
+ * May 16, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,16 +9,10 @@
  * Foundation
  */
 
-#include "utilsWrapperLinux.hpp"
+#include "utilsWrapperMac.hpp"
 #include "cmdHelper.h"
-#include "filesystemHelper.h"
 
-std::string UtilsWrapperLinux::exec(const std::string& cmd, const size_t bufferSize)
+std::string UtilsWrapperMac::exec(const std::string& cmd, const size_t bufferSize)
 {
     return Utils::exec(cmd, bufferSize);
-}
-
-bool UtilsWrapperLinux::existsRegular(const std::string& path)
-{
-    return Utils::existsRegular(path);
 }
