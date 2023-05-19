@@ -11,8 +11,11 @@ def fill_documentation_base(path, name, resource_handler: rs.ResourceHandler):
     resource_handler.save_file(path, name, doc, rs.Format.YML)
 
 def fill_changelog_base(path, name, resource_handler: rs.ResourceHandler):
-    doc = {'items' : ['version', 'short', 'pr']}
-    resource_handler.save_file(path, name, doc, rs.Format.YML)
+    doc = f'''items:
+    - version: <v.v.v>
+      short: <v.v>
+      pr: <#46546>'''
+    resource_handler.create_file(path+'/'+ name, doc)
 
 def run(args, resource_handler: rs.ResourceHandler):
     integration_name = args['name']
