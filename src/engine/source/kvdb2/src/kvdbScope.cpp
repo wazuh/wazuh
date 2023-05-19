@@ -4,7 +4,7 @@
 namespace kvdbManager
 {
 
-KVDBHandler KVDBScope::getKVDBHandler(const std::string& dbName)
+std::unique_ptr<IKVDBHandler> KVDBScope::getKVDBHandler(const std::string& dbName)
 {
     return m_handlerManager->getKVDBHandler(dbName, m_name);
 }

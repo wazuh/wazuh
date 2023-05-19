@@ -5,7 +5,7 @@
 namespace kvdbManager
 {
 
-KVDBHandler KVDBHandlerCollection::getKVDBHandler(rocksdb::DB* db,
+std::unique_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB* db,
                                                   rocksdb::ColumnFamilyHandle* cfHandle,
                                                   const std::string& dbName,
                                                   const std::string& scopeName)
