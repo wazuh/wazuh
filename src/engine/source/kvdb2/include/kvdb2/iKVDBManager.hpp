@@ -2,12 +2,11 @@
 #define _IKVDBMANAGER_H
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <kvdb2/iKVDBScope.hpp>
-
-#include <optional>
 
 namespace kvdbManager
 {
