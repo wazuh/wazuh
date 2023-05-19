@@ -1,6 +1,7 @@
 import shared.resource_handler as rs
 from pathlib import Path
 from .generate_manifest import run as gen_manifest
+import json
 import sys
 import yaml
 try:
@@ -90,11 +91,33 @@ def run(args, resource_handler: rs.ResourceHandler):
             resource_handler.delete_kvdb(api_socket, name, path)
         return func_delete_kvdb
 
-    # Check if any of the KVDB can collide and if is the case inform which
+    # Check if integration exist
+    available_integration_assets_list = []
+    integration_name = working_path.split('/')[-1]
+
+    available_integration_assets = resource_handler.get_store_integration(
+        api_socket, integration_name)
+    if available_integration_assets['data']['content']:
+        available_integration_assets_json = json.loads(
+            available_integration_assets['data']['content'])
+    else:
+        print(
+            f'Error can\'t update if the integration named {integration_name} does not exist')
+        exit(1)
+
+    # Get all assets from integration
+    asset_type = ['decoders', 'rules', 'outputs', 'filters']
+    for type_name in asset_type:
+        if type_name in available_integration_assets_json.keys():
+            for asset in available_integration_assets_json[type_name]:
+                name = str(asset)
+                available_integration_assets_list.append(name)
+
+    # Check if any of the KVDB insert can collide and if is the case inform which
     print(f'Checking Kvdbs')
     kvdb_available_list = []
-    asset_available_json = resource_handler.get_kvdb_list(api_socket)
-    for asset in asset_available_json['data']['dbs']:
+    kvdbs_available_json = resource_handler.get_kvdb_list(api_socket)
+    for asset in kvdbs_available_json['data']['dbs']:
         name = asset.split('/')[-1]
         kvdb_available_list.append(name)
 
@@ -110,22 +133,22 @@ def run(args, resource_handler: rs.ResourceHandler):
                                      func_to_func_delete_kvdb(api_socket, entry.stem, str(entry)))
                 print(f' KVDB "{entry.stem}"[{pos}] will be added.')
 
-
     # Iterate over all the possible assets
-    asset_type = ['decoders', 'rules', 'outputs', 'filters']
-
     for type_name in asset_type:
-        # Recursively updates all components from the catalog
+        # Updates all components from the catalog
         print(f'Updating {type_name}')
 
-        # get decoder from store
+        # get all assets of each type decoder from store
         asset_available_list = []
         try:
-            asset_available_json = resource_handler.get_catalog_file(
+            asset_on_store = resource_handler.get_catalog_file(
                 api_socket, '', type_name[:-1], rs.Format.JSON)
-            for asset in asset_available_json['data']['content'].split('\n'):
-                name = asset.split('/')[-1]
-                asset_available_list.append(name)
+            if asset_on_store['data']['content']:
+                asset_on_store_json = json.loads(
+                    asset_on_store['data']['content'])
+                for asset in asset_on_store_json:
+                    name = str(asset)+'/0'
+                    asset_available_list.append(name)
         except:
             pass
 
@@ -138,12 +161,18 @@ def run(args, resource_handler: rs.ResourceHandler):
                     old_content = ''
                     new_content = resource_handler.load_file(
                         entry, rs.Format.YML)
-                    if entry.stem in asset_available_list:
+                    full_name = f'{type_name[:-1]}/{entry.stem}/0'
+                    if full_name in asset_available_list:
                         # Must update
                         old_content = resource_handler.get_catalog_file(
-                            api_socket, type_name[:-1], f'{type_name[:-1]}/{entry.stem}/0', rs.Format.JSON)
+                            api_socket, type_name[:-1], full_name, rs.Format.YML)
                         old_content = old_content['data']['content']
-                    asset_group = (entry.stem, new_content, old_content)
+                    # remaining assets in integration list means that should be removed
+                    if full_name in available_integration_assets_list:
+                        print(f'removed {full_name}')
+                        available_integration_assets_list.remove(full_name)
+                    asset_group = (full_name, new_content, old_content)
+                    # TODO: full_name should be added here
                     assets_update_list.append(asset_group)
 
         # if item can be updated use old asset as fallback
@@ -155,27 +184,49 @@ def run(args, resource_handler: rs.ResourceHandler):
             updateable = len(asset_old_content)
             if updateable:
                 old_content_yml = yaml.load(asset_old_content, Loader=Loader)
-                pos = cm.add_command(func_to_update_catalog(api_socket, f'{type_name[:-1]}/{asset_name}/0',
-                                                            f'{type_name[:-1]}/{asset_name}/0', asset_new_content, rs.Format.YML),  # update to new
-                                     func_to_update_catalog(api_socket, f'{type_name[:-1]}/{asset_name}/0',
-                                                            f'{type_name[:-1]}/{asset_name}/0', old_content_yml, rs.Format.YML))  # revert to old
-                print(f'Asset[{pos}] {asset_name} is updatable.')
+                pos = cm.add_command(func_to_update_catalog(api_socket, asset_name.split('/')[0], asset_name, asset_new_content,
+                                                            rs.Format.YML),  # update to new
+                                     func_to_update_catalog(api_socket, asset_name.split('/')[0], asset_name, old_content_yml,
+                                     rs.Format.YML))  # revert to old
+                print(f'Asset[{pos}] {asset_name} will be updated.')
             else:
                 pos = cm.add_command(func_to_add_catalog(api_socket, type_name[:-1], f'{type_name[:-1]}/{asset_name}/0',
                                                          asset_new_content, rs.Format.YML),
                                      func_to_delete_catalog(api_socket, type_name[:-1], f'{type_name[:-1]}/{asset_name}/0'))
                 print(f'Asset[{pos}] {asset_name} will be added.')
 
-    print(f'Result {cm.execute()}')
+    for full_asset_name in available_integration_assets_list:
+        print(f'{full_asset_name} will be removed.')
+        # get available asset from store
+        old_content = resource_handler.get_catalog_file(
+            api_socket, full_asset_name.split('/')[0], full_asset_name, rs.Format.YML)
+        old_content = old_content['data']['content']
+        old_content_yml = yaml.load(asset_old_content, Loader=Loader)
+
+        pos = cm.add_command(func_to_delete_catalog(api_socket, full_asset_name.split('/')[0], full_asset_name),
+                             func_to_add_catalog(api_socket, full_asset_name.split('/')[0], full_asset_name,
+                                                 old_content_yml, rs.Format.YML))
+        print(f'Asset[{pos}] {full_asset_name} will be removed.')
+
+    if args['test-run']:
+        print(f'Finish test run.')
+    else:
+        if not cm.execute():
+            print(f'Succesfully updated integration.')
+        else:
+            print(f'Could not update integration.')
 
 
 def configure(subparsers):
     parser_update = subparsers.add_parser(
-        'update', help='Updates integration components to the Engine Catalog. If a step fails it will restore the asset to the previous state')
+        'update', help=f'Updates all available intgration components, deletes if no longer present, adds when new.')
     parser_update.add_argument('-a', '--api-sock', type=str, default=DEFAULT_API_SOCK, dest='api_sock',
                                help=f'[default="{DEFAULT_API_SOCK}"] Engine instance API socket path')
 
     parser_update.add_argument('-p', '--integration-path', type=str, dest='integration-path',
                                help=f'[default=current directory] Integration directory path')
+
+    parser_update.add_argument('-t', '--test-run', dest='test-run', action='store_true',
+                               help=f'When set it will print all the steps to apply but wont affect the store')
 
     parser_update.set_defaults(func=run)
