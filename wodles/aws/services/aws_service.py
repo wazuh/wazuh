@@ -6,6 +6,9 @@ from datetime import datetime
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 
+sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
+import aws_tools
+
 DEFAULT_DATABASE_NAME = "aws_services"
 DEFAULT_TABLENAME = "aws_services"
 
@@ -121,9 +124,15 @@ class AWSService(wazuh_integration.WazuhIntegration):
                         scan_date DESC
                     LIMIT :retain_db_records);"""
 
+    @staticmethod
+    def check_region(region: str) -> None:
+        if region not in aws_tools.ALL_REGIONS:
+            raise ValueError(f"Invalid region '{region}'")
+
     def get_last_log_date(self):
         date = self.only_logs_after if self.only_logs_after is not None else self.default_date.strftime('%Y%m%d')
         return f'{date[0:4]}-{date[4:6]}-{date[6:8]} 00:00:00.0'
+
 
     def format_message(self, msg):
         # rename service field to source

@@ -38,6 +38,7 @@ import aws_tools
 
 import buckets_s3
 import services
+import subscribers
 
 
 def main(argv):
@@ -141,10 +142,11 @@ def main(argv):
                                        )
                 service.get_alerts()
         elif options.subscriber:
-            asl_queue = AWSSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
-                                    sts_endpoint=options.sts_endpoint,
-                                    service_endpoint=options.service_endpoint,
-                                    name=options.queue)
+            asl_queue = subscribers.sqsqueue.AWSSQSQueue(external_id=options.external_id,
+                                                         iam_role_arn=options.iam_role_arn,
+                                                         sts_endpoint=options.sts_endpoint,
+                                                         service_endpoint=options.service_endpoint,
+                                                         name=options.queue)
             asl_queue.sync_events()
 
     except Exception as err:
