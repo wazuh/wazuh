@@ -7,6 +7,7 @@
 #include <eMessages/graph.pb.h>
 #include <hlp/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
+#include <schemf/schema.hpp>
 
 #include "builder.hpp"
 #include "register.hpp"
@@ -88,6 +89,7 @@ api::Handler resourceGet(const Config& config)
             builder::internals::dependencies deps;
             deps.logparDebugLvl = 0;
             deps.logpar = logpar;
+            deps.schema = std::make_shared<schemf::Schema>();;
             deps.kvdbManager = config.kvdbManager;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
