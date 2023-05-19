@@ -252,14 +252,17 @@ void run(const Options& options)
 
     std::cout << std::endl << std::endl << "Enter a log in single line (Crtl+C to exit):" << std::endl << std::endl;
 
-    // Stdin loop
-    std::string line;
-
-    if(!clear_icanon(true))
+    // Only set non-canonical mode when connected to terminal
+    if (isatty(fileno(stdin)))
     {
-        std::cout << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be processed correctly." << std::endl << std::endl;
+        if(!clear_icanon(true))
+        {
+            std::cout << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be processed correctly." << std::endl << std::endl;
+        }
     }
 
+    // Stdin loop
+    std::string line;
     while (gs_doRun && std::getline(std::cin, line))
     {
         if (!line.empty())
