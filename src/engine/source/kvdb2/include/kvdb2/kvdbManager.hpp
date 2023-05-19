@@ -6,11 +6,11 @@
 #include <map>
 #include <mutex>
 
-#include <kvdb2/iKVDBManager.hpp>
 #include <kvdb2/iKVDBHandlerManager.hpp>
+#include <kvdb2/iKVDBManager.hpp>
+#include <kvdb2/kvdbHandlerCollection.hpp>
 #include <kvdb2/kvdbScope.hpp>
 #include <kvdb2/kvdbSpace.hpp>
-#include <kvdb2/kvdbHandlerCollection.hpp>
 
 #include <utils/baseMacros.hpp>
 
@@ -19,9 +19,9 @@
 
 namespace metricsManager
 {
-    class IMetricsManager;
-    class IMetricsScope;
-}
+class IMetricsManager;
+class IMetricsScope;
+} // namespace metricsManager
 
 namespace kvdbManager
 {
@@ -38,12 +38,15 @@ struct KVDBManagerOptions
  * @brief KVDBManager Entry Point class.
  *
  */
-class KVDBManager final : public IKVDBManager, public IKVDBHandlerManager
+class KVDBManager final
+    : public IKVDBManager
+    , public IKVDBHandlerManager
 {
     WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
 
 public:
-    KVDBManager(const KVDBManagerOptions& options, const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
+    KVDBManager(const KVDBManagerOptions& options,
+                const std::shared_ptr<metricsManager::IMetricsManager>& metricsManager);
 
     void initialize();
     void finalize();
@@ -89,12 +92,10 @@ private:
 
     std::mutex m_mutexScopes;
 
-    std::atomic<bool> m_isInitialized { false };
-    std::atomic<bool> m_isShuttingDown { false };
-
+    std::atomic<bool> m_isInitialized {false};
+    std::atomic<bool> m_isShuttingDown {false};
 };
 
 } // namespace kvdbManager
-
 
 #endif // _KVDBMANAGER_H

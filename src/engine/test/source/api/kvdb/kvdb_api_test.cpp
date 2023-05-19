@@ -4,8 +4,8 @@
 #include <kvdb2/kvdbScope.hpp>
 #include <testsCommon.hpp>
 
-#include <metrics/metricsManager.hpp>
 #include <api/kvdb/handlers.hpp>
+#include <metrics/metricsManager.hpp>
 
 using namespace api::kvdb::handlers;
 using namespace metricsManager;
@@ -37,7 +37,7 @@ protected:
 
         std::shared_ptr<IMetricsManager> spMetrics = std::make_shared<MetricsManager>();
 
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions { KVDB_PATH, KVDB_DB_FILENAME };
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions {KVDB_PATH, KVDB_DB_FILENAME};
 
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
 
@@ -153,7 +153,7 @@ TEST_F(KVDBApiTest, managerPostOk)
 
 TEST_F(KVDBApiTest, managerPostNameMissing)
 {
-api::Handler cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest());
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Missing /name"})"};
@@ -213,7 +213,7 @@ TEST_F(KVDBApiTest, managerDeleteOk)
 
 TEST_F(KVDBApiTest, managerDeleteNameMissing)
 {
-api::Handler cmd;
+    api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest());
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"Missing /name"})"};
@@ -273,7 +273,7 @@ TEST_F(KVDBApiTest, managerDumpOk)
 
 TEST_F(KVDBApiTest, managerDumpNameMissing)
 {
-api::Handler cmd;
+    api::Handler cmd;
     auto kvdbScope = kvdbManager->getKVDBScope("test");
     ASSERT_NO_THROW(cmd = managerDump(KVDBApiTest::kvdbManager, kvdbScope));
     const auto response = cmd(commonWRequest());
@@ -328,7 +328,7 @@ TEST_F(KVDBApiTest, dbGetNameArrayNotString)
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
     const auto expectedData = json::Json {
-            R"({"status":"ERROR","error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
+        R"({"status":"ERROR","error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -540,7 +540,7 @@ TEST_F(KVDBApiTest, dbDeleteNameArrayNotString)
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
     const auto expectedData = json::Json {
-            R"({"status":"ERROR","error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
+        R"({"status":"ERROR","error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -719,7 +719,7 @@ TEST_F(KVDBApiTest, dbPutNameArrayNotString)
     const auto response = cmd(api::wpRequest::create(rCommand, rOrigin, params));
 
     const auto expectedData = json::Json {
-            R"({"status":"ERROR","error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
+        R"({"status":"ERROR","error":"INVALID_ARGUMENT:name: Proto field is not repeating, cannot start list."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -821,7 +821,6 @@ TEST_F(KVDBApiTest, dbPutValueEmpty)
     ASSERT_EQ(response.error(), 0);
     ASSERT_FALSE(response.message().has_value());
     ASSERT_EQ(response.data(), expectedData);
-
 }
 
 TEST_F(KVDBApiTest, dbPutOneKey)
@@ -861,7 +860,6 @@ TEST_F(KVDBApiTest, dbPutRepeatKeyNoError)
     ASSERT_EQ(response2.error(), 0);
     ASSERT_FALSE(response2.message().has_value());
     ASSERT_EQ(response2.data(), expectedData);
-
 }
 
 TEST_F(KVDBApiTest, dbPutMoreThanOneKey)
