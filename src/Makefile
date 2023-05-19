@@ -594,7 +594,7 @@ endif
 
 
 .PHONY: build
-build: ${TARGET} post-build-macos
+build: ${TARGET}
 ifneq (${TARGET},failtarget)
 	${MAKE} settings
 	@echo
@@ -602,18 +602,6 @@ ifneq (${TARGET},failtarget)
 	@echo "Done building ${TARGET}"
 	${QUIET_ENDCOLOR}
 endif
-	@echo
-
-.PHONY: pre-build-macos post-build-macos
-
-pre-build-macos:
-ifeq (${uname_S},Darwin)
-	$(shell mv ./VERSION ./VERSION.bck)
-endif
-	@echo
-
-post-build-macos:
-	$(shell mv ./VERSION.bck ./VERSION)
 	@echo
 
 
@@ -782,7 +770,7 @@ ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
 
-agent: pre-build-macos external ${CPPLIBDEPS}
+agent: external ${CPPLIBDEPS}
 ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
