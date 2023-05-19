@@ -41,7 +41,7 @@ class CommandsManager:
             try:
                 pair[1]()
             except Exception as err_inst:
-                print(f'Will continue undoing, despite error: "{inst}"')
+                print(f'Will continue undoing, despite error: "{err_inst}"')
                 continue
 
 
@@ -208,8 +208,8 @@ def run(args, resource_handler: rs.ResourceHandler):
                                                  old_content_yml, rs.Format.YML))
         print(f'Asset[{pos}] {full_asset_name} will be removed.')
 
-    if args['test-run']:
-        print(f'Finish test run.')
+    if args['dry-run']:
+        print(f'Finished test run.')
     else:
         if not cm.execute():
             print(f'Succesfully updated integration.')
@@ -226,7 +226,7 @@ def configure(subparsers):
     parser_update.add_argument('-p', '--integration-path', type=str, dest='integration-path',
                                help=f'[default=current directory] Integration directory path')
 
-    parser_update.add_argument('-t', '--test-run', dest='test-run', action='store_true',
+    parser_update.add_argument('--dry-run', dest='dry-run', action='store_true',
                                help=f'When set it will print all the steps to apply but wont affect the store')
 
     parser_update.set_defaults(func=run)
