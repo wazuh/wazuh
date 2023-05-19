@@ -2,6 +2,7 @@ import shared.resource_handler as rs
 from pathlib import Path
 from .generate_manifest import run as gen_manifest
 import sys
+import json
 
 DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
 
@@ -9,72 +10,67 @@ DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
 def run(args, resource_handler: rs.ResourceHandler):
     api_socket = args['api_sock']
 
-    working_path = resource_handler.cwd()
-    if args['integration-path']:
-        working_path = args['integration-path']
-        path = Path(working_path)
-        if path.is_dir():
-            working_path = str(path.resolve())
-        else:
-            print(f'Error: Directory does not exist ')
-            return -1
+    on_dry_run = False
+    if args['dry-run']: on_dry_run = True
 
-    print(f'Removing integration as defined in path: {working_path}')
+    if args['integration-name']:
+        integration_name = args['integration-name']
+    else:
+        print(f'Error: Needs an integration name to delete')
+        return -1
 
-    # Delete kvdbs
-    print(f'Deleting Kvdbs')
+    print(f'Removing integration named: {integration_name}')
+
+    # Get integration from store
+    available_integration_assets_list = []
+
+    available_integration_assets = resource_handler.get_store_integration(
+        api_socket, integration_name)
+    if available_integration_assets['data']['content']:
+        available_integration_assets_json = json.loads(
+            available_integration_assets['data']['content'])
+    else:
+        print(
+            f'Error can\'t update if the integration named {integration_name} does not exist')
+        exit(1)
+
+    # Get all assets from integration
+    asset_type = ['decoders', 'rules', 'outputs', 'filters']
+    for type_name in asset_type:
+        if type_name in available_integration_assets_json.keys():
+            for asset in available_integration_assets_json[type_name]:
+                name = str(asset)
+                available_integration_assets_list.append(name)
+                print(f'Deleting asset {name}')
+                if not on_dry_run:
+                    try:
+                        resource_handler.delete_catalog_file(api_socket, type_name, name)
+                    except Exception as err_inst:
+                        print(f'Will continue deleting, despite error: "{err_inst}"')
+                        continue
+
+
+    print(f'Deleting integration [{integration_name}]')
     try:
-        resource_handler.recursive_delete_kvdbs(api_socket, working_path, True)
-    except Exception:
-        print('Could not delete kvdb moving to the next step')
-
-    # Recursively delete all components from the catalog
-    print(f'Deleting Decoders')
-    try:
-        resource_handler.recursive_delete_catalog(
-        api_socket, working_path, 'decoders', True)
-    except Exception:
-        print('Could not delete Decoders moving to the next step')
-
-    print(f'Deleting Rules')
-    try:
-        resource_handler.recursive_delete_catalog(
-        api_socket, working_path, 'rules', True)
-    except Exception:
-        print('Could not delete Rules moving to the next step')
-
-    print(f'Deleting Outputs')
-    try:
-        resource_handler.recursive_delete_catalog(
-        api_socket, working_path, 'outputs', True)
-    except Exception:
-        print('Could not delete Outputs Outputs moving to the next step')
-
-    print(f'Deleting Filters')
-    try:
-        resource_handler.recursive_delete_catalog(
-        api_socket, working_path, 'filters', True)
-    except Exception:
-        print('Could not delete Filters moving to the next step')
-
-    # integration name is taken from the directory name
-    path = Path(working_path)
-    name = path.resolve().name
-    print(f'Deleting integration [{name}]')
-    try:
-        resource_handler.delete_catalog_file(
-            api_socket, 'integration', f'integration/{name}/0')
+        if not on_dry_run:
+            resource_handler.delete_catalog_file(
+                api_socket, 'integration', f'integration/{integration_name}/0')
     except:
         print('Could not remove integration from the store')
 
+    if on_dry_run:
+        print('Finished dry-run.')
 
 def configure(subparsers):
     parser_rm = subparsers.add_parser(
-        'delete', help='Delete integration components from the Engine Catalog. If a step fails it continue with the next')
+        'delete', help='Delete integration assets from the Engine Catalog. If a step fails it continue with the next')
     parser_rm.add_argument('-a', '--api-sock', type=str, default=DEFAULT_API_SOCK, dest='api_sock',
                             help=f'[default="{DEFAULT_API_SOCK}"] Engine instance API socket path')
 
-    parser_rm.add_argument('-p', '--integration-path', type=str, dest='integration-path',
-                            help=f'[default=current directory] Integration directory path')
+    parser_rm.add_argument('-n', '--integration-name', type=str, dest='integration-name',
+                            help=f'Integration name to be deleted')
+
+    parser_rm.add_argument('--dry-run', dest='dry-run', action='store_true',
+                               help=f'default False, When True will print all the steps to apply without affecting the store')
 
     parser_rm.set_defaults(func=run)
