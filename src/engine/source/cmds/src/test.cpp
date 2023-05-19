@@ -4,6 +4,7 @@
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <termios.h>
 
 #include <re2/re2.h>
 
@@ -39,6 +40,33 @@ void sigint_handler(const int signum)
 
 namespace cmd::test
 {
+
+int clear_icanon(bool flag)
+{
+    struct termios settings;
+
+    if (tcgetattr(STDIN_FILENO, &settings) < 0)
+    {
+        return 0;
+    }
+
+    if (true == flag)
+    {
+        settings.c_lflag &= ~ICANON;
+    }
+    else
+    {
+        settings.c_lflag |= ICANON;
+    }
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &settings) < 0)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
 void run(const Options& options)
 {
     // Logging init
@@ -228,6 +256,12 @@ void run(const Options& options)
 
     // Stdin loop
     std::string line;
+
+    if(!clear_icanon(true))
+    {
+        std::cout << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be processed correctly." << std::endl << std::endl;
+    }
+
     while (gs_doRun && std::getline(std::cin, line))
     {
         if (!line.empty())
@@ -315,6 +349,7 @@ void run(const Options& options)
 
     }
 
+    clear_icanon(false);
     g_exitHanlder.execute();
 }
 
