@@ -26,7 +26,9 @@ class CommandsManager:
                 print(f'Executing N°{idx}')
                 pair[0]()
             except Exception as err_inst:
-                self.last_command = idx
+                if idx == 0:
+                    return 1
+                self.last_command = idx - 1
                 print(
                     f'Undoing from N°{self.last_command}, due to error: "{err_inst}"')
                 self.undo()
@@ -121,8 +123,7 @@ def run(args, resource_handler: rs.ResourceHandler):
         name = asset.split('/')[-1]
         kvdb_available_list.append(name)
 
-    # get decoder from directory and clasiffy if present in store
-    add_kvdbs = []
+    # get kvdbs from directory and if possible mark for addition
     path = Path(working_path) / 'kvdbs'
     if path.exists():
         for entry in path.rglob('*.json'):
@@ -152,7 +153,7 @@ def run(args, resource_handler: rs.ResourceHandler):
         except:
             pass
 
-        # get decoder from directory and clasiffy if present in store
+        # get asset from directory and clasiffy if present in store
         assets_update_list = []
         path = Path(working_path) / type_name
         if path.exists():
@@ -169,10 +170,8 @@ def run(args, resource_handler: rs.ResourceHandler):
                         old_content = old_content['data']['content']
                     # remaining assets in integration list means that should be removed
                     if full_name in available_integration_assets_list:
-                        print(f'removed {full_name}')
                         available_integration_assets_list.remove(full_name)
                     asset_group = (full_name, new_content, old_content)
-                    # TODO: full_name should be added here
                     assets_update_list.append(asset_group)
 
         # if item can be updated use old asset as fallback
@@ -196,7 +195,6 @@ def run(args, resource_handler: rs.ResourceHandler):
                 print(f'Asset[{pos}] {asset_name} will be added.')
 
     for full_asset_name in available_integration_assets_list:
-        print(f'{full_asset_name} will be removed.')
         # get available asset from store
         old_content = resource_handler.get_catalog_file(
             api_socket, full_asset_name.split('/')[0], full_asset_name, rs.Format.YML)
@@ -212,7 +210,26 @@ def run(args, resource_handler: rs.ResourceHandler):
         print(f'Finished test run.')
     else:
         if not cm.execute():
-            print(f'Succesfully updated integration.')
+            print(f'Succesfully updated assets. Updating integration.')
+            # Creates a manifest.yml if it doesn't exists
+            manifest_file = working_path + '/manifest.yml'
+            path = Path(manifest_file)
+            if not path.is_file():
+                args = {'output-path':working_path} #Is there a better way of doing this?
+                print(f'"manifest.yml" not found creating one...')
+                gen_manifest(args,resource_handler)
+            else:
+                print(f'Check if available file is up to date.')
+
+            # integration name is taken from the directory name
+            name = path.resolve().parent.name
+            print(f'Updating integration [{name}] manifest...')
+            try:
+                manifest = resource_handler.load_file(manifest_file)
+                resource_handler.update_catalog_file(
+                    api_socket, 'integration', f'integration/{name}/0', manifest, rs.Format.YML)
+            except:
+                print('Couldnt update integration to the store, try manually with catalog update')
         else:
             print(f'Could not update integration.')
 
