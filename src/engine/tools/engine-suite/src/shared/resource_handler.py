@@ -113,9 +113,7 @@ class ResourceHandler:
     def _base_catalog_command(self, path: str, type: str, name: str, content: dict, format: Format, command: str):
         raw_message = ''
         format_str = ''
-        if command == 'get':
-            format_str = 'yaml'
-        elif format is Format.JSON:
+        if format is Format.JSON:
             raw_message = json.dumps(content)
             format_str = 'json'
         elif format is Format.YML:
@@ -143,10 +141,8 @@ class ResourceHandler:
         resp_message = data[4:resp_size+4].decode('UTF-8')
 
         # Change post for update and put for add
-        if command == 'post':
-            command = 'add'
-        elif command == 'put':
-            command = 'update'
+        if command == 'post': command = 'add'
+        elif command == 'put': command = 'update'
 
         if not len(resp_message):
             raise Exception(
@@ -161,11 +157,6 @@ class ResourceHandler:
         if response['data']['status'] != 'OK':
             raise Exception(
                 f'Could not execute [{command}] to [{name}] due to: {response["data"]["error"]}')
-        elif command == 'get':
-            if format is Format.JSON:
-                return response
-            else:
-                return yaml.dump(resp_message, Dumper=Dumper, sort_keys=False)
 
     def update_catalog_file(self, path: str, type: str, name: str, content: dict, format: Format):
         self._base_catalog_command(path, type, name, content, format, 'put')
@@ -176,8 +167,56 @@ class ResourceHandler:
     def delete_catalog_file(self, path: str, type: str, name: str):
         self._base_catalog_command(path, type, name, [], format, 'delete')
 
+    def _base_catalog_get_command(self, path: str, type: str, name: str, format: Format) -> dict:
+        format_str = ''
+        # if command == 'get':
+        #     format_str = 'yaml'
+        if format is Format.JSON:
+            format_str = 'json'
+        elif format is Format.YML:
+            format_str = 'yaml'
+        else:
+            raise Exception(f'Format not supported for catalog {name}')
+
+        request = {'version': 1, 'command': 'catalog.resource/get', 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'type': type, 'name': name, 'content': '', 'format': format_str}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            try:
+                s.connect(path)
+                s.sendall(request_bytes)
+                data = s.recv(65507)
+            except:
+                raise Exception(f'Could not connect and send information throug [{path}]')
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        if not len(resp_message):
+            raise Exception(
+                f'Catalog command [get] received an empty response.')
+
+        response = ''
+        try:
+            response = json.loads(resp_message)
+        except:
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'Could not execute [get] to [{name}] due to: {response["data"]["error"]}')
+
+        if format is Format.JSON:
+            return response
+        else:
+            return yaml.load(resp_message, Loader=Loader)
+
     def get_catalog_file(self, path: str, type: str, name: str, format: Format):
-        return self._base_catalog_command(path, type, name, [] , format, 'get')
+        return self._base_catalog_get_command(path, type, name, format)
 
     def save_plain_text_file(self, path_str: str, name: str, content: str):
         path = Path(path_str)
@@ -309,3 +348,6 @@ class ResourceHandler:
     def recursive_delete_catalog(self, api_socket: str, path_str: str, type: str, print_name: bool = False):
         self._recursive_command_to_catalog(
             api_socket, path_str, type, 'delete', print_name)
+
+    def get_store_integration(self, path: str,name: str):
+        return self.get_catalog_file(path, 'integration', f'integration/{name}/0', Format.JSON)

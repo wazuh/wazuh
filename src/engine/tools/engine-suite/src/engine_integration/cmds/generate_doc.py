@@ -32,13 +32,12 @@ def run(_, resource_handler: rs.ResourceHandler):
     readme_str += f'## Schema\n\n'
     try:
         schema = resource_handler.load_file('fields.yml', rs.Format.YML)
-    except:
-        pass #TODO: error message?
-    else:
         readme_str += f'| Field | Description | Type |\n'
         readme_str += f'|---|---|---|\n'
         for field in schema:
             readme_str += f'| {field} | {schema[field]["description"]} | {schema[field]["type"]} |\n'
+    except:
+        pass #TODO: error message?
 
     decoders_doc = []
     resource_handler.walk_dir(
