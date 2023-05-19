@@ -146,7 +146,7 @@ function uninstall_wazuh {
 
 	if ($UninstallString -ne $null) {
 		write-output "$(Get-Date -format u) - Performing the Wazuh-Agent uninstall using: `"$UninstallString`"." >> .\upgrade\upgrade.log
-		& "C:\Windows\SYSTEM32\cmd.exe" /c $UninstallString
+		& "$env:windir\System32\cmd.exe"/c $UninstallString
 
 		# registry takes some time to refresh (e.g.: NT 6.3)
 		Start-Sleep 5
