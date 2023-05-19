@@ -10,7 +10,7 @@ RefCounter::RefCounter(const RefCounter& other)
 
 void RefCounter::addRef(const std::string& name)
 {
-   m_refMap[name]++;
+    m_refMap[name]++;
 }
 
 void RefCounter::removeRef(const std::string& name)
