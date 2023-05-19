@@ -78,7 +78,7 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBSpac
     if (!iter->status().ok())
     {
         return base::Error {
-            fmt::format("Database '{}': Couldn't iterate over database: '{}'", m_dbName, iter->status().ToString())};
+            fmt::format("Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
     }
 
     iter->Reset();
