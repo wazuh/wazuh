@@ -1,6 +1,6 @@
+#include <fmt/format.h>
 #include <kvdb2/kvdbSpace.hpp>
 #include <logging/logging.hpp>
-#include <fmt/format.h>
 
 namespace kvdbManager
 {
@@ -16,9 +16,7 @@ KVDBSpace::KVDBSpace(IKVDBHandlerManager* manager,
 {
 }
 
-KVDBSpace::~KVDBSpace()
-{
-}
+KVDBSpace::~KVDBSpace() {}
 
 std::variant<bool, base::Error> KVDBSpace::set(const std::string& key, const std::string& value)
 {
@@ -29,7 +27,7 @@ std::variant<bool, base::Error> KVDBSpace::set(const std::string& key, const std
         return true;
     }
 
-    return base::Error { fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value, key, status.getState()) };
+    return base::Error {fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
 }
 
 std::variant<bool, base::Error> KVDBSpace::add(const std::string& key)
@@ -46,7 +44,7 @@ std::variant<bool, base::Error> KVDBSpace::remove(const std::string& key)
         return true;
     }
 
-    return base::Error { fmt::format("Cannot remove key '{}'. Error: {}", key, status.getState()) };
+    return base::Error {fmt::format("Cannot remove key '{}'. Error: {}", key, status.getState())};
 }
 
 std::variant<bool, base::Error> KVDBSpace::contains(const std::string& key)
@@ -64,7 +62,7 @@ std::variant<std::string, base::Error> KVDBSpace::get(const std::string& key)
         return value;
     }
 
-    return base::Error { fmt::format("Cannot get key '{}'. Error: {}", value, key, status.getState()) };
+    return base::Error {fmt::format("Cannot get key '{}'. Error: {}", value, key, status.getState())};
 }
 
 std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBSpace::dump()
@@ -79,7 +77,8 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBSpac
 
     if (!iter->status().ok())
     {
-        return base::Error { fmt::format("Database '{}': Couldn't iterate over database: '{}'", m_dbName, iter->status().ToString()) };
+        return base::Error {
+            fmt::format("Database '{}': Couldn't iterate over database: '{}'", m_dbName, iter->status().ToString())};
     }
 
     iter->Reset();
