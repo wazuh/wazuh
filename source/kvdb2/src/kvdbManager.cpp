@@ -266,11 +266,8 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
             // Get the current refCounter for this scope.
             auto counterMap = refCounterMap[scopeName];
 
-            // Use internals of RefCounter to insert one by one the current DB to the current scope.
-            for (int tmpDBUsageCounter = 0; tmpDBUsageCounter < countDBsUsingScope; tmpDBUsageCounter++)
-            {
-                counterMap.addRef(dbName);
-            }
+            // Insert number of used DBs in current scope.
+            counterMap.addRef(dbName, countDBsUsingScope);
 
             // Update the refCounter for this scope.
             refCounterMap[scopeName] = counterMap;
