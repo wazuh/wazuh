@@ -22,22 +22,22 @@ class OsPrimitivesMac : public IOsPrimitivesMac
         virtual ~OsPrimitivesMac() = default;
         // LCOV_EXCL_STOP
 
-        int sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen) const
+        int sysctl(int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const
         {
             return ::sysctl(name, namelen, oldp, oldlenp, newp, newlen);
         }
 
-        int sysctlbyname(const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen) const
+        int sysctlbyname(const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen) const
         {
             return ::sysctlbyname(name, oldp, oldlenp, newp, newlen);
         }
 
-        CFMutableDictionaryRef IOServiceMatching(const char *name) const
+        CFMutableDictionaryRef IOServiceMatching(const char* name) const
         {
             return ::IOServiceMatching(name);
         }
 
-        kern_return_t IOServiceGetMatchingServices(mach_port_t mainPort, CFDictionaryRef matching, io_iterator_t *existing) const
+        kern_return_t IOServiceGetMatchingServices(mach_port_t mainPort, CFDictionaryRef matching, io_iterator_t* existing) const
         {
             return ::IOServiceGetMatchingServices(mainPort, matching, existing);
         }
@@ -52,7 +52,7 @@ class OsPrimitivesMac : public IOsPrimitivesMac
             return ::IORegistryEntryGetName(entry, name);
         }
 
-        kern_return_t IORegistryEntryCreateCFProperties(io_registry_entry_t entry, CFMutableDictionaryRef *properties, CFAllocatorRef allocator, IOOptionBits options) const
+        kern_return_t IORegistryEntryCreateCFProperties(io_registry_entry_t entry, CFMutableDictionaryRef* properties, CFAllocatorRef allocator, IOOptionBits options) const
         {
             return ::IORegistryEntryCreateCFProperties(entry, properties, allocator, options);
         }
@@ -62,12 +62,12 @@ class OsPrimitivesMac : public IOsPrimitivesMac
             return ::IOObjectRelease(object);
         }
 
-        CFStringRef CFStringCreateWithCString(CFAllocatorRef alloc, const char *cStr, CFStringEncoding encoding) const
+        CFStringRef CFStringCreateWithCString(CFAllocatorRef alloc, const char* cStr, CFStringEncoding encoding) const
         {
             return ::CFStringCreateWithCString(alloc, cStr, encoding);
         }
 
-        const void * CFDictionaryGetValue(CFDictionaryRef theDict, const void *key) const
+        const void* CFDictionaryGetValue(CFDictionaryRef theDict, const void* key) const
         {
             return ::CFDictionaryGetValue(theDict, key);
         }
@@ -87,7 +87,7 @@ class OsPrimitivesMac : public IOsPrimitivesMac
             return ::CFDataGetLength(theData);
         }
 
-        void CFDataGetBytes(CFDataRef theData, CFRange range, UInt8 *buffer) const
+        void CFDataGetBytes(CFDataRef theData, CFRange range, UInt8* buffer) const
         {
             return ::CFDataGetBytes(theData, range, buffer);
         }
