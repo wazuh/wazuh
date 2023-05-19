@@ -122,11 +122,11 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
             return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
 
-        auto exists = kvdbManager->existsDB(eRequest.name());
+        auto error = kvdbManager->existsDB(eRequest.name());
 
-        if (exists.has_value())
+        if (error.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(exists.value().message);
+            return ::api::adapter::genericError<ResponseType>(error.value().message);
         }
 
         auto result = kvdbManager->deleteDB(eRequest.name());

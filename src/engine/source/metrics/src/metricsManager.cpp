@@ -15,7 +15,6 @@ MetricsManager::MetricsManager() :
 void MetricsManager::start()
 {
     // Configure
-    opentelemetry::sdk::common::internal_log::GlobalLogHandler::SetLogLevel(opentelemetry::sdk::common::internal_log::LogLevel::Error);
 }
 
 bool MetricsManager::isRunning()
