@@ -117,7 +117,7 @@ async def get_instruments(request, select: Optional[str] = None, sort: Optional[
     return
 
 
-async def enable_metric(request, scope_name: Optional[str] = None, instrument_name: Optional[str] = None,
+async def enable_instrument(request, scope_name: Optional[str] = None, instrument_name: Optional[str] = None,
                         enable: bool = True):
     """Enable or disable a specified metric. Uses the metrics/enable action
     of the engine.
@@ -144,7 +144,7 @@ async def enable_metric(request, scope_name: Optional[str] = None, instrument_na
         'enable': enable
     }
 
-    dapi = DistributedAPI(f=metrics.enable_metric,
+    dapi = DistributedAPI(f=metrics.enable_instrument,
                           f_kwargs=f_kwargs,
                           request_type='local_master',
                           is_async=False,

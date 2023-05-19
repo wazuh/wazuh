@@ -70,7 +70,7 @@ def get_instruments(limit: int, select: Optional[str] = None, sort: Optional[str
     request_builder.add_command(command=MetricCommand.LIST)
 
 
-def enable_metric(scope_name: Optional[str] = None, instrument_name: Optional[str] = None,
+def enable_instrument(scope_name: Optional[str] = None, instrument_name: Optional[str] = None,
                   enable: bool = True):
     """
     Enables or disables a specified metric.
