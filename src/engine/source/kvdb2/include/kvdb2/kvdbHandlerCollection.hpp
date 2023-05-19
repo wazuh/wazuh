@@ -24,7 +24,7 @@ public:
     {
     }
 
-    KVDBHandler getKVDBHandler(rocksdb::DB* db,
+    std::unique_ptr<IKVDBHandler> getKVDBHandler(rocksdb::DB* db,
                                rocksdb::ColumnFamilyHandle* cfHandle,
                                const std::string& dbName,
                                const std::string& scopeName);

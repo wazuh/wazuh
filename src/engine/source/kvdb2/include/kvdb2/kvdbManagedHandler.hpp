@@ -19,12 +19,9 @@ public:
 
     virtual ~KVDBManagedHandler()
     {
-        if (m_handlerManager)
+        if (m_handlerManager && !m_handlerManager->skipAutoRemoveEnabled())
         {
-            if (!m_handlerManager->skipAutoRemoveEnabled())
-            {
-                m_handlerManager->removeKVDBHandler(m_dbName, m_scopeName);
-            }
+            m_handlerManager->removeKVDBHandler(m_dbName, m_scopeName);
         }
     }
 

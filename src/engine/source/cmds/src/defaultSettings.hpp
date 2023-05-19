@@ -41,6 +41,9 @@ constexpr auto ENGINE_STORE_PATH_ENV = "WZE_STORE_PATH";
 constexpr auto ENGINE_KVDB_PATH = "/var/ossec/etc/kvdb/";
 constexpr auto ENGINE_KVDB_PATH_ENV = "WZE_KVDB_PATH";
 
+constexpr auto ENGINE_KVDB2_PATH = "/var/ossec/etc/kvdb2/";
+constexpr auto ENGINE_KVDB2_PATH_ENV = "WZE_KVDB2_PATH";
+
 constexpr auto ENGINE_ENVIRONMENT = "default:255:filter/allow-all/0:policy/wazuh/0";
 constexpr auto ENGINE_ENVIRONMENT_ENV = "WZE_ENVIRONMENT";
 
