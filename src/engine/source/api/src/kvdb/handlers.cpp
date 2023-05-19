@@ -77,9 +77,9 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
             return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
 
-        auto exists = kvdbManager->existsDB(eRequest.name());
+        auto error = kvdbManager->existsDB(eRequest.name());
 
-        if (!exists.has_value())
+        if (!error.has_value())
         {
             return ::api::adapter::genericError<ResponseType>("The Database already exists.");
         }
@@ -162,14 +162,14 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         }
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("/name is empty");
+            return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
 
-        auto exists = kvdbManager->existsDB(eRequest.name());
+        auto error = kvdbManager->existsDB(eRequest.name());
 
-        if (exists.has_value())
+        if (error.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(exists.value().message);
+            return ::api::adapter::genericError<ResponseType>(error.value().message);
         }
 
         auto handler = kvdbScope->getKVDBHandler(eRequest.name());
@@ -232,19 +232,19 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
 
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("/name is empty");
+            return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
 
         if (eRequest.key() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("/key is empty");
+            return ::api::adapter::genericError<ResponseType>("Field /key is empty");
         }
 
-        auto exists = kvdbManager->existsDB(eRequest.name());
+        auto error = kvdbManager->existsDB(eRequest.name());
 
-        if (exists.has_value())
+        if (error.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(exists.value().message);
+            return ::api::adapter::genericError<ResponseType>(error.value().message);
         }
 
         auto handler = kvdbScope->getKVDBHandler(eRequest.name());
@@ -298,19 +298,19 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
 
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("/name is empty");
+            return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
 
         if (eRequest.key() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("/key is empty");
+            return ::api::adapter::genericError<ResponseType>("Field /key is empty");
         }
 
-        auto exists = kvdbManager->existsDB(eRequest.name());
+        auto error = kvdbManager->existsDB(eRequest.name());
 
-        if (exists.has_value())
+        if (error.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(exists.value().message);
+            return ::api::adapter::genericError<ResponseType>(error.value().message);
         }
 
         auto handler = kvdbScope->getKVDBHandler(eRequest.name());
@@ -359,24 +359,24 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
 
         if (eRequest.name() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("/name is empty");
+            return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
 
         if (eRequest.entry().key() == "")
         {
-            return ::api::adapter::genericError<ResponseType>("/key is empty");
+            return ::api::adapter::genericError<ResponseType>("Field /key is empty");
         }
 
         if (std::get<std::string>(value) == "")
         {
-            return ::api::adapter::genericError<ResponseType>("/value is empty");
+            return ::api::adapter::genericError<ResponseType>("Field /value is empty");
         }
 
-        auto exists = kvdbManager->existsDB(eRequest.name());
+        auto error = kvdbManager->existsDB(eRequest.name());
 
-        if (exists.has_value())
+        if (error.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(exists.value().message);
+            return ::api::adapter::genericError<ResponseType>(error.value().message);
         }
 
         auto handler = kvdbScope->getKVDBHandler(eRequest.name());

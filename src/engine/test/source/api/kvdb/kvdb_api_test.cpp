@@ -291,7 +291,7 @@ TEST_F(KVDBApiTest, managerDumpNameEmpty)
     auto kvdbScope = kvdbManager->getKVDBScope("test");
     ASSERT_NO_THROW(cmd = managerDump(KVDBApiTest::kvdbManager, kvdbScope));
     const auto response = cmd(commonWRequest(""));
-    const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"/name is empty"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","entries":[],"error":"Field /name is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -360,7 +360,7 @@ TEST_F(KVDBApiTest, dbGetNameEmpty)
 
     ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, kvdbScope));
     const auto response = cmd(dbWRequest("", "key1"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"/name is empty"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -393,7 +393,7 @@ TEST_F(KVDBApiTest, dbGetKeyEmpty)
 
     ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, kvdbScope));
     const auto response = cmd(dbWRequest("default", ""));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"/key is empty"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /key is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -556,7 +556,7 @@ TEST_F(KVDBApiTest, dbDeleteNameEmpty)
 
     ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, kvdbScope));
     const auto response = cmd(dbWRequest("", "key1"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"/name is empty"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -588,7 +588,7 @@ TEST_F(KVDBApiTest, dbDeleteKeyEmpty)
 
     ASSERT_NO_THROW(cmd = dbDelete(KVDBApiTest::kvdbManager, kvdbScope));
     const auto response = cmd(dbWRequest("default", ""));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"/key is empty"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /key is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -751,7 +751,7 @@ TEST_F(KVDBApiTest, dbPutNameEmpty)
 
     ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, kvdbScope));
     const auto response = cmd(dbWRequest("", "key1", "value1"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"/name is empty"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /name is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -783,7 +783,7 @@ TEST_F(KVDBApiTest, dbPutKeyEmpty)
 
     ASSERT_NO_THROW(cmd = dbPut(KVDBApiTest::kvdbManager, kvdbScope));
     const auto response = cmd(dbWRequest("default", "", "value1"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"/key is empty"})"};
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Field /key is empty"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
