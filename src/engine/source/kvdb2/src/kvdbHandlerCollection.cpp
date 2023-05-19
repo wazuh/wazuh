@@ -63,10 +63,8 @@ std::map<std::string, int> KVDBHandlerCollection::getRefMap(const std::string& d
     {
         return it->second->getRefMap();
     }
-    else
-    {
-        return std::map<std::string, int>();
-    }
+
+    return std::map<std::string, int>();
 }
 
 void KVDBHandlerCollection::KVDBHandlerInstance::addScope(const std::string& scopeName)

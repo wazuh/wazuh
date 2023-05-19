@@ -1,6 +1,7 @@
 #ifndef _IKVDBMANAGER_H
 #define _IKVDBMANAGER_H
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>

@@ -14,7 +14,7 @@ public:
     RefCounter() = default;
     RefCounter(const RefCounter&);
     ~RefCounter() { m_refMap.clear(); }
-    void addRef(const std::string& name);
+    void addRef(const std::string& name, const unsigned int& times = 1);
     void removeRef(const std::string& name);
     int count(const std::string& name) const;
     bool empty() const;
