@@ -1,4 +1,5 @@
 import os
+
 from . import WAZUH_PATH
 
 
