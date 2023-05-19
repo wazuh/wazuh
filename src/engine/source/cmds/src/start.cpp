@@ -62,6 +62,7 @@ struct Options
     std::string fileStorage;
     // KVDB
     std::string kvdbPath;
+    std::string kvdb2Path;
     // Router
     std::vector<std::string> policy;
     int routerThreads;
@@ -128,6 +129,7 @@ void runStart(ConfHandler confManager)
 
     // KVDB config
     const auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
+    const auto kvdb2Path = confManager->get<std::string>("server.kvdb2_path");
 
     // Router Config
     const auto routerThreads = confManager->get<int>("server.router_threads");
@@ -200,7 +202,7 @@ void runStart(ConfHandler confManager)
 
         // KVDB
         {
-            kvdbManager::KVDBManagerOptions kvdbOptions { "/var/ossec/etc/kvdb2/", "kvdb" };
+            kvdbManager::KVDBManagerOptions kvdbOptions { kvdb2Path, "kvdb" };
             kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
@@ -425,6 +427,11 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory)
         ->envname(ENGINE_KVDB_PATH_ENV);
+
+    serverApp->add_option("--kvdb2_path", options->kvdbPath, "Sets the path to the KVDB2 folder.")
+        ->default_val(ENGINE_KVDB2_PATH)
+        ->check(CLI::ExistingDirectory)
+        ->envname(ENGINE_KVDB2_PATH_ENV);
 
     // Router module
     serverApp

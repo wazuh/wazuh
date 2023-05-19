@@ -55,7 +55,7 @@ public:
     std::map<std::string, RefInfo> getKVDBScopesInfo() override;
     std::map<std::string, RefInfo> getKVDBHandlersInfo() override;
 
-    KVDBHandler getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
+    std::unique_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     bool skipAutoRemoveEnabled() override;
 
