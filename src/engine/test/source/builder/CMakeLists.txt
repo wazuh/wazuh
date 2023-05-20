@@ -137,6 +137,7 @@ add_executable(opBuilderHelperCheck_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperContainsString_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringContains_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperDefinitionMatchValue_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperDefinitionMatchKey_test.cpp
 )
 gtest_discover_tests(opBuilderHelperCheck_test)
 

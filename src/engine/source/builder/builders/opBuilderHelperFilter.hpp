@@ -603,6 +603,11 @@ base::Expression opBuilderHelperDefinitionMatchValue(const std::string& targetFi
                                                const std::vector<std::string>& rawParameters,
                                                std::shared_ptr<defs::IDefinitions> definitions);
 
+base::Expression opBuilderHelperDefinitionMatchKey(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H
