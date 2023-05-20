@@ -7,6 +7,8 @@ from typing import Optional
 from wazuh.engine.request_message import EngineRequestMessage
 from wazuh.engine.commands import MetricCommand
 from wazuh.engine.wazuh_engine import WazuhMockedEngine
+from wazuh.core.results import WazuhResult
+from wazuh.core.exception import WazuhError
 
 
 # TODO Redefine HARDCODED values
@@ -24,7 +26,7 @@ def get_metrics(
     sort: Optional[str] = None,
     search: Optional[str] = None,
     offset: int = 0,
-):
+) -> WazuhResult:
     """
     Retrieves metrics based on the specified parameters.
 
@@ -38,7 +40,7 @@ def get_metrics(
         offset (int): Number of elements to skip before returning the collection.
 
     Returns:
-        None
+        WazuhResult with the results of the command
     """
 
     wazuh_engine = WazuhMockedEngine(socket_path=HARDCODED_SOCKET_PATH)
@@ -51,18 +53,18 @@ def get_metrics(
     if scope_name is None and instrument_name is None:
         request_builder.add_command(command=MetricCommand.DUMP)
     elif scope_name is None:
-        # TODO Error: Instrument name must be None too
-        return
+        raise WazuhError(1703, extra_message="Instrument name must be None too")
     elif instrument_name is None:
-        # TODO Error: Scope name must be None too
-        return
+        raise WazuhError(1703, extra_message="Scope name must be None too")
     else:
         request_builder.add_command(command=MetricCommand.LIST)
-        request_builder.add_parameters(
-            parameters={"scopeName": scope_name, "instrumentName": instrument_name}
-        )
+        request_builder.add_parameters(parameters={
+            "scopeName": scope_name,
+            "instrumentName": instrument_name
+        })
 
     result = wazuh_engine.send_command(command=request_builder.to_dict())
+    return WazuhResult({'data': result})
 
 
 def get_instruments(
@@ -83,7 +85,7 @@ def get_instruments(
         offset (int): Number of elements to skip before returning the collection.
 
     Returns:
-        None
+        WazuhResult with the results of the command
     """
     wazuh_engine = WazuhMockedEngine(socket_path=HARDCODED_SOCKET_PATH)
 
@@ -94,6 +96,7 @@ def get_instruments(
     )
 
     result = wazuh_engine.send_command(command=msg)
+    return WazuhResult({'data': result})
 
 
 def enable_instrument(
@@ -110,7 +113,7 @@ def enable_instrument(
         enable (bool): True to enable the metric, False to disable.
 
     Returns:
-        None
+        WazuhResult with the results of the command
     """
     wazuh_engine = WazuhMockedEngine(socket_path=HARDCODED_SOCKET_PATH)
     msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
@@ -125,6 +128,7 @@ def enable_instrument(
     )
 
     result = wazuh_engine.send_command(command=msg)
+    return WazuhResult({'data': result})
 
 
 def get_test_dummy_metric():
@@ -132,7 +136,7 @@ def get_test_dummy_metric():
     Retrieves a test dummy metric.
 
     Returns:
-        None
+        WazuhResult with the results of the command
     """
     wazuh_engine = WazuhMockedEngine(socket_path=HARDCODED_SOCKET_PATH)
     msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
@@ -142,3 +146,4 @@ def get_test_dummy_metric():
     )
 
     result = wazuh_engine.send_command(command=msg)
+    return WazuhResult({'data': result})

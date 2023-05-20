@@ -4,10 +4,12 @@
 
 import logging
 from typing import Optional
+from aiohttp import web
 
+from api.encoder import dumps, prettify
+from api.util import raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.engine import metrics
-from api.util import raise_if_exc
 
 logger = logging.getLogger('wazuh-api')
 
@@ -17,7 +19,7 @@ HARDCODED_VALUE_TO_SPECIFY = 10000
 
 async def get_metrics(request, scope_name: Optional[str] = None,  instrument_name: Optional[str] = None,
                       select: Optional[str] = None, sort: Optional[str] = None, search: Optional[str] = None,
-                      offset: int = 0, limit: int = HARDCODED_VALUE_TO_SPECIFY):
+                      offset: int = 0, limit: int = HARDCODED_VALUE_TO_SPECIFY, pretty: bool = False):
     """Get a single metric or all the collected metrics. Uses the metrics/get and metrics/dump actions
     of the engine.
 
@@ -41,6 +43,8 @@ async def get_metrics(request, scope_name: Optional[str] = None,  instrument_nam
         First element to return in the collection.
     limit : int
         Maximum number of elements to return. Default: HARDCODED_VALUE_TO_SPECIFY
+    pretty : bool
+        Show results in human-readable format.
 
 
     Returns
@@ -67,12 +71,12 @@ async def get_metrics(request, scope_name: Optional[str] = None,  instrument_nam
                           )
 
     data = raise_if_exc(await dapi.distribute_function())
-
-    return
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_instruments(request, select: Optional[str] = None, sort: Optional[str] = None,
-                          search: Optional[str] = None, offset: int = 0, limit: int = HARDCODED_VALUE_TO_SPECIFY):
+                          search: Optional[str] = None, offset: int = 0, limit: int = HARDCODED_VALUE_TO_SPECIFY,
+                          pretty: bool = False):
     """Get all name, status and instruments types. Uses the metrics/list action
     of the engine.
 
@@ -90,6 +94,8 @@ async def get_instruments(request, select: Optional[str] = None, sort: Optional[
         First element to return in the collection.
     limit : int
         Maximum number of elements to return. Default: HARDCODED_VALUE_TO_SPECIFY
+    pretty : bool
+        Show results in human-readable format.
 
 
     Returns
@@ -113,12 +119,11 @@ async def get_instruments(request, select: Optional[str] = None, sort: Optional[
                           )
 
     data = raise_if_exc(await dapi.distribute_function())
-
-    return
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def enable_instrument(request, scope_name: Optional[str] = None, instrument_name: Optional[str] = None,
-                        enable: bool = True):
+                            enable: bool = True, pretty: bool = False):
     """Enable or disable a specified metric. Uses the metrics/enable action
     of the engine.
 
@@ -133,6 +138,8 @@ async def enable_instrument(request, scope_name: Optional[str] = None, instrumen
         metrics.
     enable: bool
         Enable of disable the metric. True represent enable, false disable.
+    pretty : bool
+        Show results in human-readable format.
 
     Returns
     -------
@@ -153,16 +160,17 @@ async def enable_instrument(request, scope_name: Optional[str] = None, instrumen
                           )
 
     data = raise_if_exc(await dapi.distribute_function())
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
-    return
 
-
-async def get_test_dummy_metric(request):
+async def get_test_dummy_metric(request, pretty: bool = False):
     """Generate dummy metrics for testing.
 
     Parameters
     ----------
     request : connexion.request
+    pretty : bool
+        Show results in human-readable format.
 
     Returns
     -------
@@ -177,5 +185,4 @@ async def get_test_dummy_metric(request):
                           )
 
     data = raise_if_exc(await dapi.distribute_function())
-
-    return
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
