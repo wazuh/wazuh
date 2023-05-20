@@ -76,6 +76,7 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderHelperNotExists, "not_exists");
     helperRegistry->registerBuilder(builders::opBuilderHelperStringContains, "contains");
     helperRegistry->registerBuilder(builders::opBuilderHelperDefinitionMatchValue, "definition_match_value");
+    helperRegistry->registerBuilder(builders::opBuilderHelperDefinitionMatchKey, "definition_match_key");
 
     // Map Helpers
     helperRegistry->registerBuilder(builders::opBuilderHelperIntCalc, "int_calculate");

@@ -1595,12 +1595,14 @@ base::Expression opBuilderHelperDefinitionMatchKey(const std::string& targetFiel
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
 
     const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Target field '{}' is not a string", name, targetField)};
     const std::string failureTrace3 {
-        fmt::format("[{}] -> Failure: Definition '{}' is not an array", name, parameters[0].m_value)};
+        fmt::format("[{}] -> Failure: Definition '{}' is not an object", name, parameters[0].m_value)};
     const std::string failureTrace4 {
-        fmt::format("[{}] -> Failure: Target field '{}' has an invalid type", name, targetField)};
+        fmt::format("[{}] -> Failure: Definition '{}' not found", name, parameters[0].m_value)};
     const std::string failureTrace5 {
-        fmt::format("[{}] -> Failure: Definition array '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
+        fmt::format("[{}] -> Failure: Definition object '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -1613,35 +1615,30 @@ base::Expression opBuilderHelperDefinitionMatchKey(const std::string& targetFiel
                 return base::result::makeFailure(event, failureTrace1);
             }
 
-            const auto resolvedArray {event->getArray(definitionValue)};
-            if (!resolvedArray.has_value())
+            if (!event->isString(targetField))
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+
+            auto pointerPath = json::Json::formatJsonPath(event->getString(targetField).value());
+
+            if (!event->isObject(definitionValue))
             {
                 return base::result::makeFailure(event, failureTrace3);
             }
 
-            json::Json cmpValue {};
-
-            const auto resolvedField {event->getJson(targetField)};
-            if (resolvedField.has_value())
-            {
-                cmpValue = resolvedField.value();
-            }
-            else
+            const auto resolvedJson {event->getJson(definitionValue)};
+            if (!resolvedJson.has_value())
             {
                 return base::result::makeFailure(event, failureTrace4);
             }
 
-            // Check if the array contains the value
-            if (std::find_if(resolvedArray.value().begin(),
-                                resolvedArray.value().end(),
-                                [&cmpValue](const json::Json& value) { return value == cmpValue; })
-                != resolvedArray.value().end())
+            if (!resolvedJson->exists(pointerPath))
             {
-                return base::result::makeSuccess(event, successTrace);
+                return base::result::makeFailure(event, failureTrace5);
             }
 
-            // Not found
-            return base::result::makeFailure(event, failureTrace5);
+            return base::result::makeSuccess(event, successTrace);
         });
 }
 
