@@ -236,11 +236,6 @@ ifeq (${uname_S},Darwin)
 	SHARED=dylib
 	OSSEC_LIBS+=-framework Security
 	PRECOMPILED_OS:=darwin
-ifeq (${uname_M},arm64)
-	OSSEC_LDFLAGS+=-isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
-	CC="clang"
-	CXX="clang"
-endif
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
