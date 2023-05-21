@@ -13,7 +13,7 @@
 policy:
   id: "cis_win2019"
   file: "cis_win2019.yml"
-  name: "CIS Benchmark for Windows Server 2019 RTM "
+  name: "CIS Microsoft Windows Server 2019 Benchmark v1.0.1"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2019."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

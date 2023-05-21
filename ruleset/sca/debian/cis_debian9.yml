@@ -8,13 +8,12 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Debian Linux 9 Benchmark v1.0.0 - 12-21-2018
 # Center for Internet Security Debian Linux 9 Benchmark v1.0.1 - 01-13-2020
 
 policy:
   id: "cis_debian9"
   file: "cis_debian9.yml"
-  name: "CIS Benchmark for Debian/Linux 9"
+  name: "CIS Debian Linux 9 Benchmark v1.0.1"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 9."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

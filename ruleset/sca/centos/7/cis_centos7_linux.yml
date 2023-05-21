@@ -13,7 +13,7 @@
 policy:
   id: "cis_centos7_linux"
   file: "cis_centos7_linux.yml"
-  name: "CIS Benchmark for CentOS 7"
+  name: "CIS CentOS Linux 7 Benchmark v3.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for CentOS 7 systems running on x86 and x64 platforms. This document was tested against CentOS 7."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
