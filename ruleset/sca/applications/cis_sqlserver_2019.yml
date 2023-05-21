@@ -7,12 +7,12 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation
 #
-# Based on Center for Internet Security Benchmark for Microsoft SQL Server 2019 v1.4.0 - 05-31-2019
+# Based on Center for Internet Security Benchmark for Microsoft SQL Server 2019 v1.1.0 - 05-31-2019
 
 policy:
   id: "cis_sqlserver_2019"
   file: "cis_sqlserver_2019"
-  name: "CIS Microsoft SQL Server 2019"
+  name: "CIS Microsoft SQL Server 2019 Benchmark v1.1.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft SQL Server 2019."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

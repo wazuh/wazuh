@@ -13,7 +13,7 @@
 policy:
   id: "cis_iis_10"
   file: "cis_iis_10.yml"
-  name: "CIS Benchmark for Microsoft IIS 10"
+  name: "CIS Microsoft IIS 10 Benchmark v1.1.1"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft IIS."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -35,7 +35,6 @@ checks:
     compliance:
       - cis: ["1.1"]
       - cis_csc: ["14"]
-
     condition: none
     rules:
       - 'c:%systemroot%\system32\inetsrv\appcmd list vdir -> r:SystemDrive'
