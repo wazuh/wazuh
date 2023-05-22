@@ -16,7 +16,7 @@ metadata:
     - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/security-auditing-overview
   versions: [Vista, "7", "8", "10", "11", Server 2012, Server 2016, Server 2019, Server 2022]
 
-check: winlog.channel==Security AND (event.provider==Microsoft-Windows-Security-Auditing OR event.provider==Microsoft-Windows-Eventlog)
+check: ~windows.Event.System.Channel.#text==Security AND (event.provider==Microsoft-Windows-Security-Auditing OR event.provider==Microsoft-Windows-Eventlog)
 
 
 normalize:
@@ -25,7 +25,7 @@ normalize:
     - event.dataset: security
 
     # Set categorization fields
-    - event.id: +kvdb_get_merge/win_security_categories/$event.id
+    - event: +kvdb_get_merge/win_security_categories/$event.id
 
     # Set Service Type and Name
     # Service related fields
@@ -68,7 +68,7 @@ normalize:
 
 
     # Add Session Events
- - check: event.code==4778 OR event.code==4779
+ - check: event.code=="4778" OR event.code=="4779"
    map:
         # AccountName to user.name and related.user
         - user.name: $~windows.Event.EventData.AccountName
@@ -83,21 +83,21 @@ normalize:
 
     # Copy Target User
     # TargetUserSid to user.id or user.target.id
- - check: +not_exists/$user.id AND +array_contains/~temp.id_target_user_array/$event.code
+ - check: +not_exists/user.id AND +array_contains/~temp.id_target_user_array/$event.code
    map:
         - user.id: $~windows.Event.EventData.TargetUserSid
         - user.id: $~windows.Event.EventData.TargetSid
-        
- - check: +exists/$user.id AND +array_contains/~temp.id_target_user_array/$event.code
+
+ - check: +exists/user.id AND +array_contains/~temp.id_target_user_array/$event.code
    map:
         - user.target.id: $~windows.Event.EventData.TargetUserSid
         - user.target.id: $~windows.Event.EventData.TargetSid
 
  # TargetUserName to related.user and user.name or user.target.name
- - check: +not_exists/$user.name AND +array_contains/~temp.id_target_user_array/$event.code
+ - check: +not_exists/user.name AND +array_contains/~temp.id_target_user_array/$event.code
    map:
         - user.name: $~windows.Event.EventData.TargetUserName
- - check: +exists/$user.name AND +array_contains/~temp.id_target_user_array/$event.code
+ - check: +exists/user.name AND +array_contains/~temp.id_target_user_array/$event.code
    map:
         - user.target.name: $~windows.Event.EventData.TargetUserName
 
@@ -106,10 +106,10 @@ normalize:
         - related.user: +array_append/$~windows.Event.EventData.TargetUserName 
 
     # TargetUserDomain to user.domain or user.target.domain
- - check: +not_exists/$user.domain AND +array_contains/~temp.id_target_user_array/$event.code
+ - check: +not_exists/user.domain AND +array_contains/~temp.id_target_user_array/$event.code
    map:
         - user.domain: $~windows.Event.EventData.TargetDomainName
- - check: +exists/$user.domain AND +array_contains/~temp.id_target_user_array/$event.code
+ - check: +exists/user.domain AND +array_contains/~temp.id_target_user_array/$event.code
    map:
         - user.target.domain: $~windows.Event.EventData.TargetDomainName
 
@@ -148,28 +148,28 @@ normalize:
      - user.target.id: $~windows.Event.EventData.TargetSid
      - ~temp.name_part: +split/$~windows.Event.EventData.TargetUserName/@
      - user.target.name: $~temp.name_part.0
-     - related.user: +array_append/$event.user.target.name
+     - related.user: +array_append/event.user.target.name
      - user.target.domain: $~windows.Event.EventData.TargetDomainName
 
 # Copy Target User to Effective
- - check: event.code==4648 OR event.code==4688
+ - check: event.code=="4648" OR event.code=="4688"
    map:
      - user.effective.id: $~windows.Event.EventData.TargetUserSid
 
 
- - check: +string_not_equal/$~windows.Event.EventData.TargetUserName/- AND  (event.code==4648 OR event.code==4688)
+ - check: +string_not_equal/~windows.Event.EventData.TargetUserName/- AND  (event.code=="4648" OR event.code=="4688")
    map:
      - ~temp.name_part: +split/$~windows.Event.EventData.TargetUserName/@
-     - user.effective.name: $temp.~name_part.0
-     - related.user: +array_append/$event.user.effective.name
+     - user.effective.name: $~temp.name_part.0
+     - related.user: +array_append/event.user.effective.name
 
 
- - check: +string_not_equal/$~windows.Event.EventData.TargetDomainName/- AND  (event.code==4648 OR event.code==4688)
+ - check: +string_not_equal/~windows.Event.EventData.TargetDomainName/- AND  (event.code=="4648" OR event.code=="4688")
    map:
      - user.effective.domain: $~windows.Event.EventData.TargetDomainName
 
 # Copy Subject User from user_data
- - check: event.code==1102
+ - check: event.code=="1102"
    map:
      - user.id: $~windows.Event.UserData.LogFileCleared.SubjectUserSid.#text
      - user.name: $~windows.Event.UserData.LogFileCleared.SubjectUserName.#text
@@ -188,11 +188,11 @@ normalize:
      - source.ip: $~windows.Event.EventData.IpAddress
      - source.port: $~windows.Event.EventData.IpPort
      - source.domain: $~windows.Event.EventData.WorkstationName
-     - related.ip: $~windows.Event.EventData.ClientAddress
+     - related.ip: +array_append/$~windows.Event.EventData.ClientAddress
 
 
 # Process Event 4688
- - check: event.code==4688
+ - check: event.code=="4688"
    map:
      - process.args: '+split/$~windows.Event.EventData.CommandLine/ '
      - process.pid: +hex_to_number/$~windows.Event.EventData.NewProcessId
@@ -205,7 +205,7 @@ normalize:
      - process.parent.name: $~temp.file_data.name
      - process.command_line: $~windows.Event.EventData.CommandLine
 
- - check: event.code==4624 OR event.code==4648
+ - check: event.code=="4624" OR event.code=="4648"
    map:
      - related.user: $~windows.Event.EventData.SubjectUserName
 
@@ -215,7 +215,7 @@ normalize:
       - related.user: +array_append/$~windows.Event.EventData.TargetUserName
 
  - map:
-     - related.ip: $event.source.ip
+     - related.ip: +array_append/$source.ip
 
 # Set Service Type
  - check:
