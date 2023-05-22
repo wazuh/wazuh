@@ -1,0 +1,151 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "/dev/stdin",
+            "message": "Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "syslog"
+            ],
+            "source": "logcollector"
+        },
+        "event": {
+            "original": "Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8",
+            "start": "2023-10-11T22:14:15.000Z",
+            "kind": "event"
+        },
+        "host": {
+            "hostname": "mymachine"
+        },
+        "~TAG": "su",
+        "message": "'su root' failed for lonvick on /dev/pts/8",
+        "related": {
+            "hosts": [
+                "mymachine"
+            ]
+        },
+        "process": {
+            "name": "su"
+        }
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "/dev/stdin",
+            "message": "Feb  5 17:32:18 10.0.0.99 Use the BFG!",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "syslog"
+            ],
+            "source": "logcollector"
+        },
+        "event": {
+            "original": "Feb  5 17:32:18 10.0.0.99 Use the BFG!",
+            "start": "2023-02-05T17:32:18.000Z",
+            "kind": "event"
+        },
+        "host": {
+            "hostname": "10.0.0.99"
+        },
+        "message": "Use the BFG!",
+        "related": {
+            "hosts": [
+                "10.0.0.99"
+            ]
+        }
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "/dev/stdin",
+            "message": "Aug 24 05:34:00 CST 1987 mymachine myproc[10]: %% It's time to make the do-nuts. %%  Ingredients: Mix=OK, Jelly=OK # Devices: Mixer=OK, Jelly_Injector=OK, Frier=OK # Transport: Conveyer1=OK, Conveyer2=OK # %%",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "syslog"
+            ],
+            "source": "logcollector"
+        },
+        "event": {
+            "original": "Aug 24 05:34:00 CST 1987 mymachine myproc[10]: %% It's time to make the do-nuts. %%  Ingredients: Mix=OK, Jelly=OK # Devices: Mixer=OK, Jelly_Injector=OK, Frier=OK # Transport: Conveyer1=OK, Conveyer2=OK # %%",
+            "start": "2023-08-24T05:34:00.000Z",
+            "kind": "event"
+        },
+        "host": {
+            "hostname": "CST"
+        },
+        "message": "1987 mymachine myproc[10]: %% It's time to make the do-nuts. %%  Ingredients: Mix=OK, Jelly=OK # Devices: Mixer=OK, Jelly_Injector=OK, Frier=OK # Transport: Conveyer1=OK, Conveyer2=OK # %%",
+        "related": {
+            "hosts": [
+                "CST"
+            ]
+        }
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "/dev/stdin",
+            "message": "Oct 22 10:52:12 scapegoat 1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "syslog"
+            ],
+            "source": "logcollector"
+        },
+        "event": {
+            "original": "Oct 22 10:52:12 scapegoat 1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!",
+            "start": "2023-10-22T10:52:12.000Z",
+            "kind": "event"
+        },
+        "host": {
+            "hostname": "scapegoat"
+        },
+        "message": "1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!",
+        "related": {
+            "hosts": [
+                "scapegoat"
+            ]
+        }
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "/dev/stdin",
+            "message": "2018-08-14T14:30:02.203151+02:00 linux-sqrz systemd[4179]: Stopped target Basic System.",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "syslog"
+            ],
+            "source": "logcollector"
+        },
+        "event": {
+            "original": "2018-08-14T14:30:02.203151+02:00 linux-sqrz systemd[4179]: Stopped target Basic System.",
+            "start": "2018-08-14T12:30:02.203Z",
+            "kind": "event"
+        },
+        "host": {
+            "hostname": "linux-sqrz"
+        },
+        "~TAG": "systemd",
+        "process": {
+            "pid": 4179,
+            "name": "systemd"
+        },
+        "message": "Stopped target Basic System.",
+        "related": {
+            "hosts": [
+                "linux-sqrz"
+            ]
+        }
+    }
+]
