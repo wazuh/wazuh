@@ -24,8 +24,8 @@ normalize:
    - wazuh.decoders: +array_append/windows-powershell
    - event.dataset: powershell
    - event.kind: event
-   - event.category: [process]
-   - event.type: [info]
+   - event.category: +array_append/process
+   - event.type: +array_append/info
    - event.sequence: $~windows.Event.EventData.SequenceNumber
 
   ## Process fields.
@@ -47,13 +47,13 @@ normalize:
    - file.extension: $~temp.file_data.ext
    - file.name: $~temp.file_data.name
 
- - check: event.code==400
+ - check: event.code=="400"
    map:
-    - event.type: [start]
+    - event.type: +array_append/start
 
- - check: event.code==403
+ - check: event.code=="403"
    map:
-    - event.type: [end]
+    - event.type: +array_append/end
 
 # Cleanup
  - map:

@@ -22,8 +22,8 @@ normalize:
  - map:
    - wazuh.decoders: +array_append/windows-powershell-operational
    - event.dataset: powershell
-   - event.category: [process]
-   - event.type: [info]
+   - event.category: +array_append/process
+   - event.type: +array_append/info
    - event.sequence: $~windows.Event.EventData.SequenceNumber
 
   # User fields
@@ -52,13 +52,13 @@ normalize:
    - process.title: $~windows.Event.EventData.HostName
    - process.executable: $file.path
 
- - check: event.code==4105
+ - check: event.code=="4105"
    map:
-    - event.type: [start]
+    - event.type: +array_append/start
 
- - check: event.code==4106
+ - check: event.code=="4106"
    map:
-    - event.type: [end]
+    - event.type: +array_append/end
 
 # Cleanup
  - map:
