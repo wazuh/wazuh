@@ -59,14 +59,12 @@ configs_path = Path(CONFIGS_PATH, 'config_signature_id_values.yaml')
 cases_path = Path(TEST_CASES_PATH, 'cases_valid_signature_id.yaml')
 
 # test configurations.
-config_parameters, metadata, t1_case_ids = get_test_cases_data(cases_path)
-configuration = load_configuration_template(configs_path,
-                                            config_parameters,
-                                            metadata)
+config_parameters, metadata, cases_ids = get_test_cases_data(cases_path)
+configuration = load_configuration_template(configs_path, config_parameters, metadata)
 
 
 # Test function
-@pytest.mark.parametrize('configuration, metadata', zip(configuration, metadata), ids=t1_case_ids)
+@pytest.mark.parametrize('configuration, metadata', zip(configuration, metadata), ids=cases_ids)
 def test_valid_signature_id(configuration, metadata, set_wazuh_configuration, truncate_monitored_files,
                             prepare_custom_rules_file, restart_wazuh_function):
     '''
