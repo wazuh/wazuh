@@ -10,7 +10,7 @@ RefCounter::RefCounter(const RefCounter& other)
 
 void RefCounter::addRef(const std::string& name, const unsigned int& times)
 {
-    m_refMap[name]+=times;
+    m_refMap[name] += times;
 }
 
 void RefCounter::removeRef(const std::string& name)
@@ -18,7 +18,7 @@ void RefCounter::removeRef(const std::string& name)
     if (m_refMap.count(name) > 0)
     {
         m_refMap[name]--;
-        if (m_refMap[name] == 0)
+        if (0 == m_refMap[name])
         {
             m_refMap.erase(name);
         }
