@@ -26,47 +26,45 @@ check:
 
 normalize:
   - map:
-      - suricata.eve: $~json
+      - ~suricata.eve: $~json
       - ~json: +delete
       - event.module: suricata
       - event.kind: event
       - event.category: +array_append/network
-      - event.created: $suricata.eve.timestamp
+      - event.created: $~suricata.eve.timestamp
       - wazuh.decoders: +array_append/suricata
-#      - source.address: $suricata.eve.src_ip
-#      - source.ip: $suricata.eve.src_ip
-#      - source.port: $suricata.eve.src_port
-#      - destination.address: $suricata.eve.dest_ip
-#      - destination.ip: $destination.address
-#      - destination.port: $suricata.eve.dest_port
-#      - network.transport: $suricata.eve.proto
+      - source.address: $~suricata.eve.src_ip
+      - source.ip: $~suricata.eve.src_ip
+      - source.port: $~suricata.eve.src_port
+      - destination.address: $~suricata.eve.dest_ip
+      - destination.ip: $~destination.address
+      - destination.port: $~suricata.eve.dest_port
+      - network.transport: $~suricata.eve.proto
+      - ~suricata.eve.app_proto: +downcase/$~suricata.eve.app_proto
 
-#  - map:
-#      - suricata.eve.app_proto: +downcase/$suricata.eve.app_proto
+  - check: $is_good_appProto
+    map:
+      - network.protocol: $~suricata.eve.app_proto
 
-#  - check: $is_good_appProto
-#    map:
-#      - network.protocol: $suricata.eve.app_proto
+  - check:
+      - ~suricata.eve.app_proto: +string_equal/ftp-data
+    map:
+      - network.protocol: ftp
 
-#  - check:
-#      - suricata.eve.app_proto: +string_equal/ftp-data
-#    map:
-#      - network.protocol: ftp
+      - ~suricata.eve.event_type: +downcase/$~suricata.eve.event_type
+      - ~suricata.eve.netwrok.transport: +downcase/$~suricata.eve.network.transport
+      - ~suricata.eve.proto: +downcase/$~suricata.eve.proto
 
-#      - suricata.eve.event_type: +downcase/$suricata.eve.event_type
-#      - suricata.eve.netwrok.transport: +downcase/$suricata.eve.network.transport
-#      - suricata.eve.proto: +downcase/$suricata.eve.proto
+      - destination.bytes: $~suricata.eve.flow.bytes_toclient
+      - destination.mac: $~suricata.eve.ether.dest_mac
+      - destination.packets: $~suricata.eve.flow.pkts_toclient
+      - source.bytes: $~suricata.eve.flow.bytes_toserver
+      - source.mac: $~suricata.eve.ether.src_mac
+      - source.packets: $~suricata.eve.flow.pkts_toserver
+      - event.start: $~suricata.eve.flow.start
+      - event.end: $~suricata.eve.flow.end
 
-#      - destination.bytes: $suricata.eve.flow.bytes_toclient
-#      - destination.mac: $suricata.eve.ether.dest_mac
-#      - destination.packets: $suricata.eve.flow.pkts_toclient
-#      - source.bytes: $suricata.eve.flow.bytes_toserver
-#      - source.mac: $suricata.eve.ether.src_mac
-#      - source.packets: $suricata.eve.flow.pkts_toserver
-#      - event.start: $suricata.eve.flow.start
-#      - event.end: $suricata.eve.flow.end
-
-#  - check:
-#      - suricata.eve.flow.state: +string_equal/new
-#    map:
-#      - event.type: +array_append/end
+  - check:
+      - ~suricata.eve.flow.state: +string_equal/new
+    map:
+      - event.type: +array_append/end
