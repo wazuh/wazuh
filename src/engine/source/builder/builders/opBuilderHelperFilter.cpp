@@ -768,11 +768,11 @@ base::Expression opBuilderHelperNotExists(const std::string& targetField,
 //*               Array filters                   *
 //*************************************************
 
-// field: +array_contains/value1/value2/...valueN
-base::Expression opBuilderHelperContainsString(const std::string& targetField,
-                                               const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters,
-                                               std::shared_ptr<defs::IDefinitions> definitions)
+base::Expression opBuilderHelperArrayPresence(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters,
+                                              std::shared_ptr<defs::IDefinitions> definitions,
+                                              bool checkPresence)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersMinSize(rawName, parameters, 1);
@@ -784,8 +784,10 @@ base::Expression opBuilderHelperContainsString(const std::string& targetField,
     const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
     const std::string failureTrace2 {
         fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField)};
-    const std::string failureTrace3 {
-        fmt::format("[{}] -> Failure: Target array '{}' does not contain any of the parameters", name, targetField)};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Target array '{}' {} of the parameters",
+                                                 name,
+                                                 targetField,
+                                                 checkPresence ? "Contain at least one" : "does not contain any")};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -804,6 +806,7 @@ base::Expression opBuilderHelperContainsString(const std::string& targetField,
             }
 
             json::Json cmpValue {};
+            auto result = base::result::makeSuccess(event, successTrace);
             for (const auto& parameter : parameters)
             {
                 switch (parameter.m_type)
@@ -828,19 +831,46 @@ base::Expression opBuilderHelperContainsString(const std::string& targetField,
                     break;
                 }
 
-                // Check if the array contains the value
+                // Check if the array contains the value, if so finish
                 if (std::find_if(resolvedArray.value().begin(),
                                  resolvedArray.value().end(),
                                  [&cmpValue](const json::Json& value) { return value == cmpValue; })
                     != resolvedArray.value().end())
                 {
-                    return base::result::makeSuccess(event, successTrace);
+                    if(!checkPresence)
+                    {
+                        result = base::result::makeFailure(event, failureTrace3);
+                    }
+                    return result;
                 }
             }
 
-            // Not found
-            return base::result::makeFailure(event, failureTrace3);
+            if(checkPresence)
+            {
+                result = base::result::makeFailure(event, failureTrace3);
+            }
+            return result;
         });
+}
+
+// field: +array_contains/value1/value2/...valueN
+base::Expression opBuilderHelperContainsString(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions)
+{
+    auto expression = opBuilderHelperArrayPresence(targetField, rawName, rawParameters, definitions, true);
+    return expression;
+}
+
+// field: +array_not_contains/value1/value2/...valueN
+base::Expression opBuilderHelperNotContainsString(const std::string& targetField,
+                                               const std::string& rawName,
+                                               const std::vector<std::string>& rawParameters,
+                                               std::shared_ptr<defs::IDefinitions> definitions)
+{
+    auto expression = opBuilderHelperArrayPresence(targetField, rawName, rawParameters, definitions, false);
+    return expression;
 }
 
 //*************************************************

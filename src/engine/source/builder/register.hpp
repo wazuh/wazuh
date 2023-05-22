@@ -41,6 +41,7 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
 {
     // Filter Helpers
     helperRegistry->registerBuilder(builders::opBuilderHelperContainsString, "array_contains");
+    helperRegistry->registerBuilder(builders::opBuilderHelperNotContainsString, "array_not_contains");
     helperRegistry->registerBuilder(builders::opBuilderHelperIntEqual, "int_equal");
     helperRegistry->registerBuilder(builders::opBuilderHelperIntGreaterThan, "int_greater");
     helperRegistry->registerBuilder(builders::opBuilderHelperIntGreaterThanEqual, "int_greater_or_equal");
