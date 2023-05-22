@@ -1381,6 +1381,80 @@ components:
       required:
         - command
 
+    ## Engine Metrics models
+    InstrumentsFields:
+      type: object
+      properties:
+        scope:
+          type: string
+          description: "Scope of the instrument"
+        name:
+          type: string
+          description: "Name of the instrument"
+        type:
+          type: string
+          description: "Type of the instrument"
+        status:
+          type: string
+          enum: ["enable", "disable"]
+          description: "Status of the instrument"
+
+    ArrayOfInstruments:
+      type: array
+      items:
+        $ref: '#/components/schemas/InstrumentsFields'
+
+    MetricFieldsAttributes:
+      type: object
+      properties:
+        type:
+          type: string
+          description: "Type of the metric"
+        value:
+          type: number
+          description: "Value of the attribute"
+
+    MetricFields:
+      type: object
+      properties:
+        start_time:
+          type: string
+          description: "Time of the metric"
+        instrument_name:
+          type: string
+          description: "Name of the instrument"
+        instrument_description:
+          type: string
+          description: "Description of the instrument"
+        unit:
+          type: string
+          description: "Unit with which the metric is measured"
+        type:
+          type: string
+          description: "Type of the instrument"
+        attributes:
+         type: array
+         items:
+           $ref: '#/components/schemas/MetricFieldsAttributes'
+
+    MetricDataFields:
+      type: object
+      properties:
+        scope:
+          type: string
+          description: "Scope of the metric"
+        schema:
+          type: string
+          description: "Name of the schema of the metric"
+        version:
+          type: string
+          description: "Version of the metric"
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricFields'
+
+
     ## Agents models
     ExtraAgentFields:
       type: object
@@ -5625,6 +5699,21 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupIDListAll'
+    instrument_scope_name:
+      in: query
+      name: scope_name
+      schema:
+        type: string
+    instrument_name:
+      in: query
+      name: instrument_name
+      schema:
+        type: string
+    instrument_enable:
+      in: query
+      name: enable
+      schema:
+        type: boolean
     node:
       in: query
       name: node
@@ -5654,6 +5743,18 @@ components:
       schema:
         type: string
         format: alphanumeric
+    metric_instrument_name:
+      in: query
+      name: 'instrument_name'
+      description: "Name of the instrument (optional)"
+      schema:
+        type: string
+    metric_scope_name:
+      in: query
+      name: 'scope_name'
+      description: "Name of the scope of the metric (optional)"
+      schema:
+        type: string
     mitre_mitigation_ids:
       in: query
       name: 'mitigation_ids'
@@ -7117,6 +7218,217 @@ paths:
           $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /engine/instruments:
+    get:
+      tags:
+        - Engine
+      summary: "Get all instruments data"
+      description: "Return a list of instruments"
+      operationId: api.controllers.engine.metrics_controller.get_instruments
+      # TODO Change RBAC
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
+      parameters:
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/pretty'
+      responses:
+        '200':
+          description: "List of instruments"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ArrayOfInstruments'
+              example:
+                data:
+                  - scope: kvdb
+                    name: databeseCounter
+                    type: counter
+                    status: enable
+                  - scope: kvdb
+                    name: databeseCounter
+                    type: counter
+                    status: enable
+                message: ''
+                error: 0
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+
+  /engine/instruments/enable:
+    get:
+      tags:
+        - Engine
+      summary: "Enable or disable an instrument"
+      description: "Return the modified instrument"
+      operationId: api.controllers.engine.metrics_controller.enable_instrument
+      # TODO Change RBAC
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
+      parameters:
+        - $ref: '#/components/parameters/instrument_scope_name'
+        - $ref: '#/components/parameters/instrument_name'
+        - $ref: '#/components/parameters/instrument_enable'
+        - $ref: '#/components/parameters/pretty'
+      responses:
+        '200':
+          description: "List of instruments"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/InstrumentsFields'
+              example:
+                data:
+                  scope: kvdb
+                  name: databeseCounter
+                  type: counter
+                  status: enable
+                message: ''
+                error: 0
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /engine/metrics:
+    get:
+      tags:
+        - Engine
+      summary: "Get a metric or multiples metrics"
+      description: "Return an metric or a list of metrics. If the instrument_name and scope_name are not specified,
+      it returns all metrics"
+      operationId: api.controllers.engine.metrics_controller.get_metrics
+      # TODO Change RBAC
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
+      parameters:
+        - $ref: '#/components/parameters/metric_instrument_name'
+        - $ref: '#/components/parameters/metric_scope_name'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/pretty'
+      responses:
+        '200':
+          description: "List of metrics"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MetricDataFields'
+              example:
+                data:
+                  - scope: CountExample
+                    schema: ''
+                    version: ''
+                    records:
+                      - start_time: 'Tue Mar 7 14:46:09 2023'
+                        instrument_name: CountExample_counter
+                        instrument_description: some description
+                        unit: some unit
+                        attributes:
+                          - type: SumPointData
+                            value: 1
+                message: ''
+                error: 0
+
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+
+  /engine/metrics/test:
+    get:
+      tags:
+        - Engine
+      summary: "Get metrics for testing"
+      description: "Return a list of dummy metrics"
+      operationId: api.controllers.engine.metrics_controller.get_test_dummy_metric
+      # TODO Change RBAC
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+        - $ref: '#/x-rbac-catalog/actions/group:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+      responses:
+        '200':
+          description: "List of metrics"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MetricDataFields'
+              example:
+                data:
+                  - scope: CountExample
+                    schema: ''
+                    version: ''
+                    records:
+                      - start_time: 'Tue Mar 7 14:46:09 2023'
+                        instrument_name: CountExample_counter
+                        instrument_description: some description
+                        unit: some unit
+                        attributes:
+                          - type: SumPointData
+                            value: 1
+                message: ''
+                error: 0
 
   /agents:
     delete:

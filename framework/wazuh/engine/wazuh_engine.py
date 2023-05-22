@@ -42,6 +42,7 @@ HARDCODED_TEST_RESPONSE = [{
         'instrument_description': 'some description',
         'unit': 'some unit',
         'attributes': [{'type': 'SumPointData', 'value': 1}],
+        'type': 'UpDownCounter',
         }],
     }]
 
