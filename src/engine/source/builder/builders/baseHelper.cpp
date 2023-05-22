@@ -65,8 +65,8 @@ std::vector<Parameter> processParameters(const std::string& name,
 }
 
 std::vector<Parameter> processDefinitionParameters(const std::string& name,
-                                         const std::vector<std::string>& parameters,
-                                         std::shared_ptr<defs::IDefinitions> definitions)
+                                                   const std::vector<std::string>& parameters,
+                                                   std::shared_ptr<defs::IDefinitions> definitions)
 {
     std::vector<Parameter> newParameters;
     std::transform(parameters.begin(),
@@ -101,12 +101,8 @@ std::vector<Parameter> processDefinitionParameters(const std::string& name,
                                }
                                return {Parameter::Type::REFERENCE, pointerPath};
                            }
-                           else
-                           {
-                                throw std::runtime_error(fmt::format("Definition '{}' in helper '{}' not found",
-                                                                    parameter,
-                                                                    name));
-                           }
+
+                           return {Parameter::Type::REFERENCE, pointerPath};
                        }
                        else
                        {

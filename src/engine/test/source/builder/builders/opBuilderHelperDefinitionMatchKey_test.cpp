@@ -3,54 +3,13 @@
 #include <vector>
 
 #include <baseTypes.hpp>
-#include <defs/mocks/failDef.hpp>
 #include <defs/defs.hpp>
+#include <defs/mocks/failDef.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
-
-// class OpBuilderHelperDefinitionMatchKey : public ::testing::TestWithParam<std::tuple<std::vector<std::string>, std::shared_ptr<defs::IDefinitions>, bool>>
-// {
-// };
-
-// TEST_P(OpBuilderHelperDefinitionMatchKey, Builds)
-// {
-//     auto [rawParameters, definitions, shouldPass] = GetParam();
-
-//     auto tuple = std::make_tuple(std::string {"/field"},
-//                                  std::string {"+definition_match_key"},
-//                                  rawParameters,
-//                                  definitions);
-//     if (shouldPass)
-//     {
-//         ASSERT_NO_THROW(std::apply(bld::OpBuilderHelperDefinitionMatchKey, tuple));
-//     }
-//     else
-//     {
-//         ASSERT_THROW(std::apply(bld::OpBuilderHelperDefinitionMatchKey, tuple), std::runtime_error);
-//     }
-// }
-
-// INSTANTIATE_TEST_SUITE_P(
-//     Builds,
-//     OpBuilderHelperDefinitionMatchKey,
-//     ::testing::Values(std::make_tuple(std::vector<std::string> {"$defObject"}, std::make_shared<defs::Definitions>(json::Json(R"({"defObject": [1, true, "hello", 10]})")), true)));
-//                     //   std::make_tuple(json::Json(R"([])"), false),
-//                     //   std::make_tuple(json::Json(R"(["a"])"), false),
-//                     //   std::make_tuple(json::Json(R"({})"), false),
-//                     //   std::make_tuple(json::Json(R"({"a": 1})"), true),
-//                     //   std::make_tuple(json::Json(R"({"a": "1"})"), true),
-//                     //   std::make_tuple(json::Json(R"({"a": true})"), true),
-//                     //   std::make_tuple(json::Json(R"({"a": false})"), true),
-//                     //   std::make_tuple(json::Json(R"({"a": null})"), true),
-//                     //   std::make_tuple(json::Json(R"({"a": []})"), true),
-//                     //   std::make_tuple(json::Json(R"({"a": {}})"), true),
-//                     //   std::make_tuple(json::Json(R"({"a": 1, "b":"1", "c":true, "d":false, "e":null, "f":[], "g":{}})"),
-//                     //                   true),
-//                     //   std::make_tuple(json::Json(R"({"$a": 1})"), false),
-//                     //   std::make_tuple(json::Json(R"({"schema.field": "value"})"), false)));
 
 TEST(OpBuilderHelperDefinitionMatchKey, Builds)
 {
@@ -88,15 +47,6 @@ TEST(OpBuilderHelperDefinitionMatchKey, WrongTypeParameters)
     ASSERT_THROW(std::apply(bld::opBuilderHelperDefinitionMatchKey, tuple), std::runtime_error);
 }
 
-TEST(OpBuilderHelperDefinitionMatchKey, DefinitionNotFound)
-{
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_match_key"},
-                                 std::vector<std::string> {"$def"},
-                                 std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
-    ASSERT_THROW(std::apply(bld::opBuilderHelperDefinitionMatchKey, tuple), std::runtime_error);
-}
-
 TEST(OpBuilderHelperDefinitionMatchKey, DefinitionIsNotAnObject)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
@@ -109,16 +59,23 @@ TEST(OpBuilderHelperDefinitionMatchKey, DefinitionIsNotAnObject)
 
 TEST(OpBuilderHelperDefinitionMatchKey, Success)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_match_key"},
-                                 std::vector<std::string> {"$defObject"},
-                                 std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}})")));
+    auto tuple = std::make_tuple(
+        std::string {"/field"},
+        std::string {"+definition_match_key"},
+        std::vector<std::string> {"$defObject"},
+        std::make_shared<defs::Definitions>(json::Json(
+            R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}})")));
 
-    auto event1 = std::make_shared<json::Json>(R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyInt"})");
-    auto event2 = std::make_shared<json::Json>(R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyString"})");
-    auto event3 = std::make_shared<json::Json>(R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyBool"})");
-    auto event4 = std::make_shared<json::Json>(R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyNull"})");
-    auto event5 = std::make_shared<json::Json>(R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyObject"})");
+    auto event1 = std::make_shared<json::Json>(
+        R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyInt"})");
+    auto event2 = std::make_shared<json::Json>(
+        R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyString"})");
+    auto event3 = std::make_shared<json::Json>(
+        R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyBool"})");
+    auto event4 = std::make_shared<json::Json>(
+        R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyNull"})");
+    auto event5 = std::make_shared<json::Json>(
+        R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "keyObject"})");
 
     auto op = std::apply(bld::opBuilderHelperDefinitionMatchKey, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
@@ -140,18 +97,20 @@ TEST(OpBuilderHelperDefinitionMatchKey, Success)
 
 TEST(OpBuilderHelperDefinitionMatchKey, FailKeyNotMatch)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_match_key"},
-                                 std::vector<std::string> {"$defObject"},
-                                 std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}})")));
+    auto tuple = std::make_tuple(
+        std::string {"/field"},
+        std::string {"+definition_match_key"},
+        std::vector<std::string> {"$defObject"},
+        std::make_shared<defs::Definitions>(json::Json(
+            R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}})")));
 
-    auto event1 = std::make_shared<json::Json>(R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "wrongKey"})");
+    auto event1 = std::make_shared<json::Json>(
+        R"({"defObject": {"keyInt": 49, "keyString": "hello", "keyBool": true, "keyNull": null, "keyObject": {"key": "value"}}, "field": "wrongKey"})");
 
     auto op = std::apply(bld::opBuilderHelperDefinitionMatchKey, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
     ASSERT_FALSE(result.success());
-
 }
 
 TEST(OpBuilderHelperDefinitionMatchKey, TargetNotFound)
@@ -194,6 +153,22 @@ TEST(OpBuilderHelperDefinitionMatchKey, DefinitionIsAnArray)
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defArray": [1, 2, 3]})")));
 
     auto event1 = std::make_shared<json::Json>(R"({"defArray": [1, 2, 3], "field": "key"})");
+
+    auto op = std::apply(bld::opBuilderHelperDefinitionMatchKey, tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(OpBuilderHelperDefinitionMatchKey, DefinitionNotFound)
+{
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"+definition_match_key"},
+                                 std::vector<std::string> {"$def"},
+                                 std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
+
+    auto event1 = std::make_shared<json::Json>(R"({"defObject": {"key": "value"}, "field": "key"})");
 
     auto op = std::apply(bld::opBuilderHelperDefinitionMatchKey, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
