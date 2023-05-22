@@ -1,13 +1,16 @@
-name: output/file-output/0
+name: output/file-output-integrations/0
 
 metadata:
   title: file output event
-  description: Output events to a file
+  description: Output integrations events to a file
   compatibility: >
     This decoder has been tested on Wazuh version 4.3
   author:
     name: Wazuh, Inc.
     date: 2022/11/08
+
+check:
+  - wazuh.decoders: +array_contains/integrations
 
 outputs:
   - file:
