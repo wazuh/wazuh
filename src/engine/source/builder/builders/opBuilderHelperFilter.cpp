@@ -1485,9 +1485,9 @@ base::Expression opBuilderHelperIsFalse(const std::string& targetField,
 
 // field: +definition_match_value/$definition
 base::Expression opBuilderHelperDefinitionMatchValue(const std::string& targetField,
-                                               const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters,
-                                               std::shared_ptr<defs::IDefinitions> definitions)
+                                                     const std::string& rawName,
+                                                     const std::vector<std::string>& rawParameters,
+                                                     std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processDefinitionParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 1);
@@ -1500,16 +1500,18 @@ base::Expression opBuilderHelperDefinitionMatchValue(const std::string& targetFi
 
     const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
     const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: Definition '{}' is not an array", name, parameters[0].m_value)};
+        fmt::format("[{}] -> Failure: Definition '{}' not found", name, parameters[0].m_value)};
     const std::string failureTrace3 {
-        fmt::format("[{}] -> Failure: Target field '{}' has an invalid type", name, targetField)};
+        fmt::format("[{}] -> Failure: Definition '{}' is not an array", name, parameters[0].m_value)};
     const std::string failureTrace4 {
-        fmt::format("[{}] -> Failure: Definition array '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
+        fmt::format("[{}] -> Failure: Target field '{}' has an invalid type", name, targetField)};
+    const std::string failureTrace5 {fmt::format(
+        "[{}] -> Failure: Definition array '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField), definitionValue = std::move(parameters[0].m_value)](
+        [=, targetField = std::move(targetField), definitionField = std::move(parameters[0].m_value)](
             base::Event event) -> base::result::Result<base::Event>
         {
             if (!event->exists(targetField))
@@ -1517,14 +1519,20 @@ base::Expression opBuilderHelperDefinitionMatchValue(const std::string& targetFi
                 return base::result::makeFailure(event, failureTrace1);
             }
 
-            const auto resolvedArray {event->getArray(definitionValue)};
-            if (!resolvedArray.has_value())
+            // Get definition array
+            if (!event->exists(definitionField))
             {
                 return base::result::makeFailure(event, failureTrace2);
             }
 
-            json::Json cmpValue {};
+            const auto resolvedArray {event->getArray(definitionField)};
+            if (!resolvedArray.has_value())
+            {
+                return base::result::makeFailure(event, failureTrace3);
+            }
 
+            json::Json cmpValue {};
+            // Get value
             const auto resolvedField {event->getJson(targetField)};
             if (resolvedField.has_value())
             {
@@ -1532,28 +1540,28 @@ base::Expression opBuilderHelperDefinitionMatchValue(const std::string& targetFi
             }
             else
             {
-                return base::result::makeFailure(event, failureTrace3);
+                return base::result::makeFailure(event, failureTrace4);
             }
 
-            // Check if the array contains the value
+            // Check if the definition array contains the value
             if (std::find_if(resolvedArray.value().begin(),
-                                resolvedArray.value().end(),
-                                [&cmpValue](const json::Json& value) { return value == cmpValue; })
+                             resolvedArray.value().end(),
+                             [&cmpValue](const json::Json& value) { return value == cmpValue; })
                 != resolvedArray.value().end())
             {
                 return base::result::makeSuccess(event, successTrace);
             }
 
             // Not found
-            return base::result::makeFailure(event, failureTrace4);
+            return base::result::makeFailure(event, failureTrace5);
         });
 }
 
 // field: +definition_match_key/$definition
 base::Expression opBuilderHelperDefinitionMatchKey(const std::string& targetField,
-                                               const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters,
-                                               std::shared_ptr<defs::IDefinitions> definitions)
+                                                   const std::string& rawName,
+                                                   const std::vector<std::string>& rawParameters,
+                                                   std::shared_ptr<defs::IDefinitions> definitions)
 {
     auto parameters {helper::base::processDefinitionParameters(rawName, rawParameters, definitions)};
     helper::base::checkParametersSize(rawName, parameters, 1);
@@ -1571,15 +1579,16 @@ base::Expression opBuilderHelperDefinitionMatchKey(const std::string& targetFiel
         fmt::format("[{}] -> Failure: Definition '{}' is not an object", name, parameters[0].m_value)};
     const std::string failureTrace4 {
         fmt::format("[{}] -> Failure: Definition '{}' not found", name, parameters[0].m_value)};
-    const std::string failureTrace5 {
-        fmt::format("[{}] -> Failure: Definition object '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
+    const std::string failureTrace5 {fmt::format(
+        "[{}] -> Failure: Definition object '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField), definitionValue = std::move(parameters[0].m_value)](
+        [=, targetField = std::move(targetField), definitionField = std::move(parameters[0].m_value)](
             base::Event event) -> base::result::Result<base::Event>
         {
+            // Get key
             if (!event->exists(targetField))
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -1592,17 +1601,19 @@ base::Expression opBuilderHelperDefinitionMatchKey(const std::string& targetFiel
 
             auto pointerPath = json::Json::formatJsonPath(event->getString(targetField).value());
 
-            if (!event->isObject(definitionValue))
+            // Get definition object
+            if (!event->isObject(definitionField))
             {
                 return base::result::makeFailure(event, failureTrace3);
             }
 
-            const auto resolvedJson {event->getJson(definitionValue)};
+            const auto resolvedJson {event->getJson(definitionField)};
             if (!resolvedJson.has_value())
             {
                 return base::result::makeFailure(event, failureTrace4);
             }
 
+            // Check if definition object contains the key
             if (!resolvedJson->exists(pointerPath))
             {
                 return base::result::makeFailure(event, failureTrace5);

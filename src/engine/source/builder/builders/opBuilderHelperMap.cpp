@@ -1468,4 +1468,78 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
         });
 }
 
+//*************************************************
+//*                  Definition                   *
+//*************************************************
+
+// field: +definition_get/$definition/$key
+base::Expression opBuilderHelperDefinitionGet(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters,
+                                              std::shared_ptr<defs::IDefinitions> definitions)
+{
+    auto parameters {helper::base::processDefinitionParameters(rawName, rawParameters, definitions)};
+    helper::base::checkParametersSize(rawName, parameters, 2);
+    helper::base::checkParameterType(rawName, parameters[0], helper::base::Parameter::Type::REFERENCE);
+    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::REFERENCE);
+
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+
+    // Tracing
+    const std::string successTrace {fmt::format("[{}] -> Success", name)};
+
+    const std::string failureTrace1 {
+        fmt::format("[{}] -> Failure: Reference '{}' not found", name, parameters[1].m_value)};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Definition '{}' not found", name, parameters[0].m_value)};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: Definition '{}' is not an object", name, parameters[0].m_value)};
+    const std::string failureTrace4 {fmt::format(
+        "[{}] -> Failure: Definition object '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=,
+         targetField = std::move(targetField),
+         definitionField = std::move(parameters[0].m_value),
+         key = std::move(parameters[1].m_value)](base::Event event) -> base::result::Result<base::Event>
+        {
+            // Get key
+            std::string resolvedKey;
+            const auto value = event->getString(key);
+            if (value)
+            {
+                resolvedKey = value.value();
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace1);
+            }
+
+            auto pointerPath = json::Json::formatJsonPath(resolvedKey);
+
+            // Get definition object
+            const auto resolvedJson {event->getJson(definitionField)};
+            if (!resolvedJson.has_value())
+            {
+                return base::result::makeFailure(event, failureTrace2);
+            }
+
+            if (!resolvedJson->isObject())
+            {
+                return base::result::makeFailure(event, failureTrace3);
+            }
+
+            const auto resolvedValue {resolvedJson->getJson(pointerPath)};
+            if (!resolvedValue.has_value())
+            {
+                return base::result::makeFailure(event, failureTrace4);
+            }
+
+            event->set(targetField, resolvedValue.value());
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
 } // namespace builder::internals::builders
