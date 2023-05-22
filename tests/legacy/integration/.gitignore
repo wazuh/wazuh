@@ -28,6 +28,3 @@ deps/dist/
 deps/*.egg-info/
 venv
 dist
-
-# GCP tests configuration file
-tests/integration/test_gcloud/data/configuration.yaml
