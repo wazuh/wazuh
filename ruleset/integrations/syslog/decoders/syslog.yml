@@ -12,12 +12,11 @@ metadata:
     url: https://wazuh.com
     date: 2022/11/08
   references:
-    - https://datatracker.ietf.org/doc/html/rfc3164
-    - https://datatracker.ietf.org/doc/html/rfc5424
+    - https://ietf.org/doc/html/rfc3164
+    - https://ietf.org/doc/html/rfc5424
 
 sources:
-  - decoder/queue-syslog/0
-  - decoder/queue-localfile/0
+  - decoder/integrations/0
 
 parse:
   logpar:
@@ -39,3 +38,4 @@ normalize:
       - event.kind: event
       - related.hosts: +array_append/$host.hostname
       - process.name: $~TAG
+      - wazuh.decoders: +array_append/syslog
