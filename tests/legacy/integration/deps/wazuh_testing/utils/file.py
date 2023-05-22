@@ -1,7 +1,11 @@
-import os
-from typing import Union, List
+# Copyright (C) 2015-2023, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import chardet
+import os
 import yaml
+
+from typing import Union, List
 
 
 def write_file(file_path: str, data: Union[List[str], str] = ''):

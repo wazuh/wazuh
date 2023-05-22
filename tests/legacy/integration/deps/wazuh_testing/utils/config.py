@@ -1,11 +1,13 @@
-from copy import deepcopy
+# Copyright (C) 2015-2023, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import sys
+from copy import deepcopy
 from typing import List
 
 import xml.etree.ElementTree as ET
 
 from wazuh_testing.constants.paths.configurations import WAZUH_CONF_PATH
-from wazuh_testing import session_parameters
 
 from . import file
 
@@ -186,8 +188,6 @@ def set_section_wazuh_conf(sections: List[dict], template: List[str] = None) -> 
 
         # Insert elements
         new_elements = section.get('elements', list())
-        if session_parameters.fim_database_memory and section['section'] == 'syscheck':
-            new_elements.append({'database': {'value': 'memory'}})
         if new_elements:
             create_elements(section_conf, new_elements)
 
