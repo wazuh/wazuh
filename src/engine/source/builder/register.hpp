@@ -100,9 +100,10 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderHelperStringReplace, "replace");
     helperRegistry->registerBuilder(builders::opBuilderHelperStringTrim, "trim");
     helperRegistry->registerBuilder(builders::opBuilderHelperStringUP, "upcase");
-
     // Map helpers: Time functions
     helperRegistry->registerBuilder(builders::opBuilderHelperEpochTimeFromSystem, "system_epoch");
+    // Map helpers: Definition functions
+    helperRegistry->registerBuilder(builders::opBuilderHelperDefinitionGet, "definition_get");
 
     // Special helpers
 
