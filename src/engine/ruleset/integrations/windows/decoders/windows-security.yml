@@ -27,26 +27,9 @@ normalize:
     # Set categorization fields
     - event.id: +kvdb_get_merge/win_security_categories/$event.id
 
-    # Set User Account Control
-    - winlog.event_data.UserAccountControl: +split/$~windows.Event.EventData.UserAccountControl/%
-
-    # Set Kerberos Ticket Status Codes
-    - winlog.event_data.StatusDescription: +kvdb_get_merge/kerberos_tickets_status_codes/$~windows.Event.EventData.Status
-
     # Set Service Type and Name
     # Service related fields
     - service.name: $~windows.Event.EventData.ServiceName
-
-    # Set Audit Information
-    # Event sub category
-    - winlog.event_data.Category: +kvdb_get_merge/audit_category/$~windows.Event.EventData.SubcategoryGuid
-    - winlog.event_data.SubCategory: +kvdb_get_merge/audit_subcategory/$~windows.Event.EventData.SubcategoryGuid
-
-    # Set Trust Attributes
-    - winlog.trustAttribute: +kvdb_get/win_trust_attributes/$~windows.Event.EventData.TdoAttributes
-
-    - winlog.logon.id: $~windows.Event.EventData.SubjectLogonId
-    - winlog.event_data.PrivilegeList: '+split/$~windows.Event.EventData.PrivilegeList/ '
 
     - user.target.name: $~windows.Event.EventData.OldTargetUserName
     - user.changes.name: $~windows.Event.EventData.NewTargetUserName
@@ -83,19 +66,6 @@ normalize:
     - ~temp.id_related_user:  ["4688", "4720", "4722", "4723", "4724", "4725", "4726", "4738",
          "4740", "4767", "4798"]
 
-    # Decode message table
-    # Failure reason for logon
- - check:
-       - ~windows.Event.EventData.FailureReason: +exists
-   map:
-        - winlog.logon.failure.reason: +kvdb_get/failure_codes_descriptions/$~windows.Event.EventData.FailureReason
-
-    # Conditional logon status and substatus
-    # 4625 and 4776 Set Status and SubStatus
- - check: event.code==4625 OR event.code==4776
-   map:
-        - winlog.logon.failure.status: +kvdb_get/win_logon_status/$~windows.Event.EventData.Status
-        - winlog.logon.failure.sub_status: +kvdb_get/win_logon_status/$~windows.Event.EventData.SubStatus
 
     # Add Session Events
  - check: event.code==4778 OR event.code==4779
@@ -110,8 +80,6 @@ normalize:
         - related.ip: +array_append/$~windows.Event.EventData.ClientAddress
         # ClientName to source.domain
         - source.domain: $~windows.Event.EventData.ClientName
-        # LogonID to winlog.logon.id
-        - winlog.logon.id: $~windows.Event.EventData.LogonID
 
     # Copy Target User
     # TargetUserSid to user.id or user.target.id
@@ -119,6 +87,7 @@ normalize:
    map:
         - user.id: $~windows.Event.EventData.TargetUserSid
         - user.id: $~windows.Event.EventData.TargetSid
+        
  - check: +exists/$user.id AND +array_contains/~temp.id_target_user_array/$event.code
    map:
         - user.target.id: $~windows.Event.EventData.TargetUserSid
@@ -163,17 +132,6 @@ normalize:
         - ~temp.split_memberName.3: '+replace/DC=/'
         - user.target.domain: $~temp.split_memberName.3
 
- # Copy Target User to Computer Object
- - check: event.code==4741 OR event.code==4742 OR event.code==4743
-   map:
-    - winlog.computerObject.id: $~windows.Event.EventData.TargetSid
-    - winlog.computerObject.name: $~windows.Event.EventData.TargetUserName
-    - winlog.computerObject.domain: $~windows.Event.EventData.TargetDomainName
-
- - check: event.code==4634 OR event.code==4647 OR event.code==4964
-   map:
-    - winlog.logon.id: $~windows.Event.EventData.TargetLogonId
-
  # Copy Subject User from Event Data
  - check:
      - ~temp.id_copy_subject_user_array: +array_contains/$event.code
@@ -217,8 +175,6 @@ normalize:
      - user.name: $~windows.Event.UserData.LogFileCleared.SubjectUserName.#text
      - related.user: +array_append/$~windows.Event.UserData.LogFileCleared.SubjectUserName.#text
      - user.domain: $~windows.Event.UserData.LogFileCleared.SubjectDomainName.#text
-     - winlog.logon.id: $~windows.Event.UserData.LogFileCleared.SubjectLogonId.#text
-     - winlog.task: Log clear
 
 
 # Rename Common Auth Fields
@@ -253,12 +209,6 @@ normalize:
    map:
      - related.user: $~windows.Event.EventData.SubjectUserName
 
- - check: event.code==1105
-   map:
-     - winlog.task: Log automatic backup
-     - winlog.user_data.BackupPath: $~windows.Event.UserData.AutoBackup.BackupPath.#text
-     - winlog.user_data.Channel: $~windows.Event.UserData.AutoBackup.Channel.#text
-
  - check:
       - ~temp.id_related_user: +array_contains/$event.code
    map:
@@ -266,16 +216,6 @@ normalize:
 
  - map:
      - related.ip: $event.source.ip
-
- # Object Policy Change and SidListDesc
- # Cant be correctly parsed, at least keep recors from original log
- - check: event.code==4670 OR event.code==4817 OR event.code==4907 OR event.code==4808
-   map:
-     - winlog.event_data.NewSd: $~windows.Event.EventData.NewSd
-     - winlog.event_data.OldSd: $~windows.Event.EventData.OldSd
-     - winlog.event_data.ObjectType: $~windows.Event.EventData.ObjectType
-     - winlog.event_data.ObjectServer: $~windows.Event.EventData.ObjectServer
-     - winlog.event_data.ObjectName: $~windows.Event.EventData.ObjectName
 
 # Set Service Type
  - check:
@@ -312,130 +252,6 @@ normalize:
     - ~windows.Event.EventData.ServiceType: "0x120"
    map:
     - service.type: "Interactive Share Process"
-
-  # Set Kerberos Encryption Types
- - check:
-    - ~windows.Event.EventData.TicketEncryptionType: "0x1"
-   map:
-    - winlog.event_data.TicketEncryptionTypeDescription: "DES-CBC-CRC"
-
- - check:
-    - ~windows.Event.EventData.TicketEncryptionType: "0x3"
-   map:
-    - winlog.event_data.TicketEncryptionTypeDescription: "DES-CBC-MD5"
-
- - check:
-    - ~windows.Event.EventData.TicketEncryptionType: "0x11"
-   map:
-    - winlog.event_data.TicketEncryptionTypeDescription: "AES128-CTS-HMAC-SHA1-96"
-
- - check:
-    - ~windows.Event.EventData.TicketEncryptionType: "0x12"
-   map:
-    - winlog.event_data.TicketEncryptionTypeDescription: "AES256-CTS-HMAC-SHA1-96"
-
- - check:
-    - ~windows.Event.EventData.TicketEncryptionType: "0x17"
-   map:
-    - winlog.event_data.TicketEncryptionTypeDescription: "RC4-HMAC"
-
- - check:
-    - ~windows.Event.EventData.TicketEncryptionType: "0x18"
-   map:
-    - winlog.event_data.TicketEncryptionTypeDescription: "RC4-HMAC-EXP"
-
- - check:
-    - ~windows.Event.EventData.TicketEncryptionType: "0xffffffff"
-   map:
-    - winlog.event_data.TicketEncryptionTypeDescription: "FAIL"
-
-# Set Trust Direction
- - check:
-    - ~windows.Event.EventData.TdoDirection: "0"
-   map:
-    - winlog.trustDirection: "TRUST_DIRECTION_DISABLED"
-
- - check:
-    - ~windows.Event.EventData.TdoDirection: "1"
-   map:
-    - winlog.trustDirection: "TRUST_DIRECTION_INBOUND"
-
- - check:
-    - ~windows.Event.EventData.TdoDirection: "2"
-   map:
-    - winlog.trustDirection: "TRUST_DIRECTION_OUTBOUND"
-
- - check:
-    - ~windows.Event.EventData.TdoDirection: "3"
-   map:
-    - winlog.trustDirection: "TRUST_DIRECTION_BIDIRECTIONAL"
-
-# Set trust type
- - check:
-    - ~windows.Event.EventData.TdoType: "1"
-   map:
-    - winlog.trustType: "TRUST_TYPE_DOWNLEVEL"
-
- - check:
-    - ~windows.Event.EventData.TdoType: "2"
-   map:
-    - winlog.trustType: "TRUST_TYPE_UPLEVEL"
-
- - check:
-    - ~windows.Event.EventData.TdoType: "3"
-   map:
-    - winlog.trustType: "TRUST_TYPE_MIT"
-
- - check:
-    - ~windows.Event.EventData.TdoType: "4"
-   map:
-    - winlog.trustType: "TRUST_TYPE_DCE"
-
-# Set Logon Type
- - check:
-    - ~windows.Event.EventData.LogonType: "2"
-   map:
-    - winlog.logon.type: "Interactive"
-
- - check:
-    - ~windows.Event.EventData.LogonType: "3"
-   map:
-    - winlog.logon.type: "Network"
-
- - check:
-    - ~windows.Event.EventData.LogonType: "4"
-   map:
-    - winlog.logon.type: "Batch"
-
- - check:
-    - ~windows.Event.EventData.LogonType: "5"
-   map:
-    - winlog.logon.type: "Service"
-
- - check:
-    - ~windows.Event.EventData.LogonType: "7"
-   map:
-    - winlog.logon.type: "Unlock"
-
- - check:
-    - ~windows.Event.EventData.LogonType: "8"
-   map:
-    - winlog.logon.type: "NetworkCleartext"
-
- - check:
-    - ~windows.Event.EventData.LogonType: "9"
-   map:
-    - winlog.logon.type: "NewCredentials"
-
- - check:
-    - ~windows.Event.EventData.LogonType: "10"
-   map:
-    - winlog.logon.type: "RemoteInteractive"
-
- - check:
-    - ~windows.Event.EventData.LogonType: "11"
-   map:
-    - winlog.logon.type: "CachedInteractive"
 
 # Cleanup
  - map:
