@@ -34,43 +34,38 @@ normalize:
    - event.kind: event
    - event.provider: $~windows.Event.System.Provider.@Name
    - host.name: $~windows.Event.System.Computer.#text
-   - winlog.message: $~parsed_json.Message
-   - winlog.channel: $~windows.Event.System.Channel.#text
-   - winlog.process.pid: $~windows.Event.System.Execution.@ProcessID
-   - winlog.process.thread.id: $~windows.Event.System.Execution.@ThreadID
-   - winlog.record_id: $~windows.Event.System.EventRecordID.#text
-   - winlog.original_event_data: $~windows.Event.EventData
+
 
 # Set event level
  - check:
     - ~windows.Event.System.Level.#text: "0"
    map:
-    - winlog.level: "Audit"
+    - log.level: "Audit"
 
  - check:
     - ~windows.Event.System.Level.#text: "1"
    map:
-    - winlog.level: "Critical"
+    - log.level: "Critical"
 
  - check:
     - ~windows.Event.System.Level.#text: "2"
    map:
-    - winlog.level: "Error"
+    - log.level: "Error"
 
  - check:
     - ~windows.Event.System.Level.#text: "3"
    map:
-    - winlog.level: "Warning"
+    - log.level: "Warning"
 
  - check:
     - ~windows.Event.System.Level.#text: "4"
    map:
-    - winlog.level: "Information"
+    - log.level: "Information"
 
  - check:
     - ~windows.Event.System.Level.#text: "5"
    map:
-    - winlog.level: "Verbose"
+    - log.level: "Verbose"
 
 # Cleanup
  - map:
