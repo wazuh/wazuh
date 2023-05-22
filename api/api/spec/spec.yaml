@@ -2063,6 +2063,28 @@ components:
       - stopped
       - running
 
+    # Engine models
+
+    # Configuration
+    ConfigOption:
+      type: object
+      properties:
+        name:
+          description: "Configuration option name"
+          type: string
+          format: names
+        content:
+          description: "Configuration option value"
+          type: string
+
+    ConfigResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigOption'
+
     # Logtest models
     LogtestRequest:
       type: object
@@ -6990,6 +7012,13 @@ components:
       schema:
         type: boolean
         default: true
+    save:
+      in: query
+      name: save
+      description: "Save the runtime configuration of the manager to disk"
+      schema:
+        type: boolean
+        default: false
 
 
 tags:
@@ -7035,6 +7064,8 @@ tags:
     description: "Tasks information"
   - name: Vulnerability
     description: "Vulnerabilities information"
+  - name: Engine
+    description: "Wazuh engine"
 
 security:
   - jwt: []
@@ -15054,6 +15085,100 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /engine/config/runtime:
+    get:
+      tags:
+        - Engine
+      summary: "Get the engine configuration"
+      description: "Get the runtime configuration of the manager"
+      operationId: api.controllers.engine.config_controller.get_config
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/engine:read_config'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/name'
+      responses:
+        '200':
+          description: "Get the runtime configuration of the manager"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ConfigResponse'
+              example:
+                data:
+                  - name: "memory_size"
+                    content: "2048"
+                message: "Selected configuration was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    put:
+      tags:
+        - Engine
+      summary: "Update the engine configuration"
+      description: "Update the runtime configuration of the manager"
+      operationId: api.controllers.engine.config_controller.update_config
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/engine:update_config'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/save'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigOption'
+            example:
+              name: "memory_size"
+              content: "2048"
+      responses:
+        '200':
+          description: "Configuration update successful"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ConfigResponse'
+                example:
+                  data:
+                    - name: "memory_size"
+                      content: "2048"
+                  message: "Configuration was successfully updated"
+                  error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
