@@ -32,28 +32,13 @@ normalize:
    - process.entity_id: $~windows.Event.EventData.HostId
    - process.command_line: $~windows.Event.EventData.HostApplication
    - process.title: $~windows.Event.EventData.HostName
+   - process.executable: $~windows.Event.EventData.ScriptName
 
   ## User fields.
    - ~temp.user_parts: +split/$~windows.Event.EventData.UserId/\
    - user.domain: $~temp.user_parts.0
    - user.name: $~temp.user_parts.1
    - related.user: +array_append/$user.name
-
-  ## PowerShell fields.
-   - powershell.engine.new_state: $~windows.Event.EventData.NewEngineState
-   - powershell.engine.previous_state: $~windows.Event.EventData.PreviousEngineState
-   - powershell.provider.new_state: $~windows.Event.EventData.NewProviderState
-   - powershell.provider.name: $~windows.Event.EventData.ProviderName
-   - powershell.total: $~windows.Event.EventData.DetailTotal
-   - powershell.sequence: $~windows.Event.EventData.DetailSequence
-   - powershell.engine.version: $~windows.Event.EventData.EngineVersion
-   - powershell.pipeline_id: $~windows.Event.EventData.PipelineId
-   - powershell.runspace_id: $~windows.Event.EventData.RunspaceId
-   - powershell.process.executable_version: $~windows.Event.EventData.HostVersion
-   - powershell.command.value: $~windows.Event.EventData.CommandLine
-   - powershell.command.path: $~windows.Event.EventData.CommandPath
-   - powershell.command.name: $~windows.Event.EventData.CommandName
-   - powershell.command.type: $~windows.Event.EventData.CommandType
 
   # Add file information.
    - file.path: $~windows.Event.EventData.ScriptName

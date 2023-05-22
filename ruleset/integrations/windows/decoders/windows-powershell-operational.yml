@@ -26,11 +26,6 @@ normalize:
    - event.type: [info]
    - event.sequence: $~windows.Event.EventData.SequenceNumber
 
-  # Process fields
-   - process.entity_id: $~windows.Event.EventData.HostID
-   - process.command_line: $~windows.Event.EventData.HostApplication
-   - process.title: $~windows.Event.EventData.HostName
-
   # User fields
    - ~temp.user_parts: +split/$~windows.Event.EventData.User/\
    - destination.user.domain: $~temp.user_parts.0
@@ -43,21 +38,7 @@ normalize:
    - user.domain: $source.user.domain
    - related.user: +array_append/$source.user.name
 
-   # PowerShell fields
-   - powershell.sequence: $~windows.Event.EventData.MessageNumber
-   - powershell.total: $~windows.Event.EventData.MessageTotal
-   - powershell.id: $~windows.Event.EventData.ShellID
-   - powershell.engine.version: $~windows.Event.EventData.EngineVersion
-   - powershell.pipeline_id: $~windows.Event.EventData.PipelineID
-   - powershell.runspace_id: $~windows.Event.EventData.RunspaceID
-   - powershell.runspace_id: $~windows.Event.EventData.RunspaceId
-   - powershell.process.executable_version: $~windows.Event.EventData.HostVersion
-   - powershell.command.value: $~windows.Event.EventData.CommandLine
-   - powershell.command.path: $~windows.Event.EventData.CommandPath
-   - powershell.command.name: $~windows.Event.EventData.CommandName
-   - powershell.command.type: $~windows.Event.EventData.CommandType
-   - powershell.file.script_block_id: $~windows.Event.EventData.ScriptBlockId
-   - powershell.file.script_block_text: $~windows.Event.EventData.ScriptBlockText
+   # File fields
    - file.path: $~windows.Event.EventData.Path
    - file.path: $~windows.Event.EventData.ScriptName
    - ~temp.file_data: +parse_file/$file.path
@@ -65,6 +46,11 @@ normalize:
    - file.extension: $~temp.file_data.ext
    - file.name: $~temp.file_data.name
 
+  # Process fields
+   - process.entity_id: $~windows.Event.EventData.HostID
+   - process.command_line: $~windows.Event.EventData.HostApplication
+   - process.title: $~windows.Event.EventData.HostName
+   - process.executable: $file.path
 
  - check: event.code==4105
    map:
