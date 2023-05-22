@@ -1,3 +1,6 @@
+# Copyright (C) 2015-2023, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
 
 from . import WAZUH_PATH
@@ -16,8 +19,7 @@ MODULESD_WMODULES_SOCKET_PATH = os.path.join(QUEUE_SOCKETS_PATH, 'wmodules')
 MODULESD_DOWNLOAD_SOCKET_PATH = os.path.join(QUEUE_SOCKETS_PATH, 'download')
 MODULESD_CONTROL_SOCKET_PATH = os.path.join(QUEUE_SOCKETS_PATH, 'control')
 MODULESD_KREQUEST_SOCKET_PATH = os.path.join(QUEUE_SOCKETS_PATH, 'krequest')
-MODULESD_C_INTERNAL_SOCKET_PATH = os.path.join(
-    CLUSTER_SOCKET_PATH, 'c-internal.sock')
+MODULESD_C_INTERNAL_SOCKET_PATH = os.path.join(CLUSTER_SOCKET_PATH, 'c-internal.sock')
 MONITORD_SOCKET_PATH = os.path.join(QUEUE_SOCKETS_PATH, 'monitor')
 REMOTED_SOCKET_PATH = os.path.join(QUEUE_SOCKETS_PATH, 'remote')
 SYSCHECKD_SOCKET_PATH = os.path.join(QUEUE_SOCKETS_PATH, 'syscheck')

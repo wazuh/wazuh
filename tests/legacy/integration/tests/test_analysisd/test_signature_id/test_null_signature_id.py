@@ -9,7 +9,6 @@
 #                                                 t3_configuration_metadata)
 
 
-
 # # Tests
 # @pytest.mark.tier(level=1)
 # @pytest.mark.parametrize('configuration, metadata', zip(t3_configurations, t3_configuration_metadata), ids=t3_case_ids)
