@@ -1,7 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.4.2]
+## [v4.4.3]
+
+
+## [v4.4.2] - 2022-05-18
 
 ### Manager
 
