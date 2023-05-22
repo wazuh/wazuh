@@ -350,7 +350,10 @@ void run(const Options& options)
 
     }
 
-    clear_icanon(false);
+    if (isatty(fileno(stdin)))
+    {
+        clear_icanon(false);
+    }
     g_exitHanlder.execute();
 }
 
