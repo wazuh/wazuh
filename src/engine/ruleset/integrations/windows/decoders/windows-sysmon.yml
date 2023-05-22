@@ -64,7 +64,6 @@ normalize:
     - file.path: $~windows.Event.EventData.ImageLoaded
     - file.code_signature.subject_name: $~windows.Event.EventData.Signature
     - file.code_signature.status: $~windows.Event.EventData.SignatureStatus
-    - file.code_signature.signed: $~windows.Event.EventData.Signed
     - ~temp.file_data: +parse_file/$file.path
     - file.directory: $~temp.file_data.path
     - file.extension: $~temp.file_data.ext
@@ -87,12 +86,6 @@ normalize:
     - ~temp.user_parts: +split/$~windows.Event.EventData.User/\
     - user.domain: $~temp.user_parts.0
     - user.name: $~temp.user_parts.1
-
-  ## Sysmon fields
-    - sysmon.dns.status: $~windows.Event.EventData.QueryStatus
-    - sysmon.dns.status: +kvdb_get/sysmon_dns_status/$~windows.Event.EventData.QueryStatus
-    - sysmon.file.archived: $~windows.Event.EventData.Archived
-    - sysmon.file.is_executable: $~windows.Event.EventData.IsExecutable
 
   ## Related fields
     - related.user: $user.name
