@@ -42,16 +42,15 @@ bool KVDBManager::skipAutoRemoveEnabled()
 
 rocksdb::ColumnFamilyHandle* KVDBManager::createColumnFamily(const std::string& name)
 {
-    rocksdb::ColumnFamilyHandle* cfHandle;
-    rocksdb::Status s = m_pRocksDB->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), name, &cfHandle);
+    rocksdb::ColumnFamilyHandle* cfHandle {nullptr};
+    rocksdb::Status s {m_pRocksDB->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), name, &cfHandle)};
 
     if (s.ok())
     {
         m_mapCFHandles.insert(std::make_pair(name, cfHandle));
-        return cfHandle;
     }
 
-    return nullptr;
+    return cfHandle;
 }
 
 std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeName)
@@ -170,7 +169,7 @@ std::unique_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbN
 
 void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
-    bool isRemoved = false;
+    bool isRemoved {false};
     m_kvdbHandlerCollection->removeKVDBHandler(dbName, scopeName, isRemoved);
     if (isRemoved && m_mapCFHandles.size())
     {
@@ -262,11 +261,11 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
         for (auto& scopeEntry : scopesUsingDB)
         {
             std::string scopeName = scopeEntry.first;
-            int countDBsUsingScope = scopeEntry.second;
             // Get the current refCounter for this scope.
             auto counterMap = refCounterMap[scopeName];
 
             // Insert number of used DBs in current scope.
+            int countDBsUsingScope {scopeEntry.second};
             counterMap.addRef(dbName, countDBsUsingScope);
 
             // Update the refCounter for this scope.
