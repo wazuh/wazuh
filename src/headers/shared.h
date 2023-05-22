@@ -181,9 +181,9 @@ typedef uint8_t u_int8_t;
 #endif
 
 #if defined(__GNUC__) && __GNUC__ >= 7
-#define fallthrough __attribute__ ((fallthrough))
+#define WFALLTHROUGH __attribute__ ((fallthrough))
 #else
-#define fallthrough ((void) 0)
+#define WFALLTHROUGH ((void) 0)
 #endif
 
 /* IPv4 structure */
