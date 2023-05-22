@@ -12,7 +12,7 @@
 #include <cstring>
 #include "sysInfoHardwareWrapperMac_test.h"
 #include "hardware/hardwareWrapperImplMac.h"
-#include "shared_modules/utils/osPrimitivesInterfaceMac.h"
+#include "osPrimitivesInterfaceMac.h"
 #include "IOKit/IOKitLib.h"
 #include "CoreFoundation/CFBase.h"
 

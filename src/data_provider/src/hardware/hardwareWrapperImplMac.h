@@ -14,11 +14,11 @@
 
 #include <sys/sysctl.h>
 #include "hardwareWrapperInterface.h"
-#include "data_provider/include/sysInfo.hpp"
-#include "shared_modules/utils/cmdHelper.h"
-#include "shared_modules/utils/stringHelper.h"
-#include "shared_modules/utils/defer.hpp"
-#include "shared_modules/utils/osPrimitivesInterfaceMac.h"
+#include "sysInfo.hpp"
+#include "cmdHelper.h"
+#include "stringHelper.h"
+#include "defer.hpp"
+#include "osPrimitivesInterfaceMac.h"
 #include "utilsWrapperMac.hpp"
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) // Before macOS 12 Monterey

@@ -27,7 +27,7 @@
 #include "packages/packageMac.h"
 #include "hardware/factoryHardwareFamilyCreator.h"
 #include "hardware/hardwareWrapperImplMac.h"
-#include "shared_modules/utils/osPrimitivesImplMac.h"
+#include "osPrimitivesImplMac.h"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
