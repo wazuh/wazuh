@@ -351,6 +351,26 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
                                          const std::vector<std::string>& rawParameters,
                                          std::shared_ptr<defs::IDefinitions> definitions);
 
+//*************************************************
+//*                  Definition                   *
+//*************************************************
+
+/**
+ * @brief Create `definition_get` helper function that maps target field value with the content of the some key in the
+ * definition object, where the key is specified with a reference to another field.
+ * <field>: +definition_get/$<definition_object>/$<key>
+ *
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition.
+ * @param definitions handler with definitions
+ * @return base::Expression
+ */
+base::Expression opBuilderHelperDefinitionGet(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters,
+                                              std::shared_ptr<defs::IDefinitions> definitions);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_MAP_H

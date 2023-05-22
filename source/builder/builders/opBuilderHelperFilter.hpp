@@ -612,18 +612,36 @@ base::Expression opBuilderHelperIsFalse(const std::string& targetField,
 //*************************************************
 
 /**
- * @brief 
- * 
+ * @brief Create `definition_match_value` helper function that filters events which field
+ * value is present in the specified definition array.
+ * <field>: +definition_match_value/$<definition_array>/
+ *
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
+ * @return base::Expression
  */
 base::Expression opBuilderHelperDefinitionMatchValue(const std::string& targetField,
-                                               const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters,
-                                               std::shared_ptr<defs::IDefinitions> definitions);
+                                                     const std::string& rawName,
+                                                     const std::vector<std::string>& rawParameters,
+                                                     std::shared_ptr<defs::IDefinitions> definitions);
 
+/**
+ * @brief Create `definition_match_key` helper function that filters events which field
+ * value is present as a key in the specified definition object.
+ * <field>: +definition_match_key/$<definition_object>/
+ *
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
+ * @return base::Expression
+ */
 base::Expression opBuilderHelperDefinitionMatchKey(const std::string& targetField,
-                                               const std::string& rawName,
-                                               const std::vector<std::string>& rawParameters,
-                                               std::shared_ptr<defs::IDefinitions> definitions);
+                                                   const std::string& rawName,
+                                                   const std::vector<std::string>& rawParameters,
+                                                   std::shared_ptr<defs::IDefinitions> definitions);
 
 } // namespace builder::internals::builders
 
