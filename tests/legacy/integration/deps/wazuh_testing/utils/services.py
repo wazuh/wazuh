@@ -1,3 +1,6 @@
+# Copyright (C) 2015-2023, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
 import platform
 import psutil
@@ -5,24 +8,48 @@ import subprocess
 import sys
 
 from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants.paths.binaries import WAZUH_CONTROL_PATH
 from wazuh_testing.constants.paths.sockets import WAZUH_SOCKETS
 
 from .sockets import delete_sockets
 
 
-def get_service():
+def get_service() -> str:
+    """
+    Retrieves the name of the Wazuh service running on the current platform.
+
+    Returns:
+        str: The name of the Wazuh service. It can be either 'wazuh-manager'
+             or 'wazuh-agent'.
+
+    Raises:
+        subprocess.CalledProcessError: If an error occurs while executing the
+                                       subprocess to obtain the service name.
+
+    """
     if platform.system() in ['Windows', 'win32']:
         return 'wazuh-agent'
 
     else:  # Linux, sunos5, darwin, aix...
         service = subprocess.check_output([
-            f"{WAZUH_PATH}/bin/wazuh-control", "info", "-t"
+            WAZUH_CONTROL_PATH, "info", "-t"
         ], stderr=subprocess.PIPE).decode('utf-8').strip()
 
     return 'wazuh-manager' if service == 'server' else 'wazuh-agent'
 
 
-def get_version():
+def get_version() -> str:
+    """
+    Retrieves the version of the Wazuh software installed on the current platform.
+
+    Returns:
+        str: The version of the Wazuh software.
+
+    Raises:
+        FileNotFoundError: If the VERSION file cannot be found on Windows.
+        subprocess.CalledProcessError: If an error occurs while executing the
+                                       subprocess to obtain the version.
+    """
 
     if platform.system() in ['Windows', 'win32']:
         with open(os.path.join(WAZUH_PATH, 'VERSION'), 'r') as f:
@@ -31,7 +58,7 @@ def get_version():
 
     else:  # Linux, sunos5, darwin, aix...
         return subprocess.check_output([
-            f"{WAZUH_PATH}/bin/wazuh-control", "info", "-v"
+            WAZUH_CONTROL_PATH, "info", "-v"
         ], stderr=subprocess.PIPE).decode('utf-8').rstrip()
 
 
@@ -77,7 +104,7 @@ def control_service(action, daemon=None, debug_mode=False):
         if daemon is None:
             if sys.platform == 'darwin' or sys.platform == 'sunos5':
                 result = subprocess.run(
-                    [f'{WAZUH_PATH}/bin/wazuh-control', action]).returncode
+                    [WAZUH_CONTROL_PATH, action]).returncode
             else:
                 result = subprocess.run(
                     ['service', get_service(), action]).returncode

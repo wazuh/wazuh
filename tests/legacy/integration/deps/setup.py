@@ -10,15 +10,6 @@ from setuptools import setup, find_packages
 package_data_list = []
 scripts_list = []
 
-
-def get_files_from_directory(directory):
-    paths = []
-    for (path, directories, filenames) in os.walk(directory):
-        for filename in filenames:
-            paths.append(os.path.join('..', path, filename))
-    return paths
-
-
 setup(
     name='wazuh_testing',
     version='4.5.0',

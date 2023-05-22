@@ -69,5 +69,3 @@
 
 #     # Check that expected log appears for rules if_sid field being invalid
 #     ev.check_invalid_if_sid(wazuh_log_monitor, metadata['is_empty'])
-
-

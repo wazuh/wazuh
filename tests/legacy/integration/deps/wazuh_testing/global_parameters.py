@@ -1,3 +1,6 @@
+# Copyright (C) 2015-2023, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import sys
 
 from collections import defaultdict
@@ -11,7 +14,6 @@ class GlobalParameters:
         timeouts['linux'] = 5
         timeouts['darwin'] = 5
         self._default_timeout = timeouts[sys.platform]
-        self._fim_database_memory = False
 
     @property
     def default_timeout(self):
@@ -48,21 +50,3 @@ class GlobalParameters:
             value (dict): New value for the current configuration.
         """
         self._current_configuration = value
-
-    @property
-    def fim_database_memory(self):
-        """Getter method for the `fim_database_memory` property
-
-        Returns:
-            bool: representing if `fim_database_memory` is activated
-        """
-        return self._fim_database_memory
-
-    @fim_database_memory.setter
-    def fim_database_memory(self, value):
-        """Setter method for the `fim_database_memory` property
-
-        Args:
-            value (bool): New value for the `fim_database_memory`.
-        """
-        self._fim_database_memory = value
