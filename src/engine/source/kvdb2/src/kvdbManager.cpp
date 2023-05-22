@@ -90,7 +90,7 @@ void KVDBManager::initializeMainDB()
 
     std::filesystem::create_directories(dbStoragePath);
 
-    auto dbNameFullPath = fmt::format("{}{}", dbStoragePath, m_ManagerOptions.dbName);
+    const std::string dbNameFullPath {fmt::format("{}{}", dbStoragePath, m_ManagerOptions.dbName)};
 
     std::vector<std::string> columnNames;
     auto listStatus = rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), dbNameFullPath, &columnNames);
@@ -260,7 +260,7 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
         // Iterate over the scopes that are using thisDB.
         for (auto& scopeEntry : scopesUsingDB)
         {
-            std::string scopeName = scopeEntry.first;
+            std::string scopeName {scopeEntry.first};
             // Get the current refCounter for this scope.
             auto counterMap = refCounterMap[scopeName];
 
