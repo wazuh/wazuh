@@ -30,4 +30,5 @@ filters:
 - filter/allow-all/0
 name: integration/wazuh-core/0
 outputs:
-- output/file-output/0
+- output/file-output-wazuh-core/0
+- output/file-output-integrations/0
