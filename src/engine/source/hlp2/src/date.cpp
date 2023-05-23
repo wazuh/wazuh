@@ -32,7 +32,7 @@ static const std::vector<std::tuple<std::string, std::string>> TimeFormat {
     {"RFC1123", "%a, %d %b %Y %T %Z"},  // Mon, 02 Jan 2006 15:04:05 MST
     {"RFC1123Z", "%a, %d %b %Y %T %z"}, // Mon, 02 Jan 2006 15:04:05 -0700
     {"RFC3339", "%FT%TZ%Ez"},           // 2006-01-02T15:04:05Z07:00
-    {"RFC3154", "%b %d %R:%6S %Z"},     // Mar  1 18:48:50.483 UTC
+    {"RFC3164", "%b %d %R:%6S %Z"},     // Mar  1 18:48:50.483 UTC
     {"SYSLOG", "%b %d %T"},             // Jun 14 15:16:01
     {"ISO8601", "%FT%T%Ez"},            // 2018-08-14T14:30:02.203151+02:00
     {"ISO8601Z", "%FT%TZ"},             // 2018-08-14T14:30:02.203151Z
