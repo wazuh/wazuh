@@ -110,6 +110,7 @@ std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, 
 
     auto& env = it->second[instance];
     env.processEvent(std::move(event));
+    m_output = env.getOutput();
 
     return std::nullopt;
 }

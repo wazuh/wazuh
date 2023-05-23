@@ -34,6 +34,8 @@ private:
     /* Resources */
     std::shared_ptr<builder::Builder> m_builder; ///< Builder for policy creation
 
+    std::string m_output;
+
 public:
     /**
      * @brief Create the policy manager
@@ -103,6 +105,13 @@ public:
      * The lamda function of the expression is not thread safe.
      */
     std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event event);
+
+    /**
+     * @brief Get the Output object
+     * 
+     * @return std::stringstream 
+     */
+    inline const std::string getOutput() {return m_output;}
 };
 } // namespace router
 

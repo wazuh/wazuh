@@ -20,7 +20,11 @@ class RuntimePolicy
 {
 private:
     std::string m_asset;
-    std::shared_ptr<rxbk::Controller> m_controller;
+    std::shared_ptr<rxbk::Controller> m_spController;
+    builder::Policy m_environment;
+    std::string m_output;
+    std::vector<std::pair<std::string, std::string>> m_history;
+    std::unordered_map<std::string, std::shared_ptr<std::stringstream>> m_traceBuffer;
 
 public:
     /**
@@ -30,7 +34,7 @@ public:
      */
     RuntimePolicy(std::string asset)
         : m_asset {asset}
-        , m_controller {}
+        , m_spController {}
     {
     }
 
@@ -56,6 +60,25 @@ public:
      * functions) are not thread safe.
      */
     std::optional<base::Error> processEvent(base::Event event);
+
+    /**
+     * @brief 
+     * 
+     */
+    void subscribeToOutput();
+
+    /**
+     * @brief 
+     * 
+     */
+    void listenAllTrace();
+
+    /**
+     * @brief Get the Output object
+     * 
+     * @return std::stringstream 
+     */
+    inline const std::string getOutput() {return m_output;}
 };
 
 } // namespace router

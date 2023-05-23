@@ -344,11 +344,23 @@ void runStart(ConfHandler confManager)
         // Register Configuration API commands
         api::config::handlers::registerHandlers(api, confManager);
         LOG_DEBUG("Configuration manager API registered.");
-
+        
         // Register Integration API commands
         auto integration = std::make_shared<api::integration::Integration>(catalog);
         api::integration::handlers::registerHandlers(integration, api);
         LOG_DEBUG("Integration manager API registered.");
+
+        // Test
+        {
+            // Register the Test command
+            Config testConfig
+            {
+                router
+            };
+            api::test::handlers::registerHandlers(testConfig, api);
+            LOG_DEBUG("Test API registered.");
+        }
+
         // Server
         {
             using namespace engineserver;
