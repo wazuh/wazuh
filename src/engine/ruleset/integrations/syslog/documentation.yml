@@ -10,9 +10,7 @@ configuration: >
   <localfile>
     <!-- Edit location to appropriate path if needed -->
     <location>/tmp/syslog_formatted.log</location>
-    <log_format>json</log_format>
-    <label key="event.module">syslog</label>
-    <label key="event.dataset">syslog.log</label>
+    <log_format>syslog</log_format>
   </localfile>
   ```
 
