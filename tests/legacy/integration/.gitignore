@@ -18,13 +18,9 @@ __pycache__
 .mypy_cache/
 .vs/*
 
+### Python Virtualenv
+venv
+
 ### VisualStudioCode Patch ###
 # Ignore all local history of files
 .history
-
-# Wazuh tools installation files
-deps/build/
-deps/dist/
-deps/*.egg-info/
-venv
-dist
