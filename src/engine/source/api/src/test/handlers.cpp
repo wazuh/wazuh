@@ -451,7 +451,6 @@ api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<Catalog> catal
             return genericError<ResponseType>("Invalid request");
         }
 
-        ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
         return toWazuhResponse(eResponse);
