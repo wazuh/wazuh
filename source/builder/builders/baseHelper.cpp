@@ -17,13 +17,14 @@ namespace helper::base
 {
 std::vector<Parameter> processParameters(const std::string& name,
                                          const std::vector<std::string>& parameters,
-                                         std::shared_ptr<defs::IDefinitions> definitions)
+                                         std::shared_ptr<defs::IDefinitions> definitions,
+                                         const bool checkDefinitionType)
 {
     std::vector<Parameter> newParameters;
     std::transform(parameters.begin(),
                    parameters.end(),
                    std::back_inserter(newParameters),
-                   [name, definitions](const std::string& parameter) -> Parameter
+                   [name, definitions, checkDefinitionType](const std::string& parameter) -> Parameter
                    {
                        if (builder::internals::syntax::REFERENCE_ANCHOR == parameter[0])
                        {
@@ -43,14 +44,18 @@ std::vector<Parameter> processParameters(const std::string& name,
                            if (definitions->contains(pointerPath))
                            {
                                auto val = definitions->get(pointerPath);
-                               if (!val.isString() && !val.isNumber())
+                               if (checkDefinitionType)
                                {
-                                   throw std::runtime_error(fmt::format("Definition '{}' in helper '{}' is not a "
-                                                                        "string or number",
-                                                                        parameter,
-                                                                        name));
+                                    if(!val.isString() && !val.isNumber())
+                                    {
+                                        throw std::runtime_error(fmt::format("Definition '{}' in helper '{}' is not a "
+                                                                                "string or number",
+                                                                                parameter,
+                                                                                name));
+                                    }
+                                    return {Parameter::Type::VALUE, val.getString().value_or(val.str())};
                                }
-                               return {Parameter::Type::VALUE, val.getString().value_or(val.str())};
+                               return {Parameter::Type::VALUE, val.str()};
                            }
 
                            return {Parameter::Type::REFERENCE, pointerPath};
@@ -58,56 +63,6 @@ std::vector<Parameter> processParameters(const std::string& name,
                        else
                        {
                            return {Parameter::Type::VALUE, parameter};
-                       }
-                   });
-
-    return newParameters;
-}
-
-std::vector<Parameter> processDefinitionParameters(const std::string& name,
-                                                   const std::vector<std::string>& parameters,
-                                                   std::shared_ptr<defs::IDefinitions> definitions)
-{
-    std::vector<Parameter> newParameters;
-    std::transform(parameters.begin(),
-                   parameters.end(),
-                   std::back_inserter(newParameters),
-                   [name, definitions](const std::string& parameter) -> Parameter
-                   {
-                       if (builder::internals::syntax::REFERENCE_ANCHOR == parameter[0])
-                       {
-                           std::string pointerPath;
-                           try
-                           {
-                               pointerPath = json::Json::formatJsonPath(parameter.substr(1));
-                           }
-                           catch (const std::exception& e)
-                           {
-                               throw std::runtime_error(fmt::format("Cannot format parameter \"{}\" from to "
-                                                                    "Json pointer path: {}",
-                                                                    parameter,
-                                                                    e.what()));
-                           }
-
-                           if (definitions->contains(pointerPath))
-                           {
-                               auto val = definitions->get(pointerPath);
-                               if (!val.isObject() && !val.isArray())
-                               {
-                                   throw std::runtime_error(fmt::format("Definition '{}' in helper '{}' is not an "
-                                                                        "object or array",
-                                                                        parameter,
-                                                                        name));
-                               }
-                               return {Parameter::Type::REFERENCE, pointerPath};
-                           }
-
-                           return {Parameter::Type::REFERENCE, pointerPath};
-                       }
-                       else
-                       {
-                           throw std::runtime_error(fmt::format(
-                               "Definition '{}' in helper '{}' must be passed as a reference", parameter, name));
                        }
                    });
 
