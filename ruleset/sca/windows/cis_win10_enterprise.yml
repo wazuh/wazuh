@@ -8,13 +8,13 @@
 # Foundation
 #
 # Based on:
-# CIS Microsoft Windows 10 Enterprise (Release 1903) Benchmark v1.12.0 - 02-15-2022
+# CIS Microsoft Windows 10 Enterprise (Release 21H2) Benchmark v1.12.0 - 02-15-2022
 
 policy:
   id: "cis_win10_enterprise"
   file: "cis_win10_enterprise.yml"
-  name: "CIS Benchmark for Windows 10 Enterprise (Release 21H2)"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows 10."
+  name: "CIS Microsoft Windows 10 Enterprise Benchmark v1.12.0"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows 10 Enterprise."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 

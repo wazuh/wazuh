@@ -13,7 +13,7 @@
 policy:
   id: "cis_apple_macos_10_12"
   file: "cis_apple_macOS_10.12.yml"
-  name: "CIS Apple macOS 10.12 Benchmark"
+  name: "CIS Apple macOS 10.12 Benchmark v1.1.0"
   description: "This document, CIS Apple macOS 10.12 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for Apple macOS 10.12. This guide was tested against Apple macOS 10.12."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

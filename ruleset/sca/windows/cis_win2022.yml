@@ -13,7 +13,7 @@
 policy:
   id: "cis_win2022"
   file: "cis_win2022.yml"
-  name: "CIS Benchmark for Windows Server 2022 RTM "
+  name: "CIS Microsoft Windows Server 2022 Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2022."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
