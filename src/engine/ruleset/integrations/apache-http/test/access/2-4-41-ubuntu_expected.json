@@ -1,172 +1,156 @@
 [
     {
-        "wazuh": {
+        "wazuh":
+        {
             "queue": 49,
             "location": "[002] (ubuntu-agent) any->/var/log/apache2/access.log",
-            "message": "{\"event\":{\"original\":\"192.168.56.1 - - [14/Mar/2023:10:58:26 +0000] \\\"GET / HTTP/1.1\\\" 200 3477 \\\"-\\\" \\\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36\\\"\",\"module\":\"apache-http\",\"dataset\":\"apache-access\"}}",
+            "message": "192.168.56.1 - - [14/Mar/2023:10:58:26 +0000] \"GET / HTTP/1.1\" 200 3477 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36\"",
             "origin": "/var/log/apache2/access.log",
             "registered_ip": "any",
-            "decoders": [
-                "internal-ossec-message",
-                "internal-localfile",
-                "base"
+            "decoders":
+            [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations"
             ],
             "source": "logcollector"
         },
-        "agent": {
+        "agent":
+        {
             "id": "002",
             "name": "ubuntu-agent",
             "type": "wazuh"
         },
-        "event": {
+        "event":
+        {
             "original": "192.168.56.1 - - [14/Mar/2023:10:58:26 +0000] \"GET / HTTP/1.1\" 200 3477 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36\"",
-            "module": "apache-http",
-            "dataset": "apache.access",
             "created": "2023-03-14T10:58:26.000Z",
-            "category": [
+            "category":
+            [
                 "web"
             ],
             "kind": "event",
+            "module": "apache-http",
+            "dataset": "apache-access",
             "outcome": "success"
         },
-        "host": {
-            "id": "002",
-            "architecture": "x86_64",
-            "hostname": "ubuntu-agent",
-            "name": "ubuntu-agent",
-            "os": {
-                "kernel": "5.4.0-125-generic",
-                "name": "Ubuntu",
-                "platform": "ubuntu",
-                "type": "linux",
-                "version": "20.04.5 LTS (Focal Fossa)"
-            },
-            "mac": [
-                "02:fe:c0:34:c3:ed",
-                "08:00:27:1b:b9:aa"
-            ],
-            "ip": [
-                "fe80::fe:c0ff:fe34:c3ed",
-                "fe80::a00:27ff:fe1b:b9aa",
-                "192.168.56.21",
-                "10.0.2.15"
-            ]
+        "host":
+        {
+            "id": "002"
         },
-        "~json": {
-            "event": {}
-        },
-        "source": {
+        "source":
+        {
             "address": "192.168.56.1",
             "ip": "192.168.56.1"
         },
-        "user": {
+        "user":
+        {
             "name": "-"
         },
-        "http": {
-            "response": {
+        "http":
+        {
+            "response":
+            {
                 "status_code": 200,
-                "body": {
+                "body":
+                {
                     "bytes": 3477
                 }
             },
-            "request": {
+            "request":
+            {
                 "referrer": "-",
                 "method": "GET"
             }
         },
-        "user_agent": {
+        "user_agent":
+        {
             "original": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
         },
-        "service": {
-            "type": "apache"
-        },
-        "url": {
+        "url":
+        {
             "original": "/"
+        },
+        "service":
+        {
+            "type": "apache"
         }
     },
     {
-        "wazuh": {
+        "wazuh":
+        {
             "queue": 49,
             "location": "[002] (ubuntu-agent) any->/var/log/apache2/access.log",
-            "message": "{\"event\":{\"original\":\"192.168.56.1 - - [14/Mar/2023:11:00:59 +0000] \\\"GET /asdf HTTP/1.1\\\" 404 491 \\\"-\\\" \\\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36\\\"\",\"module\":\"apache-http\",\"dataset\":\"apache-access\"}}",
+            "message": "192.168.56.1 - - [14/Mar/2023:11:00:59 +0000] \"GET /asdf HTTP/1.1\" 404 491 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36\"",
             "origin": "/var/log/apache2/access.log",
             "registered_ip": "any",
-            "decoders": [
-                "internal-ossec-message",
-                "internal-localfile",
-                "base"
+            "decoders":
+            [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations"
             ],
             "source": "logcollector"
         },
-        "agent": {
+        "agent":
+        {
             "id": "002",
             "name": "ubuntu-agent",
             "type": "wazuh"
         },
-        "event": {
+        "event":
+        {
             "original": "192.168.56.1 - - [14/Mar/2023:11:00:59 +0000] \"GET /asdf HTTP/1.1\" 404 491 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36\"",
-            "module": "apache-http",
-            "dataset": "apache.access",
             "created": "2023-03-14T11:00:59.000Z",
-            "category": [
+            "category":
+            [
                 "web"
             ],
             "kind": "event",
+            "module": "apache-http",
+            "dataset": "apache-access",
             "outcome": "failure"
         },
-        "host": {
-            "id": "002",
-            "architecture": "x86_64",
-            "hostname": "ubuntu-agent",
-            "name": "ubuntu-agent",
-            "os": {
-                "kernel": "5.4.0-125-generic",
-                "name": "Ubuntu",
-                "platform": "ubuntu",
-                "type": "linux",
-                "version": "20.04.5 LTS (Focal Fossa)"
-            },
-            "mac": [
-                "02:fe:c0:34:c3:ed",
-                "08:00:27:1b:b9:aa"
-            ],
-            "ip": [
-                "fe80::fe:c0ff:fe34:c3ed",
-                "fe80::a00:27ff:fe1b:b9aa",
-                "192.168.56.21",
-                "10.0.2.15"
-            ]
+        "host":
+        {
+            "id": "002"
         },
-        "~json": {
-            "event": {}
-        },
-        "source": {
+        "source":
+        {
             "address": "192.168.56.1",
             "ip": "192.168.56.1"
         },
-        "user": {
+        "user":
+        {
             "name": "-"
         },
-        "http": {
-            "response": {
+        "http":
+        {
+            "response":
+            {
                 "status_code": 404,
-                "body": {
+                "body":
+                {
                     "bytes": 491
                 }
             },
-            "request": {
+            "request":
+            {
                 "referrer": "-",
                 "method": "GET"
             }
         },
-        "user_agent": {
+        "user_agent":
+        {
             "original": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
         },
-        "service": {
-            "type": "apache"
-        },
-        "url": {
+        "url":
+        {
             "original": "/asdf"
+        },
+        "service":
+        {
+            "type": "apache"
         }
     }
 ]
