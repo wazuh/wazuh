@@ -54,11 +54,14 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
-### Fixed
+#### Changed
+
+- Remove an unused variable in wazuh-authd to fix a _String not null terminated_ Coverity finding. ([#15957](https://github.com/wazuh/wazuh/pull/15957))
+
+#### Fixed
 
 - Fixed a bug causing agent groups tasks status in the cluster not to be stored. ([#16394](https://github.com/wazuh/wazuh/pull/16394))
 - Fixed memory leaks in Vulnerability Detector after disk failures. ([#16478](https://github.com/wazuh/wazuh/pull/16478))
-- Remove unused variable in wazuh-authd to fix a `String not null terminated` coverity finding. ([#15957](https://github.com/wazuh/wazuh/pull/15957))
 - Fixed a pre-decoder problem with the + symbol in the macOS ULS timestamp. ([#16530](https://github.com/wazuh/wazuh/pull/16530))
 
 ### Agent
@@ -66,13 +69,13 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added a new module to integrate with Amazon Security Lake as a subscriber. ([#16515](https://github.com/wazuh/wazuh/pull/16515))
-- Added support for localfile blocks deployment. ([#16847](https://github.com/wazuh/wazuh/pull/16847))
+- Added support for `localfile` blocks deployment. ([#16847](https://github.com/wazuh/wazuh/pull/16847))
 
 #### Changed
 
-- Changed netstat command on macOS agents. ([#16743](https://github.com/wazuh/wazuh/pull/16743)) 
+- Changed _netstat_ command on macOS agents. ([#16743](https://github.com/wazuh/wazuh/pull/16743)) 
 
-### Fixed
+#### Fixed
 
 - Fixed an issue with MAC address reporting on Windows systems. ([#16517](https://github.com/wazuh/wazuh/pull/16517)) 
 - Fixed Windows unit tests hanging during execution. ([#16857](https://github.com/wazuh/wazuh/pull/16857))  
@@ -88,14 +91,19 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added macOS 13.0 Ventura SCA policy. ([#15566](https://github.com/wazuh/wazuh/pull/15566)) 
-- Added new ruleset for macOS 13 Ventura and older versions. ([#15567](https://github.com/wazuh/wazuh/pull/15567)) 
-- Added new base ruleset for log sources collected from Amazon Security Lake. ([#16549](https://github.com/wazuh/wazuh/pull/16549))
+- Added new ruleset for macOS 13 Ventura and older versions. ([#15567](https://github.com/wazuh/wazuh/pull/15567))
+- Added a new base ruleset for log sources collected from Amazon Security Lake. ([#16549](https://github.com/wazuh/wazuh/pull/16549))
 
 ### Other
 
 #### Added
 
 - Added `pyarrow` and `numpy` Python dependencies. ([#16692](https://github.com/wazuh/wazuh/pull/16692))
+- Added `importlib-metadata` and `zipp` Python dependencies. ([#16692](https://github.com/wazuh/wazuh/pull/16692))
+
+#### Changed
+
+- Updated `Flask` Python dependency to 2.2.5. ([#17053](https://github.com/wazuh/wazuh/pull/17053))
 
 
 ## [v4.4.1] - 2023-04-12
