@@ -483,7 +483,7 @@ def test_handler_msg_build_ok(pack_mock):
     assert isinstance(handler.msg_build(b"command", 12345, b"000000000000000000000"), list)
     assert isinstance(handler.msg_build(b"command", 12345, b"data")[0], bytearray)
 
-    assert pack_mock.call_count == 13
+    assert pack_mock.call_count == 10
 
 
 def test_handler_msg_build_ko():
