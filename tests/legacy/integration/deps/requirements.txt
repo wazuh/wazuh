@@ -1,0 +1,54 @@
+configobj==5.0.6
+chardet==3.0.4
+certifi==2020.12.5
+cffi>=1.14.0; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+cycler>=0.10; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+bcrypt==3.2.0; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+distro==1.3.0
+filetype==1.0.7
+freezegun==0.3.15
+grpcio>=1.27.2; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+google-cloud-pubsub==2.3.0; platform_system == "Linux" or platform_system == "MacOS" or platform_system=='Windows'
+jsonschema==3.2.0
+kiwisolver>=1.0.1; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+lockfile==0.12.2
+matplotlib>=3.3.4; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+netifaces==0.10.9; platform_system == "Linux" or platform_system == "Darwin"
+numpy>=1.18.1
+pandas>=1.1.5
+pillow>=6.2.0; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+psutil>=5.6.6
+py~=1.10.0
+pycryptodome>=3.9.8
+pyOpenSSL==19.1.0
+pytest-html==3.1.1
+pytest==6.2.2 ; python_version <= "3.9"
+pytest==7.1.2 ; python_version >= "3.10"
+pyyaml==5.4
+requests>=2.23.0
+scipy>=1.0; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+seaborn>=0.11.1; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+setuptools~=56.0.0
+testinfra==5.0.0
+jq==1.1.2 ; (platform_system == "Linux" or platform_system == "Darwin") and python_version <= "3.9"
+jq==1.2.2 ; (platform_system == "Linux" or platform_system == "Darwin") and python_version >= "3.10"
+cryptography==3.3.2; platform_system == "Linux" or platform_system == "Darwin" or platform_system=='Windows'
+urllib3>=1.26.5
+numpydoc>=1.1.0
+ansible-runner>=2.0.1 ; platform_system == "Linux"
+docker>=5.0.0 ; platform_system == "Linux" or platform_system=='Windows'
+python-vagrant>=0.5.15 ; platform_system == "Linux" or platform_system=='Windows'
+ansible>=3.1.0 ; platform_system == "Linux"
+elasticsearch>=7.14.1 ; platform_system == "Linux" or platform_system=='Windows'
+safety==1.10.3
+bandit==1.7.0
+git-repo==1.10.3
+pywinrm>=0.4.2 ; platform_system == "Linux" or platform_system=='Windows'
+wmi>=1.5.1; platform_system=='Windows'
+deepdiff==5.6.0; platform_system == "Linux" or platform_system=='Windows'
+libcst==0.3.23 ; python_version <= '3.6'
+treelib==1.6.1
+prettytable; platform_system == "Linux"
+mysql-connector-python==8.0.32; platform_system == 'Linux' and python_version >= '3.7'
+protobuf>=3.11.0,<=3.20.3; platform_system == 'Linux' and python_version >= '3.7'
+boto3==1.26.11; platform_system == 'Linux'
