@@ -1,0 +1,30 @@
+# Python cache
+__pycache__
+.pytest_cache
+
+# Python bytecode files
+*.pyc
+.idea
+
+# Thumbnails
+._*
+
+### Pycharm ###
+.idea/*
+.idea/
+
+### VisualStudioCode ###
+.vscode/*
+.mypy_cache/
+.vs/*
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history
+
+# Wazuh tools installation files
+build/
+dist/
+*.egg-info/
+venv
+dist
