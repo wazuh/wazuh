@@ -43,7 +43,6 @@
         },
         "process":
         {
-            "name": "mpm_event",
             "pid": 3651,
             "thread":
             {
@@ -52,6 +51,7 @@
         },
         "log":
         {
+            "logger": "mpm_event",
             "level": "notice"
         },
         "message": "AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations",
@@ -104,7 +104,6 @@
         },
         "process":
         {
-            "name": "core",
             "pid": 3651,
             "thread":
             {
@@ -113,6 +112,7 @@
         },
         "log":
         {
+            "logger": "core",
             "level": "notice"
         },
         "message": "AH00094: Command line: '/usr/sbin/apache2'",
