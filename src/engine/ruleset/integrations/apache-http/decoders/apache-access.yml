@@ -22,7 +22,7 @@ check:
   - event.original: +regex_match/\S+\s-\s\S+\s\[
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above `event.original`
 # - event.module: apache-http
-# - event.dataset: apache-error
+# - event.dataset: apache-access
 
 definitions:
   isSuccess: +is_not_null/http.response.status_code AND +int_less/http.response.status_code/400
