@@ -93,12 +93,23 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
       "${CMAKE_SOURCE_DIR}/src/packages/rpm*.cpp")
   add_definitions(-DLINUX_TYPE=LinuxType::STANDARD) # Standard compilation in compatible systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
-      "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+  if(${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64.*")
+    file(GLOB SYSINFO_SRC
+        "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
+        "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+        "${CMAKE_SOURCE_DIR}/src/hardware/*ARMMac.cpp")
+  else()
+    file(GLOB SYSINFO_SRC
+        "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
+        "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
+        "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
+        "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+        "${CMAKE_SOURCE_DIR}/src/hardware/*X86_64Mac.cpp")
+  endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*FreeBSD.cpp"

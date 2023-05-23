@@ -96,4 +96,10 @@ enum RPMFields
     RPM_FIELDS_SIZE
 };
 
+enum MacOSArchitecture
+{
+    X86_64,
+    ARM64
+};
+
 #endif //_SHARED_DEFS_H

@@ -13,6 +13,7 @@
 #define _HARDWARE_WRAPPER_INTERFACE_H
 
 #include <cstdint>
+#include <string>
 
 class IOSHardwareWrapper
 {
@@ -24,7 +25,7 @@ class IOSHardwareWrapper
         virtual std::string boardSerial() const = 0;
         virtual std::string cpuName() const = 0;
         virtual int cpuCores() const = 0;
-        virtual double cpuMhz() const = 0;
+        virtual double cpuMhz() = 0;
         virtual uint64_t ramTotal() const = 0;
         virtual uint64_t ramFree() const = 0;
         virtual uint64_t ramUsage() const = 0;

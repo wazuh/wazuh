@@ -5,15 +5,45 @@ project(sysInfoHardwareMac_unit_test)
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 file(GLOB sysinfo_UNIT_TEST_SRC
-    "*.cpp")
+    "${CMAKE_SOURCE_DIR}/src/hardware/*X86_64Mac.cpp"
+    "sysInfoHardwareMac_test.cpp"
+    "sysInfoHardwareWrapperMac_test.cpp"
+    "main.cpp")
 
 add_executable(sysInfoHardwareMac_unit_test
     ${sysinfo_UNIT_TEST_SRC})
 
 find_library(iokit_lib IOKit)
 find_library(corefoundation_lib CoreFoundation)
-  
+
 target_link_libraries(sysInfoHardwareMac_unit_test
+    debug gtestd
+    debug gmockd
+    debug gtest_maind
+    debug gmock_maind
+    optimized gtest
+    optimized gmock
+    optimized gtest_main
+    optimized gmock_main
+    pthread
+    cjson
+)
+
+add_test(NAME sysInfoHardwareMac_unit_test
+         COMMAND sysInfoHardwareMac_unit_test)
+
+file(GLOB sysinfo_ARM_UNIT_TEST_SRC
+    "${CMAKE_SOURCE_DIR}/src/hardware/*ARMMac.cpp"
+    "sysInfoHardwareWrapperARMMac_test.cpp"
+    "main.cpp")
+
+add_executable(sysInfoHardwareARMMac_unit_test
+    ${sysinfo_ARM_UNIT_TEST_SRC})
+
+find_library(iokit_lib IOKit)
+find_library(corefoundation_lib CoreFoundation)
+
+target_link_libraries(sysInfoHardwareARMMac_unit_test
     debug gtestd
     debug gmockd
     debug gtest_maind
@@ -28,5 +58,5 @@ target_link_libraries(sysInfoHardwareMac_unit_test
     ${corefoundation_lib}
 )
 
-add_test(NAME sysInfoHardwareMac_unit_test
-         COMMAND sysInfoHardwareMac_unit_test)
+add_test(NAME sysInfoHardwareARMMac_unit_test
+         COMMAND sysInfoHardwareARMMac_unit_test)

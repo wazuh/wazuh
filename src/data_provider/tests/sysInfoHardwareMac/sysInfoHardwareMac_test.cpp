@@ -28,7 +28,7 @@ class OSHardwareWrapperMacMock: public IOSHardwareWrapper
         MOCK_METHOD(std::string, boardSerial, (), (const override));
         MOCK_METHOD(std::string, cpuName, (), (const override));
         MOCK_METHOD(int, cpuCores, (), (const override));
-        MOCK_METHOD(double, cpuMhz, (), (const override));
+        MOCK_METHOD(double, cpuMhz, (), (override));
         MOCK_METHOD(uint64_t, ramTotal, (), (const override));
         MOCK_METHOD(uint64_t, ramFree, (), (const override));
         MOCK_METHOD(uint64_t, ramUsage, (), (const override));

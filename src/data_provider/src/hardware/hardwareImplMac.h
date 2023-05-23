@@ -31,7 +31,7 @@ class OSHardwareMac final : public IOSHardware
             hardware["board_serial"] = m_wrapper->boardSerial();
             hardware["cpu_name"] = m_wrapper->cpuName();
             hardware["cpu_cores"] = m_wrapper->cpuCores();
-            hardware["cpu_mhz"] = double(m_wrapper->cpuMhz());
+            hardware["cpu_mhz"] = m_wrapper->cpuMhz();
             hardware["ram_total"] = m_wrapper->ramTotal();
             hardware["ram_free"] = m_wrapper->ramFree();
             hardware["ram_usage"] = m_wrapper->ramUsage();
