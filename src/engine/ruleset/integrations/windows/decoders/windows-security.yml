@@ -185,11 +185,13 @@ normalize:
      - process.executable: $~windows.Event.EventData.ProcessName
      - ~temp.file_data: +parse_file/$~windows.Event.EventData.ProcessName
      - process.name: $~temp.file_data.name
+
+ - check: +array_contains/~temp.id_rename_common_auth_fields/$event.code AND +string_not_equal/~windows.Event.EventData.IpAddress/-
+   map:  
      - source.ip: $~windows.Event.EventData.IpAddress
      - source.port: $~windows.Event.EventData.IpPort
      - source.domain: $~windows.Event.EventData.WorkstationName
      - related.ip: +array_append/$~windows.Event.EventData.ClientAddress
-
 
 # Process Event 4688
  - check: event.code=="4688"
