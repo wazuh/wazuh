@@ -277,6 +277,16 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamFree_Failed_Sysctlbyname2)
 TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Succeed)
 {
     auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
+    EXPECT_CALL(*wrapper, sysctlbyname("hw.memsize", _, _, _, _))
+    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
+    {
+        (void)name;
+        (void)oldlenp;
+        (void)newp;
+        (void)newlen;
+        *static_cast<uint64_t*>(oldp) = 17179869184;
+        return 0;
+    });
     EXPECT_CALL(*wrapper, sysctlbyname("vm.pagesize", _, _, _, _))
     .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
@@ -297,6 +307,14 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Succeed)
         *static_cast<uint64_t*>(oldp) = 342319;
         return 0;
     });
+    uint64_t ret = 0;
+    EXPECT_NO_THROW(ret = wrapper->ramUsage());
+    EXPECT_EQ(ret, (uint64_t)(100 - (100 * ((uint64_t)16384 * 342319 / 1024) / ((uint64_t)17179869184 / 1024))));
+}
+
+TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Succeed_TotalRamZero)
+{
+    auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
     EXPECT_CALL(*wrapper, sysctlbyname("hw.memsize", _, _, _, _))
     .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
@@ -304,18 +322,18 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Succeed)
         (void)oldlenp;
         (void)newp;
         (void)newlen;
-        *static_cast<uint64_t*>(oldp) = 17179869184;
+        *static_cast<uint64_t*>(oldp) = 0;
         return 0;
     });
     uint64_t ret = 0;
     EXPECT_NO_THROW(ret = wrapper->ramUsage());
-    EXPECT_EQ(ret, (uint64_t)(100 - (100 * ((uint64_t)16384 * 342319 / 1024) / ((uint64_t)17179869184 / 1024))));
+    EXPECT_EQ(ret, (uint64_t)0);
 }
 
 TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Failed_Sysctlbyname1)
 {
     auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
-    EXPECT_CALL(*wrapper, sysctlbyname("vm.pagesize", _, _, _, _))
+    EXPECT_CALL(*wrapper, sysctlbyname("hw.memsize", _, _, _, _))
     .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
         (void)name;
@@ -331,6 +349,16 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Failed_Sysctlbyname1)
 TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Failed_Sysctlbyname2)
 {
     auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
+    EXPECT_CALL(*wrapper, sysctlbyname("hw.memsize", _, _, _, _))
+    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
+    {
+        (void)name;
+        (void)oldlenp;
+        (void)newp;
+        (void)newlen;
+        *static_cast<uint64_t*>(oldp) = 17179869184;
+        return 0;
+    });
     EXPECT_CALL(*wrapper, sysctlbyname("vm.pagesize", _, _, _, _))
     .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
@@ -338,17 +366,7 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Failed_Sysctlbyname2)
         (void)oldlenp;
         (void)newp;
         (void)newlen;
-        *static_cast<u_int*>(oldp) = 16384;
-        return 0;
-    });
-    EXPECT_CALL(*wrapper, sysctlbyname("vm.page_free_count", _, _, _, _))
-    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
-    {
-        (void)name;
-        (void)oldlenp;
-        (void)newp;
-        (void)newlen;
-        *static_cast<uint64_t*>(oldp) = 0;
+        *static_cast<u_int*>(oldp) = 0;
         return -1;
     });
     EXPECT_THROW(wrapper->ramUsage(), std::system_error);
@@ -357,6 +375,16 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Failed_Sysctlbyname2)
 TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Failed_Sysctlbyname3)
 {
     auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
+    EXPECT_CALL(*wrapper, sysctlbyname("hw.memsize", _, _, _, _))
+    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
+    {
+        (void)name;
+        (void)oldlenp;
+        (void)newp;
+        (void)newlen;
+        *static_cast<uint64_t*>(oldp) = 17179869184;
+        return 0;
+    });
     EXPECT_CALL(*wrapper, sysctlbyname("vm.pagesize", _, _, _, _))
     .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
@@ -368,16 +396,6 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_RamUsage_Failed_Sysctlbyname3)
         return 0;
     });
     EXPECT_CALL(*wrapper, sysctlbyname("vm.page_free_count", _, _, _, _))
-    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
-    {
-        (void)name;
-        (void)oldlenp;
-        (void)newp;
-        (void)newlen;
-        *static_cast<uint64_t*>(oldp) = 342319;
-        return 0;
-    });
-    EXPECT_CALL(*wrapper, sysctlbyname("hw.memsize", _, _, _, _))
     .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
         (void)name;

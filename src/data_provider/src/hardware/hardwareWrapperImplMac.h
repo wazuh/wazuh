@@ -20,6 +20,7 @@
 #include "defer.hpp"
 #include "osPrimitivesInterfaceMac.h"
 #include "utilsWrapperMac.hpp"
+#include "sharedDefs.h"
 
 
 double getMhz(IOsPrimitivesMac* osPrimitives = nullptr);
@@ -163,7 +164,7 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
 
         uint64_t ramUsage() const
         {
-            const auto ramTotal{ramTotal()};
+            const auto ramTotal{this->ramTotal()};
 
             if (!ramTotal)
             {

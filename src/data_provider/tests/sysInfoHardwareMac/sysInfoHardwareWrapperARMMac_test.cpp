@@ -23,7 +23,7 @@ void SysInfoHardwareWrapperARMMacTest::SetUp() {};
 
 void SysInfoHardwareWrapperARMMacTest::TearDown() {};
 
-TEST_F(SysInfoHardwareWrapperARMMacTest, Test_CpuMhz_WithoutCpuFrequency_Succeed)
+TEST_F(SysInfoHardwareWrapperARMMacTest, Test_CpuMhz_Succeed)
 {
     auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
     EXPECT_CALL(*wrapper, IOServiceMatching("AppleARMIODevice"))
