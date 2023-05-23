@@ -49,6 +49,7 @@ struct Parameter
  * @param name name of the helper
  * @param parameters vector of strings
  * @param definitions definitions to check if a reference is a definition
+ * @param checkDefinitionType check if the definition value is string or number
  * @return std::vector<Parameter>
  *
  * @throws std::runtime_error if a reference parameter cannot be transformed into a JSON
@@ -56,27 +57,8 @@ struct Parameter
  */
 std::vector<Parameter> processParameters(const std::string& name,
                                          const std::vector<std::string>& parameters,
-                                         std::shared_ptr<defs::IDefinitions> definitions);
-
-/**
- * @brief Transforms a vector of strings into a vector of Parameters.
- * If the string is a reference, it will be transformed into a Parameter with
- * Type::REFERENCE and the reference will be transformed into a JSON pointer path.
- * If the string is a definition, it will be transformed into a Parameter with
- * Type::REFERENCE and the reference will be transformed into a JSON pointer path.
- *
- * @param name name of the helper
- * @param parameters vector of strings
- * @param definitions definitions to check if a reference is a definition
- * @return std::vector<Parameter>
- *
- * @throws std::runtime_error if a reference parameter cannot be transformed into a JSON
- * pointer path.
- * @throws std::runtime_error if the parameter is a value.
- */
-std::vector<Parameter> processDefinitionParameters(const std::string& name,
-                                                   const std::vector<std::string>& parameters,
-                                                   std::shared_ptr<defs::IDefinitions> definitions);
+                                         std::shared_ptr<defs::IDefinitions> definitions,
+                                         const bool checkDefinitionType = true);
 
 /**
  * @brief Check that the number of parameters is correct and throw otherwise.

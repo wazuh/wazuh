@@ -595,9 +595,9 @@ base::Expression opBuilderHelperIsFalse(const std::string& targetField,
 //*************************************************
 
 /**
- * @brief Create `definition_match_value` helper function that filters events which field
+ * @brief Create `match_value` helper function that filters events which field
  * value is present in the specified definition array.
- * <field>: +definition_match_value/$<definition_array>/
+ * <field>: +match_value/$<definition_array>|$<array_reference>
  *
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
@@ -605,15 +605,15 @@ base::Expression opBuilderHelperIsFalse(const std::string& targetField,
  * @param definitions handler with definitions
  * @return base::Expression
  */
-base::Expression opBuilderHelperDefinitionMatchValue(const std::string& targetField,
+base::Expression opBuilderHelperMatchValue(const std::string& targetField,
                                                      const std::string& rawName,
                                                      const std::vector<std::string>& rawParameters,
                                                      std::shared_ptr<defs::IDefinitions> definitions);
 
 /**
- * @brief Create `definition_match_key` helper function that filters events which field
+ * @brief Create `match_key` helper function that filters events which field
  * value is present as a key in the specified definition object.
- * <field>: +definition_match_key/$<definition_object>/
+ * <field>: +match_key/$<definition_object>|$<object_reference>
  *
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
@@ -621,7 +621,7 @@ base::Expression opBuilderHelperDefinitionMatchValue(const std::string& targetFi
  * @param definitions handler with definitions
  * @return base::Expression
  */
-base::Expression opBuilderHelperDefinitionMatchKey(const std::string& targetField,
+base::Expression opBuilderHelperMatchKey(const std::string& targetField,
                                                    const std::string& rawName,
                                                    const std::vector<std::string>& rawParameters,
                                                    std::shared_ptr<defs::IDefinitions> definitions);
