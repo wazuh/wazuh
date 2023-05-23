@@ -35,12 +35,13 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
 
         std::string boardSerial() const
         {
+            std::string ret{UNKNOWN_VALUE};
             const auto rawData{UtilsWrapperMac::exec("system_profiler SPHardwareDataType | grep Serial")};
 
-            if (rawData.empty())
-                return UNKNOWN_VALUE;
+            if (!rawData.empty())
+                ret = Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
 
-            return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
+            return ret;
         }
 
         std::string cpuName() const
@@ -164,14 +165,15 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
 
         uint64_t ramUsage() const
         {
+            uint64_t ret{0};
             const auto ramTotal{this->ramTotal()};
 
-            if (!ramTotal)
+            if (ramTotal)
             {
-                return 0;
+                ret = 100 - (100 * ramFree() / ramTotal);
             }
 
-            return 100 - (100 * ramFree() / ramTotal);
+            return ret;
         }
 };
 
