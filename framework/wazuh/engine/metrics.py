@@ -7,6 +7,7 @@ from typing import Optional
 from wazuh.engine.request_message import EngineRequestMessage
 from wazuh.engine.commands import MetricCommand
 from wazuh.engine.wazuh_engine import WazuhMockedEngine
+from wazuh.engine.transformations import EngineTransformationSequence
 from wazuh.core.results import WazuhResult
 from wazuh.core.exception import WazuhError
 
@@ -64,6 +65,10 @@ def get_metrics(
         })
 
     result = wazuh_engine.send_command(command=request_builder.to_dict())
+    result = EngineTransformationSequence.default_sequence().apply_sequence(
+        params={'limit': limit, 'select': select, 'sort': sort, 'offset': offset, 'search': search},
+        data=result
+    )
     return WazuhResult({'data': result})
 
 
@@ -96,6 +101,10 @@ def get_instruments(
     )
 
     result = wazuh_engine.send_command(command=msg)
+    result = EngineTransformationSequence.default_sequence().apply_sequence(
+        params={'limit': limit, 'select': select, 'sort': sort, 'offset': offset, 'search': search},
+        data=result
+    )
     return WazuhResult({'data': result})
 
 
