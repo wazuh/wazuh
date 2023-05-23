@@ -3,3 +3,4 @@ Feb  5 17:32:18 10.0.0.99 Use the BFG!
 Aug 24 05:34:00 CST 1987 mymachine myproc[10]: %% It's time to make the do-nuts. %%  Ingredients: Mix=OK, Jelly=OK # Devices: Mixer=OK, Jelly_Injector=OK, Frier=OK # Transport: Conveyer1=OK, Conveyer2=OK # %%
 Oct 22 10:52:12 scapegoat 1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!
 2018-08-14T14:30:02.203151+02:00 linux-sqrz systemd[4179]: Stopped target Basic System.
+1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!
