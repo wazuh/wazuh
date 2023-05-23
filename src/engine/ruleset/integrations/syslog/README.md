@@ -5,7 +5,8 @@
 |---|---|
 | event.module | syslog |
 
-This integration processes logs with Syslog RFC 3164 format.
+This integration processes logs with Syslog RFC 3164 format. By default, `/var/log/auth.log`, `/var/log/syslog/`, `/var/log/dpkg.log` and `/var/log/kern.log` files are read but it can be extended to any syslog-formatted inputs.
+
 
 ## Compatibility
 
