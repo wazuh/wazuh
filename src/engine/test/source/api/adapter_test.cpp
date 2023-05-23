@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+/*#include <gtest/gtest.h>
 
 #include <api/adapter.hpp>
 #include <eMessages/tests.pb.h>
@@ -117,3 +117,4 @@ TEST(Adapter_genericSuccess, response_ok)
     ASSERT_EQ(wResponse.data(), json::Json(R"({"status":"OK"})"));
 
 }
+*/

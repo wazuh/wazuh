@@ -288,7 +288,6 @@ std::optional<base::Error> Router::enqueueEvent(base::Event&& event)
 
 std::optional<base::Error> Router::enqueueOssecEvent(std::string_view event)
 {
-
     std::optional<base::Error> err = std::nullopt;
     try
     {
@@ -328,14 +327,18 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                     base::Event event {};
                     if (queue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
+                        LOG_DEBUG("Router 1 received: {}", event->prettyStr());
                         std::shared_lock lock {m_mutexRoutes};
+                        LOG_DEBUG("Router 2 received: {}", event->prettyStr());
                         for (auto& route : m_priorityRoute)
                         {
+                            LOG_DEBUG("Router 3 received: {}", event->prettyStr());
                             if (route.second[i].accept(event))
                             {
                                 const auto& target = route.second[i].getTarget();
                                 lock.unlock();
                                 m_policyManager->forwardEvent(target, i, std::move(event));
+                                m_output = m_policyManager->getOutput();
                                 break;
                             }
                         }
