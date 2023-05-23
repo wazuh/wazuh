@@ -57,9 +57,7 @@ Adding to the ossec.conf file in the monitored agent the following blocks:
 
 | Field | Description | Type |
 |---|---|---|
-| apache.access.ssl.protocol | SSL protocol version. | keyword |
-| apache.access.ssl.cipher | SSL cipher name. | keyword |
-| apache.error.module | The module producing the logged message. | keyword |
+
 ## Decoders
 
 | Name | Description |

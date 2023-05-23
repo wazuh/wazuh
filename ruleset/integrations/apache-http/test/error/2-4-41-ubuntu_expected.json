@@ -1,155 +1,123 @@
 [
     {
-        "wazuh": {
+        "wazuh":
+        {
             "queue": 49,
             "location": "[002] (ubuntu-agent) any->/var/log/apache2/error.log",
-            "message": "{\"event\":{\"original\":\"[Tue Mar 14 10:50:33.260617 2023] [mpm_event:notice] [pid 3651:tid 139732022373440] AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations\",\"module\":\"apache-http\",\"dataset\":\"apache-error\"}}",
+            "message": "[Tue Mar 14 10:50:33.260617 2023] [mpm_event:notice] [pid 3651:tid 139732022373440] AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations",
             "origin": "/var/log/apache2/error.log",
             "registered_ip": "any",
-            "decoders": [
-                "internal-ossec-message",
-                "internal-localfile",
-                "base"
+            "decoders":
+            [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations"
             ],
             "source": "logcollector"
         },
-        "agent": {
+        "agent":
+        {
             "id": "002",
             "name": "ubuntu-agent",
             "type": "wazuh"
         },
-        "event": {
+        "event":
+        {
             "original": "[Tue Mar 14 10:50:33.260617 2023] [mpm_event:notice] [pid 3651:tid 139732022373440] AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations",
-            "module": "apache-http",
-            "dataset": "apache.error",
             "created": "2023-03-14T10:50:33.260Z",
-            "type": [
+            "type":
+            [
                 "info"
             ],
-            "category": [
+            "category":
+            [
                 "web"
             ],
-            "kind": "event"
+            "kind": "event",
+            "module": "apache-http",
+            "dataset": "apache-error"
         },
-        "host": {
-            "id": "002",
-            "architecture": "x86_64",
-            "hostname": "ubuntu-agent",
-            "name": "ubuntu-agent",
-            "os": {
-                "kernel": "5.4.0-125-generic",
-                "name": "Ubuntu",
-                "platform": "ubuntu",
-                "type": "linux",
-                "version": "20.04.5 LTS (Focal Fossa)"
-            },
-            "mac": [
-                "02:fe:c0:34:c3:ed",
-                "08:00:27:1b:b9:aa"
-            ],
-            "ip": [
-                "fe80::fe:c0ff:fe34:c3ed",
-                "fe80::a00:27ff:fe1b:b9aa",
-                "192.168.56.21",
-                "10.0.2.15"
-            ]
+        "host":
+        {
+            "id": "002"
         },
-        "~json": {
-            "event": {}
-        },
-        "apache": {
-            "error": {
-                "module": "mpm_event"
-            }
-        },
-        "log": {
-            "level": "notice"
-        },
-        "process": {
+        "process":
+        {
+            "name": "mpm_event",
             "pid": 3651,
-            "thread": {
+            "thread":
+            {
                 "id": 139732022373440
             }
         },
+        "log":
+        {
+            "level": "notice"
+        },
         "message": "AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations",
-        "service": {
+        "service":
+        {
             "type": "apache"
         }
     },
     {
-        "wazuh": {
+        "wazuh":
+        {
             "queue": 49,
             "location": "[002] (ubuntu-agent) any->/var/log/apache2/error.log",
-            "message": "{\"event\":{\"original\":\"[Tue Mar 14 10:50:33.261185 2023] [core:notice] [pid 3651:tid 139732022373440] AH00094: Command line: '/usr/sbin/apache2'\",\"module\":\"apache-http\",\"dataset\":\"apache-error\"}}",
+            "message": "[Tue Mar 14 10:50:33.261185 2023] [core:notice] [pid 3651:tid 139732022373440] AH00094: Command line: '/usr/sbin/apache2'",
             "origin": "/var/log/apache2/error.log",
             "registered_ip": "any",
-            "decoders": [
-                "internal-ossec-message",
-                "internal-localfile",
-                "base"
+            "decoders":
+            [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations"
             ],
             "source": "logcollector"
         },
-        "agent": {
+        "agent":
+        {
             "id": "002",
             "name": "ubuntu-agent",
             "type": "wazuh"
         },
-        "event": {
+        "event":
+        {
             "original": "[Tue Mar 14 10:50:33.261185 2023] [core:notice] [pid 3651:tid 139732022373440] AH00094: Command line: '/usr/sbin/apache2'",
-            "module": "apache-http",
-            "dataset": "apache.error",
             "created": "2023-03-14T10:50:33.261Z",
-            "type": [
+            "type":
+            [
                 "info"
             ],
-            "category": [
+            "category":
+            [
                 "web"
             ],
-            "kind": "event"
+            "kind": "event",
+            "module": "apache-http",
+            "dataset": "apache-error"
         },
-        "host": {
-            "id": "002",
-            "architecture": "x86_64",
-            "hostname": "ubuntu-agent",
-            "name": "ubuntu-agent",
-            "os": {
-                "kernel": "5.4.0-125-generic",
-                "name": "Ubuntu",
-                "platform": "ubuntu",
-                "type": "linux",
-                "version": "20.04.5 LTS (Focal Fossa)"
-            },
-            "mac": [
-                "02:fe:c0:34:c3:ed",
-                "08:00:27:1b:b9:aa"
-            ],
-            "ip": [
-                "fe80::fe:c0ff:fe34:c3ed",
-                "fe80::a00:27ff:fe1b:b9aa",
-                "192.168.56.21",
-                "10.0.2.15"
-            ]
+        "host":
+        {
+            "id": "002"
         },
-        "~json": {
-            "event": {}
-        },
-        "apache": {
-            "error": {
-                "module": "core"
-            }
-        },
-        "log": {
-            "level": "notice"
-        },
-        "process": {
+        "process":
+        {
+            "name": "core",
             "pid": 3651,
-            "thread": {
+            "thread":
+            {
                 "id": 139732022373440
             }
         },
+        "log":
+        {
+            "level": "notice"
+        },
         "message": "AH00094: Command line: '/usr/sbin/apache2'",
-        "service": {
+        "service":
+        {
             "type": "apache"
         }
     }
