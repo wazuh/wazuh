@@ -15,13 +15,13 @@ This integration allows ingesting logs that are formatted as specified in the Sy
 ## Configuration
 
 For example, a localfile can be added to the `ossec.conf` file in a monitored agent as in the following block:
-```xml <localfile>
+```xml
+<localfile>
   <!-- Edit location to appropriate path if needed -->
   <location>/tmp/syslog_formatted.log</location>
-  <log_format>json</log_format>
-  <label key="event.module">syslog</label>
-  <label key="event.dataset">syslog.log</label>
-</localfile> ```
+  <log_format>syslog</log_format>
+</localfile>
+```
 
 
 ## Schema
