@@ -356,9 +356,9 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
 //*************************************************
 
 /**
- * @brief Create `definition_get` helper function that maps target field value with the content of the some key in the
+ * @brief Create `get_value` helper function that maps target field value with the content of the some key in the
  * definition object, where the key is specified with a reference to another field.
- * <field>: +definition_get/$<definition_object>/$<key>
+ * <field>: +get_value/$<definition_object>|$<object_reference>/$<key>
  *
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
@@ -366,7 +366,7 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
  * @param definitions handler with definitions
  * @return base::Expression
  */
-base::Expression opBuilderHelperDefinitionGet(const std::string& targetField,
+base::Expression opBuilderHelperGetValue(const std::string& targetField,
                                               const std::string& rawName,
                                               const std::vector<std::string>& rawParameters,
                                               std::shared_ptr<defs::IDefinitions> definitions);
