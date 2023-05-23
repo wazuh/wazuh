@@ -6,7 +6,8 @@
             "type": "object",
             "properties": {
                 "board_serial": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                 },
                 "cpu_cores": {
                     "type": "integer"

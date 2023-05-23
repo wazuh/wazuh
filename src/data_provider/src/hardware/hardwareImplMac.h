@@ -38,7 +38,7 @@ class OSHardwareMac final : public IOSHardware
         }
 };
 
-class FactoryBSDHardware
+class FactoryBSDHardware final
 {
     public:
         static std::shared_ptr<IOSHardware>create(const std::shared_ptr<IOSHardwareWrapper>& wrapper)

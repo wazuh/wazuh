@@ -35,6 +35,10 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
         std::string boardSerial() const
         {
             const auto rawData{UtilsWrapperMac::exec("system_profiler SPHardwareDataType | grep Serial")};
+
+            if (rawData.empty())
+                return UNKNOWN_VALUE;
+
             return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
         }
 
@@ -159,7 +163,14 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
 
         uint64_t ramUsage() const
         {
-            return 100 - (100 * ramFree() / ramTotal());
+            const auto ramTotal{ramTotal()};
+
+            if (!ramTotal)
+            {
+                return 0;
+            }
+
+            return 100 - (100 * ramFree() / ramTotal);
         }
 };
 
