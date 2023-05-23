@@ -20,28 +20,18 @@ constexpr auto ORIGIN_NAME {"engine_integrated_test_api"};
  * @brief Run policy in test mode. Inputs from stdin, outputs event to stdout and
  * debug to stderr.
  *
- * @param kvdbPath Path to KVDB folder.
- * @param fileStorage Path to asset folders.
- * @param policy Name of the policy to be loaded.
- * @param logLevel Log level.
- * @param debugLevel Debug level.
- * @param assetTrace Trace specific assets.
- * @param protocolQueue Queue of the protocol.
- * @param protocolLocation Location of the protocol.
- * @param apiEndpoint Engine api address.
+ * @param policyName Path to KVDB folder.
+ * @param event Path to asset folders.
  */
 struct Options
 {
-    std::string kvdbPath;
-    std::string fileStorage;
-    std::string policy;
-    std::string logLevel;
-    int debugLevel;
-    std::vector<std::string> assetTrace;
-    char protocolQueue;
-    std::string protocolLocation;
     std::string apiEndpoint;
+    std::string policyName;
+    std::string event;
+    char protocolQueue;
+    int debugLevel;
 };
+
 void run(std::shared_ptr<apiclnt::Client> client, const Options& options);
 
 void configure(CLI::App_p app);

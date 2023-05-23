@@ -65,6 +65,8 @@ private:
     /* Config */
     std::size_t m_numThreads; ///< Number of threads for the router
 
+    std::string m_output;
+
     /**
      * @brief Get a Json with the routes table
      *
@@ -193,6 +195,13 @@ public:
      *
      */
     void clear();
+
+    /**
+     * @brief Get the Output object
+     * 
+     * @return std::stringstream 
+     */
+    inline const std::string getOutput() {return m_output;}
 };
 } // namespace router
 #endif // _ROUTER_ROUTER_HPP
