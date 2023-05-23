@@ -11,62 +11,62 @@
 using namespace base;
 namespace bld = builder::internals::builders;
 
-TEST(OpBuilderHelperDefinitionGet, Builds)
+TEST(OpBuilderHelperGetValue, Builds)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"$defObject", "$keyField"},
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
-    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperDefinitionGet, tuple));
+    ASSERT_NO_THROW(std::apply(bld::opBuilderHelperGetValue, tuple));
 }
 
-TEST(OpBuilderHelperDefinitionGet, EmptyParameters)
+TEST(OpBuilderHelperGetValue, EmptyParameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {},
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
-    ASSERT_THROW(std::apply(bld::opBuilderHelperDefinitionGet, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperGetValue, tuple), std::runtime_error);
 }
 
-TEST(OpBuilderHelperDefinitionGet, WrongSizeParameters)
+TEST(OpBuilderHelperGetValue, WrongSizeParameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"$defObject"},
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
-    ASSERT_THROW(std::apply(bld::opBuilderHelperDefinitionGet, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperGetValue, tuple), std::runtime_error);
 }
 
-TEST(OpBuilderHelperDefinitionGet, WrongTypeParameters)
+TEST(OpBuilderHelperGetValue, WrongTypeParameters)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"defObject", "$keyField"},
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
-    ASSERT_THROW(std::apply(bld::opBuilderHelperDefinitionGet, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperGetValue, tuple), std::runtime_error);
 
     tuple = std::make_tuple(std::string {"/field"},
-                            std::string {"+definition_get"},
+                            std::string {"+get_value"},
                             std::vector<std::string> {"$defObject", "keyField"},
                             std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
-    ASSERT_THROW(std::apply(bld::opBuilderHelperDefinitionGet, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperGetValue, tuple), std::runtime_error);
 }
 
-TEST(OpBuilderHelperDefinitionGet, DefinitionIsNotAnObject)
+TEST(OpBuilderHelperGetValue, DefinitionIsNotAnObject)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"$defInt", "$keyField"},
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defInt": 1})")));
 
-    ASSERT_THROW(std::apply(bld::opBuilderHelperDefinitionGet, tuple), std::runtime_error);
+    ASSERT_THROW(std::apply(bld::opBuilderHelperGetValue, tuple), std::runtime_error);
 }
 
-TEST(OpBuilderHelperDefinitionGet, Success)
+TEST(OpBuilderHelperGetValue, Success)
 {
-    // Event template
-    json::Json eventTemplate {R"({
+    // Definition template
+    json::Json definitionTemplate {R"({
         "defObject": {
             "keyInt": 49,
             "keyString": "hello",
@@ -79,45 +79,27 @@ TEST(OpBuilderHelperDefinitionGet, Success)
 
     // Operation
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"$defObject", "$keyField"},
-                                 std::make_shared<defs::Definitions>(eventTemplate));
+                                 std::make_shared<defs::Definitions>(definitionTemplate));
 
-    auto op = std::apply(bld::opBuilderHelperDefinitionGet, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperGetValue, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     // Use case events
-    auto event1 = std::make_shared<json::Json>(eventTemplate);
-    event1->setString("keyInt", "/keyField");
-    auto event2 = std::make_shared<json::Json>(eventTemplate);
-    event2->setString("keyString", "/keyField");
-    auto event3 = std::make_shared<json::Json>(eventTemplate);
-    event3->setString("keyBool", "/keyField");
-    auto event4 = std::make_shared<json::Json>(eventTemplate);
-    event4->setString("keyNull", "/keyField");
-    auto event5 = std::make_shared<json::Json>(eventTemplate);
-    event5->setString("keyObject", "/keyField");
-    auto event6 = std::make_shared<json::Json>(eventTemplate);
-    event6->setString("keyArray", "/keyField");
+    auto event1 = std::make_shared<json::Json>(R"({"keyField": "keyInt"})");
+    auto event2 = std::make_shared<json::Json>(R"({"keyField": "keyString"})");
+    auto event3 = std::make_shared<json::Json>(R"({"keyField": "keyBool"})");
+    auto event4 = std::make_shared<json::Json>(R"({"keyField": "keyNull"})");
+    auto event5 = std::make_shared<json::Json>(R"({"keyField": "keyObject"})");
+    auto event6 = std::make_shared<json::Json>(R"({"keyField": "keyArray"})");
 
     // Use case expected events
-    auto expectedEvent1 = std::make_shared<json::Json>(eventTemplate);
-    expectedEvent1->setString("keyInt", "/keyField");
-    expectedEvent1->setInt(49, "/field");
-    auto expectedEvent2 = std::make_shared<json::Json>(eventTemplate);
-    expectedEvent2->setString("keyString", "/keyField");
-    expectedEvent2->setString("hello", "/field");
-    auto expectedEvent3 = std::make_shared<json::Json>(eventTemplate);
-    expectedEvent3->setString("keyBool", "/keyField");
-    expectedEvent3->setBool(true, "/field");
-    auto expectedEvent4 = std::make_shared<json::Json>(eventTemplate);
-    expectedEvent4->setString("keyNull", "/keyField");
-    expectedEvent4->setNull("/field");
-    auto expectedEvent5 = std::make_shared<json::Json>(eventTemplate);
-    expectedEvent5->setString("keyObject", "/keyField");
-    expectedEvent5->set("/field", json::Json {R"({"key": "value"})"});
-    auto expectedEvent6 = std::make_shared<json::Json>(eventTemplate);
-    expectedEvent6->setString("keyArray", "/keyField");
-    expectedEvent6->set("/field", json::Json {R"(["value"])"});
+    auto expectedEvent1 = std::make_shared<json::Json>(R"({"keyField": "keyInt", "field": 49})");
+    auto expectedEvent2 = std::make_shared<json::Json>(R"({"keyField": "keyString", "field": "hello"})");
+    auto expectedEvent3 = std::make_shared<json::Json>(R"({"keyField": "keyBool", "field": true})");
+    auto expectedEvent4 = std::make_shared<json::Json>(R"({"keyField": "keyNull", "field": null})");
+    auto expectedEvent5 = std::make_shared<json::Json>(R"({"keyField": "keyObject", "field": {"key": "value"}})");
+    auto expectedEvent6 = std::make_shared<json::Json>(R"({"keyField": "keyArray", "field": ["value"]})");
 
     // Use cases
     result::Result<Event> result = op(event1);
@@ -145,10 +127,10 @@ TEST(OpBuilderHelperDefinitionGet, Success)
     ASSERT_EQ(*result.payload(), *expectedEvent6);
 }
 
-TEST(OpBuilderHelperDefinitionGet, FailKeyNotMatch)
+TEST(OpBuilderHelperGetValue, FailKeyNotMatch)
 {
     // Event template
-    json::Json eventTemplate {R"({
+    json::Json definitionTemplate {R"({
         "defObject": {
             "keyInt": 49,
             "keyString": "hello",
@@ -160,77 +142,77 @@ TEST(OpBuilderHelperDefinitionGet, FailKeyNotMatch)
     })"};
 
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"$defObject", "$keyField"},
-                                 std::make_shared<defs::Definitions>(eventTemplate));
+                                 std::make_shared<defs::Definitions>(definitionTemplate));
 
-    auto event1 = std::make_shared<json::Json>(eventTemplate);
+    auto event1 = std::make_shared<json::Json>(definitionTemplate);
     event1->setString("wrongKey", "/keyField");
 
-    auto op = std::apply(bld::opBuilderHelperDefinitionGet, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperGetValue, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
     ASSERT_FALSE(result.success());
 }
 
-TEST(OpBuilderHelperDefinitionGet, KeyNotFound)
+TEST(OpBuilderHelperGetValue, KeyNotFound)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"$defObject", "$keyField"},
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
 
     auto event1 = std::make_shared<json::Json>(R"({"defObject": {"key": "value"}})");
 
-    auto op = std::apply(bld::opBuilderHelperDefinitionGet, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperGetValue, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
     ASSERT_FALSE(result.success());
 }
 
-TEST(OpBuilderHelperDefinitionGet, KeyIsNotString)
+TEST(OpBuilderHelperGetValue, KeyIsNotString)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"$defObject", "$keyField"},
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
 
     auto event1 = std::make_shared<json::Json>(R"({"defObject": {"key": "value"}, "keyField": 1})");
 
-    auto op = std::apply(bld::opBuilderHelperDefinitionGet, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperGetValue, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
     ASSERT_FALSE(result.success());
 }
 
-TEST(OpBuilderHelperDefinitionGet, DefinitionIsAnArray)
+TEST(OpBuilderHelperGetValue, DefinitionIsAnArray)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"$defArray", "$keyField"},
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defArray": [1, 2, 3]})")));
 
     auto event1 = std::make_shared<json::Json>(R"({"defArray": [1, 2, 3], "keyField": "key"})");
 
-    auto op = std::apply(bld::opBuilderHelperDefinitionGet, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperGetValue, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
     ASSERT_FALSE(result.success());
 }
 
-TEST(OpBuilderHelperDefinitionGet, DefinitionNotFound)
+TEST(OpBuilderHelperGetValue, DefinitionNotFound)
 {
     auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"+definition_get"},
+                                 std::string {"+get_value"},
                                  std::vector<std::string> {"$def", "$keyField"},
                                  std::make_shared<defs::Definitions>(json::Json(R"({"defObject": {"key": "value"}})")));
 
     auto event1 = std::make_shared<json::Json>(R"({"defObject": {"key": "value"}, "keyField": "key"})");
 
-    auto op = std::apply(bld::opBuilderHelperDefinitionGet, tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op = std::apply(bld::opBuilderHelperGetValue, tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
