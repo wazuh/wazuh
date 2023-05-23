@@ -147,5 +147,40 @@
                 "linux-sqrz"
             ]
         }
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "/dev/stdin",
+            "message": "1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "syslog"
+            ],
+            "source": "logcollector"
+        },
+        "event": {
+            "original": "1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!",
+            "start": "1990-10-22T10:52:01.000Z",
+            "kind": "event"
+        },
+        "~timezone": "TZ-6",
+        "host": {
+            "hostname": "scapegoat.dmz.example.org",
+            "ip": "10.1.2.3"
+        },
+        "~TAG": "sched",
+        "process": {
+            "pid": 0,
+            "name": "sched"
+        },
+        "message": "That's All Folks!",
+        "related": {
+            "hosts": [
+                "scapegoat.dmz.example.org"
+            ]
+        }
     }
 ]
