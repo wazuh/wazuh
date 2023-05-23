@@ -2084,35 +2084,28 @@ class AWSCustomBucket(AWSBucket):
                 bucket_path=:bucket_path AND
                 aws_account_id=:aws_account_id;"""
 
+    def json_event_generator(self, data):
+        decoder = json.JSONDecoder()
+        while data:
+            try:
+                json_data, json_index = decoder.raw_decode(data)
+            except ValueError as err:
+                # Handle undefined values for lat and lon fields in Macie logs
+                match = self.macie_location_pattern.search(data)
+                if not match or not match.group(1) or not match.group(2):
+                    raise err
+                lat = float(match.group(1))
+                lon = float(match.group(2))
+                new_pattern = f'"lat":{lat},"lon":{lon}'
+                data = re.sub(self.macie_location_pattern, new_pattern, data)
+                json_data, json_index = decoder.raw_decode(data)
+            data = data[json_index:]
+            yield json_data
+    
     def load_information_from_file(self, log_key):
-        def json_event_generator(data):
-            while data:
-                try:
-                    json_data, json_index = decoder.raw_decode(data)
-                except ValueError as err:
-                    # Handle undefined values for lat and lon fields in Macie logs
-                    match = self.macie_location_pattern.search(data)
-                    if not match or not match.group(1) or not match.group(2):
-                        raise err
-                    lat = float(match.group(1))
-                    lon = float(match.group(2))
-                    new_pattern = f'"lat":{lat},"lon":{lon}'
-                    data = re.sub(self.macie_location_pattern, new_pattern, data)
-                    json_data, json_index = decoder.raw_decode(data)
-                data = data[json_index:]
-                yield json_data
-
         with self.decompress_file(log_key=log_key) as f:
-            if f.read(1) == '{':
-                decoder = json.JSONDecoder()
-                return [dict(event['detail'], source=event['source'].replace('aws.', '')) for event in
-                        json_event_generator('{' + f.read()) if 'detail' in event]
-            else:
-                fieldnames = (
-                    "version", "account_id", "interface_id", "srcaddr", "dstaddr", "srcport", "dstport", "protocol",
-                    "packets", "bytes", "start", "end", "action", "log_status")
-                tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
-                return [dict(x, source='vpc') for x in tsv_file]
+            return [dict(event.get('detail', default=event), source=event['source'].replace('aws.', ''))
+                    for event in self.json_event_generator(f.read())]
 
     def get_creation_date(self, log_file):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
@@ -2360,18 +2353,11 @@ class AWSWAFBucket(AWSCustomBucket):
     def load_information_from_file(self, log_key):
         """Load data from a WAF log file."""
 
-        def json_event_generator(data):
-            while data:
-                json_data, json_index = decoder.raw_decode(data)
-                data = data[json_index:]
-                yield json_data
-
         content = []
-        decoder = json.JSONDecoder()
         with self.decompress_file(log_key=log_key) as f:
             for line in f.readlines():
                 try:
-                    for event in json_event_generator(line.rstrip()):
+                    for event in self.json_event_generator(line.rstrip()):
                         event['source'] = 'waf'
                         try:
                             headers = {}
