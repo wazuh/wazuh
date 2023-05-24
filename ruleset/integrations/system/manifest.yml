@@ -1,4 +1,3 @@
 name: integration/system/0
 decoders:
-- decoder/system-syslog/0
-- decoder/system-auth/0
+  - decoder/system-auth/0
