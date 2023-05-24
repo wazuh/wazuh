@@ -45,7 +45,7 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
-from wazuh_testing.modules.analysisd import patterns
+from wazuh_testing.modules.analysisd.testrule import patterns
 from wazuh_testing.utils.config import load_configuration_template, get_test_cases_data
 from wazuh_testing.tools.file_monitor import FileMonitor, generate_callback
 
