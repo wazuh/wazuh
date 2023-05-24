@@ -41,15 +41,16 @@ normalize:
   - map:
       - event.kind: alert
       - event.category: +array_append/intrusion_detection
+      - event.type: +array_append/detail
+      - event.severity: $~suricata.eve.alert.severity
+      - file.name: $~suricata.eve.alert.metadata.filename
       - rule.category: $~suricata.eve.alert.category
       - rule.id: $~suricata.eve.alert.signature_id
       - rule.name: $~suricata.eve.alert.signature
-      - event.severity: $~suricata.eve.alert.severity
       - threat.tactic.id: $~suricata.eve.alert.metadata.mitre_attack
       - threat.tactic.name: $~suricata.eve.alert.metadata.mitre_tactic_name
       - threat.technique.id: $~suricata.eve.alert.metadata.mitre_technique_id
       - threat.technique.name: $~suricata.eve.alert.metadata.mitre_techinique_name
-      - file.name: $~suricata.eve.alert.metadata.filename
 
   - check:
       - threat.tactic.id: +is_null
@@ -61,7 +62,5 @@ normalize:
     map:
       - event.type: +array_append/$~suricata.eve.alert.action
 
-  - check:
-      - ~suricata.eve.event_type: "alert"
-    map:
-      - event.type: +array_append/detail
+  - map:
+      - ~suricata: +delete
