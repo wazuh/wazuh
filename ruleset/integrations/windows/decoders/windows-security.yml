@@ -209,7 +209,7 @@ normalize:
 
  - check: event.code=="4624" OR event.code=="4648"
    map:
-     - related.user: $~windows.Event.EventData.SubjectUserName
+     - related.user: +array_append/$~windows.Event.EventData.SubjectUserName
 
  - check:
       - ~temp.id_related_user: +array_contains/$event.code
