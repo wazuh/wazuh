@@ -8,14 +8,10 @@
 
 INSTALLATION_PATH=${1}
 SERVICE=/Library/LaunchDaemons/com.wazuh.agent.plist
-STARTUP=/Library/StartupItems/WAZUH/StartupParameters.plist
-LAUNCHER_SCRIPT=/Library/StartupItems/WAZUH/launcher.sh
-STARTUP_SCRIPT=/Library/StartupItems/WAZUH/WAZUH
+LAUNCHER_SCRIPT=/Library/Ossec/Wazuh-service-launcher.sh
 
 launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist 2> /dev/null
-mkdir -p /Library/StartupItems/WAZUH
-chown root:wheel /Library/StartupItems/WAZUH
-rm -f $STARTUP $STARTUP_SCRIPT $SERVICE
+rm -f $SERVICE
 echo > $LAUNCHER_SCRIPT
 chown root:wheel $LAUNCHER_SCRIPT
 chmod u=rxw-,g=rx-,o=r-- $LAUNCHER_SCRIPT
@@ -39,57 +35,6 @@ chown root:wheel $SERVICE
 chmod u=rw-,go=r-- $SERVICE
 launchctl load $SERVICE
 
-echo '
-#!/bin/sh
-. /etc/rc.common
-
-StartService ()
-{
-        '${INSTALLATION_PATH}'/bin/wazuh-control start
-}
-StopService ()
-{
-        '${INSTALLATION_PATH}'/bin/wazuh-control stop
-}
-RestartService ()
-{
-        '${INSTALLATION_PATH}'/bin/wazuh-control restart
-}
-RunService "$1"
-' > $STARTUP_SCRIPT
-
-chown root:wheel $STARTUP_SCRIPT
-chmod u=rwx,go=r-x $STARTUP_SCRIPT
-
-echo '
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://
-www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-       <key>Description</key>
-       <string>WAZUH Security agent</string>
-       <key>Messages</key>
-       <dict>
-               <key>start</key>
-               <string>Starting Wazuh agent</string>
-               <key>stop</key>
-               <string>Stopping Wazuh agent</string>
-       </dict>
-       <key>Provides</key>
-       <array>
-               <string>WAZUH</string>
-       </array>
-       <key>Requires</key>
-       <array>
-               <string>IPFilter</string>
-       </array>
-</dict>
-</plist>
-' > $STARTUP
-
-chown root:wheel $STARTUP
-chmod u=rw-,go=r-- $STARTUP
 
 echo '#!/bin/sh
 
