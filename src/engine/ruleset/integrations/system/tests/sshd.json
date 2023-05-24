@@ -1,0 +1,150 @@
+[
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb  9 21:19:40 precise32 sshd[8317]: subsystem request for sftp by user vagrant",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb  9 21:19:40 precise32 sshd[8317]: subsystem request for sftp by user vagrant",
+      "start": "2023-02-09T21:19:40.000Z",
+      "kind": "event"
+    },
+    "host": {
+      "hostname": "precise32"
+    },
+    "process": {
+      "pid": 8317,
+      "name": "sshd"
+    },
+    "message": "subsystem request for sftp by user vagrant",
+    "related": {
+      "hosts": [
+        "precise32"
+      ]
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "May 24 08:56:54 ubuntu2004 sshd[1238]: Accepted publickey for vagrant from 10.0.2.2 port 56902 ssh2: RSA SHA256:1M4RzhMyWuFS/86uPY/ce2prh/dVTHW7iD2RhpquOZA",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "May 24 08:56:54 ubuntu2004 sshd[1238]: Accepted publickey for vagrant from 10.0.2.2 port 56902 ssh2: RSA SHA256:1M4RzhMyWuFS/86uPY/ce2prh/dVTHW7iD2RhpquOZA",
+      "start": "2023-05-24T08:56:54.000Z",
+      "kind": "event",
+      "module": "system-auth",
+      "dataset": "system-auth",
+      "type": [
+        "info"
+      ],
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "action": "ssh_login",
+      "outcome": "success"
+    },
+    "host": {
+      "hostname": "ubuntu2004"
+    },
+    "process": {
+      "pid": 1238,
+      "name": "sshd"
+    },
+    "message": "Accepted publickey for vagrant from 10.0.2.2 port 56902 ssh2: RSA SHA256:1M4RzhMyWuFS/86uPY/ce2prh/dVTHW7iD2RhpquOZA",
+    "related": {
+      "hosts": [
+        "ubuntu2004"
+      ],
+      "user": [
+        "vagrant"
+      ],
+      "ip": [
+        "10.0.2.2"
+      ]
+    },
+    "~system": {
+      "auth": {
+        "ssh": {
+          "event": "Accepted",
+          "method": "publickey"
+        }
+      }
+    },
+    "user": {
+      "name": "vagrant"
+    },
+    "source": {
+      "ip": "10.0.2.2",
+      "port": 56902
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb  9 21:24:37 precise32 sshd[8302]: pam_unix(sshd:session): session closed for user vagrant",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb  9 21:24:37 precise32 sshd[8302]: pam_unix(sshd:session): session closed for user vagrant",
+      "start": "2023-02-09T21:24:37.000Z",
+      "kind": "event",
+      "module": "system-auth",
+      "dataset": "system-auth"
+    },
+    "host": {
+      "hostname": "precise32"
+    },
+    "process": {
+      "pid": 8302,
+      "name": "sshd"
+    },
+    "message": "pam_unix(sshd:session): session closed for user vagrant",
+    "related": {
+      "hosts": [
+        "precise32"
+      ],
+      "user": [
+        "vagrant"
+      ]
+    },
+    "~system": {
+      "ayth": {
+        "pam": {
+          "session": {
+            "action": "closed"
+          }
+        }
+      }
+    },
+    "user": {
+      "name": "vagrant"
+    }
+  }
+]

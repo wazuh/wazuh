@@ -1,0 +1,32 @@
+{
+  "wazuh": {
+    "queue": 49,
+    "location": "/dev/stdin",
+    "message": "May 24 11:16:00 ubuntu2004 su: pam_unix(su:session): session opened for user root by vagrant(uid=0)",
+    "decoders": [
+      "core-wazuh-message",
+      "core-localfile",
+      "integrations",
+      "syslog",
+      "system-auth"
+    ],
+    "source": "logcollector"
+  },
+  "event": {
+    "original": "May 24 11:16:00 ubuntu2004 su: pam_unix(su:session): session opened for user root by vagrant(uid=0)",
+    "start": "2023-05-24T11:16:00.000Z",
+    "kind": "event"
+  },
+  "host": {
+    "hostname": "ubuntu2004"
+  },
+  "message": "pam_unix(su:session): session opened for user root by vagrant(uid=0)",
+  "related": {
+    "hosts": [
+      "ubuntu2004"
+    ]
+  },
+  "process": {
+    "name": "su"
+  }
+}

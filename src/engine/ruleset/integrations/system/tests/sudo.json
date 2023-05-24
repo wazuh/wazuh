@@ -1,0 +1,46 @@
+[
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "May 24 11:16:00 ubuntu2004 sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/usr/bin/su",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "May 24 11:16:00 ubuntu2004 sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/usr/bin/su",
+      "start": "2023-05-24T11:16:00.000Z",
+      "kind": "event"
+    },
+    "host": {
+      "hostname": "ubuntu2004"
+    },
+    "message": "vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/usr/bin/su",
+    "related": {
+      "hosts": [
+        "ubuntu2004"
+      ]
+    },
+    "process": {
+      "name": "sudo"
+    },
+    "user": {
+      "name": "vagrant"
+    },
+    "~system": {
+      "auth": {
+        "sudo": {
+          "tty": "pts/0",
+          "pwd": "root",
+          "command": "/usr/bin/su"
+        }
+      }
+    }
+  }
+]
