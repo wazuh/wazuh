@@ -59,7 +59,7 @@ async def get_cluster_node(request, pretty: bool = False, wait_for_complete: boo
 
 async def get_cluster_nodes(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                             limit: int = None, sort: str = None, search: str = None, select: str = None,
-                            nodes_list: str = None, q: str = None) -> web.Response:
+                            nodes_list: str = None, q: str = None, distinct: bool = False) -> web.Response:
     """Get information about all nodes in the cluster or a list of them.
 
     Parameters
@@ -84,6 +84,8 @@ async def get_cluster_nodes(request, pretty: bool = False, wait_for_complete: bo
         List of node IDs.
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -100,7 +102,8 @@ async def get_cluster_nodes(request, pretty: bool = False, wait_for_complete: bo
                 'search': parse_api_param(search, 'search'),
                 'select': select,
                 'filter_type': type_,
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=cluster.get_nodes_info,

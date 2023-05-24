@@ -389,7 +389,8 @@ def test_AbstractServer_get_connected_nodes(mock_process_array):
                                             sort={"fields": ["nothing"], "order": "desc"}, limit=501, offset=1)
         mock_process_array.assert_called_once_with([basic_dict["info"]], search_text="wazuh", complementary_search=True,
                                                    sort_by=["nothing"], sort_ascending=False,
-                                                   allowed_sort_fields=basic_dict["info"].keys(), offset=1, limit=501)
+                                                   allowed_sort_fields=basic_dict["info"].keys(), offset=1, limit=501,
+                                                   distinct=False)
         mock_process_array.reset_mock()
 
 
@@ -405,7 +406,8 @@ def test_AbstractServer_get_connected_nodes_ko(mock_process_array):
         abstract_server.get_connected_nodes()
         mock_process_array.assert_called_once_with([basic_dict["info"]], search_text=None, complementary_search=False,
                                                    sort_by=None, sort_ascending=True,
-                                                   allowed_sort_fields=basic_dict["info"].keys(), offset=0, limit=500)
+                                                   allowed_sort_fields=basic_dict["info"].keys(), offset=0, limit=500,
+                                                   distinct=False)
         mock_process_array.reset_mock()
 
         with pytest.raises(WazuhError, match=".* 1724 .* Not a valid select field: no"):

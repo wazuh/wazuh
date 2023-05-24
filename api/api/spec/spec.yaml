@@ -9522,6 +9522,7 @@ paths:
         - $ref: '#/components/parameters/node_type'
         - $ref: '#/components/parameters/nodes_list'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "List of connected nodes"
