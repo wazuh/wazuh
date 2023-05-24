@@ -39,18 +39,15 @@ char *getsharedfiles()
     return (ret);
 }
 
-#define IP_ERROR_TAG "Err"
 
 char *get_agent_ip()
 {
     char agent_ip[IPSIZE + 1] = { '\0' };
-#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD) || defined(WIN32)
     struct sockaddr_storage sas;
     socklen_t len = sizeof(sas);
-    int err = getsockname(agt->sock, (struct sockaddr *)&sas, &len);
-    
-    if (!err)
-    {
+    const int err = getsockname(agt->sock, (struct sockaddr *)&sas, &len);
+
+    if (!err) {
         switch (sas.ss_family) {
             case AF_INET:
                 get_ipv4_string(((struct sockaddr_in *)&sas)->sin_addr, agent_ip, IPSIZE);
@@ -58,13 +55,14 @@ char *get_agent_ip()
             case AF_INET6:
                 get_ipv6_string(((struct sockaddr_in6 *)&sas)->sin6_addr, agent_ip, IPSIZE);
                 break;
+            default:
+                mdebug2("Unknown address family: %d", sas.ss_family);
+                break;
         }
-    } 
-    else
-    {
-        strcpy(agent_ip, IP_ERROR_TAG);
+    } else {
+        mdebug2("getsockname() failed: %s", strerror(errno));
     }
-#endif
+
     return strdup(agent_ip);
 }
 
@@ -169,7 +167,7 @@ void run_notify()
         }
     }
     /* Create message */
-    if(*agent_ip != '\0' && strcmp(agent_ip, IP_ERROR_TAG)) {
+    if (*agent_ip != '\0') {
         char label_ip[60];
         snprintf(label_ip, sizeof label_ip, "#\"_agent_ip\":%s", agent_ip);
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
