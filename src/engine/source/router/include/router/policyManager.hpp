@@ -25,7 +25,7 @@ class PolicyManager
 
 private:
     /* Status */
-    std::unordered_map<std::string, std::vector<RuntimePolicy>> m_policies; ///< Map of policies
+    std::unordered_map<std::string, std::vector<std::unique_ptr<RuntimePolicy>>> m_policies; ///< Map of policies
     std::shared_mutex m_mutex;                                              ///< Mutex to protect the policies map
 
     /* Config */
@@ -35,6 +35,7 @@ private:
     std::shared_ptr<builder::Builder> m_builder; ///< Builder for policy creation
 
     std::string m_output;
+    std::string m_trace;
 
 public:
     /**
@@ -112,6 +113,13 @@ public:
      * @return std::stringstream 
      */
     inline const std::string getOutput() {return m_output;}
+
+    /**
+     * @brief Get the Output object
+     * 
+     * @return std::stringstream 
+     */
+    inline const std::string getTrace() {return m_trace;}
 };
 } // namespace router
 
