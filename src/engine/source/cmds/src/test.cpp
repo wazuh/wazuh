@@ -82,7 +82,7 @@ void configure(CLI::App_p app)
     const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
 
     // Policy
-    logtestApp->add_option("--policy", options->policy, "Name of the policy to be used.")
+    logtestApp->add_option("--policy", options->policyName, "Name of the policy to be used.")
         ->default_val(ENGINE_DEFAULT_POLICY);
 
     // Event

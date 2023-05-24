@@ -66,6 +66,7 @@ private:
     std::size_t m_numThreads; ///< Number of threads for the router
 
     std::string m_output;
+    std::string m_trace;
 
     /**
      * @brief Get a Json with the routes table
@@ -201,7 +202,22 @@ public:
      * 
      * @return std::stringstream 
      */
-    inline const std::string getOutput() {return m_output;}
+    inline const std::string getOutput()
+    {
+        std::shared_lock lock {m_mutexRoutes};
+        return m_output;
+    }
+
+    /**
+     * @brief Get the Output object
+     * 
+     * @return std::stringstream 
+     */
+    inline const std::string getTrace()
+    {
+        std::shared_lock lock {m_mutexRoutes};
+        return m_trace;
+    }
 };
 } // namespace router
 #endif // _ROUTER_ROUTER_HPP
