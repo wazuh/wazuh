@@ -36,6 +36,7 @@ TEST_ONLY_LOGS_AFTER = "20220101"
 TEST_ONLY_LOGS_AFTER_WITH_FORMAT = "2022-01-01 00:00:00.0"
 TEST_LOG_KEY = "123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz"
 TEST_FULL_PREFIX = "base/account_id/service/region/"
+TEST_EXTERNAL_ID = "external-id-Sec-Lake"
 
 TEST_SERVICE_ENDPOINT = 'test_service_endpoint'
 TEST_STS_ENDPOINT = "test_sts_endpoint"
@@ -87,6 +88,7 @@ THROTTLING_ERROR_CODE = 16
 INVALID_KEY_FORMAT_ERROR_CODE = 17
 INVALID_PREFIX_ERROR_CODE = 18
 INVALID_REQUEST_TIME_ERROR_CODE = 19
+INVALID_REGION_ERROR_CODE = 22
 
 
 def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, profile: str = TEST_AWS_PROFILE,

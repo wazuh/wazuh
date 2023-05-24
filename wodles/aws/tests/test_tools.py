@@ -38,7 +38,7 @@ def test_arg_valid_date_raises_exception_when_invalid_format_provided():
 
 @pytest.mark.parametrize('arg_string', ['prefix', 'prefix/', ''])
 def test_arg_valid_key(arg_string: str):
-    """Test 'arg_valid_key' function returns the expected prefix.
+    """Test 'arg_valid_key' function returns the expected key.
 
     Parameters
     ----------
@@ -50,6 +50,12 @@ def test_arg_valid_key(arg_string: str):
         assert isinstance(prefix, str)
         assert prefix[-1] == "/"
         assert arg_string in prefix
+
+
+def test_arg_valid_key_raises_exception_when_invalid_format_provided():
+    """Test 'arg_valid_key' function raises an 'ArgumentTypeError' error when invalid key is provided."""
+    with pytest.raises(argparse.ArgumentTypeError) as e:
+        aws_tools.arg_valid_key('prefix{}')
 
 
 @pytest.mark.parametrize('arg_string', [
@@ -108,6 +114,12 @@ def test_arg_valid_regions(arg_string):
     assert len(regions) == (len(set(arg_string.split(','))) if arg_string else 0)
 
 
+def test_arg_valid_regions_raises_exception_when_invalid_region_provided():
+    """Test 'arg_valid_regions' function raises an 'ArgumentTypeError' error when invalid region is provided."""
+    with pytest.raises(argparse.ArgumentTypeError) as e:
+        aws_tools.arg_valid_regions('invalid-region')
+
+
 @pytest.mark.parametrize('arg_string', ["900", "3600"])
 def test_arg_valid_iam_role_duration(arg_string: str):
     """Test 'arg_valid_iam_role_duration' function returns the expected duration.
@@ -120,6 +132,14 @@ def test_arg_valid_iam_role_duration(arg_string: str):
     duration = aws_tools.arg_valid_iam_role_duration(arg_string)
     assert isinstance(duration, int)
     assert duration == int(arg_string)
+
+
+def test_arg_valid_bucket_name_raises_exception_when_invalid_bucket_name_provided():
+    """Test 'arg_valid_bucket_name' function raises an 'ArgumentTypeError' error when invalid
+    bucket name is provided.
+    """
+    with pytest.raises(argparse.ArgumentTypeError) as e:
+        aws_tools.arg_valid_bucket_name('--ol-s3-invalid')
 
 
 @pytest.mark.parametrize('arg_string', ["899", "3601"])
@@ -166,3 +186,12 @@ def test_get_script_arguments_required(capsys, args):
     assert stdout == "", 'The output was not empty'
     assert stderr != "", 'No error message was found in the output'
     assert exception.value.code == 2
+
+
+def test_get_script_arguments_iam_role_duration_but_no_iam_role_arn_raises_exception():
+    """Test 'get_script_arguments' function raises an 'ArgumentTypeError' error when the `iam_role_duration`
+    parameter is provided but the 'iam_role_arn' is not.
+    """
+    args = ['main', '--subscriber', 'security_lake', '--iam_role_duration', '3600']
+    with patch("sys.argv", args), pytest.raises(argparse.ArgumentTypeError) as exception:
+        aws_tools.get_script_arguments()

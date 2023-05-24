@@ -3,6 +3,7 @@ import os
 import sys
 from datetime import datetime
 from unittest.mock import MagicMock, patch
+import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -48,6 +49,12 @@ def test_aws_service_initializes_properly(mock_wazuh_integration, mock_sts):
     assert instance.only_logs_after == utils.TEST_ONLY_LOGS_AFTER
     mock_sts.assert_called_with(kwargs["access_key"], kwargs["secret_key"], kwargs["profile"])
     mock_client.get_caller_identity.assert_called_once()
+
+
+def test_aws_service_check_region():
+    """Test 'check_region' function raises exception when an incorrect region is passed."""
+    with pytest.raises(ValueError) as e:
+        aws_service.AWSService.check_region('no-region')
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')

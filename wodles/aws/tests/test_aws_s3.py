@@ -26,7 +26,8 @@ import aws_utils as utils
     (['main', '--bucket', 'bucket-name', '--type', 'nlb'], 'buckets_s3.load_balancers.AWSNLBBucket'),
     (['main', '--bucket', 'bucket-name', '--type', 'server_access'], 'buckets_s3.server_access.AWSServerAccess'),
     (['main', '--service', 'inspector'], 'services.inspector.AWSInspector'),
-    (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs')
+    (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs'),
+    (['main', '--subscriber', 'security_lake'], 'subscribers.sqsqueue.AWSSQSQueue')
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
 def test_main(mock_arguments, args: list[str], class_):
@@ -51,9 +52,11 @@ def test_main(mock_arguments, args: list[str], class_):
         instance.check_bucket.assert_called_once()
         instance.iter_bucket.assert_called_once()
     elif 'service' in args[1]:
-        print()
         assert mocked_class.call_count == len(aws_tools.ALL_REGIONS)
         assert instance.get_alerts.call_count == len(aws_tools.ALL_REGIONS)
+    elif 'subscriber' in args[1]:
+        mocked_class.assert_called_once()
+        instance.sync_events.assert_called_once()
 
 
 @pytest.mark.parametrize('args', [
@@ -61,7 +64,7 @@ def test_main(mock_arguments, args: list[str], class_):
     ['main', '--service', 'invalid']
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
-def test_main_ko(mock_arguments, args: list[str]):
+def test_main_type_ko(mock_arguments, args: list[str]):
     """Test 'main' function handles exceptions when receiving invalid buckets or services.
 
     Parameters
@@ -73,3 +76,20 @@ def test_main_ko(mock_arguments, args: list[str]):
             pytest.raises(SystemExit) as e:
         aws_s3.main(args)
     assert e.value.code == utils.INVALID_TYPE_ERROR_CODE
+
+
+@patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
+def test_main_invalid_region_ko(mock_arguments):
+    """Test 'main' function handles exceptions when receiving invalid region.
+
+    Parameters
+    ----------
+    args : list[str]
+        List of arguments that make the `main` function exit.
+    """
+    args = ['main', '--service', 'inspector', '--regions', 'in-valid-1']
+
+    with patch("sys.argv", args), \
+            pytest.raises(SystemExit) as e:
+        aws_s3.main(args)
+    assert e.value.code == utils.INVALID_REGION_ERROR_CODE

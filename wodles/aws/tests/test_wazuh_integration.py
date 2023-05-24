@@ -198,9 +198,10 @@ def test_wazuh_integration_get_client_authentication(access_key, secret_key, pro
         mock_boto.assert_called_with(**expected_conn_args)
 
 
+@pytest.mark.parametrize('external_id', [utils.TEST_EXTERNAL_ID, None])
 @pytest.mark.parametrize('iam_role_arn', [utils.TEST_IAM_ROLE_ARN, None])
 @pytest.mark.parametrize('service_name', ["cloudTrail", "cloudwatchlogs"])
-def test_wazuh_integration_get_client(iam_role_arn, service_name):
+def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
     """Test `get_client` function creates a valid client object both when an IAM Role is provided and when it's not.
 
     Parameters
@@ -209,18 +210,24 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name):
         IAM Role.
     service_name : str
         Name of the service.
+    external_id : str
+        External ID primarily used for Security Lake.
     """
     kwargs = utils.get_wazuh_integration_parameters(access_key=None, secret_key=None, profile=None,
                                                     sts_endpoint=utils.TEST_SERVICE_ENDPOINT,
                                                     service_endpoint=utils.TEST_SERVICE_ENDPOINT,
                                                     service_name=service_name, iam_role_arn=iam_role_arn,
-                                                    iam_role_duration=utils.TEST_IAM_ROLE_DURATION)
+                                                    iam_role_duration=utils.TEST_IAM_ROLE_DURATION,
+                                                    external_id=external_id)
     service_name = "logs" if service_name == "cloudwatchlogs" else service_name
     conn_kwargs = {'region_name': None}
     sts_kwargs = {'aws_access_key_id': None, 'aws_secret_access_key': None, 'aws_session_token': utils.TEST_TOKEN,
                   'region_name': None}
     assume_role_kwargs = {'RoleArn': iam_role_arn, 'RoleSessionName': 'WazuhLogParsing',
                           'DurationSeconds': utils.TEST_IAM_ROLE_DURATION}
+    if external_id:
+        assume_role_kwargs['ExternalId'] = external_id
+
     sts_role_assumption = {
         'Credentials': {'AccessKeyId': None, 'SecretAccessKey': None, 'SessionToken': utils.TEST_TOKEN}}
 
