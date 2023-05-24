@@ -1,6 +1,7 @@
 #ifndef _ROUTER_RUNTIME_ENVIRONMENT_HPP
 #define _ROUTER_RUNTIME_ENVIRONMENT_HPP
 
+#include <logging/logging.hpp>
 #include <optional>
 #include <string>
 
@@ -23,9 +24,12 @@ private:
     std::shared_ptr<rxbk::Controller> m_spController;
     builder::Policy m_environment;
     std::string m_output;
-    std::vector<std::pair<std::string, std::string>> m_history;
+    std::vector<std::pair<std::string, std::string>> m_history {};
     std::unordered_map<std::string, std::shared_ptr<std::stringstream>> m_traceBuffer;
-
+    std::mutex m_outputMutex;
+    std::mutex m_tracerMutex;
+    std::mutex m_historyMutex;
+    
 public:
     /**
      * @brief Construct a new Runtime Policy object
@@ -79,6 +83,23 @@ public:
      * @return std::stringstream 
      */
     inline const std::string getOutput() {return m_output;}
+
+    const std::string getTrace()
+    {
+        auto trace = json::Json {R"({})"};
+        for (auto& [asset, condition] : m_history)
+        {
+            trace.setString(condition.c_str(), std::string("/") + asset.c_str());
+            if (m_traceBuffer.find(asset) != m_traceBuffer.end())
+            {
+                /*while (std::getline(*m_traceBuffer[asset], line))
+                {
+                    trace << "line";
+                }*/
+            }
+        }
+        return trace.prettyStr();
+    }   
 };
 
 } // namespace router

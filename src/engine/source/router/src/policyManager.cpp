@@ -33,17 +33,18 @@ std::optional<base::Error> PolicyManager::addPolicy(const std::string& name)
     }
 
     // Create the policy
-    std::vector<RuntimePolicy> envs = {};
+    std::vector<std::unique_ptr<RuntimePolicy>> envs;
     envs.reserve(m_numInstances);
+
     for (std::size_t i = 0; i < m_numInstances; ++i)
     {
-        auto env = RuntimePolicy {name};
-        const auto err = env.build(m_builder);
+        auto env = std::make_unique<RuntimePolicy>(name);
+        const auto err = env->build(m_builder);
         if (err)
         {
             return base::Error {err.value()};
         }
-        envs.push_back(env);
+        envs.push_back(std::move(env));
     }
     // Add the policy to the runtime list
     {
@@ -109,8 +110,9 @@ std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, 
     }
 
     auto& env = it->second[instance];
-    env.processEvent(std::move(event));
-    m_output = env.getOutput();
+    env->processEvent(std::move(event));
+    m_output = env->getOutput();
+    m_trace = env->getTrace();
 
     return std::nullopt;
 }

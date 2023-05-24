@@ -4,7 +4,7 @@
 #include <logging/logging.hpp>
 #include <rxbk/rxFactory.hpp>
 #include <utils/getExceptionStack.hpp>
-#include <re2/re2.h>
+#include <regex>
 
 namespace router
 {
@@ -21,6 +21,8 @@ std::optional<base::Error> RuntimePolicy::build(std::shared_ptr<builder::Builder
         // Build the policy and create the pipeline
         m_environment = builder->buildPolicy(m_asset);
         m_spController = std::make_shared<rxbk::Controller>(rxbk::buildRxPipeline(m_environment));
+        subscribeToOutput();
+        listenAllTrace();
     }
     catch (std::exception& e)
     {
@@ -39,8 +41,6 @@ std::optional<base::Error> RuntimePolicy::processEvent(base::Event event)
     auto result = base::result::makeSuccess(event);
     m_spController->ingestEvent(std::make_shared<base::result::Result<base::Event>>(std::move(result)));
 
-    subscribeToOutput();
-
     return std::nullopt;
 }
 
@@ -48,6 +48,7 @@ void RuntimePolicy::subscribeToOutput()
 {
     auto subscriber = rxcpp::make_subscriber<rxbk::RxEvent>(
         [&](const rxbk::RxEvent& event) {
+            std::lock_guard<std::mutex> lock(m_outputMutex);
             std::stringstream output;
             output << event->payload()->prettyStr() << std::endl;
             m_output = output.str();
@@ -58,32 +59,18 @@ void RuntimePolicy::subscribeToOutput()
 
 void RuntimePolicy::listenAllTrace()
 {
-    if (0)
-    {
-        auto conditionRegex = std::make_shared<RE2>(R"(\[([^\]]+)\] \[condition\]:(.+))");
-        m_spController->listenOnAllTrace(rxcpp::make_subscriber<std::string>(
-            [&](const std::string& trace)
+    m_spController->listenOnAllTrace(rxcpp::make_subscriber<std::string>(
+        [&](const std::string& trace)
+        {
+            std::lock_guard<std::mutex> lock(m_historyMutex);
+            const std::string opPattern = R"(\[([^\]]+)\] \[condition\]:(.+))";
+            const std::regex opRegex(opPattern);
+            std::smatch match;
+            if (std::regex_search(trace, match, opRegex))
             {
-                std::string asset;
-                std::string result;
-                auto matched = RE2::FullMatch(trace, *conditionRegex, &asset, &result);
-                if (matched)
-                {
-                    m_history.push_back({asset, result});
-                }
-            }));
-    }
-    if (1)
-    {
-        auto assetNamePattern = std::make_shared<RE2>(R"(^\[([^\]]+)\].+)");
-        m_spController->listenOnAllTrace(rxcpp::make_subscriber<std::string>(
-            [&](const std::string& trace)
-            {
-                std::string asset;
-                auto matched = RE2::PartialMatch(trace, *assetNamePattern, &asset);
-                m_traceBuffer[asset] = std::make_shared<std::stringstream>(trace + "\n");
-            }));
-    }
+                m_history.push_back({match[1].str(), match[2].str()});
+            }
+        }));
 }
 
 } // namespace router
