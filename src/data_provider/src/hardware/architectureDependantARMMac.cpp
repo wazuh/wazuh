@@ -131,11 +131,7 @@ double getMhz(IOsPrimitivesMac* osPrimitives)
         {
             uint32_t cur_freq = 0;
             osPrimitives->CFDataGetBytes(p_cores_freq_property, osPrimitives->CFRangeMake(i, sizeof(uint32_t)), reinterpret_cast<UInt8*>(&cur_freq));
-
-            if (cpuHz < cur_freq)
-            {
-                cpuHz = cur_freq;
-            }
+            cpuHz = std::max(cpuHz, static_cast<uint64_t>(cur_freq));
         }
     }
 
