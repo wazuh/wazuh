@@ -63,23 +63,53 @@ class EngineFieldSelector(ResponseTransformations):
             If the data is a list of dictionaries, the transformation is applied to each dictionary.
             If the data is a single dictionary, the transformation is applied to the dictionary.
         """
+        # Create an empty list if the data is a list, otherwise create an empty dictionary
         transformed_data = [] if isinstance(data, list) else {}
+
+        # Remove leading/trailing spaces and split the selected fields based on comma separation
         selected_fields = [name.strip() for name in self.select.split(",")]
 
         if isinstance(data, list):
+            # If the data is a list, iterate over each element
             for element in data:
+                # Create an empty dictionary to store the selected fields for the current element
                 selected_element = {}
                 for name in selected_fields:
+                    # Get the value of the selected field for the current element
                     value = self._get_nested_value_select(element, name)
+
                     if value is not None:
-                        selected_element[name] = value
+                        # Split the field into nested fields based on dot separation
+                        nested_fields = name.split('.')
+
+                        # Traverse the nested fields, creating dictionaries as necessary
+                        current_dict = selected_element
+                        for field in nested_fields[:-1]:
+                            current_dict = current_dict.setdefault(field, {})
+
+                        # Assign the value to the final nested field
+                        current_dict[nested_fields[-1]] = value
+
+                # Append the selected fields dictionary to the transformed data list
                 transformed_data.append(selected_element)
         else:
+            # If the data is a single dictionary
             for name in selected_fields:
+                # Get the value of the selected field for the data
                 value = self._get_nested_value_select(data, name)
                 if value is not None:
-                    transformed_data[name] = value
+                    # Split the field into nested fields based on dot separation
+                    nested_fields = name.split('.')
 
+                    # Traverse the nested fields, creating dictionaries as necessary
+                    current_dict = transformed_data
+                    for field in nested_fields[:-1]:
+                        current_dict = current_dict.setdefault(field, {})
+
+                    # Assign the value to the final nested field
+                    current_dict[nested_fields[-1]] = value
+
+        # Return the transformed data
         return transformed_data
 
     @staticmethod
@@ -110,11 +140,11 @@ class EngineFieldSearch(ResponseTransformations):
 
     @staticmethod
     def can_i_run(params: Dict[str, Any], data: Any) -> bool:
-        if 'search' in params and params['search']:
+        if 'search' in params and params['search'] and isinstance(data, list):
             return True
         return False
 
-    def apply_transformation(self, data: Dict[str, Any] or List[Dict[str, Any]]):
+    def apply_transformation(self, data: List[Dict[str, Any]]):
         """Apply the field search transformation to the data.
 
         Args:
@@ -127,7 +157,7 @@ class EngineFieldSearch(ResponseTransformations):
             If the data is a list of dictionaries, the transformation is applied to each dictionary.
             If the data is a single dictionary, the transformation is applied to the dictionary.
         """
-        transformed_data = [] if isinstance(data, list) else {}
+        transformed_data = []
 
         if isinstance(data, list):
             for element in data:
@@ -138,12 +168,6 @@ class EngineFieldSearch(ResponseTransformations):
                 else:
                     if any(self.search in value for value in element.values()):
                         transformed_data.append(element)
-        else:
-            if self.search.startswith('-'):
-                complementary_string = self.search[1:]
-                transformed_data = {key: value for key, value in data.items() if complementary_string not in value}
-            else:
-                transformed_data = {key: value for key, value in data.items() if self.search in value}
 
         return transformed_data
 
