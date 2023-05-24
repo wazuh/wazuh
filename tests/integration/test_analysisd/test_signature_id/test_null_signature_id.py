@@ -10,7 +10,7 @@ type: integration
 brief: The wazuh-analysisd daemon uses a series of decoders and rules to analyze and interpret logs and events and
        generate alerts when the decoded information matches the established rules. The 'if_sid' option is used to
        associate a rule to a parent rule by referencing the rule ID of the parent. This test module checks that when
-       an valid rule_id is used, the rule is not ignored.
+       a null rule_id is used, the rule is ignored.
 
 components:
     - analysisd
@@ -56,31 +56,30 @@ pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_signature_id_values.yaml')
-cases_path = Path(TEST_CASES_PATH, 'cases_valid_signature_id.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_null_signature_id.yaml')
 
-# test configurations.
+# Test configurations.
 config_parameters, metadata, cases_ids = get_test_cases_data(cases_path)
 configuration = load_configuration_template(configs_path, config_parameters, metadata)
 
 
-# Test function
+# Test function.
 @pytest.mark.parametrize('configuration, metadata', zip(configuration, metadata), ids=cases_ids)
-def test_valid_signature_id(configuration, metadata, set_wazuh_configuration, truncate_monitored_files,
-                            prepare_custom_rules_file, restart_wazuh_function):
+def test_null_signature_id(configuration, metadata, set_wazuh_configuration, truncate_monitored_files,
+                           prepare_custom_rules_file, restart_wazuh_function):
     '''
-    description: Check that when a rule has an valid signature ID value assigned to the if_sid option, the rule is
-                 not ignored.
+    description: Check that when a rule has a null signature ID value, that references a nonexisten rule,
+                 assigned to the if_sid option, the rule is ignored.
 
     test_phases:
-        - Setup:
+        - setup:
             - Set wazuh configuration.
             - Copy custom rules file into manager
             - Clean logs files and restart wazuh to apply the configuration.
-        - Test:
-            - Check no log for "if_sid not found" is detected
-            - Check no log for "empty if_sid" is detected
-            - Check no log for "invalid if_sid" is detected
-        - Tierdown:
+        - test:
+            - Check "if_sid not found" log is detected
+            - Check "empty if_sid" log is detected
+        - teardown:
             - Delete custom rule file
             - Restore configuration
             - Stop wazuh
@@ -92,7 +91,7 @@ def test_valid_signature_id(configuration, metadata, set_wazuh_configuration, tr
     parameters:
         - configuration:
             type: dict
-            brief: Configuration loaded from `configuration_template`.
+            brief: Configuration loaded from `config_templates`.
         - metadata:
             type: dict
             brief: Test case metadata.
@@ -115,18 +114,15 @@ def test_valid_signature_id(configuration, metadata, set_wazuh_configuration, tr
         - Check ".*wazuh-testrule.*Empty 'if_sid' value. Rule '(\\d*)' will be ignored.*"
 
     input_description:
-        - The `configuration_signature_id_values.yaml` file provides the module configuration for
+        - The `config_signature_id_values.yaml` file provides the module configuration for
           this test.
-        - The `cases_signature_id_values.yaml` file provides the test cases.
+        - The `cases_null_signature_id.yaml` file provides the test cases.
     '''
     # Start monitors
     monitor_not_found = FileMonitor(OSSEC_LOG_PATH, generate_callback(patterns.SID_NOT_FOUND))
     monitor_empty = FileMonitor(OSSEC_LOG_PATH, generate_callback(patterns.EMPTY_IF_SID_RULE_IGNORED))
-    monitor_invalid = FileMonitor(OSSEC_LOG_PATH, generate_callback(patterns.INVALID_IF_SID_RULE_IGNORED))
-
-    # Check that no log appears for rules if_sid field pointing to a non existent SID
-    assert not monitor_not_found.callback_result
-    # Check that no log appears for rules if_sid field being empty string
-    assert not monitor_empty.callback_result
-    # Check that no log appears for rules if_sid field being invalid
-    assert not monitor_invalid.callback_result
+    
+    # Check that expected log appears for rules if_sid field pointing to a non existent SID
+    assert monitor_not_found.callback_result
+    # Check that expected log appears for rules if_sid field being empty (empty since non-existent SID is ignored)
+    assert monitor_empty.callback_result
