@@ -2,20 +2,18 @@
 event:
   module: system
   dataset:
-    - system-syslog
     - system-auth
 
-title: System syslog and auth events
+title: System auth events
 
 # Sections to generate de Markdown documentation, the strings must be literals (plain or |) and using Markdown syntax
 overview: |
 
   The system module collects and parses logs created by the system logging service of common Unix/Linux based distributions.
 
-  System-syslog logs include standar services syslog logging logs
   System-auth logs include auth logs like sudo, ssh, and cron logs
 
-compatibility: This integration was tested with logs from OSes like Ubuntu 12.04, Centos 7, and macOS Sierra.
+compatibility: This integration was tested with logs from OSes like Ubuntu 12.04, Centos 7.
 
 configuration: |
   This integration ingests logs from /var/log/syslog and /var/log/auth.log (the location of the files
@@ -30,7 +28,19 @@ configuration: |
     <log_format>syslog</log_format>
   </localfile>
   <localfile>
-    <location>/var/log/auth.log</location>
+    <location>/var/log/messages</location>
+    <log_format>syslog</log_format>
+  </localfile>
+  <localfile>
+    <location>/var/log/secure</location>
+    <log_format>syslog</log_format>
+  </localfile>
+  <localfile>
+  <location>/var/log/auth.log</location>
+    <log_format>syslog</log_format>
+  </localfile>
+  <localfile>
+  <location>/var/log/kern.log</location>
     <log_format>syslog</log_format>
   </localfile>
   ```
