@@ -99,7 +99,7 @@ def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
                     mock_same_prefix.assert_called_with(match_start, aws_account_id, aws_region)
 
                     if not instance._same_prefix(match_start, aws_account_id, aws_region):
-                        mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
+                        mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
                         continue
 
                     mock_already_processed.assert_called_with(bucket_file['Key'], aws_account_id, aws_region)

@@ -56,7 +56,7 @@ class AWSServerAccess(AWSCustomBucket):
                             sys.exit(17)
 
                     if not self._same_prefix(match_start, aws_account_id, aws_region):
-                        aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
+                        aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
                         continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
