@@ -1,8 +1,0 @@
-
-<group name="syscollector,">
-
-    <rule id="969696" level="3" >
-        <if_sid></if_sid>
-        <description>Custom Rule with invalid (empty) if_sid</description>
-    </rule>
-</group>

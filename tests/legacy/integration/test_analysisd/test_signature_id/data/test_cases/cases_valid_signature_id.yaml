@@ -1,5 +1,0 @@
-- name: Valid signature ID - Rule is not ignored
-  description: Check that if_sid is valid, a rule is not ignored
-  configuration_parameters:
-  metadata:
-    rules_file: valid_signature_id_rules.xml
