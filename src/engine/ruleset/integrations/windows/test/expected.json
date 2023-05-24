@@ -251,5 +251,51 @@
             "key": "System\\CurrentControlSet\\Services\\MSDTC Bridge 3.0.0.0\\Linkage",
             "value": "Linkage"
         }
+    },
+    {
+        "wazuh": {
+            "queue": 102,
+            "location": "[001] (hrmanager) any->EventChannel",
+            "message": "{\"Message\":\"Provider \\\"Function\\\" is Started. \\r\\n\\r\\nDetails: \\r\\n\\tProviderName=Function\\r\\n\\tNewProviderState=Started\\r\\n\\r\\n\\tSequenceNumber=9\\r\\n\\r\\n\\tHostName=ConsoleHost\\r\\n\\tHostVersion=5.1.19041.1645\\r\\n\\tHostId=9b855067-ec42-4acb-a34e-616853c24ecd\\r\\n\\tHostApplication=powershell Get-ADDefaultDomainPasswordPolicy -Current LoggedOnUser\\r\\n\\tEngineVersion=\\r\\n\\tRunspaceId=\\r\\n\\tPipelineId=\\r\\n\\tCommandName=\\r\\n\\tCommandType=\\r\\n\\tScriptName=\\r\\n\\tCommandPath=\\r\\n\\tCommandLine=\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='PowerShell'/><EventID Qualifiers='0'>600</EventID><Version>0</Version><Level>4</Level><Task>6</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2023-05-24T14:38:07.8889543Z'/><EventRecordID>97131</EventRecordID><Correlation/><Execution ProcessID='0' ThreadID='0'/><Channel>Windows PowerShell</Channel><Computer>hrmanager.ExchangeTest.com</Computer><Security/></System><EventData><Data>Function</Data><Data>Started</Data><Data>\\tProviderName=Function   NewProviderState=Started     SequenceNumber=9     HostName=ConsoleHost   HostVersion=5.1.19041.1645   HostId=9b855067-ec42-4acb-a34e-616853c24ecd   HostApplication=powershell Get-ADDefaultDomainPasswordPolicy -Current LoggedOnUser   EngineVersion=   RunspaceId=   PipelineId=   CommandName=   CommandType=   ScriptName=   CommandPath=   CommandLine=</Data></EventData></Event>\"}",
+            "origin": "EventChannel",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-windows",
+                "integrations",
+                "windows-json",
+                "windows-event-decoder",
+                "windows-powershell"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "hrmanager",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "{\"Message\":\"Provider \\\"Function\\\" is Started. \\r\\n\\r\\nDetails: \\r\\n\\tProviderName=Function\\r\\n\\tNewProviderState=Started\\r\\n\\r\\n\\tSequenceNumber=9\\r\\n\\r\\n\\tHostName=ConsoleHost\\r\\n\\tHostVersion=5.1.19041.1645\\r\\n\\tHostId=9b855067-ec42-4acb-a34e-616853c24ecd\\r\\n\\tHostApplication=powershell Get-ADDefaultDomainPasswordPolicy -Current LoggedOnUser\\r\\n\\tEngineVersion=\\r\\n\\tRunspaceId=\\r\\n\\tPipelineId=\\r\\n\\tCommandName=\\r\\n\\tCommandType=\\r\\n\\tScriptName=\\r\\n\\tCommandPath=\\r\\n\\tCommandLine=\",\"Event\":\"<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='PowerShell'/><EventID Qualifiers='0'>600</EventID><Version>0</Version><Level>4</Level><Task>6</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2023-05-24T14:38:07.8889543Z'/><EventRecordID>97131</EventRecordID><Correlation/><Execution ProcessID='0' ThreadID='0'/><Channel>Windows PowerShell</Channel><Computer>hrmanager.ExchangeTest.com</Computer><Security/></System><EventData><Data>Function</Data><Data>Started</Data><Data>\\tProviderName=Function   NewProviderState=Started     SequenceNumber=9     HostName=ConsoleHost   HostVersion=5.1.19041.1645   HostId=9b855067-ec42-4acb-a34e-616853c24ecd   HostApplication=powershell Get-ADDefaultDomainPasswordPolicy -Current LoggedOnUser   EngineVersion=   RunspaceId=   PipelineId=   CommandName=   CommandType=   ScriptName=   CommandPath=   CommandLine=</Data></EventData></Event>\"}",
+            "module": "windows",
+            "dataset": "powershell",
+            "start": "2023-05-24T14:38:07.8889543Z",
+            "code": "600",
+            "id": "600",
+            "kind": "event",
+            "provider": "PowerShell",
+            "category": [
+                "process"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "name": "hrmanager.ExchangeTest.com"
+        },
+        "log": {
+            "level": "Information"
+        }
     }
 ]
