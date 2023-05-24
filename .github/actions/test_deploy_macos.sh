@@ -16,7 +16,6 @@ SHA="$(git rev-parse --short=7 "$1")"
 WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 conf_path="/Library/Ossec/etc/ossec.conf"
 
-
 VARS=( "WAZUH_MANAGER" "WAZUH_MANAGER_PORT" "WAZUH_PROTOCOL" "WAZUH_REGISTRATION_SERVER" "WAZUH_REGISTRATION_PORT" "WAZUH_REGISTRATION_PASSWORD" "WAZUH_KEEP_ALIVE_INTERVAL" "WAZUH_TIME_RECONNECT" "WAZUH_REGISTRATION_CA" "WAZUH_REGISTRATION_CERTIFICATE" "WAZUH_REGISTRATION_KEY" "WAZUH_AGENT_NAME" "WAZUH_AGENT_GROUP" "ENROLLMENT_DELAY" )
 VALUES=( "1.1.1.1" "7777" "udp" "2.2.2.2" "8888" "password" "10" "10" "/Library/Ossec/etc/testsslmanager.cert" "/Library/Ossec/etc/testsslmanager.cert" "/Library/Ossec/etc/testsslmanager.key" "test-agent" "test-group" "10" )
 TAGS1=( "<address>" "<port>" "<protocol>" "<manager_address>" "<port>" "<password>" "<notify_time>" "<time-reconnect>" "<server_ca_path>" "<agent_certificate_path>" "<agent_key_path>" "<agent_name>" "<groups>" "<delay_after_enrollment>" )
@@ -100,7 +99,7 @@ install_wazuh "WAZUH_REGISTRATION_SERVER='2.2.2.2'"
 test "WAZUH_REGISTRATION_SERVER"
 remove_wazuh
 
-install_wazuh "WAZUH_REGISTRATION_POR='8888'"
+install_wazuh "WAZUH_REGISTRATION_PORT='8888'"
 test "WAZUH_REGISTRATION_PORT"
 remove_wazuh
 
