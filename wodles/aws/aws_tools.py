@@ -71,7 +71,7 @@ def arg_valid_accountid(arg_string):
         return []
     account_ids = arg_string.split(',')
     for account in account_ids:
-        if not account.strip().isdigit() or len(account) != 12: # TODO: REVIEW
+        if not account.strip().isdigit() or len(account) != 12:
             raise argparse.ArgumentTypeError(
                 "Not valid AWS account ID (numeric digits only): '{0}'.".format(arg_string))
 
