@@ -21,6 +21,7 @@ check: ~windows.Event.System.Channel.#text==Microsoft-Windows-PowerShell/Operati
 normalize:
  - map:
    - wazuh.decoders: +array_append/windows-powershell-operational
+   - event.kind: event
    - event.dataset: powershell
    - event.category: +array_append/process
    - event.type: +array_append/info
