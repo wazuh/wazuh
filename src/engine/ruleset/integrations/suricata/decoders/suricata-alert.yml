@@ -47,10 +47,10 @@ normalize:
       - rule.category: $~suricata.eve.alert.category
       - rule.id: $~suricata.eve.alert.signature_id
       - rule.name: $~suricata.eve.alert.signature
-      - threat.tactic.id: $~suricata.eve.alert.metadata.mitre_attack
+      - threat.tactic.id: $~suricata.eve.alert.metadata.mitre_tactic_id
       - threat.tactic.name: $~suricata.eve.alert.metadata.mitre_tactic_name
       - threat.technique.id: $~suricata.eve.alert.metadata.mitre_technique_id
-      - threat.technique.name: $~suricata.eve.alert.metadata.mitre_techinique_name
+      - threat.technique.name: $~suricata.eve.alert.metadata.mitre_technique_name
 
   - check:
       - threat.tactic.id: +is_null

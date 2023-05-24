@@ -1,0 +1,58 @@
+{
+  "wazuh": {
+    "queue": 49,
+    "location": "/dev/stdin",
+    "message": "{\"timestamp\":\"2023-05-24T04:01:27.384731-0400\",\"flow_id\":1927868084346096,\"in_iface\":\"enp0s3\",\"event_type\":\"alert\",\"src_ip\":\"192.168.10.130\",\"src_port\":51480,\"dest_ip\":\"18.225.36.18\",\"dest_port\":80,\"proto\":\"TCP\",\"tx_id\":0,\"alert\":{\"action\":\"allowed\",\"gid\":1,\"signature_id\":2013505,\"rev\":3,\"signature\":\"ET POLICY GNU/Linux YUM User-Agent Outbound likely related to package management\",\"category\":\"Potential Corporate Privacy Violation\",\"severity\":1,\"metadata\":{\"created_at\":[\"2011_09_01\"],\"mitre_tactic_id\":[\"TA0011\"],\"mitre_tactic_name\":[\"Command_And_Control\"],\"mitre_technique_id\":[\"T1041\"],\"mitre_technique_name\":[\"Exfiltration_Over_C2_Channel\"],\"updated_at\":[\"2011_09_01\"]}},\"http\":{\"hostname\":\"mirrorlist.centos.org\",\"url\":\"/?release=7&arch=x86_64&repo=os&infra=stock\",\"http_user_agent\":\"urlgrabber/3.10 yum/3.4.3\",\"http_content_type\":\"text/plain\",\"http_method\":\"GET\",\"protocol\":\"HTTP/1.1\",\"status\":200,\"length\":508},\"app_proto\":\"http\",\"flow\":{\"pkts_toserver\":4,\"pkts_toclient\":3,\"bytes_toserver\":413,\"bytes_toclient\":999,\"start\":\"2023-05-24T04:01:27.154864-0400\"}}",
+    "decoders": [
+      "core-ossec-message",
+      "core-localfile",
+      "integrations",
+      "suricata"
+    ],
+    "source": "logcollector"
+  },
+  "event": {
+    "original": "{\"timestamp\":\"2023-05-24T04:01:27.384731-0400\",\"flow_id\":1927868084346096,\"in_iface\":\"enp0s3\",\"event_type\":\"alert\",\"src_ip\":\"192.168.10.130\",\"src_port\":51480,\"dest_ip\":\"18.225.36.18\",\"dest_port\":80,\"proto\":\"TCP\",\"tx_id\":0,\"alert\":{\"action\":\"allowed\",\"gid\":1,\"signature_id\":2013505,\"rev\":3,\"signature\":\"ET POLICY GNU/Linux YUM User-Agent Outbound likely related to package management\",\"category\":\"Potential Corporate Privacy Violation\",\"severity\":1,\"metadata\":{\"created_at\":[\"2011_09_01\"],\"mitre_tactic_id\":[\"TA0011\"],\"mitre_tactic_name\":[\"Command_And_Control\"],\"mitre_technique_id\":[\"T1041\"],\"mitre_technique_name\":[\"Exfiltration_Over_C2_Channel\"],\"updated_at\":[\"2011_09_01\"]}},\"http\":{\"hostname\":\"mirrorlist.centos.org\",\"url\":\"/?release=7&arch=x86_64&repo=os&infra=stock\",\"http_user_agent\":\"urlgrabber/3.10 yum/3.4.3\",\"http_content_type\":\"text/plain\",\"http_method\":\"GET\",\"protocol\":\"HTTP/1.1\",\"status\":200,\"length\":508},\"app_proto\":\"http\",\"flow\":{\"pkts_toserver\":4,\"pkts_toclient\":3,\"bytes_toserver\":413,\"bytes_toclient\":999,\"start\":\"2023-05-24T04:01:27.154864-0400\"}}",
+    "module": "suricata",
+    "kind": "alert",
+    "category": [
+      "network",
+      "intrusion_detection"
+    ],
+    "created": "2023-05-24T04:01:27.384731-0400",
+    "type": [
+      "detail",
+      "allowed"
+    ],
+    "severity": 1
+  },
+  "source": {
+    "address": "192.168.10.130",
+    "ip": "192.168.10.130",
+    "port": 51480
+  },
+  "destination": {
+    "address": "18.225.36.18",
+    "port": 80
+  },
+  "network": {
+    "transport": "TCP"
+  },
+  "rule": {
+    "category": "Potential Corporate Privacy Violation",
+    "id": 2013505,
+    "name": "ET POLICY GNU/Linux YUM User-Agent Outbound likely related to package management"
+  },
+  "threat": {
+    "tactic": {
+      "name": [
+        "Command_And_Control"
+      ]
+    },
+    "technique": {
+      "id": [
+        "T1041"
+      ]
+    }
+  }
+}

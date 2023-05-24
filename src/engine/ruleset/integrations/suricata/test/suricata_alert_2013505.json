@@ -1,0 +1,46 @@
+{
+  "wazuh": {
+    "queue": 49,
+    "location": "/dev/stdin",
+    "message": "{ \"timestamp\": \"2023-05-22T12:24:48.761468-0400\", \"flow_id\": 1009672040529030, \"in_iface\": \"enp0s3\", \"event_type\": \"alert\", \"src_ip\": \"192.168.10.130\", \"src_port\": 54790, \"dest_ip\": \"185.23.36.124\", \"dest_port\": 80, \"proto\": \"TCP\", \"tx_id\": 0, \"alert\": { \"action\": \"allowed\", \"gid\": 1, \"signature_id\": 2013505, \"rev\": 3, \"signature\": \"ET POLICY GNU/Linux YUM User-Agent Outbound likely related to package management\", \"category\": \"Potential Corporate Privacy Violation\", \"severity\": 1, \"metadata\": { \"created_at\": [ \"2011_09_01\" ], \"updated_at\": [ \"2011_09_01\" ] } }, \"http\": { \"hostname\": \"mirror.tedra.es\", \"url\": \"/CentOS/7.9.2009/updates/x86_64/Packages/kernel-debug-devel-3.10.0-1160.90.1.el7.x86_64.rpm\", \"http_user_agent\": \"urlgrabber/3.10 yum/3.4.3\", \"http_content_type\": \"application/x-rpm\", \"http_method\": \"GET\", \"protocol\": \"HTTP/1.1\", \"status\": 200, \"length\": 1175 }, \"app_proto\": \"http\", \"flow\": { \"pkts_toserver\": 4, \"pkts_toclient\": 3, \"bytes_toserver\": 455, \"bytes_toclient\": 1646, \"start\": \"2023-05-22T12:24:48.703622-0400\" } }",
+    "decoders": [
+      "core-ossec-message",
+      "core-localfile",
+      "integrations",
+      "suricata"
+    ],
+    "source": "logcollector"
+  },
+  "event": {
+    "original": "{ \"timestamp\": \"2023-05-22T12:24:48.761468-0400\", \"flow_id\": 1009672040529030, \"in_iface\": \"enp0s3\", \"event_type\": \"alert\", \"src_ip\": \"192.168.10.130\", \"src_port\": 54790, \"dest_ip\": \"185.23.36.124\", \"dest_port\": 80, \"proto\": \"TCP\", \"tx_id\": 0, \"alert\": { \"action\": \"allowed\", \"gid\": 1, \"signature_id\": 2013505, \"rev\": 3, \"signature\": \"ET POLICY GNU/Linux YUM User-Agent Outbound likely related to package management\", \"category\": \"Potential Corporate Privacy Violation\", \"severity\": 1, \"metadata\": { \"created_at\": [ \"2011_09_01\" ], \"updated_at\": [ \"2011_09_01\" ] } }, \"http\": { \"hostname\": \"mirror.tedra.es\", \"url\": \"/CentOS/7.9.2009/updates/x86_64/Packages/kernel-debug-devel-3.10.0-1160.90.1.el7.x86_64.rpm\", \"http_user_agent\": \"urlgrabber/3.10 yum/3.4.3\", \"http_content_type\": \"application/x-rpm\", \"http_method\": \"GET\", \"protocol\": \"HTTP/1.1\", \"status\": 200, \"length\": 1175 }, \"app_proto\": \"http\", \"flow\": { \"pkts_toserver\": 4, \"pkts_toclient\": 3, \"bytes_toserver\": 455, \"bytes_toclient\": 1646, \"start\": \"2023-05-22T12:24:48.703622-0400\" } }",
+    "module": "suricata",
+    "kind": "alert",
+    "category": [
+      "network",
+      "intrusion_detection"
+    ],
+    "created": "2023-05-22T12:24:48.761468-0400",
+    "type": [
+      "detail",
+      "allowed"
+    ],
+    "severity": 1
+  },
+  "source": {
+    "address": "192.168.10.130",
+    "ip": "192.168.10.130",
+    "port": 54790
+  },
+  "destination": {
+    "address": "185.23.36.124",
+    "port": 80
+  },
+  "network": {
+    "transport": "TCP"
+  },
+  "rule": {
+    "category": "Potential Corporate Privacy Violation",
+    "id": 2013505,
+    "name": "ET POLICY GNU/Linux YUM User-Agent Outbound likely related to package management"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "wazuh": {
+    "queue": 49,
+    "location": "/dev/stdin",
+    "message": "{ \"timestamp\": \"2021-05-17T05:51:00.572629-0400\", \"flow_id\": 1203676337454078, \"in_iface\": \"owlh\", \"event_type\": \"alert\", \"src_ip\": \"192.168.10.14\", \"src_port\": 49488, \"dest_ip\": \"40.112.213.22\", \"dest_port\": 80, \"proto\": \"TCP\", \"tx_id\": 1, \"alert\": { \"action\": \"allowed\", \"gid\": 1, \"signature_id\": 2025275, \"rev\": 1, \"signature\": \"ET INFO Windows OS Submitting USB Metadata to Microsoft\", \"category\": \"Misc activity\", \"severity\": 3, \"metadata\": { \"affected_product\": [ \"Windows_XP_Vista_7_8_10_Server_32_64_Bit\" ], \"attack_target\": [ \"Client_Endpoint\" ], \"created_at\": [ \"2018_01_31\" ], \"deployment\": [ \"Perimeter\" ], \"former_category\": [ \"INFO\" ], \"performance_impact\": [ \"Low\" ], \"signature_severity\": [ \"Minor\" ], \"updated_at\": [ \"2018_01_31\" ] } }, \"http\": { \"hostname\": \"dmd.metaservices.microsoft.com\", \"url\": \"/dms/metadata.svc\", \"http_user_agent\": \"MICROSOFT_DEVICE_METADATA_RETRIEVAL_CLIENT\", \"http_method\": \"POST\", \"protocol\": \"HTTP/1.1\", \"length\": 0 }, \"app_proto\": \"http\", \"flow\": { \"pkts_toserver\": 8, \"pkts_toclient\": 5, \"bytes_toserver\": 4290, \"bytes_toclient\": 4570, \"start\": \"2021-05-17T05:51:00.572414-0400\" } }",
+    "decoders": [
+      "core-ossec-message",
+      "core-localfile",
+      "integrations",
+      "suricata"
+    ],
+    "source": "logcollector"
+  },
+  "event": {
+    "original": "{ \"timestamp\": \"2021-05-17T05:51:00.572629-0400\", \"flow_id\": 1203676337454078, \"in_iface\": \"owlh\", \"event_type\": \"alert\", \"src_ip\": \"192.168.10.14\", \"src_port\": 49488, \"dest_ip\": \"40.112.213.22\", \"dest_port\": 80, \"proto\": \"TCP\", \"tx_id\": 1, \"alert\": { \"action\": \"allowed\", \"gid\": 1, \"signature_id\": 2025275, \"rev\": 1, \"signature\": \"ET INFO Windows OS Submitting USB Metadata to Microsoft\", \"category\": \"Misc activity\", \"severity\": 3, \"metadata\": { \"affected_product\": [ \"Windows_XP_Vista_7_8_10_Server_32_64_Bit\" ], \"attack_target\": [ \"Client_Endpoint\" ], \"created_at\": [ \"2018_01_31\" ], \"deployment\": [ \"Perimeter\" ], \"former_category\": [ \"INFO\" ], \"performance_impact\": [ \"Low\" ], \"signature_severity\": [ \"Minor\" ], \"updated_at\": [ \"2018_01_31\" ] } }, \"http\": { \"hostname\": \"dmd.metaservices.microsoft.com\", \"url\": \"/dms/metadata.svc\", \"http_user_agent\": \"MICROSOFT_DEVICE_METADATA_RETRIEVAL_CLIENT\", \"http_method\": \"POST\", \"protocol\": \"HTTP/1.1\", \"length\": 0 }, \"app_proto\": \"http\", \"flow\": { \"pkts_toserver\": 8, \"pkts_toclient\": 5, \"bytes_toserver\": 4290, \"bytes_toclient\": 4570, \"start\": \"2021-05-17T05:51:00.572414-0400\" } }",
+    "module": "suricata",
+    "kind": "alert",
+    "category": [
+      "network",
+      "intrusion_detection"
+    ],
+    "created": "2021-05-17T05:51:00.572629-0400",
+    "type": [
+      "detail",
+      "allowed"
+    ],
+    "severity": 3
+  },
+  "source": {
+    "address": "192.168.10.14",
+    "ip": "192.168.10.14",
+    "port": 49488
+  },
+  "destination": {
+    "address": "40.112.213.22",
+    "port": 80
+  },
+  "network": {
+    "transport": "TCP"
+  },
+  "rule": {
+    "category": "Misc activity",
+    "id": 2025275,
+    "name": "ET INFO Windows OS Submitting USB Metadata to Microsoft"
+  }
+}
