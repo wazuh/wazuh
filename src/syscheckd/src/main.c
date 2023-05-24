@@ -132,7 +132,7 @@ int main(int argc, char **argv)
 
     /* Read syscheck config */
     if ((r = Read_Syscheck_Config(cfg)) < 0) {
-        merror(RCONFIG_ERROR, SYSCHECK, cfg);
+        mwarn(RCONFIG_ERROR, SYSCHECK, cfg);
         syscheck.disabled = 1;
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         if (syscheck.directories == NULL || OSList_GetFirstNode(syscheck.directories) == NULL) {

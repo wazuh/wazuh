@@ -202,7 +202,7 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 
     expect_string(__wrap_Read_Syscheck_Config, file, "ossec.conf");
     will_return(__wrap_Read_Syscheck_Config, -1);
-    expect_string(__wrap__merror, formatted_msg, "(1207): syscheck remote configuration in 'ossec.conf' is corrupted.");
+    expect_string(__wrap__mwarn, formatted_msg, "(1207): syscheck remote configuration in 'ossec.conf' is corrupted.");
 
     will_return(__wrap_rootcheck_init, 1);
 

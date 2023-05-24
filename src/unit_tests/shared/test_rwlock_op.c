@@ -20,8 +20,6 @@
 #define N_READERS 4
 #define READ_CYCLES 10000
 #define WRITE_CYCLES 1000
-#define READER_DELAY_NSEC 10000
-#define WRITER_DELAY_NSEC 1000000
 
 typedef struct {
     rwlock_t * rwlock;
@@ -40,15 +38,11 @@ int test_rwlock_teardown(void ** state) {
 
 static void * reader(thread_args_t * thread_args) {
     char target[BUFFER_LEN];
-    struct timespec delay = {
-        .tv_sec = 0,
-        .tv_nsec = READER_DELAY_NSEC,
-    };
 
     for (int i = 0; i < READ_CYCLES; i++) {
         RWLOCK_LOCK_READ(thread_args->rwlock, {
             memcpy(target, thread_args->buffer, BUFFER_LEN);
-            nanosleep(&delay, NULL);
+            sched_yield();
         })
     }
 
@@ -57,17 +51,13 @@ static void * reader(thread_args_t * thread_args) {
 
 static void * writer(thread_args_t * thread_args) {
     int i = 0;
-     struct timespec delay = {
-        .tv_sec = 0,
-        .tv_nsec = WRITER_DELAY_NSEC,
-    };
 
     for (int i = 0; i < WRITE_CYCLES; i++) {
         RWLOCK_LOCK_WRITE(thread_args->rwlock, {
             snprintf(thread_args->buffer, BUFFER_LEN, "%d", i);
         })
 
-        nanosleep(&delay, NULL);
+        sched_yield();
     }
 
     return NULL;

@@ -154,6 +154,8 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
                         f"Integrity check: {node_info['status']['last_check_integrity']['date_end_master']} | " \
                         f"Integrity sync: {node_info['status']['last_sync_integrity']['date_end_master']} | " \
                         f"Agents-info: {node_info['status']['last_sync_agentinfo']['date_end_master']} | " \
+                        f"Agent-groups: {node_info['status']['last_sync_agentgroup']['date_end']} | " \
+                        f"Agent-groups full: {node_info['status']['last_sync_full_agentgroup']['date_end']} | " \
                         f"Last keep alive: {node_info['status']['last_keep_alive']}.\n"
 
             msg2 += "        Status:\n"
@@ -197,6 +199,25 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
             msg2 += f"                Permission to synchronize agent-info: " \
                     f"{node_info['status']['sync_agent_info_free']}.\n"
 
+            # Agent groups
+            total = calculate_seconds(node_info['status']['last_sync_agentgroup']['date_start'],
+                                      node_info['status']['last_sync_agentgroup']['date_end'])
+            msg2 += "            Agents-groups:\n"
+            msg2 += f"                Last synchronization: {total} " \
+                    f"({node_info['status']['last_sync_agentgroup']['date_start']} - " \
+                    f"{node_info['status']['last_sync_agentgroup']['date_end']}).\n"
+            msg2 += f"                Number of synchronized chunks: " \
+                    f"{node_info['status']['last_sync_agentgroup']['n_synced_chunks']}.\n"
+
+            # Agent groups full
+            total = calculate_seconds(node_info['status']['last_sync_full_agentgroup']['date_start'],
+                                      node_info['status']['last_sync_full_agentgroup']['date_end'])
+            msg2 += "            Agents-groups full:\n"
+            msg2 += f"                Last synchronization: {total} " \
+                    f"({node_info['status']['last_sync_full_agentgroup']['date_start']} - " \
+                    f"{node_info['status']['last_sync_full_agentgroup']['date_end']}).\n"
+            msg2 += f"                Number of synchronized chunks: " \
+                    f"{node_info['status']['last_sync_full_agentgroup']['n_synced_chunks']}.\n"
     print(msg1)
     more and print(msg2)
 

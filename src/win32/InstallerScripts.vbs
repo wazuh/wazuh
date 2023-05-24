@@ -154,49 +154,49 @@ public function config()
         
         If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_REGISTRATION_PORT <> "" or WAZUH_REGISTRATION_PASSWORD <> "" or WAZUH_REGISTRATION_CA <> "" or WAZUH_REGISTRATION_CERTIFICATE <> "" or WAZUH_REGISTRATION_KEY <> "" or WAZUH_AGENT_NAME <> "" or WAZUH_AGENT_GROUP <> "" or ENROLLMENT_DELAY <> "" Then
             enrollment_list = "    <enrollment>" & vbCrLf
-            enrollment_list = enrollment_list & "        <enabled>yes</enabled>" & vbCrLf
+            enrollment_list = enrollment_list & "      <enabled>yes</enabled>" & vbCrLf
             enrollment_list = enrollment_list & "    </enrollment>" & vbCrLf
             enrollment_list = enrollment_list & "  </client>" & vbCrLf
 
             strText = Replace(strText, "  </client>", enrollment_list)
 
             If WAZUH_REGISTRATION_SERVER <> "" Then
-                strText = Replace(strText, "    </enrollment>", "        <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")
+                strText = Replace(strText, "    </enrollment>", "      <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")
             End If  
             
             If WAZUH_REGISTRATION_PORT <> "" Then
-                strText = Replace(strText, "    </enrollment>", "        <port>" & WAZUH_REGISTRATION_PORT & "</port>"& vbCrLf &"    </enrollment>")
+                strText = Replace(strText, "    </enrollment>", "      <port>" & WAZUH_REGISTRATION_PORT & "</port>"& vbCrLf &"    </enrollment>")
             End If
             
             If WAZUH_REGISTRATION_PASSWORD <> "" Then
                 Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
                 objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
                 objFile.Close
-                strText = Replace(strText, "    </enrollment>", "        <authorization_pass_path>authd.pass</authorization_pass_path>"& vbCrLf &"    </enrollment>")
+                strText = Replace(strText, "    </enrollment>", "      <authorization_pass_path>authd.pass</authorization_pass_path>"& vbCrLf &"    </enrollment>")
             End If
 
             If WAZUH_REGISTRATION_CA <> "" Then
-                strText = Replace(strText, "    </enrollment>", "        <server_ca_path>" & WAZUH_REGISTRATION_CA & "</server_ca_path>"& vbCrLf &"    </enrollment>")
+                strText = Replace(strText, "    </enrollment>", "      <server_ca_path>" & WAZUH_REGISTRATION_CA & "</server_ca_path>"& vbCrLf &"    </enrollment>")
             End If
 
             If WAZUH_REGISTRATION_CERTIFICATE <> "" Then
-                strText = Replace(strText, "    </enrollment>", "        <agent_certificate_path>" & WAZUH_REGISTRATION_CERTIFICATE & "</agent_certificate_path>"& vbCrLf &"    </enrollment>")
+                strText = Replace(strText, "    </enrollment>", "      <agent_certificate_path>" & WAZUH_REGISTRATION_CERTIFICATE & "</agent_certificate_path>"& vbCrLf &"    </enrollment>")
             End If
 
             If WAZUH_REGISTRATION_KEY <> "" Then
-                strText = Replace(strText, "    </enrollment>", "        <agent_key_path>" & WAZUH_REGISTRATION_KEY & "</agent_key_path>"& vbCrLf &"    </enrollment>")
+                strText = Replace(strText, "    </enrollment>", "      <agent_key_path>" & WAZUH_REGISTRATION_KEY & "</agent_key_path>"& vbCrLf &"    </enrollment>")
             End If
 
             If WAZUH_AGENT_NAME <> "" Then
-                strText = Replace(strText, "    </enrollment>", "        <agent_name>" & WAZUH_AGENT_NAME & "</agent_name>"& vbCrLf &"    </enrollment>")
+                strText = Replace(strText, "    </enrollment>", "      <agent_name>" & WAZUH_AGENT_NAME & "</agent_name>"& vbCrLf &"    </enrollment>")
             End If
 
             If WAZUH_AGENT_GROUP <> "" Then
-                strText = Replace(strText, "    </enrollment>", "        <groups>" & WAZUH_AGENT_GROUP & "</groups>"& vbCrLf &"    </enrollment>")
+                strText = Replace(strText, "    </enrollment>", "      <groups>" & WAZUH_AGENT_GROUP & "</groups>"& vbCrLf &"    </enrollment>")
             End If
 
             If ENROLLMENT_DELAY <> "" Then
-                strText = Replace(strText, "    </enrollment>", "        <delay_after_enrollment>" & ENROLLMENT_DELAY & "</delay_after_enrollment>"& vbCrLf &"    </enrollment>")
+                strText = Replace(strText, "    </enrollment>", "      <delay_after_enrollment>" & ENROLLMENT_DELAY & "</delay_after_enrollment>"& vbCrLf &"    </enrollment>")
             End If
 
         End If

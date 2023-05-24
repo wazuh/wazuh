@@ -26,10 +26,6 @@ All notable changes to this project will be documented in this file.
 - Fixed permission error when producing FIM alerts. [#14019](https://github.com/wazuh/wazuh/pull/14019)
 - Fixed memory leaks wazuh-authd. [#15164](https://github.com/wazuh/wazuh/pull/15164)
 
-### Agent
-
-#### Added
-
 - Added Audit policy change detection in FIM for Windows. [#14763](https://github.com/wazuh/wazuh/pull/14763)
 
 #### Changed
@@ -54,7 +50,98 @@ All notable changes to this project will be documented in this file.
 - The SSHD decoder has been improved to catch disconnection events. [#14138](https://github.com/wazuh/wazuh/pull/14138)
 
 
-## [v4.4.0]
+## [v4.4.2]
+
+### Manager
+
+#### Changed
+
+- Remove an unused variable in wazuh-authd to fix a _String not null terminated_ Coverity finding. ([#15957](https://github.com/wazuh/wazuh/pull/15957))
+
+#### Fixed
+
+- Fixed a bug causing agent groups tasks status in the cluster not to be stored. ([#16394](https://github.com/wazuh/wazuh/pull/16394))
+- Fixed memory leaks in Vulnerability Detector after disk failures. ([#16478](https://github.com/wazuh/wazuh/pull/16478))
+- Fixed a pre-decoder problem with the + symbol in the macOS ULS timestamp. ([#16530](https://github.com/wazuh/wazuh/pull/16530))
+
+### Agent
+
+#### Added
+
+- Added a new module to integrate with Amazon Security Lake as a subscriber. ([#16515](https://github.com/wazuh/wazuh/pull/16515))
+- Added support for `localfile` blocks deployment. ([#16847](https://github.com/wazuh/wazuh/pull/16847))
+
+#### Changed
+
+- Changed _netstat_ command on macOS agents. ([#16743](https://github.com/wazuh/wazuh/pull/16743)) 
+
+#### Fixed
+
+- Fixed an issue with MAC address reporting on Windows systems. ([#16517](https://github.com/wazuh/wazuh/pull/16517)) 
+- Fixed Windows unit tests hanging during execution. ([#16857](https://github.com/wazuh/wazuh/pull/16857))  
+
+### RESTful API
+
+#### Fixed
+
+- Fixed agent insertion when no key is specified using `POST /agents/insert` endpoint. ([#16381](https://github.com/wazuh/wazuh/pull/16381)) 
+
+### Ruleset 
+
+#### Added
+
+- Added macOS 13.0 Ventura SCA policy. ([#15566](https://github.com/wazuh/wazuh/pull/15566)) 
+- Added new ruleset for macOS 13 Ventura and older versions. ([#15567](https://github.com/wazuh/wazuh/pull/15567))
+- Added a new base ruleset for log sources collected from Amazon Security Lake. ([#16549](https://github.com/wazuh/wazuh/pull/16549))
+
+### Other
+
+#### Added
+
+- Added `pyarrow` and `numpy` Python dependencies. ([#16692](https://github.com/wazuh/wazuh/pull/16692))
+- Added `importlib-metadata` and `zipp` Python dependencies. ([#16692](https://github.com/wazuh/wazuh/pull/16692))
+
+#### Changed
+
+- Updated `Flask` Python dependency to 2.2.5. ([#17053](https://github.com/wazuh/wazuh/pull/17053))
+
+
+## [v4.4.1] - 2023-04-12
+
+### Manager
+
+#### Changed
+
+- Improve WazuhDB performance by avoiding synchronization of existing agent keys and removing deprecated agent databases from var/db/agents. ([#15883](https://github.com/wazuh/wazuh/pull/15883))
+
+#### Fixed
+
+- Reverted the addition of some mapping fields in Wazuh template causing a bug with expanded search. ([#16546](https://github.com/wazuh/wazuh/pull/16546))
+
+### RESTful API
+
+#### Changed
+
+- Changed API limits protection to allow uploading new configuration files if `limit` is not modified. ([#16541](https://github.com/wazuh/wazuh/pull/16541))
+
+### Ruleset
+
+#### Added
+
+- Added Debian Linux 11 SCA policy. ([#16017](https://github.com/wazuh/wazuh/pull/16017))
+
+#### Changed
+
+- SCA policy for Red Hat Enterprise Linux 9 rework. ([#16016](https://github.com/wazuh/wazuh/pull/16016))
+
+### Other
+
+#### Changed
+
+- Update embedded Python interpreter to 3.9.16. ([#16472](https://github.com/wazuh/wazuh/issues/16472))
+- Update setuptools to 65.5.1. ([#16492](https://github.com/wazuh/wazuh/pull/16492))
+
+## [v4.4.0] - 2023-03-28
 
 ### Manager
 
@@ -210,7 +297,6 @@ All notable changes to this project will be documented in this file.
 - Fixed an error that prevented the agent on Windows from stopping correctly. ([#15575](https://github.com/wazuh/wazuh/pull/15575))
 - Fixed Azure integration credentials link. ([#16140](https://github.com/wazuh/wazuh/pull/16140))
 
-
 #### Removed
 
 - Deprecated Azure and AWS credentials in the configuration authentication option. ([#14543](https://github.com/wazuh/wazuh/pull/14543))
@@ -338,6 +424,15 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed Makefile to detect CPU archivecture on Gentoo Linux. ([#14165](https://github.com/wazuh/wazuh/pull/14165))
+
+
+## [v4.3.11] - 2023-04-24
+
+### Manager
+
+#### Fixed
+
+- Fixed a dead code bug that might cause wazuh-db to crash. ([#16752](https://github.com/wazuh/wazuh/pull/16752))
 
 
 ## [v4.3.10] - 2022-11-16

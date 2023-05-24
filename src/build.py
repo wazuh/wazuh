@@ -105,7 +105,7 @@ def processArgs():
                         metavar="")
     parser.add_argument("--target",
                         help="Compile with a determinate target. Example: \
-                              python3 build.py -r --target <agent|\
+                              python3 build.py -r data_provider --target <agent|\
                               server|winagent>",
                         choices=utils.targetList(),
                         metavar="")
@@ -114,8 +114,17 @@ def processArgs():
                               --deleteLogs <{}>".format(utils.moduleListStr()),
                         choices=utils.moduleList(),
                         metavar="")
+    parser.add_argument("--cpus",
+                        help="Number of processors to use in the compilation process. Example: \
+                              python3 build.py -r data_provider --target agent --cpus 8",
+                              metavar="")
 
     args = parser.parse_args()
+
+    utils.initializeCpuCores()
+    if args.cpus:
+        utils.setCpuCores(args.cpus)
+
     if args.readytoreview:
         if args.target:
             run_check.runReadyToReview(moduleName=args.readytoreview,
@@ -136,7 +145,7 @@ def processArgs():
         run_check.runCppCheck(moduleName=args.cppcheck)
     elif args.asan and args.path:
         run_check.runASAN(moduleName=args.asan,
-                          testToolConfig=args.path)
+                          testToolConfig=utils.readJSONFile(jsonFilePath=args.path))
     elif args.scheck:
         run_check.runAStyleCheck(moduleName=args.scheck)
     elif args.sformat:

@@ -17,6 +17,7 @@
 #   7 - Unexpected error querying/working with objects in S3
 #   8 - Failed to decompress file
 #   9 - Failed to parse file
+#   10 - pyarrow module missing
 #   11 - Unable to connect to Wazuh
 #   12 - Invalid type of bucket
 #   13 - Unexpected error sending message to Wazuh
@@ -26,6 +27,9 @@
 #   17 - Invalid key format
 #   18 - Invalid prefix
 #   19 - The server datetime and datetime of the AWS environment differ
+#   20 - Unable to find SQS
+#   21 - Failed fetch/delete from SQS
+#   22 - Invalid region
 
 import argparse
 import configparser
@@ -39,6 +43,13 @@ try:
 except ImportError:
     print('ERROR: boto3 module is required.')
     sys.exit(4)
+
+try:
+    import pyarrow.parquet as pq
+except ImportError:
+    print('ERROR: pyarrow module is required.')
+    sys.exit(10)
+
 import botocore
 import json
 import csv
@@ -49,9 +60,7 @@ import io
 import zlib
 from os import path
 import operator
-from datetime import datetime
-from datetime import timedelta
-from datetime import timezone
+from datetime import datetime, timezone
 from time import mktime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
@@ -87,6 +96,11 @@ THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to req
                                      " check the following link to learn how to use the Retry configuration to avoid it: " \
                                      f"'{RETRY_CONFIGURATION_URL}'"
 
+ALL_REGIONS = [
+    'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2',
+    'ap-south-1', 'eu-central-1', 'eu-west-1'
+]
+
 
 ################################################################################
 # Classes
@@ -104,11 +118,13 @@ class WazuhIntegration:
     :param region: Region of service
     :param bucket: Bucket name to extract logs from
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
+    :param external_id: AWS external ID for IAM Role assumption
     """
 
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name=None, region=None, bucket=None, discard_field=None,
-                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
+                 external_id=None):
         # SQL queries
         self.sql_find_table_names = """
             SELECT
@@ -184,16 +200,20 @@ class WazuhIntegration:
                                       region=region,
                                       sts_endpoint=sts_endpoint,
                                       service_endpoint=service_endpoint,
-                                      iam_role_duration=iam_role_duration
+                                      iam_role_duration=iam_role_duration,
+                                      external_id=external_id
                                       )
 
-        # db_name is an instance variable of subclass
-        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
-        self.db_connector = sqlite3.connect(self.db_path)
-        self.db_cursor = self.db_connector.cursor()
+
+        if hasattr(self, 'db_name'):  # If db_name is present, the subclass is not part of the SecLake process
+            # db_name is an instance variable of subclass
+            self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
+            self.db_connector = sqlite3.connect(self.db_path)
+            self.db_cursor = self.db_connector.cursor()
+            self.check_metadata_version()
         if bucket:
             self.bucket = bucket
-        self.check_metadata_version()
+
         self.discard_field = discard_field
         self.discard_regex = re.compile(fr'{discard_regex}')
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
@@ -252,7 +272,7 @@ class WazuhIntegration:
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name,
                    bucket, region=None,
-                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None, external_id=None):
 
         conn_args = {}
 
@@ -281,8 +301,10 @@ class WazuhIntegration:
                 sts_client = boto_session.client('sts', endpoint_url=sts_endpoint, **self.connection_config)
 
                 assume_role_kwargs = {'RoleArn': iam_role_arn,
-                                      'RoleSessionName': 'WazuhLogParsing'
-                                      }
+                                      'RoleSessionName': 'WazuhLogParsing'}
+                if external_id:
+                    assume_role_kwargs['ExternalId'] = external_id
+
                 if iam_role_duration is not None:
                     assume_role_kwargs['DurationSeconds'] = iam_role_duration
 
@@ -299,7 +321,7 @@ class WazuhIntegration:
                 client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint,
                                              **self.connection_config)
 
-        except botocore.exceptions.ClientError as e:
+        except (botocore.exceptions.ClientError, botocore.exceptions.NoCredentialsError) as e:
             print("ERROR: Access error: {}".format(e))
             sys.exit(3)
         return client
@@ -429,6 +451,7 @@ class AWSBucket(WazuhIntegration):
     date_format : str
         The format that the service uses to store the date in the bucket's path.
     """
+    empty_bucket_message_template = "+++ No logs to process in bucket: {aws_account_id}/{aws_region}"
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
@@ -470,19 +493,6 @@ class AWSBucket(WazuhIntegration):
                 processed_date 'text' NOT NULL,
                 created_date 'integer' NOT NULL,
                 PRIMARY KEY (bucket_path, aws_account_id, aws_region, log_key));"""
-
-        self.sql_find_last_log_processed = """
-            SELECT
-                created_date
-            FROM
-                {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id AND
-                aws_region =:aws_region
-            ORDER BY
-                created_date DESC
-            LIMIT 1;"""
 
         self.sql_find_last_key_processed = """
             SELECT
@@ -613,7 +623,7 @@ class AWSBucket(WazuhIntegration):
             # if DB is empty for a region
             return None
 
-    def already_processed(self, downloaded_file, aws_account_id, aws_region):
+    def already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs):
         cursor = self.db_connector.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
             'bucket_path': self.bucket_path,
             'aws_account_id': aws_account_id,
@@ -624,7 +634,7 @@ class AWSBucket(WazuhIntegration):
     def get_creation_date(self, log_key):
         raise NotImplementedError
 
-    def mark_complete(self, aws_account_id, aws_region, log_file):
+    def mark_complete(self, aws_account_id, aws_region, log_file, **kwargs):
         if not self.reparse:
             try:
                 self.db_connector.execute(self.sql_mark_complete.format(table_name=self.db_table_name), {
@@ -745,8 +755,8 @@ class AWSBucket(WazuhIntegration):
 
         except KeyError:
             print(
-                f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of the logs for the bucket "
-                f"type '{get_script_arguments().type.lower()}'")
+                f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of the"
+                f" logs for the bucket type '{get_script_arguments().type.lower()}'")
             sys.exit(18)
 
     def find_regions(self, account_id):
@@ -769,7 +779,7 @@ class AWSBucket(WazuhIntegration):
                 debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
                 sys.exit(1)
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter=''):
+    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter='', **kwargs):
         filter_marker = ''
         last_key = None
         if self.reparse:
@@ -783,7 +793,8 @@ class AWSBucket(WazuhIntegration):
                     'bucket_path': self.bucket_path,
                     'aws_region': aws_region,
                     'prefix': f'{self.prefix}%',
-                    'aws_account_id': aws_account_id
+                    'aws_account_id': aws_account_id,
+                    **kwargs
                 })
             try:
                 filter_marker = query_last_key.fetchone()[0]
@@ -991,7 +1002,7 @@ class AWSBucket(WazuhIntegration):
 
         def _event_should_be_skipped(event_):
             return self.discard_field and self.discard_regex \
-                   and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
+                and _check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
@@ -1004,18 +1015,36 @@ class AWSBucket(WazuhIntegration):
 
                 self.send_event(event_msg)
 
-    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
+    def _print_no_logs_to_process_message(self, bucket, aws_account_id, aws_region, **kwargs):
+        if aws_account_id is not None and aws_region is not None:
+            message_args = {
+                'aws_account_id': aws_account_id, 'aws_region': aws_region, **kwargs
+            }
+        else:
+            message_args = {'bucket': bucket}
+
+        debug(self.empty_bucket_message_template.format(**message_args), 1)
+
+    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None, **kwargs):
+        if aws_account_id is None:
+            aws_account_id = self.aws_account_id
+
         try:
-            bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
+            bucket_files = self.client.list_objects_v2(
+                **self.build_s3_filter_args(aws_account_id, aws_region, **kwargs)
+            )
             if self.reparse:
                 debug('++ Reparse mode enabled', 2)
 
             while True:
                 if 'Contents' not in bucket_files:
-                    debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region, **kwargs)
                     return
 
+                processed_logs = 0
+
                 for bucket_file in bucket_files['Contents']:
+
                     if not bucket_file['Key']:
                         continue
 
@@ -1031,7 +1060,7 @@ class AWSBucket(WazuhIntegration):
                             debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
                             continue
 
-                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
+                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, **kwargs):
                         if self.reparse:
                             debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
                         else:
@@ -1046,10 +1075,16 @@ class AWSBucket(WazuhIntegration):
                     if self.delete_file:
                         debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                    self.mark_complete(aws_account_id, aws_region, bucket_file)
+                    self.mark_complete(aws_account_id, aws_region, bucket_file, **kwargs)
+                    processed_logs += 1
+
+                # This is a workaround in order to work with custom buckets that don't have
+                # base prefix to search the logs
+                if processed_logs == 0:
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region, **kwargs)
 
                 if bucket_files['IsTruncated']:
-                    new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
+                    new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True, **kwargs)
                     new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
                     bucket_files = self.client.list_objects_v2(**new_s3_args)
                 else:
@@ -1229,63 +1264,6 @@ class AWSConfigBucket(AWSLogsBucket):
         self._leading_zero_regex = re.compile(r'/(0)(?P<num>\d)')
         self._extract_date_regex = re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
 
-    def get_days_since_today(self, date):
-        date = datetime.strptime(date, "%Y%m%d")
-        # it is necessary to add one day for processing the current day
-        delta = datetime.utcnow() - date + timedelta(days=1)
-
-        return delta.days
-
-    def get_date_list(self, aws_account_id, aws_region):
-        num_days = self.get_days_since_today(self.get_date_last_log(aws_account_id, aws_region))
-        date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, num_days)]
-
-        return [datetime.strftime(date, "%Y/%-m/%-d") for date in reversed(date_list_time)]
-
-    def get_date_last_log(self, aws_account_id, aws_region):
-        if self.reparse:
-            last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after else \
-                self.default_date.strftime('%Y%m%d')
-        else:
-            try:
-                query_date_last_log = self.db_connector.execute(
-                    self.sql_find_last_log_processed.format(table_name=self.db_table_name), {
-                        'bucket_path': self.bucket_path,
-                        'aws_account_id': aws_account_id,
-                        'aws_region': aws_region,
-                        'prefix': self.prefix})
-                # query returns an integer
-                db_date = str(query_date_last_log.fetchone()[0])
-                if self.only_logs_after:
-                    last_date_processed = db_date if datetime.strptime(db_date, '%Y%m%d') > self.only_logs_after else \
-                        datetime.strftime(self.only_logs_after, '%Y%m%d')
-                else:
-                    last_date_processed = db_date
-            # if DB is empty
-            except (TypeError, IndexError):
-                last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after \
-                    else self.default_date.strftime('%Y%m%d')
-        return last_date_processed
-
-    def iter_regions_and_accounts(self, account_id, regions):
-        # AWS Config needs to process files day by day
-        if not account_id:
-            # No accounts provided, so find which exist in s3 bucket
-            account_id = self.find_account_ids()
-        for aws_account_id in account_id:
-            # No regions provided, so find which exist for this AWS account
-            if not regions:
-                regions = self.find_regions(aws_account_id)
-                if regions == []:
-                    continue
-            for aws_region in regions:
-                debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
-                # for processing logs day by day
-                date_list = self.get_date_list(aws_account_id, aws_region)
-                for date in date_list:
-                    self.iter_files_in_bucket(aws_account_id, aws_region, date)
-                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
-
     def _format_created_date(self, date: str) -> str:
         """
         Return a date with the format used by the created_date field of the database.
@@ -1371,133 +1349,6 @@ class AWSConfigBucket(AWSLogsBucket):
         return self._remove_padding_zeros_from_marker(AWSBucket.marker_custom_date(self, aws_region, aws_account_id,
                                                                                    date))
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, date, iterating=False):
-        filter_marker = ''
-        if self.reparse:
-            filter_marker = self.marker_custom_date(aws_region, aws_account_id,
-                                                    datetime.strptime(date, self.date_format))
-        else:
-            created_date = self._format_created_date(date)
-            query_last_key_of_day = self.db_connector.execute(
-                self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name), {
-                    'bucket_path': self.bucket_path,
-                    'aws_account_id': aws_account_id,
-                    'aws_region': aws_region,
-                    'created_date': created_date,
-                    'prefix': self.prefix})
-            try:
-                filter_marker = query_last_key_of_day.fetchone()[0]
-            except (TypeError, IndexError) as e:
-                # if DB is empty for a region
-                filter_marker = self.get_full_prefix(aws_account_id, aws_region) + date
-
-        # for getting only logs of the current date
-        config_prefix = self.get_full_prefix(aws_account_id, aws_region) + date + '/'
-
-        filter_args = {
-            'Bucket': self.bucket,
-            'MaxKeys': 1000,
-            'Prefix': config_prefix
-        }
-
-        # if nextContinuationToken is not used for processing logs in a bucket
-        if not iterating:
-            try:
-                extracted_date = self._extract_date_regex.search(filter_marker).group(0)
-                filter_marker_date = datetime.strptime(extracted_date, self.date_format)
-            except AttributeError:
-                print(f"ERROR: There was an error while trying to extract a date from the file key '{filter_marker}'")
-                sys.exit(16)
-            else:
-                if not self.only_logs_after or self.only_logs_after < filter_marker_date:
-                    filter_args['StartAfter'] = filter_marker
-                else:
-                    filter_args['StartAfter'] = self.marker_only_logs_after(aws_region, aws_account_id)
-
-                debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
-
-        return filter_args
-
-    def iter_files_in_bucket(self, aws_account_id, aws_region, date):
-        try:
-            bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region, date))
-
-            if 'Contents' not in bucket_files:
-                debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
-                return
-
-            for bucket_file in bucket_files['Contents']:
-                if not bucket_file['Key']:
-                    continue
-
-                if bucket_file['Key'][-1] == '/':
-                    # The file is a folder
-                    continue
-
-                if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
-                    if self.reparse:
-                        debug("++ File previously processed, but reparse flag set: {file}".format(
-                            file=bucket_file['Key']), 1)
-                    else:
-                        debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                        continue
-
-                debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                # Get the log file from S3 and decompress it
-                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                # Remove file from S3 Bucket
-                if self.delete_file:
-                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                self.mark_complete(aws_account_id, aws_region, bucket_file)
-            # Iterate if there are more logs
-            while bucket_files['IsTruncated']:
-                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, date, True)
-                new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
-                bucket_files = self.client.list_objects_v2(**new_s3_args)
-
-                if 'Contents' not in bucket_files:
-                    debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
-                    return
-
-                for bucket_file in bucket_files['Contents']:
-                    if not bucket_file['Key']:
-                        continue
-
-                    if bucket_file['Key'][-1] == '/':
-                        # The file is a folder
-                        continue
-
-                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
-                        if self.reparse:
-                            debug("++ File previously processed, but reparse flag set: {file}".format(
-                                file=bucket_file['Key']), 1)
-                        else:
-                            debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                            continue
-                    debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                    # Get the log file from S3 and decompress it
-                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                    # Remove file from S3 Bucket
-                    if self.delete_file:
-                        debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                    self.mark_complete(aws_account_id, aws_region, bucket_file)
-
-        except botocore.exceptions.ClientError as err:
-            debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
-            sys.exit(16)
-
-        except Exception as err:
-            if hasattr(err, 'message'):
-                debug("+++ Unexpected error: {}".format(err.message), 2)
-            else:
-                debug("+++ Unexpected error: {}".format(err), 2)
-            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
-            sys.exit(7)
-
     def reformat_msg(self, event):
         AWSBucket.reformat_msg(self, event)
         if 'configuration' in event['aws']:
@@ -1580,6 +1431,10 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     """
     Represents a bucket with AWS VPC logs
     """
+    empty_bucket_message_template = (
+        "+++ No logs to process for {flow_log_id} flow log ID in bucket: {aws_account_id}/{aws_region}"
+    )
+    empty_bucket_message_template_without_log_id = "+++ No logs to process in bucket: {aws_account_id}/{aws_region}"
 
     def __init__(self, **kwargs):
         self.db_table_name = 'vpcflow'
@@ -1630,7 +1485,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 created_date 'integer' NOT NULL,
                 PRIMARY KEY (bucket_path, aws_account_id, aws_region, flow_log_id, log_key));"""
 
-        self.sql_find_last_key_processed_of_day = """
+        self.sql_find_last_key_processed = """
             SELECT
                 log_key
             FROM
@@ -1640,21 +1495,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 aws_account_id=:aws_account_id AND
                 aws_region = :aws_region AND
                 flow_log_id = :flow_log_id AND
-                created_date = :created_date
-            ORDER BY
-                log_key DESC
-            LIMIT 1;"""
-
-        self.sql_get_date_last_log_processed = """
-            SELECT
-                created_date
-            FROM
-                {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id AND
-                aws_region = :aws_region AND
-                flow_log_id = :flow_log_id
+                log_key LIKE :prefix
             ORDER BY
                 log_key DESC
             LIMIT 1;"""
@@ -1722,6 +1563,9 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         boto_session = boto3.Session(**conn_args)
 
+        if region not in ALL_REGIONS:
+            raise ValueError(f"Invalid region '{region}'")
+
         try:
             ec2_client = boto_session.client(service_name='ec2', **self.connection_config)
         except Exception as e:
@@ -1730,11 +1574,19 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         return ec2_client
 
-    def get_flow_logs_ids(self, access_key, secret_key, region, profile_name=None):
-        ec2_client = self.get_ec2_client(access_key, secret_key, region,
-                                         profile_name=profile_name)
-        flow_logs_ids = list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
-        return flow_logs_ids
+    def get_flow_logs_ids(self, access_key, secret_key, region, account_id, profile_name=None):
+        try:
+            ec2_client = self.get_ec2_client(access_key, secret_key, region, profile_name=profile_name)
+            return list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
+        except ValueError:
+            debug(
+                self.empty_bucket_message_template_without_log_id.format(aws_account_id=account_id, aws_region=region),
+                msg_level=1
+            )
+            debug(
+                f"+++ WARNING: Check the provided region: '{region}'. It's an invalid one.", msg_level=1
+            )
+            return []
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region, flow_log_id):
         cursor = self.db_connector.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
@@ -1744,42 +1596,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             'flow_log_id': flow_log_id,
             'log_key': downloaded_file})
         return cursor.fetchone()[0] > 0
-
-    def get_days_since_today(self, date):
-        date = datetime.strptime(date, "%Y%m%d")
-        # it is necessary to add one day for processing the current day
-        delta = datetime.utcnow() - date + timedelta(days=1)
-        return delta.days
-
-    def get_date_list(self, aws_account_id, aws_region, flow_log_id):
-        num_days = self.get_days_since_today(self.get_date_last_log(aws_account_id, aws_region, flow_log_id))
-        date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, num_days)]
-        return [datetime.strftime(date, self.date_format) for date in reversed(date_list_time)]
-
-    def get_date_last_log(self, aws_account_id, aws_region, flow_log_id):
-        last_date_processed = self.only_logs_after.strftime('%Y%m%d') if \
-            self.only_logs_after and self.reparse else None
-
-        if not last_date_processed:
-            try:
-                query_date_last_log = self.db_connector.execute(
-                    self.sql_get_date_last_log_processed.format(table_name=self.db_table_name), {
-                        'bucket_path': self.bucket_path,
-                        'aws_account_id': aws_account_id,
-                        'aws_region': aws_region,
-                        'flow_log_id': flow_log_id})
-                # query returns an integer
-                db_date = str(query_date_last_log.fetchone()[0])
-                if self.only_logs_after:
-                    last_date_processed = db_date if datetime.strptime(db_date, '%Y%m%d') > self.only_logs_after else \
-                        datetime.strftime(self.only_logs_after, '%Y%m%d')
-                else:
-                    last_date_processed = db_date
-            # if DB is empty
-            except (TypeError, IndexError) as e:
-                last_date_processed = self.only_logs_after.strftime('%Y%m%d') if self.only_logs_after \
-                    else self.default_date.strftime('%Y%m%d')
-        return last_date_processed
 
     def iter_regions_and_accounts(self, account_id, regions):
         if not account_id:
@@ -1794,14 +1610,12 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             for aws_region in regions:
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # get flow log ids for the current region
-                flow_logs_ids = self.get_flow_logs_ids(self.access_key,
-                                                       self.secret_key,
-                                                       aws_region, profile_name=self.profile_name)
+                flow_logs_ids = self.get_flow_logs_ids(
+                    self.access_key, self.secret_key, aws_region, aws_account_id, profile_name=self.profile_name
+                )
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
-                    date_list = self.get_date_list(aws_account_id, aws_region, flow_log_id)
-                    for date in date_list:
-                        self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
+                    self.iter_files_in_bucket(aws_account_id, aws_region, flow_log_id=flow_log_id)
                     self.db_maintenance(aws_account_id, aws_region, flow_log_id)
 
     def db_count_region(self, aws_account_id, aws_region, flow_log_id):
@@ -1838,128 +1652,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
-               + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
-
-    def build_s3_filter_args(self, aws_account_id, aws_region, date, flow_log_id, iterating=False):
-        filter_marker = ''
-        if self.reparse:
-            filter_marker = self.marker_custom_date(aws_region, aws_account_id,
-                                                    datetime.strptime(date, self.date_format))
-        else:
-            query_last_key_of_day = self.db_connector.execute(
-                self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name), {
-                    'bucket_path': self.bucket_path,
-                    'aws_account_id': aws_account_id,
-                    'aws_region': aws_region,
-                    'flow_log_id': flow_log_id,
-                    'created_date': int(date.replace('/', ''))})
-            try:
-                filter_marker = query_last_key_of_day.fetchone()[0]
-            except (TypeError, IndexError) as e:
-                # if DB is empty for a region
-                filter_marker = self.get_full_prefix(aws_account_id, aws_region) + date
-
-        vpc_prefix = self.get_vpc_prefix(aws_account_id, aws_region, date, flow_log_id)
-        filter_args = {
-            'Bucket': self.bucket,
-            'MaxKeys': 1000,
-            'Prefix': vpc_prefix
-        }
-
-        # if nextContinuationToken is not used for processing logs in a bucket
-        if not iterating:
-            filter_args['StartAfter'] = filter_marker
-            if self.only_logs_after:
-                only_logs_marker = self.marker_only_logs_after(aws_region, aws_account_id)
-                filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
-            debug(f'+++ Marker: {filter_args.get("StartAfter")}', 2)
-
-        return filter_args
-
-    def iter_files_in_bucket(self, aws_account_id, aws_region, date, flow_log_id):
-        try:
-            bucket_files = self.client.list_objects_v2(
-                **self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id))
-
-            if 'Contents' not in bucket_files:
-                debug("+++ No logs to process for {} flow log ID in bucket: {}/{}".format(flow_log_id,
-                                                                                          aws_account_id, aws_region),
-                      1)
-                return
-
-            for bucket_file in bucket_files['Contents']:
-                if not bucket_file['Key']:
-                    continue
-
-                if bucket_file['Key'][-1] == '/':
-                    # The file is a folder
-                    continue
-
-                if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
-                    if self.reparse:
-                        debug("++ File previously processed, but reparse flag set: {file}".format(
-                            file=bucket_file['Key']), 1)
-                    else:
-                        debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                        continue
-
-                debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                # Get the log file from S3 and decompress it
-                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                # Remove file from S3 Bucket
-                if self.delete_file:
-                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
-            # Iterate if there are more logs
-            while bucket_files['IsTruncated']:
-                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id, True)
-                new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
-                bucket_files = self.client.list_objects_v2(**new_s3_args)
-
-                if 'Contents' not in bucket_files:
-                    debug("+++ No logs to process for {} flow log ID in bucket: {}/{}".format(flow_log_id,
-                                                                                              aws_account_id,
-                                                                                              aws_region), 1)
-                    return
-
-                for bucket_file in bucket_files['Contents']:
-                    if not bucket_file['Key']:
-                        continue
-
-                    if bucket_file['Key'][-1] == '/':
-                        # The file is a folder
-                        continue
-
-                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
-                        if self.reparse:
-                            debug("++ File previously processed, but reparse flag set: {file}".format(
-                                file=bucket_file['Key']), 1)
-                        else:
-                            debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                            continue
-                    debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                    # Get the log file from S3 and decompress it
-                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                    # Remove file from S3 Bucket
-                    if self.delete_file:
-                        debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                    self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
-
-        except botocore.exceptions.ClientError as err:
-            debug(f'ERROR: The "iter_files_in_bucket" request failed: {err}', 1)
-            sys.exit(16)
-
-        except Exception as err:
-            if hasattr(err, 'message'):
-                debug("+++ Unexpected error: {}".format(err.message), 2)
-            else:
-                debug("+++ Unexpected error: {}".format(err), 2)
-            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
-            sys.exit(7)
+            + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
 
     def mark_complete(self, aws_account_id, aws_region, log_file, flow_log_id):
         if self.reparse:
@@ -1981,6 +1674,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
 
 class AWSCustomBucket(AWSBucket):
+
+    empty_bucket_message_template = "+++ No logs to process in bucket: {bucket}"
 
     def __init__(self, db_table_name=None, **kwargs):
         # only special services have a different DB table
@@ -2032,18 +1727,6 @@ class AWSCustomBucket(AWSBucket):
                 processed_date 'text' NOT NULL,
                 created_date 'integer' NOT NULL,
                 PRIMARY KEY (bucket_path, aws_account_id, log_key));"""
-
-        self.sql_find_last_log_processed = """
-            SELECT
-                created_date
-            FROM
-                {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id
-            ORDER BY
-                created_date DESC
-            LIMIT 1;"""
 
         self.sql_find_last_key_processed = """
             SELECT
@@ -2185,7 +1868,7 @@ class AWSCustomBucket(AWSBucket):
         return cursor.fetchone()[0] > 0
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
-        AWSBucket.mark_complete(self, self.aws_account_id, aws_region, log_file)
+        AWSBucket.mark_complete(self, aws_account_id or self.aws_account_id, aws_region, log_file)
 
     def db_count_custom(self, aws_account_id=None):
         """Counts the number of rows in DB for a region
@@ -2221,14 +1904,15 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         self.service = 'GuardDuty'
         if self.check_guardduty_type():
             self.type = "GuardDutyNative"
+            self.empty_bucket_message_template = AWSBucket.empty_bucket_message_template
         else:
             self.type = "GuardDutyKinesis"
 
     def check_guardduty_type(self):
         try:
             return \
-                'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
-                                                                Delimiter='/', MaxKeys=1)
+                    'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
+                                                                    Delimiter='/', MaxKeys=1)
         except Exception as err:
             if hasattr(err, 'message'):
                 debug(f"+++ Unexpected error: {err.message}", 2)
@@ -2397,6 +2081,8 @@ class AWSWAFBucket(AWSCustomBucket):
 class AWSLBBucket(AWSCustomBucket):
     """Class that has common methods unique to the load balancers."""
 
+    empty_bucket_message_template = AWSBucket.empty_bucket_message_template
+
     def __init__(self, *args, **kwargs):
         self.service = 'elasticloadbalancing'
         AWSCustomBucket.__init__(self, *args, **kwargs)
@@ -2538,13 +2224,18 @@ class AWSServerAccess(AWSCustomBucket):
         return False
 
     def iter_files_in_bucket(self, aws_account_id: str = None, aws_region: str = None):
+        if aws_account_id is None:
+            aws_account_id = self.aws_account_id
+
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region,
                                                                                    custom_delimiter='-'))
             while True:
                 if 'Contents' not in bucket_files:
-                    debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region)
                     return
+
+                processed_logs = 0
 
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
@@ -2586,6 +2277,10 @@ class AWSServerAccess(AWSCustomBucket):
                         debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
+                    processed_logs += 1
+
+                if processed_logs == 0:
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region)
 
                 if bucket_files['IsTruncated']:
                     new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
@@ -2623,8 +2318,8 @@ class AWSServerAccess(AWSCustomBucket):
     def check_bucket(self):
         """Check if the bucket is empty or the credentials are wrong."""
         try:
-            bucket_objects = self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/')
-            if not 'CommonPrefixes' in bucket_objects and not bucket_objects['Contents']:
+            bucket_objects = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/')
+            if not 'CommonPrefixes' in bucket_objects and not 'Contents' in bucket_objects:
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
         except botocore.exceptions.ClientError as error:
@@ -2803,6 +2498,11 @@ class AWSService(WazuhIntegration):
                                                  '%Y-%m-%dT%H:%M:%SZ')
 
         return {'integration': 'aws', 'aws': msg}
+
+    @staticmethod
+    def check_region(region: str) -> None:
+        if region not in ALL_REGIONS:
+            raise ValueError(f"Invalid region '{region}'")
 
 
 class AWSInspector(AWSService):
@@ -3415,6 +3115,377 @@ class AWSCloudWatchLogs(AWSService):
                 'aws_log_stream': log_stream})
 
 
+class AWSSLSubscriberBucket(WazuhIntegration):
+    """
+    Class for processing AWS Security Lake events from S3.
+
+    Attributes
+    ----------
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    aws_profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role.
+    """
+
+    def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None,
+                 service_endpoint: str = None, sts_endpoint: str = None, **kwargs):
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, aws_profile=aws_profile,
+                                  service_name='s3', service_endpoint=service_endpoint, sts_endpoint=sts_endpoint,
+                                  **kwargs)
+
+    def obtain_information_from_parquet(self, bucket_path: str, parquet_path: str) -> list:
+        """Fetch a parquet file from a bucket and obtain a list of the events it contains.
+
+        Parameters
+        ----------
+        bucket_path : str
+            Path of the bucket to get the parquet file from.
+        parquet_path : str
+            Relative path of the parquet file inside the bucket.
+
+        Returns
+        -------
+        events : list
+            Events contained inside the parquet file.
+        """
+        debug(f'Processing file {parquet_path} in {bucket_path}', 2)
+        events = []
+        try:
+            raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket_path, Key=parquet_path)['Body'].read())
+        except Exception as e:
+            debug(f'Could not get the parquet file {parquet_path} in {bucket_path}: {e}', 1)
+            sys.exit(21)
+        pfile = pq.ParquetFile(raw_parquet)
+        for i in pfile.iter_batches():
+            for j in i.to_pylist():
+                events.append(json.dumps(j))
+        debug(f'Found {len(events)} events in file {parquet_path}', 2)
+        return events
+
+    def process_file(self, message: dict) -> None:
+        """Parse an SQS message, obtain the events associated, and send them to Analysisd.
+
+        Parameters
+        ----------
+        message : dict
+            An SQS message received from the queue.
+        """
+        events_in_file = self.obtain_information_from_parquet(bucket_path=message['bucket_path'],
+                                                              parquet_path=message['parquet_path'])
+        for event in events_in_file:
+            self.send_msg(event, dump_json=False)
+        debug(f'{len(events_in_file)} events sent to Analysisd', 2)
+
+
+class AWSSQSQueue(WazuhIntegration):
+    """
+    Class for getting AWS SQS Queue notifications.
+
+    Attributes
+    ----------
+    name: str
+        Name of the SQS Queue.
+    iam_role_arn : str
+        IAM Role.
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    external_id : str
+        The name of the External ID to use.
+    sts_endpoint : str
+        URL for the VPC endpoint to use to obtain the STS token.
+    service_endpoint : str
+        URL for the endpoint to use to obtain the logs.
+    """
+
+    def __init__(self, name: str, iam_role_arn: str, access_key: str = None, secret_key: str = None,
+                 external_id: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
+        self.sqs_name = name
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, iam_role_arn=iam_role_arn,
+                                  aws_profile=None, external_id=external_id, service_name='sqs',
+                                  sts_endpoint=sts_endpoint,
+                                  **kwargs)
+        self.sts_client = self.get_sts_client(access_key, secret_key)
+        self.account_id = self.sts_client.get_caller_identity().get('Account')
+        self.sqs_url = self._get_sqs_url()
+        self.iam_role_arn = iam_role_arn
+        self.asl_bucket_handler = AWSSLSubscriberBucket(external_id=external_id,
+                                                        iam_role_arn=self.iam_role_arn,
+                                                        service_endpoint=service_endpoint,
+                                                        sts_endpoint=sts_endpoint)
+
+    def _get_sqs_url(self) -> str:
+        """Get the URL of the AWS SQS queue
+
+        Returns
+        -------
+        url : str
+            The URL of the AWS SQS queue
+        """
+        try:
+            url = self.client.get_queue_url(QueueName=self.sqs_name,
+                                            QueueOwnerAWSAccountId=self.account_id)['QueueUrl']
+            debug(f'The SQS queue is: {url}', 2)
+            return url
+        except botocore.exceptions.ClientError:
+            print('ERROR: Queue does not exist, verify the given name')
+            sys.exit(20)
+
+    def delete_message(self, message: dict) -> None:
+        """Delete message from the SQS queue.
+
+        Parameters
+        ----------
+        message : dict
+            An SQS message recieved from the queue
+        """
+        try:
+            self.client.delete_message(QueueUrl=self.sqs_url, ReceiptHandle=message["handle"])
+            debug(f'Message deleted from: {self.sqs_name}', 2)
+        except Exception as e:
+            debug(f'ERROR: Error deleting message from SQS: {e}', 1)
+            sys.exit(21)
+
+    def fetch_messages(self) -> dict:
+        """Retrieves one or more messages (up to 10), from the specified queue.
+
+        Returns
+        -------
+        dict
+            A dictionary with a list of messages from the SQS queue.
+        """
+        try:
+            debug(f'Retrieving messages from: {self.sqs_name}', 2)
+            return self.client.receive_message(QueueUrl=self.sqs_url, AttributeNames=['All'],
+                                               MaxNumberOfMessages=10, MessageAttributeNames=['All'],
+                                               WaitTimeSeconds=20)
+        except Exception as e:
+            debug(f'ERROR: Error receiving message from SQS: {e}', 1)
+            sys.exit(21)
+
+    def get_messages(self) -> list:
+        """Retrieve parsed messages from the SQS queue.
+
+        Returns
+        -------
+        messages : list
+            Parsed messages from the SQS queue.
+        """
+        messages = []
+        sqs_raw_messages = self.fetch_messages()
+        sqs_messages = sqs_raw_messages.get('Messages', [])
+        for mesg in sqs_messages:
+            body = mesg['Body']
+            msg_handle = mesg["ReceiptHandle"]
+            message = json.loads(body)
+            parquet_path = message["detail"]["object"]["key"]
+            bucket_path = message["detail"]["bucket"]["name"]
+            messages.append({"parquet_path": parquet_path, "bucket_path": bucket_path,
+                             "handle": msg_handle})
+        return messages
+
+    def sync_events(self) -> None:
+        """
+        Get messages from the SQS queue, parse their events, send them to AnalysisD, and delete them from the queue.
+        """
+        messages = self.get_messages()
+        while messages:
+            for message in messages:
+                self.asl_bucket_handler.process_file(message)
+                self.delete_message(message)
+            messages = self.get_messages()
+
+
+class AWSSLSubscriberBucket(WazuhIntegration):
+    """
+    Class for processing AWS Security Lake events from S3.
+
+    Attributes
+    ----------
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    aws_profile : str
+        AWS profile.
+    iam_role_arn : str
+        IAM Role.
+    """
+
+    def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None,
+                 service_endpoint: str = None, sts_endpoint: str = None, **kwargs):
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, aws_profile=aws_profile,
+                                  service_name='s3', service_endpoint=service_endpoint, sts_endpoint=sts_endpoint,
+                                  **kwargs)
+
+    def obtain_information_from_parquet(self, bucket_path: str, parquet_path: str) -> list:
+        """Fetch a parquet file from a bucket and obtain a list of the events it contains.
+
+        Parameters
+        ----------
+        bucket_path : str
+            Path of the bucket to get the parquet file from.
+        parquet_path : str
+            Relative path of the parquet file inside the bucket.
+
+        Returns
+        -------
+        events : list
+            Events contained inside the parquet file.
+        """
+        debug(f'Processing file {parquet_path} in {bucket_path}', 2)
+        events = []
+        try:
+            raw_parquet = io.BytesIO(self.client.get_object(Bucket=bucket_path, Key=parquet_path)['Body'].read())
+        except Exception as e:
+            debug(f'Could not get the parquet file {parquet_path} in {bucket_path}: {e}', 1)
+            sys.exit(21)
+        pfile = pq.ParquetFile(raw_parquet)
+        for i in pfile.iter_batches():
+            for j in i.to_pylist():
+                events.append(json.dumps(j))
+        debug(f'Found {len(events)} events in file {parquet_path}', 2)
+        return events
+
+    def process_file(self, message: dict) -> None:
+        """Parse an SQS message, obtain the events associated, and send them to Analysisd.
+        
+        Parameters
+        ----------
+        message : dict
+            An SQS message received from the queue.
+        """
+        events_in_file = self.obtain_information_from_parquet(bucket_path=message['bucket_path'],
+                                                              parquet_path=message['parquet_path'])
+        for event in events_in_file:
+            self.send_msg(event, dump_json=False)
+        debug(f'{len(events_in_file)} events sent to Analysisd', 2)
+
+
+class AWSSQSQueue(WazuhIntegration):
+    """
+    Class for getting AWS SQS Queue notifications.
+
+    Attributes
+    ----------
+    name: str
+        Name of the SQS Queue.
+    iam_role_arn : str
+        IAM Role.
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
+    external_id : str
+        The name of the External ID to use.
+    sts_endpoint : str
+        URL for the VPC endpoint to use to obtain the STS token.
+    service_endpoint : str
+        URL for the endpoint to use to obtain the logs.
+    """
+
+    def __init__(self, name: str, iam_role_arn: str, access_key: str = None, secret_key: str = None,
+                 external_id: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
+        self.sqs_name = name
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key, iam_role_arn = iam_role_arn,
+                                  aws_profile=None, external_id=external_id, service_name='sqs', sts_endpoint=sts_endpoint,
+                                  **kwargs)
+        self.sts_client = self.get_sts_client(access_key, secret_key)
+        self.account_id = self.sts_client.get_caller_identity().get('Account')
+        self.sqs_url = self._get_sqs_url()
+        self.iam_role_arn = iam_role_arn
+        self.asl_bucket_handler = AWSSLSubscriberBucket(external_id=external_id,
+                                                        iam_role_arn=self.iam_role_arn,
+                                                        service_endpoint=service_endpoint,
+                                                        sts_endpoint=sts_endpoint)
+
+    def _get_sqs_url(self) -> str:
+        """Get the URL of the AWS SQS queue
+
+        Returns
+        -------
+        url : str
+            The URL of the AWS SQS queue
+        """
+        try:
+            url = self.client.get_queue_url(QueueName=self.sqs_name,
+                                            QueueOwnerAWSAccountId=self.account_id)['QueueUrl']
+            debug(f'The SQS queue is: {url}', 2)
+            return url
+        except botocore.exceptions.ClientError:
+            print('ERROR: Queue does not exist, verify the given name')
+            sys.exit(20)
+
+    def delete_message(self, message: dict) -> None:
+        """Delete message from the SQS queue.
+
+        Parameters
+        ----------
+        message : dict
+            An SQS message recieved from the queue
+        """
+        try:
+            self.client.delete_message(QueueUrl=self.sqs_url, ReceiptHandle=message["handle"])
+            debug(f'Message deleted from: {self.sqs_name}', 2)
+        except Exception as e:
+            debug(f'ERROR: Error deleting message from SQS: {e}', 1)
+            sys.exit(21)
+
+    def fetch_messages(self) -> dict:
+        """Retrieves one or more messages (up to 10), from the specified queue.
+
+        Returns
+        -------
+        dict
+            A dictionary with a list of messages from the SQS queue.
+        """
+        try:
+            debug(f'Retrieving messages from: {self.sqs_name}', 2)
+            return self.client.receive_message(QueueUrl=self.sqs_url, AttributeNames=['All'],
+                                               MaxNumberOfMessages=10, MessageAttributeNames=['All'],
+                                               WaitTimeSeconds=20)
+        except Exception as e:
+            debug(f'ERROR: Error receiving message from SQS: {e}', 1)
+            sys.exit(21)
+
+    def get_messages(self) -> list:
+        """Retrieve parsed messages from the SQS queue.
+
+        Returns
+        -------
+        messages : list
+            Parsed messages from the SQS queue.
+        """
+        messages = []
+        sqs_raw_messages = self.fetch_messages()
+        sqs_messages = sqs_raw_messages.get('Messages', [])
+        for mesg in sqs_messages:
+            body = mesg['Body']
+            msg_handle = mesg["ReceiptHandle"]
+            message = json.loads(body)
+            parquet_path = message["detail"]["object"]["key"]
+            bucket_path = message["detail"]["bucket"]["name"]
+            messages.append({"parquet_path": parquet_path, "bucket_path": bucket_path,
+                             "handle": msg_handle})
+        return messages
+
+    def sync_events(self) -> None:
+        """
+        Get messages from the SQS queue, parse their events, send them to AnalysisD, and delete them from the queue.
+        """
+        messages = self.get_messages()
+        while messages:
+            for message in messages:
+                self.asl_bucket_handler.process_file(message)
+                self.delete_message(message)
+            messages = self.get_messages()
+
+
 ################################################################################
 # Functions
 ################################################################################
@@ -3438,10 +3509,24 @@ def arg_valid_date(arg_string):
         raise argparse.ArgumentTypeError("Argument not a valid date in format YYYY-MMM-DD: '{0}'.".format(arg_string))
 
 
-def arg_valid_prefix(arg_string):
-    if arg_string and arg_string[-1] != '/' and arg_string[-1] != "\\":
+def arg_valid_key(arg_string, append_slash=True):
+    CHARACTERS_TO_AVOID = "\\{}^%`[]'\"<>~#|"
+    XML_CONSTRAINTS = ["&apos;", "&quot;", "&amp;", "&lt;", "&gt;", "&#13;", "&#10;"]
+
+    # Validate against the naming guidelines https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html
+    if any([char in arg_string for char in list(CHARACTERS_TO_AVOID) + XML_CONSTRAINTS]):
+        raise argparse.ArgumentTypeError(
+            f"'{arg_string}' has an invalid character."
+            f" Avoid to use '{CHARACTERS_TO_AVOID}' or '{''.join(XML_CONSTRAINTS)}'."
+        )
+
+    if append_slash and arg_string and arg_string[-1] != '/':
         return '{arg_string}/'.format(arg_string=arg_string)
     return arg_string
+
+
+def aws_logs_groups_valid_key(arg_string):
+    return arg_valid_key(arg_string, append_slash=False)
 
 
 def arg_valid_accountid(arg_string):
@@ -3462,8 +3547,14 @@ def arg_valid_regions(arg_string):
     final_regions = []
     regions = arg_string.split(',')
     for arg_region in regions:
+        if not re.match(r'^([a-z]{2}(-gov)?)-([a-z]{4,7})-\d$', arg_region):
+            raise argparse.ArgumentTypeError(
+                f"WARNING: The region '{arg_region}' has not a valid format.'"
+            )
         if arg_region.strip():
             final_regions.append(arg_region.strip())
+    final_regions = list(set(final_regions))
+    final_regions.sort()
     return final_regions
 
 
@@ -3492,6 +3583,30 @@ def arg_valid_iam_role_duration(arg_string):
     return int(arg_string)
 
 
+def arg_valid_bucket_name(arg: str) -> str:
+    """Validate the bucket name against the S3 naming rules.
+    https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+
+    Parameters
+    ----------
+    arg : str
+        Argument to validate.
+
+    Returns
+    -------
+    str
+        The bucket name if match with the rules.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the bucket name is not valid.
+    """
+    if not re.match(r'(?!(^xn--|.+-s3alias$|.+--ol-s3$))^[a-z0-9][a-z0-9-.]{1,61}[a-z0-9]$', arg):
+        raise argparse.ArgumentTypeError(f"'{arg}' isn't a valid bucket name.")
+    return arg
+
+
 def get_aws_config_params() -> configparser.RawConfigParser:
     """Read and retrieve parameters from aws config file
 
@@ -3513,9 +3628,13 @@ def get_script_arguments():
     # only one must be present (bucket or service)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-b', '--bucket', dest='logBucket', help='Specify the S3 bucket containing AWS logs',
-                       action='store')
+                       action='store', type=arg_valid_bucket_name)
     group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
                        action='store')
+    group.add_argument('-sb', '--subscriber', dest='subscriber', help='Specify the type of the subscriber',
+                       action='store')
+    parser.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS',
+                        action='store')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -3533,6 +3652,8 @@ def get_script_arguments():
                         help='Remove processed files from the AWS S3 bucket', default=False)
     parser.add_argument('-p', '--aws_profile', dest='aws_profile', help='The name of credential profile to use',
                         default=None)
+    parser.add_argument('-x', '--external_id', dest='external_id', help='The name of the External ID to use',
+                        default=None)
     parser.add_argument('-i', '--iam_role_arn', dest='iam_role_arn',
                         help='ARN of IAM role to assume for access to S3 bucket',
                         default=None)
@@ -3540,10 +3661,10 @@ def get_script_arguments():
                         help='AWS Account ID Alias', default='')
     parser.add_argument('-l', '--trail_prefix', dest='trail_prefix',
                         help='Log prefix for S3 key',
-                        default='', type=arg_valid_prefix)
+                        default='', type=arg_valid_key)
     parser.add_argument('-L', '--trail_suffix', dest='trail_suffix',
                         help='Log suffix for S3 key',
-                        default='', type=arg_valid_prefix)
+                        default='', type=arg_valid_key)
     parser.add_argument('-s', '--only_logs_after', dest='only_logs_after',
                         help='Only parse logs after this date - format YYYY-MMM-DD',
                         default=None, type=arg_valid_date)
@@ -3555,7 +3676,7 @@ def get_script_arguments():
                         help='Parse the log file, even if its been parsed before', default=False)
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
     parser.add_argument('-g', '--aws_log_groups', dest='aws_log_groups', help='Name of the log group to be parsed',
-                        default='')
+                        default='', type=aws_logs_groups_valid_key)
     parser.add_argument('-P', '--remove-log-streams', action='store_true', dest='deleteLogStreams',
                         help='Remove processed log streams from the log group', default=False)
     parser.add_argument('-df', '--discard-field', type=str, dest='discard_field', default=None,
@@ -3657,11 +3778,15 @@ def main(argv):
                     options.regions.append(aws_config.get(aws_profile, "region"))
                 else:
                     debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
-                    options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
-                                       'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-2', 'ap-south-1',
-                                       'eu-central-1', 'eu-west-1']
+                    options.regions = ALL_REGIONS
 
             for region in options.regions:
+                try:
+                    service_type.check_region(region)
+                except ValueError:
+                    debug(f"+++ ERROR: The region '{region}' is not a valid one.", 1)
+                    exit(22)
+
                 debug('+++ Getting alerts from "{}" region.'.format(region), 1)
                 service = service_type(reparse=options.reparse,
                                        access_key=options.access_key,
@@ -3679,6 +3804,12 @@ def main(argv):
                                        iam_role_duration=options.iam_role_duration
                                        )
                 service.get_alerts()
+        elif options.subscriber:
+            asl_queue = AWSSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
+                                    sts_endpoint=options.sts_endpoint,
+                                    service_endpoint=options.service_endpoint,
+                                    name=options.queue)
+            asl_queue.sync_events()
 
     except Exception as err:
         debug("+++ Error: {}".format(err), 2)

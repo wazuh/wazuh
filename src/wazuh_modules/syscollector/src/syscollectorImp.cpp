@@ -1476,11 +1476,11 @@ nlohmann::json Syscollector::getPortsData()
     constexpr auto PORT_LISTENING_STATE { "listening" };
     constexpr auto TCP_PROTOCOL { "tcp" };
     constexpr auto UDP_PROTOCOL { "udp" };
-    const auto& data { m_spInfo->ports() };
+    auto data(m_spInfo->ports());
 
     if (!data.is_null())
     {
-        for (auto item : data)
+        for (auto& item : data)
         {
             const auto protocol { item.at("protocol").get_ref<const std::string&>() };
 
