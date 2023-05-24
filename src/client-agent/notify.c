@@ -60,7 +60,11 @@ char *get_agent_ip()
                 break;
         }
     } else {
-        mdebug2("getsockname() failed: %s", strerror(errno));
+        #ifdef WIN32
+            mdebug2("getsockname() failed: %s", win_strerror(WSAGetLastError()));
+        #else
+            mdebug2("getsockname() failed: %s", strerror(errno));
+        #endif
     }
 
     return strdup(agent_ip);

@@ -13,13 +13,16 @@
 #include <cmocka.h>
 
 #include "../client-agent/agentd.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 #define DUMMY_VALID_SOCKET_FD 1
-static agent global_config = { .sock = DUMMY_VALID_SOCKET_FD };
 
-static int setup_group(void **state) {
+static int setup(void **state) {
+    static agent global_config;
     agt = &global_config;
-
+    // force init value on every call
+    agt->sock = DUMMY_VALID_SOCKET_FD;
+    errno = 0;
     return 0;
 }
 
@@ -30,6 +33,9 @@ static void get_agent_ip_fail_to_connect(void **state) {
 
     will_return(__wrap_getsockname, -1);
     will_return(__wrap_getsockname, AF_UNSPEC);
+
+    errno = ENOTSOCK;
+    expect_string(__wrap__mdebug2, formatted_msg, "getsockname() failed: Socket operation on non-socket");
 
     retval = get_agent_ip();
 
@@ -43,14 +49,29 @@ static void get_agent_ip_invalid_socket(void **state) {
 
     // force bad socket id
     agt->sock = 0;
+    errno = EBADF;
+    expect_string(__wrap__mdebug2, formatted_msg, "getsockname() failed: Bad file descriptor");
+
     retval = get_agent_ip();
 
     assert_string_equal(retval, "");
 
     free(retval);
+}
 
-    // reset good socket id
-    agt->sock = DUMMY_VALID_SOCKET_FD;
+static void get_agent_ip_unknown_address_family(void **state) {
+    char *retval;
+
+    will_return(__wrap_getsockname, 0);
+    will_return(__wrap_getsockname, AF_UNIX);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unknown address family: 1");
+
+    retval = get_agent_ip();
+
+    assert_string_equal(retval, "");
+
+    free(retval);
 }
 
 static void get_agent_ip_ipv4_updated_successfully(void **state) {
@@ -94,12 +115,13 @@ static void get_agent_ip_ipv6_updated_successfully(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef TEST_AGENT
-        cmocka_unit_test(get_agent_ip_fail_to_connect),
-        cmocka_unit_test(get_agent_ip_invalid_socket),
-        cmocka_unit_test(get_agent_ip_ipv4_updated_successfully),
-        cmocka_unit_test(get_agent_ip_ipv6_updated_successfully)
+        cmocka_unit_test_setup(get_agent_ip_fail_to_connect, setup),
+        cmocka_unit_test_setup(get_agent_ip_invalid_socket, setup),
+        cmocka_unit_test_setup(get_agent_ip_unknown_address_family, setup),
+        cmocka_unit_test_setup(get_agent_ip_ipv4_updated_successfully, setup),
+        cmocka_unit_test_setup(get_agent_ip_ipv6_updated_successfully, setup)
 #endif // TEST_AGENT
     };
 
-    return cmocka_run_group_tests(tests, setup_group, NULL);
+    return cmocka_run_group_tests(tests, NULL, NULL);
 }

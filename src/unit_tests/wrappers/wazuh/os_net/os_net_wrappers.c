@@ -179,7 +179,7 @@ int __wrap_get_ipv4_string(__attribute__((unused)) struct in_addr addr,
     }
     else
     {
-        strcpy(address, mock_ptr_type(char *));
+        strncpy(address, mock_ptr_type(char *), address_size);
     }
     check_expected(address_size);
     return ret;
@@ -194,7 +194,7 @@ int __wrap_get_ipv6_string(__attribute__((unused)) struct in6_addr addr6,
     }
     else
     {
-        strcpy(address, mock_ptr_type(char *));
+        strncpy(address, mock_ptr_type(char *), address_size);
     }
     check_expected(address_size);
     return ret;
