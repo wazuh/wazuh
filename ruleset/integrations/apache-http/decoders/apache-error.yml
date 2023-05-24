@@ -68,3 +68,6 @@ normalize:
       - source.ip: +not_exists
     map:
       - source.domain: +parse_fqdn/$source.address
+
+  - map:
+      - wazuh.decoders: +array_append/apache-error
