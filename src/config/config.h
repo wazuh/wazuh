@@ -38,6 +38,16 @@
 
 #define MAX_NEEDED_TAGS 4
 
+#define BITMASK(modules)   (\
+                            (modules & CGLOBAL       ) | (modules & CRULES        ) | (modules & CSYSCHECK     ) |\
+                            (modules & CROOTCHECK    ) | (modules & CALERTS       ) | (modules & CLOCALFILE    ) |\
+                            (modules & CREMOTE       ) | (modules & CCLIENT       ) | (modules & CMAIL         ) |\
+                            (modules & CAR           ) | (modules & CDBD          ) | (modules & CSYSLOGD      ) |\
+                            (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      ) |\
+                            (modules & CINTEGRATORD  ) | (modules & CWMODULE      ) | (modules & CLABELS       ) |\
+                            (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
+                            (modules & CSOCKET       ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) )
+
 typedef enum needed_tags {
     JSONOUT_OUTPUT = 0,
     ALERTS_LOG,
@@ -45,12 +55,14 @@ typedef enum needed_tags {
     LOGALL_JSON
 } NeededTags;
 
+
 #include "os_xml/os_xml.h"
 #include "config/wazuh_db-config.h"
 #include "time.h"
 
 /* Main function to read the config */
 int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
+void PrintErrorAcordingToModules(int modules, const char *cfgfile);
 
 int Read_Global(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);

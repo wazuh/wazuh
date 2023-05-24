@@ -107,17 +107,17 @@ int local_start()
     /* Read agent config */
     mdebug1("Reading agent configuration.");
     if (ClientConf(cfg) < 0) {
-        merror_exit(CLIENT_ERROR);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
     if (!Validate_Address(agt->server)){
         merror(AG_INV_MNGIP, agt->server[0].rip);
-        merror_exit(CLIENT_ERROR);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
     if (!Validate_IPv6_Link_Local_Interface(agt->server)){
         merror(AG_INV_INT);
-        merror_exit(CLIENT_ERROR);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
     if (agt->notify_time == 0) {
@@ -143,7 +143,7 @@ int local_start()
     w_msg_hash_queues_init();
 
     if (LogCollectorConfig(cfg) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
     }
 
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
@@ -278,7 +278,11 @@ int local_start()
 
     // Read wodle configuration and start modules
 
-    if (!wm_config() && !wm_check()) {
+    if (wm_config() < 0) {
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+    }
+
+    if (!wm_check()) {
         wmodule * cur_module;
 
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {

@@ -430,12 +430,12 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                 } else if (strcmp(values[i], xml_both) == 0) {
                     arch = ARCH_BOTH;
                 } else {
-                    merror(XML_INVATTR, attributes[i], entries);
+                    mwarn(XML_INVATTR, attributes[i], entries);
                     goto clean_reg;
                 }
             } else if (strcmp(attributes[i], xml_recursion_level) == 0) {
                 if (!OS_StrIsNum(values[i])) {
-                    merror(XML_VALUEERR, xml_recursion_level, entries);
+                    mwarn(XML_VALUEERR, xml_recursion_level, entries);
                     goto clean_reg;
                 }
                 recursion_level = atoi(values[i]);
@@ -574,7 +574,7 @@ int read_reg(syscheck_config *syscheck, const char *entries, char **attributes, 
                 }
 
             } else {
-                merror(XML_INVATTR, attributes[i], entries);
+                mwarn(XML_INVATTR, attributes[i], entries);
                 goto clean_reg;
             }
         }
@@ -962,7 +962,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         /* Check recursion limit */
         else if (strcmp(*attrs, xml_recursion_level) == 0) {
             if (!OS_StrIsNum(*values)) {
-                merror(XML_VALUEERR, xml_recursion_level, *values);
+                mwarn(XML_VALUEERR, xml_recursion_level, *values);
                 goto out_free;
             }
             recursion_limit = (unsigned int) atoi(*values);
@@ -1409,7 +1409,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                     }
                 }
                 else {
-                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
+                    mwarn(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
                     return;
                 }
             }
@@ -1468,11 +1468,11 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         else if (strcmp(node[i]->values[j], xml_both) == 0)
                             arch = ARCH_BOTH;
                         else {
-                            merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                            mwarn(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                             return;
                         }
                     } else {
-                        merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                        mwarn(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         return;
                     }
                 }
@@ -1510,7 +1510,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         syscheck->disk_quota_enabled = false;
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return;
                     }
@@ -1520,7 +1520,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         syscheck->disk_quota_limit = read_data_unit(children[j]->content);
 
                         if (syscheck->disk_quota_limit == -1) {
-                            merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                            mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
                         }
@@ -1530,7 +1530,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         }
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
+                        mwarn(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
                         OS_ClearNode(children);
                         return;
                     }
@@ -1553,7 +1553,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         syscheck->file_size_enabled = false;
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return;
                     }
@@ -1563,7 +1563,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         syscheck->file_size_limit = read_data_unit(children[j]->content);
 
                         if (syscheck->file_size_limit == -1) {
-                            merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                            mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                             OS_ClearNode(children);
                             return;
                         }
@@ -1573,7 +1573,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
                         }
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
+                        mwarn(XML_VALUEERR, children[j]->element, "");     // Null children[j]->content
                         OS_ClearNode(children);
                         return;
                     }
@@ -1664,10 +1664,10 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     }
     for (i = 0; node && node[i]; i++) {
         if (!node[i]->element) {
-            merror(XML_ELEMNULL);
+            mwarn(XML_ELEMNULL);
             return (OS_INVALID);
         } else if (!node[i]->content) {
-            merror(XML_VALUENULL, node[i]->element);
+            mwarn(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         }
 
@@ -1697,7 +1697,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_windows_audit_interval) == 0) {
 #ifdef WIN32
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
@@ -1720,7 +1720,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         /* Get frequency */
         else if (strcmp(node[i]->element, xml_time) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
@@ -1730,7 +1730,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_scantime) == 0) {
             syscheck->scan_time = OS_IsValidUniqueTime(node[i]->content);
             if (!syscheck->scan_time) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         }
@@ -1739,8 +1739,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         else if (strcmp(node[i]->element, xml_scanday) == 0) {
             syscheck->scan_day = OS_IsValidDay(node[i]->content);
             if (!syscheck->scan_day) {
-                merror(INVALID_DAY, node[i]->content);
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                mwarn(INVALID_DAY, node[i]->content);
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         }
@@ -1759,14 +1759,14 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         syscheck->file_limit_enabled = false;
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
                 }
                 else if (strcmp(children[j]->element, xml_entries) == 0) {
                     if (!OS_StrIsNum(children[j]->content)) {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
@@ -1802,14 +1802,14 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         syscheck->registry_limit_enabled = false;
                     }
                     else {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
                 }
                 else if (strcmp(children[j]->element, xml_entries) == 0) {
                     if (!OS_StrIsNum(children[j]->content)) {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
+                        mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
@@ -1838,7 +1838,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             } else if (strcmp(node[i]->content, "no") == 0) {
                 syscheck->scan_on_start = 0;
             } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         }
@@ -1850,7 +1850,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             } else if (strcmp(node[i]->content, "no") == 0) {
                 syscheck->disabled = 0;
             } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
         }
@@ -1864,7 +1864,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 syscheck->skip_fs.nfs = 0;
             else
             {
-                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                mwarn(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -1878,7 +1878,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 syscheck->skip_fs.dev = 0;
             else
             {
-                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                mwarn(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -1892,7 +1892,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 syscheck->skip_fs.sys = 0;
             else
             {
-                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                mwarn(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -1906,7 +1906,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 syscheck->skip_fs.proc = 0;
             else
             {
-                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                mwarn(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -1921,7 +1921,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return result;
                     }
                 } else {
-                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
+                    mwarn(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
                     return (OS_INVALID);
                 }
             } else {
@@ -1952,11 +1952,11 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         else if (strcmp(node[i]->values[j], xml_both) == 0)
                             arch = ARCH_BOTH;
                         else {
-                            merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                            mwarn(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                             return OS_INVALID;
                         }
                     } else {
-                        merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                        mwarn(XML_INVATTR, node[i]->attributes[j], node[i]->content);
                         return OS_INVALID;
                     }
                 }
@@ -1990,7 +1990,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return result;
                     }
                 } else {
-                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
+                    mwarn(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0], node[i]->element);
                     return (OS_INVALID);
                 }
             } else {
@@ -2024,7 +2024,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     *ix = '\0';
                 }
                 if (stat(statcmd, &statbuf) != 0) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
             }
@@ -2038,7 +2038,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 syscheck->restart_audit = 0;
             else
             {
-                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                mwarn(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -2074,7 +2074,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         syscheck->audit_healthcheck = 0;
                     else
                     {
-                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        mwarn(XML_VALUEERR,children[j]->element,children[j]->content);
                         OS_ClearNode(children);
                         return(OS_INVALID);
                     }
@@ -2085,12 +2085,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         syscheck->restart_audit = 0;
                     else
                     {
-                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        mwarn(XML_VALUEERR,children[j]->element,children[j]->content);
                         OS_ClearNode(children);
                         return(OS_INVALID);
                     }
                 } else {
-                    merror(XML_ELEMNULL);
+                    mwarn(XML_ELEMNULL);
                     OS_ClearNode(children);
                     return OS_INVALID;
                 }
@@ -2102,7 +2102,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             long value = strtol(node[i]->content, &end, 10);
 
             if (value < -20 || value > 19 || *end) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             } else {
                 syscheck->process_priority = value;
@@ -2149,13 +2149,13 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             else if(strcmp(node[i]->content, "no") == 0)
                 syscheck->allow_remote_prefilter_cmd = 0;
             else {
-                merror(XML_VALUEERR,node[i]->element,node[i]->content);
+                mwarn(XML_VALUEERR,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
         else if (strcmp(node[i]->element, xml_max_files_per_second) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
             syscheck->max_files_per_second = atoi(node[i]->content);

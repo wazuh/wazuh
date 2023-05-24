@@ -1,6 +1,9 @@
 import json
 import logging
 import os
+from typing import Dict, Union, Optional
+from dateutil.parser import parse, ParserError
+from datetime import datetime, timezone
 
 from sqlalchemy import create_engine, Column, Text, String, UniqueConstraint
 from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
@@ -12,6 +15,9 @@ database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), DATABAS
 LAST_DATES_NAME = "last_dates.json"
 last_dates_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), LAST_DATES_NAME)
 last_dates_default_contents = {'log_analytics': {}, 'graph': {}, 'storage': {}}
+
+LAST_DATES_MAX_FIELD_NAME = "max"
+LAST_DATES_MIN_FIELD_NAME = "min"
 
 engine = create_engine('sqlite:///' + database_path, echo=False)
 session = sessionmaker(bind=engine)()
@@ -145,8 +151,8 @@ def migrate_from_last_dates_file():
     for service in [Graph, LogAnalytics, Storage]:
         if service.__tablename__ in keys:
             for md5_hash in last_dates_content[service.__tablename__].keys():
-                min_value = last_dates_content[service.__tablename__][md5_hash]["min"]
-                max_value = last_dates_content[service.__tablename__][md5_hash]["max"]
+                min_value = last_dates_content[service.__tablename__][md5_hash][LAST_DATES_MIN_FIELD_NAME]
+                max_value = last_dates_content[service.__tablename__][md5_hash][LAST_DATES_MAX_FIELD_NAME]
                 row = service(md5=md5_hash, query="", min_processed_date=min_value, max_processed_date=max_value)
                 add_row(row=row)
     logging.info("The database migration process finished successfully.")
@@ -205,11 +211,103 @@ def load_dates_json() -> dict:
                 # This adds compatibility with "last_dates_files" from previous releases as the format was different
                 for key in contents.keys():
                     for md5_hash in contents[key].keys():
-                        if not isinstance(contents[key][md5_hash], dict):
-                            contents[key][md5_hash] = {"min": contents[key][md5_hash], "max": contents[key][md5_hash]}
+                        contents[key][md5_hash] = get_min_max_values(contents[key][md5_hash])
         else:
             contents = last_dates_default_contents
         return contents
     except (json.JSONDecodeError, OSError) as e:
         logging.error(f"Error: The file of the last dates could not be read: '{e}.")
         raise e
+
+
+def get_min_max_values(content: Union[Dict[str, str], str]) -> Dict[str, str]:
+    """
+    Validates the min and max values of the content and returns
+    the corresponding value.
+
+    Parameters
+    ----------
+    content : Dict[str, str]
+        Content of an element inside the 'last_dates.json'.
+
+    Returns
+    -------
+    Dict[str, str]
+        The passed content after fields validation.
+
+    """
+    if not isinstance(content, dict):
+        try:
+            parse(content, fuzzy=True)
+            return {LAST_DATES_MIN_FIELD_NAME: content, LAST_DATES_MAX_FIELD_NAME: content}
+        except ParserError:
+            new_value = get_default_min_max_values()
+            return {LAST_DATES_MIN_FIELD_NAME: new_value, LAST_DATES_MAX_FIELD_NAME: new_value}
+
+    final_dict = {}
+    min_value = content[LAST_DATES_MIN_FIELD_NAME]
+    max_value = content[LAST_DATES_MAX_FIELD_NAME]
+
+    # Checks if min is a valid value
+    min_value = validate_date_string(min_value)
+
+    # Checks if max is a valid value
+    max_value = validate_date_string(max_value)
+
+    # If no error is raised
+    if min_value is not None and max_value is not None:
+        final_dict = content
+    # If min is an invalid value and max is a valid value
+    elif min_value is None and max_value is not None:
+        # Change min to be the same as max and update json
+        final_dict = {LAST_DATES_MIN_FIELD_NAME: max_value, LAST_DATES_MAX_FIELD_NAME: max_value}
+    # If min is a valid value and max is an invalid value
+    elif min_value is not None and max_value is None:
+        # Change max to be the same as min and update json
+        final_dict = {LAST_DATES_MIN_FIELD_NAME: min_value, LAST_DATES_MAX_FIELD_NAME: min_value}
+    # min and max are invalid values
+    else:
+        new_value = get_default_min_max_values()
+        final_dict = {LAST_DATES_MIN_FIELD_NAME: new_value, LAST_DATES_MAX_FIELD_NAME: new_value}
+
+    return final_dict
+
+
+def validate_date_string(value: str, fuzzy: bool = True) -> Optional[str]:
+    """
+    Validates if the passed value is a valid Date string. If it
+    is a valid format, returns the passed value, otherwise returns None
+
+    Parameters
+    ----------
+    value : str
+        Date that the functions tries to parse.
+    fuzzy : bool
+        Allow fuzzy parsing.
+        
+
+    Returns
+    -------
+    Optional[str]
+        Returns the passed value if it is a valid date. Else it
+        returns None.
+
+    """
+    try:
+        parse(value, fuzzy=fuzzy)
+        return value
+    except ParserError:
+        return None
+
+
+def get_default_min_max_values() -> str:
+    """
+    Get the default min and max field values of the 'last_dates.json'.
+
+    Returns
+    -------
+    str
+        Execution date as a string with format %Y-%m-%dT%H:%M:%S.%fZ
+    """
+    return datetime.utcnow().replace(tzinfo=timezone.utc)\
+                .strftime('%Y-%m-%dT%H:%M:%S.%fZ')

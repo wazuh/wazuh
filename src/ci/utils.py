@@ -10,6 +10,7 @@ Foundation.
 import json
 import os
 import subprocess
+import multiprocessing
 from pathlib import Path
 from ci import build_tools
 
@@ -17,24 +18,24 @@ from ci import build_tools
 # Constant values
 CURRENT_DIR = Path(__file__).parent
 HEADER_DIR = {
-    'asan':             "=============== Running ASAN        ===============",
-    'AStyle':           "=============== Running AStyle      ===============",
-    'clean':            "=============== Cleaning library    ===============",
-    'cleanfolder':      "=============== Clean build Folders ===============",
-    'cppcheck':         "=============== Running cppcheck    ===============",
-    'configurecmake':   "=============== Running CMake Conf  ===============",
-    'coverage':         "=============== Running Coverage    ===============",
-    'deletelogs':       "=============== Clean result folders ==============",
-    'make':             "=============== Compiling library   ===============",
-    'makeAll':          "=============== Running Make project ==============",
-    'makeDeps':         "=============== Running Make Deps   ===============",
-    'rtr':              "=============== Running RTR checks  ===============",
-    'scanbuild':        "=============== Running Scanbuild   ===============",
-    'tests':            "=============== Running Tests       ===============",
-    'winagentTests':    "=============== Running Windows Agent Tests =======",
-    'testtool':         "=============== Running TEST TOOL   ===============",
-    'valgrind':         "=============== Running Valgrind    ===============",
-    'wintests':         "=============== Running TEST TOOL for Windows ====="
+    'asan':                "=============== Running ASAN        ===============",
+    'AStyle':              "=============== Running AStyle      ===============",
+    'clean':               "=============== Cleaning library    ===============",
+    'cleanfolder':         "=============== Clean build Folders ===============",
+    'cppcheck':            "=============== Running cppcheck    ===============",
+    'configurecmake':      "=============== Running CMake Conf  ===============",
+    'coverage':            "=============== Running Coverage    ===============",
+    'deletelogs':          "=============== Clean result folders ==============",
+    'make':                "=============== Compiling library   ===============",
+    'makeAll':             "=============== Running Make project ==============",
+    'makeDeps':            "=============== Running Make Deps   ===============",
+    'rtr':                 "=============== Running RTR checks  ===============",
+    'scanbuild':           "=============== Running Scanbuild   ===============",
+    'tests':               "=============== Running Tests       ===============",
+    'winagentTests':       "=============== Running Windows Agent Tests =======",
+    'testtool':            "=============== Running TEST TOOL   ===============",
+    'valgrind':            "=============== Running Valgrind    ===============",
+    'wintesttool':         "=============== Running TEST TOOL for Windows ====="
 }
 MODULE_LIST = ['wazuh_modules/syscollector', 'shared_modules/dbsync',
                'shared_modules/rsync', 'shared_modules/utils',
@@ -86,13 +87,13 @@ def deleteLogs(moduleName):
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         check=True)
+                         check=False)
     if out.returncode == 0:
         printGreen(msg="[{}{}: PASSED]".format("Cleanfolder ",
                                                pytestResultsPath))
     else:
-        print(out.stdout)
-        print(out.stderr)
+        print(out.stdout.decode('utf-8','replace'))
+        print(out.stderr.decode('utf-8','replace'))
         printFail(msg="[{}{}: FAILED]".format("Cleanfolder ",
                                               pytestResultsPath))
         errorString = "Error cleaning tests/results: {}".format(out.returncode)
@@ -397,3 +398,16 @@ def targetList():
         - None
     """
     return TARGET_LIST
+
+def initializeCpuCores():
+    global CPU_CORES
+    CPU_CORES = multiprocessing.cpu_count()
+
+def setCpuCores(cpuCores):
+    global CPU_CORES
+    if cpuCores.isdigit():
+        CPU_CORES = cpuCores
+
+def getCpuCores():
+    global CPU_CORES
+    return CPU_CORES

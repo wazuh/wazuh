@@ -21,7 +21,7 @@ from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.common import DECIMALS_DATE_FORMAT
-from wazuh.core.utils import get_utc_now
+from wazuh.core.utils import get_utc_now, get_utc_strptime
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
 
@@ -192,7 +192,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
         self.sync_agent_info_status = {'date_start_master': default_date, 'date_end_master': default_date,
                                        'n_synced_chunks': 0}
-        self.send_agent_groups_status = {'date_start': 0.0}
+        self.send_agent_groups_status = {'date_start': default_date,
+                                         'date_end': default_date,
+                                         'n_synced_chunks': 0}
+        self.send_full_agent_groups_status = {'date_start': default_date,
+                                              'date_end': default_date,
+                                              'n_synced_chunks': 0}
 
         # Variables which will be filled when the worker sends the hello request.
         self.version = ""
@@ -224,6 +229,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                    not key.startswith('tmp')},
                            'sync_agent_info_free': self.sync_agent_info_free,
                            'last_sync_agentinfo': self.sync_agent_info_status,
+                           'last_sync_agentgroup': self.send_agent_groups_status,
+                           'last_sync_full_agentgroup': self.send_full_agent_groups_status,
                            'last_keep_alive': self.last_keepalive}
                 }
 
@@ -258,10 +265,16 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'syn_w_g_e':
             logger = self.task_loggers['Agent-groups send']
             start_time = self.send_agent_groups_status['date_start']
+            if isinstance(start_time, str):
+                start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
+            start_time = start_time.timestamp()
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_wgc_e':
             logger = self.task_loggers['Agent-groups send full']
-            start_time = self.send_agent_groups_status['date_start']
+            start_time = self.send_full_agent_groups_status['date_start']
+            if isinstance(start_time, str):
+                start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
+            start_time = start_time.timestamp()
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_w_g_err':
             logger = self.task_loggers['Agent-groups send']
@@ -650,7 +663,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         This method is activated when the worker node requests this information to the master node.
         """
         logger = self.task_loggers['Agent-groups send full']
-        start_time = get_utc_now().timestamp()
+        start_time = get_utc_now()
         logger.info('Starting.')
 
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w_c',
@@ -663,7 +676,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                            set_payload={'mode': 'override', 'sync_status': 'synced'})
 
         local_agent_groups_information = await sync_object.retrieve_information()
-        await sync_object.sync(start_time=start_time, chunks=local_agent_groups_information)
+        await sync_object.sync(start_time=start_time.timestamp(), chunks=local_agent_groups_information)
+        end_time = get_utc_now()
+
+        # Updates Agent groups full status
+        self.send_full_agent_groups_status['date_start'] = start_time.strftime(DECIMALS_DATE_FORMAT)
+        self.send_full_agent_groups_status['date_end'] = end_time.strftime(DECIMALS_DATE_FORMAT)
+        self.send_full_agent_groups_status['n_synced_chunks'] = len(local_agent_groups_information)
 
     async def send_agent_groups_information(self, groups_info: list):
         """Send group information to the worker node.
@@ -676,7 +695,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger = self.task_loggers['Agent-groups send']
         try:
             logger.info("Starting.")
-            self.send_agent_groups_status['date_start'] = get_utc_now().timestamp()
+            self.send_agent_groups_status['date_start'] = get_utc_now().strftime(DECIMALS_DATE_FORMAT)
             await self.agent_groups.sync(start_time=self.send_agent_groups_status['date_start'], chunks=groups_info)
         except Exception as e:
             logger.error(f'Error sending agent-groups information to {self.name}: {e}')

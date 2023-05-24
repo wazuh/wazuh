@@ -208,8 +208,6 @@ typedef struct _RuleInfo {
 
     char *file;
 
-    /* Pointer to the previous rule matched */
-    void *prev_rule;
 
     /* Dynamic fields to compare between events */
     char ** same_fields;
