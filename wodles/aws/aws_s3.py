@@ -77,7 +77,7 @@ def main(argv):
                 raise Exception("Invalid type of bucket")
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
                                  secret_key=options.secret_key,
-                                 aws_profile=options.aws_profile,
+                                 profile=options.aws_profile,
                                  iam_role_arn=options.iam_role_arn,
                                  bucket=options.logBucket,
                                  only_logs_after=options.only_logs_after,
@@ -108,10 +108,10 @@ def main(argv):
             if not options.regions:
                 aws_config = aws_tools.get_aws_config_params()
 
-                aws_profile = options.aws_profile or "default"
+                profile = options.aws_profile or "default"
 
-                if aws_config.has_option(aws_profile, "region"):
-                    options.regions.append(aws_config.get(aws_profile, "region"))
+                if aws_config.has_option(profile, "region"):
+                    options.regions.append(aws_config.get(profile, "region"))
                 else:
                     aws_tools.debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
                     options.regions = aws_tools.ALL_REGIONS
@@ -128,7 +128,7 @@ def main(argv):
                 service = service_type(reparse=options.reparse,
                                        access_key=options.access_key,
                                        secret_key=options.secret_key,
-                                       aws_profile=options.aws_profile,
+                                       profile=options.aws_profile,
                                        iam_role_arn=options.iam_role_arn,
                                        only_logs_after=options.only_logs_after,
                                        region=region,

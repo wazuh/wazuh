@@ -12,6 +12,7 @@ from aws_bucket import AWSCustomBucket
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
+
 class AWSServerAccess(AWSCustomBucket):
 
     def __init__(self, **kwargs):
@@ -21,13 +22,17 @@ class AWSServerAccess(AWSCustomBucket):
         self.date_format = '%Y-%m-%d'
 
     def iter_files_in_bucket(self, aws_account_id: str = None, aws_region: str = None):
+        if aws_account_id is None:
+            aws_account_id = self.aws_account_id
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region,
                                                                                    custom_delimiter='-'))
             while True:
                 if 'Contents' not in bucket_files:
-                    aws_tools.debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region)
                     return
+
+                processed_logs = 0
 
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
@@ -42,11 +47,12 @@ class AWSServerAccess(AWSCustomBucket):
                         match_start = date_match.span()[0] if date_match else None
                     except TypeError:
                         if self.skip_on_error:
-                            aws_tools.debug(f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, "
-                                  "skipping it.", 1)
+                            aws_tools.debug(
+                                f"+++ WARNING: The format of the {bucket_file['Key']} filename is not valid, "
+                                "skipping it.", 1)
                             continue
                         else:
-                            print(f"ERROR: The filename of {bucket_file['Key']} doesn't have a valid format.")
+                            print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the valid format.")
                             sys.exit(17)
 
                     if not self._same_prefix(match_start, aws_account_id, aws_region):
@@ -55,7 +61,8 @@ class AWSServerAccess(AWSCustomBucket):
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
-                            aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}", 1)
+                            aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
+                                            1)
                         else:
                             aws_tools.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 2)
                             continue
@@ -69,6 +76,10 @@ class AWSServerAccess(AWSCustomBucket):
                         aws_tools.debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
+                    processed_logs += 1
+
+                if processed_logs == 0:
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region)
 
                 if bucket_files['IsTruncated']:
                     new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
@@ -105,8 +116,10 @@ class AWSServerAccess(AWSCustomBucket):
 
     def check_bucket(self):
         """Check if the bucket is empty or the credentials are wrong."""
+
         try:
-            if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Delimiter='/'):
+            bucket_objects = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/')
+            if not 'CommonPrefixes' in bucket_objects and not 'Contents' in bucket_objects:
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
         except botocore.exceptions.ClientError as error:

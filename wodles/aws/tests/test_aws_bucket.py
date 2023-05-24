@@ -54,7 +54,7 @@ def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, m
                                          only_logs_after: str or None):
     """Test if the instances of AWSBucket are created properly."""
     kwargs = utils.get_aws_bucket_parameters(db_table_name=utils.TEST_TABLE_NAME, bucket=utils.TEST_BUCKET,
-                                             aws_profile=utils.TEST_AWS_PROFILE, access_key=utils.TEST_ACCESS_KEY,
+                                             profile=utils.TEST_AWS_PROFILE, access_key=utils.TEST_ACCESS_KEY,
                                              secret_key=utils.TEST_SECRET_KEY, iam_role_arn=utils.TEST_IAM_ROLE_ARN,
                                              account_alias=utils.TEST_ACCOUNT_ALIAS, prefix=utils.TEST_PREFIX,
                                              suffix=utils.TEST_SUFFIX, aws_organization_id=utils.TEST_ORGANIZATION_ID,
@@ -65,10 +65,9 @@ def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, m
                                              iam_role_duration=utils.TEST_IAM_ROLE_DURATION, delete_file=True,
                                              skip_on_error=True, reparse=True, only_logs_after=only_logs_after)
     integration = aws_bucket.AWSBucket(**kwargs)
-    mock_wazuh_integration.assert_called_with(integration, db_name=aws_bucket.DEFAULT_DATABASE_NAME,
-                                              db_table_name=kwargs["db_table_name"], service_name="s3",
-                                              access_key=kwargs["access_key"], secret_key=kwargs["secret_key"],
-                                              aws_profile=kwargs["aws_profile"], iam_role_arn=kwargs["iam_role_arn"],
+    mock_wazuh_integration.assert_called_with(integration, service_name="s3", bucket=kwargs['bucket'],
+                                              db_name=integration.db_name, access_key=kwargs["access_key"], secret_key=kwargs["secret_key"],
+                                              profile=kwargs["profile"], iam_role_arn=kwargs["iam_role_arn"],
                                               region=kwargs["region"], discard_field=kwargs["discard_field"],
                                               discard_regex=kwargs["discard_regex"],
                                               sts_endpoint=kwargs["sts_endpoint"],
@@ -383,7 +382,8 @@ def test_aws_bucket_find_account_ids_handles_exceptions_on_client_error(mock_pre
 
 
 @patch('aws_bucket.AWSBucket.get_base_prefix', return_value=utils.TEST_PREFIX)
-def test_aws_bucket_find_account_ids_handles_exceptions_on_key_error(mock_prefix):
+@patch('aws_bucket.aws_tools.get_script_arguments')
+def test_aws_bucket_find_account_ids_handles_exceptions_on_key_error(mock_prefix, mock_script_arguments):
     """Test 'find_account_ids' method handles KeyError as expected."""
     bucket = utils.get_mocked_aws_bucket(bucket=utils.TEST_BUCKET, prefix=utils.TEST_PREFIX)
     bucket.client = MagicMock()
@@ -918,7 +918,8 @@ def test_aws_bucket_check_bucket_handles_exceptions_on_endpoint_error():
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 def test_aws_logs_bucket_initializes_properly(mock_bucket, mock_integration, prefix, suffix):
     """Test if the instances of AWSLogsBucket are created properly."""
-    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, prefix=prefix, suffix=suffix)
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, bucket=utils.TEST_BUCKET,
+                                       prefix=prefix, suffix=suffix)
     mock_bucket.assert_called_once()
     assert instance.bucket_path == f"{utils.TEST_BUCKET}/{prefix}{suffix}"
 
@@ -1023,7 +1024,7 @@ def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_integration, m
     mock_sts.return_value = mock_client
 
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket,
-                                       aws_profile=profile,
+                                       profile=profile,
                                        secret_key=secret_key,
                                        access_key=access_key)
     mock_bucket.assert_called_once()
@@ -1231,6 +1232,7 @@ def test_aws_custom_bucket_mark_complete():
             patch('wazuh_integration.WazuhIntegration.__init__'), \
             patch('aws_bucket.AWSBucket.mark_complete'):
         instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+        instance.aws_account_id = utils.TEST_ACCOUNT_ID
 
         instance.mark_complete(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, test_log_file)
         bucket.mark_complete.assert_called_once_with(instance, instance.aws_account_id, utils.TEST_REGION,

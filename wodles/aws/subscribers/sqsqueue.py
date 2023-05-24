@@ -2,6 +2,8 @@ import sys
 from os import path
 import json
 import botocore
+
+sys.path.append(path.dirname(path.realpath(__file__)))
 from slsubscriberbucket import AWSSLSubscriberBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
@@ -38,7 +40,7 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
         self.sqs_name = name
         wazuh_integration.WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
                                                     iam_role_arn=iam_role_arn,
-                                                    aws_profile=None, external_id=external_id, service_name='sqs',
+                                                    profile=None, external_id=external_id, service_name='sqs',
                                                     sts_endpoint=sts_endpoint,
                                                     **kwargs)
         self.sts_client = self.get_sts_client(access_key, secret_key)

@@ -18,7 +18,7 @@ class AWSInspector(aws_service.AWSService):
         AWS access key id.
     secret_key : str
         AWS secret access key.
-    aws_profile : str
+    profile : str
         AWS profile.
     iam_role_arn : str
         IAM Role that will be assumed to use the service.
@@ -34,14 +34,14 @@ class AWSInspector(aws_service.AWSService):
     """
 
 
-    def __init__(self, reparse, access_key, secret_key, aws_profile,
+    def __init__(self, reparse, access_key, secret_key, profile,
                  iam_role_arn, only_logs_after, region, aws_log_groups=None,
                  remove_log_streams=None, discard_field=None, discard_regex=None,
                  sts_endpoint=None, service_endpoint=None, iam_role_duration=None, **kwargs):
 
         aws_service.AWSService.__init__(self, db_table_name=aws_service.DEFAULT_TABLENAME, service_name='inspector',
                                         reparse=reparse, access_key=access_key, secret_key=secret_key,
-                                        aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
+                                        profile=profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                                         region=region, aws_log_groups=aws_log_groups,
                                         remove_log_streams=remove_log_streams, discard_field=discard_field,
                                         discard_regex=discard_regex, sts_endpoint=sts_endpoint,

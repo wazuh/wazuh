@@ -25,8 +25,8 @@ TEST_ACCOUNT_ALIAS = "test_account_alias"
 TEST_ORGANIZATION_ID = "test_organization_id"
 TEST_TOKEN = 'test_token'
 TEST_CREATION_DATE = "2022-01-01"
-TEST_BUCKET = "test_bucket"
-TEST_SERVICE = "test_service"
+TEST_BUCKET = "test-bucket"
+TEST_SERVICE = "test-service"
 TEST_PREFIX = "test_prefix"
 TEST_SUFFIX = "test_suffix"
 TEST_REGION = "us-east-1"
@@ -89,29 +89,26 @@ INVALID_PREFIX_ERROR_CODE = 18
 INVALID_REQUEST_TIME_ERROR_CODE = 19
 
 
-def get_wazuh_integration_parameters(db_name: str = TEST_DATABASE, db_table_name: str = TEST_TABLE_NAME,
-                                     service_name: str = TEST_SERVICE_NAME, aws_profile: str = TEST_AWS_PROFILE,
-                                     access_key: str = None, secret_key: str = None, iam_role_arn: str = None,
-                                     region: str = None, discard_field: str = None, discard_regex: str = None,
-                                     sts_endpoint: str = None, service_endpoint: str = None,
-                                     iam_role_duration: str = None):
+def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, profile: str = TEST_AWS_PROFILE,
+                                     db_name: str = None, access_key: str = None, secret_key: str = None,
+                                     iam_role_arn: str = None, region: str = None, discard_field: str = None,
+                                     discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
+                                     iam_role_duration: str = None, external_id: str = None):
     """Return a dict containing every parameter supported by WazuhIntegration. Used to simulate different ossec.conf
     configurations.
 
     Parameters
     ----------
-    db_name : str
-        The name of the database file to be created.
-    db_table_name : str
-        The name of the table to be created for the given bucket or service.
     service_name : str
         Name of the service.
     access_key : str
         Access key value.
     secret_key : str
         Secret key value.
-    aws_profile : str
+    profile : str
         AWS profile name.
+    db_name : str
+        Database name.
     iam_role_arn : str
         IAM Role ARN value.
     region : str
@@ -126,20 +123,23 @@ def get_wazuh_integration_parameters(db_name: str = TEST_DATABASE, db_table_name
         Service endpoint URL.
     iam_role_duration : str
         The desired duration of the session that is going to be assumed.
+    external_id: str
+        AWS external ID for IAM Role assumption when using Security Lake.
 
     Returns
     -------
     dict
         A dict containing the configuration parameters with their default values.
     """
-    return {'db_name': db_name, 'db_table_name': db_table_name, 'service_name': service_name, 'access_key': access_key,
-            'secret_key': secret_key, 'aws_profile': aws_profile, 'iam_role_arn': iam_role_arn, 'region': region,
-            'discard_field': discard_field, 'discard_regex': discard_regex, 'sts_endpoint': sts_endpoint,
-            'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
+    return {'service_name': service_name, 'access_key': access_key,
+            'secret_key': secret_key, 'profile': profile, 'db_name': db_name, 'iam_role_arn': iam_role_arn,
+            'region': region, 'discard_field': discard_field, 'discard_regex': discard_regex,
+            'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration,
+            'external_id': external_id}
 
 
 def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str = TEST_BUCKET, reparse: bool = False,
-                              aws_profile: str = TEST_AWS_PROFILE, access_key: str = None, secret_key: str = None,
+                              profile: str = TEST_AWS_PROFILE, access_key: str = None, secret_key: str = None,
                               iam_role_arn: str = None, only_logs_after: str = None, skip_on_error: bool = False,
                               account_alias: str = None, prefix: str = "", suffix: str = "", delete_file: bool = False,
                               aws_organization_id: str = None, region: str = None, discard_field: str = None,
@@ -156,7 +156,7 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
         Name of the bucket.
     reparse : bool
         Whether to parse already parsed logs or not.
-    aws_profile : str
+    profile : str
         AWS profile name.
     access_key : str
         AWS access key id.
@@ -196,7 +196,7 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
     dict
         A dict containing the configuration parameters with their default values.
     """
-    return {'db_table_name': db_table_name, 'bucket': bucket, 'reparse': reparse, 'aws_profile': aws_profile,
+    return {'db_table_name': db_table_name, 'bucket': bucket, 'reparse': reparse, 'profile': profile,
             'access_key': access_key, 'secret_key': secret_key, 'iam_role_arn': iam_role_arn,
             'only_logs_after': only_logs_after, 'skip_on_error': skip_on_error, 'account_alias': account_alias,
             'prefix': prefix, 'suffix': suffix, 'delete_file': delete_file, 'aws_organization_id': aws_organization_id,
@@ -206,7 +206,7 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
 
 def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
                                reparse: bool = False, access_key: str = None, secret_key: str = None,
-                               aws_profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
+                               profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
                                only_logs_after: str = None, region: str = None, aws_log_groups: str = None,
                                remove_log_streams: bool = None, discard_field: str = None,
                                discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
@@ -222,7 +222,7 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
         AWS access key id.
     secret_key : str
         AWS secret access key.
-    aws_profile : str
+    profile : str
         AWS profile.
     iam_role_arn : str
         IAM Role.
@@ -255,7 +255,7 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
         A dict containing the configuration parameters with their default values.
     """
     return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse, 'access_key': access_key,
-            'secret_key': secret_key, 'aws_profile': aws_profile, 'iam_role_arn': iam_role_arn,
+            'secret_key': secret_key, 'profile': profile, 'iam_role_arn': iam_role_arn,
             'only_logs_after': only_logs_after, 'region': region, 'aws_log_groups': aws_log_groups,
             'remove_log_streams': remove_log_streams, 'discard_field': discard_field,
             'discard_regex': discard_regex, 'sts_endpoint': sts_endpoint,

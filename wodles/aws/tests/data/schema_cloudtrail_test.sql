@@ -22,7 +22,7 @@ INSERT INTO 'cloudtrail' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0030Z_aaaa.json.gz',
@@ -36,7 +36,7 @@ INSERT INTO 'cloudtrail' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0000Z_aaab.json.gz',
@@ -50,7 +50,7 @@ INSERT INTO 'cloudtrail' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0000Z_aaaa.json.gz',
@@ -64,7 +64,7 @@ INSERT INTO 'cloudtrail' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0005Z_aaaa.json.gz',
@@ -78,7 +78,7 @@ INSERT INTO 'cloudtrail' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0020Z_aaaa.json.gz',
@@ -92,7 +92,7 @@ INSERT INTO 'cloudtrail' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0010Z_aaaa.json.gz',
@@ -106,7 +106,7 @@ INSERT INTO 'cloudtrail' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0025Z_aaaa.json.gz',
@@ -120,7 +120,7 @@ INSERT INTO 'cloudtrail' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz',

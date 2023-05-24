@@ -4,6 +4,7 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+import configparser
 
 import aws_s3
 import aws_tools
@@ -13,17 +14,17 @@ import aws_utils as utils
 
 
 @pytest.mark.parametrize('args, class_', [
-    (['main', '--bucket', 'bucket_name', '--type', 'cloudtrail'], 'buckets_s3.cloudtrail.AWSCloudTrailBucket'),
-    (['main', '--bucket', 'bucket_name', '--type', 'vpcflow'], 'buckets_s3.vpcflow.AWSVPCFlowBucket'),
-    (['main', '--bucket', 'bucket_name', '--type', 'config'], 'buckets_s3.config.AWSConfigBucket'),
-    (['main', '--bucket', 'bucket_name', '--type', 'custom'], 'buckets_s3.aws_bucket.AWSCustomBucket'),
-    (['main', '--bucket', 'bucket_name', '--type', 'guardduty'], 'buckets_s3.guardduty.AWSGuardDutyBucket'),
-    (['main', '--bucket', 'bucket_name', '--type', 'cisco_umbrella'], 'buckets_s3.umbrella.CiscoUmbrella'),
-    (['main', '--bucket', 'bucket_name', '--type', 'waf'], 'buckets_s3.waf.AWSWAFBucket'),
-    (['main', '--bucket', 'bucket_name', '--type', 'alb'], 'buckets_s3.load_balancers.AWSALBBucket'),
-    (['main', '--bucket', 'bucket_name', '--type', 'clb'], 'buckets_s3.load_balancers.AWSCLBBucket'),
-    (['main', '--bucket', 'bucket_name', '--type', 'nlb'], 'buckets_s3.load_balancers.AWSNLBBucket'),
-    (['main', '--bucket', 'bucket_name', '--type', 'server_access'], 'buckets_s3.server_access.AWSServerAccess'),
+    (['main', '--bucket', 'bucket-name', '--type', 'cloudtrail'], 'buckets_s3.cloudtrail.AWSCloudTrailBucket'),
+    (['main', '--bucket', 'bucket-name', '--type', 'vpcflow'], 'buckets_s3.vpcflow.AWSVPCFlowBucket'),
+    (['main', '--bucket', 'bucket-name', '--type', 'config'], 'buckets_s3.config.AWSConfigBucket'),
+    (['main', '--bucket', 'bucket-name', '--type', 'custom'], 'buckets_s3.aws_bucket.AWSCustomBucket'),
+    (['main', '--bucket', 'bucket-name', '--type', 'guardduty'], 'buckets_s3.guardduty.AWSGuardDutyBucket'),
+    (['main', '--bucket', 'bucket-name', '--type', 'cisco_umbrella'], 'buckets_s3.umbrella.CiscoUmbrella'),
+    (['main', '--bucket', 'bucket-name', '--type', 'waf'], 'buckets_s3.waf.AWSWAFBucket'),
+    (['main', '--bucket', 'bucket-name', '--type', 'alb'], 'buckets_s3.load_balancers.AWSALBBucket'),
+    (['main', '--bucket', 'bucket-name', '--type', 'clb'], 'buckets_s3.load_balancers.AWSCLBBucket'),
+    (['main', '--bucket', 'bucket-name', '--type', 'nlb'], 'buckets_s3.load_balancers.AWSNLBBucket'),
+    (['main', '--bucket', 'bucket-name', '--type', 'server_access'], 'buckets_s3.server_access.AWSServerAccess'),
     (['main', '--service', 'inspector'], 'services.inspector.AWSInspector'),
     (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs')
 ])
@@ -40,6 +41,7 @@ def test_main(mock_arguments, args: list[str], class_):
     """
     instance = MagicMock()
     with patch("sys.argv", args), \
+            patch("configparser.RawConfigParser.has_option", return_value=False), \
             patch(class_) as mocked_class:
         mocked_class.return_value = instance
         aws_s3.main(args)
@@ -49,12 +51,13 @@ def test_main(mock_arguments, args: list[str], class_):
         instance.check_bucket.assert_called_once()
         instance.iter_bucket.assert_called_once()
     elif 'service' in args[1]:
+        print()
         assert mocked_class.call_count == len(aws_tools.ALL_REGIONS)
         assert instance.get_alerts.call_count == len(aws_tools.ALL_REGIONS)
 
 
 @pytest.mark.parametrize('args', [
-    ['main', '--bucket', 'bucket_name', '--type', 'invalid'],
+    ['main', '--bucket', 'bucket-name', '--type', 'invalid'],
     ['main', '--service', 'invalid']
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)

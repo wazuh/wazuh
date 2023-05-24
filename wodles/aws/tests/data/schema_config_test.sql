@@ -22,7 +22,7 @@ INSERT INTO 'config' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020505Z.json.gz',
@@ -36,7 +36,7 @@ INSERT INTO 'config' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020515Z.json.gz',
@@ -50,7 +50,7 @@ INSERT INTO 'config' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020510Z.json.gz',
@@ -64,7 +64,7 @@ INSERT INTO 'config' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020520Z.json.gz',
@@ -78,7 +78,7 @@ INSERT INTO 'config' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020525Z.json.gz',
@@ -92,7 +92,7 @@ INSERT INTO 'config' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020530Z.json.gz',
@@ -106,7 +106,7 @@ INSERT INTO 'config' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020500Z.json.gz',
@@ -120,7 +120,7 @@ INSERT INTO 'config' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020535Z.json.gz',

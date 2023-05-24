@@ -20,15 +20,17 @@ METADATA_TABLE_NAME = 'metadata'
 DB_TABLENAME = "test_table"
 
 
+@pytest.mark.parametrize('db_name', [None, utils.TEST_DATABASE])
 @patch('wazuh_integration.WazuhIntegration.check_metadata_version')
 @patch('wazuh_integration.sqlite3.connect')
 @patch('wazuh_integration.WazuhIntegration.get_client')
 @patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH)
 @patch('wazuh_integration.utils.get_wazuh_version')
-def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_client, mock_connect, mock_metadata):
+def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_client, mock_connect,
+                                                mock_metadata, db_name):
     """Test if the instances of WazuhIntegration are created properly."""
     mock_connect.return_value = MagicMock()
-    args = utils.get_wazuh_integration_parameters()
+    args = utils.get_wazuh_integration_parameters(db_name=db_name)
     integration = wazuh_integration.WazuhIntegration(**args)
     mock_path.assert_called_once()
     mock_version.assert_called_once()
@@ -36,14 +38,16 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
     assert integration.wazuh_queue == os.path.join(integration.wazuh_path, utils.QUEUE_PATH)
     assert integration.wazuh_wodle == os.path.join(integration.wazuh_path, utils.WODLE_PATH)
     mock_client.assert_called_with(access_key=args["access_key"], secret_key=args["secret_key"],
-                                   profile=args["aws_profile"], iam_role_arn=args["iam_role_arn"],
+                                   profile=args["profile"], iam_role_arn=args["iam_role_arn"],
                                    service_name=args["service_name"], region=args["region"],
                                    sts_endpoint=args["sts_endpoint"], service_endpoint=args["service_endpoint"],
-                                   iam_role_duration=args["iam_role_duration"])
-    assert integration.db_path == os.path.join(integration.wazuh_wodle, f"{utils.TEST_DATABASE}.db")
-    mock_connect.assert_called_once()
-    integration.db_connector.cursor.assert_called_once()
-    mock_metadata.assert_called_once()
+                                   iam_role_duration=args["iam_role_duration"], external_id=args["external_id"])
+
+    if db_name:
+        assert integration.db_path == os.path.join(integration.wazuh_wodle, f"{utils.TEST_DATABASE}.db")
+        mock_connect.assert_called_once()
+        integration.db_connector.cursor.assert_called_once()
+        mock_metadata.assert_called_once()
     assert integration.default_date == datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0,
                                                                  tzinfo=timezone.utc)
 
@@ -53,7 +57,7 @@ def test_wazuh_integration_check_metadata_version_existing_table(custom_database
     # Populate the database
     utils.database_execute_script(custom_database, TEST_METADATA_SCHEMA)
 
-    instance = utils.get_mocked_wazuh_integration()
+    instance = utils.get_mocked_wazuh_integration(db_name=utils.TEST_DATABASE)
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
     old_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
@@ -66,7 +70,7 @@ def test_wazuh_integration_check_metadata_version_existing_table(custom_database
 
 def test_wazuh_integration_check_metadata_version_no_table(custom_database):
     """Test if `check_metadata_version` function updates the metadata value when the table does not exist."""
-    instance = utils.get_mocked_wazuh_integration()
+    instance = utils.get_mocked_wazuh_integration(db_name=utils.TEST_DATABASE)
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
     instance.check_metadata_version()
@@ -91,7 +95,7 @@ def test_wazuh_integration_check_metadata_version_handles_exceptions(custom_data
     mocked_cursor = MagicMock()
     mocked_cursor.execute.side_effect = [mocked_table_exists, sqlite3.OperationalError]
 
-    instance = utils.get_mocked_wazuh_integration()
+    instance = utils.get_mocked_wazuh_integration(db_name=utils.TEST_DATABASE)
     instance.db_connector = custom_database
     instance.db_cursor = mocked_cursor
 
@@ -105,7 +109,7 @@ def test_wazuh_integration_delete_deprecated_tables(custom_database):
     # Populate the database
     utils.database_execute_script(custom_database, TEST_METADATA_DEPRECATED_TABLES_SCHEMA)
 
-    instance = utils.get_mocked_wazuh_integration()
+    instance = utils.get_mocked_wazuh_integration(db_name=utils.TEST_DATABASE)
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
 
@@ -169,7 +173,7 @@ def test_wazuh_integration_get_client_authentication(access_key, secret_key, pro
     service_name : str
         Name of the service.
     """
-    kwargs = utils.get_wazuh_integration_parameters(access_key=access_key, secret_key=secret_key, aws_profile=profile,
+    kwargs = utils.get_wazuh_integration_parameters(access_key=access_key, secret_key=secret_key, profile=profile,
                                                     region=region, service_name=service_name, iam_role_arn=None)
     expected_conn_args = {}
     if access_key and secret_key:
@@ -206,7 +210,7 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name):
     service_name : str
         Name of the service.
     """
-    kwargs = utils.get_wazuh_integration_parameters(access_key=None, secret_key=None, aws_profile=None,
+    kwargs = utils.get_wazuh_integration_parameters(access_key=None, secret_key=None, profile=None,
                                                     sts_endpoint=utils.TEST_SERVICE_ENDPOINT,
                                                     service_endpoint=utils.TEST_SERVICE_ENDPOINT,
                                                     service_name=service_name, iam_role_arn=iam_role_arn,
@@ -284,7 +288,7 @@ def test_wazuh_integration_get_sts_client(access_key, secret_key, profile):
     profile : str
         AWS profile name.
     """
-    instance = utils.get_mocked_wazuh_integration(access_key=access_key, secret_key=secret_key, aws_profile=profile)
+    instance = utils.get_mocked_wazuh_integration(access_key=access_key, secret_key=secret_key, profile=profile)
     expected_conn_args = {}
     if access_key and secret_key:
         expected_conn_args['aws_access_key_id'] = access_key
@@ -307,7 +311,7 @@ def test_wazuh_integration_get_sts_client_handles_exceptions_when_invalid_creds_
     mock_boto_session.client.side_effect = wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}},
                                                                                              'operation')
 
-    instance = utils.get_mocked_wazuh_integration(access_key=None, secret_key=None, aws_profile=None)
+    instance = utils.get_mocked_wazuh_integration(access_key=None, secret_key=None, profile=None)
 
     with patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:

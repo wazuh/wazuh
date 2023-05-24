@@ -20,6 +20,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         self.service = 'GuardDuty'
         if self.check_guardduty_type():
             self.type = "GuardDutyNative"
+            self.empty_bucket_message_template = AWSBucket.empty_bucket_message_template
         else:
             self.type = "GuardDutyKinesis"
 
@@ -60,7 +61,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
 
     def send_event(self, event):
-        # Send the message (split if it is necessary)
+        # Send the message (splitted if it is necessary)
         for msg in self.reformat_msg(event):
             self.send_msg(msg)
 
@@ -91,5 +92,3 @@ class AWSGuardDutyBucket(AWSCustomBucket):
                 return result
         else:
             return AWSCustomBucket.load_information_from_file(self, log_key)
-
-

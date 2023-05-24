@@ -35,7 +35,7 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration):
     def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None,
                  service_endpoint: str = None, sts_endpoint: str = None, **kwargs):
         wazuh_integration.WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                                    aws_profile=aws_profile,
+                                                    profile=profile,
                                                     service_name='s3', service_endpoint=service_endpoint,
                                                     sts_endpoint=sts_endpoint,
                                                     **kwargs)

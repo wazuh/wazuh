@@ -66,12 +66,13 @@ def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
         instance.client.list_objects_v2.return_value = object_list
 
         aws_account_id = utils.TEST_ACCOUNT_ID
-        aws_region = utils.TEST_REGION
+        aws_region = None
 
         with patch('aws_bucket.AWSBucket._same_prefix', return_value=same_prefix_result) as mock_same_prefix, \
                 patch('aws_bucket.AWSCustomBucket.already_processed', return_value=True) as mock_already_processed, \
                 patch('aws_bucket.AWSBucket.get_log_file') as mock_get_log_file, \
                 patch('aws_bucket.AWSBucket.iter_events') as mock_iter_events, \
+                patch('aws_bucket.AWSBucket._print_no_logs_to_process_message') as mock_no_logs_message, \
                 patch('aws_bucket.AWSCustomBucket.mark_complete') as mock_mark_complete:
 
             if 'IsTruncated' in object_list and object_list['IsTruncated']:
@@ -83,8 +84,7 @@ def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
             instance.client.list_objects_v2.assert_called_with(**mock_build_filter(aws_account_id, aws_region))
 
             if 'Contents' not in object_list:
-                mock_debug.assert_any_call(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}",
-                                           1)
+                mock_no_logs_message.assert_any_call(instance.bucket, aws_account_id, aws_region)
             else:
                 for bucket_file in object_list['Contents']:
                     if not bucket_file['Key']:

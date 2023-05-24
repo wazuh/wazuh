@@ -13,6 +13,7 @@ import configparser
 from os import path
 from datetime import datetime
 import sys
+import re
 
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
@@ -70,7 +71,7 @@ def arg_valid_accountid(arg_string):
         return []
     account_ids = arg_string.split(',')
     for account in account_ids:
-        if not account.strip().isdigit() and len(account) != 12:
+        if not account.strip().isdigit() or len(account) != 12: # TODO: REVIEW
             raise argparse.ArgumentTypeError(
                 "Not valid AWS account ID (numeric digits only): '{0}'.".format(arg_string))
 
@@ -149,7 +150,7 @@ def get_aws_config_params() -> configparser.RawConfigParser:
     Returns
     -------
     configparser.RawConfigParser
-        the parsed config
+        The parsed configuration.
     """
     config = configparser.RawConfigParser()
     config.read(DEFAULT_AWS_CONFIG_PATH)

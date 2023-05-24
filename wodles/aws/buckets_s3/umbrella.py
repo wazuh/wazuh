@@ -1,6 +1,7 @@
 import csv
 from aws_bucket import AWSCustomBucket
 
+
 class CiscoUmbrella(AWSCustomBucket):
 
     def __init__(self, **kwargs):
@@ -48,4 +49,3 @@ class CiscoUmbrella(AWSCustomBucket):
             init=self.get_full_prefix(aws_account_id, aws_region),
             only_logs_after=self.only_logs_after.strftime(self.date_format)
         )
-

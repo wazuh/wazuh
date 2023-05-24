@@ -10,6 +10,8 @@ import aws_tools
 class AWSLBBucket(AWSCustomBucket):
     """Class that has common methods unique to the load balancers."""
 
+    empty_bucket_message_template = AWSBucket.empty_bucket_message_template
+
     def __init__(self, *args, **kwargs):
         self.service = 'elasticloadbalancing'
         AWSCustomBucket.__init__(self, *args, **kwargs)
@@ -68,7 +70,6 @@ class AWSALBBucket(AWSLBBucket):
                         aws_tools.debug(f"Log Entry: {log_entry}", msg_level=2)
 
             return tsv_file
-
 
 
 class AWSCLBBucket(AWSLBBucket):

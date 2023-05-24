@@ -24,7 +24,7 @@ INSERT INTO 'vpcflow' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'fl-1234',
@@ -40,7 +40,7 @@ INSERT INTO 'vpcflow' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'fl-1234',
@@ -56,7 +56,7 @@ INSERT INTO 'vpcflow' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'fl-1234',
@@ -72,7 +72,7 @@ INSERT INTO 'vpcflow' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'fl-1234',
@@ -88,7 +88,7 @@ INSERT INTO 'vpcflow' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'fl-1234',
@@ -104,7 +104,7 @@ INSERT INTO 'vpcflow' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'fl-1234',
@@ -120,7 +120,7 @@ INSERT INTO 'vpcflow' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'fl-1234',
@@ -136,7 +136,7 @@ INSERT INTO 'vpcflow' (
     log_key,
     processed_date,
     created_date) VALUES (
-    'test_bucket/',
+    'test-bucket/',
     '123456789123',
     'us-east-1',
     'fl-1234',

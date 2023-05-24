@@ -51,7 +51,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         AWS access key id.
     secret_key : str
         AWS secret access key.
-    aws_profile : str
+    profile : str
         AWS profile.
     iam_role_arn : str
         IAM Role.
@@ -81,8 +81,9 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
     date_format : str
         The format that the service uses to store the date in the bucket's path.
     """
+    empty_bucket_message_template = "+++ No logs to process in bucket: {aws_account_id}/{aws_region}"
 
-    def __init__(self, db_table_name, bucket, reparse, access_key, secret_key, aws_profile, iam_role_arn,
+    def __init__(self, db_table_name, bucket, reparse, access_key, secret_key, profile, iam_role_arn,
                  only_logs_after, skip_on_error, account_alias, prefix, suffix, delete_file, aws_organization_id,
                  region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
         # common SQL queries
@@ -121,19 +122,6 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 processed_date 'text' NOT NULL,
                 created_date 'integer' NOT NULL,
                 PRIMARY KEY (bucket_path, aws_account_id, aws_region, log_key));"""
-
-        self.sql_find_last_log_processed = """
-            SELECT
-                created_date
-            FROM
-                {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id AND
-                aws_region =:aws_region
-            ORDER BY
-                created_date DESC
-            LIMIT 1;"""
 
         self.sql_find_last_key_processed = """
             SELECT
@@ -189,13 +177,19 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 bucket_path=:bucket_path AND
                 aws_account_id=:aws_account_id AND
                 aws_region=:aws_region;"""
+
+        # DB name
+        self.db_name = DEFAULT_DATABASE_NAME
+        # Table name
+        self.db_table_name = db_table_name
+
         wazuh_integration.WazuhIntegration.__init__(self,
-                                                    db_name=DEFAULT_DATABASE_NAME,
-                                                    db_table_name=db_table_name,
+                                                    db_name=self.db_name,
+                                                    bucket=bucket,
                                                     service_name='s3',
                                                     access_key=access_key,
                                                     secret_key=secret_key,
-                                                    aws_profile=aws_profile,
+                                                    profile=profile,
                                                     iam_role_arn=iam_role_arn,
                                                     region=region,
                                                     discard_field=discard_field,
@@ -239,7 +233,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         """
         return isinstance(match_start, int) and match_start == len(self.get_full_prefix(aws_account_id, aws_region))
 
-    def already_processed(self, downloaded_file, aws_account_id, aws_region):
+    def already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs):
         cursor = self.db_cursor.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
             'bucket_path': self.bucket_path,
             'aws_account_id': aws_account_id,
@@ -250,7 +244,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
     def get_creation_date(self, log_key):
         raise NotImplementedError
 
-    def mark_complete(self, aws_account_id, aws_region, log_file):
+    def mark_complete(self, aws_account_id, aws_region, log_file, **kwargs):
         if not self.reparse:
             try:
                 self.db_cursor.execute(self.sql_mark_complete.format(table_name=self.db_table_name), {
@@ -383,8 +377,9 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 sys.exit(1)
 
         except KeyError:
+            print("ERROR")
             print(f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of "
-                  f"the logs for the bucket type'")
+                  f"the logs for the bucket type '{aws_tools.get_script_arguments().type.lower()}'")
             sys.exit(18)
 
     def find_regions(self, account_id):
@@ -578,7 +573,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
             exception_handler("Unknown error reading/parsing file {}: {}".format(log_key, repr(e)), 1)
 
     def iter_bucket(self, account_id, regions):
-        self.init_db()
+        self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
         self.iter_regions_and_accounts(account_id, regions)
         self.db_connector.commit()
         self.db_cursor.execute(self.sql_db_optimize)
@@ -642,16 +637,32 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
 
                 self.send_event(event_msg)
 
-    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
+    def _print_no_logs_to_process_message(self, bucket, aws_account_id, aws_region, **kwargs):
+
+        if aws_account_id is not None and aws_region is not None:
+            message_args = {
+                'aws_account_id': aws_account_id, 'aws_region': aws_region, **kwargs
+            }
+        else:
+            message_args = {'bucket': bucket}
+        aws_tools.debug(self.empty_bucket_message_template.format(**message_args), 1)
+
+    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None, **kwargs):
+        if aws_account_id is None:
+            aws_account_id = self.aws_account_id
         try:
-            bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
+            bucket_files = self.client.list_objects_v2(
+                **self.build_s3_filter_args(aws_account_id, aws_region, **kwargs)
+            )
             if self.reparse:
                 aws_tools.debug('++ Reparse mode enabled', 2)
 
             while True:
                 if 'Contents' not in bucket_files:
-                    aws_tools.debug(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}", 1)
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region, **kwargs)
                     return
+
+                processed_logs = 0
 
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
@@ -669,7 +680,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                             aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 2)
                             continue
 
-                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
+                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, **kwargs):
                         if self.reparse:
                             aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
                                             1)
@@ -685,10 +696,16 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                     if self.delete_file:
                         aws_tools.debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                    self.mark_complete(aws_account_id, aws_region, bucket_file)
+                    self.mark_complete(aws_account_id, aws_region, bucket_file, **kwargs)
+                    processed_logs += 1
+
+                # This is a workaround in order to work with custom buckets that don't have
+                # base prefix to search the logs
+                if processed_logs == 0:
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region, **kwargs)
 
                 if bucket_files['IsTruncated']:
-                    new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
+                    new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True, **kwargs)
                     new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
                     bucket_files = self.client.list_objects_v2(**new_s3_args)
                 else:
@@ -699,7 +716,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
             error_code = error.response.get("Error", {}).get("Code")
 
             if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
-                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
+                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='iter_files_in_bucket')}: {error}"
                 exit_number = 16
             else:
                 error_message = f'ERROR: The "iter_files_in_bucket" request failed: {error}'
@@ -800,6 +817,8 @@ class AWSLogsBucket(AWSBucket):
 
 class AWSCustomBucket(AWSBucket):
 
+    empty_bucket_message_template = "+++ No logs to process in bucket: {bucket}"
+
     def __init__(self, db_table_name=None, **kwargs):
         # only special services have a different DB table
         AWSBucket.__init__(self, db_table_name=db_table_name if db_table_name else 'custom', **kwargs)
@@ -807,7 +826,7 @@ class AWSCustomBucket(AWSBucket):
         # get STS client
         access_key = kwargs.get('access_key', None)
         secret_key = kwargs.get('secret_key', None)
-        profile = kwargs.get('aws_profile', None)
+        profile = kwargs.get('profile', None)
         self.sts_client = self.get_sts_client(access_key, secret_key, profile=profile)
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
@@ -846,18 +865,6 @@ class AWSCustomBucket(AWSBucket):
                 processed_date 'text' NOT NULL,
                 created_date 'integer' NOT NULL,
                 PRIMARY KEY (bucket_path, aws_account_id, log_key));"""
-
-        self.sql_find_last_log_processed = """
-            SELECT
-                created_date
-            FROM
-                {table_name}
-            WHERE
-                bucket_path=:bucket_path AND
-                aws_account_id=:aws_account_id
-            ORDER BY
-                created_date DESC
-            LIMIT 1;"""
 
         self.sql_find_last_key_processed = """
             SELECT
@@ -991,15 +998,15 @@ class AWSCustomBucket(AWSBucket):
         self.iter_files_in_bucket()
         self.db_maintenance()
 
-    def already_processed(self, downloaded_file, aws_account_id, aws_region):
+    def already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs):
         cursor = self.db_cursor.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
             'bucket_path': self.bucket_path,
             'aws_account_id': self.aws_account_id,
             'log_key': downloaded_file})
         return cursor.fetchone()[0] > 0
 
-    def mark_complete(self, aws_account_id, aws_region, log_file):
-        AWSBucket.mark_complete(self, self.aws_account_id, aws_region, log_file)
+    def mark_complete(self, aws_account_id, aws_region, log_file, **kwargs):
+        AWSBucket.mark_complete(self, aws_account_id or self.aws_account_id, aws_region, log_file)
 
     def db_count_custom(self, aws_account_id=None):
         """Counts the number of rows in DB for a region

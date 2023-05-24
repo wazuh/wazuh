@@ -52,4 +52,3 @@ class AWSWAFBucket(AWSCustomBucket):
                         sys.exit(9)
 
         return json.loads(json.dumps(content))
-

@@ -166,98 +166,15 @@ def test_aws_vpc_flow_bucket_already_processed(custom_database,
                                       aws_region=region, flow_log_id=TEST_FLOW_LOG_ID) == expected_result
 
 
-def test_aws_vpc_flow_bucket_get_days_since_today():
-    """Test 'get_days_since_today' returns the expected number of days since today."""
-    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
-    test_date = "20220630"
-
-    date = datetime.strptime(test_date, "%Y%m%d")
-    delta = datetime.utcnow() - date + timedelta(days=1)
-
-    assert instance.get_days_since_today(test_date) == delta.days
-
-
-@patch('vpcflow.AWSVPCFlowBucket.get_days_since_today', return_value=DAYS_DELTA)
-def test_aws_vpc_flow_bucket_get_date_list(mock_days_since_today):
-    """Test 'get_date_list' returns the expected list of dates for a given delta of days."""
-    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
-    instance.date_format = "%Y/%m/%d"
-
-    date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, DAYS_DELTA)]
-
-    assert instance.get_date_list(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, TEST_FLOW_LOG_ID) == [
-        datetime.strftime(date, instance.date_format)
-        for date in reversed(date_list_time)]
-
-
-@pytest.mark.parametrize('only_logs_after', [utils.TEST_ONLY_LOGS_AFTER, None])
-@pytest.mark.parametrize('reparse', [True, False])
-def test_aws_vpc_flow_bucket_get_date_last_log(custom_database, reparse: bool, only_logs_after: str or None):
-    """Test 'get_date_last_log' method returns the expected last log date checking the DB.
-
-   Parameters
-   ----------
-   reparse: bool
-       Whether to parse already parsed logs or not.
-   only_logs_after: str or None
-       Date after which obtain logs.
-   """
-    utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
-
-    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET, reparse=reparse,
-                                       only_logs_after=only_logs_after)
-
-    instance.db_connector = custom_database
-    instance.db_cursor = instance.db_connector.cursor()
-    instance.db_table_name = TEST_TABLE_NAME
-
-    last_date_processed = instance.only_logs_after.strftime('%Y%m%d') if \
-        instance.only_logs_after and instance.reparse else None
-
-    if not last_date_processed:
-        query_date_last_log = utils.database_execute_query(instance.db_connector,
-                                                           SQL_GET_DATE_LAST_LOG_PROCESSED.format(
-                                                               table_name=instance.db_table_name))
-        db_date = str(query_date_last_log)
-
-        if instance.only_logs_after:
-            last_date_processed = db_date if datetime.strptime(db_date, '%Y%m%d') > instance.only_logs_after else \
-                datetime.strftime(instance.only_logs_after, '%Y%m%d')
-        else:
-            last_date_processed = db_date
-
-    assert instance.get_date_last_log(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, TEST_FLOW_LOG_ID) == last_date_processed
-
-
-def test_aws_vpc_flow_bucket_get_date_last_log_db_when_empty_db(custom_database):
-    """Test 'get_date_last_log' method returns the expected last log date getting it from
-    the instance's attributes (only_logs_after) if the DB is empty for a given bucket.
-    """
-    utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
-
-    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket='db_exception_bucket',
-                                       only_logs_after=utils.TEST_ONLY_LOGS_AFTER)
-
-    instance.db_connector = custom_database
-    instance.db_cursor = instance.db_connector.cursor()
-    instance.db_table_name = TEST_TABLE_NAME
-
-    last_date_processed = instance.only_logs_after.strftime('%Y%m%d') if instance.only_logs_after \
-        else instance.default_date.strftime('%Y%m%d')
-
-    assert instance.get_date_last_log(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, TEST_FLOW_LOG_ID) == last_date_processed
-
-
 @pytest.mark.parametrize('account_id', [[utils.TEST_ACCOUNT_ID], None])
 @pytest.mark.parametrize('regions', [[utils.TEST_REGION], None])
-@patch('vpcflow.AWSVPCFlowBucket.iter_files_in_bucket')
+@patch('aws_bucket.AWSLogsBucket.iter_files_in_bucket')
 @patch('vpcflow.AWSVPCFlowBucket.get_flow_logs_ids', return_value=['Id1'])
-@patch('vpcflow.AWSVPCFlowBucket.get_date_list', return_value=['2023/01/05'])
 @patch('vpcflow.AWSVPCFlowBucket.db_maintenance')
 @patch('aws_bucket.AWSBucket.find_account_ids', return_value=[utils.TEST_ACCOUNT_ID])
 @patch('aws_bucket.AWSBucket.find_regions', side_effect=[[utils.TEST_REGION], None])
 def test_aws_vpc_flow_bucket_iter_regions_and_accounts(mock_find_regions, mock_accounts,
-                                                       mock_maintenance, mock_get_date_list, mock_get_flow_logs_ids,
+                                                       mock_maintenance, mock_get_flow_logs_ids,
                                                        mock_iter_files_in_bucket,
                                                        regions: list[str] or None, account_id: list[str] or None):
     """Test 'iter_regions_and_accounts' method makes the necessary calls in order to process the bucket's files.
@@ -288,14 +205,11 @@ def test_aws_vpc_flow_bucket_iter_regions_and_accounts(mock_find_regions, mock_a
                 continue
         for aws_region in regions:
             mock_get_flow_logs_ids.assert_called_with(instance.access_key, instance.secret_key, aws_region,
-                                                      profile_name=instance.profile_name)
+                                                      aws_account_id, profile_name=instance.profile_name)
             flow_logs_ids = instance.get_flow_logs_ids(instance.access_key, instance.secret_key, aws_region,
                                                        profile_name=instance.profile_name)
             for flow_log_id in flow_logs_ids:
-                mock_get_date_list.assert_called_with(aws_account_id, aws_region, flow_log_id)
-                date_list = instance.get_date_list(aws_account_id, aws_region, flow_log_id)
-                for date in date_list:
-                    mock_iter_files_in_bucket.assert_called_with(aws_account_id, aws_region, date, flow_log_id)
+                mock_iter_files_in_bucket.assert_called_with(aws_account_id, aws_region, flow_log_id=flow_log_id)
                 mock_maintenance.assert_called_with(aws_account_id, aws_region, flow_log_id)
 
 
@@ -352,161 +266,6 @@ def test_aws_vpc_flow_bucket_get_vpc_prefix():
         vpc_prefix = instance.get_vpc_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION,
                                              TEST_DATE, TEST_FLOW_LOG_ID)
     assert expected_vpc_prefix == vpc_prefix
-
-
-@pytest.mark.parametrize('reparse', [True, False])
-@pytest.mark.parametrize('only_logs_after', [utils.TEST_ONLY_LOGS_AFTER, None])
-@pytest.mark.parametrize('iterating', [True, False])
-@pytest.mark.parametrize('region', [utils.TEST_REGION, 'region_for_empty_db'])
-@patch('aws_bucket.AWSLogsBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX)
-def test_aws_vpc_flow_bucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
-                                                  region: str, iterating: bool, only_logs_after: str or None,
-                                                  reparse: bool):
-    """Test 'build_s3_filter_args' method returns the expected filter arguments for the list_objects_v2 call.
-
-    Parameters
-    ----------
-    region: str
-        Region of service.
-    iterating: bool
-        Whether the call to the method is being made inside a loop due to a truncated response.
-    only_logs_after: str or None
-        Date after which obtain logs.
-    reparse: bool
-        Whether to parse already parsed logs or not.
-    """
-    utils.database_execute_script(custom_database, TEST_VPCFLOW_SCHEMA)
-
-    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET, reparse=reparse,
-                                       only_logs_after=only_logs_after)
-    instance.db_connector = custom_database
-    instance.db_cursor = instance.db_connector.cursor()
-    instance.db_table_name = TEST_TABLE_NAME
-
-    aws_account_id = utils.TEST_ACCOUNT_ID
-    aws_region = region
-    flow_log_id = TEST_FLOW_LOG_ID
-    date = TEST_DATE
-
-    expected_filter_args = {
-        'Bucket': instance.bucket,
-        'MaxKeys': 1000,
-        'Prefix': instance.get_vpc_prefix(aws_account_id, aws_region, date, flow_log_id)
-    }
-
-    if instance.reparse:
-        filter_marker = instance.marker_custom_date(aws_region, aws_account_id,
-                                                    datetime.strptime(date, instance.date_format))
-    else:
-        filter_marker = utils.database_execute_query(instance.db_connector, SQL_FIND_LAST_KEY_PROCESSED.format(
-            table_name=instance.db_table_name))
-
-    if aws_region == 'region_for_empty_db':
-        filter_marker = instance.get_full_prefix(aws_account_id, aws_region) + date
-
-    if not iterating:
-        expected_filter_args['StartAfter'] = filter_marker
-        if only_logs_after:
-            only_logs_marker = instance.marker_only_logs_after(aws_region, aws_account_id)
-            expected_filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
-
-    assert expected_filter_args == instance.build_s3_filter_args(aws_account_id, aws_region,
-                                                                 date, flow_log_id, iterating)
-
-
-@pytest.mark.parametrize('object_list',
-                         [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES, utils.LIST_OBJECT_V2_TRUNCATED])
-@pytest.mark.parametrize('reparse', [True, False])
-@pytest.mark.parametrize('delete_file', [True, False])
-@patch('aws_bucket.aws_tools.debug')
-@patch('vpcflow.AWSVPCFlowBucket.build_s3_filter_args')
-def test_aws_vpc_flow_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
-                                                  delete_file: bool, reparse: bool, object_list: dict):
-    """Test 'iter_files_in_bucket' method makes the necessary method calls in order to process the logs inside the bucket.
-
-    Parameters
-    ----------
-    delete_file: bool
-        Whether to remove the file from the bucket or not.
-    reparse: bool
-        Whether to parse already parsed logs or not.
-    object_list: dict
-        Objects to be returned by list_objects_v2.
-    """
-    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, bucket=utils.TEST_BUCKET,
-                                       delete_file=delete_file, reparse=reparse)
-
-    mock_build_filter.return_value = {
-        'Bucket': instance.bucket,
-        'MaxKeys': 1000,
-        'Prefix': utils.TEST_PREFIX
-    }
-
-    instance.client.list_objects_v2.return_value = object_list
-
-    aws_account_id = utils.TEST_ACCOUNT_ID
-    aws_region = utils.TEST_REGION
-
-    with patch('vpcflow.AWSVPCFlowBucket.already_processed', return_value=True) as mock_already_processed, \
-            patch('aws_bucket.AWSBucket.get_log_file') as mock_get_log_file, \
-            patch('aws_bucket.AWSBucket.iter_events') as mock_iter_events, \
-            patch('vpcflow.AWSVPCFlowBucket.mark_complete') as mock_mark_complete:
-        if 'IsTruncated' in object_list and object_list['IsTruncated']:
-            instance.client.list_objects_v2.side_effect = [object_list, utils.LIST_OBJECT_V2_NO_PREFIXES]
-
-        instance.iter_files_in_bucket(aws_account_id, aws_region, TEST_DATE, TEST_FLOW_LOG_ID)
-
-        if 'Contents' not in object_list:
-            mock_debug.assert_any_call(
-                "+++ No logs to process for {} flow log ID in bucket: {}/{}".format(TEST_FLOW_LOG_ID,
-                                                                                    aws_account_id,
-                                                                                    aws_region), 1)
-        else:
-            for bucket_file in object_list['Contents']:
-                if not bucket_file['Key']:
-                    continue
-
-                if bucket_file['Key'][-1] == '/':
-                    continue
-
-                mock_already_processed.assert_called_with(bucket_file['Key'], aws_account_id, aws_region,
-                                                          TEST_FLOW_LOG_ID)
-                if instance.reparse:
-                    mock_debug.assert_any_call("++ File previously processed, but reparse flag set: {file}".format(
-                        file=bucket_file['Key']), 1)
-                else:
-                    mock_debug.assert_any_call(
-                        "++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                    continue
-
-                mock_debug.assert_any_call("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                mock_get_log_file.assert_called_with(aws_account_id, bucket_file['Key'])
-                mock_iter_events.assert_called()
-
-                if instance.delete_file:
-                    mock_debug.assert_any_call("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-
-                mock_mark_complete.assert_called_with(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, bucket_file,
-                                                      TEST_FLOW_LOG_ID)
-
-
-def test_aws_vpc_flow_bucket_iter_files_in_bucket_handles_exceptions():
-    """Test 'iter_files_in_bucket' method handles exceptions raised by botocore or by an unexpected cause and exits with the expected exit code."""
-    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
-
-    instance.client = MagicMock()
-
-    with patch('vpcflow.AWSVPCFlowBucket.build_s3_filter_args') as mock_build_filter:
-        with pytest.raises(SystemExit) as e:
-            instance.client.list_objects_v2.side_effect = botocore.exceptions.ClientError(
-                {'Error': {'Code': aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE}}, "name")
-            instance.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, TEST_DATE, TEST_FLOW_LOG_ID)
-        assert e.value.code == utils.THROTTLING_ERROR_CODE
-
-        with pytest.raises(SystemExit) as e:
-            mock_build_filter.side_effect = Exception
-            instance.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, TEST_DATE, TEST_FLOW_LOG_ID)
-        assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
 def test_aws_vpc_flow_bucket_mark_complete(custom_database):

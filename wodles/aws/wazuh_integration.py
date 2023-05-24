@@ -30,18 +30,22 @@ MESSAGE_HEADER = "1:Wazuh-AWS:"
 class WazuhIntegration:
     """
     Class with common methods
+    :param db_name: Database name when instantiating buckets or services
     :param access_key: AWS access key id
     :param secret_key: AWS secret access key
-    :param aws_profile: AWS profile
+    :param profile: AWS profile
     :param iam_role_arn: IAM Role
     :param service name: Name of the service (s3 for services which stores logs in buckets)
     :param region: Region of service
+    :param bucket: Bucket name to extract logs from
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
+    :param external_id: AWS external ID for IAM Role assumption
     """
 
-    def __init__(self, db_name, db_table_name, service_name, access_key=None, secret_key=None, aws_profile=None,
-                 iam_role_arn=None, region=None, discard_field=None, discard_regex=None, sts_endpoint=None,
-                 service_endpoint=None, iam_role_duration=None):
+    def __init__(self, access_key, secret_key, profile, iam_role_arn, db_name=None,
+                 service_name=None, region=None, bucket=None, discard_field=None,
+                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
+                 external_id=None):
         # SQL queries
         self.sql_find_table_names = """
             SELECT
@@ -106,19 +110,22 @@ class WazuhIntegration:
         self.connection_config = self.default_config()
         self.client = self.get_client(access_key=access_key,
                                       secret_key=secret_key,
-                                      profile=aws_profile,
+                                      profile=profile,
                                       iam_role_arn=iam_role_arn,
                                       service_name=service_name,
                                       region=region,
                                       sts_endpoint=sts_endpoint,
                                       service_endpoint=service_endpoint,
-                                      iam_role_duration=iam_role_duration
+                                      iam_role_duration=iam_role_duration,
+                                      external_id=external_id
                                       )
-        self.db_path = f"{self.wazuh_wodle}/{db_name}.db"
-        self.db_connector = sqlite3.connect(self.db_path)
-        self.db_cursor = self.db_connector.cursor()
-        self.db_table_name = db_table_name
-        self.check_metadata_version()
+
+        if db_name:  # If db_name is set, the subclass is not part of the SecLake process
+            # db_name is an instance variable of subclass
+            self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, db_name)
+            self.db_connector = sqlite3.connect(self.db_path)
+            self.db_cursor = self.db_connector.cursor()
+            self.check_metadata_version()
         self.discard_field = discard_field
         self.discard_regex = re.compile(fr'{discard_regex}')
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
@@ -168,9 +175,10 @@ class WazuhIntegration:
                 f'Found configuration for connection retries in {path.join(path.expanduser("~"), ".aws", "config")}', 2)
         return args
 
-    def get_client(self, access_key=None, secret_key=None, profile=None, iam_role_arn=None, service_name=None,
-                   region=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
+    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, region=None,
+                   sts_endpoint=None, service_endpoint=None, iam_role_duration=None, external_id=None):
         conn_args = {}
+
         if access_key is not None and secret_key is not None:
             print(aws_tools.DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4",
                                                       url=aws_tools.CREDENTIALS_URL))
@@ -180,24 +188,30 @@ class WazuhIntegration:
         if profile is not None:
             conn_args['profile_name'] = profile
 
-        # set region name
+            # set region name
         if region and service_name in SERVICES_REQUIRING_REGION:
             conn_args['region_name'] = region
         else:
             # it is necessary to set region_name for GovCloud regions
             conn_args['region_name'] = region if region in DEFAULT_GOV_REGIONS else None
+
         boto_session = boto3.Session(**conn_args)
         service_name = "logs" if service_name == "cloudwatchlogs" else service_name
         # If using a role, create session using that
         try:
             if iam_role_arn:
+
                 sts_client = boto_session.client(service_name='sts', endpoint_url=sts_endpoint,
                                                  **self.connection_config)
                 assume_role_kwargs = {'RoleArn': iam_role_arn, 'RoleSessionName': 'WazuhLogParsing'}
+                if external_id:
+                    assume_role_kwargs['ExternalId'] = external_id
+
                 if iam_role_duration is not None:
                     assume_role_kwargs['DurationSeconds'] = iam_role_duration
 
                 sts_role_assumption = sts_client.assume_role(**assume_role_kwargs)
+
                 sts_session = boto3.Session(aws_access_key_id=sts_role_assumption['Credentials']['AccessKeyId'],
                                             aws_secret_access_key=sts_role_assumption['Credentials']['SecretAccessKey'],
                                             aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
@@ -208,7 +222,8 @@ class WazuhIntegration:
             else:
                 client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint,
                                              **self.connection_config)
-        except botocore.exceptions.ClientError as e:
+
+        except (botocore.exceptions.ClientError, botocore.exceptions.NoCredentialsError) as e:
             print("ERROR: Access error: {}".format(e))
             sys.exit(3)
         return client

@@ -36,16 +36,16 @@ def test_arg_valid_date_raises_exception_when_invalid_format_provided():
         aws_tools.arg_valid_date("2022-01-01")
 
 
-@pytest.mark.parametrize('arg_string', ['prefix', 'prefix/', None])
-def test_arg_valid_prefix(arg_string: str or None):
-    """Test 'arg_valid_prefix' function returns the expected prefix.
+@pytest.mark.parametrize('arg_string', ['prefix', 'prefix/', ''])
+def test_arg_valid_key(arg_string: str):
+    """Test 'arg_valid_key' function returns the expected prefix.
 
     Parameters
     ----------
-    arg_string: str or None
-        String containing the prefix to be formatted.
+    arg_string: str
+        String containing the key to be formatted.
     """
-    prefix = aws_tools.arg_valid_prefix(arg_string)
+    prefix = aws_tools.arg_valid_key(arg_string)
     if arg_string:
         assert isinstance(prefix, str)
         assert prefix[-1] == "/"
@@ -105,7 +105,7 @@ def test_arg_valid_regions(arg_string):
     """
     regions = aws_tools.arg_valid_regions(arg_string)
     assert isinstance(regions, list)
-    assert len(regions) == (len(arg_string.split(',')) if arg_string else 0)
+    assert len(regions) == (len(set(arg_string.split(','))) if arg_string else 0)
 
 
 @pytest.mark.parametrize('arg_string', ["900", "3600"])
