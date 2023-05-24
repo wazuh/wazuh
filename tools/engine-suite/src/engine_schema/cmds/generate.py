@@ -3,7 +3,7 @@ import shared.resource_handler as rs
 from ._modules import configure as modules_configure
 from ._modules import get_args as modules_get_args
 
-DEFAULT_ECS_VERSION = 'v8.5.0-rc1'
+DEFAULT_ECS_VERSION = 'v8.7.0'
 DEFAULT_OUTPUT_DIR = './'
 
 
