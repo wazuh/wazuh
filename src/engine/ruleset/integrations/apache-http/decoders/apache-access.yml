@@ -81,3 +81,5 @@ normalize:
   - map:
       - url.extension: +regex_extract/$url.original/.*\.([^.]+)$
       - ~tmp: +delete
+  - map:
+      - wazuh.decoders: +array_append/apache-access
