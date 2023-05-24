@@ -13,7 +13,7 @@ MAJOR=$(echo "${VERSION}" | cut -dv -f2 | cut -d. -f1)
 MINOR=$(echo "${VERSION}" | cut -d. -f2)
 SHA="$(git rev-parse --short=7 "$1")"
 
-WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_vars"
+WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 conf_path="/Library/Ossec/etc/ossec.conf"
 
 

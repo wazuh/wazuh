@@ -13,7 +13,7 @@ CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
 TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
 TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
 WAZUH_REGISTRATION_PASSWORD_PATH="etc/authd.pass"
-WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_vars"
+WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 
 
 # Set default sed alias
