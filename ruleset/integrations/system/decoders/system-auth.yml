@@ -19,6 +19,8 @@ metadata:
 
 definitions:
   isAuthProcess: process.name=="sshd" OR process.name=="sudo" OR process.name=="groupadd" OR process.name=="useradd" OR process.name=="groupdel" OR process.name=="groupmod" OR process.name=="userdel" OR process.name=="usermod"
+#TODO: Once the events arrive tagged, uncommnet following line and comment previous
+#  isAuthProcess: (process.name=="sshd" OR process.name=="sudo" OR process.name=="groupadd" OR process.name=="useradd" OR process.name=="groupdel" OR process.name=="groupmod" OR process.name=="userdel" OR process.name=="usermod") AND event.module=="system"
 
 check: $isAuthProcess
 
