@@ -5,9 +5,11 @@
 
 #include <baseTypes.hpp>
 #include <defs/idefinitions.hpp>
+#include <schemf/ischema.hpp>
 
 #include "expression.hpp"
 #include <utils/stringUtils.hpp>
+#include "registry.hpp"
 /*
  * The helper Map (Transformation), builds a lifter that will chain rxcpp map operation
  * Rxcpp transform expects a function that returns event.
@@ -356,7 +358,7 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
 //*************************************************
 
 /**
- * @brief Create `get_value` helper function that maps target field value with the content of the some key in the
+ * @brief Create 'get_value' helper function that maps target field value with the content of the some key in the
  * definition object, where the key is specified with a reference to another field.
  * <field>: +get_value/$<definition_object>|$<object_reference>/$<key>
  *
@@ -364,12 +366,22 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition.
  * @param definitions handler with definitions
+ * @param schema schema to validate fields
  * @return base::Expression
  */
 base::Expression opBuilderHelperGetValue(const std::string& targetField,
                                               const std::string& rawName,
                                               const std::vector<std::string>& rawParameters,
-                                              std::shared_ptr<defs::IDefinitions> definitions);
+                                              std::shared_ptr<defs::IDefinitions> definitions,
+                                              std::shared_ptr<schemf::ISchema> schema);
+
+/**
+ * @brief Get the 'get_value' function helper builder
+ *
+ * @param schema schema to validate fields
+ * @return builder
+ */
+HelperBuilder getOpBuilderHelperGetValue(std::shared_ptr<schemf::ISchema> schema);
 
 } // namespace builder::internals::builders
 
