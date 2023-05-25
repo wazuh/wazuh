@@ -4,8 +4,10 @@
 #include <any>
 
 #include <defs/idefinitions.hpp>
+#include <schemf/ischema.hpp>
 
 #include "expression.hpp"
+#include "registry.hpp"
 
 /*
  * The helper filter, builds a lifter that will chain rxcpp filter operation
@@ -619,12 +621,22 @@ base::Expression opBuilderHelperMatchValue(const std::string& targetField,
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition
  * @param definitions handler with definitions
+ * @param schema schema to validate fields
  * @return base::Expression
  */
 base::Expression opBuilderHelperMatchKey(const std::string& targetField,
                                                    const std::string& rawName,
                                                    const std::vector<std::string>& rawParameters,
-                                                   std::shared_ptr<defs::IDefinitions> definitions);
+                                                   std::shared_ptr<defs::IDefinitions> definitions,
+                                                   std::shared_ptr<schemf::ISchema> schema);
+
+/**
+ * @brief Get the 'match_key' helper function builder
+ *
+ * @param schema schema to validate fields
+ * @return builder
+ */
+HelperBuilder getOpBuilderHelperMatchKey(std::shared_ptr<schemf::ISchema> schema);
 
 } // namespace builder::internals::builders
 

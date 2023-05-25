@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <utils/stringUtils.hpp>
+
 /**
  * @brief A dot-separated path, used to navigate nested field structures.
  *
@@ -187,6 +189,30 @@ public:
      * @return const std::vector<std::string>&
      */
     const std::vector<std::string>& parts() const { return m_parts; }
+
+    /**
+     * @brief Transform pointer path string to dot path string
+     *
+     * @param jsonPath Pointer path string
+     * @return DotPath string
+     */
+    static DotPath fromJsonPath(const std::string& jsonPath)
+    {
+        std::string path {};
+
+        if(jsonPath[0] == '/')
+        {
+            path = jsonPath.substr(1);
+        }
+        else
+        {
+            path = jsonPath;
+        }
+
+        auto parts = base::utils::string::split(path, '/');
+
+        return DotPath(parts.begin(), parts.end());
+    }
 };
 
 #endif // _DOT_PATH_HPP

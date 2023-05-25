@@ -1474,15 +1474,26 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
 
 // <field>: +get_value/$<definition_object>|$<object_reference>/$<key>
 base::Expression opBuilderHelperGetValue(const std::string& targetField,
-                                              const std::string& rawName,
-                                              const std::vector<std::string>& rawParameters,
-                                              std::shared_ptr<defs::IDefinitions> definitions)
+                                         const std::string& rawName,
+                                         const std::vector<std::string>& rawParameters,
+                                         std::shared_ptr<defs::IDefinitions> definitions,
+                                         std::shared_ptr<schemf::ISchema> schema)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions, false)};
     helper::base::checkParametersSize(rawName, parameters, 2);
     helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::REFERENCE);
 
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+
+    // If key field is a schema field, the value should be a string
+    if (schema->hasField(DotPath::fromJsonPath(parameters[1].m_value))
+        && (schema->getType(DotPath::fromJsonPath(parameters[1].m_value)) != json::Json::Type::String))
+    {
+        throw std::runtime_error(
+            fmt::format("Engine helper builder: [{}] failed schema validation: Field '{}' value is not a string",
+                        name,
+                        parameters[1].m_value));
+    }
 
     std::optional<json::Json> definitionObject;
 
@@ -1497,21 +1508,21 @@ base::Expression opBuilderHelperGetValue(const std::string& targetField,
         }
         catch (std::runtime_error& e)
         {
-            throw std::runtime_error(
-                fmt::format("Engine builder: [{}] Definition '{}' has an invalid type", name, parameters[0].m_value));
+            throw std::runtime_error(fmt::format(
+                "Engine helper builder: [{}] Definition '{}' has an invalid type", name, parameters[0].m_value));
         }
 
         definitionObject = definitionValue.getJson();
         if (!definitionObject.has_value())
         {
-            throw std::runtime_error(
-                fmt::format("Engine builder: [{}] Definition '{}' has an invalid type", name, parameters[0].m_value));
+            throw std::runtime_error(fmt::format(
+                "Engine helper builder: [{}] Definition '{}' has an invalid type", name, parameters[0].m_value));
         }
 
         if (!definitionObject->isObject())
         {
-            throw std::runtime_error(
-                fmt::format("Engine builder: [{}] Definition '{}' is not an object", name, parameters[0].m_value));
+            throw std::runtime_error(fmt::format(
+                "Engine helper builder: [{}] Definition '{}' is not an object", name, parameters[0].m_value));
         }
     }
 
@@ -1526,8 +1537,8 @@ base::Expression opBuilderHelperGetValue(const std::string& targetField,
         fmt::format("[{}] -> Failure: Parameter '{}' has an invalid type", name, parameters[0].m_value)};
     const std::string failureTrace4 {
         fmt::format("[{}] -> Failure: Parameter '{}' is not an object", name, parameters[0].m_value)};
-    const std::string failureTrace5 {fmt::format(
-        "[{}] -> Failure: Object '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
+    const std::string failureTrace5 {
+        fmt::format("[{}] -> Failure: Object '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
 
     // Return Term
     return base::Term<base::EngineOp>::create(
@@ -1585,6 +1596,17 @@ base::Expression opBuilderHelperGetValue(const std::string& targetField,
             event->set(targetField, resolvedValue.value());
             return base::result::makeSuccess(event, successTrace);
         });
+}
+
+HelperBuilder getOpBuilderHelperGetValue(std::shared_ptr<schemf::ISchema> schema)
+{
+    return [schema](const std::string& targetField,
+                    const std::string& rawName,
+                    const std::vector<std::string>& rawParameters,
+                    std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return opBuilderHelperGetValue(targetField, rawName, rawParameters, definitions, schema);
+    };
 }
 
 } // namespace builder::internals::builders
