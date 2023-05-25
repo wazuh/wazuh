@@ -8,10 +8,7 @@
  */
 
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "state_wrappers.h"
 
 void __wrap_rem_inc_tcp() {

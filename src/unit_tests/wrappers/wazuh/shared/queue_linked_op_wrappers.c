@@ -8,10 +8,7 @@
  */
 
 #include "queue_linked_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 w_linked_queue_node_t * __wrap_linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
     check_expected_ptr(queue);

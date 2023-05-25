@@ -8,10 +8,7 @@
  */
 
 #include "wm_vuln_detector_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 bool __wrap_c_isdigit(__attribute__((unused)) int c) {
     return mock_type(bool);

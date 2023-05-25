@@ -8,10 +8,7 @@
  */
 
 #include "rbtree_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 void * __wrap_rbtree_insert(__attribute__((unused)) rb_tree * tree,
                             __attribute__((unused)) const char * key,

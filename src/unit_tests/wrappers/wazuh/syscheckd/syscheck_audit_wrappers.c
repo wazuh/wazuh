@@ -7,10 +7,7 @@
  * Foundation
  */
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 void __wrap_audit_read_events(int *audit_sock, int mode) {
     check_expected(mode);

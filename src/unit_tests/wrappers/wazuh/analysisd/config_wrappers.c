@@ -8,10 +8,7 @@
  */
 
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "config_wrappers.h"
 
 cJSON *__wrap_getGlobalConfig() {

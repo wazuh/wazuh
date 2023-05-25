@@ -10,10 +10,7 @@
 #ifndef WIN32
 
 #include "select_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 
 int __wrap_select(__attribute__((unused)) int nfds,

@@ -8,10 +8,7 @@
  */
 
 #include "sysInfo_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_sysinfo_hardware(cJSON ** js_result) {
     *js_result = mock_ptr_type(cJSON *);

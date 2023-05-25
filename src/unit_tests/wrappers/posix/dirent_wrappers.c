@@ -8,10 +8,7 @@
  */
 
 #include "dirent_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 
 int __wrap_closedir(__attribute__((unused)) DIR *dirp) {

@@ -7,10 +7,7 @@
  * Foundation.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 #include "../../../syscheckd/db/fim_db.h"
 
 extern int _base_line;

@@ -8,10 +8,7 @@
  */
 
 #include "run_realtime_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_realtime_adddir(const char *dir,
                            __attribute__((unused)) directory_t *configuration) {

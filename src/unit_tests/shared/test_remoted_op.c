@@ -1,12 +1,9 @@
-#include <setjmp.h>
-#include <stdarg.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cmocka.h>
 
+#include "../common/cmocka.h"
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 

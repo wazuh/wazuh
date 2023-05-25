@@ -6,10 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 #include <stdio.h>
 
 #include "../../config/global-config.h"
@@ -1339,7 +1336,7 @@ void test_syscollector_dbsync_network_address_invalid_msg_modified(void **state)
     will_return(__wrap_wdbc_query_ex, 0);
     expect_string(__wrap__mdebug2, formatted_msg, "Field 'proto' cannot be obtained.");
     expect_string(__wrap__mdebug2, formatted_msg, "Error while mapping 'proto' field value.");
-    
+
     int ret = DecodeSyscollector(lf, &sock);
 
     assert_int_not_equal(ret, 0);

@@ -8,10 +8,7 @@
  */
 
 #include "cJSON_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 cJSON_bool __wrap_cJSON_AddItemToArray(__attribute__ ((__unused__)) cJSON *array,
                                  __attribute__ ((__unused__)) cJSON *item) {

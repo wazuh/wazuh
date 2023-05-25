@@ -8,10 +8,7 @@
  */
 
 #include "integrity_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, const char * start, const char * top,
                                 const char * tail, __attribute__((unused)) const char * checksum) {

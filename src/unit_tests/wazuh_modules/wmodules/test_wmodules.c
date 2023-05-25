@@ -9,10 +9,7 @@
  * Test corresponding to the wazuh-modulesd shared functions
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 #include <time.h>
 
 #include "../../../wazuh_modules/wmodules.h"

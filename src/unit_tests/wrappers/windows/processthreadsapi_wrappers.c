@@ -8,10 +8,7 @@
  */
 
 #include "processthreadsapi_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 WINBOOL wrap_SetThreadPriority(HANDLE hThread, int nPriority) {
     check_expected(hThread);

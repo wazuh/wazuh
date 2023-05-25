@@ -8,10 +8,7 @@
  */
 
 #include "sha1_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_OS_SHA1_File(const char *fname, os_sha1 output, int mode) {
     check_expected(fname);

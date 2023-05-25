@@ -10,10 +10,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 
 #include "../headers/bqueue_op.h"
 

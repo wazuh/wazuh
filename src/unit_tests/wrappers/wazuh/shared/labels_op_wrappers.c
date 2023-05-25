@@ -8,10 +8,7 @@
  */
 
 #include "labels_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 wlabel_t* __wrap_labels_find(char* agent_id, __attribute__((unused)) int* sock) {
     check_expected(agent_id);

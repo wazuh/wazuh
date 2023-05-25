@@ -9,10 +9,7 @@
 
 #include "../../common.h"
 #include "wm_agent_upgrade_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 OSHash *hash_table;
 

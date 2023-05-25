@@ -7,10 +7,7 @@
  * Foundation.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 #include "../../client-agent/agentd.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/common.h"

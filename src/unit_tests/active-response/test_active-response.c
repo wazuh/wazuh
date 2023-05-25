@@ -7,12 +7,11 @@
  * Foundation.
  */
 
-#include <setjmp.h>
 #include <stdio.h>
-#include <cmocka.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "../common/cmocka.h"
 #include "../../headers/shared.h"
 #include "../../active-response/active_responses.h"
 

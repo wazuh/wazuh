@@ -8,10 +8,7 @@
  */
 
 #include "pthreads_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_CreateThread(__attribute__((unused)) void * (*function_pointer)(void *),
                         __attribute__((unused))  void *data) {

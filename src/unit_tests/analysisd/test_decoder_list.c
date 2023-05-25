@@ -10,10 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 
 #include "headers/debug_op.h"
 #include "../../analysisd/decoders/decoder.h"

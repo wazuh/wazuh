@@ -9,9 +9,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <setjmp.h>
-#include <cmocka.h>
 
+#include "../common/cmocka.h"
 #include "../../os_regex/os_regex_match.c"
 
 // Tests
@@ -38,7 +37,7 @@ void test__InternalMatch_pattern_empty(void **state) {
     char * str = "string";
     char * pattern = "";
     size_t pattern_size = strlen(pattern);
-    
+
     int result = _InternalMatch(pattern, str, pattern_size);
     assert_int_equal(result, TRUE);
 }

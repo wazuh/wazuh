@@ -7,10 +7,7 @@
  * Foundation
  */
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "../../headers/shared.h"
 #include "os_net_wrappers.h"
 

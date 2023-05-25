@@ -7,10 +7,7 @@
  * Foundation.
  */
 #include "timezoneapi_wrappers.h"
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 WINBOOL wrap_FileTimeToSystemTime(CONST FILETIME *lpFileTime,
                                   LPSYSTEMTIME lpSystemTime) {

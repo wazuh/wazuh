@@ -8,10 +8,7 @@
  */
 #ifdef WIN32
 #include "fim_db_registries_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_fim_db_remove_registry_value_data(fdb_t *fim_sql,
                                              fim_registry_value_data *entry) {

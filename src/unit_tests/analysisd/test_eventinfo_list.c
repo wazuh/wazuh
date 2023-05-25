@@ -7,10 +7,7 @@
  * Foundation.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 #include <stdio.h>
 
 #include "../../headers/shared.h"
@@ -52,4 +49,3 @@ int main(void)
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
-

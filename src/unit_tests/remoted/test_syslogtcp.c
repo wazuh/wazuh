@@ -7,10 +7,7 @@
  * Foundation.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -79,7 +76,7 @@ int main(void) {
         cmocka_unit_test(test_w_get_pri_header_len_no_pri),
         cmocka_unit_test(test_w_get_pri_header_len_w_pri),
         cmocka_unit_test(test_w_get_pri_header_len_not_end),
- 
+
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

@@ -8,15 +8,12 @@
  */
 
 #include "signal_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 #include <string.h>
 #include <stdio.h>
 
 int __wrap_kill(pid_t pid, int sig){
-    
+
     check_expected(sig);
     check_expected(pid);
     return mock();

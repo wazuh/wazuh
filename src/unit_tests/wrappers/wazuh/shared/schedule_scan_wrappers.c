@@ -8,10 +8,7 @@
  */
 
 #include "schedule_scan_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 
 void __wrap_sched_scan_dump(const sched_scan_config* scan_config,

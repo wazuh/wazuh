@@ -8,10 +8,7 @@
  */
 
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "limits_wrappers.h"
 
 bool __wrap_limit_reached(unsigned int *value) {

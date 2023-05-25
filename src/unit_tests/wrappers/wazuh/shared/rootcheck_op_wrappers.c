@@ -8,10 +8,7 @@
  */
 #include "rootcheck_op_wrappers.h"
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include <stdio.h>
 
 int __wrap_send_rootcheck_log(const char* agent_id, long int date, const char* log, char* response) {

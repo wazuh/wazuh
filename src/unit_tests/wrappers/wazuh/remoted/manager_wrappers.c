@@ -8,10 +8,7 @@
  */
 
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "manager_wrappers.h"
 
 cJSON *__wrap_assign_group_to_agent(const char *agent_id, const char *md5) {

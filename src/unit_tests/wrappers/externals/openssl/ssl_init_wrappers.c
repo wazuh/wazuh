@@ -8,10 +8,7 @@
  */
 
 #include "ssl_init_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 
 int __wrap_OPENSSL_init_ssl(__attribute__((unused)) uint64_t opts,

@@ -8,10 +8,7 @@
  */
 
 #include "time_wrappers.h"
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 #include <string.h>
 
 time_t __wrap_time(__attribute__ ((unused)) time_t *t) {

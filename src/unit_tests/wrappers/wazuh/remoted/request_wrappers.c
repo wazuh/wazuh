@@ -8,10 +8,7 @@
  */
 
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "request_wrappers.h"
 
 int __wrap_req_save(const char * counter, const char * buffer, size_t length) {

@@ -8,10 +8,7 @@
  */
 
 #include "fim_sync_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 void __wrap_fim_sync_push_msg(const char * msg) {
     check_expected(msg);

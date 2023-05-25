@@ -8,10 +8,7 @@
  */
 
 #include "cluster_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_w_is_worker(void) {
     return mock();

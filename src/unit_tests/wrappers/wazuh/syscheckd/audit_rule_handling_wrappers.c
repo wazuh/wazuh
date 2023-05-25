@@ -8,10 +8,7 @@
  */
 
 #include "audit_rule_handling_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 
 void __wrap_fim_rules_initial_load() {

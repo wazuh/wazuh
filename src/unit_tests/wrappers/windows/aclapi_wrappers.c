@@ -8,10 +8,7 @@
  */
 
 #include "aclapi_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 DWORD wrap_GetSecurityInfo(__UNUSED_PARAM(HANDLE handle),
                            __UNUSED_PARAM(SE_OBJECT_TYPE ObjectType),

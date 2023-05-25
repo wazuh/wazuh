@@ -9,10 +9,7 @@
 
 #include "headers/shared.h"
 #include "wm_exec_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path) {
     check_expected(command);

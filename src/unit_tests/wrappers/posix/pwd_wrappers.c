@@ -10,10 +10,7 @@
 #include "pwd_wrappers.h"
 
 #ifndef WIN32
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 #include <errno.h>
 #include <string.h>
 

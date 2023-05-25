@@ -7,10 +7,7 @@
  * Foundation.
  */
 #include "heapapi_wrappers.h"
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 LPVOID wrap_win_alloc(SIZE_T size) {
     check_expected(size);

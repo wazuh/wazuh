@@ -7,15 +7,12 @@
  * Foundation.
  */
 
-#include <setjmp.h>
-#include <stdarg.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cmocka.h>
 
+#include "../common/cmocka.h"
 #include "../headers/shared.h"
 
 #include "../wrappers/common.h"

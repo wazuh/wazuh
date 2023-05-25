@@ -7,10 +7,7 @@
  * Foundation.
  */
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -132,7 +129,7 @@ void * wrap_mmap (void *start, size_t length, int prot, int flags, int fd, off_t
         }
 
         return ret;
-        
+
     }
     return mmap(start, length, prot, flags, fd, offset);
 }

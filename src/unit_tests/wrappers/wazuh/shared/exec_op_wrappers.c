@@ -8,10 +8,7 @@
  */
 
 #include "exec_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 
 extern void write_date_storage();

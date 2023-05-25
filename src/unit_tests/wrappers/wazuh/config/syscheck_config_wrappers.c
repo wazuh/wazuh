@@ -7,10 +7,7 @@
  * Foundation
  */
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "syscheck_config_wrappers.h"
 
 char **__wrap_expand_wildcards(const char *path) {

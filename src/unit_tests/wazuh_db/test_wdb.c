@@ -8,10 +8,7 @@
  * Foundation.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -1609,7 +1606,7 @@ void test_wdb_update_last_vacuum_data_ok_done(void **state) {
 
     will_return(__wrap_sqlite3_prepare_v2, 1);
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    
+
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, last_vacuum_time);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);

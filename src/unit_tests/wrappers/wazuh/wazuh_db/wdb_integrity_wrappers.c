@@ -8,10 +8,7 @@
  */
 
 #include "wdb_integrity_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 void __wrap_wdbi_remove_by_pk(__attribute__((unused))wdb_t *wdb,
                               wdb_component_t component,

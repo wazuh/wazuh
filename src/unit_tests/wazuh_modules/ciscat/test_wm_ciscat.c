@@ -11,10 +11,7 @@
  * */
 
 #define ENABLE_CISCAT
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 #include <time.h>
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"

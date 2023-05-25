@@ -10,10 +10,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <setjmp.h>
-#include <cmocka.h>
 #include "shared.h"
 
+#include "../common/cmocka.h"
 #include "../os_zlib/os_zlib.h"
 
 #define TEST_STRING_1 "Hello World!"

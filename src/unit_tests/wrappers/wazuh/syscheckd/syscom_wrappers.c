@@ -8,9 +8,7 @@
  */
 
 #include "syscom_wrappers.h"
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 size_t __wrap_syscom_dispatch(char * command, char ** output) {
     check_expected(command);

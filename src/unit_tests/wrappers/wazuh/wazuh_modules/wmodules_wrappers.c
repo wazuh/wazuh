@@ -8,10 +8,7 @@
  */
 
 #include "wmodules_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include <string.h>
 
 int __wrap_wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {

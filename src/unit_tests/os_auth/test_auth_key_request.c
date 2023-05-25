@@ -7,10 +7,7 @@
  * Foundation.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -291,7 +288,7 @@ void test_get_agent_info_from_json_agent_success(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, key);
 
     key_request_agent_info *ret = get_agent_info_from_json(input_raw_json, &error_msg);
-    
+
     assert_string_equal(ret->id, id->valuestring);
     assert_string_equal(ret->name, name->valuestring);
     assert_string_equal(ret->ip, ip->valuestring);
@@ -304,7 +301,7 @@ void test_get_agent_info_from_json_agent_success(void **state) {
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
     __real_cJSON_Delete(input_raw_json);
-    
+
     key_request_agent_info_destroy(ret);
 }
 
@@ -339,7 +336,7 @@ void test_key_request_socket_output_long_request(void **state) {
 
     memset(buffer_request, 'a', 126);
     buffer_request[126] = '\0';
- 
+
     will_return(__wrap_external_socket_connect, 4);
     expect_string(__wrap__mdebug1, formatted_msg, "Request is too long for socket.");
 
@@ -347,7 +344,7 @@ void test_key_request_socket_output_long_request(void **state) {
     assert_null(ret);
 }
 
-void test_key_request_socket_output_send_fail(void **state) { 
+void test_key_request_socket_output_send_fail(void **state) {
     will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, -1);
 
@@ -355,7 +352,7 @@ void test_key_request_socket_output_send_fail(void **state) {
     assert_null(ret);
 }
 
-void test_key_request_socket_output_no_data_received(void **state) { 
+void test_key_request_socket_output_no_data_received(void **state) {
     will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
@@ -366,7 +363,7 @@ void test_key_request_socket_output_no_data_received(void **state) {
     assert_null(ret);
 }
 
-void test_key_request_socket_output_empty_string_received(void **state) { 
+void test_key_request_socket_output_empty_string_received(void **state) {
     will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
@@ -376,7 +373,7 @@ void test_key_request_socket_output_empty_string_received(void **state) {
     assert_null(ret);
 }
 
-void test_key_request_socket_output_success(void **state) { 
+void test_key_request_socket_output_success(void **state) {
     will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
@@ -626,7 +623,7 @@ void test_key_request_dispatch_success_add_agent(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = key_request_dispatch(buffer); 
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(response);
@@ -700,7 +697,7 @@ void test_key_request_dispatch_success_exec_output(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = key_request_dispatch(buffer); 
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(response);
@@ -778,7 +775,7 @@ void test_key_request_dispatch_error_socket_success_exec_output(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = key_request_dispatch(buffer); 
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(response);

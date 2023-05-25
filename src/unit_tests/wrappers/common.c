@@ -9,10 +9,7 @@
 
 #include <time.h>
 #include <stdio.h>
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 #include <string.h>
 #include "headers/defs.h"
 

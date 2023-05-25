@@ -8,10 +8,7 @@
  */
 
 #include "ssl_lib_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_SSL_read(SSL *ssl, void *buf, int num) {
     check_expected(ssl);

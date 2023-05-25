@@ -8,10 +8,7 @@
  */
 
 #include "bio_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 BIO *__wrap_BIO_new_socket(__attribute__((unused)) int sock,
                            __attribute__((unused)) int close_flag) {

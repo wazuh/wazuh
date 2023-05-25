@@ -8,10 +8,7 @@
  */
 
 #include "pthread_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 void (*pthread_callback_ptr)(void) = NULL;
 

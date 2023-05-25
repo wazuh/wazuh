@@ -8,10 +8,7 @@
  */
 
 #include "string_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 #ifdef WIN32
 char *__wrap_convert_windows_string(LPCWSTR string) {

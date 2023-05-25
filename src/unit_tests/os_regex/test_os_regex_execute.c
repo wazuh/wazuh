@@ -1,11 +1,10 @@
 
-#include <setjmp.h>
 #include <stdio.h>
-#include <cmocka.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
+#include "../common/cmocka.h"
 #include "../../external/cJSON/cJSON.h"
 #include "../../os_regex/os_regex.h"
 #include "../../os_regex/os_regex_internal.h"

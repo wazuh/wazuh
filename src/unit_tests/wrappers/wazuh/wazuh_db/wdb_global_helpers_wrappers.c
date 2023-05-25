@@ -8,10 +8,7 @@
  */
 
 #include "wdb_global_helpers_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 cJSON* __wrap_wdb_get_agent_labels(int id,__attribute__((unused)) int *sock) {
     check_expected(id);

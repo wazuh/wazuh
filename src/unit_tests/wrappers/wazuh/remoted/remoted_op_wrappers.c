@@ -7,10 +7,7 @@
  * Foundation
  */
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "remoted_op_wrappers.h"
 
 int __wrap_parse_agent_update_msg(char *msg, __attribute__((unused)) agent_info_data *agent_data) {

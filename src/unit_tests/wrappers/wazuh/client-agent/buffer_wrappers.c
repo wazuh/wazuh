@@ -8,9 +8,7 @@
  */
 
 #include "buffer_wrappers.h"
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_w_agentd_get_buffer_lenght() {
     return mock();

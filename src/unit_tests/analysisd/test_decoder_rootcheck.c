@@ -6,10 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 #include <stdio.h>
 
 #include "../../config/global-config.h"

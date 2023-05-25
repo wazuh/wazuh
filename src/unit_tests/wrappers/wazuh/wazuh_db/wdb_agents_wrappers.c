@@ -8,10 +8,7 @@
  */
 
 #include "wdb_agents_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 cJSON* __wrap_wdb_agents_get_sys_osinfo(__attribute__((unused)) wdb_t *wdb) {
     return mock_ptr_type(cJSON*);

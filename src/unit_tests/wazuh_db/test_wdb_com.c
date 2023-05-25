@@ -7,10 +7,7 @@
  * Foundation.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 
 #include "../wrappers/wazuh/wazuh_db/wdb_state_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"

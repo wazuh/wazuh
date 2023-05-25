@@ -8,10 +8,7 @@
  */
 
 #include "monitord_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 void __wrap_w_rotate_log(__attribute__((unused)) int compress,
                          __attribute__((unused)) int keep_log_days,

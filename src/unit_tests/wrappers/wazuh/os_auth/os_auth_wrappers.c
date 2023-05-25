@@ -8,10 +8,7 @@
  */
 
 #include "os_auth_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 SSL_CTX *__wrap_os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key,
                             const char *ca_cert, int auto_method) {
@@ -59,5 +56,4 @@ cJSON* __wrap_local_add(const char *id,
     check_expected(ip);
     check_expected(key);
     return mock_type(cJSON *);
-} 
-
+}

@@ -7,12 +7,11 @@
  * Foundation.
  */
 
-#include <setjmp.h>
 #include <stdio.h>
-#include <cmocka.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "../common/cmocka.h"
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/wm_fluent.h"
 #include "../../wazuh_modules/wm_fluent.c"

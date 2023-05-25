@@ -8,10 +8,7 @@
  */
 
 #include "time_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 #include <string.h>
 
 size_t __wrap_strftime(char * s, size_t max, __attribute__((unused)) const char * format,

@@ -6,10 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../common/cmocka.h"
 #include <stdio.h>
 #include "../wrappers/posix/pthread_wrappers.h"
 
@@ -20,7 +17,7 @@ static w_linked_queue_t *queue_ptr = NULL; // Local ptr to queue
 void callback_queue_push_ex() {
     int *ptr = malloc(sizeof(int));
     *ptr = 0;
-    linked_queue_push_ex(queue_ptr, ptr);   
+    linked_queue_push_ex(queue_ptr, ptr);
 }
 
 int setup_queue(void **state) {

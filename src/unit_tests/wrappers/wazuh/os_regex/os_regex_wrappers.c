@@ -8,10 +8,7 @@
  */
 
 #include "os_regex_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "shared.h"
 #include "../../common.h"
 

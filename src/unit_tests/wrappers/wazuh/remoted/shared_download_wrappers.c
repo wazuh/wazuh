@@ -8,10 +8,7 @@
  */
 
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "shared_download_wrappers.h"
 
 remote_files_group * __wrap_w_parser_get_group(const char * name) {

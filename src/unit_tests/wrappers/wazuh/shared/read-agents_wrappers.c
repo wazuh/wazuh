@@ -8,10 +8,7 @@
  */
 
 #include "read-agents_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_connect_to_remoted() {
     return mock();

@@ -9,11 +9,8 @@
 #include "shared.h"
 #include "start_agent.h"
 
-#include <stdio.h> 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include <stdio.h>
+#include "../../../common/cmocka.h"
 
 int wrap_closesocket(int fd) {
     check_expected(fd);

@@ -8,10 +8,7 @@
  */
 
 #include <stdio.h>
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "pcre2_wrappers.h"
 
 pcre2_match_data_8 * wrap_pcre2_match_data_create_from_pattern(__attribute__((unused))pcre2_code_8 * code,

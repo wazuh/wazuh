@@ -8,10 +8,7 @@
  */
 
 #include "wdb_syscollector_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_wdb_osinfo_save(__attribute__((unused)) wdb_t * wdb,
                            const char * scan_id,

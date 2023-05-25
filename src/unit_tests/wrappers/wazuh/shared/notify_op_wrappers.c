@@ -10,10 +10,7 @@
 #ifndef WIN32
 
 #include "notify_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_wnotify_modify(wnotify_t * notify, int fd, const woperation_t op) {
     check_expected_ptr(notify);

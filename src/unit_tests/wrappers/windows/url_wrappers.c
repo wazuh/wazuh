@@ -8,10 +8,7 @@
  */
 
 #include "url_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 CURL* wrap_curl_easy_init() {
     return mock_type(CURL *);

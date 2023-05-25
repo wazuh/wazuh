@@ -8,10 +8,7 @@
  */
 
 #include "audit_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_audit_add_rule(__attribute__((unused)) const char *path,
                           __attribute__((unused)) int perms,

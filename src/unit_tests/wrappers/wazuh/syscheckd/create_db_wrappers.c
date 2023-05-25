@@ -8,10 +8,7 @@
  */
 
 #include "create_db_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 void __wrap_fim_checker(const char *path, event_data_t *evt_data, const directory_t *configuration) {
     check_expected(path);

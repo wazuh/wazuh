@@ -8,10 +8,9 @@
  * Foundation.
  */
 
-#include <setjmp.h>
 #include <stdio.h>
-#include <cmocka.h>
 
+#include "../common/cmocka.h"
 #include "shared.h"
 #include "expression.h"
 #include "../wrappers/common.h"
@@ -31,7 +30,7 @@ const char * w_expression_get_regex_pattern(w_expression_t * expression);
 
 
 /* setup/teardown */
-    
+
 /* tests */
 
 // w_calloc_expression_t

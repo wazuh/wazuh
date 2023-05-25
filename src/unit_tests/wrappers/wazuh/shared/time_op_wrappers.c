@@ -11,10 +11,7 @@
 #include <windows.h>
 #endif
 #include "time_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 time_t current_time = 0;
 

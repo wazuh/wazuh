@@ -8,10 +8,7 @@
  */
 
 #include "winbase_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 DWORD wrap_FormatMessage(__UNUSED_PARAM(DWORD dwFlags),
                          __UNUSED_PARAM(LPCVOID lpSource),

@@ -7,10 +7,7 @@
  * Foundation
  */
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "wdb_delta_event_wrappers.h"
 
 bool __wrap_wdb_delete_dbsync(__attribute__((__unused__)) wdb_t * wdb,

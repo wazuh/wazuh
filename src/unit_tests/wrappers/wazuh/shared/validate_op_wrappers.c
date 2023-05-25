@@ -7,10 +7,7 @@
  * Foundation
  */
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "validate_op_wrappers.h"
 
 int __wrap_getDefine_Int(__attribute__((unused)) const char *high_name,

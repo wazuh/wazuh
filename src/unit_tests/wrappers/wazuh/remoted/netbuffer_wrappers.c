@@ -9,10 +9,7 @@
 
 #ifndef WIN32
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <shared.h>

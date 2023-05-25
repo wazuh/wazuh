@@ -8,10 +8,7 @@
  */
 
 #include "expression_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 bool __wrap_w_expression_match(__attribute__((unused))w_expression_t * expression, __attribute__((unused))const char * str_test,
                                __attribute__((unused))const char ** end_match, regex_matching * regex_match) {

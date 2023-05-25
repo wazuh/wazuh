@@ -8,10 +8,7 @@
  */
 
 #include "logcollector_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_can_read() {
     return mock_type(int);

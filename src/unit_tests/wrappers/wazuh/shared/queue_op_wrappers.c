@@ -8,10 +8,7 @@
  */
 
 #include "queue_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_queue_push_ex(w_queue_t * queue, void * data) {
     int retval = mock();

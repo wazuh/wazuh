@@ -8,10 +8,7 @@
  */
 
 #include "bqueue_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned flags) {
     check_expected_ptr(queue);

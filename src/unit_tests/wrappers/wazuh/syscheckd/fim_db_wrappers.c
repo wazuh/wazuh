@@ -8,10 +8,7 @@
  */
 
 #include "fim_db_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
                                      __attribute__ ((__unused__)) fim_type type,

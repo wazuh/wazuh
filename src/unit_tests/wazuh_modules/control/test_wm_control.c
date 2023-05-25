@@ -7,10 +7,7 @@
  * Foundation.
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 #include <stdio.h>
 #include "../../wrappers/wazuh/data_provider/sysInfo_wrappers.h"
 #include "../../../data_provider/include/sysInfo.h"

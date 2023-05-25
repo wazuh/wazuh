@@ -8,10 +8,7 @@
  */
 
 #include "dirent_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include <errno.h>
 #include "../../common.h"
 
@@ -31,7 +28,7 @@ DIR * wrap_opendir(const char *filename) {
             errno = ESRCH;
         }
 
-        return ret; 
+        return ret;
     } else {
         return opendir(filename);
     }

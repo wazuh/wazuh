@@ -8,10 +8,7 @@
  */
 
 #include "inotify_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 
 int __wrap_inotify_add_watch(__attribute__((unused)) int fd,

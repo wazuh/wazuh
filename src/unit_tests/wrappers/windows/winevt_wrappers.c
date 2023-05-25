@@ -7,10 +7,7 @@
  * Foundation.
  */
 #include "winevt_wrappers.h"
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 BOOL wrap_EvtRender(EVT_HANDLE Context,
                     EVT_HANDLE Fragment,

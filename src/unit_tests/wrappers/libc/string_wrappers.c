@@ -8,10 +8,7 @@
  */
 
 #include "string_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 
 char *__wrap_strerror(__attribute__((unused)) int __errnum) {

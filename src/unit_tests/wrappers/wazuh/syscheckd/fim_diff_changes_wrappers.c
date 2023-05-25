@@ -8,10 +8,7 @@
  */
 
 #include "fim_diff_changes_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 char *__wrap_fim_file_diff(const char *filename) {
     check_expected(filename);

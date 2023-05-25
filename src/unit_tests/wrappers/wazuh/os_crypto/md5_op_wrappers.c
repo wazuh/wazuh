@@ -8,10 +8,7 @@
  */
 
 #include "md5_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
     check_expected(fname);

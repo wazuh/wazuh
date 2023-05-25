@@ -8,10 +8,7 @@
  */
 
 #include "vector_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_W_Vector_insert_unique(W_Vector *v, const char *element) {
     check_expected_ptr(v);

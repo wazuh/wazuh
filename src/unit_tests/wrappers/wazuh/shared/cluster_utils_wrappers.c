@@ -8,10 +8,7 @@
  */
 
 #include "cluster_utils_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 char* __wrap_get_node_name(void) {
     return mock_type(char*);

@@ -7,11 +7,7 @@
  * Foundation.
  */
 
-#include <setjmp.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <cmocka.h>
-
+#include "../../common/cmocka.h"
 #include "../../os_crypto/sha256/sha256_op.h"
 #include "../../wrappers/common.h"
 #include "../headers/shared.h"

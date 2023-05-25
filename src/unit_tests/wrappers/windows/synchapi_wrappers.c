@@ -8,10 +8,7 @@
  */
 
 #include "synchapi_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 VOID wrap_Sleep(DWORD dwMilliseconds) {
     check_expected(dwMilliseconds);

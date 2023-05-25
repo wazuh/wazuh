@@ -8,10 +8,7 @@
  */
 
 #include "os_utils_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_w_is_file(const char * const file) {
     check_expected(file);

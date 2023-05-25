@@ -8,10 +8,7 @@
  */
 
 #include "sha256_op_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 int __wrap_OS_SHA256_String(const char *str, os_sha256 output) {
     check_expected(str);

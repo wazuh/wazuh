@@ -8,10 +8,7 @@
  */
 
 #include "url_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include "../../common.h"
 
 int __wrap_wurl_request(const char * url,

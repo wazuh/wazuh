@@ -8,10 +8,7 @@
  */
 
 #include "wdb_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 wdb_t* __wrap_wdb_open_global() {
     return mock_ptr_type(wdb_t*);

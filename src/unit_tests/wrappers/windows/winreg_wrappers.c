@@ -7,10 +7,7 @@
  * Foundation.
  */
 #include "winreg_wrappers.h"
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 LONG wrap_RegQueryInfoKey(__UNUSED_PARAM(HKEY hKey),
                           __UNUSED_PARAM(LPSTR lpClass),

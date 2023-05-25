@@ -8,10 +8,7 @@
  */
 
 #include "errhandlingapi_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../common/cmocka.h"
 
 DWORD wrap_GetLastError(VOID) {
     return mock();

@@ -8,10 +8,7 @@
  */
 #ifndef __MACH__
 #include "libaudit_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 
 
 int __wrap_audit_add_rule_data() {

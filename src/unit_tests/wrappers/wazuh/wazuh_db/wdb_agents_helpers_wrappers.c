@@ -8,10 +8,7 @@
  */
 
 #include "wdb_agents_helpers_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#include "../../../common/cmocka.h"
 #include <stdlib.h>
 
 cJSON* __wrap_wdb_insert_vuln_cves(int id,
