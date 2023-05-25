@@ -76,7 +76,7 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderHelperNotExists, "not_exists");
     helperRegistry->registerBuilder(builders::opBuilderHelperStringContains, "contains");
     helperRegistry->registerBuilder(builders::opBuilderHelperMatchValue, "match_value");
-    helperRegistry->registerBuilder(builders::opBuilderHelperMatchKey, "match_key");
+    helperRegistry->registerBuilder(builders::getOpBuilderHelperMatchKey(dependencies.schema), "match_key");
 
     // Map Helpers
     helperRegistry->registerBuilder(builders::opBuilderHelperIntCalc, "int_calculate");
@@ -103,7 +103,7 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     // Map helpers: Time functions
     helperRegistry->registerBuilder(builders::opBuilderHelperEpochTimeFromSystem, "system_epoch");
     // Map helpers: Definition functions
-    helperRegistry->registerBuilder(builders::opBuilderHelperGetValue, "get_value");
+    helperRegistry->registerBuilder(builders::getOpBuilderHelperGetValue(dependencies.schema), "get_value");
 
     // Special helpers
 

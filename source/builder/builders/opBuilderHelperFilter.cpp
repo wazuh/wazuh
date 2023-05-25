@@ -1628,12 +1628,23 @@ base::Expression opBuilderHelperMatchValue(const std::string& targetField,
 base::Expression opBuilderHelperMatchKey(const std::string& targetField,
                                          const std::string& rawName,
                                          const std::vector<std::string>& rawParameters,
-                                         std::shared_ptr<defs::IDefinitions> definitions)
+                                         std::shared_ptr<defs::IDefinitions> definitions,
+                                         std::shared_ptr<schemf::ISchema> schema)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions, false)};
     helper::base::checkParametersSize(rawName, parameters, 1);
 
     const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+
+    // If target field (key) is a schema field, the value should be a string
+    if (schema->hasField(DotPath::fromJsonPath(targetField))
+        && (schema->getType(DotPath::fromJsonPath(targetField)) != json::Json::Type::String))
+    {
+        throw std::runtime_error(
+            fmt::format("Engine helper builder: [{}] failed schema validation: Target field '{}' value is not a string",
+                        name,
+                        targetField));
+    }
 
     std::optional<json::Json> definitionObject;
 
@@ -1735,6 +1746,17 @@ base::Expression opBuilderHelperMatchKey(const std::string& targetField,
 
             return base::result::makeSuccess(event, successTrace);
         });
+}
+
+HelperBuilder getOpBuilderHelperMatchKey(std::shared_ptr<schemf::ISchema> schema)
+{
+    return [schema](const std::string& targetField,
+                    const std::string& rawName,
+                    const std::vector<std::string>& rawParameters,
+                    std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return opBuilderHelperMatchKey(targetField, rawName, rawParameters, definitions, schema);
+    };
 }
 
 } // namespace builder::internals::builders
