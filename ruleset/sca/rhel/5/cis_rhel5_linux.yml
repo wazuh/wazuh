@@ -13,7 +13,7 @@
 policy:
   id: "cis_rhel5_linux"
   file: "cis_rhel5_linux.yml"
-  name: "CIS Benchmark for Red Hat Enterprise Linux 5"
+  name: "CIS Red Hat Enterprise Linux 5 Benchmark v2.2.0"
   description: "This document, Security Configuration Benchmark for Red Hat Enterprise Linux 5 provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux (RHEL) versions 5.0 - 5.11 running on x86 platforms."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

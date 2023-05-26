@@ -14,7 +14,6 @@ enable_testing()
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
-include_directories(${SRC_FOLDER}/)
 include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
