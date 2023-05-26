@@ -1142,7 +1142,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         eligible_agents = [int(agent) for agent in eligible_agents]
 
         tasks_results = create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=UPGRADE_CHUNK_SIZE,
-                                             command='upgrade' if not installer or file_path else 'upgrade_custom',
+                                             command='upgrade' if not (installer or file_path) else 'upgrade_custom',
                                              wpk_repo=wpk_repo, version=version, force=force, use_http=use_http,
                                              file_path=file_path, installer=installer)
 
