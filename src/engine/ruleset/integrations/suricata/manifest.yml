@@ -1,0 +1,4 @@
+name: integration/suricata/0
+decoders:
+  - decoder/suricata-alert/0
+  - decoder/suricata/0
