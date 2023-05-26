@@ -100,3 +100,4 @@ normalize:
       - related.user: +array_append/$user.name
       - related.ip: +array_append/$source.ip
       - ~TAG: +delete
+      - ~system: +delete
