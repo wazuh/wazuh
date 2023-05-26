@@ -1,0 +1,69 @@
+name: decoder/suricata-alert/0
+
+sources:
+  - decoder/suricata/0
+
+metadata:
+  module: suricata
+  compatibility: v6.0.0 and higher
+  versions:
+    - "6.0.0"
+    - "7.0.0"
+
+  author:
+    name: Wazuh Inc, info@wazuh.com
+    date: Nov 18 2022
+  references:
+    - https://suricata.readthedocs.io/en/suricata-6.0.8/output/eve/eve-json-format.html?highlight=eve%20format
+  title: Suricata decoder
+  description: Decoder for Suricata solution
+
+check:
+  - ~suricata.eve.event_type: +string_equal/alert
+
+normalize:
+  - map:
+      - wazuh.decoders: +array_append/suricata-alert
+
+  - map:
+      - event.category: +array_append/intrusion_detection
+      - event.kind: alert
+      - event.dataset: suricata.alert
+      - event.severity: $~suricata.eve.alert.severity
+      - event.type: +array_append/detail
+      - file.name: $~suricata.eve.alert.metadata.filename
+      - rule.category: $~suricata.eve.alert.category
+      - rule.id: $~suricata.eve.alert.signature_id
+      - rule.name: $~suricata.eve.alert.signature
+      - threat.tactic.id: $~suricata.eve.alert.metadata.mitre_tactic_id
+      - threat.tactic.name: $~suricata.eve.alert.metadata.mitre_tactic_name
+      - threat.technique.id: $~suricata.eve.alert.metadata.mitre_technique_id
+      - threat.technique.name: $~suricata.eve.alert.metadata.mitre_technique_name
+
+  - check: source.bytes>=0 OR destination.bytes>=0
+    map:
+      - network.bytes: 0
+      - network.bytes: +int_calculate/sum/$source.bytes/$destination.bytes
+
+  - check: source.packets>=0 OR destination.packets>=0
+    map:
+      - network.packets: 0
+      - network.packets: +int_calculate/sum/$source.packets/$destination.packets
+
+  - check:
+      - ~suricata.eve.alert.action: +is_not_null
+    map:
+      - event.type: +array_append/$~suricata.eve.alert.action
+
+  - map:
+      - http.request.method: $~suricata.eve.http.http_method
+      - http.request.referrer: $~suricata.eve.http.url
+      - http.response.bytes: $~suricata.eve.http.lenght
+      - http.response.mime_type: $~suricata.eve.http.http_content_type
+      - http.response.status_code: $~suricata.eve.http.status
+      - http.version: $~suricata.eve.http.protocol
+      - related.hosts: +array_append/$~suricata.eve.http.hostname
+      - user_agent.original: $~suricata.eve.http.http_user_agent
+
+  - map:
+      - ~suricata: +delete

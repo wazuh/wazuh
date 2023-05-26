@@ -1,0 +1,73 @@
+name: decoder/suricata/0
+
+sources:
+  - decoder/integrations/0
+
+metadata:
+  module: suricata
+  compatibility: v6.0.0 and higher
+  versions:
+    - "6.0.0"
+    - "7.0.0"
+  author:
+    name: Wazuh Inc, info@wazuh.com
+    date: May 18 2024
+  references:
+    - https://suricata.readthedocs.io/en/suricata-6.0.8/output/eve/eve-json-format.html?highlight=eve%20format
+  title: Suricata decoder
+  description: Decoder for Suricata open source network analysis and threat detection software.
+
+definitions:
+  is_good_appProto: +string_not_equal/~suricata.eve.app_proto/failed AND +string_not_equal/~suricata.eve.app_proto/template AND +string_not_equal/~suricata.eve.app_proto/template-rust
+
+check:
+  - ~json.event_type: +exists
+  - ~json.flow_id: +exists
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above `event.original`
+# - event.module: suricata
+
+normalize:
+  - map:
+      - ~suricata.eve: $~json
+      - ~json: +delete
+      - destination.address: $~suricata.eve.dest_ip
+      - destination.ip: $destination.address
+      - destination.port: $~suricata.eve.dest_port
+      - event.module: suricata
+      - event.kind: event
+      - event.category: +array_append/network
+      - event.created: $~suricata.eve.timestamp
+      - network.transport: $~suricata.eve.proto
+      - source.address: $~suricata.eve.src_ip
+      - source.ip: $~suricata.eve.src_ip
+      - source.port: $~suricata.eve.src_port
+      - wazuh.decoders: +array_append/suricata
+      - ~suricata.eve.app_proto: +downcase/$~suricata.eve.app_proto
+
+  - check: $is_good_appProto
+    map:
+      - network.protocol: $~suricata.eve.app_proto
+
+  - check:
+      - ~suricata.eve.app_proto: +string_equal/ftp-data
+    map:
+      - network.protocol: ftp
+
+      - ~suricata.eve.event_type: +downcase/$~suricata.eve.event_type
+      - ~suricata.eve.netwrok.transport: +downcase/$~suricata.eve.network.transport
+      - ~suricata.eve.proto: +downcase/$~suricata.eve.proto
+
+  - map:
+      - destination.bytes: $~suricata.eve.flow.bytes_toclient
+      - destination.mac: $~suricata.eve.ether.dest_mac
+      - destination.packets: $~suricata.eve.flow.pkts_toclient
+      - source.bytes: $~suricata.eve.flow.bytes_toserver
+      - source.mac: $~suricata.eve.ether.src_mac
+      - source.packets: $~suricata.eve.flow.pkts_toserver
+      - event.start: $~suricata.eve.flow.start
+      - event.end: $~suricata.eve.flow.end
+
+  - check:
+      - ~suricata.eve.flow.state: +string_equal/new
+    map:
+      - event.type: +array_append/end
