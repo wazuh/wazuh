@@ -13,7 +13,7 @@
 policy:
   id: "cis_debian8"
   file: "cis_debian8.yml"
-  name: "CIS Benchmark for Debian/Linux 8"
+  name: "CIS Debian Linux 8 Benchmark v2.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 8."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
