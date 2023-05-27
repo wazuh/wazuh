@@ -72,45 +72,53 @@ class EngineFieldSelector(ResponseTransformations):
         if isinstance(data, list):
             # If the data is a list, iterate over each element
             for element in data:
-                # Create an empty dictionary to store the selected fields for the current element
-                selected_element = {}
-                for name in selected_fields:
-                    # Get the value of the selected field for the current element
-                    value = self._get_nested_value_select(element, name)
-
-                    if value is not None:
-                        # Split the field into nested fields based on dot separation
-                        nested_fields = name.split('.')
-
-                        # Traverse the nested fields, creating dictionaries as necessary
-                        current_dict = selected_element
-                        for field in nested_fields[:-1]:
-                            current_dict = current_dict.setdefault(field, {})
-
-                        # Assign the value to the final nested field
-                        current_dict[nested_fields[-1]] = value
-
-                # Append the selected fields dictionary to the transformed data list
-                transformed_data.append(selected_element)
+                selected_elements = self._select_fields(selected_fields, element)
+                transformed_data.append(selected_elements)
         else:
-            # If the data is a single dictionary
-            for name in selected_fields:
-                # Get the value of the selected field for the data
-                value = self._get_nested_value_select(data, name)
-                if value is not None:
-                    # Split the field into nested fields based on dot separation
-                    nested_fields = name.split('.')
-
-                    # Traverse the nested fields, creating dictionaries as necessary
-                    current_dict = transformed_data
-                    for field in nested_fields[:-1]:
-                        current_dict = current_dict.setdefault(field, {})
-
-                    # Assign the value to the final nested field
-                    current_dict[nested_fields[-1]] = value
+            transformed_data = self._select_fields(selected_fields, data)
 
         # Return the transformed data
         return transformed_data
+
+    @staticmethod
+    def _select_fields(selected_fields: List[str], data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Selects and extracts specified fields from the given data dictionary.
+
+        Args:
+            selected_fields (List[str]): A list of field names to be selected.
+            data (Dict[str, Any]): The data dictionary to select fields from.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the selected fields and their values.
+
+        Example:
+            selected_fields = ['name', 'age', 'address.city']
+            data = {'name': 'John', 'age': 25, 'address': {'street': '123 Main St', 'city': 'New York'}}
+            result = MyClass._select_fields(selected_fields, data)
+            print(result)
+            # Output: {'name': 'John', 'age': 25, 'address': {'city': 'New York'}}
+        """
+
+        # Create an empty dictionary to store the selected fields for the current element
+        selected_element = {}
+        for name in selected_fields:
+            # Get the value of the selected field for the current element
+            value = EngineFieldSelector._get_nested_value_select(data, name)
+
+            if value is not None:
+                # Split the field into nested fields based on dot separation
+                nested_fields = name.split('.')
+
+                # Traverse the nested fields, creating dictionaries as necessary
+                current_dict = selected_element
+                for field in nested_fields[:-1]:
+                    current_dict = current_dict.setdefault(field, {})
+
+                # Assign the value to the final nested field
+                current_dict[nested_fields[-1]] = value
+
+        return selected_element
 
     @staticmethod
     def _get_nested_value_select(obj: Dict[str, Any], field: str) -> Any:
@@ -160,12 +168,15 @@ class EngineFieldSearch(ResponseTransformations):
         transformed_data = []
 
         if isinstance(data, list):
+            # If the data is a list of dictionaries, apply transformation to each dictionary
             for element in data:
                 if self.search.startswith('-'):
+                    # If search starts with '-', check for absence of complementary string in any value
                     complementary_string = self.search[1:]
                     if not any(complementary_string in value for value in element.values()):
                         transformed_data.append(element)
                 else:
+                    # Otherwise, check for presence of search string in any value
                     if any(self.search in value for value in element.values()):
                         transformed_data.append(element)
 
