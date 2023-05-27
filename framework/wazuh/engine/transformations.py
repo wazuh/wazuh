@@ -361,6 +361,7 @@ class EngineFieldSort(ResponseTransformations):
         result = sorted(data, key=lambda x: sorting_lambda(list_of_sort, x))
         return result
 
+
 class EngineTransformationSequence:
     """Sequence of response transformations."""
 

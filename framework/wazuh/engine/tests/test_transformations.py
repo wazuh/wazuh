@@ -192,3 +192,26 @@ def test_sort_with_one_key(params, data, expected):
     result = sort_transformation.apply_transformation(data)
 
     assert result == expected
+
+
+def test_sequence_runs_all_valid_transformations():
+    class TransformationMock(transformations.ResponseTransformations):
+        """Mock implementation of a transformation for testing."""
+        counter = 0
+
+        def __init__(self, params):
+            TransformationMock.counter += 1
+
+        def apply_transformation(self, data):
+            data['counter'] = TransformationMock.counter
+            return data
+
+        @staticmethod
+        def can_i_run(params, data):
+            return True
+
+    list_of_transformations = [TransformationMock, TransformationMock, TransformationMock]
+    transformation_sequence = transformations.EngineTransformationSequence(list_of_transformations)
+    result = transformation_sequence.apply_sequence({}, {})
+
+    assert result['counter'] == len(list_of_transformations)
