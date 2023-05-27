@@ -167,3 +167,28 @@ def test_limit_raises_error_with_invalid_value(limit):
 def test_sort_runs_when_valid(params, data, expected):
     """Test that EngineFieldSort.can_i_run() runs correctly when valid parameters and data are provided."""
     assert transformations.EngineFieldSort.can_i_run(params, data) == expected
+
+
+@pytest.mark.parametrize(
+    "params,data,expected",
+    [
+        ({'sort': '+key'}, [{'key': 5}, {'key': 1}, {'key': 2}],
+         [{'key': 1}, {'key': 2}, {'key': 5}]),  # Sorting one key with numerical value and + option
+        ({'sort': '-key'}, [{'key': 5}, {'key': 1}, {'key': 2}],
+         [{'key': 5}, {'key': 2}, {'key': 1}]),  # Sorting one key with numerical value and - option
+        (
+                {'sort': '+key.v,+n'},
+                [{'key': {'v': 10}, 'n': 2}, {'key': {'v': 2}, 'n': 1}, {'key': {'v': 4}, 'n': 3},
+                 {'key': {'v': 10}, 'n': 4}],
+                [{'key': {'v': 2}, 'n': 1}, {'key': {'v': 4}, 'n': 3}, {'key': {'v': 10}, 'n': 2},
+                 {'key': {'v': 10}, 'n': 4}],
+        ),  # Sorting two keys, one nested, the other not
+        ({'sort': '+key'}, [{'key': 'z'}, {'key': 'j'}, {'key': 'b'}],
+         [{'key': 'b'}, {'key': 'j'}, {'key': 'z'}])  # Sorting with one key with string values
+    ]
+)
+def test_sort_with_one_key(params, data, expected):
+    sort_transformation = transformations.EngineFieldSort(params)
+    result = sort_transformation.apply_transformation(data)
+
+    assert result == expected

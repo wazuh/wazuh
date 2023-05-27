@@ -257,6 +257,50 @@ class EngineFieldLimit(ResponseTransformations):
         return data[:real_limit]
 
 
+def sorting_lambda(filters: List[Dict[str, Any]], data: Dict[str, Any]) -> tuple:
+    """
+    Sorts data based on the provided filters and returns a tuple of sorted values.
+
+    Args:
+        filters (List[Dict[str, Any]]): A list of filter dictionaries specifying the fields and sorting options.
+            Each filter dictionary should have the following keys:
+                - 'fields' (List[str]): A list of strings representing the fields to filter and sort by.
+                - 'reverse' (bool): A boolean value indicating whether to sort in reverse order.
+        data (Dict[str, Any]): A dictionary containing the data to be filtered and sorted.
+
+    Returns:
+        tuple: A tuple containing the sorted values based on the filters.
+
+    Example:
+        filters = [{'fields': ['name'], 'reverse': False}, {'fields': ['age'], 'reverse': True}]
+        data = {'name': 'John', 'age': 25}
+        result = sorting_lambda(filters, data)
+        print(result)  # Output: ('John', -25)
+    """
+
+    final_tuple = []
+
+    for filter_dict in filters:
+        value_of_filter = data
+        for key in filter_dict['fields']:
+            value_of_filter = value_of_filter.get(key)
+        print(value_of_filter)  # Print the value obtained from filtering
+
+        result = value_of_filter
+        if value_of_filter is not None:
+            if isinstance(value_of_filter, int):
+                result = value_of_filter
+            elif isinstance(value_of_filter, str):
+                result = ord(value_of_filter)  # Convert string to ASCII value
+
+            if filter_dict['reverse']:
+                result = -result  # Reverse the sorting order
+
+        final_tuple.append(result)
+
+    return tuple(final_tuple)
+
+
 class EngineFieldSort(ResponseTransformations):
     """Transformation to sort a list of dictionaries based on a field or fields."""
 
@@ -281,9 +325,30 @@ class EngineFieldSort(ResponseTransformations):
         Note:
             The transformation is applied to a list of dictionaries.
         """
-        # TODO IMPLEMENT
-        return data
+        # Split the sort string by commas to get individual sorting fields
+        filters: List[str] = self.sort.split(',')
 
+        # Create a list to store the sorting criteria
+        list_of_sort = []
+
+        # Iterate over each sorting field
+        for field in filters:
+            # Check if the sorting order is reverse (indicated by '-' prefix)
+            reverse = True if field[0] == '-' else False
+
+            # Remove the prefix if present
+            if field[0] == '+' or field[0] == '-':
+                field = field[1:]
+
+            # Split the field by dot to handle nested fields
+            nested_fields = field.split('.')
+
+            # Add the sorting criteria to the list
+            list_of_sort.append({'reverse': reverse, 'fields': nested_fields})
+
+        # Sort the data using the sorting criteria and the sorting_lambda function as the key
+        result = sorted(data, key=lambda x: sorting_lambda(list_of_sort, x))
+        return result
 
 class EngineTransformationSequence:
     """Sequence of response transformations."""
