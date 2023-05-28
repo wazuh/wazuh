@@ -187,9 +187,54 @@ def test_sort_runs_when_valid(params, data, expected):
          [{'key': 'b'}, {'key': 'j'}, {'key': 'z'}])  # Sorting with one key with string values
     ]
 )
-def test_sort_with_one_key(params, data, expected):
+def test_sort_correct_elements(params, data, expected):
     sort_transformation = transformations.EngineFieldSort(params)
     result = sort_transformation.apply_transformation(data)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "params,data,expected",
+    [
+        ({}, {}, False),  # Empty params
+        ({'q': None}, {}, False),  # Key exist in params but is None
+        ({'q': 'key=value'}, {}, False),  # Key exists in params, data is a Dict
+        ({'q': 'key=value'}, [{}], True),   # Key exists in params, data is List[Dict]
+    ]
+)
+def test_query_runs_when_valid(params, data, expected):
+    assert transformations.EngineFieldQuery.can_i_run(params, data) == expected
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {'q': 'example'},
+        {'q': 'example='}
+    ]
+)
+def test_query_has_a_valid_string(params):
+    with pytest.raises(WazuhError) as error_info:
+        transformations.EngineFieldQuery(params)
+
+    assert error_info.value.code == 1407
+
+
+@pytest.mark.parametrize(
+    "params,data,expected",
+    [
+        ({'q': 'key=example'},
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': 2}, {'key': 'example', 'n': 3}],
+         [{'key': 'example', 'n': 1},{'key': 'example', 'n': 3}]),
+        ({'q': 'key=example,n=1'},
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': 2}, {'key': 'example', 'n': 3}],
+         [{'key': 'example', 'n': 1}]),
+    ]
+)
+def test_query_return_correct_elements(params, data, expected):
+    query_transformation = transformations.EngineFieldQuery(params)
+    result = query_transformation.apply_transformation(data)
 
     assert result == expected
 

@@ -362,6 +362,94 @@ class EngineFieldSort(ResponseTransformations):
         return result
 
 
+class EngineFieldQuery(ResponseTransformations):
+    """Class for applying field-based queries to data."""
+
+    def __init__(self, params: Dict[str, Any]):
+        """
+        Initialize the EngineFieldQuery instance.
+
+        Args:
+            params: A dictionary containing the query parameters.
+                - 'q': The query string to filter results by.
+
+        Raises:
+            KeyError: If 'q' is not present in the params dictionary.
+        """
+        self._validate_query_value(params['q'])
+        self.q = params['q']
+
+    @staticmethod
+    def _validate_query_value(query: str):
+        # If there is no "=" inside the string, the query string is invalid
+        for field in query.split(','):
+            split_field = field.split('=')
+
+            if len(split_field) != 2 or any([value == '' for value in split_field]):
+                raise WazuhError(1407)
+
+    @staticmethod
+    def can_i_run(params: Dict[str, Any], data: Any) -> bool:
+        """
+        Check if the field-based query transformation can be applied.
+
+        The transformation can be applied if the following conditions are met:
+        - 'q' key is present in the params dictionary.
+        - 'q' value is not empty.
+        - The data is of type list.
+
+        Args:
+            params: A dictionary containing the query parameters.
+            data: The data to be transformed.
+
+        Returns:
+            bool: True if the transformation can be applied, False otherwise.
+        """
+        if 'q' in params and params['q'] and isinstance(data, list):
+            return True
+        return False
+
+    @staticmethod
+    def _separate_key_and_value(query_field: str) -> Dict[str, Any]:
+        """
+        Separate the key and value from a query field.
+
+        Args:
+            query_field: A string representing a query field in the format "key=value".
+
+        Returns:
+            dict: A dictionary containing the separated key and value.
+                - 'key': The key extracted from the query field.
+                - 'value': The value extracted from the query field.
+
+        Raises:
+            WazuhError: If the query field is invalid (does not contain '=').
+        """
+        split_value = query_field.split('=')
+
+        return {'key': split_value[0], 'value': split_value[1]}
+
+    def apply_transformation(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Apply the field-based query transformation to the given data.
+
+        Args:
+            data: A list of dictionaries representing the data to be transformed.
+
+        Returns:
+            list: A filtered list of dictionaries containing only the entries that satisfy the query conditions.
+        """
+        query_fields = [self._separate_key_and_value(query) for query in self.q.split(',')]
+        selected_data = filter(
+            lambda x: all(
+                query['key'] in x and str(x.get(query['key'])) == query['value']
+                for query in query_fields
+            ),
+            data
+        )
+        return list(selected_data)
+
+
 class EngineTransformationSequence:
     """Sequence of response transformations."""
 
