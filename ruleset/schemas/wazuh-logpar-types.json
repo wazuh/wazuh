@@ -326,6 +326,7 @@
         "host.geo.timezone": "keyword",
         "host.hostname": "keyword",
         "host.id": "keyword",
+        "host.ip": "ip",
         "host.name": "keyword",
         "host.network.egress.bytes": "long",
         "host.network.egress.packets": "long",
