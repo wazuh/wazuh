@@ -193,11 +193,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
         self.sync_agent_info_status = {'date_start_master': DEFAULT_DATE, 'date_end_master': DEFAULT_DATE,
                                        'n_synced_chunks': 0}
-        self.send_agent_groups_status = {'date_start': default_date,
-                                         'date_end': default_date,
+        self.send_agent_groups_status = {'date_start': DEFAULT_DATE,
+                                         'date_end': DEFAULT_DATE,
                                          'n_synced_chunks': 0}
-        self.send_full_agent_groups_status = {'date_start': default_date,
-                                              'date_end': default_date,
+        self.send_full_agent_groups_status = {'date_start': DEFAULT_DATE,
+                                              'date_end': DEFAULT_DATE,
                                               'n_synced_chunks': 0}
 
         # Variables which will be filled when the worker sends the hello request.
@@ -267,14 +267,20 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger = self.task_loggers['Agent-groups send']
             start_time = self.send_agent_groups_status['date_start']
             if isinstance(start_time, str):
-                start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
+                if start_time == DEFAULT_DATE:
+                    start_time = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
+                else:
+                    start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
             start_time = start_time.timestamp()
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_wgc_e':
             logger = self.task_loggers['Agent-groups send full']
             start_time = self.send_full_agent_groups_status['date_start']
             if isinstance(start_time, str):
-                start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
+                if start_time == DEFAULT_DATE:
+                    start_time = datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc)
+                else:
+                    start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
             start_time = start_time.timestamp()
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_w_g_err':
