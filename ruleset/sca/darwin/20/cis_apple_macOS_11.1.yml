@@ -8,12 +8,12 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Apple macOS 11.0 Big Sur Benchmark v2.1.0 - 07-18-2022
+# Center for Internet Security Apple macOS 11.0 Big Sur Benchmark v2.1.0 - 07-19-2022
 
 policy:
   id: "cis_apple_macos_11.x"
   file: "cis_apple_macOS_11.1.yml"
-  name: "CIS Apple macOS 11.0 Big Sur Benchmark v2.1.0."
+  name: "CIS Apple macOS 11.0 Big Sur Benchmark v2.1.0"
   description: "CIS Apple macOS 11.0 Big Sur Benchmark v2.1.0, provides prescriptive guidance for establishing a secure configuration posture for Apple macOS 10.15. This guide was tested against Apple macOS 10.15."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

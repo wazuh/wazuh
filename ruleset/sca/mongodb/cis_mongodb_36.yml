@@ -8,12 +8,12 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Benchmark for MongoDB 3.6 - 31-12-2019
+# Center for Internet Security Benchmark for MongoDB 3.6 v1.0.0 - 31-12-2019
 
 policy:
   id: "cis_mongodb"
   file: "cis_mongodb_36.yml"
-  name: "CIS MongoDB 3.6 Benchmark"
+  name: "CIS MongoDB 3.6 Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for MongoDB version 3.6. This guide was tested against MongoDB 3.6 running on Ubuntu Linux and Windows but applies to other distributions as well"
   references:
     - https://www.cisecurity.org/cis-benchmarks/

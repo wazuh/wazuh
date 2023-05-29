@@ -8,12 +8,12 @@
 # Foundation
 #
 # Based on:
-# CIS Benchmark for SUSE Linux Enterprise Server 11 v2.1.0 - 12-28-2017
+# CIS Benchmark for SUSE Linux Enterprise Server 11 v2.1.0 - 08-13-2020
 
 policy:
   id: "cis_sles11_linux"
   file: "cis_sles11_linux.yml"
-  name: "CIS SUSE Linux Enterprise 11 Benchmark"
+  name: "CIS SUSE Linux Enterprise 11 Benchmark v2.1.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for SUSE Linux Enterprise 11 systems running on x86 and x64 platforms. This document was tested against SUSE Linux Enterprise Server 11 SP4."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
