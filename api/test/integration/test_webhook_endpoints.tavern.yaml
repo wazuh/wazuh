@@ -124,6 +124,11 @@ stages:
           {"bar": 4},
           {"bar": 5},
           {"bar": 6},
+          {"bar": 7},
+          {"bar": 8},
+          {"bar": 9},
+          {"bar": 10},
+          {"bar": 11},
         ]
     response:
       status_code: 400
