@@ -192,7 +192,6 @@ api_config_schema = {
                 }
             }
         },
-        "max_events_per_request": {"type": "integer", "minimum": 0},
     },
 }
 
