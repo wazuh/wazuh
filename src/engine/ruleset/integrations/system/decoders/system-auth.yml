@@ -53,6 +53,9 @@ normalize:
       - message: "<user.name> : <~system.auth.sudo.error> ; TTY=<~system.auth.sudo.tty> ; PWD=<~system.auth.sudo.pwd> ; USER=<~system.auth.sudo.user> ; COMMAND=<~system.auth.sudo.command>"
       - message: "<user.name> : TTY=<~system.auth.sudo.tty> ; PWD=<~system.auth.sudo.pwd> ; USER=<~system.auth.sudo.user> ; COMMAND=<~system.auth.sudo.command>"
 
+  - map:
+      - ~system.auth.tty.array: +split/$~system.auth.sudo.tty/\/
+
   - check:
       - message: +contains/pam_unix(
     logpar:
@@ -107,7 +110,7 @@ normalize:
       - related.user: +array_append/$user.name/$~system.auth.sudo.user
       - related.ip: +array_append/$source.ip
       - process.command_line: $~system.auth.sudo.command
-      - process.tty: $~system.auth.sudo.tty
+      - process.tty.char_device.major: $~system.auth.tty.array.1
       - process.working_directory: $~system.auth.sudo.pwd
       - ~TAG: +delete
       - ~system: +delete
