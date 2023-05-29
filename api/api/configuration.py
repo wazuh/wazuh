@@ -85,7 +85,6 @@ default_api_configuration = {
             }
         }
     },
-    "max_events_per_request": 0
 }
 
 
