@@ -181,4 +181,3 @@ TEST_F(SysInfoHardwareWrapperARMMacTest, Test_CpuMhz_Failed_CFGetTypeID)
 
     EXPECT_THROW(wrapper->cpuMhz(), std::system_error);
 }
-

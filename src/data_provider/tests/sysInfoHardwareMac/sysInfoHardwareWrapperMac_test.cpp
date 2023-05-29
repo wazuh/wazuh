@@ -420,3 +420,16 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_BoardSerial_Succeed)
     EXPECT_NO_THROW(ret = wrapper->boardSerial());
     EXPECT_STREQ(ret.c_str(), "H2WH91N3Q6NY");
 }
+
+TEST_F(SysInfoHardwareWrapperMacTest, Test_BoardSerial_Failed_UnknowValue)
+{
+    auto utils_mock { std::make_shared<UtilsMock>() };
+    gs_utils_mock = utils_mock.get();
+
+    auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
+    EXPECT_CALL(*utils_mock, exec(_, _)).Times(1).WillOnce(Return(""));
+
+    std::string ret;
+    EXPECT_NO_THROW(ret = wrapper->boardSerial());
+    EXPECT_STREQ(ret.c_str(), UNKNOWN_VALUE);
+}
