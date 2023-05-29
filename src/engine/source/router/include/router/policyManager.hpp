@@ -34,8 +34,14 @@ private:
     /* Resources */
     std::shared_ptr<builder::Builder> m_builder; ///< Builder for policy creation
 
-    std::string m_output;
-    std::string m_trace;
+    struct Data
+    {
+        std::string output;
+        std::string debugMode;
+        std::string trace;
+    };
+
+    Data m_data;
 
 public:
     /**
@@ -108,18 +114,24 @@ public:
     std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event event);
 
     /**
-     * @brief Get the Output object
+     * @brief Set the Debug Mode object
      * 
-     * @return std::stringstream 
+     * @param debugMode 
      */
-    inline const std::string getOutput() {return m_output;}
+    void inline setDebugMode(const std::string& debugMode)
+    {
+        m_data.debugMode = debugMode;
+    }
 
     /**
      * @brief Get the Output object
      * 
      * @return std::stringstream 
      */
-    inline const std::string getTrace() {return m_trace;}
+    inline const std::pair<std::string, std::string> getData()
+    {
+        return {m_data.output, m_data.trace};
+    }
 };
 } // namespace router
 

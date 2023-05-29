@@ -47,9 +47,28 @@ void run(std::shared_ptr<apiclnt::Client> client, const Options& options)
     eRequest.set_debugmode(intToDebugMode(options.debugLevel));
 
     // Set event
-    const auto jsonEvent = eMessage::eMessageFromJson<google::protobuf::Value>(options.event);
-    const auto eventValue = std::get<google::protobuf::Value>(jsonEvent);
-    eRequest.mutable_event()->CopyFrom(eventValue);
+    json::Json jevent {};
+    try
+    {
+        jevent = json::Json {options.event.c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        // If not, set it as a string
+        jevent.setString(options.event);
+    }
+
+    // Convert the value to protobuf value
+    const auto protoEvent = eMessage::eMessageFromJson<google::protobuf::Value>(jevent.str());
+    if (std::holds_alternative<base::Error>(protoEvent)) // Should not happen but just in case
+    {
+        const auto msj = std::get<base::Error>(protoEvent).message + ". For value " + jevent.str();
+        throw ::cmd::ClientException(msj, ClientException::Type::PROTOBUFF_SERIALIZE_ERROR);
+    }
+
+    const auto& event = std::get<google::protobuf::Value>(protoEvent);
+    std::cout << "hola" << std::endl;
+    *eRequest.mutable_event() = event;
 
     // Call the API
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
