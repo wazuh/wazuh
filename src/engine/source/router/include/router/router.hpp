@@ -10,6 +10,7 @@
 #include <unordered_map>
 
 #include <baseTypes.hpp>
+#include <condition_variable>
 #include <parseEvent.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <store/istore.hpp>
@@ -65,8 +66,16 @@ private:
     /* Config */
     std::size_t m_numThreads; ///< Number of threads for the router
 
-    std::string m_output;
-    std::string m_trace;
+    struct Data
+    {
+        std::string output;
+        std::string trace;
+        std::string debugMode;
+        std::condition_variable_any dataReady;
+        bool isDataReady;
+    };
+
+    Data m_data;
 
     /**
      * @brief Get a Json with the routes table
@@ -198,25 +207,27 @@ public:
     void clear();
 
     /**
-     * @brief Get the Output object
+     * @brief Set the Debug Mode object
      * 
-     * @return std::stringstream 
+     * @param debugMode 
      */
-    inline const std::string getOutput()
+    void inline setDebugMode(const std::string& debugMode)
     {
-        std::shared_lock lock {m_mutexRoutes};
-        return m_output;
+        m_data.debugMode = debugMode;
     }
 
     /**
-     * @brief Get the Output object
+     * @brief Get the Data object
      * 
-     * @return std::stringstream 
+     * @return const Data 
      */
-    inline const std::string getTrace()
+    const std::pair<std::string, std::string> getData()
     {
         std::shared_lock lock {m_mutexRoutes};
-        return m_trace;
+        // Espera hasta que la salida esté lista
+        m_data.dataReady.wait(lock, [this]() { return m_data.isDataReady; });
+
+        return {m_data.output, m_data.trace};
     }
 };
 } // namespace router
