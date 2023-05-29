@@ -69,6 +69,3 @@
 #   limits:
 #     eps:
 #       allow: yes
-
-# Set the maximun size of the bulk for /events endpoint
-# max_events_per_request: 0

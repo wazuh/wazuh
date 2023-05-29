@@ -2,8 +2,9 @@ from typing import List, Optional
 
 from connexion import ProblemException
 
-from api.configuration import api_conf
 from api.models.base_model_ import Body
+
+MAX_EVENTS_PER_REQUEST = 10  # This value isn't definitive. It will be defined based on performance tests.
 
 
 class EventsIngestModel(Body):
@@ -39,8 +40,7 @@ class EventsIngestModel(Body):
         """
         :param events: Events list
         """
-        bulk_max_size = api_conf.get('max_events_per_request')
-        if bulk_max_size and len(events) > bulk_max_size:
+        if len(events) > MAX_EVENTS_PER_REQUEST:
             raise ProblemException(
                 status=400,
                 title='Events bulk size exceeded',
