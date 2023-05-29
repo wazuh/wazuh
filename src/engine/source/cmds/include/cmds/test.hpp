@@ -28,7 +28,7 @@ struct Options
     std::string apiEndpoint;
     std::string policyName;
     std::string event;
-    char protocolQueue;
+    uint32_t protocolQueue;
     int debugLevel;
 };
 
