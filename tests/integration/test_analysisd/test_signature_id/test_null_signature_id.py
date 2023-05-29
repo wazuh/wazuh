@@ -121,7 +121,7 @@ def test_null_signature_id(configuration, metadata, set_wazuh_configuration, tru
     # Start monitors
     monitor_not_found = FileMonitor(OSSEC_LOG_PATH, generate_callback(patterns.SID_NOT_FOUND))
     monitor_empty = FileMonitor(OSSEC_LOG_PATH, generate_callback(patterns.EMPTY_IF_SID_RULE_IGNORED))
-    
+
     # Check that expected log appears for rules if_sid field pointing to a non existent SID
     assert monitor_not_found.callback_result
     # Check that expected log appears for rules if_sid field being empty (empty since non-existent SID is ignored)
