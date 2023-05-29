@@ -16,7 +16,6 @@ import uvloop
 from freezegun import freeze_time
 
 from wazuh.core import exception
-from wazuh.core.cluster.master import DEFAULT_DATE
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -28,6 +27,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.cluster import common as cluster_common, client, master
+        from wazuh.core.cluster.master import DEFAULT_DATE
         from wazuh.core import common
         from wazuh.core.cluster.dapi import dapi
         from wazuh.core.utils import get_utc_strptime
