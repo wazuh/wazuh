@@ -930,7 +930,10 @@ def check_wazuh_limits_unchanged(new_conf, original_conf):
 def load_wazuh_xml(xml_path, data=None):
     if not data:
         with open(xml_path) as f:
-            data = f.read()
+            try:
+                data = f.read()
+            except Exception as e:
+                raise WazuhError(1113, extra_message=str(e))
 
     # -- characters are not allowed in XML comments
     xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
