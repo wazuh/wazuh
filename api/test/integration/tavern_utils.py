@@ -7,7 +7,6 @@ from datetime import datetime
 from json import loads
 
 from box import Box
-from requests import Response
 
 
 def get_values(o):
