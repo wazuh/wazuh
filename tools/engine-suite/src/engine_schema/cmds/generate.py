@@ -3,7 +3,7 @@ import shared.resource_handler as rs
 from ._modules import configure as modules_configure
 from ._modules import get_args as modules_get_args
 
-DEFAULT_ECS_VERSION = 'v8.7.0'
+DEFAULT_ECS_VERSION = 'v8.8.0'
 DEFAULT_OUTPUT_DIR = './'
 
 
@@ -33,7 +33,7 @@ ECS field modules and apply changes on an engine instance through the API socket
     resource_handler.save_file(
         output_dir, 'wazuh-logpar-types', jlogpar, rs.Format.JSON)
     resource_handler.save_file(
-        output_dir, 'wazuh-engine', jengine, rs.Format.JSON)
+        output_dir, 'engine-schema', jengine, rs.Format.JSON)
     print('Success.')
 
 
