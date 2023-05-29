@@ -267,50 +267,6 @@
                 "string"
             ]
         },
-        "client.user.risk.calculated_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "string"
-            ]
-        },
-        "client.user.risk.calculated_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "client.user.risk.calculated_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "client.user.risk.static_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "string"
-            ]
-        },
-        "client.user.risk.static_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "client.user.risk.static_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
         "client.user.roles": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of user roles at the time of the event.",
             "type": [
@@ -860,50 +816,6 @@
                 "string"
             ]
         },
-        "destination.user.risk.calculated_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "string"
-            ]
-        },
-        "destination.user.risk.calculated_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "destination.user.risk.calculated_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "destination.user.risk.static_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "string"
-            ]
-        },
-        "destination.user.risk.static_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "destination.user.risk.static_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
         "destination.user.roles": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of user roles at the time of the event.",
             "type": [
@@ -916,6 +828,30 @@
                     "string"
                 ]
             }
+        },
+        "device.id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe unique identifier of a device. The identifier must not change across application sessions but stay fixed for an instance of a (mobile) device. \nOn iOS, this value must be equal to the vendor identifier (https://developer.apple.com/documentation/uikit/uidevice/1620059-identifierforvendor). On Android, this value must be equal to the Firebase Installation ID or a globally unique UUID which is persisted across sessions in your application.\nFor GDPR and data protection law reasons this identifier should not carry information that would allow to identify a user.",
+            "type": [
+                "string"
+            ]
+        },
+        "device.manufacturer": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe vendor name of the device manufacturer.",
+            "type": [
+                "string"
+            ]
+        },
+        "device.model.identifier": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe machine readable identifier of the device model.",
+            "type": [
+                "string"
+            ]
+        },
+        "device.model.name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe human readable marketing name of the device model.",
+            "type": [
+                "string"
+            ]
         },
         "dll.code_signature.digest_algorithm": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe hashing algorithm used to sign the process.\nThis value can distinguish signatures when a file is signed multiple times by the same signer but with a different digest algorithm.",
@@ -1055,11 +991,86 @@
                 "string"
             ]
         },
+        "dll.pe.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "dll.pe.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "dll.pe.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "dll.pe.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "dll.pe.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "dll.pe.imphash": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
             "type": [
                 "string"
             ]
+        },
+        "dll.pe.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for imphash.",
+            "type": [
+                "string"
+            ]
+        },
+        "dll.pe.imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+"
+            }
+        },
+        "dll.pe.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "dll.pe.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "dll.pe.original_file_name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -1078,6 +1089,62 @@
             "type": [
                 "string"
             ]
+        },
+        "dll.pe.sections": {
+            "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the PE file.\nThe keys that should be present in these objects are defined by sub-fields underneath `pe.sections.*`.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+",
+                "additionalProperties": false,
+                "properties": {
+                    "entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "name": {
+                        "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "physical_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List physical size.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "virtual_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    }
+                }
+            }
         },
         "dns.answers": {
             "description": "Module: ecs\nIndexerType: object\nArray: True\n\nAn array containing an object for each answer section returned by the server.\nThe main keys that should be present in these objects are defined by ECS. Records that have more information may contain more keys than what ECS defines.\nNot all DNS data sources give all details about DNS answers. At minimum, answer objects must contain the `data` key. If more information is available, map as much of it to ECS as possible, and add any additional fields to the answer objects as custom fields.",
@@ -1839,6 +1906,44 @@
                 "pattern": "^[\\+\\$].+"
             }
         },
+        "file.elf.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "file.elf.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.elf.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.elf.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.elf.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "file.elf.header.abi_version": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
             "type": [
@@ -1889,6 +1994,12 @@
                 "string"
             ]
         },
+        "file.elf.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in an ELF file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is an ELF implementation of the Windows PE imphash.",
+            "type": [
+                "string"
+            ]
+        },
         "file.elf.imports": {
             "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
             "type": [
@@ -1903,6 +2014,22 @@
                 ],
                 "pattern": "^[\\+\\$].+"
             }
+        },
+        "file.elf.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.elf.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "file.elf.sections": {
             "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -1966,6 +2093,14 @@
                         "type": [
                             "string"
                         ]
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
                     },
                     "virtual_address": {
                         "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -2107,6 +2242,143 @@
                 "string"
             ]
         },
+        "file.macho.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "file.macho.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.macho.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.macho.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.macho.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.macho.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a Mach-O file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for symhash.",
+            "type": [
+                "string"
+            ]
+        },
+        "file.macho.imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+"
+            }
+        },
+        "file.macho.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.macho.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.macho.sections": {
+            "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the Mach-O file.\nThe keys that should be present in these objects are defined by sub-fields underneath `macho.sections.*`.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+",
+                "additionalProperties": false,
+                "properties": {
+                    "entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "name": {
+                        "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMach-O Section List name.",
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "physical_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nMach-O Section List physical size.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "virtual_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nMach-O Section List virtual size. This is always the same as `physical_size`.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    }
+                }
+            }
+        },
+        "file.macho.symhash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a Mach-O file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a Mach-O implementation of the Windows PE imphash",
+            "type": [
+                "string"
+            ]
+        },
         "file.mime_type": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using https://www.iana.org/assignments/media-types/media-types.xhtml[IANA official types], where possible. When more than one type is applicable, the most specific type should be used.",
             "type": [
@@ -2167,11 +2439,86 @@
                 "string"
             ]
         },
+        "file.pe.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "file.pe.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.pe.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.pe.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.pe.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "file.pe.imphash": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
             "type": [
                 "string"
             ]
+        },
+        "file.pe.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for imphash.",
+            "type": [
+                "string"
+            ]
+        },
+        "file.pe.imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+"
+            }
+        },
+        "file.pe.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "file.pe.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "file.pe.original_file_name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -2190,6 +2537,62 @@
             "type": [
                 "string"
             ]
+        },
+        "file.pe.sections": {
+            "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the PE file.\nThe keys that should be present in these objects are defined by sub-fields underneath `pe.sections.*`.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+",
+                "additionalProperties": false,
+                "properties": {
+                    "entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "name": {
+                        "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "physical_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List physical size.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "virtual_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    }
+                }
+            }
         },
         "file.size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nFile size in bytes.\nOnly relevant when `file.type` is \"file\".",
@@ -2621,7 +3024,7 @@
             }
         },
         "host.name": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the host.\nIt can contain what `hostname` returns on Unix systems, the fully qualified domain name, or a name specified by the user. The sender decides which value to use.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the host.\nIt can contain what hostname returns on Unix systems, the fully qualified domain name (FQDN), or a name specified by the user. The recommended value is the lowercase FQDN of the host.",
             "type": [
                 "string"
             ]
@@ -3406,6 +3809,19 @@
                 "string"
             ]
         },
+        "orchestrator.resource.annotation": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe list of annotations added to the resource.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "string"
+                ]
+            }
+        },
         "orchestrator.resource.id": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique ID of the resource being acted upon.",
             "type": [
@@ -3414,6 +3830,19 @@
         },
         "orchestrator.resource.ip": {
             "description": "Module: ecs\nIndexerType: ip\nArray: True\n\nIP address assigned to the resource associated with the event being observed. In the case of a Kubernetes Pod, this array would contain only one element: the IP of the Pod (as opposed to the Node on which the Pod is running).",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "string"
+                ]
+            }
+        },
+        "orchestrator.resource.label": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe list of labels added to the resource.",
             "type": [
                 "string",
                 "array"
@@ -3667,6 +4096,44 @@
                 "pattern": "^[\\+\\$].+"
             }
         },
+        "process.elf.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "process.elf.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.elf.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.elf.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.elf.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "process.elf.header.abi_version": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
             "type": [
@@ -3717,6 +4184,12 @@
                 "string"
             ]
         },
+        "process.elf.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in an ELF file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is an ELF implementation of the Windows PE imphash.",
+            "type": [
+                "string"
+            ]
+        },
         "process.elf.imports": {
             "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
             "type": [
@@ -3731,6 +4204,22 @@
                 ],
                 "pattern": "^[\\+\\$].+"
             }
+        },
+        "process.elf.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.elf.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.elf.sections": {
             "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -3794,6 +4283,14 @@
                         "type": [
                             "string"
                         ]
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
                     },
                     "virtual_address": {
                         "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -4406,6 +4903,224 @@
             ],
             "pattern": "^[\\+\\$].+"
         },
+        "process.io": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nA chunk of input or output (IO) from a single process.\nThis field only appears on the top level process object, which is the process that wrote the output or read the input.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "additionalProperties": false,
+            "properties": {
+                "bytes_skipped": {
+                    "description": "Module: ecs\nIndexerType: object\nArray: True\n\nAn array of byte offsets and lengths denoting where IO data has been skipped.",
+                    "type": [
+                        "string",
+                        "array"
+                    ],
+                    "pattern": "^[\\+\\$].+",
+                    "items": {
+                        "type": [
+                            "object",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+",
+                        "additionalProperties": false,
+                        "properties": {
+                            "length": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe length of bytes skipped.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
+                            "offset": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe byte offset into this event's io.text (or io.bytes in the future) where length bytes were skipped.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            }
+                        }
+                    }
+                },
+                "max_bytes_per_process_exceeded": {
+                    "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nIf true, the process producing the output has exceeded the max_kilobytes_per_process configuration setting.",
+                    "type": [
+                        "boolean",
+                        "string"
+                    ],
+                    "pattern": "^[\\+\\$].+"
+                },
+                "text": {
+                    "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA chunk of output or input sanitized to UTF-8.\nBest efforts are made to ensure complete lines are captured in these events. Assumptions should NOT be made that multiple lines will appear in the same event. TTY output may contain terminal control codes such as for cursor movement, so some string queries may not match due to terminal codes inserted between characters of a word.",
+                    "type": [
+                        "string"
+                    ]
+                },
+                "total_bytes_captured": {
+                    "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe total number of bytes captured in this event.",
+                    "type": [
+                        "number",
+                        "string"
+                    ],
+                    "pattern": "^[\\+\\$].+"
+                },
+                "total_bytes_skipped": {
+                    "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe total number of bytes that were not captured due to implementation restrictions such as buffer size limits. Implementors should strive to ensure this value is always zero",
+                    "type": [
+                        "number",
+                        "string"
+                    ],
+                    "pattern": "^[\\+\\$].+"
+                },
+                "type": {
+                    "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of object on which the IO action (read or write) was taken.\nCurrently only 'tty' is supported. Other types may be added in the future for 'file' and 'socket' support.",
+                    "type": [
+                        "string"
+                    ]
+                }
+            }
+        },
+        "process.macho.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "process.macho.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.macho.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.macho.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.macho.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.macho.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a Mach-O file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for symhash.",
+            "type": [
+                "string"
+            ]
+        },
+        "process.macho.imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+"
+            }
+        },
+        "process.macho.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.macho.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.macho.sections": {
+            "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the Mach-O file.\nThe keys that should be present in these objects are defined by sub-fields underneath `macho.sections.*`.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+",
+                "additionalProperties": false,
+                "properties": {
+                    "entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "name": {
+                        "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMach-O Section List name.",
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "physical_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nMach-O Section List physical size.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "virtual_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nMach-O Section List virtual size. This is always the same as `physical_size`.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    }
+                }
+            }
+        },
+        "process.macho.symhash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a Mach-O file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a Mach-O implementation of the Windows PE imphash",
+            "type": [
+                "string"
+            ]
+        },
         "process.name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nProcess name.\nSometimes called program name or similar.",
             "type": [
@@ -4538,6 +5253,44 @@
                 "pattern": "^[\\+\\$].+"
             }
         },
+        "process.parent.elf.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "process.parent.elf.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.elf.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.elf.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.elf.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "process.parent.elf.header.abi_version": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
             "type": [
@@ -4588,6 +5341,12 @@
                 "string"
             ]
         },
+        "process.parent.elf.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in an ELF file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is an ELF implementation of the Windows PE imphash.",
+            "type": [
+                "string"
+            ]
+        },
         "process.parent.elf.imports": {
             "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
             "type": [
@@ -4602,6 +5361,22 @@
                 ],
                 "pattern": "^[\\+\\$].+"
             }
+        },
+        "process.parent.elf.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.elf.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.parent.elf.sections": {
             "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -4665,6 +5440,14 @@
                         "type": [
                             "string"
                         ]
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
                     },
                     "virtual_address": {
                         "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -4842,6 +5625,143 @@
             ],
             "pattern": "^[\\+\\$].+"
         },
+        "process.parent.macho.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "process.parent.macho.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.macho.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.macho.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.macho.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.macho.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a Mach-O file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for symhash.",
+            "type": [
+                "string"
+            ]
+        },
+        "process.parent.macho.imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+"
+            }
+        },
+        "process.parent.macho.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.macho.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.macho.sections": {
+            "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the Mach-O file.\nThe keys that should be present in these objects are defined by sub-fields underneath `macho.sections.*`.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+",
+                "additionalProperties": false,
+                "properties": {
+                    "entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "name": {
+                        "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMach-O Section List name.",
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "physical_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nMach-O Section List physical size.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "virtual_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nMach-O Section List virtual size. This is always the same as `physical_size`.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    }
+                }
+            }
+        },
+        "process.parent.macho.symhash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a Mach-O file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a Mach-O implementation of the Windows PE imphash",
+            "type": [
+                "string"
+            ]
+        },
         "process.parent.name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nProcess name.\nSometimes called program name or similar.",
             "type": [
@@ -4872,11 +5792,86 @@
                 "string"
             ]
         },
+        "process.parent.pe.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "process.parent.pe.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.pe.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.pe.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.pe.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "process.parent.pe.imphash": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
             "type": [
                 "string"
             ]
+        },
+        "process.parent.pe.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for imphash.",
+            "type": [
+                "string"
+            ]
+        },
+        "process.parent.pe.imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+"
+            }
+        },
+        "process.parent.pe.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.parent.pe.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.parent.pe.original_file_name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -4895,6 +5890,62 @@
             "type": [
                 "string"
             ]
+        },
+        "process.parent.pe.sections": {
+            "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the PE file.\nThe keys that should be present in these objects are defined by sub-fields underneath `pe.sections.*`.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+",
+                "additionalProperties": false,
+                "properties": {
+                    "entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "name": {
+                        "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "physical_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List physical size.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "virtual_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    }
+                }
+            }
         },
         "process.parent.pgid": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nDeprecated for removal in next major version release. This field is superseded by `process.group_leader.pid`.\nIdentifier of the group of processes the process belongs to.",
@@ -5075,11 +6126,86 @@
                 "string"
             ]
         },
+        "process.pe.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "process.pe.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.pe.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.pe.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.pe.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "process.pe.imphash": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
             "type": [
                 "string"
             ]
+        },
+        "process.pe.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for imphash.",
+            "type": [
+                "string"
+            ]
+        },
+        "process.pe.imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+"
+            }
+        },
+        "process.pe.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "process.pe.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.pe.original_file_name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -5098,6 +6224,62 @@
             "type": [
                 "string"
             ]
+        },
+        "process.pe.sections": {
+            "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the PE file.\nThe keys that should be present in these objects are defined by sub-fields underneath `pe.sections.*`.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+",
+                "additionalProperties": false,
+                "properties": {
+                    "entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "name": {
+                        "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "physical_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List physical size.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "virtual_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    }
+                }
+            }
         },
         "process.pgid": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nDeprecated for removal in next major version release. This field is superseded by `process.group_leader.pid`.\nIdentifier of the group of processes the process belongs to.",
@@ -5911,50 +7093,6 @@
                 "string"
             ]
         },
-        "server.user.risk.calculated_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "string"
-            ]
-        },
-        "server.user.risk.calculated_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "server.user.risk.calculated_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "server.user.risk.static_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "string"
-            ]
-        },
-        "server.user.risk.static_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "server.user.risk.static_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
         "server.user.roles": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of user roles at the time of the event.",
             "type": [
@@ -6401,50 +7539,6 @@
                 "string"
             ]
         },
-        "source.user.risk.calculated_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "string"
-            ]
-        },
-        "source.user.risk.calculated_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "source.user.risk.calculated_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "source.user.risk.static_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "string"
-            ]
-        },
-        "source.user.risk.static_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "source.user.risk.static_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
         "source.user.roles": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of user roles at the time of the event.",
             "type": [
@@ -6681,6 +7775,44 @@
                                     "pattern": "^[\\+\\$].+"
                                 }
                             },
+                            "file.elf.go_import_hash": {
+                                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+                                "type": [
+                                    "string"
+                                ]
+                            },
+                            "file.elf.go_imports": {
+                                "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+                                "type": [
+                                    "object",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
+                            "file.elf.go_imports_names_entropy": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
+                            "file.elf.go_imports_names_var_entropy": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
+                            "file.elf.go_stripped": {
+                                "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+                                "type": [
+                                    "boolean",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
                             "file.elf.header.abi_version": {
                                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
                                 "type": [
@@ -6731,6 +7863,12 @@
                                     "string"
                                 ]
                             },
+                            "file.elf.import_hash": {
+                                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in an ELF file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is an ELF implementation of the Windows PE imphash.",
+                                "type": [
+                                    "string"
+                                ]
+                            },
                             "file.elf.imports": {
                                 "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
                                 "type": [
@@ -6745,6 +7883,22 @@
                                     ],
                                     "pattern": "^[\\+\\$].+"
                                 }
+                            },
+                            "file.elf.imports_names_entropy": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
+                            "file.elf.imports_names_var_entropy": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
                             },
                             "file.elf.sections": {
                                 "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -6808,6 +7962,14 @@
                                             "type": [
                                                 "string"
                                             ]
+                                        },
+                                        "var_entropy": {
+                                            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "pattern": "^[\\+\\$].+"
                                         },
                                         "virtual_address": {
                                             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -7009,11 +8171,86 @@
                                     "string"
                                 ]
                             },
+                            "file.pe.go_import_hash": {
+                                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+                                "type": [
+                                    "string"
+                                ]
+                            },
+                            "file.pe.go_imports": {
+                                "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+                                "type": [
+                                    "object",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
+                            "file.pe.go_imports_names_entropy": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
+                            "file.pe.go_imports_names_var_entropy": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
+                            "file.pe.go_stripped": {
+                                "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+                                "type": [
+                                    "boolean",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
                             "file.pe.imphash": {
                                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
                                 "type": [
                                     "string"
                                 ]
+                            },
+                            "file.pe.import_hash": {
+                                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for imphash.",
+                                "type": [
+                                    "string"
+                                ]
+                            },
+                            "file.pe.imports": {
+                                "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+                                "type": [
+                                    "string",
+                                    "array"
+                                ],
+                                "pattern": "^[\\+\\$].+",
+                                "items": {
+                                    "type": [
+                                        "object",
+                                        "string"
+                                    ],
+                                    "pattern": "^[\\+\\$].+"
+                                }
+                            },
+                            "file.pe.imports_names_entropy": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
+                            },
+                            "file.pe.imports_names_var_entropy": {
+                                "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+                                "type": [
+                                    "number",
+                                    "string"
+                                ],
+                                "pattern": "^[\\+\\$].+"
                             },
                             "file.pe.original_file_name": {
                                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -7032,6 +8269,62 @@
                                 "type": [
                                     "string"
                                 ]
+                            },
+                            "file.pe.sections": {
+                                "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the PE file.\nThe keys that should be present in these objects are defined by sub-fields underneath `pe.sections.*`.",
+                                "type": [
+                                    "string",
+                                    "array"
+                                ],
+                                "pattern": "^[\\+\\$].+",
+                                "items": {
+                                    "type": [
+                                        "object",
+                                        "string"
+                                    ],
+                                    "pattern": "^[\\+\\$].+",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "entropy": {
+                                            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "pattern": "^[\\+\\$].+"
+                                        },
+                                        "name": {
+                                            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
+                                            "type": [
+                                                "string"
+                                            ]
+                                        },
+                                        "physical_size": {
+                                            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List physical size.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "pattern": "^[\\+\\$].+"
+                                        },
+                                        "var_entropy": {
+                                            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "pattern": "^[\\+\\$].+"
+                                        },
+                                        "virtual_size": {
+                                            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
+                                            "type": [
+                                                "number",
+                                                "string"
+                                            ],
+                                            "pattern": "^[\\+\\$].+"
+                                        }
+                                    }
+                                }
                             },
                             "file.size": {
                                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nFile size in bytes.\nOnly relevant when `file.type` is \"file\".",
@@ -7388,8 +8681,20 @@
                                     "string"
                                 ]
                             },
+                            "marking.tlp_version": {
+                                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nTraffic Light Protocol version.",
+                                "type": [
+                                    "string"
+                                ]
+                            },
                             "modified_at": {
                                 "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThe date and time when intelligence source last modified information for this indicator.",
+                                "type": [
+                                    "string"
+                                ]
+                            },
+                            "name": {
+                                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe display name indicator in an UI friendly format",
                                 "type": [
                                     "string"
                                 ]
@@ -8092,6 +9397,44 @@
                 "pattern": "^[\\+\\$].+"
             }
         },
+        "threat.indicator.file.elf.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "threat.indicator.file.elf.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "threat.indicator.file.elf.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "threat.indicator.file.elf.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "threat.indicator.file.elf.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "threat.indicator.file.elf.header.abi_version": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
             "type": [
@@ -8142,6 +9485,12 @@
                 "string"
             ]
         },
+        "threat.indicator.file.elf.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in an ELF file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is an ELF implementation of the Windows PE imphash.",
+            "type": [
+                "string"
+            ]
+        },
         "threat.indicator.file.elf.imports": {
             "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
             "type": [
@@ -8156,6 +9505,22 @@
                 ],
                 "pattern": "^[\\+\\$].+"
             }
+        },
+        "threat.indicator.file.elf.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "threat.indicator.file.elf.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "threat.indicator.file.elf.sections": {
             "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -8219,6 +9584,14 @@
                         "type": [
                             "string"
                         ]
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
                     },
                     "virtual_address": {
                         "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -8420,11 +9793,86 @@
                 "string"
             ]
         },
+        "threat.indicator.file.pe.go_import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a PE file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
+            "type": [
+                "string"
+            ]
+        },
+        "threat.indicator.file.pe.go_imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+            "type": [
+                "object",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "threat.indicator.file.pe.go_imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "threat.indicator.file.pe.go_imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "threat.indicator.file.pe.go_stripped": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "threat.indicator.file.pe.imphash": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
             "type": [
                 "string"
             ]
+        },
+        "threat.indicator.file.pe.import_hash": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for imphash.",
+            "type": [
+                "string"
+            ]
+        },
+        "threat.indicator.file.pe.imports": {
+            "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+"
+            }
+        },
+        "threat.indicator.file.pe.imports_names_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
+        "threat.indicator.file.pe.imports_names_var_entropy": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "threat.indicator.file.pe.original_file_name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -8443,6 +9891,62 @@
             "type": [
                 "string"
             ]
+        },
+        "threat.indicator.file.pe.sections": {
+            "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the PE file.\nThe keys that should be present in these objects are defined by sub-fields underneath `pe.sections.*`.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "object",
+                    "string"
+                ],
+                "pattern": "^[\\+\\$].+",
+                "additionalProperties": false,
+                "properties": {
+                    "entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "name": {
+                        "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "physical_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List physical size.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "var_entropy": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    },
+                    "virtual_size": {
+                        "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
+                        "type": [
+                            "number",
+                            "string"
+                        ],
+                        "pattern": "^[\\+\\$].+"
+                    }
+                }
+            }
         },
         "threat.indicator.file.size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nFile size in bytes.\nOnly relevant when `file.type` is \"file\".",
@@ -8799,8 +10303,20 @@
                 "string"
             ]
         },
+        "threat.indicator.marking.tlp_version": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nTraffic Light Protocol version.",
+            "type": [
+                "string"
+            ]
+        },
         "threat.indicator.modified_at": {
             "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThe date and time when intelligence source last modified information for this indicator.",
+            "type": [
+                "string"
+            ]
+        },
+        "threat.indicator.name": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe display name indicator in an UI friendly format",
             "type": [
                 "string"
             ]
@@ -10217,50 +11733,6 @@
                 "string"
             ]
         },
-        "user.changes.risk.calculated_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "string"
-            ]
-        },
-        "user.changes.risk.calculated_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "user.changes.risk.calculated_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "user.changes.risk.static_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "string"
-            ]
-        },
-        "user.changes.risk.static_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "user.changes.risk.static_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
         "user.changes.roles": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of user roles at the time of the event.",
             "type": [
@@ -10333,50 +11805,6 @@
             "type": [
                 "string"
             ]
-        },
-        "user.effective.risk.calculated_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "string"
-            ]
-        },
-        "user.effective.risk.calculated_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "user.effective.risk.calculated_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "user.effective.risk.static_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "string"
-            ]
-        },
-        "user.effective.risk.static_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "user.effective.risk.static_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
         },
         "user.effective.roles": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of user roles at the time of the event.",
@@ -10549,50 +11977,6 @@
             "type": [
                 "string"
             ]
-        },
-        "user.target.risk.calculated_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "string"
-            ]
-        },
-        "user.target.risk.calculated_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "user.target.risk.calculated_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "user.target.risk.static_level": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "string"
-            ]
-        },
-        "user.target.risk.static_score": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
-        },
-        "user.target.risk.static_score_norm": {
-            "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "pattern": "^[\\+\\$].+"
         },
         "user.target.roles": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of user roles at the time of the event.",

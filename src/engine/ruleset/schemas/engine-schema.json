@@ -165,30 +165,6 @@
             "type": "string",
             "array": false
         },
-        "client.user.risk.calculated_level": {
-            "type": "string",
-            "array": false
-        },
-        "client.user.risk.calculated_score": {
-            "type": "number",
-            "array": false
-        },
-        "client.user.risk.calculated_score_norm": {
-            "type": "number",
-            "array": false
-        },
-        "client.user.risk.static_level": {
-            "type": "string",
-            "array": false
-        },
-        "client.user.risk.static_score": {
-            "type": "number",
-            "array": false
-        },
-        "client.user.risk.static_score_norm": {
-            "type": "number",
-            "array": false
-        },
         "client.user.roles": {
             "type": "string",
             "array": true
@@ -525,33 +501,25 @@
             "type": "string",
             "array": false
         },
-        "destination.user.risk.calculated_level": {
-            "type": "string",
-            "array": false
-        },
-        "destination.user.risk.calculated_score": {
-            "type": "number",
-            "array": false
-        },
-        "destination.user.risk.calculated_score_norm": {
-            "type": "number",
-            "array": false
-        },
-        "destination.user.risk.static_level": {
-            "type": "string",
-            "array": false
-        },
-        "destination.user.risk.static_score": {
-            "type": "number",
-            "array": false
-        },
-        "destination.user.risk.static_score_norm": {
-            "type": "number",
-            "array": false
-        },
         "destination.user.roles": {
             "type": "string",
             "array": true
+        },
+        "device.id": {
+            "type": "string",
+            "array": false
+        },
+        "device.manufacturer": {
+            "type": "string",
+            "array": false
+        },
+        "device.model.identifier": {
+            "type": "string",
+            "array": false
+        },
+        "device.model.name": {
+            "type": "string",
+            "array": false
         },
         "dll.code_signature.digest_algorithm": {
             "type": "string",
@@ -641,8 +609,44 @@
             "type": "string",
             "array": false
         },
+        "dll.pe.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "dll.pe.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "dll.pe.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "dll.pe.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "dll.pe.imphash": {
             "type": "string",
+            "array": false
+        },
+        "dll.pe.import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.imports": {
+            "type": "object",
+            "array": true
+        },
+        "dll.pe.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "dll.pe.imports_names_var_entropy": {
+            "type": "number",
             "array": false
         },
         "dll.pe.original_file_name": {
@@ -655,6 +659,30 @@
         },
         "dll.pe.product": {
             "type": "string",
+            "array": false
+        },
+        "dll.pe.sections": {
+            "type": "object",
+            "array": true
+        },
+        "dll.pe.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "dll.pe.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "dll.pe.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "dll.pe.sections.var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "dll.pe.sections.virtual_size": {
+            "type": "number",
             "array": false
         },
         "dns.answers": {
@@ -1077,6 +1105,26 @@
             "type": "object",
             "array": true
         },
+        "file.elf.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "file.elf.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "file.elf.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.elf.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.elf.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "file.elf.header.abi_version": {
             "type": "string",
             "array": false
@@ -1109,9 +1157,21 @@
             "type": "string",
             "array": false
         },
+        "file.elf.import_hash": {
+            "type": "string",
+            "array": false
+        },
         "file.elf.imports": {
             "type": "object",
             "array": true
+        },
+        "file.elf.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.elf.imports_names_var_entropy": {
+            "type": "number",
+            "array": false
         },
         "file.elf.sections": {
             "type": "object",
@@ -1143,6 +1203,10 @@
         },
         "file.elf.sections.type": {
             "type": "string",
+            "array": false
+        },
+        "file.elf.sections.var_entropy": {
+            "type": "number",
             "array": false
         },
         "file.elf.sections.virtual_address": {
@@ -1221,6 +1285,70 @@
             "type": "string",
             "array": false
         },
+        "file.macho.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "file.macho.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "file.macho.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.macho.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.macho.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
+        "file.macho.import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "file.macho.imports": {
+            "type": "object",
+            "array": true
+        },
+        "file.macho.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.macho.imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.macho.sections": {
+            "type": "object",
+            "array": true
+        },
+        "file.macho.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.macho.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "file.macho.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "file.macho.sections.var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.macho.sections.virtual_size": {
+            "type": "number",
+            "array": false
+        },
+        "file.macho.symhash": {
+            "type": "string",
+            "array": false
+        },
         "file.mime_type": {
             "type": "string",
             "array": false
@@ -1261,8 +1389,44 @@
             "type": "string",
             "array": false
         },
+        "file.pe.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "file.pe.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.pe.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.pe.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "file.pe.imphash": {
             "type": "string",
+            "array": false
+        },
+        "file.pe.import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.imports": {
+            "type": "object",
+            "array": true
+        },
+        "file.pe.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.pe.imports_names_var_entropy": {
+            "type": "number",
             "array": false
         },
         "file.pe.original_file_name": {
@@ -1275,6 +1439,30 @@
         },
         "file.pe.product": {
             "type": "string",
+            "array": false
+        },
+        "file.pe.sections": {
+            "type": "object",
+            "array": true
+        },
+        "file.pe.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.pe.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "file.pe.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "file.pe.sections.var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "file.pe.sections.virtual_size": {
+            "type": "number",
             "array": false
         },
         "file.size": {
@@ -1957,11 +2145,19 @@
             "type": "string",
             "array": false
         },
+        "orchestrator.resource.annotation": {
+            "type": "string",
+            "array": true
+        },
         "orchestrator.resource.id": {
             "type": "string",
             "array": false
         },
         "orchestrator.resource.ip": {
+            "type": "string",
+            "array": true
+        },
+        "orchestrator.resource.label": {
             "type": "string",
             "array": true
         },
@@ -2109,6 +2305,26 @@
             "type": "object",
             "array": true
         },
+        "process.elf.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.elf.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "process.elf.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.elf.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.elf.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "process.elf.header.abi_version": {
             "type": "string",
             "array": false
@@ -2141,9 +2357,21 @@
             "type": "string",
             "array": false
         },
+        "process.elf.import_hash": {
+            "type": "string",
+            "array": false
+        },
         "process.elf.imports": {
             "type": "object",
             "array": true
+        },
+        "process.elf.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.elf.imports_names_var_entropy": {
+            "type": "number",
+            "array": false
         },
         "process.elf.sections": {
             "type": "object",
@@ -2175,6 +2403,10 @@
         },
         "process.elf.sections.type": {
             "type": "string",
+            "array": false
+        },
+        "process.elf.sections.var_entropy": {
+            "type": "number",
             "array": false
         },
         "process.elf.sections.virtual_address": {
@@ -2525,6 +2757,106 @@
             "type": "boolean",
             "array": false
         },
+        "process.io": {
+            "type": "object",
+            "array": false
+        },
+        "process.io.bytes_skipped": {
+            "type": "object",
+            "array": true
+        },
+        "process.io.bytes_skipped.length": {
+            "type": "number",
+            "array": false
+        },
+        "process.io.bytes_skipped.offset": {
+            "type": "number",
+            "array": false
+        },
+        "process.io.max_bytes_per_process_exceeded": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.io.text": {
+            "type": "string",
+            "array": false
+        },
+        "process.io.total_bytes_captured": {
+            "type": "number",
+            "array": false
+        },
+        "process.io.total_bytes_skipped": {
+            "type": "number",
+            "array": false
+        },
+        "process.io.type": {
+            "type": "string",
+            "array": false
+        },
+        "process.macho.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.macho.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "process.macho.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.macho.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.macho.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.macho.import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.macho.imports": {
+            "type": "object",
+            "array": true
+        },
+        "process.macho.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.macho.imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.macho.sections": {
+            "type": "object",
+            "array": true
+        },
+        "process.macho.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.macho.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.macho.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.macho.sections.var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.macho.sections.virtual_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.macho.symhash": {
+            "type": "string",
+            "array": false
+        },
         "process.name": {
             "type": "string",
             "array": false
@@ -2597,6 +2929,26 @@
             "type": "object",
             "array": true
         },
+        "process.parent.elf.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.elf.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "process.parent.elf.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.elf.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.elf.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "process.parent.elf.header.abi_version": {
             "type": "string",
             "array": false
@@ -2629,9 +2981,21 @@
             "type": "string",
             "array": false
         },
+        "process.parent.elf.import_hash": {
+            "type": "string",
+            "array": false
+        },
         "process.parent.elf.imports": {
             "type": "object",
             "array": true
+        },
+        "process.parent.elf.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.elf.imports_names_var_entropy": {
+            "type": "number",
+            "array": false
         },
         "process.parent.elf.sections": {
             "type": "object",
@@ -2663,6 +3027,10 @@
         },
         "process.parent.elf.sections.type": {
             "type": "string",
+            "array": false
+        },
+        "process.parent.elf.sections.var_entropy": {
+            "type": "number",
             "array": false
         },
         "process.parent.elf.sections.virtual_address": {
@@ -2761,6 +3129,70 @@
             "type": "boolean",
             "array": false
         },
+        "process.parent.macho.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.macho.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "process.parent.macho.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.macho.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.macho.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
+        "process.parent.macho.import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.macho.imports": {
+            "type": "object",
+            "array": true
+        },
+        "process.parent.macho.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.macho.imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.macho.sections": {
+            "type": "object",
+            "array": true
+        },
+        "process.parent.macho.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.macho.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.macho.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.macho.sections.var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.macho.sections.virtual_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.macho.symhash": {
+            "type": "string",
+            "array": false
+        },
         "process.parent.name": {
             "type": "string",
             "array": false
@@ -2781,8 +3213,44 @@
             "type": "string",
             "array": false
         },
+        "process.parent.pe.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "process.parent.pe.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.pe.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.pe.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "process.parent.pe.imphash": {
             "type": "string",
+            "array": false
+        },
+        "process.parent.pe.import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.imports": {
+            "type": "object",
+            "array": true
+        },
+        "process.parent.pe.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.pe.imports_names_var_entropy": {
+            "type": "number",
             "array": false
         },
         "process.parent.pe.original_file_name": {
@@ -2795,6 +3263,30 @@
         },
         "process.parent.pe.product": {
             "type": "string",
+            "array": false
+        },
+        "process.parent.pe.sections": {
+            "type": "object",
+            "array": true
+        },
+        "process.parent.pe.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.pe.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.parent.pe.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.pe.sections.var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.parent.pe.sections.virtual_size": {
+            "type": "number",
             "array": false
         },
         "process.parent.pgid": {
@@ -2905,8 +3397,44 @@
             "type": "string",
             "array": false
         },
+        "process.pe.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "process.pe.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.pe.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.pe.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "process.pe.imphash": {
             "type": "string",
+            "array": false
+        },
+        "process.pe.import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.imports": {
+            "type": "object",
+            "array": true
+        },
+        "process.pe.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.pe.imports_names_var_entropy": {
+            "type": "number",
             "array": false
         },
         "process.pe.original_file_name": {
@@ -2919,6 +3447,30 @@
         },
         "process.pe.product": {
             "type": "string",
+            "array": false
+        },
+        "process.pe.sections": {
+            "type": "object",
+            "array": true
+        },
+        "process.pe.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.pe.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "process.pe.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "process.pe.sections.var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "process.pe.sections.virtual_size": {
+            "type": "number",
             "array": false
         },
         "process.pgid": {
@@ -3389,30 +3941,6 @@
             "type": "string",
             "array": false
         },
-        "server.user.risk.calculated_level": {
-            "type": "string",
-            "array": false
-        },
-        "server.user.risk.calculated_score": {
-            "type": "number",
-            "array": false
-        },
-        "server.user.risk.calculated_score_norm": {
-            "type": "number",
-            "array": false
-        },
-        "server.user.risk.static_level": {
-            "type": "string",
-            "array": false
-        },
-        "server.user.risk.static_score": {
-            "type": "number",
-            "array": false
-        },
-        "server.user.risk.static_score_norm": {
-            "type": "number",
-            "array": false
-        },
         "server.user.roles": {
             "type": "string",
             "array": true
@@ -3685,30 +4213,6 @@
             "type": "string",
             "array": false
         },
-        "source.user.risk.calculated_level": {
-            "type": "string",
-            "array": false
-        },
-        "source.user.risk.calculated_score": {
-            "type": "number",
-            "array": false
-        },
-        "source.user.risk.calculated_score_norm": {
-            "type": "number",
-            "array": false
-        },
-        "source.user.risk.static_level": {
-            "type": "string",
-            "array": false
-        },
-        "source.user.risk.static_score": {
-            "type": "number",
-            "array": false
-        },
-        "source.user.risk.static_score_norm": {
-            "type": "number",
-            "array": false
-        },
         "source.user.roles": {
             "type": "string",
             "array": true
@@ -3833,6 +4337,26 @@
             "type": "object",
             "array": true
         },
+        "threat.enrichments.indicator.file.elf.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "threat.enrichments.indicator.file.elf.header.abi_version": {
             "type": "string",
             "array": false
@@ -3865,9 +4389,21 @@
             "type": "string",
             "array": false
         },
+        "threat.enrichments.indicator.file.elf.import_hash": {
+            "type": "string",
+            "array": false
+        },
         "threat.enrichments.indicator.file.elf.imports": {
             "type": "object",
             "array": true
+        },
+        "threat.enrichments.indicator.file.elf.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.imports_names_var_entropy": {
+            "type": "number",
+            "array": false
         },
         "threat.enrichments.indicator.file.elf.sections": {
             "type": "object",
@@ -3899,6 +4435,10 @@
         },
         "threat.enrichments.indicator.file.elf.sections.type": {
             "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.elf.sections.var_entropy": {
+            "type": "number",
             "array": false
         },
         "threat.enrichments.indicator.file.elf.sections.virtual_address": {
@@ -4017,8 +4557,44 @@
             "type": "string",
             "array": false
         },
+        "threat.enrichments.indicator.file.pe.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "threat.enrichments.indicator.file.pe.imphash": {
             "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.imports": {
+            "type": "object",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.pe.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.imports_names_var_entropy": {
+            "type": "number",
             "array": false
         },
         "threat.enrichments.indicator.file.pe.original_file_name": {
@@ -4031,6 +4607,30 @@
         },
         "threat.enrichments.indicator.file.pe.product": {
             "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.sections": {
+            "type": "object",
+            "array": true
+        },
+        "threat.enrichments.indicator.file.pe.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.sections.var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.enrichments.indicator.file.pe.sections.virtual_size": {
+            "type": "number",
             "array": false
         },
         "threat.enrichments.indicator.file.size": {
@@ -4205,7 +4805,15 @@
             "type": "string",
             "array": false
         },
+        "threat.enrichments.indicator.marking.tlp_version": {
+            "type": "string",
+            "array": false
+        },
         "threat.enrichments.indicator.modified_at": {
+            "type": "string",
+            "array": false
+        },
+        "threat.enrichments.indicator.name": {
             "type": "string",
             "array": false
         },
@@ -4577,6 +5185,26 @@
             "type": "object",
             "array": true
         },
+        "threat.indicator.file.elf.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "threat.indicator.file.elf.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.elf.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.elf.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "threat.indicator.file.elf.header.abi_version": {
             "type": "string",
             "array": false
@@ -4609,9 +5237,21 @@
             "type": "string",
             "array": false
         },
+        "threat.indicator.file.elf.import_hash": {
+            "type": "string",
+            "array": false
+        },
         "threat.indicator.file.elf.imports": {
             "type": "object",
             "array": true
+        },
+        "threat.indicator.file.elf.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.elf.imports_names_var_entropy": {
+            "type": "number",
+            "array": false
         },
         "threat.indicator.file.elf.sections": {
             "type": "object",
@@ -4643,6 +5283,10 @@
         },
         "threat.indicator.file.elf.sections.type": {
             "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.elf.sections.var_entropy": {
+            "type": "number",
             "array": false
         },
         "threat.indicator.file.elf.sections.virtual_address": {
@@ -4761,8 +5405,44 @@
             "type": "string",
             "array": false
         },
+        "threat.indicator.file.pe.go_import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.go_imports": {
+            "type": "object",
+            "array": false
+        },
+        "threat.indicator.file.pe.go_imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.pe.go_imports_names_var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.pe.go_stripped": {
+            "type": "boolean",
+            "array": false
+        },
         "threat.indicator.file.pe.imphash": {
             "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.import_hash": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.imports": {
+            "type": "object",
+            "array": true
+        },
+        "threat.indicator.file.pe.imports_names_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.pe.imports_names_var_entropy": {
+            "type": "number",
             "array": false
         },
         "threat.indicator.file.pe.original_file_name": {
@@ -4775,6 +5455,30 @@
         },
         "threat.indicator.file.pe.product": {
             "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.sections": {
+            "type": "object",
+            "array": true
+        },
+        "threat.indicator.file.pe.sections.entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.pe.sections.name": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.file.pe.sections.physical_size": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.pe.sections.var_entropy": {
+            "type": "number",
+            "array": false
+        },
+        "threat.indicator.file.pe.sections.virtual_size": {
+            "type": "number",
             "array": false
         },
         "threat.indicator.file.size": {
@@ -4949,7 +5653,15 @@
             "type": "string",
             "array": false
         },
+        "threat.indicator.marking.tlp_version": {
+            "type": "string",
+            "array": false
+        },
         "threat.indicator.modified_at": {
+            "type": "string",
+            "array": false
+        },
+        "threat.indicator.name": {
             "type": "string",
             "array": false
         },
@@ -5625,30 +6337,6 @@
             "type": "string",
             "array": false
         },
-        "user.changes.risk.calculated_level": {
-            "type": "string",
-            "array": false
-        },
-        "user.changes.risk.calculated_score": {
-            "type": "number",
-            "array": false
-        },
-        "user.changes.risk.calculated_score_norm": {
-            "type": "number",
-            "array": false
-        },
-        "user.changes.risk.static_level": {
-            "type": "string",
-            "array": false
-        },
-        "user.changes.risk.static_score": {
-            "type": "number",
-            "array": false
-        },
-        "user.changes.risk.static_score_norm": {
-            "type": "number",
-            "array": false
-        },
         "user.changes.roles": {
             "type": "string",
             "array": true
@@ -5691,30 +6379,6 @@
         },
         "user.effective.name": {
             "type": "string",
-            "array": false
-        },
-        "user.effective.risk.calculated_level": {
-            "type": "string",
-            "array": false
-        },
-        "user.effective.risk.calculated_score": {
-            "type": "number",
-            "array": false
-        },
-        "user.effective.risk.calculated_score_norm": {
-            "type": "number",
-            "array": false
-        },
-        "user.effective.risk.static_level": {
-            "type": "string",
-            "array": false
-        },
-        "user.effective.risk.static_score": {
-            "type": "number",
-            "array": false
-        },
-        "user.effective.risk.static_score_norm": {
-            "type": "number",
             "array": false
         },
         "user.effective.roles": {
@@ -5815,30 +6479,6 @@
         },
         "user.target.name": {
             "type": "string",
-            "array": false
-        },
-        "user.target.risk.calculated_level": {
-            "type": "string",
-            "array": false
-        },
-        "user.target.risk.calculated_score": {
-            "type": "number",
-            "array": false
-        },
-        "user.target.risk.calculated_score_norm": {
-            "type": "number",
-            "array": false
-        },
-        "user.target.risk.static_level": {
-            "type": "string",
-            "array": false
-        },
-        "user.target.risk.static_score": {
-            "type": "number",
-            "array": false
-        },
-        "user.target.risk.static_score_norm": {
-            "type": "number",
             "array": false
         },
         "user.target.roles": {
