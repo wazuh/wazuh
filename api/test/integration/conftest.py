@@ -2,13 +2,9 @@ import json
 import os
 import re
 import shutil
-import socket
 import subprocess
-import threading
 import time
 from base64 import b64encode
-from pathlib import Path
-from typing import Literal
 
 import _pytest.fixtures
 import pytest
@@ -17,22 +13,10 @@ import urllib3
 import yaml
 from py.xml import html
 
-WEBHOOK_HEADER = '1:API-Webhook:'
-ANALYSISD_DAEMON = 'wazuh-analysisd'
-WAZUH_PATH = Path('/var/ossec')
-RELATIVE_SOCKET_PATH = Path('queue/sockets/queue')
-CONTAINER_SOCKET_PATH = Path(WAZUH_PATH, RELATIVE_SOCKET_PATH)
-ANALYSISD_DAEMON_PATH = Path(WAZUH_PATH, 'bin', ANALYSISD_DAEMON)
-START_ACTION = 'start'
-STOP_ACTION = 'stop'
-RESTART_ACTION = 'restart'
-ACTIONS = Literal['start', 'stop', 'restart']
-
 current_path = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(current_path, 'env')
 test_logs_path = os.path.join(current_path, '_test_results', 'logs')
 docker_log_path = os.path.join(test_logs_path, 'docker.log')
-HOST_SOCKET_PATH = Path(env_path, RELATIVE_SOCKET_PATH)
 results = dict()
 
 with open('common.yaml', 'r') as stream:
@@ -537,82 +521,3 @@ def pytest_html_results_summary(prefix, summary, postfix):
                 HTMLStyle.td(v['error']),
             ])
         ) for k, v in results.items()])])
-
-
-class SocketHandler:
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self.socket = self.bind()
-
-    def bind(self):
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(str(self.path))
-
-        return sock
-
-    def shutdown(self):
-        self.socket.close()
-        self.remove(self.path)
-
-    def monitor(self, events: list, header: str = WEBHOOK_HEADER):
-        while True:
-            if self.socket.recv is not None:
-                data, _ = self.socket.recvfrom(1024)
-                if data.startswith(header.encode()):
-                    events.append(data)
-
-    @staticmethod
-    def remove(path: Path):
-        if path.exists():
-            path.unlink()
-
-
-def _analysisd_manager(action: ACTIONS) -> None:
-    os.chdir(env_path)
-    with open(docker_log_path, mode='w') as f_docker:
-        if action == START_ACTION:
-            current_process = subprocess.Popen(
-                ["docker-compose", "exec", "wazuh-master", ANALYSISD_DAEMON_PATH],
-                stdout=f_docker,
-                stderr=subprocess.STDOUT
-            )
-            current_process.wait()
-        elif action == STOP_ACTION:
-            current_process = subprocess.Popen(
-                ["docker-compose", "exec", "wazuh-master", "pkill", ANALYSISD_DAEMON],
-                stdout=f_docker,
-                stderr=subprocess.STDOUT
-            )
-            current_process.wait()
-            current_process = subprocess.Popen(
-                ["docker-compose", "exec", "wazuh-master", "rm", CONTAINER_SOCKET_PATH],
-                stdout=f_docker,
-                stderr=subprocess.STDOUT
-            )
-            current_process.wait()
-        elif action == RESTART_ACTION:
-            _analysisd_manager(STOP_ACTION)
-            _analysisd_manager(START_ACTION)
-
-    os.chdir(current_path)
-
-
-@pytest.fixture(name="forwarded_events")
-def fixture_forwarded_events():
-    """Get forwarded events to analysisd."""
-    _analysisd_manager(STOP_ACTION)
-
-    events = []
-    socket_handler = SocketHandler(path=HOST_SOCKET_PATH)
-
-    thread = threading.Thread(target=socket_handler.monitor, args=[events])
-    thread.daemon = True
-    thread.start()
-
-    _analysisd_manager(START_ACTION)
-
-    yield events
-
-    socket_handler.shutdown()
-    _analysisd_manager(RESTART_ACTION)

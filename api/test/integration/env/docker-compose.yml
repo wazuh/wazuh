@@ -15,7 +15,6 @@ services:
     volumes:
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
-      - ./queue/sockets:/var/ossec/queue/sockets
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
