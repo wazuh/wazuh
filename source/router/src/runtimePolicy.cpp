@@ -62,13 +62,24 @@ void RuntimePolicy::listenAllTrace()
     m_spController->listenOnAllTrace(rxcpp::make_subscriber<std::string>(
         [&](const std::string& trace)
         {
-            std::lock_guard<std::mutex> lock(m_historyMutex);
-            const std::string opPattern = R"(\[([^\]]+)\] \[condition\]:(.+))";
-            const std::regex opRegex(opPattern);
+            std::lock_guard<std::mutex> lock(m_tracerMutex);
+            const std::string opPatternTrace = R"(\[([^\]]+)\] \[condition\]:(.+))";
+            const std::regex opRegex(opPatternTrace);
             std::smatch match;
             if (std::regex_search(trace, match, opRegex))
             {
                 m_history.push_back({match[1].str(), match[2].str()});
+            }
+            const std::string opPatternTraceVerbose = R"(^\[([^\]]+)\] (.+))";
+            const std::regex opRegexVerbose(opPatternTraceVerbose);
+            std::smatch matchVerbose;
+            if (std::regex_search(trace, matchVerbose, opRegexVerbose))
+            {
+                const std::string& key = matchVerbose[1].str();
+                std::shared_ptr<std::stringstream> traceStream = std::make_shared<std::stringstream>();
+                *traceStream << trace;
+
+                m_traceBuffer[key].push_back(traceStream);
             }
         }));
 }
