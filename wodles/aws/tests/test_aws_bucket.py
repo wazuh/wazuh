@@ -173,68 +173,6 @@ def test_aws_bucket_mark_complete_handles_exceptions_when_db_query_fails(mock_de
     mock_debug.assert_called_with(f'+++ Error marking log {utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1} as completed: ', 2)
 
 
-def test_aws_bucket_create_table(custom_database):
-    """Test `create_table` method creates the table using the expected SQL."""
-    bucket = utils.get_mocked_aws_bucket()
-    bucket.db_connector = custom_database
-    bucket.db_cursor = bucket.db_connector.cursor()
-    bucket.db_table_name = utils.TEST_TABLE_NAME
-
-    assert utils.database_execute_query(bucket.db_connector, SQL_COUNT_TABLES) == 0
-    bucket.create_table()
-    assert utils.database_execute_query(bucket.db_connector, SQL_SELECT_TABLES) == utils.TEST_TABLE_NAME
-
-
-def test_aws_bucket_create_table_handles_exceptions_when_table_is_not_created(custom_database):
-    """Test `create_table` method handles exceptions raised
-    and exits with the expected code when the table cannot be created.
-    """
-    bucket = utils.get_mocked_aws_bucket()
-    bucket.db_connector = custom_database
-    mocked_cursor = MagicMock()
-    mocked_cursor.execute.side_effect = sqlite3.OperationalError
-    bucket.db_cursor = mocked_cursor
-
-    assert utils.database_execute_query(bucket.db_connector, SQL_COUNT_TABLES) == 0
-    with pytest.raises(SystemExit) as e:
-        bucket.create_table()
-    assert e.value.code == utils.UNABLE_TO_CREATE_DB
-    assert utils.database_execute_query(bucket.db_connector, SQL_COUNT_TABLES) == 0
-
-
-@pytest.mark.parametrize('already_initialised', [True, False])
-def test_aws_bucket_db_initialization(custom_database, already_initialised):
-    """Test 'init_db' function checks if the database has already been initialised and creates it if not."""
-    bucket = utils.get_mocked_aws_bucket()
-    bucket.db_connector = custom_database
-    bucket.db_cursor = bucket.db_connector.cursor()
-    bucket.db_table_name = utils.TEST_TABLE_NAME
-
-    if already_initialised:
-        utils.database_execute_query(bucket.db_connector,
-                                     bucket.sql_create_table.format(table_name=bucket.db_table_name))
-        assert utils.database_execute_query(bucket.db_connector, bucket.sql_find_table, {'name': bucket.db_table_name})
-    else:
-        assert not utils.database_execute_query(bucket.db_connector, bucket.sql_find_table,
-                                                {'name': bucket.db_table_name})
-    bucket.init_db()
-    assert utils.database_execute_query(bucket.db_connector, bucket.sql_find_table, {'name': bucket.db_table_name})
-
-
-def test_aws_bucket_db_initialization_handles_exceptions(custom_database):
-    """Test 'init_db' handles exceptions when accessing the database."""
-    bucket = utils.get_mocked_aws_bucket()
-    bucket.db_connector = custom_database
-    mocked_cursor = MagicMock()
-    mocked_cursor.execute.side_effect = sqlite3.OperationalError
-    bucket.db_cursor = mocked_cursor
-
-    with pytest.raises(SystemExit) as e:
-        bucket.init_db()
-    assert e.value.code == utils.METADATA_ERROR_CODE
-    assert not utils.database_execute_query(bucket.db_connector, bucket.sql_find_table, {'name': bucket.db_table_name})
-
-
 @pytest.mark.parametrize('region', [utils.TEST_REGION, "invalid_region"])
 def test_aws_bucket_db_count_region(custom_database, region):
     """Test 'db_count_region' method counts the number of rows in DB for a region"""

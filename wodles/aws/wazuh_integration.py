@@ -22,7 +22,7 @@ import utils
 
 DEPRECATED_TABLES = {'log_progress', 'trail_progress'}
 DEFAULT_GOV_REGIONS = {'us-gov-east-1', 'us-gov-west-1'}
-SERVICES_REQUIRING_REGION = {'inspector', 'cloudwatch'}
+SERVICES_REQUIRING_REGION = {'inspector', 'cloudwatchlogs'}
 WAZUH_DEFAULT_RETRY_CONFIGURATION = {'max_attempts': 10, 'mode': 'standard'}
 MESSAGE_HEADER = "1:Wazuh-AWS:"
 
@@ -166,7 +166,7 @@ class WazuhIntegration:
     def default_config():
         args = {}
         if not path.exists(aws_tools.DEFAULT_AWS_CONFIG_PATH):
-            args['config'] = botocore.config.Config(retries=WAZUH_DEFAULT_RETRY_CONFIGURATION)
+            args['config'] = botocore.config.Config(retries=WAZUH_DEFAULT_RETRY_CONFIGURATION.copy())
             aws_tools.debug(
                 f"Generating default configuration for retries: mode {args['config'].retries['mode']} - max_attempts {args['config'].retries['max_attempts']}",
                 2)

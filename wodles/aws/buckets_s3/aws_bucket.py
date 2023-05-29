@@ -256,24 +256,6 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
             except Exception as e:
                 aws_tools.debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 
-    def create_table(self):
-        try:
-            aws_tools.debug('+++ Table does not exist; create', 1)
-            self.db_cursor.execute(self.sql_create_table.format(table_name=self.db_table_name))
-        except Exception as e:
-            print("ERROR: Unable to create SQLite DB: {}".format(e))
-            sys.exit(6)
-
-    def init_db(self):
-        try:
-            tables = set(map(operator.itemgetter(0), self.db_cursor.execute(self.sql_find_table_names)))
-        except Exception as e:
-            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
-            sys.exit(5)
-        # DB does exist yet
-        if self.db_table_name not in tables:
-            self.create_table()
-
     def db_count_region(self, aws_account_id, aws_region):
         """Counts the number of rows in DB for a region
         :param aws_account_id: AWS account ID
@@ -401,7 +383,7 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                 aws_tools.debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
                 sys.exit(1)
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter=''):
+    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter='', **kwargs):
         filter_marker = ''
         last_key = None
         if self.reparse:
@@ -415,7 +397,8 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
                     'bucket_path': self.bucket_path,
                     'aws_region': aws_region,
                     'prefix': f'{self.prefix}%',
-                    'aws_account_id': aws_account_id
+                    'aws_account_id': aws_account_id,
+                    **kwargs
                 })
             try:
                 filter_marker = query_last_key.fetchone()[0]
