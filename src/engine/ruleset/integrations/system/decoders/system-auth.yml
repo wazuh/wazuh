@@ -7,7 +7,7 @@ metadata:
   module: system-auth
   title: system-auth logs
   description: Decoder for system athenticated action logs.
-  compatibility: This integration was tested with logs from OSes like Ubuntu 12.04, Centos 7, and macOS Sierra.
+  compatibility: This integration was tested with logs from OS like Ubuntu 12.04, Centos 7, and macOS Sierra.
   versions:
     - "any"
   author:
@@ -18,7 +18,8 @@ metadata:
     - https://www.loggly.com/ultimate-guide/linux-logging-basics/
 
 definitions:
-  isAuthProcess: process.name=="sshd" OR process.name=="sudo" OR process.name=="groupadd" OR process.name=="useradd" OR process.name=="groupdel" OR process.name=="groupmod" OR process.name=="userdel" OR process.name=="usermod"
+  isAuthProcess: process.name=="sshd" OR process.name=="sudo" OR process.name=="groupadd" OR process.name=="useradd" OR process.name=="groupdel" OR process.name=="groupmod" OR process.name=="userdel" OR process.name=="usermod" OR +contains/message/pam_unix
+
 #TODO: Once the events arrive tagged, uncommnet following line and comment previous
 #  isAuthProcess: (process.name=="sshd" OR process.name=="sudo" OR process.name=="groupadd" OR process.name=="useradd" OR process.name=="groupdel" OR process.name=="groupmod" OR process.name=="userdel" OR process.name=="usermod") AND event.module=="system"
 
@@ -26,7 +27,7 @@ check: $isAuthProcess
 
 normalize:
   - map:
-      - event.module: system-auth
+      - event.module: system
       - event.dataset: system-auth
       - event.outcome: success
       - wazuh.decoders: +array_append/system-auth
@@ -39,6 +40,14 @@ normalize:
       - message: Did not receive identification string from <source.ip>
 
   - check:
+      - ~system.auth.ssh.event: "Accepted"
+    map:
+      - event.type: +array_append/info
+      - event.category: +array_append/authentication/session
+      - event.action: "ssh_login"
+      - event.outcome: "success"
+
+  - check:
       - process.name: "sudo"
     logpar:
       - message: "<user.name> : <~system.auth.sudo.error> ; TTY=<~system.auth.sudo.tty> ; PWD=<~system.auth.sudo.pwd> ; USER=<~system.auth.sudo.pwd> ; COMMAND=<~system.auth.sudo.command>"
@@ -47,7 +56,8 @@ normalize:
   - check:
       - message: +contains/pam_unix(
     logpar:
-      - message: "pam_unix\\(<~>:<~>\\): session <~system.ayth.pam.session.action> for user <user.name> by <~system.auth.pam.byuser>(?\\(uid=<~system.auth.pam.byuid>\\))"
+      - message: "pam_unix\\(<~>:<~>\\): session <~system.ayth.pam.session.action> for user <user.name> by <user.name>\\(uid=<user.id>\\)"
+      - message: "pam_unix\\(<~>:<~>\\): session <~system.ayth.pam.session.action> for user <user.name> by \\(uid=<user.id>\\)"
       - message: "pam_unix\\(<~>:<~>\\): session <~system.ayth.pam.session.action> for user <user.name>"
 
   - check: process.name=="groupadd" OR process.name=="useradd"
@@ -55,14 +65,12 @@ normalize:
       - message: "new group: name=<group.name>, GID=<group.id>"
       - message: "new user: name=<user.name>, UID=<user.id>, GID=<group.id>, home=<~system.auth.useradd.home>, shell=<~system.auth.useradd.shell>(?,<~>)"
       - message: "group added to <file.name>: name=<group.name>(?, GID=<group.id>)"
+      - message: "<~system.auth.event.outcome> adding user '<user.name>'(?,<~>)"
 
   - check:
-      - ~system.auth.ssh.event: "Accepted"
+      - ~system.auth.event.outcome: "failed"
     map:
-      - event.type: +array_append/info
-      - event.category: +array_append/authentication/session
-      - event.action: "ssh_login"
-      - event.outcome: "success"
+      - event.outcome: "failure"
 
   - check: ~system.auth.ssh.event=="Invalid" OR ~system.auth.ssh.event=="Failed"
     map:
@@ -74,7 +82,6 @@ normalize:
   - check: process.name=="groupadd" OR process.name=="groupdel" OR process.name=="groupmod" OR process.name=="useradd" OR process.name=="userdel" OR process.name=="usermod"
     map:
       - event.category: +array_append/iam
-      - event.outcome: "success"
 
   - check: process.name=="useradd" OR process.name=="userdel" OR process.name=="usermod"
     map:
