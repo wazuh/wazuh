@@ -1,7 +1,6 @@
 #include <json/json.hpp>
 
 #include <exception>
-#include <iostream>
 #include <unordered_set>
 
 #include "rapidjson/schema.h"
