@@ -15,7 +15,9 @@
                     "test_security_DELETE_endpoints.tavern.yaml",
                     "test_security_GET_endpoints.tavern.yaml",
                     "test_security_POST_endpoints.tavern.yaml",
-                    "test_security_PUT_endpoints.tavern.yaml"
+                    "test_security_PUT_endpoints.tavern.yaml",
+                    "test_webhook_endpoints.tavern.yaml"
+
                 ]
             },
             {
@@ -111,7 +113,8 @@
                     "test_security_DELETE_endpoints.tavern.yaml",
                     "test_security_GET_endpoints.tavern.yaml",
                     "test_security_POST_endpoints.tavern.yaml",
-                    "test_security_PUT_endpoints.tavern.yaml"
+                    "test_security_PUT_endpoints.tavern.yaml",
+                    "test_webhook_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -389,6 +392,15 @@
                     "test_rbac_white_vulnerability_endpoints.tavern.yaml",
                     "test_vulnerability_endpoints.tavern.yaml"
                 ]
+            },
+            {
+                "name": "event_controller.py",
+                "tag": "webhook",
+                "tests": [
+                    "test_rbac_black_webhook_endpoints.tavern.yaml",
+                    "test_rbac_white_webhook_endpoints.tavern.yaml",
+                    "test_webhook_endpoints.tavern.yaml"
+                ]
             }
         ]
     },
@@ -544,6 +556,15 @@
                     "test_security_GET_endpoints.tavern.yaml",
                     "test_security_POST_endpoints.tavern.yaml",
                     "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "events_ingest_model.py",
+                "tag": "webhook",
+                "tests": [
+                    "test_rbac_black_webhook_endpoints.tavern.yaml",
+                    "test_rbac_white_webhook_endpoints.tavern.yaml",
+                    "test_webhook_endpoints.tavern.yaml"
                 ]
             }
         ]
@@ -747,6 +768,15 @@
                     "test_rbac_black_vulnerability_endpoints.tavern.yaml",
                     "test_rbac_white_vulnerability_endpoints.tavern.yaml",
                     "test_vulnerability_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "event.py",
+                "tag": "webhook",
+                "tests": [
+                    "test_rbac_black_webhook_endpoints.tavern.yaml",
+                    "test_rbac_white_webhook_endpoints.tavern.yaml",
+                    "test_webhook_endpoints.tavern.yaml"
                 ]
             }
         ]
@@ -1054,7 +1084,8 @@
                     "test_security_DELETE_endpoints.tavern.yaml",
                     "test_security_GET_endpoints.tavern.yaml",
                     "test_security_POST_endpoints.tavern.yaml",
-                    "test_security_PUT_endpoints.tavern.yaml"
+                    "test_security_PUT_endpoints.tavern.yaml",
+                    "test_webhook_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -1281,7 +1312,8 @@
                     "test_security_DELETE_endpoints.tavern.yaml",
                     "test_security_GET_endpoints.tavern.yaml",
                     "test_security_POST_endpoints.tavern.yaml",
-                    "test_security_PUT_endpoints.tavern.yaml"
+                    "test_security_PUT_endpoints.tavern.yaml",
+                    "test_webhook_endpoints.tavern.yaml"
                 ]
             }
         ]
