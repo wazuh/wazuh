@@ -4,7 +4,7 @@ from ._modules import configure as modules_configure
 from ._modules import get_args as modules_get_args
 
 
-DEFAULT_ECS_VERSION = 'v8.7.0'
+DEFAULT_ECS_VERSION = 'v8.8.0'
 DEFAULT_API_SOCK = '/var/ossec/queue/sockets/engine-api'
 DEFAULT_INDEXER_DIR = '/etc/filebeat/'
 DEFAULT_FIELDS_DIR = '/home/vagrant/engine/wazuh/src/engine/ruleset/schemas/'
@@ -17,15 +17,15 @@ def run(args, resource_handler: rs.ResourceHandler):
     indexer_path = args['indexer_dir']
     fields_path = args['schema_dir']
     modules = modules_get_args(args)
-    jproperties, jmappings, jlogpar, _ = generate(
+    jproperties, jmappings, jlogpar, jengine = generate(
         ecs_version, modules, resource_handler)
 
     # Apply changes to Engine instance
     print(f'Overriding wazuh-template.json in {indexer_path}...')
     resource_handler.save_file(
         indexer_path, 'wazuh-template', jmappings, rs.Format.JSON)
-    print(f'Updating logpar configuration...')
     # Update logpar_types in the catalog
+    print(f'Updating logpar configuration...')
     resource_handler.update_catalog_file(
         api_socket, 'schema', 'schema/wazuh-logpar-types/0', jlogpar, rs.Format.JSON)
     # Update schema
@@ -33,6 +33,10 @@ def run(args, resource_handler: rs.ResourceHandler):
     print(f'Overriding fields.json in {fields_path}...')
     resource_handler.save_file(
         fields_path, 'fields', jproperties, rs.Format.JSON)
+    # Update engine-schema in the catalog
+    print(f'Updating engine-schema configuration...')
+    resource_handler.update_catalog_file(
+        api_socket, 'schema', 'schema/engine-schema/0', jengine, rs.Format.JSON)
 
     print('Success.')
 

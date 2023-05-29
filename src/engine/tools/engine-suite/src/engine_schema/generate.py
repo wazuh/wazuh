@@ -41,7 +41,7 @@ def generate(ecs_version: str, modules: list, resource_handler: rs.ResourceHandl
     # Engine schema
     print('Generating engine schema...')
     engine_schema = dict()
-    engine_schema['name'] = 'internal/schema/definition/0'
+    engine_schema['name'] = 'schema/engine-schema/0'
     engine_schema['fields'] = dict()
     engine_schema['fields'] = ecs.to_engine_schema(ecs_flat)
 
