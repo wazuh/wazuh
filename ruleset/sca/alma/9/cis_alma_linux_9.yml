@@ -259,7 +259,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var -> r:^/var\s && r:noexec'
+      - 'c:findmnt --kernel /var -> r:^/var\s && r:nosuid'
 
   # 1.1.4.1 Ensure separate partition exists for /var/tmp. (Automated)
 
@@ -337,7 +337,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:findmnt --kernel /var/tmp -> r:^/var/tmp\s && r:noexec && r:nosuid'
+      - 'c:findmnt --kernel /var/tmp -> r:^/var/tmp\s && r:nosuid'
 
   # 1.1.4.4 Ensure nodev option set on /var/tmp partition. (Automated)
 
@@ -849,7 +849,33 @@ checks:
       - "c:systemctl is-enabled aidecheck.timer -> r:^enable"
       - "c:systemctl status aidecheck.service -> r:active"
 
-  # 1.3.3 Ensure cryptographic mechanisms are used to protect the integrity of audit tools. (Automated) - Not Implemented
+  # 1.3.3 Ensure cryptographic mechanisms are used to protect the integrity of audit tools. (Automated)
+
+  - id: 28613
+    title: "Ensure cryptographic mechanisms are used to protect the integrity of audit tools."
+    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
+    rationale: "Protecting the integrity of the tools used for auditing purposes is a critical step toward ensuring the integrity of audit information. Audit information includes all information (e.g., audit records, audit settings, and audit reports) needed to successfully audit information system activity. Attackers may replace the audit tools or inject code into the existing tools with the purpose of providing the capability to hide or erase system activity from the audit logs. Audit tools should be cryptographically signed in order to provide the capability to identify when the audit tools have been modified, manipulated, or replaced. An example is a checksum hash of the file or files."
+    remediation: 'Add or update the following selection lines for "/etc/aide/aide.conf" to protect the integrity of the audit tools: # Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512'
+    compliance:
+      - cis: ["4.1.4.11"]
+      - cis_csc_v7: ["5.1"]
+      - cis_csc_v8: ["4.1"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - mitre_tactics: ["TA0007"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
+      - pci_dss_3.2.1: ["2.2", "11.5"]
+      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - soc_2: ["CC7.1", "CC8.1"]
+    condition: all
+    rules:
+      - "f:/etc/aide/aide.conf"
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditd\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/ausearch\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/aureport\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/autrace\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/augenrules\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
 
   # 1.4.1 Ensure bootloader password is set. (Automated)
 
@@ -901,7 +927,10 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /boot/grub2/grub.cfg -> r:Access:\s*\(0700/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /boot/grub2/grubenv -> r:Access:\s*\(0600/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /boot/grub2/user.cfg -> r:Access:\s*\(0600/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+
 
   # 1.5.1 Ensure core dump storage is disabled. (Automated)
 
@@ -1025,7 +1054,7 @@ checks:
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
     remediation: "Run one of the following commands to set SELinux's running mode: To set SELinux mode to Enforcing: # setenforce 1 OR To set SELinux mode to Permissive: # setenforce 0 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing OR For Permissive mode: SELINUX=permissive."
     references:
-      - "https://access.redhat.com/documentation/en-"
+      - "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes"
     compliance:
       - cis: ["1.6.1.4"]
       - cis_csc_v8: ["3.3"]
@@ -1053,7 +1082,7 @@ checks:
     rationale: "Running SELinux in disabled mode the system not only avoids enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Running SELinux in Permissive mode, though helpful for developing SELinux policy, only logs access denial entries, but does not deny any operations."
     remediation: "Run the following command to set SELinux's running mode: # setenforce 1 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing."
     references:
-      - "https://access.redhat.com/documentation/en-"
+      - "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes"
     compliance:
       - cis: ["1.6.1.5"]
       - cis_csc_v8: ["3.3"]
@@ -1316,7 +1345,7 @@ checks:
     rationale: "Displaying the user list eliminates half of the Userid/Password equation that an unauthorized person would need to log on."
     remediation: "Run the following script to enable the disable-user-list option: Note: the l_gdm_profile variable in the script can be changed if a different profile name is desired in accordance with local site policy. #!/usr/bin/env bash { l_gdmprofile=\"gdm\" if [ ! -f \"/etc/dconf/profile/$l_gdmprofile\" ]; then echo \"Creating profile \\\"$l_gdmprofile\\\"\" echo -e \"user-db:user\\nsystem-db:$l_gdmprofile\\nfile- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults\" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d \"/etc/dconf/db/$l_gdmprofile.d/\" ]; then echo \"Creating dconf database directory \\\"/etc/dconf/db/$l_gdmprofile.d/\\\"\" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\\h*disable-user-list\\h*=\\h*true\\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo \"creating gdm keyfile for machine-wide settings\" if ! grep -Piq -- '^\\h*\\[org\\/gnome\\/login-screen\\]' /etc/dconf/db/$l_gdmprofile.d/*; then echo -e \"\\n[org/gnome/login-screen]\\n# Do not show the user list\\ndisable-user-list=true\" >> /etc/dconf/db/$l_gdmprofile.d/00-login- screen else sed -ri '/^\\s*\\[org\\/gnome\\/login-screen\\]/ a\\# Do not show the user list\\ndisable-user-list=true' $(grep -Pil -- '^\\h*\\[org\\/gnome\\/login- screen\\]' /etc/dconf/db/$l_gdmprofile.d/*) fi fi dconf update } Note: When the user profile is created or changed, the user will need to log out and log in again before the changes will be applied. OR Run the following command to remove the GNOME package: # dnf remove gdm."
     references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/login-userlist-"
+      - "https://help.gnome.org/admin/system-admin-guide/stable/login-userlist-disable.html.en"
     compliance:
       - cis: ["1.8.3"]
       - mitre_mitigations: ["M1028"]
@@ -1340,7 +1369,7 @@ checks:
     rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended."
     remediation: "Create or edit a file in the /etc/dconf/profile/ and verify it includes the following: user-db:user system-db:{NAME_OF_DCONF_DATABASE} Note: local is the name of a dconf database used in the examples. Example: # echo -e '\\nuser-db:user\\nsystem-db:local' >> /etc/dconf/profile/user Create the directory /etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/ if it doesn't already exist: Example: # mkdir /etc/dconf/db/local.d Create the key file `/etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/{FILE_NAME} to provide information for the {NAME_OF_DCONF_DATABASE} database: Example script: #!/usr/bin/env bash { l_key_file=\"/etc/dconf/db/local.d/00-screensaver\" l_idmv=\"900\" # Set max value for idle-delay in seconds (between 1 and 900) l_ldmv=\"5\" # Set max value for lock-delay in seconds (between 0 and 5) { echo '# Specify the dconf path' echo '[org/gnome/desktop/session]' echo '' echo '# Number of seconds of inactivity before the screen goes blank' echo '# Set to 0 seconds if you want to deactivate the screensaver.' echo \"idle-delay=uint32 $l_idmv\" echo '' echo '# Specify the dconf path' echo '[org/gnome/desktop/screensaver]' echo '' echo '# Number of seconds after the screen is blank before locking the screen' echo \"lock-delay=uint32 $l_ldmv\" } > \"$l_key_file\" } Note: You must include the uint32 along with the integer key values as shown. Run the following command to update the system databases: # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
     references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/desktop-"
+      - "https://help.gnome.org/admin/system-admin-guide/stable/desktop-lockscreen.html.en"
     compliance:
       - cis: ["1.8.4"]
       - cis_csc_v8: ["4.3"]
@@ -1547,7 +1576,6 @@ checks:
     condition: all
     rules:
       - "c:rpm -q avahi -> r:^package avahi is not installed"
-      - "c:rpm -q avahi-autoipd -> r:^package avahi-autoipd is not installed"
 
   # 2.2.3 Ensure CUPS is not installed. (Automated)
   - id: 31071
@@ -2038,7 +2066,6 @@ checks:
       - "not c:lsmod -> r:^tipc"
 
   # 3.2.1 Ensure IP forwarding is disabled. (Automated) - Not Implemented
-
   # 3.2.2 Ensure packet redirect sending is disabled. (Automated) - Not Implemented
   ###############################################
   # 3.3 Network Parameters (Host and Router)
@@ -2154,6 +2181,7 @@ checks:
   # 3.4.2.4 Ensure host based firewall loopback traffic is configured. (Automated) - Not Implemented
   # 3.4.2.5 Ensure firewalld drops unnecessary services and ports. (Manual) - Not Implemented
   # 3.4.2.6 Ensure nftables established connections are configured. (Manual) - Not Implemented
+
   # 3.4.2.7 Ensure nftables default deny firewall policy. (Automated)
   - id: 31114
     title: "Ensure nftables default deny firewall policy."
@@ -2383,7 +2411,7 @@ checks:
       - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
       - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-C euid!=uid|-C uid!=euid && r:-F auid!=unset|-F auid!=1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation"
 
-  # 4.1.3.3 Ensure events that modify the sudo log file are collected. (Automated) Not Implemented
+  # 4.1.3.3 Ensure events that modify the sudo log file are collected. (Automated) - Not Implemented
 
   # 4.1.3.4 Ensure events that modify date and time information are collected. (Automated)
   - id: 31125
@@ -2746,7 +2774,7 @@ checks:
   # 4.1.3.20 Ensure the audit configuration is immutable. (Automated)
   - id: 31141
     title: "Ensure the audit configuration is immutable."
-    description: 'Set system audit so that audit rules cannot be modified with auditctl . Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
+    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot. Note: This setting will require the system to be rebooted to update the active auditd configuration settings.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line -e 2 at the end of the file: Example: # printf -- \"-e 2\" >> /etc/audit/rules.d/99-finalize.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
     compliance:
@@ -3240,12 +3268,12 @@ checks:
       - 'not f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
   # 4.2.2.6 Ensure journald log rotation is configured per site policy. (Manual) - Not Implemented
-  # 4.2.2.7 Ensure journald default file permissions configured. (Manual)
+  # 4.2.2.7 Ensure journald default file permissions configured. (Manual) - Not Implemented
 
   # 4.2.3 Ensure all logfiles have appropriate permissions and ownership. (Automated)
   - id: 31170
     title: "Ensure all logfiles have appropriate permissions and ownership."
-    description: "Log files contain information from many services on the local system, or in the event of a centralized log server, others system’s logs as well. In general log files are found in /var/log/, although application can be configured to store logs elsewhere. Should your application store its logs in another location, ensure to run the same test on that location."
+    description: "Log files contain information from many services on the local system, or in the event of a centralized log server, others system's logs as well. In general log files are found in /var/log/, although application can be configured to store logs elsewhere. Should your application store its logs in another location, ensure to run the same test on that location."
     rationale: "It is important that log files have the correct permissions to ensure that sensitive data is protected and that only the appropriate users / groups have access to them."
     remediation: "Run the following script to update permissions and ownership on files in /var/log. Although the script is not destructive, ensure that the output of the audit procedure is captured in the event that the remediation causes issues. #!/usr/bin/env bash { echo -e \"\\n- Start remediation - logfiles have appropriate permissions and ownership\" UID_MIN=$(awk '/^\\s*UID_MIN/{print $2}' /etc/login.defs) find /var/log -type f | while read -r fname; do bname=\"$(basename \"$fname\")\" fugname=\"$(stat -Lc \"%U %G\" \"$fname\")\" funame=\"$(awk '{print $1}' <<< \"$fugname\")\" fugroup=\"$(awk '{print $2}' <<< \"$fugname\")\" fuid=\"$(stat -Lc \"%u\" \"$fname\")\" fmode=\"$(stat -Lc \"%a\" \"$fname\")\" case \"$bname\" in lastlog | lastlog.* | wtmp | wtmp.* | wtmp-* | btmp | btmp.* | btmp- *) ! grep -Pq -- '^\\h*[0,2,4,6][0,2,4,6][0,4]\\h*$' <<< \"$fmode\" && echo -e \"- changing mode on \\\"$fname\\\"\" && chmod ug-x,o-wx \"$fname\" ! grep -Pq -- '^\\h*root\\h*$' <<< \"$funame\" && echo -e \"- changing owner on \\\"$fname\\\"\" && chown root \"$fname\" ! grep -Pq -- '^\\h*(utmp|root)\\h*$' <<< \"$fugroup\" && echo -e \"- changing group on \\\"$fname\\\"\" && chgrp root \"$fname\" ;; secure | auth.log | syslog | messages) ! grep -Pq -- '^\\h*[0,2,4,6][0,4]0\\h*$' <<< \"$fmode\" && echo -e \"- changing mode on \\\"$fname\\\"\" && chmod u-x,g-wx,o-rwx \"$fname\" ! grep -Pq -- '^\\h*(syslog|root)\\h*$' <<< \"$funame\" && echo -e \"- changing owner on \\\"$fname\\\"\" && chown root \"$fname\" ! grep -Pq -- '^\\h*(adm|root)\\h*$' <<< \"$fugroup\" && echo -e \"- changing group on \\\"$fname\\\"\" && chgrp root \"$fname\" ;; SSSD | sssd) ! grep -Pq -- '^\\h*[0,2,4,6][0,2,4,6]0\\h*$' <<< \"$fmode\" && echo -e \"- changing mode on \\\"$fname\\\"\" && chmod ug-x,o-rwx \"$fname\" ! grep -Piq -- '^\\h*(SSSD|root)\\h*$' <<< \"$funame\" && echo -e \"- changing owner on \\\"$fname\\\"\" && chown root \"$fname\" ! grep -Piq -- '^\\h*(SSSD|root)\\h*$' <<< \"$fugroup\" && echo -e \"- changing group on \\\"$fname\\\"\" && chgrp root \"$fname\" ;; gdm | gdm3) ! grep -Pq -- '^\\h*[0,2,4,6][0,2,4,6]0\\h*$' <<< \"$fmode\" && echo -e \"- changing mode on \\\"$fname\\\"\" && chmod ug-x,o-rwx ! grep -Pq -- '^\\h*root\\h*$' <<< \"$funame\" && echo -e \"- changing owner on \\\"$fname\\\"\" && chown root \"$fname\" ! grep -Pq -- '^\\h*(gdm3?|root)\\h*$' <<< \"$fugroup\" && echo -e \"- changing group on \\\"$fname\\\"\" && chgrp root \"$fname\" ;; *.journal | *.journal~) ! grep -Pq -- '^\\h*[0,2,4,6][0,4]0\\h*$' <<< \"$fmode\" && echo -e \"- changing mode on \\\"$fname\\\"\" && chmod u-x,g-wx,o-rwx \"$fname\" ! grep -Pq -- '^\\h*root\\h*$' <<< \"$funame\" && echo -e \"- changing owner on \\\"$fname\\\"\" && chown root \"$fname\" ! grep -Pq -- '^\\h*(systemd-journal|root)\\h*$' <<< \"$fugroup\" && echo -e \"- changing group on \\\"$fname\\\"\" && chgrp root \"$fname\" ;; *) ! grep -Pq -- '^\\h*[0,2,4,6][0,4]0\\h*$' <<< \"$fmode\" && echo -e \"- changing mode on \\\"$fname\\\"\" && chmod u-x,g-wx,o-rwx \"$fname\" if [ \"$fuid\" -ge \"$UID_MIN\" ] || ! grep -Pq -- '(adm|root|'\"$(id -gn \"$funame\")\"')' <<< \"$fugroup\"; then if [ -n \"$(awk -v grp=\"$fugroup\" -F: '$1==grp {print $4}' /etc/group)\" ] || ! grep -Pq '(syslog|root)' <<< \"$funame\"; then [ \"$fuid\" -ge \"$UID_MIN\" ] && echo -e \"- changing owner on \\\"$fname\\\"\" && chown root \"$fname\" ! grep -Pq -- '^\\h*(adm|root)\\h*$' <<< \"$fugroup\" && echo - e \"- changing group on \\\"$fname\\\"\" && chgrp root \"$fname\" fi fi ;; esac done echo -e \"- End remediation - logfiles have appropriate permissions and ownership\\n\" } Note: You may also need to change the configuration for your logging software or services for any logs that had incorrect permissions. If there are services that log to other locations, ensure that those log files have the appropriate permissions."
     compliance:
@@ -3281,7 +3309,7 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - "c:systemctl is-enabled cron -> r:^enabled"
+      - "c:systemctl is-enabled crond -> r:^enabled"
 
   # 5.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 31173
@@ -3560,7 +3588,7 @@ checks:
   # 5.2.6 Ensure SSH PAM is enabled. (Automated)
   - id: 31186
     title: "Ensure SSH PAM is enabled."
-    description: "UsePAM Enables the Pluggable Authentication Module interface. If set to “yes” this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
+    description: "UsePAM Enables the Pluggable Authentication Module interface. If set to \"yes\" this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     impact: "If UsePAM is enabled, you will not be able to run sshd as a non-root user."
     remediation: "Edit or create a file in the directory /etc/ssh/sshd_config.d/ ending in *.conf or the /etc/ssh/sshd_config file and set the parameter as follows: UsePAM yes Run the following command to comment out any UsePAM parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than yes # grep -Pi '^\\h*UsePAM\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'yes' | while read -r l_out; do sed -ri \"/^\\s*UsePAM\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
@@ -4004,7 +4032,7 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: any
     rules:
-      - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*5.0 minutes'
+      - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15.0 minutes'
       - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare < 15 && n:timestamp_timeout=(\d+) compare != -1'
 
   # 5.3.7 Ensure access to the su command is restricted. (Automated)
@@ -4126,7 +4154,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:password\s*\t*requisite|password\s*\t*sufficient && r:pam_pwhistory.so|pam_unix.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*requisite|password\s*\t*sufficient && r:pam_pwhistory.so|pam_unix.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
 
   # 5.5.4 Ensure password hashing algorithm is SHA-512 or yescrypt. (Automated)
   - id: 31213
@@ -4370,7 +4398,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group -> r:0 root 0 root && r:644|640|604|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/group- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 6.1.5 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 31228
@@ -4394,7 +4422,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root 0 root && n:shadow- (\d+) compare == 0'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root 0 root && n:shadow (\d+) compare == 0'
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured. (Automated)
   - id: 31229
@@ -4466,7 +4494,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:0 root 0 root && n:gshadow (\d+) compare == 0'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:0 root 0 root && n:gshadow- (\d+) compare == 0'
 
   # 6.1.9 Ensure no world writable files exist. (Automated) - Not Implemented
   # 6.1.10 Ensure no unowned files or directories exist. (Automated) - Not Implemented
