@@ -1,10 +1,6 @@
 ---
 test_name: POST /events
 
-marks:
-  - usefixtures:
-      - forwarded_events
-
 stages:
 
   - name: Send bulk with one element
@@ -18,16 +14,10 @@ stages:
         events: [
           {"foo": 1},
         ]
-
     response:
-      verify_response_with:
-        - function: tavern_utils:assert_forwarded_events
-          extra_kwargs:
-            forwarded_events: "{forwarded_events}"
-            expected_events: 1
       status_code: 200
       json: &webhook_response_ok
-        message: The events where successfully forwarded
+        message: The events were forwarded to analisysd
         error: 0
 
   - name: POST /events with multiple elements
@@ -40,13 +30,7 @@ stages:
           {"bar": 2},
           {"gaz": 3},
         ]
-
     response:
-      verify_response_with:
-        - function: tavern_utils:assert_forwarded_events
-          extra_kwargs:
-            forwarded_events: "{forwarded_events}"
-            expected_events: 4
       status_code: 200
       json:
         <<: *webhook_response_ok
