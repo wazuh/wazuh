@@ -1151,10 +1151,14 @@ static void DumpLogstats()
     } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
     /* Print total for the hour */
+
+    w_mutex_lock(&hourly_alert_mutex);                                       \
     fprintf(flog, "%d--%d--%d--%d--%d\n\n",
             thishour,
             hourly_alerts, hourly_events, hourly_syscheck, hourly_firewall);
-    w_guard_mutex_variable(hourly_alert_mutex, (hourly_alerts = 0));
+    hourly_alerts = 0;
+    w_mutex_unlock(&hourly_alert_mutex)
+    
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
