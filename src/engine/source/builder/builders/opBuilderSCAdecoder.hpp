@@ -44,7 +44,6 @@ enum class Name
     CHECK_REMEDIATION,     ///< checkEvent
     CHECK_RESULT,          ///< checkEvent
     CHECK_RULES,           ///< checkEvent
-    CHECK_STATUS,          ///< checkEvent
     CHECK_TITLE,           ///< checkEvent
     CHECK,                 ///< checkEvent
     DESCRIPTION,           ///< scaninfo

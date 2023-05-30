@@ -97,7 +97,6 @@ std::string getRealtivePath(Name field)
         case Name::CHECK_REGISTRY: return "/check/registry";
         case Name::CHECK_COMMAND: return "/check/command";
         case Name::CHECK_RULES: return "/check/rules";
-        case Name::CHECK_STATUS: return "/check/status";
         case Name::CHECK_REASON: return "/check/reason";
         case Name::CHECK_RESULT: return "/check/result";
         case Name::CHECK_FILE: return "/check/file";
@@ -321,17 +320,10 @@ bool isValidCheckEvent(const DecodeCxt& ctx)
     }
     else
     {
-        /*
-            If `result` does not exist then `status` must exists.
-            If `status` exists then `reason` must exists as well.
-        */
         const bool existResult = ctx.existsSrc(field::Name::CHECK_RESULT);
-        const bool existReason = ctx.existsSrc(field::Name::CHECK_REASON);
-        const bool existStatus = ctx.existsSrc(field::Name::CHECK_STATUS);
-
-        if ((!existResult && !existStatus) || (existStatus && !existReason))
+        if (!existResult)
         {
-            retval = false;
+            ctx.event->setString("not applicable", ctx.destinationPath.at(field::Name::CHECK_RESULT));
         }
     }
 
@@ -360,6 +352,8 @@ void fillCheckEvent(const DecodeCxt& ctx, const std::string& previousResult)
     field::copyIfExist(ctx, field::Name::CHECK_REMEDIATION);
     field::copyIfExist(ctx, field::Name::CHECK_COMPLIANCE);
     field::copyIfExist(ctx, field::Name::CHECK_REFERENCES);
+    field::copyIfExist(ctx, field::Name::CHECK_RESULT);
+    field::copyIfExist(ctx, field::Name::CHECK_REASON);
 
     // Optional fields with csv
     field::csvStr2ArrayIfExist(ctx, field::Name::CHECK_FILE);
@@ -367,16 +361,6 @@ void fillCheckEvent(const DecodeCxt& ctx, const std::string& previousResult)
     field::csvStr2ArrayIfExist(ctx, field::Name::CHECK_REGISTRY);
     field::csvStr2ArrayIfExist(ctx, field::Name::CHECK_PROCESS);
     field::csvStr2ArrayIfExist(ctx, field::Name::CHECK_COMMAND);
-
-    if (ctx.existsSrc(field::Name::CHECK_RESULT))
-    {
-        ctx.event->set(ctx.destinationPath.at(field::Name::CHECK_RESULT), ctx.sourcePath.at(field::Name::CHECK_RESULT));
-    }
-    else
-    {
-        field::copyIfExist(ctx, field::Name::CHECK_STATUS);
-        field::copyIfExist(ctx, field::Name::CHECK_REASON);
-    }
 }
 
 void insertCompliance(const DecodeCxt& ctx, const int checkID)
@@ -463,7 +447,6 @@ std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
     // Get the necesary fields for the query
     const auto checkID = ctx.getSrcInt(field::Name::CHECK_ID).value();
     const auto result = ctx.getSrcStr(field::Name::CHECK_RESULT).value_or("");
-    const auto status = ctx.getSrcStr(field::Name::CHECK_STATUS).value_or("");
     const auto reason = ctx.getSrcStr(field::Name::CHECK_REASON).value_or("");
 
     // Prepare and execute the policy monitoring
@@ -479,8 +462,7 @@ std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
             // There is a previous result, update it
             const auto id = ctx.getSrcInt(field::Name::ID).value_or(-1);
 
-            saveQuery =
-                fmt::format("agent {} sca update {}|{}|{}|{}|{}", ctx.agentID, checkID, result, status, reason, id);
+            saveQuery = fmt::format("agent {} sca update {}|{}|{}|{}", ctx.agentID, checkID, result, reason, id);
             break;
         }
         case SearchResult::NOT_FOUND:
@@ -515,8 +497,7 @@ std::optional<std::string> handleCheckEvent(const DecodeCxt& ctx)
     }
 
     // Normalize the SCA event and add the previous result if exists
-    const bool normalize =
-        result.empty() ? (!status.empty() && (previousResult != status)) : (previousResult != result);
+    const bool normalize = result.empty() ? false : (previousResult != result);
 
     if (normalize)
     {
