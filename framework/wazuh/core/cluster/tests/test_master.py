@@ -485,11 +485,10 @@ def test_master_handler_process_request(logger_mock):
                                                                                      b'requests queue')
         add_request_mock.assert_called_once_with(master_handler.name.encode() + b"*" + b"data")
 
-    # Test the fourteenth condition
-    with patch("wazuh.core.cluster.server.AbstractServerHandler.process_request",
-               return_value=b"ok") as process_request_mock:
-        assert master_handler.process_request(command=b'random', data=b"data") == b"ok"
-        process_request_mock.assert_called_once_with(b"random", b"data")
+    # Test the not found command
+    with patch.object(master_handler, "process_unknown_cmd") as mock_process_unknown_cmd:
+        master_handler.process_request(command=b'not_found_command', data=b"data")
+        mock_process_unknown_cmd.assert_called_once_with(b'not_found_command')
 
     logger_mock.assert_has_calls([call("Command received: b'syn_i_w_m_p'"), call("Command received: b'syn_a_w_m_p'"),
                                   call("Command received: b'syn_i_w_m'"), call("Command received: b'syn_e_w_m'"),
@@ -500,7 +499,7 @@ def test_master_handler_process_request(logger_mock):
                                   call("Command received: b'dapi'"), call("Command received: b'dapi_res'"),
                                   call("Command received: b'get_nodes'"),
                                   call("Command received: b'get_health'"), call("Command received: b'sendsync'"),
-                                  call("Command received: b'random'")])
+                                  call("Command received: b'not_found_command'")])
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@
 
 from asyncio import Event, Transport
 from asyncio.transports import BaseTransport
-from collections import Callable
+from collections.abc import Callable
 from unittest.mock import patch, AsyncMock, call
 
 import pytest
@@ -162,6 +162,7 @@ async def test_localclient_start_ko(mock_get_running_loop):
     with patch("wazuh.core.cluster.local_client.os.path.join", side_effect=ConnectionRefusedError):
         with pytest.raises(WazuhInternalError, match=r'.* 3012 .*'):
             await LocalClient().start()
+
 
 @pytest.mark.asyncio
 async def test_wait_for_response():

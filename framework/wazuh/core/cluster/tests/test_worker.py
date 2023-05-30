@@ -301,7 +301,7 @@ def test_worker_handler_init():
 @patch("os.path.exists", return_value=False)
 @patch("wazuh.core.utils.mkdir_with_mode")
 @patch("os.path.join", return_value="/some/path")
-@patch("wazuh.core.cluster.worker.client.AbstractClient.connection_result")
+@patch("wazuh.core.cluster.client.AbstractClient.connection_result")
 def test_worker_handler_connection_result(connection_result_mock, join_mock, mkdir_with_mode_mock, exists_mock):
     """Check if the function is called whenever the master sends a response to the worker's hello command."""
 
@@ -423,11 +423,11 @@ def test_worker_handler_process_request_ok(logger_mock):
                                               data=b"data") == (b'ok', b'Added request to API requests queue')
         add_request_mock.assert_called_once_with(b"master*data")
         logger_mock.assert_called_with("Command received: 'b'dapi''")
-    # Test the thirteenth condition
-    with patch("wazuh.core.cluster.worker.client.AbstractClient.process_request",
-               return_value=True) as process_request_mock:
-        assert worker_handler.process_request(command=b"random", data=b"data") is True
-        process_request_mock.assert_called_once_with(b"random", b"data")
+    # Test command not found
+    command = b'command_not_found'
+    with patch.object(worker_handler, 'process_unknown_cmd') as mock_process_unknown_cmd:
+        worker_handler.process_request(command=command, data=b"data") 
+        mock_process_unknown_cmd.assert_called_once_with(command)
 
 
 @patch.object(logging.getLogger("wazuh"), "info")
@@ -436,7 +436,7 @@ def test_worker_handler_process_request_ok(logger_mock):
 def test_worker_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock):
     """Check if all the pending tasks are closed when the connection between workers and master is lost."""
 
-    worker_handler = get_worker_handler()  
+    worker_handler = get_worker_handler()
     worker_handler.logger = logging.getLogger("wazuh")
 
     class PendingTaskMock:
@@ -692,9 +692,9 @@ async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_i
 @patch("wazuh.core.cluster.common.SyncFiles.sync")
 @patch.object(logging.getLogger("wazuh.Integrity check"), "error")
 @patch("wazuh.core.cluster.cluster.get_files_status", return_value={})
-@patch("wazuh.core.cluster.worker.client.common.Handler.send_request")
+@patch("wazuh.core.cluster.common.Handler.send_request")
 @patch('wazuh.core.cluster.worker.cluster.run_in_pool', return_value={'path': 'test'})
-@patch("wazuh.core.cluster.common.SyncFiles.request_permission", return_value=True)
+@patch("wazuh.core.cluster.common.SyncTask.request_permission", return_value=True)
 async def test_worker_handler_sync_integrity(request_permission_mock, run_in_pool_mock, send_request_mock,
                                              get_files_status, error_mock, sync_mock, json_dumps_mock):
     """Check if files status are correctly obtained and sent to the master."""
@@ -721,7 +721,7 @@ async def test_worker_handler_sync_integrity(request_permission_mock, run_in_poo
             except Exception:
                 pass
 
-            request_permission_mock.assert_any_call()
+            request_permission_mock.assert_awaited_once()
             sync_mock.assert_called_with(files={}, files_metadata={'path': 'test'}, metadata_len=1, task_pool=None)
             logger_info_mock.assert_called_with("Starting.")
             assert worker_handler.integrity_check_status["date_start"] == 0.0
@@ -873,7 +873,7 @@ async def test_worker_handler_sync_extra_valid(merge_info_mock, perf_counter_moc
 @patch("wazuh.core.cluster.cluster.decompress_files")
 @patch.object(logging.getLogger("wazuh.Integrity sync"), "info")
 @patch.object(logging.getLogger("wazuh.Integrity sync"), "debug")
-@patch("wazuh.core.cluster.worker.client.common.Handler.send_request")
+@patch("wazuh.core.cluster.common.Handler.send_request")
 @patch("wazuh.core.cluster.worker.WorkerHandler.update_master_files_in_worker")
 async def test_worker_handler_process_files_from_master_ok(update_files_mock, send_request_mock, logger_debug_mock,
                                                            logger_info_mock, decompress_files_mock, json_dumps_mock,
@@ -989,7 +989,7 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
 @pytest.mark.asyncio
 @patch("asyncio.wait_for")
 @patch("json.dumps", return_value="")
-@patch("wazuh.core.cluster.worker.client.common.Handler.send_request")
+@patch("wazuh.core.cluster.common.Handler.send_request")
 async def test_worker_handler_process_files_from_master_ko(send_request_mock, json_dumps_mock, wait_mock):
     """Test if all the exceptions are being properly handled."""
 

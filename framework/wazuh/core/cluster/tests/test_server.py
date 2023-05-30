@@ -14,7 +14,7 @@ from uvloop import EventLoopPolicy, new_event_loop
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         from wazuh.core.cluster.server import *
-        from wazuh.core.cluster import common as c_common
+        from wazuh.core.cluster.common import asyncio_exception_handler
         from wazuh.core.exception import WazuhClusterError, WazuhError, WazuhResourceNotFound
 
 fernet_key = "00000000000000000000000000000000"
@@ -79,20 +79,20 @@ def test_AbstractServerHandler_connection_made():
 
 @patch("wazuh.core.cluster.server.AbstractServerHandler.hello")
 @patch("wazuh.core.cluster.server.AbstractServerHandler.echo_master")
-@patch("wazuh.core.cluster.common.Handler.process_request")
-def test_AbstractServerHandler_process_request(mock_process_request, mock_echo_master, mock_hello):
+def test_AbstractServerHandler_process_request(mock_echo_master, mock_hello):
     """Check the behavior of the process_request function for the different commands that can be sent to it."""
     abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
                                                     cluster_items={"test": "server"})
-
+    
     abstract_server_handler.process_request(command=b"echo-c", data=b"wazuh")
     mock_echo_master.assert_called_once_with(b"wazuh")
 
     abstract_server_handler.process_request(command=b"hello", data=b"hi")
     mock_hello.assert_called_once_with(b"hi")
 
-    abstract_server_handler.process_request(command=b"process", data=b"request")
-    mock_process_request.assert_called_once_with(b"process", b"request")
+    with patch.object(abstract_server_handler, 'process_unknown_cmd') as mock_process_unknown_cmd:
+        abstract_server_handler.process_request(command=b'not_found_command', data=b"request")
+        mock_process_unknown_cmd.assert_called_once_with(b'not_found_command')
 
 
 @freeze_time("1970-01-01")
@@ -558,7 +558,7 @@ async def test_AbstractServer_start(keepalive_mock, set_event_loop_policy_mock, 
                                 abstract_server.tag = "start_test"
                                 await abstract_server.start()
                                 assert mock_contextvar.get() == "start_test"
-                                set_exception_handler_mock.assert_called_once_with(c_common.asyncio_exception_handler)
+                                set_exception_handler_mock.assert_called_once_with(asyncio_exception_handler)
                                 eventlooppolicy_mock.assert_called_once()
                                 set_event_loop_policy_mock.assert_called_once()
                                 create_server_mock.assert_awaited_once()
