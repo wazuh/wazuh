@@ -172,7 +172,15 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
             return ::api::adapter::genericError<ResponseType>(error.value().message);
         }
 
-        auto handler = kvdbScope->getKVDBHandler(eRequest.name());
+        auto resultHandler = kvdbScope->getKVDBHandler(eRequest.name());
+
+        if (std::holds_alternative<base::Error>(resultHandler))
+        {
+            throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+        }
+
+        auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+
         auto dumpRes = handler->dump();
 
         if (std::holds_alternative<base::Error>(dumpRes))
@@ -247,7 +255,14 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
             return ::api::adapter::genericError<ResponseType>(error.value().message);
         }
 
-        auto handler = kvdbScope->getKVDBHandler(eRequest.name());
+        auto resultHandler = kvdbScope->getKVDBHandler(eRequest.name());
+
+        if (std::holds_alternative<base::Error>(resultHandler))
+        {
+            throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+        }
+
+        auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
         auto result = handler->get(eRequest.key());
 
         if (std::holds_alternative<base::Error>(result))
@@ -313,7 +328,15 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
             return ::api::adapter::genericError<ResponseType>(error.value().message);
         }
 
-        auto handler = kvdbScope->getKVDBHandler(eRequest.name());
+        auto resultHandler = kvdbScope->getKVDBHandler(eRequest.name());
+
+        if (std::holds_alternative<base::Error>(resultHandler))
+        {
+            throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+        }
+
+        auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+
         auto result = handler->remove(eRequest.key());
 
         if (std::holds_alternative<base::Error>(result))
@@ -379,7 +402,14 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
             return ::api::adapter::genericError<ResponseType>(error.value().message);
         }
 
-        auto handler = kvdbScope->getKVDBHandler(eRequest.name());
+        auto resultHandler = kvdbScope->getKVDBHandler(eRequest.name());
+
+        if (std::holds_alternative<base::Error>(resultHandler))
+        {
+            throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+        }
+
+        auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
         auto result = handler->set(eRequest.entry().key(), std::get<std::string>(value));
 
         if (std::holds_alternative<base::Error>(result))

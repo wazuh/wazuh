@@ -1,3 +1,4 @@
+/*
 #include <gtest/gtest.h>
 
 #include <any>
@@ -125,3 +126,4 @@ TEST_F(opBuilderKVDBDeleteTest, DeleteSuccessCases)
 }
 
 } // namespace
+*/

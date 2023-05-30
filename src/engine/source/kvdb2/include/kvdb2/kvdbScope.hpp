@@ -15,7 +15,7 @@ public:
         , m_name(name)
     {
     }
-    virtual std::unique_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName) override;
+    virtual std::variant<std::unique_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName) override;
 
 private:
     IKVDBHandlerManager* m_handlerManager {nullptr};
