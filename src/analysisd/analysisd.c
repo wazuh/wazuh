@@ -86,6 +86,7 @@ char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 int num_rule_matching_threads;
 OSHash *analysisd_agents_state;
+socket_forwarder* forwarder_socket_list;
 
 extern analysisd_state_t analysisd_state;
 
@@ -431,6 +432,27 @@ int main_analysisd(int argc, char **argv)
     Config.ar = ar_flag;
     if (Config.ar == -1) {
         Config.ar = 0;
+    }
+
+/* Check sockets */
+    if (Config.socket_list) {
+        forwarder_socket_list = Config.socket_list;
+
+        for(int num_sk = 0; forwarder_socket_list && forwarder_socket_list[num_sk].name; num_sk++) {
+            mdebug1("Socket '%s' (%s) added. Location: %s", forwarder_socket_list[num_sk].name, forwarder_socket_list[num_sk].mode == IPPROTO_UDP ? "udp" : "tcp", forwarder_socket_list[num_sk].location);
+        }
+
+        for(int target_num = 0; Config.forwarders_list[target_num]; target_num++) {
+            int found = -1;
+            for (int num_sk = 0; forwarder_socket_list && forwarder_socket_list->name; num_sk++) {
+                found = strcmp(forwarder_socket_list[num_sk].name, Config.forwarders_list[target_num]);
+                if (found == 0) {
+                    break;
+                } else if (found != 0) {
+                    mdebug1("Socket for target '%s' is not defined. Did you check your 'ossec.conf' file ?", Config.forwarders_list[target_num]);
+                }
+            }
+        }
     }
 
     /* Get server's hostname */
@@ -1477,6 +1499,11 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
             /* Log to json file */
             if (Config.jsonout_output) {
                 jsonout_output_event(lf);
+
+                if (Config.forwarders_list) {
+                    char* json_msg = Eventinfo_to_jsonstr(lf, false, NULL);
+                    SendJSONtoSCK(json_msg,Config.socket_list);
+                }
             }
 
 #ifdef PRELUDE_OUTPUT_ENABLED

@@ -208,6 +208,16 @@ typedef struct _os_ip {
     bool is_ipv6;
 } os_ip;
 
+/* Common structure for socket forwarding in Analysisd and logcollector */
+typedef struct _socket_fw {
+    char   *name;
+    char   *location;
+    int    mode;
+    char   *prefix;
+    int    socket;
+    time_t last_attempt;
+} socket_forwarder;
+
 
 extern const char *__local_name;
 /*** Global prototypes ***/
