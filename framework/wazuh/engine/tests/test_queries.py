@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-from wazuh.engine import transformations
+from wazuh.engine import queries
 from wazuh.core.exception import WazuhError
 import pytest
 
@@ -18,7 +18,7 @@ import pytest
     ])
 def test_select_runs_when_valid(params, data, expected):
     """Test that EngineFieldSelector.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert transformations.EngineFieldSelector.can_i_run(params, data) == expected
+    assert queries.FieldSelector.can_i_run(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -40,7 +40,7 @@ def test_select_runs_when_valid(params, data, expected):
 def test_selects_correct_fields(params, data, expected):
     """Test that the EngineFieldSelector selects the correct fields"""
 
-    selector = transformations.EngineFieldSelector(params)
+    selector = queries.FieldSelector(params)
     result = selector.apply_transformation(data)
 
     assert result == expected
@@ -56,7 +56,7 @@ def test_selects_correct_fields(params, data, expected):
     ])
 def test_search_runs_when_valid(params, data, expected):
     """Test that EngineFieldSearch.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert transformations.EngineFieldSearch.can_i_run(params, data) == expected
+    assert queries.FieldSearch.can_i_run(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -71,7 +71,7 @@ def test_search_runs_when_valid(params, data, expected):
 def test_search_correct_fields(params, data, expected):
     """Test that the EngineFieldSearch applies the correct search"""
 
-    searcher = transformations.EngineFieldSearch(params)
+    searcher = queries.FieldSearch(params)
     result = searcher.apply_transformation(data)
 
     assert result == expected
@@ -87,7 +87,7 @@ def test_search_correct_fields(params, data, expected):
     ])
 def test_offset_runs_when_valid(params, data, expected):
     """Test that EngineFieldOffset.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert transformations.EngineFieldOffset.can_i_run(params, data) == expected
+    assert queries.FieldOffset.can_i_run(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -101,7 +101,7 @@ def test_offset_runs_when_valid(params, data, expected):
 def test_offset_correct_elements(params, data, expected):
     """Test that the EngineFieldOffset applies the correct offset"""
 
-    transformation = transformations.EngineFieldOffset(params)
+    transformation = queries.FieldOffset(params)
     result = transformation.apply_transformation(data)
 
     assert result == expected
@@ -112,7 +112,7 @@ def test_offset_raises_error_with_invalid_value(offset):
     """Test that the EngineFieldOffset raises an error with an invalid offset value"""
 
     with pytest.raises(WazuhError) as error_info:
-        transformations.EngineFieldOffset({'offset': offset})
+        queries.FieldOffset({'offset': offset})
 
     assert error_info.value.code == 1400
 
@@ -127,7 +127,7 @@ def test_offset_raises_error_with_invalid_value(offset):
     ])
 def test_limit_runs_when_valid(params, data, expected):
     """Test that EngineFieldLimit.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert transformations.EngineFieldLimit.can_i_run(params, data) == expected
+    assert queries.FieldLimit.can_i_run(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -139,7 +139,7 @@ def test_limit_runs_when_valid(params, data, expected):
 def test_limit_correct_elements(params, data, expected):
     """Test that the EngineFieldLimit limits the number of elements"""
 
-    limiter = transformations.EngineFieldLimit(params)
+    limiter = queries.FieldLimit(params)
     result = limiter.apply_transformation(data)
 
     assert result == expected
@@ -151,7 +151,7 @@ def test_limit_raises_error_with_invalid_value(limit):
     """Test that the EngineFieldLimit raises an error with an invalid limit value"""
 
     with pytest.raises(WazuhError) as error_info:
-        transformations.EngineFieldLimit({'limit': limit})
+        queries.FieldLimit({'limit': limit})
 
     assert error_info.value.code == 1401
 
@@ -166,7 +166,7 @@ def test_limit_raises_error_with_invalid_value(limit):
     ])
 def test_sort_runs_when_valid(params, data, expected):
     """Test that EngineFieldSort.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert transformations.EngineFieldSort.can_i_run(params, data) == expected
+    assert queries.FieldSort.can_i_run(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -188,7 +188,7 @@ def test_sort_runs_when_valid(params, data, expected):
     ]
 )
 def test_sort_correct_elements(params, data, expected):
-    sort_transformation = transformations.EngineFieldSort(params)
+    sort_transformation = queries.FieldSort(params)
     result = sort_transformation.apply_transformation(data)
 
     assert result == expected
@@ -204,7 +204,7 @@ def test_sort_correct_elements(params, data, expected):
     ]
 )
 def test_query_runs_when_valid(params, data, expected):
-    assert transformations.EngineFieldQuery.can_i_run(params, data) == expected
+    assert queries.FieldQuery.can_i_run(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -216,7 +216,7 @@ def test_query_runs_when_valid(params, data, expected):
 )
 def test_query_has_a_valid_string(params):
     with pytest.raises(WazuhError) as error_info:
-        transformations.EngineFieldQuery(params)
+        queries.FieldQuery(params)
 
     assert error_info.value.code == 1407
 
@@ -233,14 +233,14 @@ def test_query_has_a_valid_string(params):
     ]
 )
 def test_query_return_correct_elements(params, data, expected):
-    query_transformation = transformations.EngineFieldQuery(params)
+    query_transformation = queries.FieldQuery(params)
     result = query_transformation.apply_transformation(data)
 
     assert result == expected
 
 
-def test_sequence_runs_all_valid_transformations():
-    class TransformationMock(transformations.ResponseTransformations):
+def test_sequence_runs_all_valid_queries():
+    class TransformationMock(queries.BaseQuery):
         """Mock implementation of a transformation for testing."""
         counter = 0
 
@@ -255,8 +255,8 @@ def test_sequence_runs_all_valid_transformations():
         def can_i_run(params, data):
             return True
 
-    list_of_transformations = [TransformationMock, TransformationMock, TransformationMock]
-    transformation_sequence = transformations.EngineTransformationSequence(list_of_transformations)
+    list_of_queries = [TransformationMock, TransformationMock, TransformationMock]
+    transformation_sequence = queries.EngineQuery(list_of_queries)
     result = transformation_sequence.apply_sequence({}, {})
 
-    assert result['counter'] == len(list_of_transformations)
+    assert result['counter'] == len(list_of_queries)

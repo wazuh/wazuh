@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Type
 from wazuh.core.exception import WazuhError
 
 
-class ResponseTransformations:
+class BaseQuery:
     """Base class for response transformations."""
 
     def apply_transformation(self, data):
@@ -38,7 +38,7 @@ class ResponseTransformations:
         raise NotImplementedError
 
 
-class EngineFieldSelector(ResponseTransformations):
+class FieldSelector(BaseQuery):
     """Transformation to select specific fields from the data."""
 
     def __init__(self, params: Dict[str, Any]):
@@ -104,7 +104,7 @@ class EngineFieldSelector(ResponseTransformations):
         selected_element = {}
         for name in selected_fields:
             # Get the value of the selected field for the current element
-            value = EngineFieldSelector._get_nested_value_select(data, name)
+            value = FieldSelector._get_nested_value_select(data, name)
 
             if value is not None:
                 # Split the field into nested fields based on dot separation
@@ -140,7 +140,7 @@ class EngineFieldSelector(ResponseTransformations):
         return obj
 
 
-class EngineFieldSearch(ResponseTransformations):
+class FieldSearch(BaseQuery):
     """Transformation to search for elements containing a specific string."""
 
     def __init__(self, params: Dict[str, Any]):
@@ -183,7 +183,7 @@ class EngineFieldSearch(ResponseTransformations):
         return transformed_data
 
 
-class EngineFieldOffset(ResponseTransformations):
+class FieldOffset(BaseQuery):
     """Transformation to select a subset of elements from a list based on an offset."""
 
     def __init__(self, params: Dict[str, Any]):
@@ -225,7 +225,7 @@ class EngineFieldOffset(ResponseTransformations):
         return data[self.offset:]
 
 
-class EngineFieldLimit(ResponseTransformations):
+class FieldLimit(BaseQuery):
     """Transformation to limit the number of elements in a list."""
 
     def __init__(self, params: Dict[str, Any]):
@@ -312,7 +312,7 @@ def sorting_lambda(filters: List[Dict[str, Any]], data: Dict[str, Any]) -> tuple
     return tuple(final_tuple)
 
 
-class EngineFieldSort(ResponseTransformations):
+class FieldSort(BaseQuery):
     """Transformation to sort a list of dictionaries based on a field or fields."""
 
     def __init__(self, params: Dict[str, Any]):
@@ -362,7 +362,7 @@ class EngineFieldSort(ResponseTransformations):
         return result
 
 
-class EngineFieldQuery(ResponseTransformations):
+class FieldQuery(BaseQuery):
     """Class for applying field-based queries to data."""
 
     def __init__(self, params: Dict[str, Any]):
@@ -450,41 +450,41 @@ class EngineFieldQuery(ResponseTransformations):
         return list(selected_data)
 
 
-class EngineTransformationSequence:
-    """Sequence of response transformations."""
+class EngineQuery:
+    """Sequence of response queries."""
 
-    def __init__(self, transformations: List[Type[ResponseTransformations]]):
-        self.transformations = transformations
+    def __init__(self, queries: List[Type[BaseQuery]]):
+        self.queries = queries
 
     def apply_sequence(self, params: Dict[str, Any], data: Any) -> Any:
-        """Apply the sequence of transformations to the data.
+        """Apply the sequence of queries to the data.
 
         Args:
-            params: The parameters used for the transformations.
+            params: The parameters used for the queries.
             data: The data to be transformed.
 
         Returns:
             The transformed data.
 
         Note:
-            The transformations are applied in the order specified in the sequence.
+            The queries are applied in the order specified in the sequence.
         """
         transformed_data = data
-        for transformation in self.transformations:
-            if transformation.can_i_run(params=params, data=data):
-                transformed_data = transformation(params=params).apply_transformation(transformed_data)
+        for query in self.queries:
+            if query.can_i_run(params=params, data=data):
+                transformed_data = query(params=params).apply_transformation(transformed_data)
 
         return transformed_data
 
     @classmethod
     def default_sequence(cls):
-        """Create a default sequence of transformations.
+        """Create a default sequence of queries.
 
         Returns:
-            An instance of EngineTransformationSequence with the default transformations.
+            An instance of EngineQuery with the default transformations.
         """
         list_of_transformations = [
-            EngineFieldSearch, EngineFieldSelector,
-            EngineFieldOffset, EngineFieldLimit, EngineFieldSort]
+            FieldSearch, FieldSelector,
+            FieldOffset, FieldLimit, FieldSort]
 
         return cls(list_of_transformations)
