@@ -11,8 +11,8 @@
 #define EXPRESSION_WRAPPERS_H
 
 #include <stdbool.h>
-#include "headers/shared.h"
-#include "headers/expression.h"
+#include "../headers/shared.h"
+#include "../headers/expression.h"
 
 bool __wrap_w_expression_match(__attribute__((unused))w_expression_t * expression, __attribute__((unused))const char * str_test,
                                __attribute__((unused))const char ** end_match, regex_matching * regex_match);

@@ -14,7 +14,7 @@
 
 #include "shared.h"
 #include "syscheck.h"
-#include "rootcheck/rootcheck.h"
+#include "../rootcheck/rootcheck.h"
 #include "db/include/db.h"
 #include "db/include/fimCommonDefs.h"
 // Global variables

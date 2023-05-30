@@ -11,7 +11,7 @@
 #ifndef OS_XML_WRAPPERS_H
 #define OS_XML_WRAPPERS_H
 
-#include "os_xml/os_xml.h"
+#include "../os_xml/os_xml.h"
 #include "../../common.h"
 
 const char * __wrap_w_get_attr_val_by_name(xml_node * node, const char * name);

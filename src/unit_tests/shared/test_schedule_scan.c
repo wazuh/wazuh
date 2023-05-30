@@ -10,7 +10,7 @@
 #include <time.h>
 
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
+#include "../wazuh_modules/wmodules.h"
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/time_op_wrappers.h"

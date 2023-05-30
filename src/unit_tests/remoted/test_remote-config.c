@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "remoted/remoted.h"
-#include "headers/shared.h"
+#include "../../remoted/remoted.h"
+#include "../../headers/shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
@@ -114,7 +114,7 @@ void test_w_remoted_get_net_protocol_content_mix(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value 'hello' for 'protocol'.");
 
     expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value '' for 'protocol'.");
-    
+
     expect_string(__wrap__mwarn, formatted_msg, "(9001): Ignored invalid value 'world' for 'protocol'.");
 
     int ret = w_remoted_get_net_protocol(content);
@@ -125,7 +125,7 @@ void test_w_remoted_get_net_protocol_content_mix(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        // Tests 
+        // Tests
         cmocka_unit_test(test_w_remoted_get_net_protocol_content_NULL),
         cmocka_unit_test(test_w_remoted_get_net_protocol_content_empty),
         cmocka_unit_test(test_w_remoted_get_net_protocol_content_ignore_values),
@@ -134,7 +134,7 @@ int main(void)
         cmocka_unit_test(test_w_remoted_get_net_protocol_content_tcp_udp),
         cmocka_unit_test(test_w_remoted_get_net_protocol_content_udp_tcp),
         cmocka_unit_test(test_w_remoted_get_net_protocol_content_mix),
-        
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

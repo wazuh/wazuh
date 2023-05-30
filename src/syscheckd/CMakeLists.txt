@@ -10,7 +10,6 @@ endif()
 
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
-include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/bzip2/)

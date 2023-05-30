@@ -33,7 +33,7 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
 #include "syscheck.h"
-#include "config/syscheck-config.h"
+#include "../../config/syscheck-config.h"
 #include "db/include/db.h"
 
 #include "test_fim.h"

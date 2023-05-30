@@ -11,8 +11,8 @@
 #ifndef AGENT_OP_H
 #define AGENT_OP_H
 
-#include "external/cJSON/cJSON.h"
-#include "config/authd-config.h"
+#include <cJSON.h>
+#include "../config/authd-config.h"
 
 /**
  * @brief Check if syscheck is to be executed/restarted
