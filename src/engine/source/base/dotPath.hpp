@@ -198,19 +198,8 @@ public:
      */
     static DotPath fromJsonPath(const std::string& jsonPath)
     {
-        std::string path {};
-
-        if(jsonPath[0] == '/')
-        {
-            path = jsonPath.substr(1);
-        }
-        else
-        {
-            path = jsonPath;
-        }
-
+        std::string path = (jsonPath[0] == '/') ? jsonPath.substr(1) : jsonPath;
         auto parts = base::utils::string::split(path, '/');
-
         return DotPath(parts.begin(), parts.end());
     }
 };
