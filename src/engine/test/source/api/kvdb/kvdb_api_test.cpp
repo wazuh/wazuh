@@ -406,8 +406,13 @@ TEST_F(KVDBApiTest, dbGetOneKey)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
-    auto handler = kvdbScope->getKVDBHandler("default");
+    auto resultHandler = kvdbScope->getKVDBHandler("default");
+
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+
+    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
     auto result = handler->set("key1", "\"value1\"");
+
     ASSERT_FALSE(std::holds_alternative<base::Error>(result));
 
     ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, kvdbScope));
@@ -425,9 +430,10 @@ TEST_F(KVDBApiTest, dbGetRepeatKeyNoError)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
-    auto handler = kvdbScope->getKVDBHandler("default");
+    auto resultHandler = kvdbScope->getKVDBHandler("default");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
     auto result = handler->set("key1", "\"\"");
-    ASSERT_FALSE(std::holds_alternative<base::Error>(result));
 
     ASSERT_NO_THROW(cmd = dbGet(KVDBApiTest::kvdbManager, kvdbScope));
     const auto response = cmd(dbWRequest("default", "key1"));
@@ -451,7 +457,10 @@ TEST_F(KVDBApiTest, dbGetMoreThanOneKey)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
-    auto handler = kvdbScope->getKVDBHandler("default");
+    auto resultHandler = kvdbScope->getKVDBHandler("default");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+
     auto result = handler->set("key1", "\"\"");
     ASSERT_FALSE(std::holds_alternative<base::Error>(result));
     auto result2 = handler->set("key2", "\"\"");
@@ -479,7 +488,10 @@ TEST_F(KVDBApiTest, dbGetKeyDBNotExists)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
-    auto handler = kvdbScope->getKVDBHandler("default");
+    auto resultHandler = kvdbScope->getKVDBHandler("default");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+
     auto result = handler->set("key1", "\"\"");
     ASSERT_FALSE(std::holds_alternative<base::Error>(result));
 
@@ -601,7 +613,11 @@ TEST_F(KVDBApiTest, dbDeleteOneKey)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
-    auto handler = kvdbScope->getKVDBHandler("default");
+    auto resultHandler = kvdbScope->getKVDBHandler("default");
+
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+
     auto result = handler->set("key1", "");
     ASSERT_FALSE(std::holds_alternative<base::Error>(result));
 
@@ -620,7 +636,10 @@ TEST_F(KVDBApiTest, dbDeleteRepeatKeyNoError)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
-    auto handler = kvdbScope->getKVDBHandler("default");
+    auto resultHandler = kvdbScope->getKVDBHandler("default");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+
     auto result = handler->set("key1", "");
     ASSERT_FALSE(std::holds_alternative<base::Error>(result));
 
@@ -646,7 +665,10 @@ TEST_F(KVDBApiTest, dbDeleteMoreThanOneKey)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
-    auto handler = kvdbScope->getKVDBHandler("default");
+    auto resultHandler = kvdbScope->getKVDBHandler("default");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+
+    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
     auto result = handler->set("key1", "");
     ASSERT_FALSE(std::holds_alternative<base::Error>(result));
     auto result2 = handler->set("key2", "");
@@ -674,7 +696,9 @@ TEST_F(KVDBApiTest, dbDeleteKeyDBNotExists)
     api::Handler cmd;
 
     auto kvdbScope = kvdbManager->getKVDBScope("test");
-    auto handler = kvdbScope->getKVDBHandler("default");
+    auto resultHandler = kvdbScope->getKVDBHandler("default");
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
     auto result = handler->set("key1", "");
     ASSERT_FALSE(std::holds_alternative<base::Error>(result));
 

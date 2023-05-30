@@ -72,6 +72,7 @@ target_link_libraries(builders
   hlp
   logpar
   kvdb
+  kvdb2
   re2
   logicExpression
   wdb
