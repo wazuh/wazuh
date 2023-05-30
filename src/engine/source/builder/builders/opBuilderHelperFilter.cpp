@@ -1535,10 +1535,8 @@ base::Expression opBuilderHelperMatchValue(const std::string& targetField,
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=,
-         targetField = std::move(targetField),
-         parameter = std::move(parameters[0]),
-         definitionArray = std::move(definitionArray)](base::Event event) -> base::result::Result<base::Event>
+        [=, parameter = std::move(parameters[0]), definitionArray = std::move(definitionArray)](
+            base::Event event) -> base::result::Result<base::Event>
         {
             if (!event->exists(targetField))
             {
@@ -1666,10 +1664,8 @@ base::Expression opBuilderHelperMatchKey(const std::string& targetField,
     // Return Term
     return base::Term<base::EngineOp>::create(
         name,
-        [=,
-         targetField = std::move(targetField),
-         parameter = std::move(parameters[0]),
-         definitionObject = std::move(definitionObject)](base::Event event) -> base::result::Result<base::Event>
+        [=, parameter = std::move(parameters[0]), definitionObject = std::move(definitionObject)](
+            base::Event event) -> base::result::Result<base::Event>
         {
             // Get key
             if (!event->exists(targetField))
