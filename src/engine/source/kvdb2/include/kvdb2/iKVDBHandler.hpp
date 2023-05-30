@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <variant>
 
+#include <json/json.hpp>
+
 namespace kvdbManager
 {
 
@@ -13,6 +15,7 @@ class IKVDBHandler
 {
 public:
     virtual std::variant<bool, base::Error> set(const std::string& key, const std::string& value) = 0;
+    virtual std::variant<bool, base::Error> set(const std::string& key, const json::Json& value) = 0;
     virtual std::variant<bool, base::Error> add(const std::string& key) = 0;
     virtual std::variant<bool, base::Error> remove(const std::string& key) = 0;
     virtual std::variant<bool, base::Error> contains(const std::string& key) = 0;
