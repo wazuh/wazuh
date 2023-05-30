@@ -23,6 +23,7 @@ public:
               const std::string& scopeName);
     ~KVDBSpace();
     std::variant<bool, base::Error> set(const std::string& key, const std::string& value) override;
+    std::variant<bool, base::Error> set(const std::string& key, const json::Json& value) override;
     std::variant<bool, base::Error> add(const std::string& key) override;
     std::variant<bool, base::Error> remove(const std::string& key) override;
     std::variant<bool, base::Error> contains(const std::string& key) override;

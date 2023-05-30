@@ -79,7 +79,11 @@ TEST_F(KVDB2Test, Startup)
 TEST_F(KVDB2Test, ScopeTest)
 {
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
-    auto handler = scope->getKVDBHandler("db_test");
+    auto resultHandler = scope->getKVDBHandler("default");
+
+    ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
+
+    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
     auto result = handler->add("key1");
     ASSERT_TRUE(std::holds_alternative<bool>(result));
 
