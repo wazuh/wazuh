@@ -72,37 +72,32 @@ normalize:
   - check:
       - message: +contains/pam_
     logpar:
-      - message: "pam_unix\\(<~>:<~>\\): session <~system.ayth.pam.session.action> for user <~system.ayth.pam.foruser.name> by <~system.ayth.pam.byuser.name>\\(uid=<user.id>\\)"
-      - message: "pam_unix\\(<~>:<~>\\): session <~system.ayth.pam.session.action> for user <~system.ayth.pam.foruser.name> by \\(uid=<user.id>\\)"
-      - message: "pam_unix\\(<~>:<~>\\): session <~system.ayth.pam.session.action> for user <~system.ayth.pam.foruser.name>"
+      - message: "pam_unix\\(<~>:<~>\\): session <~system.auth.pam.session.action> for user <~system.auth.pam.foruser.name> by <~system.auth.pam.byuser.name>\\(uid=\\)"
+      - message: "pam_unix\\(<~>:<~>\\): session <~system.auth.pam.session.action> for user <~system.auth.pam.foruser.name> by \\(uid=<user.id>\\)"
+      - message: "pam_unix\\(<~>:<~>\\): session <~system.auth.pam.session.action> for user <~system.auth.pam.foruser.name>"
       - message: "pam_succeed_if\\(<~>:<~>\\): requirement <~> not met by user <user.name>"
+      - message: "pam_unix\\(<~>:<~>\\): authentication <~system.auth.pam.session.action>; logname=<~system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<~system.auth.pam.tty>?<~/literal/> ruser=<~system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/>  user=<user.name>?<~/literal/>"
     map:
-      - user.name: +replace/"/
-      - user.name: +replace/'/
-      - ~system.ayth.pam.foruser.name: +replace/"/
-      - ~system.ayth.pam.foruser.name: +replace/'/
-      - ~system.ayth.pam.byuser.name: +replace/"/
-      - ~system.ayth.pam.byuser.name: +replace/'/
       - event.category: +array_append/authentication/session
 
   - check:
-      - ~system.ayth.pam.byuser.name: +string_not_equal/""
+      - ~system.auth.pam.byuser.name: +string_not_equal/""
     map:
-      - user.name: $~system.ayth.pam.byuser.name
-      - user.effective.name: $~system.ayth.pam.foruser.name
+      - user.name: $~system.auth.pam.byuser.name
+      - user.effective.name: $~system.auth.pam.foruser.name
 
   - check:
-      - ~system.ayth.pam.byuser.name: +not_exists
+      - ~system.auth.pam.byuser.name: +not_exists
     map:
-      - user.name: $~system.ayth.pam.foruser.name
+      - user.name: $~system.auth.pam.foruser.name
 
   - check:
-      - ~system.ayth.pam.session.action: "opened"
+      - ~system.auth.pam.session.action: "opened"
     map:
       - event.type: +array_append/start
 
   - check:
-      - ~system.ayth.pam.session.action: "closed"
+      - ~system.auth.pam.session.action: "closed"
     map:
       - event.type: +array_append/end
 
@@ -150,6 +145,15 @@ normalize:
       - event.type: +array_append/change
 
   - map:
+      - user.name: +replace/"/
+      - user.name: +replace/'/
+      - ~system.auth.pam.foruser.name: +replace/"/
+      - ~system.auth.pam.foruser.name: +replace/'/
+      - ~system.auth.pam.byuser.name: +replace/"/
+      - ~system.auth.pam.byuser.name: +replace/'/
+      - user.effective.name: +replace/"/
+      - user.effective.name: +replace/'/
+      - source.address: $source.ip
       - related.user: +array_append/$user.name/$user.effective.name
       - related.ip: +array_append/$source.ip
       - process.command_line: $~system.auth.sudo.command
