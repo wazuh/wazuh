@@ -214,6 +214,32 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Maximum zip size allowed when syncing Integrity files.
         self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
 
+    def _create_cmd_handlers(self):
+        """Add handlers entries to _cmd_handler dictionary."""
+        super()._create_cmd_handlers()
+        self._cmd_handler.update(
+            {
+                b'syn_i_w_m_p': lambda command, _: self.get_permission(command),
+                b'syn_a_w_m_p': lambda command, _: self.get_permission(command),
+                b'syn_i_w_m': lambda command, data: self.setup_sync_integrity(command, data),
+                b'syn_e_w_m': lambda command, data: self.setup_sync_integrity(command, data),
+                b'syn_a_w_m': lambda command, data: self.setup_sync_integrity(command, data),
+                b'syn_w_g_c': lambda command, _: self.setup_send_info(command),
+                b'syn_i_w_m_e': lambda _, data: self.end_receiving_integrity_checksums(data.decode()),
+                b'syn_e_w_m_e': lambda _, data: self.end_receiving_integrity_checksums(data.decode()),
+                b'syn_i_w_m_r': lambda _, data: self.process_sync_error_from_worker(data),
+                b'syn_w_g_e': lambda _, data: self._cmd_syn_w_g_e(data),
+                b'syn_wgc_e': lambda _, data: self._cmd_syn_wgc_e(data),
+                b'syn_w_g_err': lambda _, data: self._cmd_syn_w_g_err(data),
+                b'syn_wgc_err': lambda _, data: self._cmd_syn_wgc_err(data),
+                b'dapi': lambda _, data: self._cmd_dapi(data),
+                b'dapi_res': lambda _, data: self.process_dapi_res(data),
+                b'get_nodes': lambda _, data: self._cmd_get_nodes(data),
+                b'get_health': lambda _, data: self._cmd_get_health(data),
+                b'sendsync': lambda _, data: self._cmd_sendsync(data),
+            }
+        )
+
     def to_dict(self):
         """Get worker healthcheck information.
 
@@ -235,8 +261,162 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                            'last_keep_alive': self.last_keepalive}
                 }
 
+    def _cmd_syn_w_g_e(self, data: bytes):
+        """Handle incoming syn_w_g_e requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        logger = self.task_loggers['Agent-groups send']
+        start_time = self.send_agent_groups_status['date_start']
+        if isinstance(start_time, str):
+            start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
+        start_time = start_time.timestamp()
+        return c_common.end_sending_agent_information(logger, start_time, data.decode())
+
+    def _cmd_syn_wgc_e(self, data: bytes):
+        """Handle incoming syn_wgc_e requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        logger = self.task_loggers['Agent-groups send full']
+        start_time = self.send_full_agent_groups_status['date_start']
+        if isinstance(start_time, str):
+            start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
+        start_time = start_time.timestamp()
+        return c_common.end_sending_agent_information(logger, start_time, data.decode())
+
+    def _cmd_syn_w_g_err(self, data: bytes):
+        """Handle incoming syn_w_g_err requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        logger = self.task_loggers['Agent-groups send']
+        return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-groups')
+
+    def _cmd_syn_wgc_err(self, data: bytes):
+        """Handle incoming syn_wgc_err requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        logger = self.task_loggers['Agent-groups send full']
+        return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-groups')
+
+    def _cmd_dapi(self, data: bytes):
+        """Handle incoming dapi requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        self.server.dapi.add_request(self.name.encode() + b'*' + data)
+        return b'ok', b'Added request to API requests queue'
+
+    def _cmd_get_nodes(self, data: bytes):
+        """Handle incoming get_nodes requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        cmd, res = self.get_nodes(json.loads(data))
+        return cmd, json.dumps(res).encode()
+
+    def _cmd_get_health(self, data: bytes):
+        """Handle incoming get_health requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        cmd, res = self.get_health(json.loads(data))
+        return cmd, json.dumps(
+            res, default=lambda o: "n/a" if isinstance(o, datetime) and o == utils.get_date_from_timestamp(0) else
+            (o.__str__() if isinstance(o, datetime) else None)).encode()
+
+    def _cmd_sendsync(self, data: bytes):
+        """Handle incoming sendsync requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        self.server.sendsync.add_request(self.name.encode() + b'*' + data)
+        return b'ok', b'Added request to SendSync requests queue'
+
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """Define all available commands that can be received from a worker node.
+        """Handles commands received from a worker node through _cmd_handler dictionary.
 
         Parameters
         ----------
@@ -253,46 +433,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         self.logger.debug(f"Command received: {command}")
-        if command == b'syn_i_w_m_p' or command == b'syn_a_w_m_p':
-            return self.get_permission(command)
-        elif command == b'syn_i_w_m' or command == b'syn_e_w_m' or command == b'syn_a_w_m':
-            return self.setup_sync_integrity(command, data)
-        elif command == b'syn_w_g_c':
-            return self.setup_send_info(command)
-        elif command == b'syn_i_w_m_e' or command == b'syn_e_w_m_e':
-            return self.end_receiving_integrity_checksums(data.decode())
-        elif command == b'syn_i_w_m_r':
-            return self.process_sync_error_from_worker(data)
-        elif command == b'syn_w_g_e':
-            logger = self.task_loggers['Agent-groups send']
-            start_time = datetime.strptime(self.send_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT)
-            return c_common.end_sending_agent_information(logger, start_time, data.decode())
-        elif command == b'syn_wgc_e':
-            logger = self.task_loggers['Agent-groups send full']
-            start_time = datetime.strptime(self.send_full_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT)
-            return c_common.end_sending_agent_information(logger, start_time, data.decode())
-        elif command == b'syn_w_g_err':
-            logger = self.task_loggers['Agent-groups send']
-            return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-groups')
-        elif command == b'syn_wgc_err':
-            logger = self.task_loggers['Agent-groups send full']
-            return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-groups')
-        elif command == b'dapi':
-            self.server.dapi.add_request(self.name.encode() + b'*' + data)
-            return b'ok', b'Added request to API requests queue'
-        elif command == b'dapi_res':
-            return self.process_dapi_res(data)
-        elif command == b'get_nodes':
-            cmd, res = self.get_nodes(json.loads(data))
-            return cmd, json.dumps(res).encode()
-        elif command == b'get_health':
-            cmd, res = self.get_health(json.loads(data))
-            return cmd, json.dumps(res).encode()
-        elif command == b'sendsync':
-            self.server.sendsync.add_request(self.name.encode() + b'*' + data)
-            return b'ok', b'Added request to SendSync requests queue'
-        else:
-            return super().process_request(command, data)
+        return self._cmd_handler.get(command, self._command_not_found)(command, data)
+
 
     async def execute(self, command: bytes, data: bytes, wait_for_complete: bool = False) -> Dict:
         """Send DAPI request and wait for response.

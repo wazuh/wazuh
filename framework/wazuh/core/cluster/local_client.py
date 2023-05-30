@@ -30,6 +30,20 @@ class LocalClientHandler(client.AbstractClient):
         self.response_available = asyncio.Event()
         self.response = b''
 
+    def _create_cmd_handlers(self):
+        """Add handlers to _cmd_handler dictionary."""
+        super()._create_cmd_handlers()
+        self._cmd_handler.update(
+            {
+                b'dapi_res': lambda _, data: self._cmd_dapi_res_or_send_f_res(data),
+                b'send_f_res': lambda _, data: self._cmd_dapi_res_or_send_f_res(data),
+                b'ok': lambda _, data: self._cmd_ok(data),
+                b'control_res': lambda _, data: self._cmd_control_res(data),
+                b'dapi_err': lambda _, data: self._cmd_dapi_err(data),
+                b'err': lambda _, data: self._cmd_err(data),
+            }
+        )
+
     def connection_made(self, transport):
         """Define process of connecting to the server.
 
@@ -46,8 +60,113 @@ class LocalClientHandler(client.AbstractClient):
     def _cancel_all_tasks(self):
         pass
 
+    def _cmd_dapi_res_or_send_f_res(self, data: bytes) -> Tuple[bytes, bytes]:
+        """Handle incoming dapi_res_or_send_f_res requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        if data.startswith(b'Error'):
+            return b'err', self.process_error_from_peer(data)
+        elif data not in self.in_str:
+            return b'err', self.process_error_from_peer(b'Error receiving string: ID ' + data + b' not found.')
+        self.response = self.in_str[data].payload
+        self.response_available.set()
+        # Remove the string after using it
+        self.in_str.pop(data, None)
+        return b'ok', b'Distributed api response received'
+
+    def _cmd_ok(self, data: bytes) -> Tuple[bytes, bytes]:
+        """Handle incoming ok requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        if data.startswith(b'Error'):
+            return b'err', self.process_error_from_peer(data)
+        self.response = data
+        self.response_available.set()
+        return b'ok', b'Sendsync response received'
+
+    def _cmd_control_res(self, data: bytes) -> Tuple[bytes, bytes]:
+        """Handle incoming control_res requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        if data.startswith(b'Error'):
+            return b'err', self.process_error_from_peer(data)
+        self.response = data
+        self.response_available.set()
+        return b'ok', b'Response received'
+
+    def _cmd_dapi_err(self, data: bytes) -> Tuple[bytes, bytes]:
+        """Handle incoming dapi_err requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        self.response = data
+        self.response_available.set()
+        return b'ok', b'Response received'
+
+    def _cmd_err(self, data: bytes) -> Tuple[bytes, bytes]:
+        """Handle incoming err requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        self.response = data
+        self.response_available.set()
+        return b'ok', b'Error response received'
+
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """Define commands available in a local client.
+        """Handles local client commands through _cmd_handler dictionary.
 
         Parameters
         ----------
@@ -64,38 +183,7 @@ class LocalClientHandler(client.AbstractClient):
             Response message.
         """
         self.logger.debug(f"Command received: {command}")
-        if command == b'dapi_res' or command == b'send_f_res':
-            if data.startswith(b'Error'):
-                return b'err', self.process_error_from_peer(data)
-            elif data not in self.in_str:
-                return b'err', self.process_error_from_peer(b'Error receiving string: ID ' + data + b' not found.')
-            self.response = self.in_str[data].payload
-            self.response_available.set()
-            # Remove the string after using it
-            self.in_str.pop(data, None)
-            return b'ok', b'Distributed api response received'
-        elif command == b'ok':
-            if data.startswith(b'Error'):
-                return b'err', self.process_error_from_peer(data)
-            self.response = data
-            self.response_available.set()
-            return b'ok', b'Sendsync response received'
-        elif command == b'control_res':
-            if data.startswith(b'Error'):
-                return b'err', self.process_error_from_peer(data)
-            self.response = data
-            self.response_available.set()
-            return b'ok', b'Response received'
-        elif command == b'dapi_err':
-            self.response = data
-            self.response_available.set()
-            return b'ok', b'Response received'
-        elif command == b'err':
-            self.response = data
-            self.response_available.set()
-            return b'ok', b'Error response received'
-        else:
-            return super().process_request(command, data)
+        return self._cmd_handler.get(command, self._command_not_found)(command, data)
 
     def process_error_from_peer(self, data: bytes):
         """Handle "err" response.

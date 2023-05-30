@@ -10,7 +10,7 @@ from typing import Tuple, Dict, List
 
 import uvloop
 
-from wazuh.core.cluster import common
+from wazuh.core.cluster.common import Handler, asyncio_exception_handler
 from wazuh.core.cluster.utils import context_tag
 
 
@@ -90,7 +90,7 @@ class AbstractClientManager:
         """Connect to the server and wait until the connection is closed."""
         # Get a reference to the event loop as we plan to use low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-        self.loop.set_exception_handler(common.asyncio_exception_handler)
+        self.loop.set_exception_handler(asyncio_exception_handler)
         on_con_lost = self.loop.create_future()
         ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH) if self.ssl else None
 
@@ -126,7 +126,7 @@ class AbstractClientManager:
             await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
 
 
-class AbstractClient(common.Handler):
+class AbstractClient(Handler):
     """
     Define a client protocol. Handle connection with server.
     """
@@ -159,6 +159,15 @@ class AbstractClient(common.Handler):
         self.on_con_lost = on_con_lost
         self.connected = False
         self.client_data = self.name.encode()
+
+    def _create_cmd_handlers(self):
+        """Add command handlers to _cmd_handler dictionary."""
+        super()._create_cmd_handlers()
+        self._cmd_handler.update(
+            {
+                b'echo-m': lambda _, data: self.echo_client(data),
+            }
+        )
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -244,28 +253,6 @@ class AbstractClient(common.Handler):
         else:
             return super().process_response(command, payload)
 
-    def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """Define commands available in clients.
-
-        Parameters
-        ----------
-        command : bytes
-            Received command from client.
-        data : bytes
-            Received payload from client.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            Response message.
-        """
-        if command == b"echo-m":
-            return self.echo_client(data)
-        else:
-            return super().process_request(command, data)
-
     def echo_client(self, data: bytes) -> Tuple[bytes, bytes]:
         """Handle "echo-m" request.
 
@@ -331,7 +318,6 @@ class AbstractClient(common.Handler):
             except Exception as e:
                 self.logger.error(f"Error during performance test: {e}")
             await asyncio.sleep(3)
-
 
     async def concurrency_test_client(self, n_msgs: int):
         """Send lots of requests to the server at the same time.

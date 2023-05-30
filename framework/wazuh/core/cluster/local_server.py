@@ -12,8 +12,9 @@ from typing import Tuple, Union
 
 import uvloop
 
-from wazuh.core import common
-from wazuh.core.cluster import common as c_common, server, client, cluster
+from wazuh.core.cluster import server, client, cluster
+from wazuh.core.cluster.common import asyncio_exception_handler
+from wazuh.core.common import WAZUH_PATH
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.exception import WazuhClusterError
@@ -24,6 +25,19 @@ class LocalServerHandler(server.AbstractServerHandler):
     """
     Handle requests from a local client.
     """
+
+    def _create_cmd_handlers(self):
+        """Add command handlers to _cmd_handler dictionary."""
+        super()._create_cmd_handlers()
+        self._cmd_handler.update(
+            {
+                b'get_config': lambda _, __: self.get_config(),
+                b'get_nodes': lambda _, data: self.get_nodes(data),
+                b'get_health': lambda _, data: self.get_health(data),
+                b'get_hash': lambda _, __: self.get_ruleset_hashes(),
+                b'send_file': lambda _, data: self._cmd_send_file(data),
+            }
+        )
 
     def connection_made(self, transport):
         """Define the process of accepting a connection.
@@ -41,15 +55,13 @@ class LocalServerHandler(server.AbstractServerHandler):
         context_tag.set(self.tag)
         self.logger.debug('Connection received in local server.')
 
-    def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """Define commands for local servers for both worker and master nodes.
+    def _cmd_send_file(self, data: bytes):
+        """Handle incoming send_file requests.
 
         Parameters
         ----------
-        command : bytes
-            Received command from client.
         data : bytes
-            Received payload from client.
+            Received payload.
 
         Returns
         -------
@@ -58,19 +70,8 @@ class LocalServerHandler(server.AbstractServerHandler):
         bytes
             Response message.
         """
-        if command == b'get_config':
-            return self.get_config()
-        elif command == b'get_nodes':
-            return self.get_nodes(data)
-        elif command == b'get_health':
-            return self.get_health(data)
-        elif command == b'get_hash':
-            return self.get_ruleset_hashes()
-        elif command == b'send_file':
-            path, node_name = data.decode().split(' ')
-            return self.send_file_request(path, node_name)
-        else:
-            return super().process_request(command, data)
+        path, node_name = data.decode().split(' ')
+        return self.send_file_request(path, node_name)
 
     def get_config(self) -> Tuple[bytes, bytes]:
         """Get active cluster configuration.
@@ -208,8 +209,8 @@ class LocalServer(server.AbstractServer):
         # Get a reference to the event loop as we plan to use low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
-        loop.set_exception_handler(c_common.asyncio_exception_handler)
-        socket_path = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock')
+        loop.set_exception_handler(asyncio_exception_handler)
+        socket_path = os.path.join(WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock')
 
         try:
             local_server = await loop.create_unix_server(
@@ -238,8 +239,60 @@ class LocalServerHandlerMaster(LocalServerHandler):
     The local server handler instance that runs in the Master node.
     """
 
-    def process_request(self, command: bytes, data: bytes):
-        """Define requests available in the local server.
+    def _create_cmd_handlers(self):
+        """Add handlers to _cmd_handler dictionary."""
+        super()._create_cmd_handlers()
+        self._cmd_handler.update(
+            {
+                b'dapi': lambda _, data: self._cmd_dapi(data),
+                b'dapi_fwd': lambda _, data: self._cmd_dapi_fwd(data),
+            }
+        )
+
+    def _cmd_dapi(self, data: bytes):
+        """Handle incoming dapi requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        self.server.dapi.add_request(self.name.encode() + b' ' + data)
+        return b'ok', b'Added request to API requests queue'
+
+    def _cmd_dapi_fwd(self, data: bytes):
+        """Handle incoming dapi_fwd requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        node_name, request = data.split(b' ', 1)
+        node_name = node_name.decode()
+        if node_name in self.server.node.clients:
+            asyncio.create_task(self.log_exceptions(
+                self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request)))
+            return b'ok', b'Request forwarded to worker node'
+        else:
+            raise WazuhClusterError(3022)
+
+    def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
+        """Handle local server requests through _cmd_handler dictionary.
 
         Parameters
         ----------
@@ -256,24 +309,10 @@ class LocalServerHandlerMaster(LocalServerHandler):
             Response message.
         """
         context_tag.set("Local " + self.name)
-
-        if command == b'dapi':
-            self.server.dapi.add_request(self.name.encode() + b' ' + data)
-            return b'ok', b'Added request to API requests queue'
-        elif command == b'dapi_fwd':
-            node_name, request = data.split(b' ', 1)
-            node_name = node_name.decode()
-            if node_name in self.server.node.clients:
-                asyncio.create_task(self.log_exceptions(
-                    self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request)))
-                return b'ok', b'Request forwarded to worker node'
-            else:
-                raise WazuhClusterError(3022)
-        else:
-            return super().process_request(command, data)
+        return self._cmd_handler.get(command, self._command_not_found)(command, data)
 
     def get_nodes(self, arguments: bytes) -> Tuple[bytes, bytes]:
-        """Implement and handles the 'get_nodes' request.
+        """Implement and handle the 'get_nodes' request.
 
         Parameters
         ----------
@@ -304,7 +343,10 @@ class LocalServerHandlerMaster(LocalServerHandler):
         dict
             Dict object containing nodes information.
         """
-        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
+        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes)),
+                                 default=lambda o: "n/a" if
+                                 isinstance(o, datetime) and o == get_date_from_timestamp(0)
+                                 else (o.__str__() if isinstance(o, datetime) else None)).encode()
 
     def send_file_request(self, path, node_name):
         """Send a file from the API to the cluster.
@@ -360,8 +402,83 @@ class LocalServerHandlerWorker(LocalServerHandler):
     The local server handler instance that runs in worker nodes.
     """
 
-    def process_request(self, command: bytes, data: bytes):
-        """Define available requests in the local server.
+    def _create_cmd_handlers(self):
+        """Add handlers to _cmd_handler dictionary."""
+        super()._create_cmd_handlers()
+        self._cmd_handler.update(
+            {
+                b'dapi': lambda _, data: self._cmd_dapi(data),
+                b'sendsync': lambda _, data: self._cmd_sendsync(data),
+                b'sendasync': lambda _, data: self._cmd_sendasync(data),
+            }
+        )
+
+    # Start command Handlers
+    def _cmd_sendsync(self, data: bytes):
+        """Handle incoming sendsync requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        if self.server.node.client is None:
+            raise WazuhClusterError(3023)
+        asyncio.create_task(self.log_exceptions(
+            self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
+        return None, None
+
+    def _cmd_sendasync(self, data: bytes):
+        """Handle incoming sendasync requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        if self.server.node.client is None:
+            raise WazuhClusterError(3023)
+        asyncio.create_task(self.log_exceptions(
+            self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
+        return b'ok', b'Added request to sendsync requests queue'
+
+    def _cmd_dapi(self, data: bytes):
+        """Handle incoming dapi requests.
+
+        Parameters
+        ----------
+        data : bytes
+            Received payload.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        if self.server.node.client is None:
+            raise WazuhClusterError(3023)
+        asyncio.create_task(self.log_exceptions(
+            self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data)))
+        return b'ok', b'Added request to API requests queue'
+
+    def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
+        """Handle local server requests througth _cmd_handler dictionary.
 
         Parameters
         ----------
@@ -379,28 +496,8 @@ class LocalServerHandlerWorker(LocalServerHandler):
         """
         # Modify logger filter tag in LocalServerHandlerWorker entry point.
         context_tag.set("Local " + self.name)
-
         self.logger.debug2(f"Command received: {command}")
-        if command == b'dapi':
-            if self.server.node.client is None:
-                raise WazuhClusterError(3023)
-            asyncio.create_task(self.log_exceptions(
-                self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data)))
-            return b'ok', b'Added request to API requests queue'
-        elif command == b'sendsync':
-            if self.server.node.client is None:
-                raise WazuhClusterError(3023)
-            asyncio.create_task(self.log_exceptions(
-                self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
-            return None, None
-        elif command == b'sendasync':
-            if self.server.node.client is None:
-                raise WazuhClusterError(3023)
-            asyncio.create_task(self.log_exceptions(
-                self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
-            return b'ok', b'Added request to sendsync requests queue'
-        else:
-            return super().process_request(command, data)
+        return self._cmd_handler.get(command, self._command_not_found)(command, data)
 
     def get_nodes(self, arguments) -> Tuple[bytes, bytes]:
         """Forward 'get_nodes' request to the master node.
@@ -518,3 +615,4 @@ class LocalServerWorker(LocalServer):
         """
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerWorker
+>>>>>>> Refactor Handler.process_request and subclasses.

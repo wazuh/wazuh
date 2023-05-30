@@ -17,11 +17,12 @@ from uuid import uuid4
 import uvloop
 
 from wazuh.core import common, exception, utils
-from wazuh.core.cluster import common as c_common
+from wazuh.core.cluster.common import asyncio_exception_handler, Handler
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
+from wazuh.core.cluster.common import Handler
 
 
-class AbstractServerHandler(c_common.Handler):
+class AbstractServerHandler(Handler):
     """
     Define abstract server protocol. Handle communication with a single client.
     """
@@ -58,6 +59,16 @@ class AbstractServerHandler(c_common.Handler):
         self.handler_tasks = []
         self.broadcast_queue = asyncio.Queue()
 
+    def _create_cmd_handlers(self):
+        """Add command handlers to _cmd_handler dictionary."""
+        super()._create_cmd_handlers()
+        self._cmd_handler.update(
+            {
+                b'echo-c': lambda _, data: self.echo_master(data),
+                b'hello': lambda _, data: self.hello(data),
+            }
+        )
+
     def to_dict(self) -> Dict:
         """Get basic info from AbstractServerHandler instance.
 
@@ -80,30 +91,6 @@ class AbstractServerHandler(c_common.Handler):
         self.logger.info(f'Connection from {peername}')
         self.ip = peername[0]
         self.transport = transport
-
-    def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """Define commands for servers.
-
-        Parameters
-        ----------
-        command : bytes
-            Received command from client.
-        data : bytes
-            Received payload from client.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            Response message.
-        """
-        if command == b"echo-c":
-            return self.echo_master(data)
-        elif command == b'hello':
-            return self.hello(data)
-        else:
-            return super().process_request(command, data)
 
     def echo_master(self, data: bytes) -> Tuple[bytes, bytes]:
         """Update last_keepalive.
@@ -533,7 +520,7 @@ class AbstractServer:
         # Get a reference to the event loop as we plan to use low-level APIs.
         context_tag.set(self.tag)
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-        self.loop.set_exception_handler(c_common.asyncio_exception_handler)
+        self.loop.set_exception_handler(asyncio_exception_handler)
 
         if self.enable_ssl:
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)

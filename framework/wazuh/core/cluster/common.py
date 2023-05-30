@@ -298,6 +298,12 @@ class Handler(asyncio.Protocol):
     Define common methods for echo clients and servers.
     """
 
+    """ command handler dictionary """
+    _cmd_handler: Dict[bytes, Callable[[
+        object, bytes, bytes], Tuple[bytes, bytes]]]
+    """ command not found """
+    _command_not_found: Callable[[object, bytes, bytes], Tuple[bytes, bytes]]
+
     def __init__(self, fernet_key: str, cluster_items: Dict, logger: logging.Logger = None, tag: str = "Handler"):
         """Class constructor.
 
@@ -353,6 +359,24 @@ class Handler(asyncio.Protocol):
         self.loop = None
         # Abstract server object.
         self.server = None
+        # Create command handlers
+        self._create_cmd_handlers()
+
+    def _create_cmd_handlers(self):
+        """Assign command handlers to _cmd_handler class dictionary."""
+        self._cmd_handler = {
+            b'echo': lambda _, data: self.echo(data),
+            b'new_file': lambda _, data: self.receive_file(data),
+            b'new_str': lambda _, data: self.receive_str(data),
+            b'file_upd': lambda _, data: self.update_file(data),
+            b'str_upd': lambda _, data: self.str_upd(data),
+            b'err_str': lambda _, data: self.process_error_str(data),
+            b'file_end': lambda _, data: self.end_file(data),
+            b'cancel_task': lambda _, data: self.cancel_task(data),
+            b'dapi_err': lambda _, data: self.process_dapi_error(data),
+        }
+        self._command_not_found = lambda command, _: self.process_unknown_cmd(
+            command)
 
     def push(self, message: bytes):
         """Send a message to peer.
@@ -834,7 +858,7 @@ class Handler(asyncio.Protocol):
         self.transport.close()
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
-        """Define available commands for both master and clients.
+        """Handles available commands for both master and clients through _cmd_handler dictionary.
 
         Parameters
         ----------
@@ -850,26 +874,7 @@ class Handler(asyncio.Protocol):
         bytes
             Response message.
         """
-        if command == b'echo':
-            return self.echo(data)
-        elif command == b'new_file':
-            return self.receive_file(data)
-        elif command == b'new_str':
-            return self.receive_str(data)
-        elif command == b'file_upd':
-            return self.update_file(data)
-        elif command == b'str_upd':
-            return self.str_upd(data)
-        elif command == b'err_str':
-            return self.process_error_str(data)
-        elif command == b'file_end':
-            return self.end_file(data)
-        elif command == b'cancel_task':
-            return self.cancel_task(data)
-        elif command == b'dapi_err':
-            return self.process_dapi_error(data)
-        else:
-            return self.process_unknown_cmd(command)
+        return self._cmd_handler.get(command, self._command_not_found)(command, data)
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """Define response commands for both master and client.
