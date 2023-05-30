@@ -17,7 +17,7 @@ import pytest
         ({'select': 'select'}, [{}, {}], True)  # Key exists in params, data is List[Dict]
     ])
 def test_select_runs_when_valid(params, data, expected):
-    """Test that EngineFieldSelector.can_i_run() runs correctly when valid parameters and data are provided."""
+    """Test that FieldSelector.can_i_run() runs correctly when valid parameters and data are provided."""
     assert queries.FieldSelector.can_i_run(params, data) == expected
 
 
@@ -38,7 +38,7 @@ def test_select_runs_when_valid(params, data, expected):
 
     ])
 def test_selects_correct_fields(params, data, expected):
-    """Test that the EngineFieldSelector selects the correct fields"""
+    """Test that the FieldSelector selects the correct fields"""
 
     selector = queries.FieldSelector(params)
     result = selector.apply_transformation(data)
@@ -55,7 +55,7 @@ def test_selects_correct_fields(params, data, expected):
         ({'search': 'search'}, [{}, {}], True)  # Key exists in params, data is List[Dict]
     ])
 def test_search_runs_when_valid(params, data, expected):
-    """Test that EngineFieldSearch.can_i_run() runs correctly when valid parameters and data are provided."""
+    """Test that FieldSearch.can_i_run() runs correctly when valid parameters and data are provided."""
     assert queries.FieldSearch.can_i_run(params, data) == expected
 
 
@@ -69,7 +69,7 @@ def test_search_runs_when_valid(params, data, expected):
          [{'name': 'some_name', 'version': "2"}]),  # Search exclusion case
     ])
 def test_search_correct_fields(params, data, expected):
-    """Test that the EngineFieldSearch applies the correct search"""
+    """Test that the FieldSearch applies the correct search"""
 
     searcher = queries.FieldSearch(params)
     result = searcher.apply_transformation(data)
@@ -81,27 +81,28 @@ def test_search_correct_fields(params, data, expected):
     "params,data,expected",
     [
         ({}, {}, False),  # Empty params
-        ({'offset': None}, {}, False),  # Key exist in params but is None
-        ({'offset': 1}, {}, False),  # Key exists in params, data is a Dict
-        ({'offset': 1}, [{}, {}], True)   # Key exists in params, data is List[Dict]
+        ({'offset': None, 'limit': None}, {}, False),  # Key exist in params but is None
+        ({'offset': None, 'limit': 10}, {}, False),  # One is valid but the other is not
+        ({'offset': 1, 'limit': 20}, {}, False),  # Key exists in params, data is a Dict
+        ({'offset': 1, 'limit': 20}, [{}, {}], True)   # Key exists in params, data is List[Dict]
     ])
-def test_offset_runs_when_valid(params, data, expected):
-    """Test that EngineFieldOffset.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert queries.FieldOffset.can_i_run(params, data) == expected
+def test_offset_limit_runs_when_valid(params, data, expected):
+    """Test that FieldOffsetLimit.can_i_run() runs correctly when valid parameters and data are provided."""
+    assert queries.FieldOffsetLimit.can_i_run(params, data) == expected
 
 
 @pytest.mark.parametrize(
     "params,data,expected",
     [
-        ({'offset': 0}, list(range(0, 10)), list(range(0, 10))),
-        ({'offset': 2}, list(range(0, 10)), list(range(2, 10))),
-        ({'offset': 9}, list(range(0, 10)), list(range(9, 10)))
+        ({'offset': 0, 'limit': 20}, list(range(0, 10)), list(range(0, 10))),
+        ({'offset': 2, 'limit': 20}, list(range(0, 10)), list(range(2, 10))),
+        ({'offset': 9, 'limit': 20}, list(range(0, 10)), list(range(9, 10)))
     ]
 )
 def test_offset_correct_elements(params, data, expected):
-    """Test that the EngineFieldOffset applies the correct offset"""
+    """Test that the FieldOffsetLimit applies the correct offset"""
 
-    transformation = queries.FieldOffset(params)
+    transformation = queries.FieldOffsetLimit(params)
     result = transformation.apply_transformation(data)
 
     assert result == expected
@@ -109,10 +110,10 @@ def test_offset_correct_elements(params, data, expected):
 
 @pytest.mark.parametrize("offset", [-20, -1])
 def test_offset_raises_error_with_invalid_value(offset):
-    """Test that the EngineFieldOffset raises an error with an invalid offset value"""
+    """Test that the FieldOffsetLimit raises an error with an invalid offset value"""
 
     with pytest.raises(WazuhError) as error_info:
-        queries.FieldOffset({'offset': offset})
+        queries.FieldOffsetLimit({'offset': offset})
 
     assert error_info.value.code == 1400
 
@@ -120,26 +121,13 @@ def test_offset_raises_error_with_invalid_value(offset):
 @pytest.mark.parametrize(
     "params,data,expected",
     [
-        ({}, {}, False),  # Empty params
-        ({'limit': None}, {}, False),  # Key exist in params but is None
-        ({'limit': 1}, {}, False),  # Key exists in params, data is a Dict
-        ({'limit': 1}, [{}, {}], True)   # Key exists in params, data is List[Dict]
-    ])
-def test_limit_runs_when_valid(params, data, expected):
-    """Test that EngineFieldLimit.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert queries.FieldLimit.can_i_run(params, data) == expected
-
-
-@pytest.mark.parametrize(
-    "params,data,expected",
-    [
-        ({'limit': 10}, list(range(0, 20)), list(range(0, 10))),
-        ({'limit': 1}, list(range(2, 20)), list(range(2, 3)))
+        ({'offset': 0, 'limit': 10}, list(range(0, 20)), list(range(0, 10))),
+        ({'offset': 0, 'limit': 1}, list(range(2, 20)), list(range(2, 3)))
     ])
 def test_limit_correct_elements(params, data, expected):
-    """Test that the EngineFieldLimit limits the number of elements"""
+    """Test that the FieldOffsetLimit limits the number of elements"""
 
-    limiter = queries.FieldLimit(params)
+    limiter = queries.FieldOffsetLimit(params)
     result = limiter.apply_transformation(data)
 
     assert result == expected
@@ -148,10 +136,10 @@ def test_limit_correct_elements(params, data, expected):
 
 @pytest.mark.parametrize("limit", [0, -2])
 def test_limit_raises_error_with_invalid_value(limit):
-    """Test that the EngineFieldLimit raises an error with an invalid limit value"""
+    """Test that the FieldOffsetLimit raises an error with an invalid limit value"""
 
     with pytest.raises(WazuhError) as error_info:
-        queries.FieldLimit({'limit': limit})
+        queries.FieldOffsetLimit({'offset': 0, 'limit': limit})
 
     assert error_info.value.code == 1401
 
@@ -165,7 +153,7 @@ def test_limit_raises_error_with_invalid_value(limit):
         ({'sort': "example"}, [{}, {}], True)   # Key exists in params, data is List[Dict]
     ])
 def test_sort_runs_when_valid(params, data, expected):
-    """Test that EngineFieldSort.can_i_run() runs correctly when valid parameters and data are provided."""
+    """Test that FieldSort.can_i_run() runs correctly when valid parameters and data are provided."""
     assert queries.FieldSort.can_i_run(params, data) == expected
 
 
@@ -188,6 +176,7 @@ def test_sort_runs_when_valid(params, data, expected):
     ]
 )
 def test_sort_correct_elements(params, data, expected):
+    """Test that FieldSort sorts the elements as expected"""
     sort_transformation = queries.FieldSort(params)
     result = sort_transformation.apply_transformation(data)
 
@@ -204,6 +193,7 @@ def test_sort_correct_elements(params, data, expected):
     ]
 )
 def test_query_runs_when_valid(params, data, expected):
+    """Test that FieldQuery.can_i_run() runs correctly when valid parameters and data are provided."""
     assert queries.FieldQuery.can_i_run(params, data) == expected
 
 
@@ -215,6 +205,7 @@ def test_query_runs_when_valid(params, data, expected):
     ]
 )
 def test_query_has_a_valid_string(params):
+    """Test that FieldQuery raises error with invalid value"""
     with pytest.raises(WazuhError) as error_info:
         queries.FieldQuery(params)
 
@@ -233,6 +224,7 @@ def test_query_has_a_valid_string(params):
     ]
 )
 def test_query_return_correct_elements(params, data, expected):
+    """Test that FieldQuery query the elements as expected"""
     query_transformation = queries.FieldQuery(params)
     result = query_transformation.apply_transformation(data)
 

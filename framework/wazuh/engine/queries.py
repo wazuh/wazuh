@@ -183,17 +183,19 @@ class FieldSearch(BaseQuery):
         return transformed_data
 
 
-class FieldOffset(BaseQuery):
-    """Transformation to select a subset of elements from a list based on an offset."""
+class FieldOffsetLimit(BaseQuery):
+    """Transformation to select a subset of elements from a list based on an offset and limit."""
 
     def __init__(self, params: Dict[str, Any]):
         self.validate_offset(params['offset'])
+        self.validate_limit(params['limit'])
 
         self.offset = params['offset']
+        self.limit = params['limit']
 
     @staticmethod
     def can_i_run(params: Dict[str, Any], data: Any) -> bool:
-        if 'offset' in params and params['offset'] and isinstance(data, list):
+        if 'offset' in params and params['offset'] and 'limit' in params and params['limit'] and isinstance(data, list):
             return True
         return False
 
@@ -210,47 +212,21 @@ class FieldOffset(BaseQuery):
         if offset < 0:
             raise WazuhError(1400)
 
-    def apply_transformation(self, data: List[Dict[str, Any]]):
-        """Apply the offset transformation to the data.
-
-        Args:
-            data: The data to be transformed.
-
-        Returns:
-            The transformed data.
-
-        Note:
-            The transformation is applied to a list of dictionaries.
-        """
-        return data[self.offset:]
-
-
-class FieldLimit(BaseQuery):
-    """Transformation to limit the number of elements in a list."""
-
-    def __init__(self, params: Dict[str, Any]):
-        self.validate_limit(params['limit'])
-
-        self.limit = params['limit']
-
-    @staticmethod
-    def can_i_run(params: Dict[str, Any], data: Any) -> bool:
-        if 'limit' in params and params['limit'] and isinstance(data, list):
-            return True
-        return False
-
     @staticmethod
     def validate_limit(limit: int):
         """Validate the limit value.
 
         Args:
             limit: The limit value.
+
+        Raises:
+            WazuhError: If the limit value is less than 1.
         """
         if limit < 1:
             raise WazuhError(1401)
 
-    def apply_transformation(self, data):
-        """Apply the limit transformation to the data.
+    def apply_transformation(self, data: List[Dict[str, Any]]):
+        """Apply the offset and limit transformations to the data.
 
         Args:
             data: The data to be transformed.
@@ -261,11 +237,7 @@ class FieldLimit(BaseQuery):
         Note:
             The transformation is applied to a list of dictionaries.
         """
-        real_limit = self.limit
-        if self.limit >= len(data):
-            real_limit = len(data)
-
-        return data[:real_limit]
+        return data[self.offset:self.offset+self.limit]
 
 
 def sorting_lambda(filters: List[Dict[str, Any]], data: Dict[str, Any]) -> tuple:
@@ -485,6 +457,6 @@ class EngineQuery:
         """
         list_of_transformations = [
             FieldSearch, FieldSelector,
-            FieldOffset, FieldLimit, FieldSort]
+            FieldOffsetLimit, FieldSort]
 
         return cls(list_of_transformations)
