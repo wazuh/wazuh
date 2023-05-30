@@ -28,22 +28,18 @@ Adding to the ossec.conf file in the monitored agent the following blocks:
   <localfile>
     <location>/var/log/messages</location>
     <log_format>syslog</log_format>
-    <label key="event.module">system</label>
   </localfile>
   <localfile>
     <location>/var/log/secure</location>
     <log_format>syslog</log_format>
-    <label key="event.module">system</label>
   </localfile>
   <localfile>
   <location>/var/log/auth.log</location>
     <log_format>syslog</log_format>
-    <label key="event.module">system</label>
   </localfile>
   <localfile>
     <location>/var/log/kern.log</location>
     <log_format>syslog</log_format>
-    <label key="event.module">system</label>
   </localfile>
 
 ```
