@@ -18,6 +18,7 @@
 #include <api/kvdb/handlers.hpp>
 #include <api/metrics/handlers.hpp>
 #include <api/router/handlers.hpp>
+#include <api/test/handlers.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -324,6 +325,14 @@ void runStart(ConfHandler confManager)
             };
             api::graph::handlers::registerHandlers(graphConfig, api);
             LOG_DEBUG("Graph API registered.");
+        }
+
+        // Test
+        {
+            // Register the Test command
+            api::test::handlers::Config testConfig;
+            api::test::handlers::registerHandlers(testConfig, api);
+            LOG_DEBUG("Test API registered.");
         }
 
         // Register Metrics commands
