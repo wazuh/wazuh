@@ -106,7 +106,7 @@ void run(const Options& options)
         builder::internals::dependencies deps;
         deps.logparDebugLvl = logparDebugLvl;
         deps.logpar = logpar;
-        deps.kvdbManager = kvdb;
+        deps.kvdbManager1 = kvdb;
         deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
         deps.schema = std::make_shared<schemf::Schema>();
         builder::internals::registerHelperBuilders(deps.helperRegistry, deps);

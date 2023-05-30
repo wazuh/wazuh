@@ -1,6 +1,7 @@
 #include <fmt/format.h>
 #include <kvdb2/kvdbSpace.hpp>
 #include <logging/logging.hpp>
+#include <json/json.hpp>
 
 namespace kvdbManager
 {
@@ -30,6 +31,18 @@ std::variant<bool, base::Error> KVDBSpace::set(const std::string& key, const std
     return base::Error {fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
 }
 
+std::variant<bool, base::Error> KVDBSpace::set(const std::string& key, const json::Json& value)
+{
+    auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), m_pCFhandle, rocksdb::Slice(key), rocksdb::Slice(value.str()));
+
+    if (status.ok())
+    {
+        return true;
+    }
+
+    return base::Error {fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value.str(), key, status.getState())};
+}
+
 std::variant<bool, base::Error> KVDBSpace::add(const std::string& key)
 {
     return set(key, "");
@@ -49,7 +62,15 @@ std::variant<bool, base::Error> KVDBSpace::remove(const std::string& key)
 
 std::variant<bool, base::Error> KVDBSpace::contains(const std::string& key)
 {
-    return std::holds_alternative<std::string>(get(key));
+    try
+    {
+        std::string value;
+        return m_pRocksDB->KeyMayExist(rocksdb::ReadOptions(), m_pCFhandle, rocksdb::Slice(key), &value);
+    }
+    catch(const std::exception& ex)
+    {
+        return base::Error {fmt::format("{Can not validate key {}. Error: {}}", key, ex.what())};
+    }
 }
 
 std::variant<std::string, base::Error> KVDBSpace::get(const std::string& key)

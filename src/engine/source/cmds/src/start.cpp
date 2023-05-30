@@ -272,7 +272,9 @@ void runStart(ConfHandler confManager)
             builder::internals::dependencies deps;
             deps.logparDebugLvl = 0;
             deps.logpar = logpar;
-            deps.kvdbManager = kvdb;
+            deps.kvdbManager1 = kvdb;
+            deps.kvdbScope = kvdbManager->getKVDBScope("builder");
+            deps.kvdbManager2 = kvdbManager;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             deps.schema = schema;
             deps.forceFieldNaming = true;
@@ -462,7 +464,7 @@ void configure(CLI::App_p app)
         ->check(CLI::ExistingDirectory)
         ->envname(ENGINE_KVDB_PATH_ENV);
 
-    serverApp->add_option("--kvdb2_path", options->kvdbPath, "Sets the path to the KVDB2 folder.")
+    serverApp->add_option("--kvdb2_path", options->kvdb2Path, "Sets the path to the KVDB2 folder.")
         ->default_val(ENGINE_KVDB2_PATH)
         ->check(CLI::ExistingDirectory)
         ->envname(ENGINE_KVDB2_PATH_ENV);
