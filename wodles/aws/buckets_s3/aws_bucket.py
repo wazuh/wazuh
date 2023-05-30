@@ -37,7 +37,7 @@ AWS_BUCKET_MSG_TEMPLATE = {'integration': 'aws',
                            'aws': {'log_info': {'aws_account_alias': '', 'log_file': '', 's3bucket': ''}}}
 
 
-class AWSBucket(wazuh_integration.WazuhIntegration):
+class AWSBucket(wazuh_integration.WazuhAWSDatabase):
     """
     Represents a bucket with events on the inside.
 
@@ -183,20 +183,19 @@ class AWSBucket(wazuh_integration.WazuhIntegration):
         # Table name
         self.db_table_name = db_table_name
 
-        wazuh_integration.WazuhIntegration.__init__(self,
-                                                    db_name=self.db_name,
-                                                    bucket=bucket,
-                                                    service_name='s3',
-                                                    access_key=access_key,
-                                                    secret_key=secret_key,
-                                                    profile=profile,
-                                                    iam_role_arn=iam_role_arn,
-                                                    region=region,
-                                                    discard_field=discard_field,
-                                                    discard_regex=discard_regex,
-                                                    sts_endpoint=sts_endpoint,
-                                                    service_endpoint=service_endpoint,
-                                                    iam_role_duration=iam_role_duration)
+        wazuh_integration.WazuhAWSDatabase.__init__(self,
+                                                db_name=self.db_name,
+                                                service_name='s3',
+                                                access_key=access_key,
+                                                secret_key=secret_key,
+                                                profile=profile,
+                                                iam_role_arn=iam_role_arn,
+                                                region=region,
+                                                discard_field=discard_field,
+                                                discard_regex=discard_regex,
+                                                sts_endpoint=sts_endpoint,
+                                                service_endpoint=service_endpoint,
+                                                iam_role_duration=iam_role_duration)
         self.retain_db_records = MAX_RECORD_RETENTION
         self.reparse = reparse
         self.only_logs_after = datetime.strptime(only_logs_after, DB_DATE_FORMAT) if only_logs_after else None
@@ -799,7 +798,6 @@ class AWSLogsBucket(AWSBucket):
 
 
 class AWSCustomBucket(AWSBucket):
-
     empty_bucket_message_template = "+++ No logs to process in bucket: {bucket}"
 
     def __init__(self, db_table_name=None, **kwargs):

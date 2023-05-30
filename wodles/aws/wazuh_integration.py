@@ -37,70 +37,13 @@ class WazuhIntegration:
     :param iam_role_arn: IAM Role
     :param service name: Name of the service (s3 for services which stores logs in buckets)
     :param region: Region of service
-    :param bucket: Bucket name to extract logs from
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
     :param external_id: AWS external ID for IAM Role assumption
     """
 
-    def __init__(self, access_key, secret_key, profile, iam_role_arn, db_name=None,
-                 service_name=None, region=None, bucket=None, discard_field=None,
-                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
-                 external_id=None):
-        # SQL queries
-        self.sql_find_table_names = """
-            SELECT
-                tbl_name
-            FROM
-                sqlite_master
-            WHERE
-                type='table';"""
-
-        self.sql_db_optimize = "PRAGMA optimize;"
-
-        self.sql_create_metadata_table = """
-            CREATE TABLE metadata (
-                key 'text' NOT NULL,
-                value 'text' NOT NULL,
-                PRIMARY KEY (key, value));
-            """
-
-        self.sql_get_metadata_version = """
-            SELECT
-                value
-            FROM
-                metadata
-            WHERE
-                key='version';
-            """
-
-        self.sql_find_table = """
-            SELECT
-                tbl_name
-            FROM
-                sqlite_master
-            WHERE
-                type='table' AND
-                name=:name;
-            """
-
-        self.sql_insert_version_metadata = """
-            INSERT INTO metadata (
-                key,
-                value)
-            VALUES (
-                'version',
-                :wazuh_version);"""
-
-        self.sql_update_version_metadata = """
-            UPDATE
-                metadata
-            SET
-                value=:wazuh_version
-            WHERE
-                key='version';
-            """
-
-        self.sql_drop_table = "DROP TABLE {table_name};"
+    def __init__(self, access_key, secret_key, profile, iam_role_arn, service_name=None, region=None,
+                 discard_field=None, discard_regex=None, sts_endpoint=None,
+                 service_endpoint=None, iam_role_duration=None, external_id=None):
 
         self.wazuh_path = utils.find_wazuh_path()
         self.wazuh_version = utils.get_wazuh_version()
@@ -120,47 +63,10 @@ class WazuhIntegration:
                                       external_id=external_id
                                       )
 
-        if db_name:  # If db_name is set, the subclass is not part of the SecLake process
-            # db_name is an instance variable of subclass
-            self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, db_name)
-            self.db_connector = sqlite3.connect(self.db_path)
-            self.db_cursor = self.db_connector.cursor()
-            self.check_metadata_version()
         self.discard_field = discard_field
         self.discard_regex = re.compile(fr'{discard_regex}')
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
         self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
-
-    def check_metadata_version(self):
-        try:
-            if self.db_cursor.execute(self.sql_find_table, {'name': 'metadata'}).fetchone():
-                # The table does not exist; update existing metadata value, if required
-                try:
-                    metadata_version = self.db_cursor.execute(self.sql_get_metadata_version).fetchone()[0]
-                    if metadata_version != self.wazuh_version:
-                        self.db_cursor.execute(self.sql_update_version_metadata, {'wazuh_version': self.wazuh_version})
-                except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
-                    print(f'ERROR: Error attempting to update the metadata table: {err}')
-                    sys.exit(5)
-            else:
-                # The table does not exist; create it and insert the metadata value
-                try:
-                    self.db_cursor.execute(self.sql_create_metadata_table)
-                    self.db_cursor.execute(self.sql_insert_version_metadata, {'wazuh_version': self.wazuh_version})
-                    self.delete_deprecated_tables()
-                except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
-                    print(f'ERROR: Error attempting to create the metadata table: {err}')
-                    sys.exit(5)
-            self.db_connector.commit()
-        except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
-            print(f'ERROR: Error attempting to operate with the {self.db_path} database: {err}')
-            sys.exit(5)
-
-    def delete_deprecated_tables(self):
-        tables = set([t[0] for t in self.db_cursor.execute(self.sql_find_table_names).fetchall()])
-        for table in tables.intersection(DEPRECATED_TABLES):
-            aws_tools.debug(f"Removing deprecated '{table} 'table from {self.db_path}", 2)
-            self.db_cursor.execute(self.sql_drop_table.format(table_name=table))
 
     @staticmethod
     def default_config():
@@ -275,6 +181,82 @@ class WazuhIntegration:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
+
+class WazuhAWSDatabase(WazuhIntegration):
+    def __init__(self, access_key, secret_key, profile, iam_role_arn, db_name=None,
+                 service_name=None, region=None, discard_field=None,
+                 discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
+                 external_id=None):
+        # SQL queries
+        self.sql_find_table_names = """
+                    SELECT
+                        tbl_name
+                    FROM
+                        sqlite_master
+                    WHERE
+                        type='table';"""
+
+        self.sql_db_optimize = "PRAGMA optimize;"
+
+        self.sql_create_metadata_table = """
+                    CREATE TABLE metadata (
+                        key 'text' NOT NULL,
+                        value 'text' NOT NULL,
+                        PRIMARY KEY (key, value));
+                    """
+
+        self.sql_get_metadata_version = """
+                    SELECT
+                        value
+                    FROM
+                        metadata
+                    WHERE
+                        key='version';
+                    """
+
+        self.sql_find_table = """
+                    SELECT
+                        tbl_name
+                    FROM
+                        sqlite_master
+                    WHERE
+                        type='table' AND
+                        name=:name;
+                    """
+
+        self.sql_insert_version_metadata = """
+                    INSERT INTO metadata (
+                        key,
+                        value)
+                    VALUES (
+                        'version',
+                        :wazuh_version);"""
+
+        self.sql_update_version_metadata = """
+                    UPDATE
+                        metadata
+                    SET
+                        value=:wazuh_version
+                    WHERE
+                        key='version';
+                    """
+
+        self.sql_drop_table = "DROP TABLE {table_name};"
+
+        WazuhIntegration.__init__(self, service_name=service_name,
+                                  access_key=access_key,
+                                  secret_key=secret_key, profile=profile,
+                                  iam_role_arn=iam_role_arn, region=region,
+                                  discard_field=discard_field, discard_regex=discard_regex,
+                                  sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,
+                                  iam_role_duration=iam_role_duration, external_id=external_id)
+
+        # db_name is an instance variable of subclass
+        self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, db_name)
+        self.db_connector = sqlite3.connect(self.db_path)
+        self.db_cursor = self.db_connector.cursor()
+        self.check_metadata_version()
+
     def create_table(self, sql_create_table):
         """
         :param sql_create_table: SQL query to create the table
@@ -303,3 +285,34 @@ class WazuhIntegration:
         self.db_connector.commit()
         self.db_cursor.execute(self.sql_db_optimize)
         self.db_connector.close()
+
+    def check_metadata_version(self):
+        try:
+            if self.db_cursor.execute(self.sql_find_table, {'name': 'metadata'}).fetchone():
+                # The table does not exist; update existing metadata value, if required
+                try:
+                    metadata_version = self.db_cursor.execute(self.sql_get_metadata_version).fetchone()[0]
+                    if metadata_version != self.wazuh_version:
+                        self.db_cursor.execute(self.sql_update_version_metadata, {'wazuh_version': self.wazuh_version})
+                except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
+                    print(f'ERROR: Error attempting to update the metadata table: {err}')
+                    sys.exit(5)
+            else:
+                # The table does not exist; create it and insert the metadata value
+                try:
+                    self.db_cursor.execute(self.sql_create_metadata_table)
+                    self.db_cursor.execute(self.sql_insert_version_metadata, {'wazuh_version': self.wazuh_version})
+                    self.delete_deprecated_tables()
+                except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
+                    print(f'ERROR: Error attempting to create the metadata table: {err}')
+                    sys.exit(5)
+            self.db_connector.commit()
+        except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
+            print(f'ERROR: Error attempting to operate with the {self.db_path} database: {err}')
+            sys.exit(5)
+
+    def delete_deprecated_tables(self):
+        tables = set([t[0] for t in self.db_cursor.execute(self.sql_find_table_names).fetchall()])
+        for table in tables.intersection(DEPRECATED_TABLES):
+            aws_tools.debug(f"Removing deprecated '{table} 'table from {self.db_path}", 2)
+            self.db_cursor.execute(self.sql_drop_table.format(table_name=table))

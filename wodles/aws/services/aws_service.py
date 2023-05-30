@@ -15,7 +15,7 @@ DEFAULT_TABLENAME = "aws_services"
 AWS_SERVICE_MSG_TEMPLATE = {'integration': 'aws', 'aws': ''}
 
 
-class AWSService(wazuh_integration.WazuhIntegration):
+class AWSService(wazuh_integration.WazuhAWSDatabase):
     """
     Represents a service which provides events.
 
@@ -63,12 +63,12 @@ class AWSService(wazuh_integration.WazuhIntegration):
         # Table name
         self.db_table_name = db_table_name
 
-        wazuh_integration.WazuhIntegration.__init__(self, db_name=self.db_name, service_name=service_name, access_key=access_key,
-                                                    secret_key=secret_key, profile=profile,
-                                                    iam_role_arn=iam_role_arn, region=region,
-                                                    discard_field=discard_field, discard_regex=discard_regex,
-                                                    sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,
-                                                    iam_role_duration=iam_role_duration)
+        wazuh_integration.WazuhAWSDatabase.__init__(self, db_name=self.db_name, service_name=service_name,
+                                                access_key=access_key, secret_key=secret_key, profile=profile,
+                                                iam_role_arn=iam_role_arn, region=region,
+                                                discard_field=discard_field, discard_regex=discard_regex,
+                                                sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,
+                                                iam_role_duration=iam_role_duration)
         self.reparse = reparse
         self.region = region
         self.service_name = service_name

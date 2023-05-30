@@ -32,7 +32,7 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration):
         IAM Role.
     """
 
-    def __init__(self, access_key: str = None, secret_key: str = None, aws_profile: str = None,
+    def __init__(self, access_key: str = None, secret_key: str = None, profile: str = None,
                  service_endpoint: str = None, sts_endpoint: str = None, **kwargs):
         wazuh_integration.WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
                                                     profile=profile,
