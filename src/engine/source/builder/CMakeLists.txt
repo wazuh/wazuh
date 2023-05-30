@@ -69,7 +69,8 @@ target_link_libraries(builders
   store::istore
   defs
   base
-  hlp2
+  hlp
+  logpar
   kvdb
   re2
   logicExpression

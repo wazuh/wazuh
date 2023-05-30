@@ -3,21 +3,21 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
-#include <thread>
 #include <termios.h>
+#include <thread>
 
 #include <re2/re2.h>
 
 #include <cmds/details/stackExecutor.hpp>
-#include <hlp/logpar.hpp>
-#include <hlp/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
+#include <logpar/logpar.hpp>
+#include <logpar/registerParsers.hpp>
 #include <metrics/metricsManager.hpp>
 #include <name.hpp>
 #include <rxbk/rxFactory.hpp>
-#include <store/drivers/fileDriver.hpp>
 #include <schemf/schema.hpp>
+#include <store/drivers/fileDriver.hpp>
 
 #include "base/parseEvent.hpp"
 #include "base/utils/getExceptionStack.hpp"
@@ -257,9 +257,12 @@ void run(const Options& options)
     // Only set non-canonical mode when connected to terminal
     if (isatty(fileno(stdin)))
     {
-        if(!clear_icanon(true))
+        if (!clear_icanon(true))
         {
-            std::cout << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be processed correctly." << std::endl << std::endl;
+            std::cout << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be "
+                         "processed correctly."
+                      << std::endl
+                      << std::endl;
         }
     }
 
@@ -347,9 +350,11 @@ void run(const Options& options)
         }
         else
         {
-            std::cout << std::endl << std::endl << "Enter a log in single line (Crtl+C to exit):" << std::endl << std::endl;
+            std::cout << std::endl
+                      << std::endl
+                      << "Enter a log in single line (Crtl+C to exit):" << std::endl
+                      << std::endl;
         }
-
     }
 
     if (isatty(fileno(stdin)))
