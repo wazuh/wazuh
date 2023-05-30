@@ -279,7 +279,6 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_AllFields)
                     "process": "proc",
                     "registry": "reg",
                     "command": "modprobe -n -v cramfs",
-                    "status":"Not applicable",
                     "result": "failed",
                     "reason": "Could not open file '/boot/grub2/user.cfg'"
                 }
@@ -292,8 +291,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_AllFields)
     ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
 
-// Result false, status and result both not present
-TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedNotPresentStatusAndResult)
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_SuccessNotPresentResult)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -321,11 +319,11 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedNotPresentStatusAndRe
 
     auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
-    ASSERT_FALSE(sca::isValidCheckEvent(state));
+    ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
 
-// Result false, status present but reason not
-TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedtStatusPresentAndReasonNot)
+// Result true and result field filled
+TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedtReasonNotPresent)
 {
     auto event {std::make_shared<json::Json>(
         R"({
@@ -344,8 +342,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedtStatusPresentAndReas
                 "check":
                 {
                     "id": 6500,
-                    "title": "Ensure mounting of cramfs",
-                    "status":"Not applicable"
+                    "title": "Ensure mounting of cramfs"
                 }
             }
         }
@@ -353,7 +350,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_FailedtStatusPresentAndReas
 
     auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
-    ASSERT_FALSE(sca::isValidCheckEvent(state));
+    ASSERT_TRUE(sca::isValidCheckEvent(state));
 }
 
 // Result false, only mandatory fields but id is a string
@@ -408,8 +405,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_policyFieldEmpty)
                 "check":
                 {
                     "id": 6500,
-                    "title": "Ensure mounting of cramfs",
-                    "result": "failed"
+                    "title": "Ensure mounting of cramfs"
                 }
             }
         }
@@ -418,6 +414,7 @@ TEST_F(opBuilderSCAdecoder_Functions, CheckEventJSON_policyFieldEmpty)
     auto state = sca::DecodeCxt {event, "007", wdb, cfg, fieldSource, fieldDest};
 
     ASSERT_TRUE(sca::isValidCheckEvent(state));
+    ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "not applicable");
 }
 
 // Map only mandatory fields present
@@ -452,7 +449,6 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFields)
                         "tsc": "CC6.3"
                     },
                     "references": "https://www.cisecurity.org/cis-benchmarks/",
-                    "status": "Not applicable",
                     "reason": "Could not open file '/boot/grub2/user.cfg'"
                 }
             }
@@ -478,7 +474,6 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_OnlyMandatoryFields)
     ASSERT_STREQ(event->getString("/sca/check/compliance/cis").value().c_str(), "1.1.1.1");
     ASSERT_STREQ(event->getString("/sca/check/references").value().c_str(),
                  "https://www.cisecurity.org/cis-benchmarks/");
-    ASSERT_STREQ(event->getString("/sca/check/status").value().c_str(), "Not applicable");
     ASSERT_STREQ(event->getString("/sca/check/reason").value().c_str(), "Could not open file '/boot/grub2/user.cfg'");
 }
 
@@ -569,7 +564,6 @@ TEST_F(opBuilderSCAdecoder_Functions, FillCheckEventJSON_CsvFields)
                     "file": "/usr/lib/systemd/system/rescue.service,/usr/lib/systemd/system/emergency.service",
                     "directory": "/etc/audit/rules.d",
                     "command":"sysctl net.ipv4.ip_forward,sysctl net.ipv6.conf.all.forwarding",
-                    "status": "Not applicable",
                     "reason": "passed"
                 }
             }
@@ -1510,7 +1504,7 @@ TEST_F(checkTypeDecoderSCA, missingCheckTitleField)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-TEST_F(checkTypeDecoderSCA, missingCheckResultAndStatusFields)
+TEST_F(checkTypeDecoderSCA, missingCheckResultField)
 {
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
@@ -1606,7 +1600,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
             clientRemoteFD = testAcceptConnection(serverSocketFD);
             ASSERT_GT(clientRemoteFD, 0);
             clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result|||404");
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result||404");
             testSendMsg(clientRemoteFD, "This answer is always ignored.");
             close(clientRemoteFD);
         });
@@ -1626,7 +1620,6 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
     ASSERT_STREQ(event->getString("/sca/check/previous_result").value().c_str(), "payload");
     ASSERT_STREQ(event->getString("/sca/check/result").value().c_str(), "Some Result");
     ASSERT_FALSE(event->exists("/sca/check/compliance"));
-    ASSERT_FALSE(event->exists("/sca/check/status"));
     ASSERT_FALSE(event->exists("/sca/check/reason"));
 }
 
@@ -1658,7 +1651,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
             clientRemoteFD = testAcceptConnection(serverSocketFD);
             ASSERT_GT(clientRemoteFD, 0);
             clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result|||404");
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911|Some Result||404");
             testSendMsg(clientRemoteFD, "This answer is always ignored.");
             close(clientRemoteFD);
         });
@@ -1672,8 +1665,8 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
     ASSERT_FALSE(event->exists("/sca/type"));
 }
 
-// It won't fill event check Result doesn't exists and Response from DB is equal to status
-TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualResponse)
+// It won't fill event check Result doesn't exists
+TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResult)
 {
     const auto tuple {
         std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
@@ -1698,7 +1691,6 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualResp
                 {
                     "id": 911,
                     "title": "Some Title",
-                    "status": "Some Status",
                     "reason": "Could not open file"
                 }
             }
@@ -1718,14 +1710,14 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResultAndStatusEqualResp
             ASSERT_GT(clientRemoteFD, 0);
             auto clientMessage {testRecvString(clientRemoteFD, SOCK_STREAM)};
             ASSERT_STREQ(clientMessage.data(), "agent 007 sca query 911");
-            testSendMsg(clientRemoteFD, "ok found Some Status");
+            testSendMsg(clientRemoteFD, "ok found ");
             close(clientRemoteFD);
 
             // SaveEventcheck update (exists)
             clientRemoteFD = testAcceptConnection(serverSocketFD);
             ASSERT_GT(clientRemoteFD, 0);
             clientMessage = testRecvString(clientRemoteFD, SOCK_STREAM);
-            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911||Some Status|Could not open file|404");
+            ASSERT_STREQ(clientMessage.data(), "agent 007 sca update 911||Could not open file|404");
             testSendMsg(clientRemoteFD, "This answer is always ignored.");
             close(clientRemoteFD);
         });
@@ -1874,7 +1866,6 @@ TEST_F(checkTypeDecoderSCA, SaveACompliance)
     ASSERT_FALSE(event->exists("/sca/check/rationale"));
     ASSERT_FALSE(event->exists("/sca/check/remediation"));
     ASSERT_FALSE(event->exists("/sca/check/references"));
-    ASSERT_FALSE(event->exists("/sca/check/status"));
     ASSERT_FALSE(event->exists("/sca/check/reason"));
 }
 
