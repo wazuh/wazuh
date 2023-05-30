@@ -77,7 +77,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
     {
         throw std::runtime_error("Invalid number of parameters for operation '" + rawName + "'");
     }
-    auto source = parameters[0];
+    const auto source = parameters[0];
     parameters.erase(parameters.begin());
 
     hlp::Options hlpOptionsList {};
@@ -92,32 +92,36 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
         hlpOptionsList.emplace_back(parameter.m_value);
     }
 
-    parsec::Parser<json::Json> parser;
+    hlp::parser::Parser parser;
+    hlp::Params params{.name = "parser", .targetField = targetField, .stop = {""}, .options = hlpOptionsList};
     switch (type)
     {
-        case HLPParserType::ALPHANUMERIC: parser = hlp::getAlphanumericParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::BOOL: parser = hlp::getBoolParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::BYTE: parser = hlp::getByteParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::LONG: parser = hlp::getLongParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::FLOAT: parser = hlp::getFloatParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::DOUBLE: parser = hlp::getDoubleParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::SCALED_FLOAT: parser = hlp::getScaledFloatParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::QUOTED: parser = hlp::getQuotedParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::BETWEEN: parser = hlp::getBetweenParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::BINARY: parser = hlp::getBinaryParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::DATE: parser = hlp::getDateParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::IP: parser = hlp::getIPParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::URI: parser = hlp::getUriParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::USERAGENT: parser = hlp::getUAParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::FQDN: parser = hlp::getFQDNParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::FILE: parser = hlp::getFilePathParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::JSON: parser = hlp::getJSONParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::XML: parser = hlp::getXMLParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::DSV: parser = hlp::getDSVParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::CSV: parser = hlp::getCSVParser({}, {""}, hlpOptionsList); break;
-        case HLPParserType::KV: parser = hlp::getKVParser({}, {""}, hlpOptionsList); break;
+        // case HLPParserType::ALPHANUMERIC: parser = hlp::parsers::getAlphanumericParser(params); break;
+        // case HLPParserType::BOOL: parser = hlp::parsers::getBoolParser(params); break;
+        case HLPParserType::BYTE: parser = hlp::parsers::getByteParser(params); break;
+        case HLPParserType::LONG: parser = hlp::parsers::getLongParser(params); break;
+        case HLPParserType::FLOAT: parser = hlp::parsers::getFloatParser(params); break;
+        case HLPParserType::DOUBLE: parser = hlp::parsers::getDoubleParser(params); break;
+        case HLPParserType::SCALED_FLOAT: parser = hlp::parsers::getScaledFloatParser(params); break;
+        // case HLPParserType::QUOTED: parser = hlp::parsers::getQuotedParser(params); break;
+        // case HLPParserType::BETWEEN: parser = hlp::parsers::getBetweenParser(params); break;
+        // case HLPParserType::BINARY: parser = hlp::parsers::getBinaryParser(params); break;
+        // case HLPParserType::DATE: parser = hlp::parsers::getDateParser(params); break;
+        // case HLPParserType::IP: parser = hlp::parsers::getIPParser(params); break;
+        // case HLPParserType::URI: parser = hlp::parsers::getUriParser(params); break;
+        // case HLPParserType::USERAGENT: parser = hlp::parsers::getUAParser(params); break;
+        // case HLPParserType::FQDN: parser = hlp::parsers::getFQDNParser(params); break;
+        // case HLPParserType::FILE: parser = hlp::parsers::getFilePathParser(params); break;
+        // case HLPParserType::JSON: parser = hlp::parsers::getJSONParser(params); break;
+        // case HLPParserType::XML: parser = hlp::parsers::getXMLParser(params); break;
+        // case HLPParserType::DSV: parser = hlp::parsers::getDSVParser(params); break;
+        // case HLPParserType::CSV: parser = hlp::parsers::getCSVParser(params); break;
+        // case HLPParserType::KV: parser = hlp::parsers::getKVParser(params); break;
         default: throw std::logic_error("Invalid HLP parser type");
     }
+
+    // Parser must consume all input, add EOF parser
+    parser = hlp::parser::combinator::all({parser, hlp::parsers::getEofParser({.name = "EOF"})});
 
     const std::string traceName {helper::base::formatHelperName(rawName, targetField, parameters)};
     const std::string successTrace {fmt::format("[{}] -> Success", traceName)};
@@ -130,7 +134,7 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
     // Return Term
     return base::Term<base::EngineOp>::create(
         traceName,
-        [=, targetField = std::move(targetField), parser = std::move(parser), source = std::move(source)](
+        [=, parser = std::move(parser), source = std::move(source)](
             base::Event event) -> base::result::Result<base::Event>
         {
             // Check if source is a reference
@@ -141,20 +145,12 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
             }
 
             // Parse source
-            const auto result = parser(sourceValue.value(), 0);
-            if (result.failure())
+            auto error = hlp::parser::run(parser, sourceValue.value(), *event);
+            if (error)
             {
-                return base::result::makeFailure(event, failureTrace + result.error());
+                return base::result::makeFailure(event, failureTrace + error.value().message);
             }
 
-            // Check if has a remaining string
-            if (result.index() != sourceValue.value().size())
-            {
-                return base::result::makeFailure(event, failureTrace3);
-            }
-
-            // Add result to event
-            event->set(targetField, result.value());
             return base::result::makeSuccess(event, successTrace);
         });
 }

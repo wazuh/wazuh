@@ -799,7 +799,7 @@ void Json::setString(std::string_view value, std::string_view path)
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, value.data());
+        pp.Set(m_document, std::string(value).c_str());
         return;
     }
 

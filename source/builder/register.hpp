@@ -1,7 +1,7 @@
 #ifndef _REGISTER_H
 #define _REGISTER_H
 
-#include <hlp/logpar.hpp>
+#include <logpar/logpar.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <schemf/ischema.hpp>
 
