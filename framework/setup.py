@@ -40,6 +40,8 @@ class InstallCommand(install):
         install.do_egg_install(self)
 
 
+
+
 setup(name='wazuh',
       version='4.4.4',
       description='Wazuh control with Python',
