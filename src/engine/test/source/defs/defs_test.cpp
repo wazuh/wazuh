@@ -79,7 +79,7 @@ TEST_P(DefsReplaceTest, Replaces)
     ASSERT_EQ(def.replace(input), expected);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Replaces,
     DefsReplaceTest,
     ::testing::Values(std::make_tuple(json::Json(R"({"a": "value"})"), "$a", "value"),

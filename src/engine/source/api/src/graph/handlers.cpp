@@ -5,7 +5,7 @@
 #include <api/adapter.hpp>
 #include <eMessages/eMessage.h>
 #include <eMessages/graph.pb.h>
-#include <hlp/registerParsers.hpp>
+#include <logpar/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <schemf/schema.hpp>
 

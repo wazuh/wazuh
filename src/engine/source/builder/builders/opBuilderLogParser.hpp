@@ -5,7 +5,7 @@
 #include <memory>
 
 #include <expression.hpp>
-#include <hlp/logpar.hpp>
+#include <logpar/logpar.hpp>
 
 #include "registry.hpp"
 

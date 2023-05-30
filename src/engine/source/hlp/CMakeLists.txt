@@ -1,55 +1,103 @@
-####################################################################################################
-# Dependencies
-####################################################################################################
-CPMAddPackage(
-    NAME CURL
-    GITHUB_REPOSITORY curl/curl
-    GIT_TAG curl-7_85_0
-    VERSION 7.85.0
-    EXCLUDE_FROM_ALL YES
-    DOWNLOAD_ONLY
-)
-
-add_compile_definitions ( ONLY_C_LOCALE=1 )
 
 CPMAddPackage(
-  NAME pugixml
-  GITHUB_REPOSITORY zeux/pugixml
-  GIT_TAG v1.12.1
-  VERSION 1.12.1
+        NAME CURL
+        GITHUB_REPOSITORY curl/curl
+        GIT_TAG curl-7_83_1
+        VERSION 7.83_1
+        EXCLUDE_FROM_ALL YES
+        GIT_SHALLOW TRUE
+        DOWNLOAD_ONLY
 )
 
-####################################################################################################
-# Sources - Includes
-####################################################################################################
+CPMAddPackage(
+        NAME date
+        # TODO: This is master, not a release.
+        # Using specific commit hash from master to avoid STDOFF errors,
+        # if a version (newer than 3.0.1) is released update this.
+        GITHUB_REPOSITORY HowardHinnant/date
+        GIT_TAG 22ceabf205d8d678710a43154da5a06b701c5830
+        OPTIONS
+        "AUTO_DOWNLOAD 1"
+)
+
+CPMAddPackage(
+        NAME fast_float
+        GITHUB_REPOSITORY fastfloat/fast_float
+        VERSION 3.8.0
+        GIT_SHALLOW TRUE
+)
+
+# add_library(hlp_parsec INTERFACE)
+# target_include_directories(hlp_parsec INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/parsec/include/)
+# target_link_libraries(hlp_parsec INTERFACE base)
+# add_library(hlp::parsec ALIAS hlp_parsec)
+
+# add_library(hlp_logpar STATIC src/logpar.cpp)
+# target_include_directories(hlp_logpar PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+# target_link_libraries(hlp_logpar PUBLIC hlp::parsec json base)
+# add_library(hlp::logpar ALIAS hlp_logpar)
+
+# add_library(hlp2 STATIC
+#         src/number.cpp
+#         src/number.hpp
+#         src/web.cpp
+#         src/file.cpp
+#         src/json.cpp
+#         src/xml.cpp
+#         src/dsv_csv.cpp
+#         src/kvmap.cpp
+#         ${date_SOURCE_DIR}/src/tz.cpp
+#         src/parse_field.hpp
+#         src/date.cpp
+#         src/parse_field.cpp
+#         src/between.cpp
+#         src/bool.cpp
+#         src/ignore.cpp
+#         src/ip.cpp
+#         src/text.cpp
+#         src/quoted.cpp
+#         src/encodings.cpp
+#         src/literal.cpp
+#         src/alphanumeric.cpp)
+
+# # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
+# # This works with glibc 2.28-211.el8 RHEL 8
+# # add_compile_definitions(ONLY_C_LOCALE=1)
+
+# # https://howardhinnant.github.io/date/tz.html#Installation
+# #
+# # You may have to use -lpthread. If you're getting a mysterious crash on first access to the database, it is likely that
+# # you aren't linking to the pthread library. The pthread library is used to assure that that library initialization
+# # is thread safe in a multithreaded environment.
+# target_link_libraries(hlp2
+#         PUBLIC base hlp_parsec hlp::logpar
+#         PRIVATE
+#         pugixml
+#         date::date
+#         CURL::libcurl
+#         fast_float
+#         json
+#         pthread)
+
+# target_include_directories(hlp2
+#         PUBLIC
+#         ${CMAKE_CURRENT_LIST_DIR}/include
+#         PRIVATE
+#         ${csv_SOURCE_DIR}/include
+# )
+
 add_library(hlp STATIC
-    src/date/date.h
-    src/hlp.cpp
-    src/hlpDetails.cpp
-    src/hlpDetails.hpp
-    src/logParser.cpp
-    src/logParser.hpp
-    src/specificParsers.cpp
-    src/specificParsers.hpp
+  src/parsers/literal.cpp
+  src/parsers/text.cpp
+  src/parsers/eof.cpp
+  src/parsers/number.cpp
 )
-
-target_link_libraries(hlp
-    PUBLIC base
-    PRIVATE CURL::libcurl pugixml)
-
 target_include_directories(hlp
-    PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include
+PUBLIC
+  include/
+PRIVATE
+  src/
+  src/parsers/
+  include/hlp/
 )
-
-####################################################################################################
-# Test tool
-####################################################################################################
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-
-add_executable(hlpCli
-    tools/hlpCli.cpp
-)
-
-find_package(Threads REQUIRED)
-
-target_link_libraries(hlpCli PUBLIC yaml-cpp hlp base PRIVATE Threads::Threads)
+target_link_libraries(hlp PUBLIC base PRIVATE fast_float)
