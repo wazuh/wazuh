@@ -11,8 +11,7 @@
 
 #include "hardwareWrapperImplMac.h"
 
-// If the architecture not is ARM.
-#if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) || !defined(__arm64__)
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000)
 #define kIOMainPortDefault kIOMasterPortDefault
 #endif
 

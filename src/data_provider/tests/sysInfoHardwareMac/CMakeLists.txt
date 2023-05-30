@@ -13,9 +13,6 @@ file(GLOB sysinfo_UNIT_TEST_SRC
 add_executable(sysInfoHardwareMac_unit_test
     ${sysinfo_UNIT_TEST_SRC})
 
-find_library(iokit_lib IOKit)
-find_library(corefoundation_lib CoreFoundation)
-
 target_link_libraries(sysInfoHardwareMac_unit_test
     debug gtestd
     debug gmockd
@@ -41,8 +38,14 @@ add_executable(sysInfoHardwareARMMac_unit_test
     ${sysinfo_ARM_UNIT_TEST_SRC})
 
 find_library(iokit_lib IOKit)
+if(NOT iokit_lib)
+    message(FATAL_ERROR "IOKit library not found! Aborting...")
+endif()
 find_library(corefoundation_lib CoreFoundation)
-
+if(NOT corefoundation_lib)
+    message(FATAL_ERROR "CoreFoundation library not found! Aborting...")
+endif()
+    
 target_link_libraries(sysInfoHardwareARMMac_unit_test
     debug gtestd
     debug gmockd
