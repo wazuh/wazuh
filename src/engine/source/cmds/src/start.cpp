@@ -21,8 +21,8 @@
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
-#include <hlp/logpar.hpp>
-#include <hlp/registerParsers.hpp>
+#include <logpar/logpar.hpp>
+#include <logpar/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
