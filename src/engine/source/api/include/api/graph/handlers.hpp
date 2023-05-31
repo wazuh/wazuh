@@ -3,7 +3,7 @@
 
 #include <api/api.hpp>
 #include <store/drivers/fileDriver.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <kvdb2/kvdbManager.hpp>
 
 namespace api::graph::handlers
 {
@@ -16,7 +16,7 @@ struct Config
 {
     std::shared_ptr<store::IStore> store;
 
-    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
 };
 
 /** @brief Handler for the resource endpoint get command.
