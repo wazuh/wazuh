@@ -2,6 +2,4 @@ name: policy/wazuh/0
 
 integrations:
   - integration/wazuh-core/0
-
-decoders:
-  - decoder/syslog/0
+  - integration/syslog/0
