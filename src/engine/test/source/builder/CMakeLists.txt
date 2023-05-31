@@ -163,12 +163,16 @@ add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringUP_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperTimeEpoch_test.cpp
+)
+gtest_discover_tests(opBuilderHelperMap_test)
+
+add_executable(opBuilderHelperKVDB_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBDelete_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBGet_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBSet_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperGetValue_test.cpp
 )
-gtest_discover_tests(opBuilderHelperMap_test)
+gtest_discover_tests(opBuilderHelperKVDB_test)
 
 add_executable(opBuilderWdb_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderWdbQuery_test.cpp
