@@ -830,7 +830,7 @@ checks:
     title: "Ensure core dumps are restricted."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
     rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5) ). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
-    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 IF systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload"
+    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 IF systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload."
     compliance:
       - cis: ["1.5.4"]
       - mitre_techniques: ["T1005"]
@@ -950,7 +950,7 @@ checks:
     title: "Ensure message of the day is configured properly."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
-    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR if the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
+    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR if the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd."
     compliance:
       - cis: ["1.7.1"]
       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
@@ -979,7 +979,7 @@ checks:
     title: "Ensure remote login warning banner is configured properly."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
     rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
-    remediation: 'Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform # echo "Authorized uses only. All activity may be monitored and reported." > /etc/issue'
+    remediation: 'Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \m , \r , \s , \v or references to the OS platform # echo "Authorized uses only. All activity may be monitored and reported." > /etc/issue.'
     compliance:
       - cis: ["1.7.3"]
       - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
@@ -993,7 +993,7 @@ checks:
     title: "Ensure permissions on /etc/motd are configured."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-    remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd"
+    remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd."
     compliance:
       - cis: ["1.7.4"]
       - cis_csc_v7: ["14.6"]
@@ -1040,7 +1040,7 @@ checks:
     title: "Ensure permissions on /etc/issue.net are configured."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-    remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)"
+    remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)."
     compliance:
       - cis: ["1.7.6"]
       - cis_csc_v7: ["14.6"]
@@ -1126,7 +1126,7 @@ checks:
     title: "Ensure chrony is running as user _chrony."
     description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service."
     rationale: "The chronyd service should run with only the required privileges."
-    remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony"
+    remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony."
     compliance:
       - cis: ["2.1.2.2"]
       - cis_csc_v7: ["6.1"]
@@ -1170,7 +1170,7 @@ checks:
     title: "Ensure systemd-timesyncd is enabled and running."
     description: "systemd-timesyncd is a daemon that has been added for synchronizing the system clock across the network."
     rationale: "systemd-timesyncd needs to be enabled and running in order to synchronize the system to a timeserver. Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-    remediation: "IF systemd-timesyncd is in use on the system, run the following commands: Run the following command to unmask systemd-timesyncd.service: # systemctl unmask systemd-timesyncd.service Run the following command to enable and start systemd-timesyncd.service: # systemctl --now enable systemd-timesyncd.service OR If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd.service"
+    remediation: "IF systemd-timesyncd is in use on the system, run the following commands: Run the following command to unmask systemd-timesyncd.service: # systemctl unmask systemd-timesyncd.service Run the following command to enable and start systemd-timesyncd.service: # systemctl --now enable systemd-timesyncd.service OR If another time synchronization service is in use on the system, run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd.service."
     compliance:
       - cis: ["2.1.3.2"]
       - cis_csc_v7: ["6.1"]
@@ -1260,7 +1260,7 @@ checks:
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
     impact: 'Many Linux systems run applications which require a Java runtime. Some Linux Java packages have a dependency on specific X Windows xorg-x11-fonts. One workaround to avoid this dependency is to use the "headless" Java packages for your specific Java runtime, if provided by your distribution.'
-    remediation: "Remove the X Windows System packages: apt purge xserver-xorg*"
+    remediation: "Remove the X Windows System packages: apt purge xserver-xorg*."
     compliance:
       - cis: ["2.2.1"]
       - cis_csc_v7: ["2.6"]
@@ -1305,7 +1305,7 @@ checks:
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
     rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface."
     impact: "Removing CUPS will prevent printing from the system, a common task for workstation systems."
-    remediation: "Run one of the following commands to remove cups : # apt purge cups"
+    remediation: "Run one of the following commands to remove cups : # apt purge cups."
     references:
       - http://www.cups.org
     compliance:
@@ -1353,7 +1353,7 @@ checks:
     title: "Ensure LDAP server is not installed."
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be removed to reduce the potential attack surface."
-    remediation: "Run one of the following commands to remove slapd: # apt purge slapd"
+    remediation: "Run one of the following commands to remove slapd: # apt purge slapd."
     references:
       - http://www.openldap.org.
     compliance:
@@ -1396,7 +1396,7 @@ checks:
     title: "Ensure DNS Server is not installed."
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be deleted to reduce the potential attack surface."
-    remediation: "Run the following commands to disable DNS server: # apt purge bind9"
+    remediation: "Run the following commands to disable DNS server: # apt purge bind9."
     compliance:
       - cis: ["2.2.7"]
       - cis_csc_v7: ["9.2"]
@@ -1440,7 +1440,7 @@ checks:
     title: "Ensure HTTP server is not installed."
     description: "HTTP or web servers provide the ability to host web site content."
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the package be deleted to reduce the potential attack surface."
-    remediation: "Run the following command to remove apache: # apt purge apache2 Additional Information: Several httpd servers exist and can use other service names. apache2 and nginx are example services that provide an HTTP server. These and other services should also be audited"
+    remediation: "Run the following command to remove apache: # apt purge apache2 Additional Information: Several httpd servers exist and can use other service names. apache2 and nginx are example services that provide an HTTP server. These and other services should also be audited."
     compliance:
       - cis: ["2.2.9"]
       - cis_csc_v7: ["9.2"]
@@ -1620,7 +1620,7 @@ checks:
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a clientserver directory service protocol used to distribute system configuration files. The NIS client was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
-    remediation: "Uninstall nis: # apt purge nis"
+    remediation: "Uninstall nis: # apt purge nis."
     compliance:
       - cis: ["2.3.1"]
       - cis_csc_v7: ["2.6"]
@@ -1629,8 +1629,8 @@ checks:
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
@@ -1643,7 +1643,7 @@ checks:
     description: "The rsh-client package contains the client commands for the rsh services."
     rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh, rcp and rlogin."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
-    remediation: "Uninstall rsh: # apt purge rsh-client"
+    remediation: "Uninstall rsh: # apt purge rsh-client."
     compliance:
       - cis: ["2.3.2"]
       - cis_csc_v7: ["9.2"]
@@ -1652,8 +1652,8 @@ checks:
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
@@ -1666,7 +1666,7 @@ checks:
     description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client, which allows initialization of talk sessions, is installed by default."
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
-    remediation: "Uninstall talk: # apt purge talk"
+    remediation: "Uninstall talk: # apt purge talk."
     compliance:
       - cis: ["2.3.3"]
       - cis_csc_v7: ["9.2"]
@@ -1675,8 +1675,8 @@ checks:
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
@@ -1689,7 +1689,7 @@ checks:
     description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
-    remediation: "Uninstall telnet: # apt purge telnet"
+    remediation: "Uninstall telnet: # apt purge telnet."
     compliance:
       - cis: ["2.3.4"]
       - cis_csc_v7: ["9.2"]
@@ -1698,8 +1698,8 @@ checks:
       - mitre_tactics: ["TA0006", "TA0008"]
       - mitre_mitigations: ["M1041", "M1042"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
@@ -1712,7 +1712,7 @@ checks:
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
     impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
-    remediation: "Uninstall ldap-utils: # apt purge ldap-utils"
+    remediation: "Uninstall ldap-utils: # apt purge ldap-utils."
     compliance:
       - cis: ["2.3.5"]
       - cis_csc_v7: ["9.2"]
@@ -1721,8 +1721,8 @@ checks:
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
@@ -1734,7 +1734,7 @@ checks:
     title: "Ensure RPC is not installed."
     description: "Remote Procedure Call (RPC) is a method for creating low level client server applications across different system architectures. It requires an RPC compliant client listening on a network port. The supporting package is rpcbind."
     rationale: "If RPC is not required, it is recommended that this services be removed to reduce the remote attack surface."
-    remediation: "Run the following command to remove rpcbind: # apt purge rpcbind"
+    remediation: "Run the following command to remove rpcbind: # apt purge rpcbind."
     compliance:
       - cis: ["2.3.6"]
       - cis_csc_v7: ["9.2"]
@@ -1743,8 +1743,8 @@ checks:
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
@@ -1785,7 +1785,7 @@ checks:
     title: "Ensure ufw is installed."
     description: "The Uncomplicated Firewall (ufw) is a frontend for iptables and is particularly well-suited for host-based firewalls. ufw provides a framework for managing netfilter, as well as a command-line interface for manipulating the firewall."
     rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. UFW is dependent on the iptables package."
-    remediation: "Run the following command to install Uncomplicated Firewall (UFW): apt install ufw"
+    remediation: "Run the following command to install Uncomplicated Firewall (UFW): apt install ufw."
     compliance:
       - cis: ["3.5.1.1"]
       - cis_csc_v7: ["9.4"]
@@ -1794,8 +1794,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -1815,8 +1815,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.004"]
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -1840,8 +1840,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.004"]
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -1864,8 +1864,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -1895,8 +1895,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -1921,8 +1921,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -1948,8 +1948,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: any
@@ -1972,8 +1972,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2002,8 +2002,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2024,8 +2024,8 @@ checks:
       - cis_csc_v7: ["9.4"]
       - cis_csc_v8: ["4.4", "4.5"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2050,8 +2050,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2074,8 +2074,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2096,8 +2096,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.004"]
       - mitre_tactics: ["TA0011"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2120,8 +2120,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2144,8 +2144,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2171,8 +2171,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2195,8 +2195,8 @@ checks:
       - mitre_tactics: ["TA0011"]
       - mitre_mitigations: ["M1031", "M1037"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.4", "1.1.4"]
-      - pci_dss_4.0: ["1.2.1"]
+      - pci_dss_v3.2.1: ["1.4", "1.1.4"]
+      - pci_dss_v4.0: ["1.2.1"]
       - nist_sp_800-53: ["SC-7(5)"]
       - soc_2: ["CC6.6"]
     condition: all
@@ -2227,8 +2227,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.001"]
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2250,8 +2250,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2272,8 +2272,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2293,8 +2293,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2314,7 +2314,7 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1053"]
-      - pci_dss_3.2.1: ["10.7"]
+      - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
     condition: all
     rules:
@@ -2335,7 +2335,7 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1053"]
-      - pci_dss_3.2.1: ["10.7"]
+      - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
     condition: all
     rules:
@@ -2358,8 +2358,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2384,8 +2384,8 @@ checks:
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1047"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2411,8 +2411,8 @@ checks:
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1047"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2435,8 +2435,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2460,8 +2460,8 @@ checks:
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1047"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2491,8 +2491,8 @@ checks:
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1047"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2520,8 +2520,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - mitre_tactics: ["TA0001"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2545,8 +2545,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - mitre_tactics: ["TA0001"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2571,8 +2571,8 @@ checks:
       - mitre_tactics: ["TA0004"]
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2600,8 +2600,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.001"]
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -2628,8 +2628,8 @@ checks:
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
@@ -2652,8 +2652,8 @@ checks:
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
@@ -2674,8 +2674,8 @@ checks:
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
@@ -2696,8 +2696,8 @@ checks:
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
@@ -2718,8 +2718,8 @@ checks:
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
@@ -2740,8 +2740,8 @@ checks:
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
@@ -2762,8 +2762,8 @@ checks:
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
@@ -2783,8 +2783,8 @@ checks:
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -2814,8 +2814,8 @@ checks:
       - mitre_mitigations: ["M1029"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2838,8 +2838,8 @@ checks:
       - mitre_mitigations: ["M1029"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2859,8 +2859,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2879,7 +2879,7 @@ checks:
       - mitre_techniques: ["T1562", "T1562.002"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1053"]
-      - pci_dss_3.2.1: ["10.7"]
+      - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
     condition: all
     rules:
@@ -2900,8 +2900,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2920,8 +2920,8 @@ checks:
       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.006"]
       - mitre_tactics: ["TA0040"]
       - mitre_mitigations: ["M1029"]
-      - pci_dss_3.2.1: ["10.5.3", "10.5.4"]
-      - pci_dss_4.0: ["10.3.3"]
+      - pci_dss_v3.2.1: ["10.5.3", "10.5.4"]
+      - pci_dss_v4.0: ["10.3.3"]
       - nist_sp_800-53: ["AU-6(3)"]
       - soc_2: ["PL1.4"]
     condition: all
@@ -2945,8 +2945,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2966,8 +2966,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -2983,8 +2983,8 @@ checks:
       - cis: ["4.2.2.3"]
       - cis_csc_v7: ["6.2", "6.3", "6.5"]
       - cis_csc_v8: ["8.2", "8.9"]
-      - pci_dss_3.2.1: ["10.5.3", "10.5.4"]
-      - pci_dss_4.0: ["10.3.3"]
+      - pci_dss_v3.2.1: ["10.5.3", "10.5.4"]
+      - pci_dss_v4.0: ["10.3.3"]
       - nist_sp_800-53: ["AU-6(3)"]
       - soc_2: ["PL1.4"]
     condition: all
@@ -3006,8 +3006,8 @@ checks:
       - mitre_tactics: ["TA0007"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: all
     rules:
@@ -3030,8 +3030,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: none
     rules:
@@ -3078,8 +3078,8 @@ checks:
       - mitre_mitigations: ["M1018"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3101,8 +3101,8 @@ checks:
       - mitre_mitigations: ["M1018"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3124,8 +3124,8 @@ checks:
       - mitre_mitigations: ["M1018"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3147,8 +3147,8 @@ checks:
       - mitre_mitigations: ["M1018"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3170,8 +3170,8 @@ checks:
       - mitre_mitigations: ["M1018"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3193,8 +3193,8 @@ checks:
       - mitre_mitigations: ["M1018"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3216,8 +3216,8 @@ checks:
       - mitre_mitigations: ["M1018"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3240,8 +3240,8 @@ checks:
       - mitre_mitigations: ["M1018"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3265,8 +3265,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3294,8 +3294,8 @@ checks:
       - mitre_mitigations: ["M1018"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
@@ -3320,8 +3320,8 @@ checks:
       - mitre_tactics: ["TA0005"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
       - hipaa: ["164.312(b)"]
-      - pci_dss_3.2.1: ["10.2", "10.3"]
-      - pci_dss_4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
+      - pci_dss_v3.2.1: ["10.2", "10.3"]
+      - pci_dss_v4.0: ["5.3.4", "6.4.1", "6.4.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2"]
       - nist_sp_800-53: ["AU-7"]
     condition: any
     rules:
@@ -3344,8 +3344,8 @@ checks:
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1035"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -3369,7 +3369,7 @@ checks:
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
     condition: all
@@ -3393,8 +3393,8 @@ checks:
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -3418,8 +3418,8 @@ checks:
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -3443,8 +3443,8 @@ checks:
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -3468,8 +3468,8 @@ checks:
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -3491,8 +3491,8 @@ checks:
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
@@ -3519,8 +3519,8 @@ checks:
       - mitre_mitigations: ["M1041"]
       - cmmc_v2.0: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
-      - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
-      - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
@@ -3544,8 +3544,8 @@ checks:
       - mitre_mitigations: ["M1041"]
       - cmmc_v2.0: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
-      - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
-      - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
@@ -3566,8 +3566,8 @@ checks:
       - mitre_mitigations: ["M1041"]
       - cmmc_v2.0: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
-      - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
-      - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
     condition: none
     rules:
@@ -3590,8 +3590,8 @@ checks:
       - mitre_tactics: ["TA0008"]
       - mitre_mitigations: ["M1042"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -3612,8 +3612,8 @@ checks:
       - mitre_tactics: ["TA0001", "TA0007"]
       - mitre_mitigations: ["M1035"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -3636,8 +3636,8 @@ checks:
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1036"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
@@ -3660,8 +3660,8 @@ checks:
       - mitre_techniques: ["T1499", "T1499.002"]
       - mitre_tactics: ["TA0040"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -3709,8 +3709,8 @@ checks:
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1036"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.6", "CM.L2-3.4.2", "CM.L2-3.4.7"]
-      - pci_dss_3.2.1: ["2.2", "11.5"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
+      - pci_dss_v3.2.1: ["2.2", "11.5"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.5.1", "1.2.7", "2.1.1", "2.2.1"]
       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
@@ -3753,7 +3753,7 @@ checks:
       - mitre_techniques: ["T1078", "T1078.003"]
       - mitre_tactics: ["TA0001"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
     condition: any
@@ -3778,7 +3778,7 @@ checks:
       - mitre_techniques: ["T1548", "T1548.003"]
       - mitre_tactics: ["TA0003"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
     condition: any
@@ -3803,8 +3803,8 @@ checks:
       - mitre_techniques: ["T1562", "T1562.006"]
       - mitre_tactics: ["TA0004"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
-      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_v4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
       - soc_2: ["CC5.2", "CC7.2"]
     condition: any
@@ -3824,7 +3824,7 @@ checks:
       - cis_csc_v7: ["4.3"]
       - cis_csc_v8: ["5.4"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
     condition: none
@@ -3843,7 +3843,7 @@ checks:
       - cis_csc_v7: ["4.3"]
       - cis_csc_v8: ["5.4"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
     condition: none
@@ -3864,7 +3864,7 @@ checks:
       - cis_csc_v7: ["4.3"]
       - cis_csc_v8: ["5.4"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - soc_2: ["CC6.1", "CC6.3"]
     condition: any
@@ -3888,8 +3888,8 @@ checks:
       - mitre_mitigations: ["M1026"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -3911,7 +3911,7 @@ checks:
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
     condition: all
     rules:
@@ -3935,8 +3935,8 @@ checks:
       - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["AC.L1-3.1.1"]
       - hipaa: ["164.308(a)(3)(ii)(C)"]
-      - pci_dss_3.2.1: ["8.1.3"]
-      - pci_dss_4.0: ["8.2.4", "8.2.5"]
+      - pci_dss_v3.2.1: ["8.1.3"]
+      - pci_dss_v4.0: ["8.2.4", "8.2.5"]
       - nist_sp_800-53: ["AC-2(1)"]
       - soc_2: ["CC6.2", "CC6.3"]
     condition: all
@@ -3961,7 +3961,7 @@ checks:
       - cis_csc_v8: ["5.2"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.004"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
     condition: all
     rules:
@@ -3983,8 +3983,8 @@ checks:
       - mitre_mitigations: ["M1041"]
       - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
-      - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
-      - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+      - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
+      - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - nist_sp_800-53: ["SC-28", "SC-28(1)"]
       - soc_2: ["CC6.1"]
     condition: all
@@ -4009,7 +4009,7 @@ checks:
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
     condition: all
     rules:
@@ -4030,7 +4030,7 @@ checks:
       - cis_csc_v8: ["5.2"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
     condition: all
     rules:
@@ -4050,7 +4050,7 @@ checks:
       - mitre_tactics: ["TA0006"]
       - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
     condition: all
     rules:
@@ -4071,7 +4071,7 @@ checks:
       - mitre_tactics: ["TA0001"]
       - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
     condition: none
     rules:
@@ -4097,8 +4097,8 @@ checks:
       - mitre_mitigations: ["M1026"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -4128,8 +4128,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -4151,8 +4151,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -4174,8 +4174,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -4197,8 +4197,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
@@ -4220,8 +4220,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
@@ -4244,8 +4244,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
@@ -4268,8 +4268,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
@@ -4292,8 +4292,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
@@ -4323,8 +4323,8 @@ checks:
       - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
-      - pci_dss_3.2.1: ["3.4", "3.4.1", "8.2.1"]
-      - pci_dss_4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+      - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
+      - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - nist_sp_800-53: ["SC-28", "SC-28(1)"]
       - soc_2: ["CC6.1"]
     condition: none
@@ -4345,7 +4345,7 @@ checks:
       - mitre_tactics: ["TA0003"]
       - mitre_mitigations: ["M1027"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
-      - pci_dss_4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
     condition: none
     rules:
@@ -4367,8 +4367,8 @@ checks:
       - mitre_mitigations: ["M1022"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.5", "AC.L2-3.1.3", "MP.L2-3.8.2"]
       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
       - nist_sp_800-53: ["AC-5", "AC-6"]
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
