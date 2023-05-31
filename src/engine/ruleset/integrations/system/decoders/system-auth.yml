@@ -30,7 +30,17 @@ definitions:
     OR process.name=="CRON"
 
 #TODO: Once the events arrive tagged, uncommnet following line and comment previous
-#  isAuthProcess: (process.name=="sshd" OR process.name=="sudo" OR process.name=="groupadd" OR process.name=="useradd" OR process.name=="groupdel" OR process.name=="groupmod" OR process.name=="userdel" OR process.name=="usermod") AND event.module=="system"
+#  isAuthProcess: >-
+#    (process.name=="sshd"
+#    OR process.name=="sudo"
+#    OR process.name=="groupadd"
+#    OR process.name=="useradd"
+#    OR process.name=="groupdel"
+#    OR process.name=="groupmod"
+#    OR process.name=="userdel"
+#    OR process.name=="usermod"
+#    OR process.name=="CRON")
+#    AND event.module=="system"
 
 check: $isAuthProcess
 
@@ -46,28 +56,34 @@ normalize:
       - process.name: "sshd"
     logpar:
       - message: <~system.auth.ssh.event> <~system.auth.ssh.method> for <user.name> from <source.ip> port <source.port> ssh2(?:<~>)
-      - message: <~system.auth.ssh.event> user <user.name> from <source.ip> port <source.port>
+      - message: <~system.auth.ssh.event> user <user.name> from <source.ip>(? port <source.port>)
       - message: Did not receive identification string from <source.ip>
+      - message: subsystem request for <~system.auth.ssh.subsystem> by user <user.name>
+      - message: "<~system.auth.ssh.session.action>: Too many authentication <~system.auth.ssh.event> for <user.name> [preauth]"
+      - message: "<user.name> [<~>][<~>]: <~system.auth.ssh.event>: <~system.auth.ssh.session.process_id> tty<~/literal/\\/>?<~/literal/s><~process.tty.char_device.major>"
 
-  - check:
-      - ~system.auth.ssh.event: "Accepted"
+  - check: ~system.auth.ssh.event=="Accepted" OR ~system.auth.ssh.event=="USER_PROCESS" OR ~system.auth.ssh.event=="DEAD_PROCESS"
     map:
-      - event.type: +array_append/info
+      - event.type: +array_append/access/allowed
       - event.category: +array_append/authentication/session
       - event.action: "ssh_login"
       - event.outcome: "success"
 
+  - check: ~system.auth.ssh.event=="Invalid" OR ~system.auth.ssh.event=="Failed" OR ~system.auth.ssh.event=="failures"
+    map:
+      - event.type: +array_append/access/denied
+      - event.category: +array_append/authentication/session
+      - event.action: "ssh_login"
+      - event.outcome: "failure"
+
   - check:
       - process.name: "sudo"
     logpar:
-      - message: "<user.name> : <~system.auth.sudo.error> ; TTY=<~system.auth.sudo.tty> ; PWD=<~system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<~system.auth.sudo.command>"
-      - message: "<user.name> : TTY=<~system.auth.sudo.tty> ; PWD=<~system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<~system.auth.sudo.command>"
+      - message: "<user.name> : <~system.auth.sudo.error> ; TTY=tty<~/literal/\\/>?<~/literal/s><~process.tty.char_device.major> ; PWD=<~system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<~system.auth.sudo.command>"
+      - message: "<user.name> : TTY=tty<~/literal/\\/>?<~/literal/s><~process.tty.char_device.major> ; PWD=<~system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<~system.auth.sudo.command>"
     map:
       - event.category: +array_append/process
       - event.type: +array_append/start
-
-  - map:
-      - ~system.auth.tty.array: +split/$~system.auth.sudo.tty/\/
 
   - check:
       - message: +contains/pam_
@@ -91,13 +107,11 @@ normalize:
     map:
       - user.name: $~system.auth.pam.foruser.name
 
-  - check:
-      - ~system.auth.pam.session.action: "opened"
+  - check: ~system.auth.pam.session.action=="opened" OR ~system.auth.ssh.event=="USER_PROCESS"
     map:
       - event.type: +array_append/start
 
-  - check:
-      - ~system.auth.pam.session.action: "closed"
+  - check: ~system.auth.pam.session.action=="closed" OR ~system.auth.ssh.event=="DEAD_PROCESS"
     map:
       - event.type: +array_append/end
 
@@ -108,16 +122,8 @@ normalize:
       - message: "group added to <file.name>: name=<group.name>(?, GID=<group.id>)"
       - message: "<~system.auth.event.outcome> adding user '<user.name>'(?,<~>)"
 
-  - check:
-      - ~system.auth.event.outcome: "failed"
+  - check: ~system.auth.event.outcome=="failed" OR ~system.auth.pam.session.action=="failure" OR ~system.auth.pam.session.action=="failures"
     map:
-      - event.outcome: "failure"
-
-  - check: ~system.auth.ssh.event=="Invalid" OR ~system.auth.ssh.event=="Failed"
-    map:
-      - event.type: +array_append/info
-      - event.category: +array_append/authentication
-      - event.action: "ssh_login"
       - event.outcome: "failure"
 
   - check: process.name=="groupadd" OR process.name=="groupdel" OR process.name=="groupmod" OR process.name=="useradd" OR process.name=="userdel" OR process.name=="usermod"
@@ -157,7 +163,7 @@ normalize:
       - related.user: +array_append/$user.name/$user.effective.name
       - related.ip: +array_append/$source.ip
       - process.command_line: $~system.auth.sudo.command
-      - process.tty.char_device.major: $~system.auth.tty.array.1
+      - process.tty.char_device.major: $~process.tty.char_device.major
       - process.working_directory: $~system.auth.sudo.pwd
       - ~TAG: +delete
       - ~system: +delete
