@@ -1,7 +1,7 @@
 #ifndef _KVDBSCOPE_H
 #define _KVDBSCOPE_H
 
-#include <kvdb2/iKVDBScope.hpp>
+#include <kvdb/iKVDBScope.hpp>
 
 namespace kvdbManager
 {

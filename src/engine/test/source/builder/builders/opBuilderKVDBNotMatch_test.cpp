@@ -5,8 +5,8 @@
 #include "opBuilderKVDB.hpp"
 #include <defs/mocks/failDef.hpp>
 #include <rapidjson/document.h>
-#include <kvdb2/kvdbManager.hpp>
-#include <kvdb2/kvdbExcept.hpp>
+#include <kvdb/kvdbManager.hpp>
+#include <kvdb/kvdbExcept.hpp>
 #include <metrics/metricsManager.hpp>
 
 using namespace metricsManager;

@@ -1,5 +1,5 @@
-set(ENGINE_KVDB2_SOURCE_DIR ${ENGINE_SOURCE_DIR}/kvdb2/src)
-set(ENGINE_KVDB2_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/kvdb2/include)
+set(ENGINE_KVDB_SOURCE_DIR ${ENGINE_SOURCE_DIR}/kvdb/src)
+set(ENGINE_KVDB_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/kvdb/include)
 
 ####################################################################################################
 # Dependencies
@@ -25,17 +25,17 @@ CPMAddPackage(
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
-add_library(kvdb2 STATIC
-    ${ENGINE_KVDB2_SOURCE_DIR}/kvdbManager.cpp
-    ${ENGINE_KVDB2_SOURCE_DIR}/kvdbScope.cpp
-    ${ENGINE_KVDB2_SOURCE_DIR}/kvdbSpace.cpp
-    ${ENGINE_KVDB2_SOURCE_DIR}/kvdbHandlerCollection.cpp
-    ${ENGINE_KVDB2_SOURCE_DIR}/refCounter.cpp
+add_library(kvdb STATIC
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdbManager.cpp
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdbScope.cpp
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdbSpace.cpp
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdbHandlerCollection.cpp
+    ${ENGINE_KVDB_SOURCE_DIR}/refCounter.cpp
 )
 
-target_link_libraries(kvdb2 PRIVATE rocksdb base metrics)
+target_link_libraries(kvdb PRIVATE rocksdb base metrics)
 
-target_include_directories(kvdb2 PUBLIC
-    ${ENGINE_KVDB2_INCLUDE_DIR}
+target_include_directories(kvdb PUBLIC
+    ${ENGINE_KVDB_INCLUDE_DIR}
     ${rocksdb_SOURCE_DIR}/include
 )

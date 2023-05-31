@@ -1,7 +1,7 @@
 #include <filesystem>
 #include <gtest/gtest.h>
-#include <kvdb2/kvdbManager.hpp>
-#include <kvdb2/kvdbExcept.hpp>
+#include <kvdb/kvdbManager.hpp>
+#include <kvdb/kvdbExcept.hpp>
 #include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
@@ -14,7 +14,7 @@ namespace
 const std::string KVDB_PATH {"/tmp/kvdbTestSuitePath/"};
 const std::string KVDB_DB_FILENAME {"TEST_DB"};
 
-class KVDB2Test : public ::testing::Test
+class KVDBTest : public ::testing::Test
 {
 
 protected:
@@ -71,12 +71,12 @@ protected:
     }
 };
 
-TEST_F(KVDB2Test, Startup)
+TEST_F(KVDBTest, Startup)
 {
     ASSERT_NE(m_spKVDBManager, nullptr);
 }
 
-TEST_F(KVDB2Test, ScopeTest)
+TEST_F(KVDBTest, ScopeTest)
 {
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
     auto resultHandler = scope->getKVDBHandler("default");
@@ -99,21 +99,21 @@ TEST_F(KVDB2Test, ScopeTest)
 }
 
 
-TEST_F(KVDB2Test, ScopeInfoEmpty)
+TEST_F(KVDBTest, ScopeInfoEmpty)
 {
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
     auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
     ASSERT_EQ(scopeInfo.size(), 0);
 }
 
-TEST_F(KVDB2Test, ScopeInfoSingle)
+TEST_F(KVDBTest, ScopeInfoSingle)
 {
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
     auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
     ASSERT_EQ(scopeInfo.size(), 0);
 }
 
-TEST_F(KVDB2Test, ScopeInfoSingleOneHandler)
+TEST_F(KVDBTest, ScopeInfoSingleOneHandler)
 {
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
     auto handler = scope->getKVDBHandler("db_test");
