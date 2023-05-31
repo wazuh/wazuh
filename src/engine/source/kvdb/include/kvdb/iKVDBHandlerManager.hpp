@@ -1,7 +1,7 @@
 #ifndef _IKVDBHANDLERMANAGER_H
 #define _IKVDBHANDLERMANAGER_H
 
-#include <kvdb2/iKVDBHandler.hpp>
+#include <kvdb/iKVDBHandler.hpp>
 #include <memory>
 #include <string>
 

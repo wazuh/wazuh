@@ -1,5 +1,5 @@
-#include <kvdb2/iKVDBHandlerManager.hpp>
-#include <kvdb2/kvdbScope.hpp>
+#include <kvdb/iKVDBHandlerManager.hpp>
+#include <kvdb/kvdbScope.hpp>
 
 namespace kvdbManager
 {

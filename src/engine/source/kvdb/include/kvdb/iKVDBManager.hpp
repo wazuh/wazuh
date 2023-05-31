@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include <kvdb2/iKVDBScope.hpp>
+#include <kvdb/iKVDBScope.hpp>
 
 namespace kvdbManager
 {
