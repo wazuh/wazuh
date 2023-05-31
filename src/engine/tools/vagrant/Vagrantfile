@@ -96,7 +96,7 @@ Vagrant.configure("2") do |config|
 
         # Create index pattern
         echo "--- Setting up dashboards index pattern  ---"
-        sudo curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
+        curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
 
         systemctl restart filebeat.service
 
@@ -133,8 +133,13 @@ Vagrant.configure("2") do |config|
         sleep 2s
 
         echo "--- Loading ruleset & enabling wazuh environment  ---"
-        cd $ENGINE_SRC_DIR/ruleset/wazuh-core
-        engine-integration add
+        cd $ENGINE_SRC_DIR/ruleset
+        engine-integration add -p wazuh-core/
+        engine-integration add -p integrations/syslog/
+        engine-integration add -p integrations/system/
+        engine-integration add -p integrations/windows/
+        engine-integration add -p integrations/apache-http/
+        engine-integration add -p integrations/suricata/
         cd $HOME
         echo "Creating default policy..."
         $ENGINE_DIR/wazuh-engine catalog create policy < $ENGINE_SRC_DIR/ruleset/default-policy.yml
@@ -142,6 +147,9 @@ Vagrant.configure("2") do |config|
         $ENGINE_DIR/wazuh-engine router add default filter/allow-all/0 255 policy/wazuh/0
         cp -r $WAZUH_DIR/etc/kvdb/* $WAZUH_DIR/etc/kvdb_test/
         echo
+
+        # Add user vagrant to wazuh group
+        usermod -a -G wazuh vagrant
 
         # Create folder for engine core dumps
         mkdir -p /coredumps
