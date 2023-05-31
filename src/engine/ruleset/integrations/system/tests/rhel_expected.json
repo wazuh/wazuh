@@ -1,0 +1,431 @@
+[
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb 22 16:45:20 slave22 sshd[2738]: Failed password for root from 202.196.224.106 port 1786 ssh2",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb 22 16:45:20 slave22 sshd[2738]: Failed password for root from 202.196.224.106 port 1786 ssh2",
+      "start": "2023-02-22T16:45:20.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "failure",
+      "type": [
+        "access",
+        "denied"
+      ],
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "action": "ssh_login"
+    },
+    "host": {
+      "hostname": "slave22"
+    },
+    "process": {
+      "pid": 2738,
+      "name": "sshd"
+    },
+    "message": "Failed password for root from 202.196.224.106 port 1786 ssh2",
+    "related": {
+      "hosts": [
+        "slave22"
+      ],
+      "user": [
+        "root"
+      ],
+      "ip": [
+        "202.196.224.106"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "source": {
+      "ip": "202.196.224.106",
+      "port": 1786,
+      "address": "202.196.224.106"
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb 22 16:45:26 slave22 sshd[2738]: fatal: Read from socket failed: Connection reset by peer [preauth]",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb 22 16:45:26 slave22 sshd[2738]: fatal: Read from socket failed: Connection reset by peer [preauth]",
+      "start": "2023-02-22T16:45:26.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "failure",
+      "type": [
+        "access",
+        "denied"
+      ],
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "action": "ssh_login"
+    },
+    "host": {
+      "hostname": "slave22"
+    },
+    "process": {
+      "pid": 2738,
+      "name": "sshd"
+    },
+    "message": "fatal: Read from socket failed: Connection reset by peer [preauth]",
+    "related": {
+      "hosts": [
+        "slave22"
+      ]
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb 22 16:45:26 slave22 sshd[2738]: PAM 4 more authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=202.196.224.106  user=root",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb 22 16:45:26 slave22 sshd[2738]: PAM 4 more authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=202.196.224.106  user=root",
+      "start": "2023-02-22T16:45:26.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "failure",
+      "category": [
+        "authentication",
+        "session"
+      ]
+    },
+    "host": {
+      "hostname": "slave22"
+    },
+    "process": {
+      "pid": 2738,
+      "name": "sshd"
+    },
+    "message": "PAM 4 more authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=202.196.224.106  user=root",
+    "related": {
+      "hosts": [
+        "slave22"
+      ],
+      "user": [
+        "root"
+      ],
+      "ip": [
+        "202.196.224.106"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "effective": {
+        "id": "0"
+      },
+      "name": "root"
+    },
+    "source": {
+      "ip": "202.196.224.106",
+      "address": "202.196.224.106"
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb 22 16:45:32 slave22 sshd[2742]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=202.196.224.106  user=root",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb 22 16:45:32 slave22 sshd[2742]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=202.196.224.106  user=root",
+      "start": "2023-02-22T16:45:32.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "failure",
+      "category": [
+        "authentication",
+        "session"
+      ]
+    },
+    "host": {
+      "hostname": "slave22"
+    },
+    "process": {
+      "pid": 2742,
+      "name": "sshd"
+    },
+    "message": "pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=202.196.224.106  user=root",
+    "related": {
+      "hosts": [
+        "slave22"
+      ],
+      "user": [
+        "root"
+      ],
+      "ip": [
+        "202.196.224.106"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "effective": {
+        "id": "0"
+      },
+      "name": "root"
+    },
+    "source": {
+      "ip": "202.196.224.106",
+      "address": "202.196.224.106"
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb 22 16:46:03 slave22 sshd[2758]: Received disconnect from 216.160.83.58: 11:  [preauth]",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb 22 16:46:03 slave22 sshd[2758]: Received disconnect from 216.160.83.58: 11:  [preauth]",
+      "start": "2023-02-22T16:46:03.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "success",
+      "type": [
+        "end"
+      ],
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "action": "ssh_login"
+    },
+    "host": {
+      "hostname": "slave22"
+    },
+    "process": {
+      "pid": 2758,
+      "name": "sshd"
+    },
+    "message": "Received disconnect from 216.160.83.58: 11:  [preauth]",
+    "related": {
+      "hosts": [
+        "slave22"
+      ],
+      "ip": [
+        "216.160.83.58"
+      ]
+    },
+    "source": {
+      "ip": "216.160.83.58",
+      "address": "216.160.83.58"
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb 22 16:48:04 slave22 sshd[2805]: Accepted publickey for drewr from 69.245.39.97 port 34202 ssh2: RSA 01:67:32:d9:b3:20:5d:2d:5f:b4:35:c5:a5:8b:0a:5e",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb 22 16:48:04 slave22 sshd[2805]: Accepted publickey for drewr from 69.245.39.97 port 34202 ssh2: RSA 01:67:32:d9:b3:20:5d:2d:5f:b4:35:c5:a5:8b:0a:5e",
+      "start": "2023-02-22T16:48:04.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "success",
+      "type": [
+        "access",
+        "allowed"
+      ],
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "action": "ssh_login"
+    },
+    "host": {
+      "hostname": "slave22"
+    },
+    "process": {
+      "pid": 2805,
+      "name": "sshd"
+    },
+    "message": "Accepted publickey for drewr from 69.245.39.97 port 34202 ssh2: RSA 01:67:32:d9:b3:20:5d:2d:5f:b4:35:c5:a5:8b:0a:5e",
+    "related": {
+      "hosts": [
+        "slave22"
+      ],
+      "user": [
+        "drewr"
+      ],
+      "ip": [
+        "69.245.39.97"
+      ]
+    },
+    "user": {
+      "name": "drewr"
+    },
+    "source": {
+      "ip": "69.245.39.97",
+      "port": 34202,
+      "address": "69.245.39.97"
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb 22 16:48:04 slave22 sshd[2805]: pam_unix(sshd:session): session opened for user drewr by (uid=0)",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb 22 16:48:04 slave22 sshd[2805]: pam_unix(sshd:session): session opened for user drewr by (uid=0)",
+      "start": "2023-02-22T16:48:04.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "success",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "hostname": "slave22"
+    },
+    "process": {
+      "pid": 2805,
+      "name": "sshd"
+    },
+    "message": "pam_unix(sshd:session): session opened for user drewr by (uid=0)",
+    "related": {
+      "hosts": [
+        "slave22"
+      ],
+      "user": [
+        "drewr"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "drewr"
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "Feb 22 16:59:35 slave22 sshd[3064]: Disconnecting: Too many authentication failures for root [preauth]",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "Feb 22 16:59:35 slave22 sshd[3064]: Disconnecting: Too many authentication failures for root [preauth]",
+      "start": "2023-02-22T16:59:35.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "failure",
+      "type": [
+        "access",
+        "denied"
+      ],
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "action": "ssh_login"
+    },
+    "host": {
+      "hostname": "slave22"
+    },
+    "process": {
+      "pid": 3064,
+      "name": "sshd"
+    },
+    "message": "Disconnecting: Too many authentication failures for root [preauth]",
+    "related": {
+      "hosts": [
+        "slave22"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    }
+  }
+]
