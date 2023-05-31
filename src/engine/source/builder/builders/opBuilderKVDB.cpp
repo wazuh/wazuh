@@ -12,7 +12,7 @@
 #include "baseTypes.hpp"
 #include "syntax.hpp"
 
-#include <kvdb2/iKVDBHandler.hpp>
+#include <kvdb/iKVDBHandler.hpp>
 
 namespace builder::internals::builders
 {

@@ -7,8 +7,8 @@
 #include <set>
 #include <string>
 
-#include <kvdb2/kvdbSpace.hpp>
-#include <kvdb2/refCounter.hpp>
+#include <kvdb/kvdbSpace.hpp>
+#include <kvdb/refCounter.hpp>
 
 namespace kvdbManager
 {

@@ -3,7 +3,7 @@
 
 #include <api/api.hpp>
 #include <store/drivers/fileDriver.hpp>
-#include <kvdb2/kvdbManager.hpp>
+#include <kvdb/kvdbManager.hpp>
 
 namespace api::graph::handlers
 {

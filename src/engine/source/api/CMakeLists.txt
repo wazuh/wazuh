@@ -40,7 +40,7 @@ target_include_directories(api
     ${ENGINE_API_SOURCE_DIR}/catalog
     ${ENGINE_API_SOURCE_DIR}/graph
     ${ENGINE_API_SOURCE_DIR}/integration
-    ${ENGINE_API_SOURCE_DIR}/kvdb2
+    ${ENGINE_API_SOURCE_DIR}/kvdb
     ${ENGINE_API_SOURCE_DIR}/metrics
     ${ENGINE_API_SOURCE_DIR}/router
 )
@@ -51,7 +51,7 @@ target_link_libraries(api
     eMessages
     fmt
     json
-    kvdb2
+    kvdb
     metrics
     router
     store::fileDriver
