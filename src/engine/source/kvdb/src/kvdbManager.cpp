@@ -1,5 +1,5 @@
-#include <kvdb2/kvdbExcept.hpp>
-#include <kvdb2/kvdbManager.hpp>
+#include <kvdb/kvdbExcept.hpp>
+#include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
 

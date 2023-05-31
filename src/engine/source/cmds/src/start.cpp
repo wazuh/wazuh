@@ -23,7 +23,7 @@
 #include <cmds/details/stackExecutor.hpp>
 #include <hlp/logpar.hpp>
 #include <hlp/registerParsers.hpp>
-#include <kvdb2/kvdbManager.hpp>
+#include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
 #include <parseEvent.hpp> // Event
@@ -63,7 +63,6 @@ struct Options
     std::string fileStorage;
     // KVDB
     std::string kvdbPath;
-    std::string kvdb2Path;
     // Router
     std::vector<std::string> policy;
     int routerThreads;
@@ -129,7 +128,7 @@ void runStart(ConfHandler confManager)
     LOG_INFO("Logging initialized.");
 
     // KVDB config
-    const auto kvdb2Path = confManager->get<std::string>("server.kvdb2_path");
+    const auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
 
     // Router Config
     const auto routerThreads = confManager->get<int>("server.router_threads");
@@ -202,7 +201,7 @@ void runStart(ConfHandler confManager)
 
         // KVDB
         {
-            kvdbManager::KVDBManagerOptions kvdbOptions { kvdb2Path, "kvdb" };
+            kvdbManager::KVDBManagerOptions kvdbOptions { kvdbPath, "kvdb" };
             kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
@@ -452,10 +451,10 @@ void configure(CLI::App_p app)
         ->envname(ENGINE_STORE_PATH_ENV);
 
     // KVDB Module
-    serverApp->add_option("--kvdb2_path", options->kvdb2Path, "Sets the path to the KVDB2 folder.")
-        ->default_val(ENGINE_KVDB2_PATH)
+    serverApp->add_option("--kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
+        ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory)
-        ->envname(ENGINE_KVDB2_PATH_ENV);
+        ->envname(ENGINE_KVDB_PATH_ENV);
 
     // Router module
     serverApp

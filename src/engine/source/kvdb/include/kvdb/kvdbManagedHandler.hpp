@@ -1,7 +1,7 @@
 #ifndef _KVDBMANAGEDHANDLER_H
 #define _KVDBMANAGEDHANDLER_H
 
-#include <kvdb2/iKVDBHandlerManager.hpp>
+#include <kvdb/iKVDBHandlerManager.hpp>
 
 namespace kvdbManager
 {

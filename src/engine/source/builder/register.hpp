@@ -2,7 +2,7 @@
 #define _REGISTER_H
 
 #include <hlp/logpar.hpp>
-#include <kvdb2/kvdbManager.hpp>
+#include <kvdb/kvdbManager.hpp>
 #include <schemf/ischema.hpp>
 
 #include "builders/opBuilderFileOutput.hpp"

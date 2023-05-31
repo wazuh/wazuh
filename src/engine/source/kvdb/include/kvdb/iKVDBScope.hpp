@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include <kvdb2/iKVDBHandler.hpp>
+#include <kvdb/iKVDBHandler.hpp>
 
 namespace kvdbManager
 {

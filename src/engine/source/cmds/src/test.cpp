@@ -11,7 +11,7 @@
 #include <cmds/details/stackExecutor.hpp>
 #include <hlp/logpar.hpp>
 #include <hlp/registerParsers.hpp>
-#include <kvdb2/kvdbManager.hpp>
+#include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
 #include <name.hpp>
