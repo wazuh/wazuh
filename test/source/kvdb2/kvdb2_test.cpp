@@ -110,7 +110,6 @@ TEST_F(KVDB2Test, ScopeInfoSingle)
 {
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
     auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
-    dumpScopeInfo(scopeInfo);
     ASSERT_EQ(scopeInfo.size(), 0);
 }
 
@@ -119,7 +118,6 @@ TEST_F(KVDB2Test, ScopeInfoSingleOneHandler)
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
     auto handler = scope->getKVDBHandler("db_test");
     auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
-    dumpScopeInfo(scopeInfo);
     ASSERT_EQ(scopeInfo.size(), 1);
 }
 

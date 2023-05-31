@@ -79,8 +79,8 @@ void run(const Options& options)
 
     auto metricsManager = std::make_shared<metricsManager::MetricsManager>();
 
-    auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(options.kvdbPath, metricsManager);
-    g_exitHanlder.add([kvdb]() { kvdb->clear(); });
+    kvdbManager::KVDBManagerOptions kvdbOptions { options.kvdbPath, "kvdb" };
+    auto kvdb = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metricsManager);
 
     auto fileStore = std::make_shared<store::FileDriver>(options.fileStorage);
 
@@ -106,7 +106,7 @@ void run(const Options& options)
         builder::internals::dependencies deps;
         deps.logparDebugLvl = logparDebugLvl;
         deps.logpar = logpar;
-        deps.kvdbManager1 = kvdb;
+        deps.kvdbManager2 = kvdb;
         deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
         deps.schema = std::make_shared<schemf::Schema>();
         builder::internals::registerHelperBuilders(deps.helperRegistry, deps);

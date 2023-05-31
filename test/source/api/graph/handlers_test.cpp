@@ -76,7 +76,8 @@ protected:
 
         m_spMockStore = std::make_shared<MockStore>();
         auto metrics = std::make_shared<metricsManager::MetricsManager>();
-        auto kvdb = std::make_shared<kvdb_manager::KVDBManager>(cmd::ENGINE_KVDB_PATH, metrics);
+        kvdbManager::KVDBManagerOptions kvdbOptions { cmd::ENGINE_KVDB2_PATH, "kvdb" };
+        auto kvdb = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metrics);
         graphConfig = {m_spMockStore, kvdb};
     }
 };

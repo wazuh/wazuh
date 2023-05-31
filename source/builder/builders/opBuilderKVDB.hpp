@@ -5,9 +5,7 @@
 #include <memory>
 
 #include <defs/idefinitions.hpp>
-#include <kvdb/kvdbManager.hpp>
 #include <kvdb2/kvdbManager.hpp>
-#include <kvdb2/kvdbScope.hpp>
 
 #include "expression.hpp"
 #include "registry.hpp"
