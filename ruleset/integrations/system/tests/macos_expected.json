@@ -1,0 +1,128 @@
+[
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: DEAD_PROCESS: 10922 ttys006",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: DEAD_PROCESS: 10922 ttys006",
+      "start": "2023-05-31T09:47:16.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "success",
+      "type": [
+        "access",
+        "allowed",
+        "end"
+      ],
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "action": "ssh_login"
+    },
+    "host": {
+      "hostname": "jal"
+    },
+    "message": "jizquierdo [priv][10917]: DEAD_PROCESS: 10922 ttys006",
+    "related": {
+      "hosts": [
+        "jal"
+      ],
+      "user": [
+        "jizquierdo"
+      ]
+    },
+    "process": {
+      "name": "sshd",
+      "tty": {
+        "char_device": {
+          "major": "006"
+        }
+      }
+    },
+    "user": {
+      "name": "jizquierdo"
+    },
+    "~process": {
+      "tty": {
+        "char_device": {
+          "major": "006"
+        }
+      }
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "location": "/dev/stdin",
+      "message": "May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: USER_PROCESS: 10922 tty/006",
+      "decoders": [
+        "core-wazuh-message",
+        "core-localfile",
+        "integrations",
+        "syslog",
+        "system-auth"
+      ],
+      "source": "logcollector"
+    },
+    "event": {
+      "original": "May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: USER_PROCESS: 10922 tty/006",
+      "start": "2023-05-31T09:47:16.000Z",
+      "kind": "event",
+      "module": "system",
+      "dataset": "system-auth",
+      "outcome": "success",
+      "type": [
+        "access",
+        "allowed",
+        "start"
+      ],
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "action": "ssh_login"
+    },
+    "host": {
+      "hostname": "jal"
+    },
+    "message": "jizquierdo [priv][10917]: USER_PROCESS: 10922 tty/006",
+    "related": {
+      "hosts": [
+        "jal"
+      ],
+      "user": [
+        "jizquierdo"
+      ]
+    },
+    "process": {
+      "name": "sshd",
+      "tty": {
+        "char_device": {
+          "major": "006"
+        }
+      }
+    },
+    "user": {
+      "name": "jizquierdo"
+    },
+    "~process": {
+      "tty": {
+        "char_device": {
+          "major": "006"
+        }
+      }
+    }
+  }
+]
