@@ -4,7 +4,8 @@ sources:
   - decoder/syslog/0
 
 metadata:
-  module: system-auth
+  module: system
+  dataset: system-auth
   title: system-auth logs
   description: Decoder for system athenticated action logs.
   compatibility: This integration was tested with logs from OS like Ubuntu 12.04, Centos 7, and macOS Sierra.
@@ -61,15 +62,24 @@ normalize:
       - message: subsystem request for <~system.auth.ssh.subsystem> by user <user.name>
       - message: "<~system.auth.ssh.session.action>: Too many authentication <~system.auth.ssh.event> for <user.name> [preauth]"
       - message: "<user.name> [<~>][<~>]: <~system.auth.ssh.event>: <~system.auth.ssh.session.process_id> tty<~/literal/\\/>?<~/literal/s><~process.tty.char_device.major>"
+      - message: "<~system.auth.ssh.event>: Read from socket failed: Connection reset by peer [preauth]"
+      - message: "Received <~system.auth.ssh.event> from <source.ip>: <~>:  [<~>]"
 
-  - check: ~system.auth.ssh.event=="Accepted" OR ~system.auth.ssh.event=="USER_PROCESS" OR ~system.auth.ssh.event=="DEAD_PROCESS"
+  - check: ~system.auth.ssh.event=="Accepted" OR ~system.auth.ssh.event=="USER_PROCESS"
     map:
       - event.type: +array_append/access/allowed
       - event.category: +array_append/authentication/session
       - event.action: "ssh_login"
       - event.outcome: "success"
 
-  - check: ~system.auth.ssh.event=="Invalid" OR ~system.auth.ssh.event=="Failed" OR ~system.auth.ssh.event=="failures"
+  - check: ~system.auth.ssh.event=="DEAD_PROCESS" OR ~system.auth.ssh.event=="disconnect"
+    map:
+      - event.type: +array_append/end
+      - event.category: +array_append/authentication/session
+      - event.action: "ssh_login"
+      - event.outcome: "success"
+
+  - check: ~system.auth.ssh.event=="Invalid" OR ~system.auth.ssh.event=="Failed" OR ~system.auth.ssh.event=="failures" OR ~system.auth.ssh.event=="fatal"
     map:
       - event.type: +array_append/access/denied
       - event.category: +array_append/authentication/session
@@ -79,8 +89,8 @@ normalize:
   - check:
       - process.name: "sudo"
     logpar:
-      - message: "<user.name> : <~system.auth.sudo.error> ; TTY=tty<~/literal/\\/>?<~/literal/s><~process.tty.char_device.major> ; PWD=<~system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<~system.auth.sudo.command>"
-      - message: "<user.name> : TTY=tty<~/literal/\\/>?<~/literal/s><~process.tty.char_device.major> ; PWD=<~system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<~system.auth.sudo.command>"
+      - message: "<user.name> : <~system.auth.sudo.error> ; TTY=tty<~/literal/\\/>?<~/literal/s><~system.process.tty.char_device.major> ; PWD=<~system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<~system.auth.sudo.command>"
+      - message: "<user.name> : TTY=tty<~/literal/\\/>?<~/literal/s><~system.process.tty.char_device.major> ; PWD=<~system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<~system.auth.sudo.command>"
     map:
       - event.category: +array_append/process
       - event.type: +array_append/start
@@ -93,6 +103,13 @@ normalize:
       - message: "pam_unix\\(<~>:<~>\\): session <~system.auth.pam.session.action> for user <~system.auth.pam.foruser.name>"
       - message: "pam_succeed_if\\(<~>:<~>\\): requirement <~> not met by user <user.name>"
       - message: "pam_unix\\(<~>:<~>\\): authentication <~system.auth.pam.session.action>; logname=<~system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<~system.auth.pam.tty>?<~/literal/> ruser=<~system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/>  user=<user.name>?<~/literal/>"
+    map:
+      - event.category: +array_append/authentication/session
+
+  - check:
+      - message: +contains/PAM
+    logpar:
+      - message: "PAM <~> more authentication <~system.auth.pam.session.action>; logname=<~system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<~system.auth.pam.tty>?<~/literal/> ruser=<~system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/>  user=<user.name>?<~/literal/>"
     map:
       - event.category: +array_append/authentication/session
 
@@ -111,7 +128,7 @@ normalize:
     map:
       - event.type: +array_append/start
 
-  - check: ~system.auth.pam.session.action=="closed" OR ~system.auth.ssh.event=="DEAD_PROCESS"
+  - check: ~system.auth.pam.session.action=="closed"
     map:
       - event.type: +array_append/end
 
@@ -122,7 +139,7 @@ normalize:
       - message: "group added to <file.name>: name=<group.name>(?, GID=<group.id>)"
       - message: "<~system.auth.event.outcome> adding user '<user.name>'(?,<~>)"
 
-  - check: ~system.auth.event.outcome=="failed" OR ~system.auth.pam.session.action=="failure" OR ~system.auth.pam.session.action=="failures"
+  - check: ~system.auth.event.outcome=="failed" OR ~system.auth.pam.session.action=="failure"
     map:
       - event.outcome: "failure"
 
@@ -153,17 +170,13 @@ normalize:
   - map:
       - user.name: +replace/"/
       - user.name: +replace/'/
-      - ~system.auth.pam.foruser.name: +replace/"/
-      - ~system.auth.pam.foruser.name: +replace/'/
-      - ~system.auth.pam.byuser.name: +replace/"/
-      - ~system.auth.pam.byuser.name: +replace/'/
       - user.effective.name: +replace/"/
       - user.effective.name: +replace/'/
       - source.address: $source.ip
       - related.user: +array_append/$user.name/$user.effective.name
       - related.ip: +array_append/$source.ip
       - process.command_line: $~system.auth.sudo.command
-      - process.tty.char_device.major: $~process.tty.char_device.major
+      - process.tty.char_device.major: $~system.process.tty.char_device.major
       - process.working_directory: $~system.auth.sudo.pwd
       - ~TAG: +delete
       - ~system: +delete
