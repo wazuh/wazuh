@@ -3,3 +3,7 @@ name: policy/wazuh/0
 integrations:
   - integration/wazuh-core/0
   - integration/syslog/0
+  - integration/system/0
+  - integration/windows/0
+  - integration/apache-http/0
+  - integration/suricata/0
