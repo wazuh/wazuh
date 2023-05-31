@@ -2,7 +2,6 @@
 #define _REGISTER_H
 
 #include <hlp/logpar.hpp>
-#include <kvdb/kvdbManager.hpp>
 #include <kvdb2/kvdbManager.hpp>
 #include <schemf/ischema.hpp>
 
@@ -31,7 +30,6 @@ struct dependencies
 {
     size_t logparDebugLvl;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
-    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager1; // only use for graph and test
     std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope;
     std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager2;
     std::shared_ptr<Registry<HelperBuilder>> helperRegistry;

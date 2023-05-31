@@ -23,7 +23,6 @@
 #include <cmds/details/stackExecutor.hpp>
 #include <hlp/logpar.hpp>
 #include <hlp/registerParsers.hpp>
-#include <kvdb/kvdbManager.hpp>
 #include <kvdb2/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
@@ -130,7 +129,6 @@ void runStart(ConfHandler confManager)
     LOG_INFO("Logging initialized.");
 
     // KVDB config
-    const auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
     const auto kvdb2Path = confManager->get<std::string>("server.kvdb2_path");
 
     // Router Config
@@ -177,7 +175,6 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<router::Router> router;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
-    std::shared_ptr<kvdb_manager::KVDBManager> kvdb;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
     std::shared_ptr<base::queue::ConcurrentQueue<base::Event>> eventQueue;
@@ -217,9 +214,6 @@ void runStart(ConfHandler confManager)
 
             auto kvdbScope = kvdbManager->getKVDBScope("api");
             api::kvdb::handlers::registerHandlers(kvdbManager, kvdbScope, api);
-
-            // KVDB1
-            kvdb = std::make_shared<kvdb_manager::KVDBManager>(kvdbPath, metrics);
 
             LOG_DEBUG("KVDB API registered.");
         }
@@ -272,7 +266,6 @@ void runStart(ConfHandler confManager)
             builder::internals::dependencies deps;
             deps.logparDebugLvl = 0;
             deps.logpar = logpar;
-            deps.kvdbManager1 = kvdb;
             deps.kvdbScope = kvdbManager->getKVDBScope("builder");
             deps.kvdbManager2 = kvdbManager;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
@@ -331,7 +324,7 @@ void runStart(ConfHandler confManager)
             // Register the Graph command
             api::graph::handlers::Config graphConfig {
                 store,
-                kvdb,
+                kvdbManager,
             };
             api::graph::handlers::registerHandlers(graphConfig, api);
             LOG_DEBUG("Graph API registered.");
@@ -459,11 +452,6 @@ void configure(CLI::App_p app)
         ->envname(ENGINE_STORE_PATH_ENV);
 
     // KVDB Module
-    serverApp->add_option("--kvdb_path", options->kvdbPath, "Sets the path to the KVDB folder.")
-        ->default_val(ENGINE_KVDB_PATH)
-        ->check(CLI::ExistingDirectory)
-        ->envname(ENGINE_KVDB_PATH_ENV);
-
     serverApp->add_option("--kvdb2_path", options->kvdb2Path, "Sets the path to the KVDB2 folder.")
         ->default_val(ENGINE_KVDB2_PATH)
         ->check(CLI::ExistingDirectory)
