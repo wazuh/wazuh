@@ -7,8 +7,8 @@
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
-#include <kvdb2/kvdbManager.hpp>
-#include <kvdb2/kvdbExcept.hpp>
+#include <kvdb/kvdbManager.hpp>
+#include <kvdb/kvdbExcept.hpp>
 #include <opBuilderKVDB.hpp>
 #include <testsCommon.hpp>
 

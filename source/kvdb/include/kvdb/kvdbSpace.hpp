@@ -1,8 +1,8 @@
 #ifndef _KVDBSPACE_H
 #define _KVDBSPACE_H
 
-#include <kvdb2/iKVDBHandler.hpp>
-#include <kvdb2/kvdbManagedHandler.hpp>
+#include <kvdb/iKVDBHandler.hpp>
+#include <kvdb/kvdbManagedHandler.hpp>
 
 #include "rocksdb/db.h"
 

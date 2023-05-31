@@ -1,7 +1,7 @@
 #include <filesystem>
 #include <gtest/gtest.h>
-#include <kvdb2/kvdbManager.hpp>
-#include <kvdb2/kvdbScope.hpp>
+#include <kvdb/kvdbManager.hpp>
+#include <kvdb/kvdbScope.hpp>
 #include <testsCommon.hpp>
 
 #include <api/kvdb/handlers.hpp>

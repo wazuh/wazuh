@@ -6,11 +6,11 @@
 #include <map>
 #include <mutex>
 
-#include <kvdb2/iKVDBHandlerManager.hpp>
-#include <kvdb2/iKVDBManager.hpp>
-#include <kvdb2/kvdbHandlerCollection.hpp>
-#include <kvdb2/kvdbScope.hpp>
-#include <kvdb2/kvdbSpace.hpp>
+#include <kvdb/iKVDBHandlerManager.hpp>
+#include <kvdb/iKVDBManager.hpp>
+#include <kvdb/kvdbHandlerCollection.hpp>
+#include <kvdb/kvdbScope.hpp>
+#include <kvdb/kvdbSpace.hpp>
 
 #include <utils/baseMacros.hpp>
 
