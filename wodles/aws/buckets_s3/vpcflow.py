@@ -7,10 +7,10 @@ try:
 except ImportError:
     print('ERROR: boto3 module is required.')
     sys.exit(4)
-import botocore
+
 import operator
 from datetime import datetime
-from datetime import timedelta
+
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 

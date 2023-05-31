@@ -1,15 +1,10 @@
 import sys
-import botocore
 import re
 from os import path
 from datetime import datetime
-from datetime import timedelta
 from time import mktime
 
 import aws_bucket
-
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
 
 
 class AWSConfigBucket(aws_bucket.AWSLogsBucket):

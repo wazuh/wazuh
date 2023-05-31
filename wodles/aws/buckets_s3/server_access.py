@@ -2,7 +2,6 @@ import sys
 from os import path
 import botocore
 import re
-from datetime import datetime
 
 from aws_bucket import INVALID_CREDENTIALS_ERROR_CODE, INVALID_CREDENTIALS_ERROR_MESSAGE
 from aws_bucket import INVALID_REQUEST_TIME_ERROR_CODE, INVALID_REQUEST_TIME_ERROR_MESSAGE

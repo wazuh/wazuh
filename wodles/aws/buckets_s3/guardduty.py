@@ -11,6 +11,7 @@ GUARDDUTY_DEPRECATED_MESSAGE = 'The functionality to process GuardDuty logs stor
                                'in {release}. Consider configuring GuardDuty to store its findings directly in an S3 ' \
                                'bucket instead. Check {url} for more information.'
 
+
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
@@ -27,8 +28,8 @@ class AWSGuardDutyBucket(AWSCustomBucket):
     def check_guardduty_type(self):
         try:
             return \
-                'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
-                                                                Delimiter='/', MaxKeys=1)
+                    'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
+                                                                    Delimiter='/', MaxKeys=1)
         except Exception as err:
             if hasattr(err, 'message'):
                 aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
