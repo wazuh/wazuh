@@ -1,13 +1,15 @@
-/*
 #include <vector>
 
 #include <gtest/gtest.h>
 
 #include "opBuilderKVDB.hpp"
-#include "testUtils.hpp"
 #include <defs/mocks/failDef.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <rapidjson/document.h>
+#include <kvdb2/kvdbManager.hpp>
+#include <kvdb2/kvdbExcept.hpp>
+#include <metrics/metricsManager.hpp>
 
+using namespace metricsManager;
 using namespace base;
 namespace bld = builder::internals::builders;
 
@@ -21,21 +23,48 @@ class opBuilderKVDBMatchTest : public ::testing::Test
 {
 
 protected:
-    kvdb_manager::KVDBManager& kvdbManager = kvdb_manager::KVDBManager::get();
+    static constexpr auto DB_DIR = "/tmp/";
+    static constexpr auto DB_NAME = "kvdb";
+    static constexpr auto DB_NAME_1 = "TEST_DB";
+    std::shared_ptr<IMetricsManager> m_manager;
+    std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+    std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope;
 
     void SetUp() override
     {
-        auto varHandle = kvdbManager->getHandler("TEST_DB", true);
-        ASSERT_FALSE(std::holds_alternative<base::Error>(varHandle));
+        m_manager = std::make_shared<MetricsManager>();
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions { DB_DIR, DB_NAME };
+        kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
+
+        kvdbScope = kvdbManager->getKVDBScope("builder_test");
+        auto err = kvdbManager->createDB(DB_NAME_1);
+        ASSERT_FALSE(err);
+        auto result = kvdbScope->getKVDBHandler(DB_NAME_1);
+        ASSERT_FALSE(std::holds_alternative<base::Error>(result));
     }
 
-    void TearDown() override { kvdbManager.unloadDB("TEST_DB"); }
+    void TearDown() override
+    {
+        try
+        {
+            kvdbManager->finalize();
+        }
+        catch (kvdbManager::KVDBException& e)
+        {
+            FAIL() << "KVDBException: " << e.what();
+        }
+
+        if (std::filesystem::exists(DB_DIR))
+        {
+            std::filesystem::remove_all(DB_DIR);
+        }
+    }
 };
 
 // Build ok
 TEST_F(opBuilderKVDBMatchTest, Builds)
 {
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"field2match": "+kvdb_match/TEST_DB"}
     })"};
@@ -45,7 +74,7 @@ TEST_F(opBuilderKVDBMatchTest, Builds)
 // Build incorrect number of arguments
 TEST_F(opBuilderKVDBMatchTest, Builds_incorrect_number_of_arguments)
 {
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"field2match": "+kvdb_match"}
     })"};
@@ -56,7 +85,7 @@ TEST_F(opBuilderKVDBMatchTest, Builds_incorrect_number_of_arguments)
 // Build invalid DB
 TEST_F(opBuilderKVDBMatchTest, Builds_incorrect_invalid_db)
 {
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"field2match": "+kvdb_match/INVALID_DB"}
     })"};
@@ -75,7 +104,7 @@ TEST_F(opBuilderKVDBMatchTest, Single_level_target_ok)
     auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     kvdb->write("KEY", "DUMMY"); // TODO: Remove DUMMY Use non-value overload
 
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"field2match": "+kvdb_match/TEST_DB"}
     })"};
@@ -113,7 +142,7 @@ TEST_F(opBuilderKVDBMatchTest, Multilevel_target_ok)
     auto kvdb = std::get<kvdb_manager::KVDBHandle>(res);
     kvdb->write("KEY", "DUMMY"); // TODO: Remove DUMMY Use non-value overload
 
-    Document doc {R"({
+    rapidjson::Document doc {R"({
         "check":
             {"a.b.field2match": "+kvdb_match/TEST_DB"}
     })"};
@@ -141,4 +170,3 @@ TEST_F(opBuilderKVDBMatchTest, Multilevel_target_ok)
 }
 
 } // namespace
-*/
