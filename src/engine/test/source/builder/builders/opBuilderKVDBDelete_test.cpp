@@ -1,4 +1,3 @@
-/*
 #include <gtest/gtest.h>
 
 #include <any>
@@ -8,7 +7,8 @@
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <kvdb2/kvdbManager.hpp>
+#include <kvdb2/kvdbExcept.hpp>
 #include <opBuilderKVDB.hpp>
 #include <testsCommon.hpp>
 
@@ -32,18 +32,51 @@ protected:
     static constexpr auto DB_NAME_2 = "TEST_DB_2";
     static constexpr auto DB_REF_NAME = "$test_db_name";
     static constexpr auto DB_DIR = "/tmp/";
+    static constexpr auto DB_NAME = "kvdb";
 
     std::shared_ptr<IMetricsManager> m_manager;
-    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager;
+    std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
+    std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope;
 
     void SetUp() override
     {
         initLogging();
+
+        // cleaning directory in order to start without garbage.
+        if (std::filesystem::exists(DB_DIR))
+        {
+            std::filesystem::remove_all(DB_DIR);
+        }
+
         m_manager = std::make_shared<MetricsManager>();
-        kvdbManager = std::make_shared<kvdb_manager::KVDBManager>(opBuilderKVDBDeleteTest::DB_DIR, m_manager);
+        kvdbManager::KVDBManagerOptions kvdbManagerOptions { DB_DIR, DB_NAME };
+        kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
+
+        kvdbManager->initialize();
+
+        kvdbScope = kvdbManager->getKVDBScope("builder_test");
+        auto err1 = kvdbManager->createDB(DB_NAME_1);
+        ASSERT_FALSE(err1);
+        auto err2 = kvdbManager->createDB(DB_NAME_2);
+        ASSERT_FALSE(err2);
     }
 
-    void TearDown() override {}
+    void TearDown() override
+    {
+        try
+        {
+            kvdbManager->finalize();
+        }
+        catch (kvdbManager::KVDBException& e)
+        {
+            FAIL() << "KVDBException: " << e.what();
+        }
+
+        if (std::filesystem::exists(DB_DIR))
+        {
+            std::filesystem::remove_all(DB_DIR);
+        }
+    }
 };
 
 // Build ok
@@ -80,15 +113,9 @@ TEST_F(opBuilderKVDBDeleteTest, buildKVDBDeleteWrongAmountOfParametersError)
 
 TEST_F(opBuilderKVDBDeleteTest, DeleteSuccessCases)
 {
-
     auto event = std::make_shared<Json>(R"({})");
     auto expectedEvent = std::make_shared<Json>(R"({})");
     expectedEvent->setBool(true, "/output");
-
-    {
-        auto res = kvdbManager->getHandler(DB_NAME_1, true);
-        ASSERT_FALSE(std::holds_alternative<base::Error>(res));
-    }
 
     const auto op1 =
         getOpBuilderKVDBDelete(kvdbManager)("/output", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>());
@@ -97,20 +124,10 @@ TEST_F(opBuilderKVDBDeleteTest, DeleteSuccessCases)
     ASSERT_TRUE(result);
     ASSERT_EQ(*result.payload(), *expectedEvent);
 
-    {
-        auto res = kvdbManager->getHandler(DB_NAME_1, false);
-        ASSERT_TRUE(std::holds_alternative<base::Error>(res));
-    }
-
     auto eventTemplate = std::string(R"({"test_db_name": ")") + DB_NAME_2 + R"("})";
     event = std::make_shared<Json>(eventTemplate.c_str());
     expectedEvent = std::make_shared<Json>(eventTemplate.c_str());
     expectedEvent->setBool(true, "/output");
-
-    {
-        auto res = kvdbManager->getHandler(DB_NAME_2, true);
-        ASSERT_FALSE(std::holds_alternative<base::Error>(res));
-    }
 
     const auto op2 =
         getOpBuilderKVDBDelete(kvdbManager)("/output", "", {DB_REF_NAME}, std::make_shared<defs::mocks::FailDef>());
@@ -118,12 +135,6 @@ TEST_F(opBuilderKVDBDeleteTest, DeleteSuccessCases)
     result = op2->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);
     ASSERT_EQ(*result.payload(), *expectedEvent);
-
-    {
-        auto res = kvdbManager->getHandler(DB_NAME_2, false);
-        ASSERT_TRUE(std::holds_alternative<base::Error>(res));
-    }
 }
 
 } // namespace
-*/
