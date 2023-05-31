@@ -43,7 +43,7 @@ utils.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = utils.TEST_LOG_FULL_PAT
 
 
 @pytest.mark.parametrize('only_logs_after', [None, "20220101"])
-@patch('wazuh_integration.WazuhIntegration.check_metadata_version')
+@patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version')
 @patch('wazuh_integration.sqlite3.connect')
 @patch('wazuh_integration.WazuhIntegration.get_client')
 @patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH)
@@ -65,14 +65,14 @@ def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, m
                                              iam_role_duration=utils.TEST_IAM_ROLE_DURATION, delete_file=True,
                                              skip_on_error=True, reparse=True, only_logs_after=only_logs_after)
     integration = aws_bucket.AWSBucket(**kwargs)
-    mock_wazuh_integration.assert_called_with(integration, service_name="s3", bucket=kwargs['bucket'],
-                                              db_name=integration.db_name, access_key=kwargs["access_key"], secret_key=kwargs["secret_key"],
+    mock_wazuh_integration.assert_called_with(integration, service_name="s3",
+                                              access_key=kwargs["access_key"], secret_key=kwargs["secret_key"],
                                               profile=kwargs["profile"], iam_role_arn=kwargs["iam_role_arn"],
                                               region=kwargs["region"], discard_field=kwargs["discard_field"],
                                               discard_regex=kwargs["discard_regex"],
                                               sts_endpoint=kwargs["sts_endpoint"],
                                               service_endpoint=kwargs["service_endpoint"],
-                                              iam_role_duration=kwargs["iam_role_duration"])
+                                              iam_role_duration=kwargs["iam_role_duration"], external_id=None)
 
     assert integration.retain_db_records == aws_bucket.MAX_RECORD_RETENTION
     assert integration.reparse == kwargs["reparse"]
@@ -852,9 +852,9 @@ def test_aws_bucket_check_bucket_handles_exceptions_on_endpoint_error():
 
 @pytest.mark.parametrize('prefix', [utils.TEST_PREFIX, None])
 @pytest.mark.parametrize('suffix', [utils.TEST_SUFFIX, None])
-@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
-def test_aws_logs_bucket_initializes_properly(mock_bucket, mock_integration, prefix, suffix):
+def test_aws_logs_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_database, prefix, suffix):
     """Test if the instances of AWSLogsBucket are created properly."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, bucket=utils.TEST_BUCKET,
                                        prefix=prefix, suffix=suffix)
@@ -863,8 +863,8 @@ def test_aws_logs_bucket_initializes_properly(mock_bucket, mock_integration, pre
 
 
 @pytest.mark.parametrize('organization_id', [utils.TEST_ORGANIZATION_ID, None])
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_logs_bucket_get_base_prefix(mock_integration, organization_id):
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_logs_bucket_get_base_prefix(mock_wazuh_aws_database, organization_id):
     """Test 'get_base_prefix' returns the expected prefix with the format <prefix>/AWSLogs/<suffix>/<organization_id>/"""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, aws_organization_id=organization_id,
                                        prefix=f'{utils.TEST_PREFIX}/', suffix=f'{utils.TEST_SUFFIX}/')
@@ -872,9 +872,9 @@ def test_aws_logs_bucket_get_base_prefix(mock_integration, organization_id):
     assert instance.get_base_prefix() == expected_base_prefix
 
 
-@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSLogsBucket.get_base_prefix', return_value='base_prefix/')
-def test_aws_logs_bucket_get_service_prefix(mock_base_prefix, mock_integration):
+def test_aws_logs_bucket_get_service_prefix(mock_base_prefix, mock_wazuh_aws_database):
     """Test 'get_service_prefix' method returns the expected prefix with the format <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
     instance.service = utils.TEST_SERVICE_NAME
@@ -882,17 +882,17 @@ def test_aws_logs_bucket_get_service_prefix(mock_base_prefix, mock_integration):
     assert instance.get_service_prefix(utils.TEST_ACCOUNT_ID) == expected_base_prefix
 
 
-@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSLogsBucket.get_service_prefix', return_value='service_prefix/')
-def test_aws_logs_bucket_get_full_prefix(mock_service_prefix, mock_integration):
+def test_aws_logs_bucket_get_full_prefix(mock_service_prefix, mock_wazuh_aws_database):
     """Test 'get_full_prefix' method returns the expected prefix with the format <service_prefix>/<region>."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, region=utils.TEST_REGION)
     expected_base_prefix = os.path.join('service_prefix', utils.TEST_REGION, '')
     assert instance.get_full_prefix(utils.TEST_ACCOUNT_ID, utils.TEST_REGION) == expected_base_prefix
 
 
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_logs_bucket_get_creation_date(mock_integration):
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_logs_bucket_get_creation_date(mock_wazuh_aws_database):
     """Test 'get_creation_date' method returns the expected date from a log filename."""
     log_file = {'Key': utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1}
     expected_result = 20190401
@@ -904,7 +904,7 @@ def test_aws_logs_bucket_get_alert_msg():
     """Test 'get_alert_msg' method returns messages with the valid format."""
     bucket = utils.get_mocked_aws_bucket()
 
-    with patch('wazuh_integration.WazuhIntegration.__init__'):
+    with patch('wazuh_integration.WazuhAWSDatabase.__init__'):
         instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
         aws_account_id = utils.TEST_ACCOUNT_ID
         expected_msg = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
@@ -926,8 +926,8 @@ def test_aws_logs_bucket_get_alert_msg():
      [{"example_key": "example_value", 'source': 'config'}])])
 @patch('json.load')
 @patch('aws_bucket.AWSBucket.decompress_file')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_logs_bucket_load_information_from_file(mock_integration, mock_decompress, mock_json_load,
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_logs_bucket_load_information_from_file(mock_wazuh_aws_database, mock_decompress, mock_json_load,
                                                     class_: AWSCloudTrailBucket or AWSConfigBucket,
                                                     json_file_content: dict, result: list[dict] or None):
     """Test 'load_information_from_file' method returns the expected information.
@@ -953,9 +953,9 @@ def test_aws_logs_bucket_load_information_from_file(mock_integration, mock_decom
 @pytest.mark.parametrize('secret_key', [utils.TEST_SECRET_KEY, None])
 @pytest.mark.parametrize('access_key', [utils.TEST_ACCESS_KEY, None])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
-def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_integration, mock_sts, access_key, secret_key, profile):
+def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_database, mock_sts, access_key, secret_key, profile):
     """Test if the instances of AWSCustomBucket are created properly."""
 
     mock_client = MagicMock()
@@ -981,8 +981,8 @@ def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_integration, m
 ])
 @patch('csv.DictReader', return_value=[{"version": "version", "account_id": "account_id"}])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_custom_bucket_load_information_from_file(mock_integration, mock_sts, mock_reader,
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_load_information_from_file(mock_wazuh_aws_database, mock_sts, mock_reader,
                                                       data: str, result: list[dict]):
     """Test 'load_information_from_file' method returns the expected information.
 
@@ -1019,8 +1019,8 @@ def test_aws_custom_bucket_load_information_from_file(mock_integration, mock_sts
      20210123)
 ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_custom_bucket_get_creation_date(mock_integration, mock_sts, log_file: dict, expected_date: int):
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_get_creation_date(mock_wazuh_aws_database, mock_sts, log_file: dict, expected_date: int):
     """Test AWSCustomBucket's get_creation_date method.
 
     Parameters
@@ -1036,8 +1036,8 @@ def test_aws_custom_bucket_get_creation_date(mock_integration, mock_sts, log_fil
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_custom_bucket_get_full_prefix(mock_integration, mock_sts):
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_get_full_prefix(mock_wazuh_aws_database, mock_sts):
     """Test 'get_full_prefix' method returns the expected prefix."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, prefix=utils.TEST_PREFIX)
 
@@ -1094,7 +1094,7 @@ def test_aws_custom_bucket_reformat_msg(macie_field: str, source: str, event_fie
         )
 
     with patch('wazuh_integration.WazuhIntegration.get_sts_client'), \
-            patch('wazuh_integration.WazuhIntegration.__init__'), \
+            patch('wazuh_integration.WazuhAWSDatabase.__init__'), \
             patch('aws_bucket.AWSBucket.reformat_msg') as mock_reformat:
         instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
 
@@ -1111,8 +1111,8 @@ def test_aws_custom_bucket_reformat_msg(macie_field: str, source: str, event_fie
 @patch('aws_bucket.AWSBucket.iter_files_in_bucket')
 @patch('aws_bucket.AWSCustomBucket.db_maintenance')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_custom_bucket_iter_regions_and_accounts(mock_integration, mock_sts, mock_maintenance,
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_iter_regions_and_accounts(mock_wazuh_aws_database, mock_sts, mock_maintenance,
                                                      mock_iter_files_bucket):
     """Test 'iter_regions_and_accounts' method makes the necessary calls in order to process the bucket's files."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
@@ -1131,8 +1131,8 @@ def test_aws_custom_bucket_iter_regions_and_accounts(mock_integration, mock_sts,
     (utils.TEST_LOG_FULL_PATH_CUSTOM_1, "", utils.TEST_REGION, False),
 ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_custom_bucket_already_processed(mock_integration, mock_sts,
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_already_processed(mock_wazuh_aws_database, mock_sts,
                                              custom_database, log_file: str, account_id: str, region: str,
                                              expected_result):
     """Test 'already_processed' method correctly determines if a log file has been processed.
@@ -1167,7 +1167,7 @@ def test_aws_custom_bucket_mark_complete():
     bucket = utils.get_mocked_aws_bucket()
 
     with patch('wazuh_integration.WazuhIntegration.get_sts_client'), \
-            patch('wazuh_integration.WazuhIntegration.__init__'), \
+            patch('wazuh_integration.WazuhAWSDatabase.__init__'), \
             patch('aws_bucket.AWSBucket.mark_complete'):
         instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
         instance.aws_account_id = utils.TEST_ACCOUNT_ID
@@ -1179,8 +1179,8 @@ def test_aws_custom_bucket_mark_complete():
 
 @pytest.mark.parametrize('aws_account_id', [utils.TEST_ACCOUNT_ID, None])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_custom_bucket_db_count_custom(mock_integration, mock_sts, custom_database, aws_account_id: str or None):
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_db_count_custom(mock_wazuh_aws_database, mock_sts, custom_database, aws_account_id: str or None):
     """Test 'db_count_region' method returns the number of rows in DB for an AWS account id.
 
     Parameters
@@ -1203,8 +1203,8 @@ def test_aws_custom_bucket_db_count_custom(mock_integration, mock_sts, custom_da
 @pytest.mark.parametrize('expected_db_count', [CUSTOM_SCHEMA_COUNT, 0])
 @pytest.mark.parametrize('aws_account_id', [utils.TEST_ACCOUNT_ID, None])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_custom_bucket_db_maintenance(mock_integration, mock_sts, aws_account_id, expected_db_count,
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_db_maintenance(mock_wazuh_aws_database, mock_sts, aws_account_id, expected_db_count,
                                           custom_database):
     """Test 'db_maintenance' method deletes rows from a table until the count is equal to 'retain_db_records'."""
     utils.database_execute_script(custom_database, TEST_CUSTOM_SCHEMA)
@@ -1228,8 +1228,8 @@ def test_aws_custom_bucket_db_maintenance(mock_integration, mock_sts, aws_accoun
 
 @patch('builtins.print')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('wazuh_integration.WazuhIntegration.__init__')
-def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_integration, mock_sts, mock_print, custom_database):
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_wazuh_aws_database, mock_sts, mock_print, custom_database):
     """Test 'db_maintenance' handles exceptions raised when trying to execute a query to the DB."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
 

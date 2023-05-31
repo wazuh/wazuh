@@ -51,7 +51,7 @@ def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
         Objects to be returned by list_objects_v2.
     """
     with patch('wazuh_integration.WazuhIntegration.get_sts_client'), \
-            patch('wazuh_integration.WazuhIntegration.__init__'):
+            patch('wazuh_integration.WazuhAWSDatabase.__init__'):
 
         instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess, bucket=utils.TEST_BUCKET,
                                            delete_file=delete_file, reparse=reparse)

@@ -27,7 +27,7 @@ def test_aws_waf_bucket_initializes_properly(mock_custom_bucket):
     (os.path.join(logs_path, 'WAF', 'aws-waf-invalid-json'), True),
     (os.path.join(logs_path, 'WAF', 'aws-waf-wrong-structure'), True),
 ])
-@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 @patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSCustomBucket.__init__)
@@ -54,7 +54,7 @@ def test_aws_waf_bucket_load_information_from_file(mock_custom_bucket, mock_buck
     (os.path.join(logs_path, 'WAF', 'aws-waf-invalid-json'), False, SystemExit),
     (os.path.join(logs_path, 'WAF', 'aws-waf-wrong-structure'), False, SystemExit),
 ])
-@patch('wazuh_integration.WazuhIntegration.__init__')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 @patch('aws_bucket.AWSCustomBucket.__init__', side_effect=aws_bucket.AWSCustomBucket.__init__)

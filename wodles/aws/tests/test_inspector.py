@@ -59,8 +59,8 @@ def test_aws_inspector_send_describe_findings(mock_aws_service):
 
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('only_logs_after', [utils.TEST_ONLY_LOGS_AFTER, None])
-@patch('wazuh_integration.WazuhIntegration.init_db')
-@patch('wazuh_integration.WazuhIntegration.close_db')
+@patch('wazuh_integration.WazuhAWSDatabase.init_db')
+@patch('wazuh_integration.WazuhAWSDatabase.close_db')
 @patch('inspector.AWSInspector.send_describe_findings')
 @patch('inspector.aws_tools.debug')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')

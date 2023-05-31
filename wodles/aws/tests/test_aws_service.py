@@ -19,8 +19,14 @@ TEST_DATETIME_STR = datetime.strftime(TEST_DATETIME, '%Y-%m-%dT%H:%M:%SZ')
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version')
+@patch('wazuh_integration.sqlite3.connect')
+@patch('wazuh_integration.WazuhIntegration.get_client')
+@patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH)
+@patch('wazuh_integration.utils.get_wazuh_version')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_service_initializes_properly(mock_wazuh_integration, mock_sts):
+def test_aws_service_initializes_properly(mock_wazuh_integration, mock_version, mock_path, mock_client, mock_connect,
+                                         mock_metadata, mock_sts):
     """Test if the instances of 'AWSService' are created properly."""
     mock_client = MagicMock()
     mock_sts.return_value = mock_client
@@ -34,15 +40,15 @@ def test_aws_service_initializes_properly(mock_wazuh_integration, mock_sts):
                                               sts_endpoint=utils.TEST_STS_ENDPOINT,
                                               service_endpoint=utils.TEST_SERVICE_ENDPOINT,
                                               iam_role_duration=utils.TEST_IAM_ROLE_DURATION)
-    instance = utils.get_mocked_service(**kwargs)
+    instance = aws_service.AWSService(**kwargs)
     mock_wazuh_integration.assert_called_with(instance, service_name=utils.TEST_SERVICE_NAME,
-                                              db_name=instance.db_name, access_key=kwargs["access_key"], secret_key=kwargs["secret_key"],
+                                              access_key=kwargs["access_key"], secret_key=kwargs["secret_key"],
                                               profile=kwargs["profile"], iam_role_arn=kwargs["iam_role_arn"],
                                               region=kwargs["region"], discard_field=kwargs["discard_field"],
                                               discard_regex=kwargs["discard_regex"],
                                               sts_endpoint=kwargs["sts_endpoint"],
                                               service_endpoint=kwargs["service_endpoint"],
-                                              iam_role_duration=kwargs["iam_role_duration"])
+                                              iam_role_duration=kwargs["iam_role_duration"], external_id=None)
     assert instance.service_name == utils.TEST_SERVICE_NAME
     assert instance.reparse
     assert instance.region == utils.TEST_REGION
@@ -58,16 +64,18 @@ def test_aws_service_check_region():
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_service_get_last_log_date(mock_wazuh_integration, mock_sts):
+def test_aws_service_get_last_log_date(mock_wazuh_integration, mock_wazuh_aws_database, mock_sts):
     """Test 'get_last_log_date' function returns a date with the expected format."""
     instance = utils.get_mocked_service(only_logs_after=utils.TEST_ONLY_LOGS_AFTER)
     assert instance.get_last_log_date() == utils.TEST_ONLY_LOGS_AFTER_WITH_FORMAT
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_service_format_message(mock_wazuh_integration, mock_sts):
+def test_aws_service_format_message(mock_wazuh_integration, mock_wazuh_aws_database, mock_sts):
     """Test 'format_message' function updates the expected fields of an event."""
     input_msg = {'service': 'service_name', 'createdAt': TEST_DATETIME, 'updatedAt': TEST_DATETIME, 'key': 'value'}
     output_msg = {'source': 'service_name', 'createdAt': TEST_DATETIME_STR, 'updatedAt': TEST_DATETIME_STR,

@@ -92,12 +92,58 @@ INVALID_REGION_ERROR_CODE = 22
 
 
 def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, profile: str = TEST_AWS_PROFILE,
-                                     db_name: str = None, access_key: str = None, secret_key: str = None,
+                                     access_key: str = None, secret_key: str = None,
                                      iam_role_arn: str = None, region: str = None, discard_field: str = None,
                                      discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                                      iam_role_duration: str = None, external_id: str = None):
     """Return a dict containing every parameter supported by WazuhIntegration. Used to simulate different ossec.conf
     configurations.
+
+    Parameters
+    ----------
+    service_name : str
+        Name of the service.
+    access_key : str
+        Access key value.
+    secret_key : str
+        Secret key value.
+    profile : str
+        AWS profile name.
+    iam_role_arn : str
+        IAM Role ARN value.
+    region : str
+        Region name.
+    discard_field : list of str
+        List of field names to be discarded.
+    discard_regex : str
+        Regex to be applied to the fields to determine if they should be discarded.
+    sts_endpoint : str
+        STS endpoint URL.
+    service_endpoint : str
+        Service endpoint URL.
+    iam_role_duration : str
+        The desired duration of the session that is going to be assumed.
+    external_id: str
+        AWS external ID for IAM Role assumption when using Security Lake.
+
+    Returns
+    -------
+    dict
+        A dict containing the configuration parameters with their default values.
+    """
+    return {'service_name': service_name, 'access_key': access_key,
+            'secret_key': secret_key, 'profile': profile, 'iam_role_arn': iam_role_arn,
+            'region': region, 'discard_field': discard_field, 'discard_regex': discard_regex,
+            'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration,
+            'external_id': external_id}
+
+
+def get_wazuh_aws_database_parameters(service_name: str = TEST_SERVICE_NAME, profile: str = TEST_AWS_PROFILE,
+                                      db_name: str = TEST_DATABASE, access_key: str = None, secret_key: str = None,
+                                      iam_role_arn: str = None, region: str = None, discard_field: str = None,
+                                      discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
+                                      iam_role_duration: str = None, external_id: str = None):
+    """Return a dict containing every parameter supported by WazuhAWSDatabase.
 
     Parameters
     ----------
@@ -265,16 +311,24 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
 
 
 def get_mocked_wazuh_integration(**kwargs):
-    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
-            patch('wazuh_integration.WazuhIntegration.get_client'), \
+    with patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
         return wazuh_integration.WazuhIntegration(**get_wazuh_integration_parameters(**kwargs))
 
 
+def get_mocked_wazuh_aws_database(**kwargs):
+    with patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version'), \
+            patch('wazuh_integration.WazuhIntegration.get_client'), \
+            patch('wazuh_integration.sqlite3.connect'), \
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
+        return wazuh_integration.WazuhAWSDatabase(**get_wazuh_aws_database_parameters(**kwargs))
+
+
 def get_mocked_aws_bucket(**kwargs):
-    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
+    with patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
@@ -283,7 +337,7 @@ def get_mocked_aws_bucket(**kwargs):
 
 
 def get_mocked_bucket(class_=aws_bucket.AWSBucket, **kwargs):
-    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
+    with patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
@@ -292,7 +346,7 @@ def get_mocked_bucket(class_=aws_bucket.AWSBucket, **kwargs):
 
 
 def get_mocked_service(class_=aws_service.AWSService, **kwargs):
-    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
+    with patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \

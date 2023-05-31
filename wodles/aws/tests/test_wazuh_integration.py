@@ -20,17 +20,13 @@ METADATA_TABLE_NAME = 'metadata'
 DB_TABLENAME = "test_table"
 
 
-@pytest.mark.parametrize('db_name', [None, utils.TEST_DATABASE])
-@patch('wazuh_integration.WazuhIntegration.check_metadata_version')
-@patch('wazuh_integration.sqlite3.connect')
 @patch('wazuh_integration.WazuhIntegration.get_client')
 @patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH)
 @patch('wazuh_integration.utils.get_wazuh_version')
-def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_client, mock_connect,
-                                                mock_metadata, db_name):
+def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_client):
     """Test if the instances of WazuhIntegration are created properly."""
-    mock_connect.return_value = MagicMock()
-    args = utils.get_wazuh_integration_parameters(db_name=db_name)
+
+    args = utils.get_wazuh_integration_parameters()
     integration = wazuh_integration.WazuhIntegration(**args)
     mock_path.assert_called_once()
     mock_version.assert_called_once()
@@ -43,87 +39,8 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
                                    sts_endpoint=args["sts_endpoint"], service_endpoint=args["service_endpoint"],
                                    iam_role_duration=args["iam_role_duration"], external_id=args["external_id"])
 
-    if db_name:
-        assert integration.db_path == os.path.join(integration.wazuh_wodle, f"{utils.TEST_DATABASE}.db")
-        mock_connect.assert_called_once()
-        integration.db_connector.cursor.assert_called_once()
-        mock_metadata.assert_called_once()
     assert integration.default_date == datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0,
                                                                  tzinfo=timezone.utc)
-
-
-def test_wazuh_integration_check_metadata_version_existing_table(custom_database):
-    """Test if `check_metadata_version` function updates the metadata value when the table already exists."""
-    # Populate the database
-    utils.database_execute_script(custom_database, TEST_METADATA_SCHEMA)
-
-    instance = utils.get_mocked_wazuh_integration(db_name=utils.TEST_DATABASE)
-    instance.db_connector = custom_database
-    instance.db_cursor = instance.db_connector.cursor()
-    old_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
-    assert old_metadata_value != utils.WAZUH_VERSION
-
-    instance.check_metadata_version()
-    new_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
-    assert new_metadata_value == utils.WAZUH_VERSION
-
-
-def test_wazuh_integration_check_metadata_version_no_table(custom_database):
-    """Test if `check_metadata_version` function updates the metadata value when the table does not exist."""
-    instance = utils.get_mocked_wazuh_integration(db_name=utils.TEST_DATABASE)
-    instance.db_connector = custom_database
-    instance.db_cursor = instance.db_connector.cursor()
-    instance.check_metadata_version()
-    new_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
-    assert new_metadata_value == utils.WAZUH_VERSION
-
-
-@pytest.mark.parametrize('table_exists', [True, False, sqlite3.Error])
-def test_wazuh_integration_check_metadata_version_handles_exceptions(custom_database, table_exists):
-    """Test if `check_metadata_version` function handles exceptions properly.
-
-    Parameters
-    ----------
-    table_exists : bool or sqlite3.Error
-        The value to be returned by the mocked database call.
-    """
-    mocked_table_exists = MagicMock()
-    if isinstance(table_exists, bool):
-        mocked_table_exists.fetchone.return_value = table_exists
-    else:
-        mocked_table_exists.fetchone.side_effect = table_exists
-    mocked_cursor = MagicMock()
-    mocked_cursor.execute.side_effect = [mocked_table_exists, sqlite3.OperationalError]
-
-    instance = utils.get_mocked_wazuh_integration(db_name=utils.TEST_DATABASE)
-    instance.db_connector = custom_database
-    instance.db_cursor = mocked_cursor
-
-    with pytest.raises(SystemExit) as e:
-        instance.check_metadata_version()
-    assert e.value.code == utils.METADATA_ERROR_CODE
-
-
-def test_wazuh_integration_delete_deprecated_tables(custom_database):
-    """Test `delete_deprecated_tables` function remove unwanted tables while keeping the rest intact."""
-    # Populate the database
-    utils.database_execute_script(custom_database, TEST_METADATA_DEPRECATED_TABLES_SCHEMA)
-
-    instance = utils.get_mocked_wazuh_integration(db_name=utils.TEST_DATABASE)
-    instance.db_connector = custom_database
-    instance.db_cursor = instance.db_connector.cursor()
-
-    for table in wazuh_integration.DEPRECATED_TABLES:
-        assert instance.db_cursor.execute(instance.sql_find_table, {'name': table}).fetchone()[0]
-    assert instance.db_cursor.execute(instance.sql_find_table, {'name': METADATA_TABLE_NAME}).fetchone()[0]
-
-    instance.delete_deprecated_tables()
-
-    # The deprecated tables were deleted
-    for table in wazuh_integration.DEPRECATED_TABLES:
-        assert not instance.db_cursor.execute(instance.sql_find_table, {'name': table}).fetchone()
-    # The metadata table is still present
-    assert instance.db_cursor.execute(instance.sql_find_table, {'name': METADATA_TABLE_NAME}).fetchone()[0]
 
 
 @patch('wazuh_integration.botocore')
@@ -189,9 +106,7 @@ def test_wazuh_integration_get_client_authentication(access_key, secret_key, pro
     else:
         expected_conn_args['region_name'] = region if region in wazuh_integration.DEFAULT_GOV_REGIONS else None
 
-    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
-            patch('wazuh_integration.sqlite3.connect'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
+    with patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
             patch('wazuh_integration.boto3.Session') as mock_boto:
         wazuh_integration.WazuhIntegration(**kwargs)
@@ -237,9 +152,7 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
     mock_boto_session.client.return_value = mock_sts_client
     mock_sts_client.assume_role.return_value = sts_role_assumption
 
-    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
-            patch('wazuh_integration.sqlite3.connect'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
+    with patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
             patch('wazuh_integration.boto3.Session', side_effect=[mock_boto_session, mock_sts_session]) as mock_session:
         instance = wazuh_integration.WazuhIntegration(**kwargs)
@@ -265,9 +178,7 @@ def test_wazuh_integration_get_client_handles_exceptions_on_botocore_error():
     mock_boto_session.client.side_effect = wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}},
                                                                                              'operation')
 
-    with patch('wazuh_integration.WazuhIntegration.check_metadata_version'), \
-            patch('wazuh_integration.sqlite3.connect'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
+    with patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=utils.WAZUH_VERSION), \
             patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
@@ -386,20 +297,37 @@ def test_wazuh_integration_send_msg_handles_exceptions():
         assert e.value.code == utils.SENDING_MESSAGE_SOCKET_ERROR_CODE
 
 
-def test_wazuh_integration_create_table():
+@patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH)
+@patch('wazuh_integration.utils.get_wazuh_version')
+@patch('wazuh_integration.WazuhIntegration.get_client')
+@patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version')
+@patch('wazuh_integration.sqlite3.connect')
+def test_wazuh_aws_database_initializes_properly(mock_connect, mock_metadata, mock_client, mock_version, mock_path):
+    """Test if the instances of WazuhAWSDatabase are created properly."""
+    mock_connect.return_value = MagicMock()
+    args = utils.get_wazuh_aws_database_parameters()
+    wazuh_aws_db = wazuh_integration.WazuhAWSDatabase(**args)
+
+    assert wazuh_aws_db.db_path == os.path.join(wazuh_aws_db.wazuh_wodle, f"{utils.TEST_DATABASE}.db")
+    mock_connect.assert_called_once()
+    wazuh_aws_db.db_connector.cursor.assert_called_once()
+    mock_metadata.assert_called_once()
+
+
+def test_wazuh_aws_database_create_table():
     """Test `create_table` function creates the table using the expected SQL."""
-    instance = utils.get_mocked_wazuh_integration()
+    instance = utils.get_mocked_wazuh_aws_database()
     instance.db_cursor = MagicMock()
     test_sql = "test"
     instance.create_table(test_sql)
     instance.db_cursor.execute.assert_called_with(test_sql)
 
 
-def test_wazuh_integration_create_table_handles_exceptions_when_table_not_created():
+def test_wazuh_aws_database_create_table_handles_exceptions_when_table_not_created():
     """Test `create_table` function handles exceptions raised
     and exits with the expected code when the table cannot be created.
     """
-    instance = utils.get_mocked_wazuh_integration()
+    instance = utils.get_mocked_wazuh_aws_database()
     instance.db_cursor = MagicMock()
     instance.db_cursor.execute.side_effect = Exception
 
@@ -414,8 +342,8 @@ def test_wazuh_integration_create_table_handles_exceptions_when_table_not_create
     [DB_TABLENAME],
     []
 ])
-@patch('wazuh_integration.WazuhIntegration.create_table')
-def test_wazuh_integration_db_initialization(mock_create_table, table_list):
+@patch('wazuh_integration.WazuhAWSDatabase.create_table')
+def test_wazuh_aws_database_db_initialization(mock_create_table, table_list):
     """Test `init_db` function checks if the required table exists and creates it if not.
 
     Parameters
@@ -423,7 +351,7 @@ def test_wazuh_integration_db_initialization(mock_create_table, table_list):
     table_list : list of str
         Table list to be returned by the mocked database query.
     """
-    instance = utils.get_mocked_wazuh_integration()
+    instance = utils.get_mocked_wazuh_aws_database()
     instance.db_cursor = MagicMock()
     instance.db_cursor.execute.return_value = [(x,) for x in table_list]
     instance.db_table_name = DB_TABLENAME
@@ -436,9 +364,9 @@ def test_wazuh_integration_db_initialization(mock_create_table, table_list):
         mock_create_table.assert_called_with(test_sql)
 
 
-def test_wazuh_integration_db_initialization_handles_exceptions():
+def test_wazuh_aws_database_db_initialization_handles_exceptions():
     """Test `init_db` function handles exception as expected."""
-    instance = utils.get_mocked_wazuh_integration()
+    instance = utils.get_mocked_wazuh_aws_database()
     instance.db_cursor = MagicMock()
     instance.db_cursor.execute.side_effect = sqlite3.OperationalError
 
@@ -447,9 +375,9 @@ def test_wazuh_integration_db_initialization_handles_exceptions():
     assert e.value.code == utils.METADATA_ERROR_CODE
 
 
-def test_wazuh_integration_close_db():
+def test_wazuh_aws_database_close_db():
     """Test `close_db` function closes the database objects properly."""
-    instance = utils.get_mocked_wazuh_integration()
+    instance = utils.get_mocked_wazuh_aws_database()
     instance.db_connector = MagicMock()
     instance.db_cursor = MagicMock()
 
@@ -458,3 +386,77 @@ def test_wazuh_integration_close_db():
     instance.db_connector.commit.assert_called_once()
     instance.db_cursor.execute.assert_called_with(instance.sql_db_optimize)
     instance.db_connector.close.assert_called_once()
+
+
+def test_wazuh_aws_database_check_metadata_version_existing_table(custom_database):
+    """Test if `check_metadata_version` function updates the metadata value when the table already exists."""
+    # Populate the database
+    utils.database_execute_script(custom_database, TEST_METADATA_SCHEMA)
+
+    instance = utils.get_mocked_wazuh_aws_database(db_name=utils.TEST_DATABASE)
+    instance.db_connector = custom_database
+    instance.db_cursor = instance.db_connector.cursor()
+    old_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
+    assert old_metadata_value != utils.WAZUH_VERSION
+
+    instance.check_metadata_version()
+    new_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
+    assert new_metadata_value == utils.WAZUH_VERSION
+
+
+def test_wazuh_aws_database_check_metadata_version_no_table(custom_database):
+    """Test if `check_metadata_version` function updates the metadata value when the table does not exist."""
+    instance = utils.get_mocked_wazuh_aws_database(db_name=utils.TEST_DATABASE)
+    instance.db_connector = custom_database
+    instance.db_cursor = instance.db_connector.cursor()
+    instance.check_metadata_version()
+    new_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
+    assert new_metadata_value == utils.WAZUH_VERSION
+
+
+@pytest.mark.parametrize('table_exists', [True, False, sqlite3.Error])
+def test_wazuh_aws_database_check_metadata_version_handles_exceptions(custom_database, table_exists):
+    """Test if `check_metadata_version` function handles exceptions properly.
+
+    Parameters
+    ----------
+    table_exists : bool or sqlite3.Error
+        The value to be returned by the mocked database call.
+    """
+    mocked_table_exists = MagicMock()
+    if isinstance(table_exists, bool):
+        mocked_table_exists.fetchone.return_value = table_exists
+    else:
+        mocked_table_exists.fetchone.side_effect = table_exists
+    mocked_cursor = MagicMock()
+    mocked_cursor.execute.side_effect = [mocked_table_exists, sqlite3.OperationalError]
+
+    instance = utils.get_mocked_wazuh_aws_database(db_name=utils.TEST_DATABASE)
+    instance.db_connector = custom_database
+    instance.db_cursor = mocked_cursor
+
+    with pytest.raises(SystemExit) as e:
+        instance.check_metadata_version()
+    assert e.value.code == utils.METADATA_ERROR_CODE
+
+
+def test_wazuh_aws_database_delete_deprecated_tables(custom_database):
+    """Test `delete_deprecated_tables` function remove unwanted tables while keeping the rest intact."""
+    # Populate the database
+    utils.database_execute_script(custom_database, TEST_METADATA_DEPRECATED_TABLES_SCHEMA)
+
+    instance = utils.get_mocked_wazuh_aws_database(db_name=utils.TEST_DATABASE)
+    instance.db_connector = custom_database
+    instance.db_cursor = instance.db_connector.cursor()
+
+    for table in wazuh_integration.DEPRECATED_TABLES:
+        assert instance.db_cursor.execute(instance.sql_find_table, {'name': table}).fetchone()[0]
+    assert instance.db_cursor.execute(instance.sql_find_table, {'name': METADATA_TABLE_NAME}).fetchone()[0]
+
+    instance.delete_deprecated_tables()
+
+    # The deprecated tables were deleted
+    for table in wazuh_integration.DEPRECATED_TABLES:
+        assert not instance.db_cursor.execute(instance.sql_find_table, {'name': table}).fetchone()
+    # The metadata table is still present
+    assert instance.db_cursor.execute(instance.sql_find_table, {'name': METADATA_TABLE_NAME}).fetchone()[0]

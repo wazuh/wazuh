@@ -30,12 +30,11 @@ MESSAGE_HEADER = "1:Wazuh-AWS:"
 class WazuhIntegration:
     """
     Class with common methods
-    :param db_name: Database name when instantiating buckets or services
     :param access_key: AWS access key id
     :param secret_key: AWS secret access key
     :param profile: AWS profile
     :param iam_role_arn: IAM Role
-    :param service name: Name of the service (s3 for services which stores logs in buckets)
+    :param service_name: Name of the service (s3 for services which stores logs in buckets)
     :param region: Region of service
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
     :param external_id: AWS external ID for IAM Role assumption
@@ -183,7 +182,20 @@ class WazuhIntegration:
 
 
 class WazuhAWSDatabase(WazuhIntegration):
-    def __init__(self, access_key, secret_key, profile, iam_role_arn, db_name=None,
+    """
+    Class with methods for buckets or services instances using db files
+    :param db_name: Database name when instantiating buckets or services
+    :param access_key: AWS access key id
+    :param secret_key: AWS secret access key
+    :param profile: AWS profile
+    :param iam_role_arn: IAM Role
+    :param db_name: Name of the database file
+    :param service_name: Name of the service (s3 for services which stores logs in buckets)
+    :param region: Region of service
+    :param iam_role_duration: The desired duration of the session that is going to be assumed.
+    :param external_id: AWS external ID for IAM Role assumption
+    """
+    def __init__(self, access_key, secret_key, profile, iam_role_arn, db_name,
                  service_name=None, region=None, discard_field=None,
                  discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
                  external_id=None):
