@@ -389,44 +389,45 @@ base::Expression KVDBDelete(const std::string& targetField,
 
     // Return Expression
     return base::Term<base::EngineOp>::create(name,
-                                              [=, targetField = std::move(targetField)](base::Event event)
-                                              {
-                                                  event->setBool(false, targetField);
+            [=, targetField = std::move(targetField)](base::Event event)
+            {
+                event->setBool(false, targetField);
 
-                                                  // Get DB name
-                                                  std::string resolvedDBName;
-                                                  if (Parameter::Type::REFERENCE == dbName.m_type)
-                                                  {
-                                                      const auto retval = event->getString(dbName.m_value);
-                                                      if (retval)
-                                                      {
-                                                          resolvedDBName = retval.value();
-                                                      }
-                                                      else
-                                                      {
-                                                          return base::result::makeFailure(event, failureTrace1);
-                                                      }
-                                                  }
-                                                  else
-                                                  {
-                                                      resolvedDBName = dbName.m_value;
-                                                  }
+                // Get DB name
+                std::string resolvedDBName;
+                if (Parameter::Type::REFERENCE == dbName.m_type)
+                {
+                    const auto retval = event->getString(dbName.m_value);
+                    if (retval)
+                    {
+                        resolvedDBName = retval.value();
+                    }
+                    else
+                    {
+                        return base::result::makeFailure(event, failureTrace1);
+                    }
+                }
+                else
+                {
+                    resolvedDBName = dbName.m_value;
+                }
 
-                                                  const auto deleteResult = kvdbManager->deleteDB(resolvedDBName);
-                                                  if (deleteResult)
-                                                  {
-                                                      return base::result::makeFailure(
-                                                          event,
-                                                          failureTrace
-                                                              + fmt::format("Database '{}' could not be deleted: {}",
-                                                                            resolvedDBName,
-                                                                            deleteResult.value().message));
-                                                  }
+                const auto deleteResult = kvdbManager->deleteDB(resolvedDBName);
+                if (std::holds_alternative<base::Error>(deleteResult))
+                {
+                    auto error = std::get<base::Error>(deleteResult);
+                    return base::result::makeFailure(
+                        event,
+                        failureTrace
+                            + fmt::format("Database '{}' could not be deleted: {}",
+                                        resolvedDBName,
+                                        error.message));
+                }
 
-                                                  event->setBool(true, targetField);
+                event->setBool(true, targetField);
 
-                                                  return base::result::makeSuccess(event, successTrace);
-                                              });
+                return base::result::makeSuccess(event, successTrace);
+            });
 }
 
 // TODO: some tests for this method are missing

@@ -50,7 +50,7 @@ protected:
 
         kvdbScope = kvdbManager->getKVDBScope("builder_test");
         auto err = kvdbManager->createDB(DB_NAME_1);
-        ASSERT_FALSE(err);
+        ASSERT_FALSE(std::holds_alternative<base::Error>(err));
         auto result = kvdbScope->getKVDBHandler(DB_NAME_1);
         ASSERT_FALSE(std::holds_alternative<base::Error>(result));
     }

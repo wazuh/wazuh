@@ -40,7 +40,7 @@ bool KVDBManager::skipAutoRemoveEnabled()
     return m_isShuttingDown;
 }
 
-rocksdb::ColumnFamilyHandle* KVDBManager::createColumnFamily(const std::string& name)
+std::variant<rocksdb::ColumnFamilyHandle*, base::Error> KVDBManager::createColumnFamily(const std::string& name)
 {
     rocksdb::ColumnFamilyHandle* cfHandle {nullptr};
     rocksdb::Status s {m_pRocksDB->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), name, &cfHandle)};
@@ -48,9 +48,10 @@ rocksdb::ColumnFamilyHandle* KVDBManager::createColumnFamily(const std::string& 
     if (s.ok())
     {
         m_mapCFHandles.insert(std::make_pair(name, cfHandle));
+        return cfHandle;
     }
 
-    return cfHandle;
+    return base::Error {fmt::format("Could not create DB {}, RocksDB Status: {}", name, s.ToString())};
 }
 
 std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeName)
@@ -147,7 +148,7 @@ void KVDBManager::finalizeMainDB()
     delete m_pRocksDB;
 }
 
-std::unique_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
+std::variant<std::unique_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
     rocksdb::ColumnFamilyHandle* cfHandle;
 
@@ -157,8 +158,12 @@ std::unique_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const std::string& dbN
     }
     else
     {
-        cfHandle = createColumnFamily(dbName);
-        assert(cfHandle);
+        auto createResult = createColumnFamily(dbName);
+        if (std::holds_alternative<base::Error>(createResult))
+        {
+            return std::get<base::Error>(createResult);
+        }
+        cfHandle = std::get<rocksdb::ColumnFamilyHandle*>(createResult);
     }
 
     auto retHandler = m_kvdbHandlerCollection->getKVDBHandler(m_pRocksDB, cfHandle, dbName, scopeName);
@@ -193,13 +198,14 @@ std::vector<std::string> KVDBManager::listDBs(const bool loaded)
     return spaces;
 }
 
-std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
+std::variant<bool, base::Error> KVDBManager::deleteDB(const std::string& name)
 {
     auto handlersInfo = getKVDBHandlersInfo();
 
-    if (handlersInfo.count(name))
+    auto refCount = handlersInfo.count(name);
+    if (refCount)
     {
-        return base::Error {fmt::format("Can not remove the DB. This is in use.")};
+        return base::Error {fmt::format("Could not remove the DB {}. Usage Reference Count: {}.", name, refCount)};
     }
 
     auto it = m_mapCFHandles.find(name);
@@ -207,37 +213,43 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
     {
         auto cfHandle = it->second;
         auto opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
-        assert(opStatus.ok());
-        m_mapCFHandles.erase(it);
+        if (opStatus.ok())
+        {
+            m_mapCFHandles.erase(it);
+        }
+        else
+        {
+            return base::Error {fmt::format("Could not remove the DB {}. RocksDB Status: {}", name, opStatus.ToString())};
+        }
     }
     else
     {
         return base::Error {fmt::format("The DB not exists.")};
     }
 
-    return std::nullopt;
+    return true;
 }
 
-std::optional<base::Error> KVDBManager::createDB(const std::string& name)
+std::variant<bool, base::Error> KVDBManager::createDB(const std::string& name)
 {
-    auto cfHandle = createColumnFamily(name);
-
-    if (nullptr != cfHandle)
+    if (existsDB(name))
     {
-        return std::nullopt;
+        return true;
     }
 
-    return base::Error {fmt::format("Could not create DB.")};
+    auto createResult = createColumnFamily(name);
+
+    if (std::holds_alternative<base::Error>(createResult))
+    {
+        return std::get<base::Error>(createResult);
+    }
+
+    return true;
 }
 
-std::optional<base::Error> KVDBManager::existsDB(const std::string& name)
+bool KVDBManager::existsDB(const std::string& name)
 {
-    if (m_mapCFHandles.count(name))
-    {
-        return std::nullopt;
-    }
-
-    return base::Error {fmt::format("The DB not exists.")};
+    return m_mapCFHandles.count(name) > 0;
 }
 
 std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()

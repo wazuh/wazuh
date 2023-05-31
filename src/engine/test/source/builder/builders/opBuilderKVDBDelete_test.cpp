@@ -56,9 +56,9 @@ protected:
 
         kvdbScope = kvdbManager->getKVDBScope("builder_test");
         auto err1 = kvdbManager->createDB(DB_NAME_1);
-        ASSERT_FALSE(err1);
+        ASSERT_FALSE(std::holds_alternative<base::Error>(err1));
         auto err2 = kvdbManager->createDB(DB_NAME_2);
-        ASSERT_FALSE(err2);
+        ASSERT_FALSE(std::holds_alternative<base::Error>(err2));
     }
 
     void TearDown() override
