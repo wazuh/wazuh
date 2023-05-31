@@ -55,14 +55,14 @@ public:
     std::map<std::string, RefInfo> getKVDBScopesInfo() override;
     std::map<std::string, RefInfo> getKVDBHandlersInfo() override;
 
-    std::unique_ptr<IKVDBHandler> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
+    std::variant<std::unique_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
     bool skipAutoRemoveEnabled() override;
 
     std::vector<std::string> listDBs(const bool loaded) override;
-    std::optional<base::Error> deleteDB(const std::string& name) override;
-    std::optional<base::Error> createDB(const std::string& name) override;
-    std::optional<base::Error> existsDB(const std::string& name) override;
+    std::variant<bool, base::Error> deleteDB(const std::string& name) override;
+    std::variant<bool, base::Error> createDB(const std::string& name) override;
+    bool existsDB(const std::string& name) override;
 
 private:
     /**
@@ -81,7 +81,7 @@ private:
 
     std::map<std::string, std::shared_ptr<KVDBScope>> m_mapScopes;
 
-    rocksdb::ColumnFamilyHandle* createColumnFamily(const std::string& name);
+    std::variant<rocksdb::ColumnFamilyHandle*, base::Error> createColumnFamily(const std::string& name);
 
     KVDBManagerOptions m_ManagerOptions;
 
