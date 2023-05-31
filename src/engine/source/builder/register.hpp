@@ -31,7 +31,6 @@ struct dependencies
 {
     size_t logparDebugLvl;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
-    std::shared_ptr<kvdb_manager::KVDBManager> kvdbManager1; // only use for graph and test
     std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope;
     std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager2;
     std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
