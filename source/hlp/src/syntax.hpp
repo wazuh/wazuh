@@ -1,6 +1,8 @@
 #ifndef _HLP_SYNTAX_HPP
 #define _HLP_SYNTAX_HPP
 
+#include <algorithm>
+
 #include "abstractParser.hpp"
 
 namespace hlp::syntax
@@ -157,17 +159,42 @@ inline Parser digit()
     };
 }
 
-inline Parser literal(const std::string lit)
+inline Parser literal(const std::string lit, bool caseSensitive = true)
 {
-    return [lit](std::string_view input) -> Result
+    if (caseSensitive)
     {
-        if (input.empty() || input.substr(0, lit.size()) != lit)
+        return [lit](std::string_view input) -> Result
         {
-            return abs::makeFailure<ResultT>(input, {});
-        }
+            if (input.empty() || input.substr(0, lit.size()) != lit)
+            {
+                return abs::makeFailure<ResultT>(input, {});
+            }
 
-        return abs::makeSuccess<ResultT>(input.substr(lit.size()));
-    };
+            return abs::makeSuccess<ResultT>(input.substr(lit.size()));
+        };
+    }
+    else
+    {
+        auto lowerLit = lit;
+        std::transform(lowerLit.begin(), lowerLit.end(), lowerLit.begin(), [](char c) { return std::tolower(c); });
+        return [lowerLit](std::string_view input) -> Result
+        {
+            if (input.size() < lowerLit.size())
+            {
+                return abs::makeFailure<ResultT>(input, {});
+            }
+
+            for (auto i = 0; i < lowerLit.size(); ++i)
+            {
+                if (std::tolower(input[i]) != lowerLit[i])
+                {
+                    return abs::makeFailure<ResultT>(input, {});
+                }
+            }
+
+            return abs::makeSuccess<ResultT>(input.substr(lowerLit.size()));
+        };
+    }
 }
 
 inline Parser toEnd(char endToken)
@@ -208,6 +235,19 @@ inline Parser toEnd()
         }
 
         return abs::makeSuccess<ResultT>(input.substr(input.size()));
+    };
+}
+
+inline Parser alnum()
+{
+    return [](std::string_view input) -> Result
+    {
+        if (input.empty() || !std::isalnum(input[0]))
+        {
+            return abs::makeFailure<ResultT>(input, {});
+        }
+
+        return abs::makeSuccess<ResultT>(input.substr(1));
     };
 }
 

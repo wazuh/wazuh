@@ -42,7 +42,7 @@ using namespace parser;
 //  * @param lst
 //  * @return
 //  */
-// parsec::Parser<json::Json> getBoolParser(std::string name, Stop endTokens, Options lst);
+Parser getBoolParser(const Params& params);
 
 // /**
 //  * Returns a parser which will accept numbers represented by the strings
@@ -322,7 +322,7 @@ Parser getEofParser(const Params& params);
 //  * provided, the default is " and \
 //  * @return parsec::Parser<json::Json>
 //  */
-// parsec::Parser<json::Json> getAlphanumericParser(const std::string& name, Stop endTokens, Options lst);
+Parser getAlphanumericParser(const Params& params);
 } // namespace parsers
 } // namespace hlp
 #endif // _HLP_HPP
