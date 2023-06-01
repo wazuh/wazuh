@@ -1,0 +1,32 @@
+{
+    "check": [
+        {
+            "wazuh.queue": 51
+        }
+    ],
+    "metadata": {
+        "author": {
+            "date": "07/03/2023",
+            "name": "Wazuh, Inc."
+        },
+        "compatibility": "Any service being tagged with the queue 51.",
+        "description": "Process events that have the Hostinfo queue in the standard OSSEC message format.\n",
+        "references": [
+            "https://documentation.wazuh.com/current/user-manual/reference/core-options.html"
+        ],
+        "title": "Hostinfo queue decoder.",
+        "versions": [
+            "Wazuh 4.*"
+        ]
+    },
+    "name": "decoder/core-hostinfo/0",
+    "normalize": [
+        {
+            "map": [
+                {
+                    "wazuh.decoders": "+array_append/core-hostinfo"
+                }
+            ]
+        }
+    ]
+}
