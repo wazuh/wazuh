@@ -83,31 +83,31 @@ protected:
 TEST_F(opBuilderKVDBDeleteTest, buildKVDBDeleteWithValue)
 {
     ASSERT_NO_THROW(KVDBDelete(
-        "/output", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBDeleteTest::kvdbManager));
+        "/output", "", {DB_NAME_1, "key1"}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBDeleteTest::kvdbScope));
 }
 
 TEST_F(opBuilderKVDBDeleteTest, buildKVDBDeleteWithReference)
 {
     ASSERT_NO_THROW(KVDBDelete(
-        "/output", "", {DB_REF_NAME}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBDeleteTest::kvdbManager));
+        "/output", "", {DB_REF_NAME, "key1"}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBDeleteTest::kvdbScope));
 }
 
 TEST_F(opBuilderKVDBDeleteTest, buildKVDBDeleteWrongAmountOfParametersError)
 {
     ASSERT_THROW(
-        KVDBDelete("/output", "", {}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBDeleteTest::kvdbManager),
+        KVDBDelete("/output", "", {}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBDeleteTest::kvdbScope),
         std::runtime_error);
     ASSERT_THROW(KVDBDelete("/output",
                             "",
-                            {DB_REF_NAME, "unexpected_key"},
+                            {DB_REF_NAME, "unexpected_key", "{other_key}"},
                             std::make_shared<defs::mocks::FailDef>(),
-                            opBuilderKVDBDeleteTest::kvdbManager),
+                            opBuilderKVDBDeleteTest::kvdbScope),
                  std::runtime_error);
     ASSERT_THROW(KVDBDelete("/output",
                             "",
                             {DB_REF_NAME, "unexpected_key", "unexpected_value"},
                             std::make_shared<defs::mocks::FailDef>(),
-                            opBuilderKVDBDeleteTest::kvdbManager),
+                            opBuilderKVDBDeleteTest::kvdbScope),
                  std::runtime_error);
 }
 
@@ -118,7 +118,7 @@ TEST_F(opBuilderKVDBDeleteTest, DeleteSuccessCases)
     expectedEvent->setBool(true, "/output");
 
     const auto op1 =
-        getOpBuilderKVDBDelete(kvdbManager)("/output", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>());
+        getOpBuilderKVDBDelete(kvdbScope)("/output", "", {DB_NAME_1, "keyString"}, std::make_shared<defs::mocks::FailDef>());
 
     auto result = op1->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);
@@ -130,7 +130,7 @@ TEST_F(opBuilderKVDBDeleteTest, DeleteSuccessCases)
     expectedEvent->setBool(true, "/output");
 
     const auto op2 =
-        getOpBuilderKVDBDelete(kvdbManager)("/output", "", {DB_REF_NAME}, std::make_shared<defs::mocks::FailDef>());
+        getOpBuilderKVDBDelete(kvdbScope)("/output", "", {DB_NAME_1, "keyString"}, std::make_shared<defs::mocks::FailDef>());
 
     result = op2->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);
