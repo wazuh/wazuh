@@ -1,46 +1,63 @@
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <fmt/format.h>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
-namespace hlp
+namespace
 {
-parsec::Parser<json::Json> getAlphanumericParser(const std::string& name, Stop, Options lst)
+using namespace hlp;
+using namespace hlp::parser;
+
+Mapper getMapper(std::string_view parsed, std::string_view targetField)
 {
-    if (!lst.empty())
+    return [parsed, targetField](json::Json& event)
+    {
+        event.setString(parsed, targetField);
+    };
+}
+
+SemParser getSemParser(const std::string& targetField)
+{
+    return [targetField](std::string_view parsed)
+    {
+        return getMapper(parsed, targetField);
+    };
+}
+
+syntax::Parser getSynParser()
+{
+    return syntax::combinators::many1(syntax::parsers::alnum());
+}
+} // namespace
+
+namespace hlp::parsers
+{
+Parser getAlphanumericParser(const Params& params)
+{
+    if (!params.options.empty())
     {
         throw std::runtime_error("alphanumeric parser doesn't accept parameters");
     }
 
-    return [name](std::string_view text, int index)
+    const auto synP = getSynParser();
+    const auto semP =
+        params.targetField.empty() ? noSemParser() : getSemParser(json::Json::formatJsonPath(params.targetField));
+
+    return [name = params.name, synP, semP](std::string_view txt)
     {
-        auto res = internal::eofError<json::Json>(text, index);
-        if (res.has_value())
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            return res.value();
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
-
-        const auto end = std::find_if(text.begin() + index, text.end(), [](char const& c) { return !std::isalnum(c); });
-
-        const auto endPos = end - text.begin();
-
-        if (endPos == index)
+        else
         {
-            return parsec::makeError<json::Json>(fmt::format("{}: Nothing to parse", name), endPos);
+            return abs::makeSuccess(SemToken {syntax::parsed(synR, txt), semP}, synR.remaining());
         }
-
-        json::Json alphaNumeric;
-        alphaNumeric.setString(std::string {text.substr(index, endPos - index)});
-
-        return parsec::makeSuccess<json::Json>(std::move(alphaNumeric), endPos);
     };
 }
-} // namespace hlp
+} // namespace hlp::parsers
