@@ -135,7 +135,7 @@ def truncate_monitored_files():
 
 
 @pytest.fixture(scope='function')
-def restart_wazuh_function(daemon=None):
+def restart_wazuh(daemon=None):
     """Restart all Wazuh daemons"""
     services.control_service("restart", daemon=daemon)
     yield
@@ -156,7 +156,7 @@ def configure_local_internal_options(request):
         try:
             local_internal_options = getattr(request.module, 'local_internal_options')
         except AttributeError:
-            raise AttributeError('Error when using the fixture "configure_local_internal_options_module", no '
+            raise AttributeError('Error when using the fixture "configure_local_internal_options", no '
                                  'parameter has been passed explicitly, nor is the variable local_internal_options '
                                  'found in the module.') from AttributeError
 

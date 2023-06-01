@@ -66,7 +66,7 @@ configuration = config.load_configuration_template(configs_path, config_paramete
 # Test function.
 @pytest.mark.parametrize('configuration, metadata', zip(configuration, metadata), ids=cases_ids)
 def test_invalid_signature_id(configuration, metadata, set_wazuh_configuration, truncate_monitored_files,
-                              prepare_custom_rules_file, restart_wazuh_function):
+                              prepare_custom_rules_file, restart_wazuh):
     '''
     description: Check that when a rule has an empty or invalid signature ID value (invalid format) assigned to the
                  if_sid option, the rule is ignored.
@@ -104,7 +104,7 @@ def test_invalid_signature_id(configuration, metadata, set_wazuh_configuration, 
         - prepare_custom_rules_file:
             type: fixture
             brief: Copies custom rules_file before test, deletes after test.
-        - restart_wazuh_function:
+        - restart_wazuh:
             type: fixture
             brief: Restart wazuh at the start of the module to apply configuration.
 
