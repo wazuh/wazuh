@@ -283,8 +283,6 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False) -
         Filters by field in section (i.e. included).
     raw : bool
         Whether to return the file content in raw or JSON format.
-    distinct : bool
-        Look for distinct values.
 
     Returns
     -------
