@@ -46,8 +46,8 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
 from wazuh_testing.modules.analysisd.testrule import patterns
-from wazuh_testing.utils.config import load_configuration_template, get_test_cases_data
-from wazuh_testing.tools.file_monitor import FileMonitor, generate_callback
+from wazuh_testing.tools import file_monitor
+from wazuh_testing.utils import config, callbacks
 
 from . import CONFIGS_PATH, TEST_CASES_PATH, RULES_SAMPLE_PATH
 
@@ -59,8 +59,8 @@ configs_path = Path(CONFIGS_PATH, 'config_signature_id_values.yaml')
 cases_path = Path(TEST_CASES_PATH, 'cases_null_signature_id.yaml')
 
 # Test configurations.
-config_parameters, metadata, cases_ids = get_test_cases_data(cases_path)
-configuration = load_configuration_template(configs_path, config_parameters, metadata)
+config_parameters, metadata, cases_ids = config.get_test_cases_data(cases_path)
+configuration = config.load_configuration_template(configs_path, config_parameters, metadata)
 
 
 # Test function.
@@ -119,8 +119,11 @@ def test_null_signature_id(configuration, metadata, set_wazuh_configuration, tru
         - The `cases_null_signature_id.yaml` file provides the test cases.
     '''
     # Start monitors
-    monitor_not_found = FileMonitor(OSSEC_LOG_PATH, generate_callback(patterns.SID_NOT_FOUND))
-    monitor_empty = FileMonitor(OSSEC_LOG_PATH, generate_callback(patterns.EMPTY_IF_SID_RULE_IGNORED))
+    monitor_not_found = file_monitor.FileMonitor(OSSEC_LOG_PATH)
+    monitor_not_found.start(callback=callbacks.generate_callback(patterns.SID_NOT_FOUND))
+
+    monitor_empty = file_monitor.FileMonitor(OSSEC_LOG_PATH)
+    monitor_empty.start(callback=callbacks.generate_callback(patterns.EMPTY_IF_SID_RULE_IGNORED))
 
     # Check that expected log appears for rules if_sid field pointing to a non existent SID
     assert monitor_not_found.callback_result
