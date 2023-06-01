@@ -1,58 +1,29 @@
 syntax = "proto3";
 
 import "engine.proto";
+import "google/protobuf/struct.proto"; // For Value
 
 package com.wazuh.api.engine.test;
 
-message SessionGet_Request
+enum DebugMode
 {
-    optional string name = 1; // test session name
+    ONLY_OUTPUT = 0;
+    OUTPUT_AND_TRACES = 1;
+    OUTPUT_AND_TRACES_WITH_DETAILS = 2;
 }
 
-message SessionGet_Response
+message Run_Request
 {
-    ReturnStatus status = 1;          // Status of the query
-    optional string error = 2;        // Error message if status is ERROR
-    optional string id = 3;           // test session id
-    optional string creationDate = 4; // test session creation date
-    optional string policyName = 5;   // test policy name
-    optional string filterName = 6;   // test filter name
-    optional string routeName = 7;    // test route name
-    optional uint32 lifespan = 8;     // test session lifespan
-    optional string description = 9;  // test session description
+    optional string policy = 1;
+    optional google.protobuf.Value event = 2;
+    optional uint32 protocolqueue = 3;
+    optional DebugMode debugmode = 4;
 }
 
-message SessionPost_Request
+message Run_Response
 {
-    optional string name = 1;        // test session name
-    optional string policy = 2;      // test policy name
-    optional uint32 lifespan = 3;    // test session lifespan
-    optional string description = 4; // test session description
-}
-
-message SessionPost_Response
-{
-    ReturnStatus status = 1;   // Status of the query
-    optional string error = 2; // Error message if status is ERROR
-}
-
-message SessionsGet_Request {}
-
-message SessionsGet_Response
-{
-    ReturnStatus status = 1;   // Status of the query
-    optional string error = 2; // Error message if status is ERROR
-    repeated string list = 3;  // test sessions list
-}
-
-message SessionsDelete_Request
-{
-    optional string name = 1;    // test session name
-    optional bool removeAll = 2; // option to remove all the sessions
-}
-
-message SessionsDelete_Response
-{
-    ReturnStatus status = 1;   // Status of the query
-    optional string error = 2; // Error message if status is ERROR
+    ReturnStatus status = 1;                   // Status of the query
+    optional string error = 2;                 // Error message if status is ERROR
+    optional google.protobuf.Value output = 3; // test output
+    optional google.protobuf.Value traces = 4; // test rules
 }
