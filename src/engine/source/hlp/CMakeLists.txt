@@ -91,6 +91,8 @@ add_library(hlp STATIC
   src/parsers/text.cpp
   src/parsers/eof.cpp
   src/parsers/number.cpp
+  src/parsers/alphanumeric.cpp
+  src/parsers/bool.cpp
 )
 target_include_directories(hlp
 PUBLIC
