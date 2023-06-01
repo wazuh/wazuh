@@ -372,20 +372,23 @@ base::Expression KVDBDelete(const std::string& targetField,
                             const std::string& rawName,
                             const std::vector<std::string>& rawParameters,
                             std::shared_ptr<defs::IDefinitions> definitions,
-                            std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
+                            std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
 
     const auto parameters = processParameters(rawName, rawParameters, definitions);
-    checkParametersSize(rawName, parameters, 1);
+    checkParametersSize(rawName, parameters, 2);
     const auto name = formatHelperName(targetField, rawName, parameters);
 
-    const auto dbName = parameters[0];
+    const auto dbName = parameters[0].m_value;
+    const auto key = parameters[1];
 
     // Trace messages
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
-
-    const std::string failureTrace {fmt::format("[{}] -> Failure: ", name)};
-    const std::string failureTrace1 {fmt::format("[{}] -> Failure: reference '{}' not found", name, dbName.m_value)};
+    const std::string failureTrace1 = fmt::format("[{}] -> Failure: reference '{}' not found", name, key.m_value);
+    const std::string failureTrace2 =
+        fmt::format("[{}] -> Failure: key '{}' could not be found on database '{}'", name, key.m_value, dbName);
+    const std::string failureTrace3 = fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField);
+    const std::string failureTrace5 = fmt::format("[{}] -> Failure: malformed JSON for key '{}'", name, key.m_value);
 
     // Return Expression
     return base::Term<base::EngineOp>::create(name,
@@ -393,14 +396,13 @@ base::Expression KVDBDelete(const std::string& targetField,
             {
                 event->setBool(false, targetField);
 
-                // Get DB name
-                std::string resolvedDBName;
-                if (Parameter::Type::REFERENCE == dbName.m_type)
+                std::string resolvedKey;
+                if (Parameter::Type::REFERENCE == key.m_type)
                 {
-                    const auto retval = event->getString(dbName.m_value);
-                    if (retval)
+                    const auto value = event->getString(key.m_value);
+                    if (value)
                     {
-                        resolvedDBName = retval.value();
+                        resolvedKey = value.value();
                     }
                     else
                     {
@@ -409,19 +411,23 @@ base::Expression KVDBDelete(const std::string& targetField,
                 }
                 else
                 {
-                    resolvedDBName = dbName.m_value;
+                    resolvedKey = key.m_value;
                 }
 
-                const auto deleteResult = kvdbManager->deleteDB(resolvedDBName);
-                if (std::holds_alternative<base::Error>(deleteResult))
+                auto resultHandler = kvdbScope->getKVDBHandler(dbName);
+
+                if (std::holds_alternative<base::Error>(resultHandler))
                 {
-                    auto error = std::get<base::Error>(deleteResult);
-                    return base::result::makeFailure(
-                        event,
-                        failureTrace
-                            + fmt::format("Database '{}' could not be deleted: {}",
-                                        resolvedDBName,
-                                        error.message));
+                    return base::result::makeFailure(event, fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+                }
+
+                auto kvdbHandler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+                auto resultValue = kvdbHandler->remove(resolvedKey);
+
+                if (std::holds_alternative<base::Error>(resultValue))
+                {
+                    auto error = std::get<base::Error>(resultValue);
+                    return base::result::makeFailure(event, failureTrace2);
                 }
 
                 event->setBool(true, targetField);
@@ -432,14 +438,14 @@ base::Expression KVDBDelete(const std::string& targetField,
 
 // TODO: some tests for this method are missing
 // <field>: +kvdb_delete/<db>
-HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
+HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
-    return [kvdbManager](const std::string& targetField,
+    return [kvdbScope](const std::string& targetField,
                          const std::string& rawName,
                          const std::vector<std::string>& rawParameters,
                          std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return KVDBDelete(targetField, rawName, rawParameters, definitions, kvdbManager);
+        return KVDBDelete(targetField, rawName, rawParameters, definitions, kvdbScope);
     };
 }
 
