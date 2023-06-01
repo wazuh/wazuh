@@ -20,18 +20,12 @@ check:
 
 normalize:
   - map:
-    - azure.resource_id: $~json.ResourceId
     - log.level: $~json.Level
+    - ~azure.activitylogs.properties: +parse_json/$~json.Properties
     - event.duration: $~json.DurationMs
-    - azure.activitylogs.properties: +parse_json/$~json.Properties
     - event.outcome: $~json.ResultType
     - event.outcome: $azure.activitylogs.properties.result
-    - azure.activitylogs.operation_name: $~json.OperationName
     - event.action: $azure.activitylogs.operation_name
-    - azure.activitylogs.operation_version: $~json.OperationVersion
-    - azure.activitylogs.tenant_id: $~json.TenantId
-    - azure.activitylogs.level: $log.level
-    - azure.activitylogs.result_signature: $~json.ResultSignature
 
   - logpar:
     - ~json.CallerIpAddress: <source.ip>:<source.port>
@@ -40,20 +34,20 @@ normalize:
 
   - map:
     - client.ip: $source.ip
-    - related.ip: $source.ip
+    - related.ip: +array_append/$source.ip
 
 
-  - check: $azure.activitylogs.properties.EventCategory
+  - check: $~azure.activitylogs.properties.EventCategory
     map:
-     - azure.activitylogs.event_category: $azure.activitylogs.properties.eventCategory
+     - event.category: +array_append/$~azure.activitylogs.properties.eventCategory
 
-  - check: NOT $azure.activitylogs.properties.EventCategory AND $azure.activitylogs.Policies
+  - check: NOT $~azure.activitylogs.properties.EventCategory AND $~azure.activitylogs.Policies
     map:
-     - azure.activitylogs.event_category: Policy
+     - event.category: +array_append/"Policy"
 
   - check: NOT $azure.activitylogs.properties.EventCategory AND NOT $azure.activitylogs.Policies
     map:
-     - azure.activitylogs.event_category: Administrative
+     - event.category: +array_append/"Administrative"
 
 # Cleanup
   - map:
