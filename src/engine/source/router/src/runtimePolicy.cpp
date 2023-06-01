@@ -21,6 +21,7 @@ std::optional<base::Error> RuntimePolicy::build(std::shared_ptr<builder::Builder
         // Build the policy and create the pipeline
         m_environment = builder->buildPolicy(m_asset);
         m_spController = std::make_shared<rxbk::Controller>(rxbk::buildRxPipeline(m_environment));
+
         subscribeToOutput();
         listenAllTrace();
     }
@@ -82,6 +83,46 @@ void RuntimePolicy::listenAllTrace()
                 m_traceBuffer[key].push_back(traceStream);
             }
         }));
+}
+
+const std::tuple<std::string,std::string> RuntimePolicy::getData(DebugMode debugMode)
+{
+    auto trace = json::Json {R"({})"};
+    for (auto& [asset, condition] : m_history)
+    {
+        if (debugMode == DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS)
+        {
+            if (m_traceBuffer.find(asset) != m_traceBuffer.end())
+            {
+                auto& traceVector = m_traceBuffer[asset];
+                std::set<std::string> uniqueTraces;  // Set for warehouses single traces
+                for (const auto& traceStream : traceVector)
+                {
+                    uniqueTraces.insert(traceStream->str());  // Insert unique traces in the set
+                }
+                std::stringstream combinedTrace;
+                for (const auto& uniqueTrace : uniqueTraces)
+                {
+                    combinedTrace << uniqueTrace;
+                }
+                trace.setString(combinedTrace.str(), std::string("/") + asset);
+                m_traceBuffer[asset].clear();
+            }
+        }
+        else if (debugMode == DebugMode::OUTPUT_AND_TRACES)
+        {
+            trace.setString(condition.c_str(), std::string("/") + asset.c_str());
+        }
+        else
+        {
+            std::make_tuple(m_output, std::string());
+        }
+    }
+    if (!m_history.empty())
+    {
+        m_history.clear();
+    }
+    return std::make_tuple(m_output, trace.prettyStr());
 }
 
 } // namespace router

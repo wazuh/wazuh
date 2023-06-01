@@ -329,7 +329,6 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                     if (queue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
                         std::shared_lock lock {m_mutexRoutes};
-                        m_data.isDataReady = false;
                         for (auto& route : m_priorityRoute)
                         {
                             if (route.second[i].accept(event))
@@ -337,7 +336,8 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                                 m_policyManager->setDebugMode(m_data.debugMode);
                                 const auto& target = route.second[i].getTarget();
                                 m_policyManager->forwardEvent(target, i, std::move(event));
-                                std::tie(m_data.output, m_data.trace) = m_policyManager->getData();
+                                m_data.payload = m_policyManager->getData();
+                                LOG_DEBUG("Traces'{}'", std::get<1>(m_data.payload));
                                 m_data.isDataReady = true;
                                 lock.unlock();
                                 m_data.dataReady.notify_all();

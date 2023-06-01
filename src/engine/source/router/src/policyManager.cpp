@@ -110,9 +110,10 @@ std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, 
     }
 
     auto& env = it->second[instance];
-    env->setDebugMode(m_data.debugMode);
     env->processEvent(std::move(event));
-    std::tie(m_data.output, m_data.trace) = env->getData();
+
+    // Output and Traces
+    m_data.payload = env->getData(m_data.debugMode);
 
     return std::nullopt;
 }

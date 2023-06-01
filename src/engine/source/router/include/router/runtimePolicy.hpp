@@ -12,6 +12,13 @@
 namespace router
 {
 
+enum class DebugMode
+{
+    ONLY_OUTPUT,
+    OUTPUT_AND_TRACES,
+    OUTPUT_AND_TRACES_WITH_DETAILS
+};
+
 /**
  * @brief Runtime policy represent an policy in memory, ready to be builed and
  * run
@@ -25,7 +32,6 @@ private:
     builder::Policy m_environment;
     
     std::string m_output;
-    std::string m_debugMode;
     std::vector<std::pair<std::string, std::string>> m_history;
     std::unordered_map<std::string, std::vector<std::shared_ptr<std::stringstream>>> m_traceBuffer;
     std::mutex m_outputMutex;
@@ -78,51 +84,13 @@ public:
      */
     void listenAllTrace();
 
-    const std::pair<std::string, std::string> getData()
-    {
-        auto trace = json::Json {R"({})"};
-        for (auto& [asset, condition] : m_history)
-        {
-            if (0 == m_debugMode.compare("OUTPUT_AND_TRACES_WITH_DETAILS"))
-            {
-                if (m_traceBuffer.find(asset) != m_traceBuffer.end())
-                {
-                    auto& traceVector = m_traceBuffer[asset];
-                    std::set<std::string> uniqueTraces;  // Set for warehouses single traces
-                    for (const auto& traceStream : traceVector)
-                    {
-                        uniqueTraces.insert(traceStream->str());  // Insert unique traces in the set
-                    }
-                    std::stringstream combinedTrace;
-                    for (const auto& uniqueTrace : uniqueTraces)
-                    {
-                        combinedTrace << uniqueTrace;
-                    }
-                    trace.setString(combinedTrace.str(), std::string("/") + asset);
-                    m_traceBuffer[asset].clear();
-                }
-            }
-            else if (0 == m_debugMode.compare("OUTPUT_AND_TRACES"))
-            {
-                trace.setString(condition.c_str(), std::string("/") + asset.c_str());
-            }
-        }
-        if (!m_history.empty())
-        {
-            m_history.clear();
-        }
-        return {m_output, trace.prettyStr()};
-    }
-
     /**
-     * @brief Set the Debug Mode object
+     * @brief Get the Data object
      * 
      * @param debugMode 
+     * @return const std::variant<std::string, std::optional<std::string>> 
      */
-    void inline setDebugMode(const std::string& debugMode)
-    {
-        m_debugMode = debugMode;
-    }
+    const std::tuple<std::string,std::string> getData(DebugMode debugMode);
 };
 
 } // namespace router
