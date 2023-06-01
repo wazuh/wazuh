@@ -62,7 +62,7 @@ base::Expression KVDBDelete(const std::string& targetField,
                             const std::string& rawName,
                             const std::vector<std::string>& rawParameters,
                             std::shared_ptr<defs::IDefinitions> definitions,
-                            std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager);
+                            std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
 
 /**
  * @brief Builds KVDB extract function helper
@@ -107,10 +107,10 @@ HelperBuilder getOpBuilderKVDBSet(std::shared_ptr<kvdbManager::IKVDBScope> kvdbS
 /**
  * @brief Delete a KVDB function helper builder
  *
- * @param kvdbManager KVDB Manager
+ * @param kvdbScope KVDB Scope
  * @return Builder
  */
-HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager);
+HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
 
 } // namespace builder::internals::builders
 
