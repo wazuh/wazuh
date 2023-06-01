@@ -12,7 +12,7 @@ namespace
 using namespace hlp;
 using namespace hlp::parser;
 
-Mapper getMapper(std::string_view parsed, std::string_view targetField)
+Mapper getMapper(std::string_view parsed, const std::string& targetField)
 {
     return [parsed, targetField](json::Json& event)
     {
@@ -46,7 +46,7 @@ Parser getLiteralParser(const Params& params)
 
     const auto& literal = params.options[0];
     const auto synP = getSynParser(literal);
-    const auto mapper = params.targetField.empty() ? noMapper() : getMapper(literal, params.targetField);
+    const auto mapper = params.targetField.empty() ? noMapper() : getMapper(literal, json::Json::formatJsonPath(params.targetField));
     const auto semP = getSemParser(literal, mapper);
 
     return [name = params.name, synP, semP](std::string_view txt)

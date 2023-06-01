@@ -3,18 +3,23 @@
 
 namespace hlp::parsers
 {
-    Parser getEofParser(const Params& params)
+Parser getEofParser(const Params& params)
+{
+    if (!params.options.empty())
     {
-        return [name = params.name](std::string_view txt)
-        {
-            if (txt.empty())
-            {
-                return abs::makeSuccess<ResultT>(txt);
-            }
-            else
-            {
-                return abs::makeFailure<ResultT>(txt, name);
-            }
-        };
+        throw(std::runtime_error("Eof parser does not accept options"));
     }
+
+    return [name = params.name, semP = noSemParser()](std::string_view txt)
+    {
+        if (txt.empty())
+        {
+            return abs::makeSuccess<ResultT>(SemToken {txt, semP}, txt);
+        }
+        else
+        {
+            return abs::makeFailure<ResultT>(txt, name);
+        }
+    };
 }
+} // namespace hlp::parsers

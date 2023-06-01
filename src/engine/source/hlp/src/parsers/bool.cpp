@@ -1,52 +1,83 @@
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <fmt/format.h>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
-#include <utils/stringUtils.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
-namespace hlp
+namespace
+{
+using namespace hlp;
+using namespace hlp::parser;
+
+Mapper getMapper(bool parsed, std::string_view targetField)
+{
+    return [parsed, targetField](json::Json& event)
+    {
+        event.setBool(parsed, targetField);
+    };
+}
+
+SemParser getTrueSemParser(const std::string& targetField)
+{
+    return [targetField](std::string_view parsed)
+    {
+        return getMapper(true, targetField);
+    };
+}
+
+SemParser getFalseSemParser(const std::string& targetField)
+{
+    return [targetField](std::string_view parsed)
+    {
+        return getMapper(false, targetField);
+    };
+}
+
+syntax::Parser getTrueSynParser()
+{
+    return syntax::parsers::literal("true", false);
+}
+
+syntax::Parser getFalseSynParser()
+{
+    return syntax::parsers::literal("false", false);
+}
+} // namespace
+namespace hlp::parsers
 {
 
-parsec::Parser<json::Json> getBoolParser(std::string name, Stop, Options lst)
+Parser getBoolParser(const Params& params)
 {
-    if (!lst.empty())
+    if (!params.options.empty())
     {
         throw std::runtime_error("bool parser doesn't accept parameters");
     }
 
-    return [name](std::string_view text, int index)
+    const auto trueSynP = getTrueSynParser();
+    const auto falseSynP = getFalseSynParser();
+    const auto trueSemP =
+        params.targetField.empty() ? noSemParser() : getTrueSemParser(json::Json::formatJsonPath(params.targetField));
+    const auto falseSemP =
+        params.targetField.empty() ? noSemParser() : getFalseSemParser(json::Json::formatJsonPath(params.targetField));
+
+    return [name = params.name, trueSynP, trueSemP, falseSynP, falseSemP](std::string_view txt)
     {
-        auto res = internal::eofError<json::Json>(text, index);
-        if (res.has_value())
+        const auto trueSynR = trueSynP(txt);
+        if (trueSynR.success())
         {
-            return res.value();
+            return abs::makeSuccess(SemToken {syntax::parsed(trueSynR, txt), trueSemP}, trueSynR.remaining());
         }
-        auto fp = text.substr(index);
-        json::Json ret;
-        // TODO Check True/ TRUE/ true/ False/ FALSE/ false / 0 / 1?
-        if (base::utils::string::startsWith(fp, "true"))
+
+        const auto falseSynR = falseSynP(txt);
+        if (falseSynR.success())
         {
-            ret.setBool(true);
-            return parsec::makeSuccess<json::Json>(std::move(ret), index + 4);
+            return abs::makeSuccess(SemToken {syntax::parsed(falseSynR, txt), falseSemP}, falseSynR.remaining());
         }
-        else if (base::utils::string::startsWith(fp, "false"))
-        {
-            ret.setBool(false);
-            return parsec::makeSuccess<json::Json>(std::move(ret), index + 5);
-        }
-        else
-        {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Expected 'true' or 'false'", name), index);
-        }
+
+        return abs::makeFailure<ResultT>(txt, name);
     };
 }
-} // namespace hlp
+} // namespace hlp::parsers
