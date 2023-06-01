@@ -46,6 +46,9 @@ void run(std::shared_ptr<apiclnt::Client> client, const Options& options)
     };
     eRequest.set_debugmode(intToDebugMode(options.debugLevel));
 
+    // Set location
+    eRequest.set_protocollocation(options.protocolLocation);
+
     // Set event
     json::Json jevent {};
     try
@@ -115,7 +118,10 @@ void configure(CLI::App_p app)
                                     options->debugLevel,
                                     "Enable debug mode [0-3]. Flag can appear multiple times. "
                                     "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
-                                    "Full tracing, ddd[3]: 2 + detailed parser trace.")->default_val(0);
+                                    "Full tracing, ddd[3]: 2 + detailed parser trace.");
+
+    logtestApp->add_option("--protocol_location", options->protocolLocation, "Protocol location.")
+         ->default_val(ENGINE_PROTOCOL_LOCATION);
 
     // Register callback
     logtestApp->callback([options, client]() { run(client, *options); });

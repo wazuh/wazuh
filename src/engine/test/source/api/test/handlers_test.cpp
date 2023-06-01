@@ -175,7 +175,7 @@ TEST_P(TestRunCommand, ParameterEvaluation)
 
     auto error = m_spRouter->addRoute("allow_all_A1", 101, "filter/allow-all/0", "policy/env_A1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
-    
+
     ASSERT_NO_THROW(m_cmdAPI = resourceRun(m_testConfig));
     json::Json params {input.c_str()};
     base::utils::wazuhProtocol::WazuhRequest request;
@@ -186,10 +186,10 @@ TEST_P(TestRunCommand, ParameterEvaluation)
     const auto expectedData = json::Json {output.c_str()};
 
     // check response
-    ASSERT_TRUE(response.isValid());
-    ASSERT_EQ(response.error(), 0);
-    ASSERT_FALSE(response.message().has_value());
-    ASSERT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
+    EXPECT_TRUE(response.isValid());
+    EXPECT_EQ(response.error(), 0);
+    EXPECT_FALSE(response.message().has_value());
+    EXPECT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
                                              << "Expected: " << expectedData.prettyStr() << std::endl;
     
     EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillOnce(testing::Return(std::nullopt));
@@ -204,17 +204,52 @@ INSTANTIATE_TEST_SUITE_P(
     TestRunCommand,
     ::testing::Values(
         std::make_tuple(R"({})", R"({"status":"ERROR","error":"Missing /policy name"})"),
-        std::make_tuple(R"({"policy":"policy/env_A1/0", "event":"hello world!", "protocolqueue":1, "debugmode":0})", R"({
+        std::make_tuple(R"({"policy":"policy/env_A1/0", "event":"hello world!"})", R"({
             "status": "OK",
             "output": {
                 "wazuh": {
                     "queue": 49,
                     "message": "hello world!",
                     "location": "/dev/stdin"
+                }
+            },
+            "traces": {}
+        })"),
+        std::make_tuple(R"({"policy":"policy/env_A1/0", "event":"hello world!", "debugmode":1})", R"({
+            "status": "OK",
+            "output": {
+                "wazuh": {
+                    "queue": 49,
+                    "location": "/dev/stdin",
+                    "message": "hello world!"
+                }
+            },
+            "traces": {
+                "decoder": {
+                    "core-hostinfo": [
+                        "failure"
+                    ]
                 }
             }
         })"),
-        std::make_tuple(R"({"policy":"policy/env_A1/0", "event":"hello world!", "protocolqueue":1, "debugmode":1})", R"({
+        std::make_tuple(R"({"policy":"policy/env_A1/0", "event":"hello world!", "debugmode":2})", R"({
+            "status": "OK",
+            "output": {
+                "wazuh": {
+                    "message": "hello world!",
+                    "queue": 49,
+                    "location": "/dev/stdin"
+                }
+            },
+            "traces": {
+                "decoder": {
+                    "core-hostinfo": [
+                        "[decoder/core-hostinfo/0] [condition.value[/wazuh/queue==51]] -> Failure[decoder/core-hostinfo/0] [condition]:failure"
+                    ]
+                }
+            }
+        })"),
+        std::make_tuple(R"({"policy":"policy/env_A1/0", "event":"hello world!", "debugmode":4})", R"({
             "status": "OK",
             "output": {
                 "wazuh": {
@@ -222,5 +257,6 @@ INSTANTIATE_TEST_SUITE_P(
                     "message": "hello world!",
                     "location": "/dev/stdin"
                 }
-            }
+            },
+            "traces": {}
         })")));

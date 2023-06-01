@@ -68,9 +68,8 @@ private:
 
     struct Data
     {
-        std::string output;
-        std::string trace;
-        std::string debugMode;
+        DebugMode debugMode;
+        std::tuple<std::string, std::string> payload;
         std::condition_variable_any dataReady;
         bool isDataReady;
     };
@@ -211,7 +210,7 @@ public:
      * 
      * @param debugMode 
      */
-    void inline setDebugMode(const std::string& debugMode)
+    void inline setDebugMode(DebugMode debugMode)
     {
         m_data.debugMode = debugMode;
     }
@@ -221,13 +220,17 @@ public:
      * 
      * @return const Data 
      */
-    const std::pair<std::string, std::string> getData()
+    inline const std::tuple<std::string, std::string> getData()
     {
-        std::shared_lock lock {m_mutexRoutes};
-        // Espera hasta que la salida esté lista
+        std::unique_lock<std::shared_mutex> lock {m_mutexRoutes};
         m_data.dataReady.wait(lock, [this]() { return m_data.isDataReady; });
 
-        return {m_data.output, m_data.trace};
+        std::string first = std::get<0>(m_data.payload);
+        std::string second = std::get<1>(m_data.payload);
+
+        m_data.isDataReady = false;
+
+        return std::make_tuple(first, second);
     }
 };
 } // namespace router
