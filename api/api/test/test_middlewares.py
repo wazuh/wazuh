@@ -12,9 +12,8 @@ from wazuh.core.exception import WazuhPermissionError, WazuhTooManyRequests
 from api.middlewares import (
     MAX_REQUESTS_EVENTS_DEFAULT,
     _cleanup_detail_field,
-    events_endpoint_rate_limiter,
+    check_rate_limit,
     prevent_bruteforce_attack,
-    prevent_denial_of_service,
     security_middleware,
     unlock_ip,
 )
@@ -107,49 +106,39 @@ async def test_middlewares_prevent_bruteforce_attack(request_info, stats):
 
 
 @freeze_time(datetime(1970, 1, 1))
-@pytest.mark.parametrize("current_time, max_requests", [
-    (-80, 300),
-    (0, 0),
+@pytest.mark.parametrize("current_time,max_requests,current_time_key", [
+    (-80, 300, 'events_current_time'),
+    (-80, 300, 'general_current_time'),
+    (0, 0, 'events_current_time'),
+    (0, 0, 'general_current_time'),
 ])
 @pytest.mark.asyncio
-async def test_middlewares_prevent_denial_of_service(current_time, max_requests):
-    """Test if the DOS mechanism triggers when the `max_requests` are reached."""
-    with patch("api.middlewares.current_time", new=current_time):
-        with patch("api.middlewares.raise_if_exc") as raise_mock:
-            await prevent_denial_of_service(DummyRequest({'remote': 'ip'}), max_requests=max_requests)
-            if max_requests == 0:
-                raise_mock.assert_called_once_with(WazuhTooManyRequests(6001))
-
-
-@freeze_time(datetime(1970, 1, 1))
-@pytest.mark.parametrize("current_time, max_requests", [
-    (-80, 300),
-    (0, 0),
-])
-@pytest.mark.asyncio
-async def test_middlewares_events_endpoint_rate_limiter(current_time, max_requests):
+async def test_middlewares_check_rate_limit(current_time, max_requests, current_time_key):
     """Test if the rate limit mechanism triggers when the `max_requests` are reached."""
 
-    with patch("api.middlewares.current_time", new=current_time):
+    with patch(f"api.middlewares.{current_time_key}", new=current_time):
         with patch("api.middlewares.raise_if_exc") as raise_mock:
-            await events_endpoint_rate_limiter(DummyRequest({'remote': 'ip'}), max_requests=max_requests)
+            await check_rate_limit(
+                DummyRequest({'remote': 'ip'}),
+                current_time_key='events_current_time',
+                request_counter_key='events_request_counter',
+                max_requests=max_requests)
             if max_requests == 0:
                 raise_mock.assert_called_once_with(WazuhTooManyRequests(6001))
 
 
 @patch("api.middlewares.unlock_ip")
-@patch("api.middlewares.prevent_denial_of_service")
-@patch("api.middlewares.events_endpoint_rate_limiter")
+@patch("api.middlewares.check_rate_limit")
 @pytest.mark.parametrize(
-    "request_body,expected_mock",
+    "request_body,expected_calls,call_args",
     [
-        ({"path": "/events"}, "events_limit_mock"),
-        ({"path": "some_path"}, "denial_mock")
+        ({"path": "/events"}, 2, ['events_request_counter', 'events_current_time']),
+        ({"path": "some_path"}, 1, ['general_request_counter', 'general_current_time', 5])
     ]
 )
 @pytest.mark.asyncio
 async def test_middlewares_security_middleware(
-    events_limit_mock, denial_mock, unlock_mock, request_body, expected_mock
+    rate_limit_mock, unlock_mock, request_body, expected_calls, call_args
 ):
     """Test that all security middlewares are correctly set following the API configuration."""
     max_req = 5
@@ -162,8 +151,7 @@ async def test_middlewares_security_middleware(
     ):
         await security_middleware(request, handler_mock)
 
-        if expected_mock == "denial_mock":
-            denial_mock.assert_called_once_with(request, max_requests=max_req)
-        elif expected_mock == "events_limit_mock":
-            events_limit_mock.assert_called_once_with(request)
+        assert rate_limit_mock.call_count == expected_calls
+        rate_limit_mock.assert_called_with(request, *call_args)
+
         unlock_mock.assert_called_once_with(request, block_time=block_time)
