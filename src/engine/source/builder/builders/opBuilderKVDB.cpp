@@ -78,7 +78,7 @@ base::Expression KVDBGet(const std::string& targetField,
 
             if (std::holds_alternative<base::Error>(resultHandler))
             {
-                throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+                return base::result::makeFailure(event, fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
             }
 
             auto kvdbHandler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
@@ -175,7 +175,7 @@ base::Expression existanceCheck(const std::string& targetField,
                     auto resultHandler = kvdbScope->getKVDBHandler(dbName);
                     if (std::holds_alternative<base::Error>(resultHandler))
                     {
-                        throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+                        return base::result::makeFailure(event, fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
                     }
 
                     auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
@@ -321,7 +321,7 @@ base::Expression KVDBSet(const std::string& targetField,
             auto resultHandler = kvdbScope->getKVDBHandler(dbName);
             if (std::holds_alternative<base::Error>(resultHandler))
             {
-                throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+                return base::result::makeFailure(event, fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
             }
 
             auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
