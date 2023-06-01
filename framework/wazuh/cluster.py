@@ -114,8 +114,6 @@ async def get_nodes_info(lc: local_client.LocalClient, filter_node: Union[str, l
         LocalClient with which to send the 'get_nodes' request.
     filter_node : str or list
         Node to return.
-    distinct : bool
-        Look for distinct values.
 
     Returns
     -------
