@@ -42,6 +42,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
     auto result = m_store->get(ROUTES_TABLE_NAME);
     if (std::holds_alternative<base::Error>(result))
     {
+        std::cout << "que cagada" << std::endl;
         const auto error = std::get<base::Error>(result);
         LOG_DEBUG("Router: Routes table not found in store. Creating new table: {}.", error.message);
         m_store->add(ROUTES_TABLE_NAME, json::Json {"[]"});

@@ -2,7 +2,7 @@
 
 #include <cmds/apiclnt/client.hpp>
 #include <cmds/details/stackExecutor.hpp>
-#include <eMessages/tests.pb.h>
+#include <eMessages/test.pb.h>
 
 #include "defaultSettings.hpp"
 #include "utils.hpp"
@@ -67,7 +67,6 @@ void run(std::shared_ptr<apiclnt::Client> client, const Options& options)
     }
 
     const auto& event = std::get<google::protobuf::Value>(protoEvent);
-    std::cout << "hola" << std::endl;
     *eRequest.mutable_event() = event;
 
     // Call the API
