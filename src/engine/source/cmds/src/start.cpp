@@ -385,7 +385,7 @@ void runStart(ConfHandler confManager)
         // Test
         {
             // Register the Test command
-            Config testConfig
+            api::test::handlers::Config testConfig
             {
                 router
             };

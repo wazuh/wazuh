@@ -238,7 +238,6 @@ api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<Catalog> catalog)
         {
             return std::move(std::get<api::wpResponse>(res));
         }
-
         const auto& eRequest = std::get<RequestType>(res);
 
         // Field name, policy and lifespan are required
