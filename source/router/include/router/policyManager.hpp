@@ -36,9 +36,8 @@ private:
 
     struct Data
     {
-        std::string output;
-        std::string debugMode;
-        std::string trace;
+        DebugMode debugMode;
+        std::tuple<std::string, std::string> payload;
     };
 
     Data m_data;
@@ -118,7 +117,7 @@ public:
      * 
      * @param debugMode 
      */
-    void inline setDebugMode(const std::string& debugMode)
+    void inline setDebugMode(DebugMode debugMode)
     {
         m_data.debugMode = debugMode;
     }
@@ -128,9 +127,9 @@ public:
      * 
      * @return std::stringstream 
      */
-    inline const std::pair<std::string, std::string> getData()
+    inline const std::tuple<std::string, std::string> getData()
     {
-        return {m_data.output, m_data.trace};
+        return m_data.payload;
     }
 };
 } // namespace router

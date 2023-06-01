@@ -18,6 +18,7 @@ message Run_Request
     optional google.protobuf.Value event = 2;
     optional uint32 protocolqueue = 3;
     optional DebugMode debugmode = 4;
+    optional string protocollocation = 5;
 }
 
 message Run_Response
