@@ -280,7 +280,7 @@ void runStart(ConfHandler confManager)
             deps.logparDebugLvl = 0;
             deps.logpar = logpar;
             deps.kvdbScope = kvdbManager->getKVDBScope("builder");
-            deps.kvdbManager2 = kvdbManager;
+            deps.kvdbManager = kvdbManager;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             deps.schema = schema;
             deps.forceFieldNaming = true;
