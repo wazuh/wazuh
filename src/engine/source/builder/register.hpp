@@ -114,7 +114,7 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderWdbUpdate, "wdb_update");
 
     // KVDB
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBDelete(dependencies.kvdbManager), "kvdb_delete");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBDelete(dependencies.kvdbScope), "kvdb_delete");
     helperRegistry->registerBuilder(builders::getOpBuilderKVDBGet(dependencies.kvdbScope), "kvdb_get");
     helperRegistry->registerBuilder(builders::getOpBuilderKVDBGetMerge(dependencies.kvdbScope), "kvdb_get_merge");
     helperRegistry->registerBuilder(builders::getOpBuilderKVDBMatch(dependencies.kvdbScope), "kvdb_match");
