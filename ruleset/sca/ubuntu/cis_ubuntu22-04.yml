@@ -757,7 +757,7 @@ checks:
       - soc_2: ["CC5.2", " CC6.1"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/grub.cfg -> r:Access: (0400/-r--------) && r:Uid:\s+\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s+\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\t*\(0400/-r--------\) && r:Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
 
   # 1.4.3 Ensure authentication required for single user mode (Automated)
   - id: 28529
