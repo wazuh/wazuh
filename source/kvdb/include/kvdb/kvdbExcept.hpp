@@ -1,5 +1,5 @@
-#ifndef _KVDB_EXCEPT_HPP
-#define _KVDB_EXCEPT_HPP
+#ifndef _KVDB_EXCEPT_H
+#define _KVDB_EXCEPT_H
 
 #include <exception>
 #include <string>
@@ -8,7 +8,7 @@ namespace kvdbManager
 {
 
 /**
- * @brief Exception thrown when the KVDB Manager Fails
+ * @brief Exception thrown when critical KVDB Functions Fails
  */
 class KVDBException : public std::exception
 {
@@ -77,4 +77,4 @@ private:
 
 } // namespace kvdbManager
 
-#endif // _KVDB_EXCEPT_HPP
+#endif // _KVDB_EXCEPT_H
