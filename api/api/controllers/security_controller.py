@@ -579,7 +579,7 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
 
 async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                     offset: int = 0, limit: int = None, search: str = None, select: str = None,
-                    sort: str = None) -> web.Response:
+                    sort: str = None, q: str = '') -> web.Response:
     """Get information about the security rules in the system.
 
     Parameters
@@ -602,6 +602,8 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
+    q : str
+        Query to filter results by.
 
     Returns
     -------
@@ -612,7 +614,8 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'q': q
                 }
 
     dapi = DistributedAPI(f=security.get_rules,
