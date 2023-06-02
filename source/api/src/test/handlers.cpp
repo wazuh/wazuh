@@ -1,25 +1,106 @@
 #include "api/test/handlers.hpp"
 
 #include <api/adapter.hpp>
+#include <api/catalog/resource.hpp>
 
 #include <eMessages/eMessage.h>
 #include <eMessages/test.pb.h>
 
 #include "api/test/sessionManager.hpp"
 
+namespace
+{
+
+using namespace api::sessionManager;
+
+using std::shared_ptr;
+using std::string;
+
+using ::api::adapter::fromWazuhRequest;
+using ::api::adapter::genericError;
+using ::api::adapter::toWazuhResponse;
+
+} // namespace
+
 namespace api::test::handlers
 {
 
-namespace eTest = ::com::wazuh::api::engine::test;
 namespace eEngine = ::com::wazuh::api::engine;
+namespace eTest = ::com::wazuh::api::engine::test;
 
-api::Handler resourceNew(void)
+/**
+ * @brief Get the minimum available priority for a route.
+ *
+ * @param router Router instance.
+ * @return int32_t Minimum available priority. If no priority is available, returns -1.
+ */
+static inline int32_t getMinimumAvailablePriority(const shared_ptr<::router::Router>& router)
 {
-    return [](api::wpRequest wRequest) -> api::wpResponse
+    // Create a set to store the taken priorities given the table
+    std::unordered_set<uint32_t> takenPriorities;
+
+    const auto routerTable = router->getRouteTable();
+    for (const auto& [name, priority, filter, policy] : routerTable)
     {
-        using RequestType = eTest::New_Request;
-        using ResponseType = eTest::New_Response;
-        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+        takenPriorities.insert(priority);
+    }
+
+    int32_t minAvailablePriority {MINIMUM_PRIORITY};
+
+    // The condition may be confusing as the actual priority increases while the value decreases
+    while (takenPriorities.count(minAvailablePriority) > 0 && MAXIMUM_PRIORITY > minAvailablePriority)
+    {
+        // If priority is taken, decrease the value (so, increase the priority)
+        minAvailablePriority--;
+    }
+
+    return minAvailablePriority;
+}
+
+/**
+ * @brief Add a filter to the catalog.
+ *
+ * @param catalog Catalog instance.
+ * @param filterName Filter name.
+ * @param filterContent Filter content.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+static inline std::optional<base::Error>
+addFilterToCatalog(shared_ptr<catalog::Catalog> catalog, const string& filterName, const string& filterContent)
+{
+    std::string error;
+
+    catalog::Resource targetResource;
+
+    try
+    {
+        targetResource = catalog::Resource {base::Name {"filter"}, catalog::Resource::Format::json};
+    }
+    catch (const std::exception& e)
+    {
+        error = e.what();
+    }
+
+    // If no error occurred, post the resource
+    if (error.empty())
+    {
+        const auto postResourceError = catalog->postResource(targetResource, filterContent);
+        if (postResourceError)
+        {
+            error = postResourceError.value().message;
+        }
+    }
+
+    return (error.empty() ? std::nullopt : std::make_optional(base::Error {error}));
+}
+
+api::Handler sessionPost(shared_ptr<::router::Router> router, shared_ptr<catalog::Catalog> catalog)
+{
+    return [router, catalog](api::wpRequest wRequest) -> api::wpResponse
+    {
+        using RequestType = eTest::SessionPost_Request;
+        using ResponseType = eTest::SessionPost_Response;
+        auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
         // If the request is not valid, return the error
         if (std::holds_alternative<api::wpResponse>(res))
@@ -30,37 +111,64 @@ api::Handler resourceNew(void)
         const auto& eRequest = std::get<RequestType>(res);
 
         // Field name, policy and lifespan are required
-        const auto errorMsg = !eRequest.has_name()     ? std::make_optional("Missing /name field")
-                              : !eRequest.has_policy() ? std::make_optional("Missing /policy field")
-                                                       : std::nullopt;
-        if (errorMsg.has_value())
+        const auto parametersError = !eRequest.has_name()     ? std::make_optional("Missing /name field")
+                                     : !eRequest.has_policy() ? std::make_optional("Missing /policy field")
+                                                              : std::nullopt;
+        if (parametersError.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(errorMsg.value());
+            return genericError<ResponseType>(parametersError.value());
         }
 
-        auto& sessionManager = api::sessionManager::SessionManager::getInstance();
+        auto& sessionManager = SessionManager::getInstance();
 
-        const auto result = sessionManager.createSession(eRequest.name(), eRequest.policy(), eRequest.lifespan());
+        const auto filterName = fmt::format(FILTER_NAME_FORMAT, eRequest.name());
 
-        if (result.has_value())
+        const auto filterContent = fmt::format(FILTER_CONTENT_FORMAT, filterName, eRequest.name());
+
+        const auto addFilterError = addFilterToCatalog(catalog, filterName, filterContent);
+
+        if (addFilterError.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(result.value().message);
+            return genericError<ResponseType>(addFilterError.value().message);
+        }
+
+        const auto routeName = fmt::format(ROUTE_NAME_FORMAT, eRequest.name());
+
+        // Find the minimum priority that is not already taken
+        const int32_t minAvailablePriority = getMinimumAvailablePriority(router);
+
+        if (0 > minAvailablePriority)
+        {
+            return genericError<ResponseType>("There is no available priority");
+        }
+
+        const auto addRouteError = router->addRoute(routeName, minAvailablePriority, filterName, eRequest.policy());
+        if (addRouteError.has_value())
+        {
+            return genericError<ResponseType>(addRouteError.value().message);
+        }
+
+        const auto createSessionError =
+            sessionManager.createSession(eRequest.name(), routeName, eRequest.policy(), eRequest.lifespan());
+        if (createSessionError.has_value())
+        {
+            return genericError<ResponseType>(createSessionError.value().message);
         }
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
-        return ::api::adapter::toWazuhResponse(eResponse);
+        return toWazuhResponse(eResponse);
     };
 }
 
-api::Handler resourceGet(void)
+api::Handler sessionGet(void)
 {
     return [](api::wpRequest wRequest) -> api::wpResponse
     {
-        using RequestType = eTest::Get_Request;
-        using ResponseType = eTest::Get_Response;
-        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+        using RequestType = eTest::SessionGet_Request;
+        using ResponseType = eTest::SessionGet_Response;
+        auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
         // If the request is not valid, return the error
         if (std::holds_alternative<api::wpResponse>(res))
@@ -73,15 +181,14 @@ api::Handler resourceGet(void)
         const auto errorMsg = !eRequest.has_name() ? std::make_optional("Missing /name field") : std::nullopt;
         if (errorMsg.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(errorMsg.value());
+            return genericError<ResponseType>(errorMsg.value());
         }
 
-        auto& sessionManager = api::sessionManager::SessionManager::getInstance();
+        auto& sessionManager = SessionManager::getInstance();
         const auto session = sessionManager.getSession(eRequest.name());
         if (!session.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format("Session '{}' could not be found", eRequest.name()));
+            return genericError<ResponseType>(fmt::format("Session '{}' could not be found", eRequest.name()));
         }
 
         ResponseType eResponse;
@@ -95,17 +202,17 @@ api::Handler resourceGet(void)
 
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
-        return ::api::adapter::toWazuhResponse(eResponse);
+        return toWazuhResponse(eResponse);
     };
 }
 
-api::Handler resourceList(void)
+api::Handler sessionsGet(void)
 {
     return [](api::wpRequest wRequest) -> api::wpResponse
     {
-        using RequestType = eTest::List_Request;
-        using ResponseType = eTest::List_Response;
-        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+        using RequestType = eTest::SessionsGet_Request;
+        using ResponseType = eTest::SessionsGet_Response;
+        auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
         // If the request is not valid, return the error
         if (std::holds_alternative<api::wpResponse>(res))
@@ -115,7 +222,7 @@ api::Handler resourceList(void)
 
         const auto& eRequest = std::get<RequestType>(res);
 
-        auto& sessionManager = api::sessionManager::SessionManager::getInstance();
+        auto& sessionManager = SessionManager::getInstance();
         auto list = sessionManager.getSessionsList();
 
         ResponseType eResponse;
@@ -125,17 +232,17 @@ api::Handler resourceList(void)
         }
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
-        return ::api::adapter::toWazuhResponse(eResponse);
+        return toWazuhResponse(eResponse);
     };
 }
 
-api::Handler resourceRemove(void)
+api::Handler sessionsDelete(shared_ptr<::router::Router> router, shared_ptr<catalog::Catalog> catalog)
 {
-    return [](api::wpRequest wRequest) -> api::wpResponse
+    return [router, catalog](api::wpRequest wRequest) -> api::wpResponse
     {
-        using RequestType = eTest::Remove_Request;
-        using ResponseType = eTest::Remove_Response;
-        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+        using RequestType = eTest::SessionsDelete_Request;
+        using ResponseType = eTest::SessionsDelete_Response;
+        auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
         // If the request is not valid, return the error
         if (std::holds_alternative<api::wpResponse>(res))
@@ -151,17 +258,16 @@ api::Handler resourceRemove(void)
                 : std::nullopt;
         if (errorMsg.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(errorMsg.value());
+            return genericError<ResponseType>(errorMsg.value());
         }
 
-        auto& sessionManager = api::sessionManager::SessionManager::getInstance();
+        auto& sessionManager = SessionManager::getInstance();
 
         if (eRequest.has_removeall() && eRequest.removeall())
         {
             if (!sessionManager.removeAllSessions())
             {
-                return ::api::adapter::genericError<ResponseType>(
-                    fmt::format("Sessions could not be deleted", eRequest.name()));
+                return genericError<ResponseType>(fmt::format("Sessions could not be deleted", eRequest.name()));
             }
         }
         else if (eRequest.has_name())
@@ -169,40 +275,39 @@ api::Handler resourceRemove(void)
             const auto session = sessionManager.getSession(eRequest.name());
             if (!session.has_value())
             {
-                return ::api::adapter::genericError<ResponseType>(
-                    fmt::format("Session '{}' could not be found", eRequest.name()));
+                return genericError<ResponseType>(fmt::format("Session '{}' could not be found", eRequest.name()));
             }
 
             if (!sessionManager.removeSession(eRequest.name()))
             {
-                return ::api::adapter::genericError<ResponseType>(
-                    fmt::format("Session '{}' could not be deleted", eRequest.name()));
+                return genericError<ResponseType>(fmt::format("Session '{}' could not be deleted", eRequest.name()));
             }
         }
         else
         {
-            return ::api::adapter::genericError<ResponseType>("Invalid request");
+            return genericError<ResponseType>("Invalid request");
         }
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
-        return ::api::adapter::toWazuhResponse(eResponse);
+        return toWazuhResponse(eResponse);
     };
 }
 
-void registerHandlers(const Config& config, std::shared_ptr<api::Api> api)
+void registerHandlers(const Config& config, shared_ptr<api::Api> api)
 {
     try
     {
-        api->registerHandler("test.resource/remove", resourceRemove());
-        api->registerHandler("test.resource/get", resourceGet());
-        api->registerHandler("test.resource/list", resourceList());
-        api->registerHandler("test.resource/new", resourceNew());
+        api->registerHandler("test.session/get", sessionGet());
+        api->registerHandler("test.session/post", sessionPost(config.router, config.catalog));
+        api->registerHandler("test.sessions/delete", sessionsDelete(config.router, config.catalog));
+        api->registerHandler("test.sessions/get", sessionsGet());
     }
     catch (const std::exception& e)
     {
         throw std::runtime_error(fmt::format("test API commands could not be registered: {}", e.what()));
     }
 }
+
 } // namespace api::test::handlers
