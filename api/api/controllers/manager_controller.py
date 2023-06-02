@@ -85,7 +85,8 @@ async def get_info(request, pretty: bool = False, wait_for_complete: bool = Fals
 
 
 async def get_configuration(request, pretty: bool = False, wait_for_complete: bool = False, section: str = None,
-                            field: str = None, raw: bool = False) -> Union[web.Response, ConnexionResponse]:
+                            field: str = None, raw: bool = False,
+                            distinct: bool = False) -> Union[web.Response, ConnexionResponse]:
     """Get manager's or local_node's configuration (ossec.conf)
 
     Parameters
@@ -101,6 +102,8 @@ async def get_configuration(request, pretty: bool = False, wait_for_complete: bo
         Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
     raw : bool, optional
         Whether to return the file content in raw or JSON format. Default `False`
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -112,7 +115,8 @@ async def get_configuration(request, pretty: bool = False, wait_for_complete: bo
     """
     f_kwargs = {'section': section,
                 'field': field,
-                'raw': raw}
+                'raw': raw,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=manager.read_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

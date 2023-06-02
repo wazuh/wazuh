@@ -272,7 +272,8 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def read_ossec_conf(section: str = None, field: str = None, raw: bool = False) -> AffectedItemsWazuhResult:
+def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
+                    distinct: bool = False) -> AffectedItemsWazuhResult:
     """Wrapper for get_ossec_conf.
 
     Parameters
@@ -283,6 +284,8 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False) -
         Filters by field in section (i.e. included).
     raw : bool
         Whether to return the file content in raw or JSON format.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -300,7 +303,7 @@ def read_ossec_conf(section: str = None, field: str = None, raw: bool = False) -
         if raw:
             with open(common.OSSEC_CONF) as f:
                 return f.read()
-        result.affected_items.append(get_ossec_conf(section=section, field=field))
+        result.affected_items.append(get_ossec_conf(section=section, field=field, distinct=distinct))
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)

@@ -11832,6 +11832,7 @@ paths:
         - $ref: '#/components/parameters/raw'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Wazuh configuration"
@@ -17847,6 +17848,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "Return a list of security rules"
