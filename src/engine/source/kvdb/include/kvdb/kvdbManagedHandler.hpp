@@ -1,11 +1,15 @@
-#ifndef _KVDBMANAGEDHANDLER_H
-#define _KVDBMANAGEDHANDLER_H
+#ifndef _KVDB_MANAGED_HANDLER_H
+#define _KVDB_MANAGED_HANDLER_H
 
 #include <kvdb/iKVDBHandlerManager.hpp>
 
 namespace kvdbManager
 {
 
+/**
+ * @brief Subset class that encapsulates functions auto removal of handlers.
+ *
+ */
 class KVDBManagedHandler
 {
 public:
@@ -19,6 +23,7 @@ public:
 
     virtual ~KVDBManagedHandler()
     {
+        // TODO: Add simple validation. Nullptrs, lengths, etc.
         if (m_handlerManager && !m_handlerManager->skipAutoRemoveEnabled())
         {
             m_handlerManager->removeKVDBHandler(m_dbName, m_scopeName);
@@ -26,11 +31,25 @@ public:
     }
 
 protected:
+    /**
+     * @brief Pointer to the Manager that deals with handlers.
+     *
+     */
     IKVDBHandlerManager* m_handlerManager {nullptr};
+
+    /**
+     * @brief Name of the Scope.
+     *
+     */
     std::string m_scopeName;
+
+    /**
+     * @brief Name of the DB.
+     *
+     */
     std::string m_dbName;
 };
 
 } // namespace kvdbManager
 
-#endif // _KVDBMANAGEDHANDLER_H
+#endif // _KVDB_MANAGED_HANDLER_H
