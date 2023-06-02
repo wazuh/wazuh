@@ -647,7 +647,7 @@ def update_policy(policy_id: str = None, name: str = None, policy: dict = None) 
 def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
               select: str = None, sort_ascending: bool = True, search_text: str = None,
               complementary_search: bool = False, search_in_fields: list = None,
-              q: str = '') -> AffectedItemsWazuhResult:
+              q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
     """Return information from all the security rules. It does not return information from its associated roles.
 
     Parameters
@@ -672,6 +672,8 @@ def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.DATABA
         Fields to search in.
     q : str
         Query to filter results by.
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
@@ -695,7 +697,7 @@ def get_rules(rule_ids: list = None, offset: int = 0, limit: int = common.DATABA
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS,
-                         q=q)
+                         q=q, distinct=distinct)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
