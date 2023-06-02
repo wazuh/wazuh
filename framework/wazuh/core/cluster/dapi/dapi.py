@@ -35,7 +35,7 @@ from wazuh.core.wazuh_socket import wazuh_sendsync
 pools = common.mp_pools.get()
 
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
-
+events_funcs = {"send_event_to_analysisd"}
 
 class DistributedAPI:
     """Represents a distributed API request."""
@@ -283,10 +283,10 @@ class DistributedAPI:
                         pool = pools.get('thread_pool')
                     elif self.f.__name__ in authentication_funcs:
                         pool = pools.get('authentication_pool')
-                    elif self.f.__name__ != "send_event_to_analysisd":
-                        pool = pools.get('process_pool')
-                    else:
+                    elif self.f.__name__ in events_funcs:
                         pool = pools.get('events_pool')
+                    else:
+                        pool = pools.get('process_pool')
 
                     task = loop.run_in_executor(pool, partial(self.run_local, self.f, self.f_kwargs,
                                                               self.logger, self.rbac_permissions,
