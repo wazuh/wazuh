@@ -9,14 +9,23 @@
 #include <unordered_map>
 #include <vector>
 
+#include <fmt/format.h>
+
 #include <error.hpp>
 
 namespace api::sessionManager
 {
 
+constexpr auto FILTER_CONTENT_FORMAT =
+    R"({{"name": "{}", "check":[{{"~TestSessionName":"{}"}}]}})"; ///< Filter content format, where '{}' is the session
+                                                                  ///< name
+constexpr auto FILTER_NAME_FORMAT = "filter/test-{}/0"; ///< Filter name format, where '{}' is the session name
+constexpr auto ROUTE_NAME_FORMAT = "{}_route";          ///< Route name format, where '{}' is the session name
+
 struct Session
 {
 public:
+    const std::string m_filterName;
     const std::string m_policyName;
     const std::string m_routeName;
     const std::string m_sessionID;
@@ -25,15 +34,17 @@ public:
     const uint32_t m_lifespan; ///< Session m_lifespan in seconds. 0 means no expiration.
 
     Session(const std::string& name, const std::string& policy, const std::string& route, const uint32_t lifespan = 0)
-        : m_sessionName(name)
+        : m_creationDate(std::time(nullptr))
+        , m_filterName(fmt::format(FILTER_NAME_FORMAT, name))
+        , m_lifespan(lifespan)
         , m_policyName(policy)
         , m_routeName(route)
-        , m_lifespan(lifespan)
-        , m_creationDate(std::time(nullptr))
         , m_sessionID(generateSessionID())
+        , m_sessionName(name)
     {
     }
 
+    std::string getFilterName(void) const { return m_filterName; };
     std::string getPolicyName(void) const { return m_policyName; };
     std::string getRouteName(void) const { return m_routeName; };
     std::string getSessionID(void) const { return m_sessionID; };
@@ -70,9 +81,9 @@ public:
     std::vector<std::string> getSessionsList(void);
     std::optional<Session> getSession(const std::string& sessionName);
 
-    bool removeSessions(const bool removeAll, const std::string sessionName = "");
-    bool removeAllSessions(void);
-    bool removeSession(const std::string& sessionName);
+    bool deleteSessions(const bool removeAll, const std::string sessionName = "");
+    bool deleteAllSessions(void);
+    bool deleteSession(const std::string& sessionName);
 };
 
 } // namespace api::sessionManager
