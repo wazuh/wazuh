@@ -451,7 +451,8 @@ async def test_get_rules(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'sort_by': ['id'],
                 'sort_ascending': True,
                 'search_text': None,
-                'complementary_search': None
+                'complementary_search': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=security.get_rules,
                                       f_kwargs=mock_remove.return_value,
