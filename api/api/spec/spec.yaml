@@ -17828,6 +17828,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: "Return a list of security rules"
