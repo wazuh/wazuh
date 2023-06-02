@@ -331,6 +331,8 @@ void runStart(ConfHandler confManager)
         {
             // Register the Test command
             api::test::handlers::Config testConfig;
+            testConfig.router = router;
+            testConfig.catalog = catalog;
             api::test::handlers::registerHandlers(testConfig, api);
             LOG_DEBUG("Test API registered.");
         }

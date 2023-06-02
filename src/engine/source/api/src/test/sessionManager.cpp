@@ -2,6 +2,13 @@
 
 #include <logging/logging.hpp>
 
+namespace
+{
+
+using std::string;
+
+}
+
 namespace api::sessionManager
 {
 
@@ -16,8 +23,10 @@ SessionManager& SessionManager::getInstance(void)
     return *instance;
 }
 
-std::optional<base::Error>
-SessionManager::createSession(const string& sessionName, const string& policyName, uint32_t lifespan)
+std::optional<base::Error> SessionManager::createSession(const string& sessionName,
+                                                         const string& routeName,
+                                                         const string& policyName,
+                                                         uint32_t lifespan)
 {
     std::lock_guard<std::mutex> lock(m_sessionMutex);
 
@@ -31,10 +40,6 @@ SessionManager::createSession(const string& sessionName, const string& policyNam
         return base::Error {
             fmt::format("Policy '{}' is already assigned to a route ('')", policyName, m_policyMap[policyName])};
     }
-
-    // TODO: interact with router to get a valid route
-    // routeName = getRoute(policyName);
-    auto routeName = "routeName";
 
     Session session(sessionName, policyName, routeName, lifespan);
     m_activeSessions.emplace(sessionName, session);

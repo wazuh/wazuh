@@ -4,21 +4,12 @@ import "engine.proto";
 
 package com.wazuh.api.engine.test;
 
-message List_Request {}
-
-message List_Response
-{
-    ReturnStatus status = 1;   // Status of the query
-    optional string error = 2; // Error message if status is ERROR
-    repeated string list = 3;  // test sessions list
-}
-
-message Get_Request
+message SessionGet_Request
 {
     optional string name = 1; // test session name
 }
 
-message Get_Response
+message SessionGet_Response
 {
     ReturnStatus status = 1;   // Status of the query
     optional string error = 2; // Error message if status is ERROR
@@ -29,26 +20,35 @@ message Get_Response
     optional uint32 lifespan = 7;
 }
 
-message New_Request
+message SessionPost_Request
 {
     optional string name = 1;     // test session name
     optional string policy = 2;   // test policy name
     optional uint32 lifespan = 3; // test session lifespan
 }
 
-message New_Response
+message SessionPost_Response
 {
     ReturnStatus status = 1;   // Status of the query
     optional string error = 2; // Error message if status is ERROR
 }
 
-message Remove_Request
+message SessionsGet_Request {}
+
+message SessionsGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    repeated string list = 3;  // test sessions list
+}
+
+message SessionsDelete_Request
 {
     optional string name = 1;    // test session name
     optional bool removeAll = 2; // option to remove all the sessions
 }
 
-message Remove_Response
+message SessionsDelete_Response
 {
     ReturnStatus status = 1;   // Status of the query
     optional string error = 2; // Error message if status is ERROR
