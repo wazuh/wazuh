@@ -82,7 +82,7 @@ std::optional<Session> SessionManager::getSession(const string& sessionName)
     return std::nullopt;
 }
 
-bool SessionManager::removeSessions(const bool removeAll, const string sessionName)
+bool SessionManager::deleteSessions(const bool removeAll, const string sessionName)
 {
     std::lock_guard<std::mutex> lock(m_sessionMutex);
 
@@ -116,14 +116,14 @@ bool SessionManager::removeSessions(const bool removeAll, const string sessionNa
     return sessionRemoved;
 }
 
-bool SessionManager::removeAllSessions(void)
+bool SessionManager::deleteAllSessions(void)
 {
-    return removeSessions(true);
+    return deleteSessions(true);
 }
 
-bool SessionManager::removeSession(const string& sessionName)
+bool SessionManager::deleteSession(const string& sessionName)
 {
-    return removeSessions(false, sessionName);
+    return deleteSessions(false, sessionName);
 }
 
 } // namespace api::sessionManager

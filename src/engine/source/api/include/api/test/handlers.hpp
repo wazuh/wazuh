@@ -11,12 +11,6 @@ namespace api::test::handlers
 constexpr auto MINIMUM_PRIORITY = 255; ///< Minimum priority allowed for a route
 constexpr auto MAXIMUM_PRIORITY = 0;   ///< Maximum priority allowed for a route
 
-constexpr auto FILTER_CONTENT_FORMAT =
-    R"({{"name": "{}", "check":[{{"~TestSessionName":"{}"}}]}})"; ///< Filter content format, where '{}' is the session
-                                                                  ///< name
-constexpr auto FILTER_NAME_FORMAT = "filter/test-{}/0"; ///< Filter name format, where '{}' is the session name
-constexpr auto ROUTE_NAME_FORMAT = "{}_route";          ///< Route name format, where '{}' is the session name
-
 /**
  * @brief Test configuration parameters.
  *
