@@ -94,6 +94,106 @@ addFilterToCatalog(shared_ptr<catalog::Catalog> catalog, const string& filterNam
     return (error.empty() ? std::nullopt : std::make_optional(base::Error {error}));
 }
 
+/**
+ * @brief Delete a filter from the catalog.
+ *
+ * @param filterName Filter name.
+ * @param catalog Catalog instance.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+static inline std::optional<base::Error> deleteFilterFromStore(const string& filterName,
+                                                               shared_ptr<catalog::Catalog> catalog)
+{
+    std::string error;
+
+    // Build target resource
+    catalog::Resource targetResource;
+    try
+    {
+        base::Name name {filterName};
+        targetResource = catalog::Resource {name, catalog::Resource::Format::json};
+    }
+    catch (const std::exception& e)
+    {
+        error = e.what();
+    }
+
+    if (error.empty())
+    {
+        const auto deleteResourceError = catalog->deleteResource(targetResource);
+        if (deleteResourceError.has_value())
+        {
+            error = fmt::format(
+                "Filter '{}' could not be removed from the store: {}", filterName, deleteResourceError.value().message);
+        };
+    }
+
+    return (error.empty() ? std::nullopt : std::make_optional(base::Error {error}));
+}
+
+/**
+ * @brief Delete a route from the router.
+ *
+ * @param routeName Route name.
+ * @param router Router instance.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+static inline std::optional<base::Error> deleteRouteFromRouter(const string& routeName,
+                                                               shared_ptr<::router::Router> router)
+{
+    std::string error;
+
+    try
+    {
+        router->removeRoute(routeName);
+    }
+    catch(const std::exception& e)
+    {
+        error = e.what();
+    }
+
+    return (error.empty() ? std::nullopt : std::make_optional(base::Error {error}));
+}
+
+/**
+ * @brief Delete a session and the resources created along with it.
+ *
+ * @param sessionName Session name.
+ * @param router Router instance.
+ * @param catalog Catalog instance.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+static inline std::optional<base::Error>
+deleteSession(const string& sessionName, shared_ptr<::router::Router> router, shared_ptr<catalog::Catalog> catalog)
+{
+    auto& sessionManager = SessionManager::getInstance();
+
+    auto session = sessionManager.getSession(sessionName);
+    if (!session.has_value())
+    {
+        return base::Error {fmt::format("Session '{}' could not be found", sessionName)};
+    }
+
+    const auto deleteFilterError = deleteFilterFromStore(session->getFilterName(), catalog);
+    if (deleteFilterError.has_value())
+    {
+        return deleteFilterError;
+    }
+
+    const auto deleteRouteError = deleteRouteFromRouter(session->getRouteName(), router);
+    if (deleteRouteError.has_value())
+    {
+        return deleteRouteError;
+    }
+
+    if (!sessionManager.deleteSession(sessionName))
+    {
+        return base::Error {fmt::format("Session '{}' could not be removed from the sessions manager", sessionName)};
+    }
+
+    return std::nullopt;
+}
+
 api::Handler sessionPost(shared_ptr<::router::Router> router, shared_ptr<catalog::Catalog> catalog)
 {
     return [router, catalog](api::wpRequest wRequest) -> api::wpResponse
@@ -265,22 +365,21 @@ api::Handler sessionsDelete(shared_ptr<::router::Router> router, shared_ptr<cata
 
         if (eRequest.has_removeall() && eRequest.removeall())
         {
-            if (!sessionManager.removeAllSessions())
+            for (auto& sessionName : sessionManager.getSessionsList())
             {
-                return genericError<ResponseType>(fmt::format("Sessions could not be deleted", eRequest.name()));
+                const auto deleteSessionError = deleteSession(sessionName, router, catalog);
+                if (deleteSessionError.has_value())
+                {
+                    return genericError<ResponseType>(deleteSessionError.value().message);
+                }
             }
         }
         else if (eRequest.has_name())
         {
-            const auto session = sessionManager.getSession(eRequest.name());
-            if (!session.has_value())
+            const auto deleteSessionError = deleteSession(eRequest.name(), router, catalog);
+            if (deleteSessionError.has_value())
             {
-                return genericError<ResponseType>(fmt::format("Session '{}' could not be found", eRequest.name()));
-            }
-
-            if (!sessionManager.removeSession(eRequest.name()))
-            {
-                return genericError<ResponseType>(fmt::format("Session '{}' could not be deleted", eRequest.name()));
+                return genericError<ResponseType>(deleteSessionError.value().message);
             }
         }
         else
