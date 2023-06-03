@@ -71,7 +71,6 @@ public:
 
     ~Publisher() override
     {
-        m_socketServer->stop();
         m_msgDispatcher->rundown();
     }
 };

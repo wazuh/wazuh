@@ -150,8 +150,9 @@ extern "C"
         {
             RouterModule::instance().stop();
         }
-        catch (...)
+        catch (const std::exception& e)
         {
+            std::cerr << "Error stopping router: " << e.what() << std::endl;
             retVal = -1;
         }
         return retVal;
@@ -169,7 +170,8 @@ extern "C"
             }
             else
             {
-                std::shared_ptr<RouterProvider> provider = std::make_shared<RouterProvider>(name);
+                // TO DO - Add parameter to control if the provider is local or remote.
+                std::shared_ptr<RouterProvider> provider = std::make_shared<RouterProvider>(name, false);
                 provider->start();
                 std::unique_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
                 PROVIDERS[provider.get()] = provider;

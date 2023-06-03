@@ -11,7 +11,7 @@ endif(COVERITY)
 # Enable testing
 enable_testing()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++17")
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 include_directories(${SRC_FOLDER}/headers/)
@@ -43,12 +43,13 @@ file(GLOB UTIL_CXX_UNITTEST_COMMON_SRC
     "threadSafeQueue_test.cpp"
     "timeHelper_test.cpp"
     "filterMsgDispatcher_test.cpp"
-    "socketWrapper_test.cpp"
     "main.cpp"
 )
 
 file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
     "linuxInfoHelper_test.cpp"
+    "socketWrapper_test.cpp"
+    "socket_test.cpp"
 )
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)

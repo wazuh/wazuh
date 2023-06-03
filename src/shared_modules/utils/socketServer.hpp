@@ -58,13 +58,26 @@ private:
         m_clients[fd] = client;
     }
 
+    void sendPendingMessages(std::shared_ptr<TSocket> client)
+    {
+        try
+        {
+            client->sendUnsentMessages();
+            m_epoll->modifyDescriptor(client->fileDescriptor(), EPOLLIN);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Failed to send pending messages: " << e.what() << std::endl;
+        }
+    }
+
 public:
     explicit SocketServer(std::string socketPath)
         : m_socketPath {std::move(socketPath)}
+        , m_shouldStop {false}
         , m_epoll {std::make_unique<TEpoll>()}
         , m_listenSocket {std::make_unique<TSocket>()}
         , m_clients {}
-        , m_shouldStop {false}
     {
         int result = pipe(m_stopFD);
         if (result == -1)
@@ -95,6 +108,8 @@ public:
         {
             m_listenThread.join();
         }
+        m_epoll->deleteDescriptor(m_listenSocket->fileDescriptor());
+        m_listenSocket->closeSocket();
     }
 
     void listen(const std::function<void(const int, const char*, uint32_t, const char*, uint32_t)>& onRead)
@@ -147,29 +162,26 @@ public:
                         else
                         {
                             auto event = events.at(i).events;
-                            try
+                            auto client {getClient(eventFD)};
+
+                            if (event & EPOLLOUT)
                             {
-                                auto client {getClient(eventFD)};
+                                sendPendingMessages(client);
+                            }
 
-                                if (event & EPOLLERR || event & EPOLLHUP)
-                                {
-                                    throw std::runtime_error {"socket error or disconnection."};
-                                }
-
-                                if (event & EPOLLOUT)
-                                {
-                                    if (client->sendUnsentMessages() != ERROR_BUFFER_SOCKET_FULL)
-                                    {
-                                        m_epoll->modifyDescriptor(eventFD, EPOLLIN);
-                                    }
-                                }
-
-                                if (event & EPOLLIN)
+                            if (event & EPOLLIN)
+                            {
+                                try
                                 {
                                     client->read(onRead);
                                 }
+                                catch (const std::exception&)
+                                {
+                                    // std::cerr << "Failed to read from client socket: " << e.what() << std::endl;
+                                }
                             }
-                            catch (const std::exception& e)
+
+                            if (event & EPOLLERR || event & EPOLLHUP)
                             {
                                 removeClient(eventFD);
                             }
@@ -182,7 +194,6 @@ public:
                         if (numFDsReady >= EVENTS_LIMIT)
                         {
                             events.resize(events.size() * 2);
-                            std::cout << "Events vector size doubled" << std::endl;
                         }
                     }
                 }
@@ -192,7 +203,11 @@ public:
     void send(int fd, const char* dataBody, size_t sizeBody, const char* dataHeader = nullptr, size_t sizeHeader = 0)
     {
         auto client {getClient(fd)};
-        if (client->send(dataBody, sizeBody, dataHeader, sizeHeader) == ERROR_BUFFER_SOCKET_FULL)
+        try
+        {
+            client->send(dataBody, sizeBody, dataHeader, sizeHeader);
+        }
+        catch (const std::exception& e)
         {
             m_epoll->modifyDescriptor(fd, EPOLLIN | EPOLLOUT);
         }

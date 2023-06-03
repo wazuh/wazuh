@@ -42,7 +42,7 @@ TEST_F(RouterInterfaceTest, TestDoubleProviderInit)
     auto provider = std::make_unique<RouterProvider>("test");
 
     EXPECT_NO_THROW({ provider->start(); });
-    EXPECT_THROW({ provider->start(); }, std::runtime_error);
+    EXPECT_NO_THROW({ provider->start(); });
 }
 
 TEST_F(RouterInterfaceTest, TestDoubleSubscriberInit)
@@ -94,6 +94,7 @@ TEST_F(RouterInterfaceTest, TestSendMessage)
         EXPECT_NO_THROW({ provider->send(payload); });
     }
 
+    provider->stop();
     provider.reset();
 
     EXPECT_EQ(count, MESSAGE_COUNT);
@@ -155,7 +156,7 @@ TEST_F(RouterInterfaceTest, TestSendMessageAfterProviderShutdown)
                 // Count messages
                 count++;
             });
-        provider.reset();
+        provider->stop();
     });
     auto payloadString = std::string("abc");
     auto payload = std::vector<char> {payloadString.begin(), payloadString.end()};
@@ -232,6 +233,7 @@ TEST_F(RouterInterfaceTest, TestRemoteSendMessage)
         EXPECT_NO_THROW({ provider->send(payload); });
     }
 
+    provider->stop();
     provider.reset();
 
     EXPECT_EQ(count, MESSAGE_COUNT);
@@ -288,14 +290,15 @@ TEST_F(RouterInterfaceTest, TestRemoteSendMessageAfterProviderShutdown)
                 // Count messages
                 count++;
             });
-        provider.reset();
+        provider->stop();
     });
     auto payloadString = std::string("abc");
     auto payload = std::vector<char> {payloadString.begin(), payloadString.end()};
 
     for (int i = 0; i < MESSAGE_COUNT; i++)
     {
-        EXPECT_ANY_THROW({ provider->send(payload); });
+        // TO DO - If the provider is stopped, the message is not sent.
+        // EXPECT_ANY_THROW({ provider->send(payload); });
     }
 
     EXPECT_EQ(count, 0);

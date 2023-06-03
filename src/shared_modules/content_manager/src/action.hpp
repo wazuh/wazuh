@@ -58,13 +58,11 @@ public:
                         bool expected = false;
                         if (m_actionInProgress.compare_exchange_strong(expected, true))
                         {
-                            std::cout << "Action: Iniciando scheduling action" << std::endl;
                             runAction(ActionID::SCHEDULED);
                         }
                         else
                         {
-                            std::cout << "Action: Request scheduling - descarga en curso. Se ignora el scheduling."
-                                      << std::endl;
+                            std::cerr << "Action: Request scheduling - ignored, download in progress." << std::endl;
                         }
                     }
                 }
@@ -98,12 +96,11 @@ public:
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
-            std::cout << "Action: Ondemand request - starting action." << std::endl;
             runAction(ActionID::ON_DEMAND);
         }
         else
         {
-            std::cout << "Action: Ondemand request - another action in progress." << std::endl;
+            std::cerr << "Action: Ondemand request - another action in progress." << std::endl;
         }
     }
 
@@ -128,8 +125,6 @@ private:
     {
         // Add orchestration.
         // TO DO, used to publish to all subscribers.
-        m_channel->send(std::vector<char>());
-
         m_actionInProgress = false;
     }
 };

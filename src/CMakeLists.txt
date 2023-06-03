@@ -45,6 +45,7 @@ set(EXTERNAL_RES
     nlohmann
     googletest
     benchmark
+    cpp-httplib
     )
 
 if(NOT EXTERNAL_DEPS_VERSION)
@@ -78,3 +79,5 @@ add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 add_subdirectory(shared_modules/router)
 add_subdirectory(shared_modules/content_manager)
 add_subdirectory(wazuh_modules/vulnerability_scanner)
+
+add_subdirectory(shared_modules/utils/testtool)

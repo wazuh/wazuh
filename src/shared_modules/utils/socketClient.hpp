@@ -17,9 +17,11 @@
 #include "socketWrapper.hpp"
 #include <atomic>
 #include <filesystem>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <sys/epoll.h>
 #include <thread>
@@ -38,6 +40,21 @@ private:
     std::atomic<bool> m_shouldStop;
     std::mutex m_mutex;
     int m_stopFD[2] = {-1, -1};
+    std::shared_mutex m_socketMutex;
+
+    void sendPendingMessages()
+    {
+        try
+        {
+            std::lock_guard<std::shared_mutex> lock(m_socketMutex);
+            m_socket->sendUnsentMessages();
+            m_epoll->modifyDescriptor(m_socket->fileDescriptor(), EPOLLIN);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Failed to send pending messages: " << e.what() << std::endl;
+        }
+    }
 
 public:
     explicit SocketClient(std::string socketPath)
@@ -84,19 +101,10 @@ public:
 
     void connect(const std::function<void(const char*, uint32_t, const char*, uint32_t)>& onRead)
     {
-        // Build the address.
-        auto unixAddress {UnixAddress::builder().address(m_socketPath).build()};
-
-        // Connect to server.
-        m_socket->connect(unixAddress.data());
-
-        // Add socket to epoll.
-        m_epoll->addDescriptor(m_socket->fileDescriptor(), EPOLLIN);
-
+        handleConnect();
         m_mainLoopThread = std::thread(
             [&, onRead]()
             {
-                // onRead("1234", 4);
                 std::vector<struct epoll_event> events(CLIENT_EPOLL_EVENTS);
                 while (!m_shouldStop)
                 {
@@ -123,20 +131,17 @@ public:
                                 {
                                     if (event & EPOLLERR || event & EPOLLHUP)
                                     {
-                                        throw std::runtime_error {"socket error or disconnection."};
+                                        handleConnect();
                                     }
 
                                     if (event & EPOLLOUT)
                                     {
-                                        if (m_socket->sendUnsentMessages() != ERROR_BUFFER_SOCKET_FULL)
-                                        {
-                                            std::cout << "Unsent messages sent, enable EPOLLIN" << std::endl;
-                                            m_epoll->modifyDescriptor(m_socket->fileDescriptor(), EPOLLIN);
-                                        }
+                                        sendPendingMessages();
                                     }
 
                                     if (event & EPOLLIN)
                                     {
+                                        std::lock_guard<std::shared_mutex> lock(m_socketMutex);
                                         m_socket->read([&](const int,
                                                            const char* body,
                                                            uint32_t bodySize,
@@ -162,10 +167,41 @@ public:
             });
     }
 
+    void handleConnect()
+    {
+        // Build the address.
+        auto unixAddress {UnixAddress::builder().address(m_socketPath).build()};
+        constexpr auto MAX_DELAY = 30;
+        auto delay = 1;
+
+        while (!m_shouldStop)
+        {
+            try
+            {
+                std::lock_guard<std::shared_mutex> lock(m_socketMutex);
+                m_socket->connect(unixAddress.data());
+                m_epoll->addDescriptor(m_socket->fileDescriptor(), EPOLLIN);
+                break;
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "Failed to connect to socket: " << e.what() << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(delay));
+                delay = std::min(delay * 2, MAX_DELAY);
+            }
+        }
+    }
+
     void send(const char* dataBody, size_t sizeBody, const char* dataHeader = nullptr, size_t sizeHeader = 0)
     {
-        if (m_socket->send(dataBody, sizeBody, dataHeader, sizeHeader) == ERROR_BUFFER_SOCKET_FULL)
+        std::shared_lock<std::shared_mutex> lock(m_socketMutex);
+        try
         {
+            m_socket->send(dataBody, sizeBody, dataHeader, sizeHeader);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Failed to send message: " << e.what() << std::endl;
             m_epoll->modifyDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
         }
     }
