@@ -29,7 +29,6 @@ class EXPORTED RouterProvider final
 private:
     const std::string m_topicName;
     const bool m_isLocal {false};
-    void stop();
 
 public:
     explicit RouterProvider(std::string topicName, const bool isLocal = true)
@@ -37,18 +36,8 @@ public:
         , m_isLocal {isLocal}
     {
     }
-    virtual ~RouterProvider()
-    {
-        try
-        {
-            stop();
-        }
-        catch (...)
-        {
-            std::cerr << "Error in ~RouterProvider()" << std::endl;
-        }
-    }
-
+    virtual ~RouterProvider() = default;
+    void stop();
     void start();
     void send(const std::vector<char>& data);
 };

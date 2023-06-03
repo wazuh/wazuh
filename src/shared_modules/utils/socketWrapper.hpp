@@ -24,6 +24,7 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
 
@@ -175,6 +176,12 @@ public:
         return m_sendDataBuffer.size();
     }
 
+    bool hasUnsentMessages()
+    {
+        std::lock_guard<std::mutex> lock {m_mutex};
+        return !m_unsentPacketList.empty();
+    }
+
     void connect(const SocketAddress& connInfo)
     {
         // Close socket if it was already initialized.
@@ -196,9 +203,9 @@ public:
                 }
             }
 
-            const uint32_t uiOpt {BUFFER_SIZE};
-            T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
-            T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
+            constexpr uint32_t UI_OPT {BUFFER_SIZE};
+            T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT));
+            T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT));
         }
         else
         {
@@ -210,95 +217,113 @@ public:
     {
         uint32_t* uip;
         ssize_t ret;
+        bool dataToRead = true;
 
         if (m_sock != INVALID_SOCKET)
         {
-            // First read the header.
-            if (SocketStatus::HEADER == m_status)
+            while (dataToRead)
             {
-                ret = T::recv(m_sock, (char*)(m_recvDataBuffer.data() + m_readPosition), m_readSize, 0);
+                // First read the header.
+                if (SocketStatus::HEADER == m_status)
+                {
+                    ret = T::recv(m_sock, (char*)(m_recvDataBuffer.data() + m_readPosition), m_readSize, 0);
 
-                if (ret == SOCKET_ERROR)
-                {
-                    // Error reading from socket.
-                    throw std::runtime_error {"Error reading from socket."};
-                }
-                else if (ret == 0)
-                {
-                    // Remote shutdown / disconnect.
-                    throw std::runtime_error {"Remote shutdown / disconnect."};
-                }
-
-                // Check if we have read the entire header.
-                if (ret != m_readSize)
-                {
-                    // In this case we need to read more data, when the next read is called.
-                    m_readPosition += ret;
-                    m_readSize -= ret;
-                }
-                else
-                {
-                    uip = (uint32_t*)m_recvDataBuffer.data();
-                    m_totalReadSize = *uip;
-
-                    if (m_totalReadSize > BUFFER_SIZE)
+                    if (ret == SOCKET_ERROR)
                     {
-                        m_recvDataBuffer.resize(m_totalReadSize + 1);
+                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        {
+                            // No more data to read.
+                            dataToRead = false;
+                        }
+                        else
+                        {
+                            // Error reading from socket.
+                            throw std::runtime_error {"Error reading from socket."};
+                        }
                     }
-
-                    // We have read the entire header, now we need to read the body.
-                    m_readPosition = 0;
-                    m_readSize = m_totalReadSize;
-                    m_status = SocketStatus::BODY;
-                }
-            }
-            else if (SocketStatus::BODY == m_status)
-            {
-                ret = T::recv(m_sock, (char*)(m_recvDataBuffer.data() + m_readPosition), m_readSize, 0);
-
-                if (ret == SOCKET_ERROR)
-                {
-                    // Socket error.
-                    throw std::runtime_error {"Error reading from socket."};
-                }
-                else if (ret == 0)
-                {
-                    // Remote shutdown / disconnect.
-                    throw std::runtime_error {"Remote shutdown / disconnect."};
-                }
-                else
-                {
-                    if (m_readSize != ret)
+                    else if (ret == 0)
                     {
-                        std::cout << "Read more data than expected." << std::endl;
-                        m_readSize -= ret;
-                        m_readPosition += ret;
+                        // Remote shutdown / disconnect.
+                        throw std::runtime_error {"Remote shutdown / disconnect."};
                     }
                     else
                     {
-                        m_readPosition = 0;
-                        m_readSize = PACKET_SIZE;
-                        m_status = SocketStatus::HEADER;
-
-                        auto headerDataSize = *reinterpret_cast<const uint32_t*>(m_recvDataBuffer.data());
-                        auto offset = HEADER_SIZE + headerDataSize;
-
-                        callback(m_sock,
-                                 m_recvDataBuffer.data() + offset,
-                                 m_totalReadSize - offset,
-                                 m_recvDataBuffer.data() + HEADER_SIZE,
-                                 headerDataSize);
-
-                        if (m_totalReadSize > BUFFER_SIZE)
+                        // Check if we have read the entire header.
+                        if (ret != m_readSize)
                         {
-                            m_recvDataBuffer.resize(BUFFER_SIZE);
+                            // In this case we need to read more data, when the next read is called.
+                            m_readPosition += ret;
+                            m_readSize -= ret;
+                        }
+                        else
+                        {
+                            uip = (uint32_t*)m_recvDataBuffer.data();
+                            m_totalReadSize = *uip;
+
+                            if (m_totalReadSize > BUFFER_SIZE)
+                            {
+                                m_recvDataBuffer.resize(m_totalReadSize + 1);
+                            }
+
+                            // We have read the entire header, now we need to read the body.
+                            m_readPosition = 0;
+                            m_readSize = m_totalReadSize;
+                            m_status = SocketStatus::BODY;
                         }
                     }
                 }
-            }
-            else
-            {
-                throw std::runtime_error {"Invalid socket status"};
+
+                if (SocketStatus::BODY == m_status)
+                {
+                    ret = T::recv(m_sock, (char*)(m_recvDataBuffer.data() + m_readPosition), m_readSize, 0);
+
+                    if (ret == SOCKET_ERROR)
+                    {
+                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        {
+                            // No more data to read.
+                            dataToRead = false;
+                        }
+                        else
+                        {
+                            // Error reading from socket.
+                            throw std::runtime_error {"Error reading from socket."};
+                        }
+                    }
+                    else if (ret == 0)
+                    {
+                        // Remote shutdown / disconnect.
+                        throw std::runtime_error {"Remote shutdown / disconnect."};
+                    }
+                    else
+                    {
+                        if (m_readSize != ret)
+                        {
+                            m_readSize -= ret;
+                            m_readPosition += ret;
+                        }
+                        else
+                        {
+                            m_readPosition = 0;
+                            m_readSize = PACKET_SIZE;
+                            m_status = SocketStatus::HEADER;
+
+                            auto headerDataSize = *reinterpret_cast<const uint32_t*>(m_recvDataBuffer.data());
+                            auto offset = HEADER_SIZE + headerDataSize;
+
+                            callback(m_sock,
+                                     m_recvDataBuffer.data() + offset,
+                                     m_totalReadSize - offset,
+                                     m_recvDataBuffer.data() + HEADER_SIZE,
+                                     headerDataSize);
+
+                            if (m_totalReadSize > BUFFER_SIZE)
+                            {
+                                m_recvDataBuffer.resize(BUFFER_SIZE);
+                            }
+                        }
+                    }
+                }
             }
         }
         else
@@ -322,80 +347,61 @@ public:
         T::setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
         T::setsockopt(sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
 
+        // Set socket to non-blocking.
+        int flags = T::fcntl(sock, F_GETFL, 0);
+        if (flags == -1)
+        {
+            throw std::runtime_error {"Failed to get socket flags"};
+        }
+
+        flags |= O_NONBLOCK;
+        if (T::fcntl(sock, F_SETFL, flags) == -1)
+        {
+            throw std::runtime_error {"Failed to set socket flags"};
+        }
+
         return sock;
     }
 
-    int sendUnsentMessages()
+    void sendUnsentMessages()
     {
         std::lock_guard<std::mutex> lock {m_mutex};
-        if (m_sock != INVALID_SOCKET)
+        while (!m_unsentPacketList.empty())
         {
-            while (!m_unsentPacketList.empty())
+            auto& packet = m_unsentPacketList.front();
+            auto ret = T::send(m_sock, packet.data.get() + packet.offset, packet.size - packet.offset, MSG_NOSIGNAL);
+            if (ret <= 0)
             {
-                auto& packet = m_unsentPacketList.front();
-                auto ret = T::send(m_sock, packet.data.get() + packet.offset, packet.size - packet.offset, 0);
-                if (ret == SOCKET_ERROR)
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
                 {
-                    // If the socket is full, add the data to the unsent queue.
-                    if (errno == EWOULDBLOCK)
-                    {
-                        return ERROR_BUFFER_SOCKET_FULL;
-                    }
-                    // If the socket is invalid, return an error.
-                    else if (errno == EPIPE || errno == ECONNRESET)
-                    {
-                        throw std::runtime_error {"Socket invalid, closing socket."};
-                    }
-                    // Socket error.
-                    else
-                    {
-
-                        throw std::runtime_error {"Error sending data to socket: " + std::to_string(errno) + " " +
-                                                  std::string(strerror(errno))};
-                    }
-                }
-                else if (ret == 0)
-                {
-                    // Remote shutdown / disconnect.
-                    throw std::runtime_error {"1 Remote shutdown / disconnect."};
+                    throw std::runtime_error {"Waiting for socket to be ready"};
                 }
                 else
                 {
-                    if (ret != packet.size)
-                    {
-                        // In this case we need to send the rest of the data, when the next send is called.
-                        std::cout << "Sent less data than expected." << std::endl;
-                        packet.offset += ret;
-                    }
-                    else
-                    {
-                        // We have sent the entire packet, remove it from the queue.
-                        m_unsentPacketList.pop();
-                    }
+                    throw std::system_error {errno, std::system_category(), "Error sending data to socket"};
+                }
+            }
+            else
+            {
+                if (ret != packet.size)
+                {
+                    // In this case we need to send the rest of the data, when the next send is called.
+                    packet.offset += ret;
+                }
+                else
+                {
+                    // We have sent the entire packet, remove it from the queue.
+                    m_unsentPacketList.pop();
                 }
             }
         }
-        else
-        {
-            throw std::runtime_error {"Invalid socket"};
-        }
-
-        return ERROR_SUCCESS;
     }
 
-    ssize_t send(const char* dataBody, uint32_t sizeBody, const char* dataHeader = nullptr, uint32_t sizeHeader = 0)
+    void send(const char* dataBody, uint32_t sizeBody, const char* dataHeader = nullptr, uint32_t sizeHeader = 0)
     {
         uint32_t* uip;
         ssize_t amountSent {0};
         std::lock_guard<std::mutex> lock {m_mutex};
-
-        ssize_t retVal = 0;
-
-        // If the socket is invalid, return an error.
-        if (m_sock == INVALID_SOCKET)
-        {
-            throw std::runtime_error {"Invalid socket"};
-        }
 
         if (PACKET_SIZE + HEADER_SIZE + sizeHeader + sizeBody > BUFFER_SIZE)
         {
@@ -421,12 +427,10 @@ public:
 
         // Add the header size to the total size.
         sizeBody += PACKET_SIZE + HEADER_SIZE + sizeHeader;
-
         // If there is data in the unsent queue, add it to the queue.
         if (!m_unsentPacketList.empty())
         {
             m_unsentPacketList.emplace(m_sendDataBuffer.data(), sizeBody);
-            retVal = ERROR_BUFFER_SOCKET_FULL;
         }
         else
         {
@@ -438,33 +442,16 @@ public:
 
                 if (ret <= 0)
                 {
-                    // If the socket is full, add the data to the unsent queue.
-                    if (errno == EWOULDBLOCK)
-                    {
-                        m_unsentPacketList.emplace(m_sendDataBuffer.data() + amountSent, sizeBody - amountSent);
-                        std::cout << "SEND: Socket full, adding data to unsent queue: " << amountSent << std::endl;
-                        return ERROR_BUFFER_SOCKET_FULL;
-                    }
-                    // If the socket is invalid, return an error.
-                    else if (errno == EPIPE || errno == ECONNRESET)
-                    {
-                        throw std::runtime_error {"Socket invalid, closing socket."};
-                    }
-                    else
-                    {
-                        throw std::runtime_error {"Error sending data to socket: " + std::to_string(errno) + " " +
-                                                  std::string(strerror(errno))};
-                    }
+                    m_unsentPacketList.emplace(m_sendDataBuffer.data() + amountSent, sizeBody - amountSent);
+                    throw std::runtime_error {"Error sending data to socket: " + std::to_string(errno) + " " +
+                                              std::string(strerror(errno))};
                 }
                 else
                 {
                     amountSent += ret;
                 }
             }
-            retVal = amountSent - PACKET_SIZE;
         }
-
-        return retVal;
     }
 
     void listen(const SocketAddress& connectInfo)
@@ -521,7 +508,7 @@ public:
     {
         if (m_sock != INVALID_SOCKET)
         {
-            if (-1 == T::shutdown(m_sock, 0x01))
+            if (-1 == T::shutdown(m_sock, SHUT_WR))
             {
                 std::cerr << "Shutdown error: " << errno << std::endl;
             }

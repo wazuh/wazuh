@@ -75,6 +75,11 @@ protected:
     {
         return ::shutdown(sockfd, how);
     }
+
+    inline int fcntl(int fd, int cmd, int arg)
+    {
+        return ::fcntl(fd, cmd, arg);
+    }
 };
 
 #endif // _OS_PRIMITIVES_HPP

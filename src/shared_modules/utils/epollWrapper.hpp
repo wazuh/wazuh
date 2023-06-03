@@ -65,7 +65,7 @@ public:
 
         if (epoll_ctl(m_epollFD, EPOLL_CTL_ADD, fd, &event) == -1)
         {
-            throw std::runtime_error("Error adding file descriptor to epoll instance");
+            throw std::system_error(errno, std::system_category(), "Error adding FD to interface.");
         }
     }
 
@@ -78,7 +78,7 @@ public:
 
         if (epoll_ctl(m_epollFD, EPOLL_CTL_MOD, fd, &event) == -1)
         {
-            throw std::runtime_error("Error modifying file descriptor events in epoll instance");
+            throw std::system_error(errno, std::system_category(), "Error modifying FD from interface.");
         }
     }
 
@@ -87,7 +87,7 @@ public:
     {
         if (epoll_ctl(m_epollFD, EPOLL_CTL_DEL, fd, nullptr) == -1)
         {
-            throw std::runtime_error("Error deleting file descriptor from epoll instance");
+            throw std::system_error(errno, std::system_category(), "Error removing FD from interface.");
         }
     }
 };

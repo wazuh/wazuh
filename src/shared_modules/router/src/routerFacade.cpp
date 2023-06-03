@@ -42,8 +42,9 @@ void RouterFacade::initialize()
                 }
                 else if (messageType.compare("RemoveProvider") == 0)
                 {
-                    RouterFacade::instance().removeProviderLocal(
-                        message.at("EndpointName").get_ref<const std::string&>());
+                    // TO DO - Control the shutdown of the provider.
+                    // RouterFacade::instance().removeProviderLocal(
+                    //     message.at("EndpointName").get_ref<const std::string&>());
                 }
                 else if (messageType.compare("RemoveSubscriber") == 0)
                 {
@@ -75,7 +76,6 @@ void RouterFacade::destroy()
     }
     m_remoteSubscribers.clear();
     m_remoteProviders.clear();
-    m_providerRegistrationServer->stop();
     m_providerRegistrationServer.reset();
     m_providers.clear();
 }
@@ -83,12 +83,11 @@ void RouterFacade::destroy()
 void RouterFacade::initProviderLocal(const std::string& endpointName)
 {
     std::unique_lock<std::shared_mutex> lock {m_providersMutex};
-    // If already exist throw exception
-    if (m_providers.find(endpointName) != m_providers.end())
+    // Create if not exist.
+    if (m_providers.find(endpointName) == m_providers.end())
     {
-        throw std::runtime_error("Provider already exist");
+        m_providers.emplace(endpointName, std::make_unique<Publisher>(endpointName, DEFAULT_SOCKET_PATH));
     }
-    m_providers.emplace(endpointName, std::make_unique<Publisher>(endpointName, DEFAULT_SOCKET_PATH));
 }
 
 void RouterFacade::removeProviderLocal(const std::string& endpointName)
@@ -132,11 +131,11 @@ void RouterFacade::addSubscriber(const std::string& name,
                                  const std::string& subscriberId,
                                  const std::function<void(const std::vector<char>&)>& callback)
 {
-    std::shared_lock<std::shared_mutex> lock {m_providersMutex};
-    // If not exist throw exception
+    std::lock_guard<std::shared_mutex> lock {m_providersMutex};
+    // If not exist, create it.
     if (m_providers.find(name) == m_providers.end())
     {
-        throw std::runtime_error("addSubscriber: Provider not exist");
+        m_providers.emplace(name, std::make_unique<Publisher>(name, DEFAULT_SOCKET_PATH));
     }
 
     m_providers[name]->addSubscriber(std::make_shared<Subscriber<const std::vector<char>&>>(callback, subscriberId));
@@ -180,7 +179,6 @@ void RouterFacade::removeSubscriberLocal(const std::string& name, const std::str
 void RouterFacade::push(const std::string& name, const std::vector<char>& data)
 {
     std::shared_lock<std::shared_mutex> lock {m_providersMutex};
-
     if (m_remoteProviders.find(name) != m_remoteProviders.end())
     {
         m_remoteProviders[name]->push(data);
