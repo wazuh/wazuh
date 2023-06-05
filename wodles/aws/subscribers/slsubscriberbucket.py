@@ -19,25 +19,15 @@ import wazuh_integration
 class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration):
     """
     Class for processing AWS Security Lake events from S3.
-
-    Attributes
-    ----------
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        AWS secret access key.
-    aws_profile : str
-        AWS profile.
-    iam_role_arn : str
-        IAM Role.
     """
 
-    def __init__(self, access_key: str = None, secret_key: str = None, profile: str = None,
+    def __init__(self, iam_role_arn: str = None, iam_role_duration: str = None,
                  service_endpoint: str = None, sts_endpoint: str = None, **kwargs):
-        wazuh_integration.WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                                    profile=profile,
-                                                    service_name='s3', service_endpoint=service_endpoint,
-                                                    sts_endpoint=sts_endpoint,
+        wazuh_integration.WazuhIntegration.__init__(self, access_key=None, secret_key=None,
+                                                    iam_role_arn=iam_role_arn, iam_role_duration=iam_role_duration,
+                                                    profile=None,
+                                                    service_name='s3',
+                                                    service_endpoint=service_endpoint, sts_endpoint=sts_endpoint,
                                                     **kwargs)
 
     def obtain_information_from_parquet(self, bucket_path: str, parquet_path: str) -> list:

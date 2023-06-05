@@ -19,36 +19,32 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
 
     Attributes
     ----------
-    name: str
+    sqs_name: str
         Name of the SQS Queue.
     iam_role_arn : str
         IAM Role.
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        AWS secret access key.
-    external_id : str
-        The name of the External ID to use.
-    sts_endpoint : str
-        URL for the VPC endpoint to use to obtain the STS token.
-    service_endpoint : str
-        URL for the endpoint to use to obtain the logs.
+    iam_role_duration : str
+        The desired duration of the session that is going to be assumed.
     """
 
-    def __init__(self, name: str, iam_role_arn: str, access_key: str = None, secret_key: str = None,
+    def __init__(self, name: str, iam_role_arn: str, iam_role_duration: str = None,
                  external_id: str = None, sts_endpoint=None, service_endpoint=None, **kwargs):
         self.sqs_name = name
-        wazuh_integration.WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
-                                                    iam_role_arn=iam_role_arn,
-                                                    profile=None, external_id=external_id, service_name='sqs',
+        wazuh_integration.WazuhIntegration.__init__(self,
+                                                    iam_role_arn=iam_role_arn, iam_role_duration=iam_role_duration,
+                                                    profile=None, access_key=None, secret_key=None,
+                                                    external_id=external_id,
+                                                    service_name='sqs',
                                                     sts_endpoint=sts_endpoint,
                                                     **kwargs)
-        self.sts_client = self.get_sts_client(access_key, secret_key)
+        self.sts_client = self.get_sts_client(access_key=None, secret_key=None)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
         self.iam_role_arn = iam_role_arn
+        self.iam_role_duration = iam_role_duration
         self.asl_bucket_handler = AWSSLSubscriberBucket(external_id=external_id,
                                                         iam_role_arn=self.iam_role_arn,
+                                                        iam_role_duration=self.iam_role_duration,
                                                         service_endpoint=service_endpoint,
                                                         sts_endpoint=sts_endpoint)
 
