@@ -264,7 +264,6 @@ def sorting_lambda(filters: List[Dict[str, Any]], data: Dict[str, Any]) -> tuple
         value_of_filter = data
         for key in filter_dict['fields']:
             value_of_filter = value_of_filter.get(key)
-        print(value_of_filter)  # Print the value obtained from filtering
 
         result = value_of_filter
         if value_of_filter is not None:
