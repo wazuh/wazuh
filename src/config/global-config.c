@@ -243,7 +243,7 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                     for (int tgt_idx = 0; tgt_idx < target_count; tgt_idx++) {
                         os_strdup(w_strtrim(Config->forwarders_list[tgt_idx]), tmp);
                         mdebug2("Add target: '%s'.",tmp);
-                        free(Config->forwarders_list[tgt_idx]);
+                        os_free(Config->forwarders_list[tgt_idx]);
                         Config->forwarders_list[tgt_idx] = tmp;
                     }
                 }
@@ -815,10 +815,10 @@ void config_free(_Config *config) {
     if (config->forwarders_list) {
         int i = 0;
         while (config->forwarders_list[i]) {
-            free(config->forwarders_list[i]);
+            os_free(config->forwarders_list[i]);
             i++;
         }
-        free(config->forwarders_list);
+        os_free(config->forwarders_list);
     }
 
     if (config->g_rules_hash) {
