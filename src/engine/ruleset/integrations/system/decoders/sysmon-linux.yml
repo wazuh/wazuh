@@ -1,0 +1,339 @@
+name: decoder/sysmon-linux/0
+
+sources:
+  - decoder/syslog/0
+
+metadata:
+  module: sysmon-linux # TODO CHECK
+  dataset: sysmon-linux # TODO CHECK
+  title: sysmon-linux logs # TODO CHECK
+  description: Decoder for sysmon logs. # TODO CHECK
+  compatibility: This integration was tested on Ubuntu 22.04 (jammy), with sysmon version Sysmon v1.2.0
+  versions:
+    - "1.2.0" # Maybe 1.1.0 and 1.1.1 ?
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2023-06-xx
+  references:
+    - https://github.com/Sysinternals/SysmonForLinux
+
+check:
+  - process.name: "sysmon"
+  - message: "+starts_with/<Event"
+  #TODO: Once the events arrive tagged, uncommnet following line
+  #- event.module=="sysmon-linux"
+
+parse:
+  logpar:
+    - message: "<~sysmonEvent/xml/windows>" #TODO Change the name module
+
+
+# Log level mapping
+definitions:
+  lvl_map:
+    "0": "Audit"
+    "1": "Critical"
+    "2": "Error"
+    "3": "Warning"
+    "4": "Information"
+    "5": "Verbose"
+  category_map:
+    "1":
+      category:
+        - process
+      type:
+        - start
+    "2":
+      category:
+        - file
+      type:
+        - change
+    "3":
+      category:
+        - network
+      type:
+        - start
+        - connection
+        - protocol
+    "4":
+      category:
+        - process
+      type:
+        - change
+    "5":
+      category:
+        - process
+      type:
+        - end
+    "6":
+      category:
+        - driver
+      type:
+        - start
+    "7":
+      category:
+        - process
+      type:
+        - change
+    "10":
+      category:
+        - process
+      type:
+        - access
+    "11":
+      category:
+        - file
+      type:
+        - creation
+    "12":
+      category:
+        - configuration
+        - registry
+      type:
+        - change
+    "13":
+      category:
+        - configuration
+        - registry
+      type:
+        - change
+    "14":
+      category:
+        - configuration
+        - registry
+      type:
+        - change
+    "15":
+      category:
+        - file
+      type:
+        - access
+    "16":
+      category:
+        - configuration
+      type:
+        - change
+    "17":
+      category:
+        - file
+      type:
+        - creation
+    "18":
+      category:
+        - file
+      type:
+        - access
+    "22":
+      category:
+        - network
+      type:
+        - connection
+        - protocol
+        - info
+    "23":
+      category:
+        - file
+      type:
+        - deletion
+    "24":
+      type:
+        - change
+    "25":
+      category:
+        - process
+      type:
+        - change
+    "26":
+      category:
+        - file
+      type:
+        - deletion
+
+normalize:
+  # TODO CHECK this map
+  - map:
+      - event.module: "sysmon-linux" # TODO CHECK
+      - event.dataset: "sysmon-linux"
+      - wazuh.decoders: +array_append/sysmon-linux
+
+      - log.level: +get_value/$lvl_map/$~sysmonEvent.Event.System.Level.#text
+      - event.created: $~sysmonEvent.Event.System.TimeCreated.@SystemTime # TODO: Is this the right field, and the right format?
+      - host.name: $~sysmonEvent.Event.System.Computer.#text
+      - event.kind: "event"
+      - event.code: $~sysmonEvent.Event.System.EventID.#text
+      - event.action: "log"
+
+      - ~tmp: +get_value/$category_map/$~sysmonEvent.Event.System.EventID.#text
+      - event.category: $~tmp.category # TODO concatenate
+      - event.type: $~tmp.type # TODO concatenate
+
+  - check:
+    - event.code: "255"
+    map:
+      - error.code: "255"
+
+  - map:
+      - rule.name: $~sysmonEvent.Event.EventData.RuleName
+      - event.provider: $~sysmonEvent.Event.System.Provider.@Name
+# Opcode and task define the location of the event in the Windows Event Log
+#      - event.opcode: $~sysmonEvent.Event.System.Opcode.#text
+#      - event.task: $~sysmonEvent.Event.System.Task.#text
+
+      - ~tmp.hashes: +parse_key_value/$~sysmonEvent.Event.EventData.Hashes/=/,/'/' #TODO Check this
+      # TODO: We need obtain the all values of the hashes field
+      # - related.hash: $~temp.hashes (Array Values)
+
+
+  #####################################
+  #         Process fields
+  #####################################
+  - check: >-
+     +string_equal/event.code/1
+     OR +string_equal/event.code/23
+     OR +string_equal/event.code/24
+     OR +string_equal/event.code/25
+     OR +string_equal/event.code/26
+    map:
+      - process.pe.imphash: +rename/$~tmp.hashes.imphash #TODO CHECK
+      - process.hash: $~tmp.hashes
+
+  - map:
+      - process.entity_id: $~sysmonEvent.Event.EventData.ProcessGuid
+      - process.pid: +parse_long/$~sysmonEvent.Event.EventData.ProcessId
+      - process.executable: $~sysmonEvent.Event.EventData.Image
+      - process.entity_id: $~sysmonEvent.Event.EventData.SourceProcessGuid
+      - process.entity_id: $~sysmonEvent.Event.EventData.SourceProcessGUID
+      - process.pid: +parse_long/$~sysmonEvent.Event.EventData.SourceProcessId
+      - process.thread.id: +parse_long/$~sysmonEvent.Event.EventData.SourceThreadId
+      - process.executable: $~sysmonEvent.Event.EventData.SourceImage
+      - process.executable: $~sysmonEvent.Event.EventData.Destination
+      - process.command_line: $~sysmonEvent.Event.EventData.CommandLine
+      - process.working_directory: $~sysmonEvent.Event.EventData.CurrentDirectory
+      - process.parent.entity_id: $~sysmonEvent.Event.EventData.ParentProcessGuid
+      - process.parent.pid: +parse_long/$~sysmonEvent.Event.EventData.ParentProcessId
+      - process.parent.executable: $~sysmonEvent.Event.EventData.ParentImage
+      - process.parent.command_line: $~sysmonEvent.Event.EventData.ParentCommandLine
+
+  - check:
+    - event.code: +string_not_equal/7
+    map:
+    - process.pe.original_file_name: $~sysmonEvent.Event.EventData.OriginalFileName
+    - process.pe.company: $~sysmonEvent.Event.EventData.Company
+    - process.pe.description: $~sysmonEvent.Event.EventData.Description
+    - process.pe.file_version: $~sysmonEvent.Event.EventData.FileVersion
+    - process.pe.product: $~sysmonEvent.Event.EventData.Product
+
+  - map:
+      - ~tmp.file_data: +parse_file/$process.executable
+      - process.name: $~temp.file_data.name
+      - process.args: '+split/$process.command_line/ '
+
+      - ~tmp.file_data: +parse_file/$process.parent.executable
+      - process.parent.name: $~temp.file_data.name
+      - process.parent.args: '+split/$process.parent.command_line/ '
+
+  #####################################
+  #         File fields
+  #####################################
+  - check: >-
+      +string_equal/event.code/6
+      OR +string_equal/event.code/7
+      OR +string_equal/event.code/15
+    map:
+          - file.pe.imphash: +rename/$~tmp.hashes.imphash  #TODO CHECK
+          - file.hash: $~tmp.hashes
+
+  - map:
+      - file.path: $~sysmonEvent.Event.EventData.TargetFilename
+      - file.path: $~sysmonEvent.Event.EventData.Device
+      - file.path: $~sysmonEvent.Event.EventData.PipeName
+      - file.path: $~sysmonEvent.Event.EventData.ImageLoaded
+      - file.code_signature.subject_name: $~sysmonEvent.Event.EventData.Signature
+      - file.code_signature.status: $~sysmonEvent.Event.EventData.SignatureStatus
+
+  - check:
+    - event.code: +string_equal/7
+    map:
+      - file.pe.original_file_name: $~sysmonEvent.Event.EventData.OriginalFileName
+      - file.pe.company: $~sysmonEvent.Event.EventData.Company
+      - file.pe.description: $~sysmonEvent.Event.EventData.Description
+      - file.pe.file_version: $~sysmonEvent.Event.EventData.FileVersion
+      - file.pe.product: $~sysmonEvent.Event.EventData.Product
+      - ~tmp.file_data: +parse_file/$file.path
+      - file.directory: $~temp.file_data.path
+      - file.extension: $~temp.file_data.ext
+      - file.name: $~temp.file_data.name
+
+  #####################################
+  #         Network fields
+  #####################################
+  - map:
+      - network.transport: $~sysmonEvent.Event.EventData.Protocol
+
+  - check:
+    - event.code: +string_not_equal/22
+    map:
+      - network.protocol: $~sysmonEvent.Event.EventData.DestinationPortName
+      - network.protocol: $~sysmonEvent.Event.EventData.SourcePortName
+  - check:
+    - event.code: +string_equal/22
+    map:
+      - network.protocol: dns
+
+  - map:
+      - source.ip: +parse_ip/$~sysmonEvent.Event.EventData.SourceIp
+      - source.domain: +parse_fqdn/$~sysmonEvent.Event.EventData.SourceHostname
+      - source.port: +parse_long/$~sysmonEvent.Event.EventData.SourcePort
+
+      - destination.ip: +parse_ip/$~sysmonEvent.Event.EventData.DestinationIp
+      - destination.domain: +parse_fqdn/$~sysmonEvent.Event.EventData.DestinationHostname
+      - destination.port: +parse_long/$~sysmonEvent.Event.EventData.DestinationPort
+
+      - dns.question.name: $~sysmonEvent.Event.EventData.QueryName
+
+  - check: ~sysmonEvent.Event.EventData.Initiated=="true" # check true, True, "true", "True"
+    map:
+      - network.direction: egress
+  - check: ~sysmonEvent.Event.EventData.Initiated=="false"
+    map:
+      - network.direction: ingress
+
+  - check: ~sysmonEvent.Event.EventData.SourceIsIpv6=="true" # check true, True, "true", "True"
+    map:
+      - network.type: ipv6
+  - check: ~sysmonEvent.Event.EventData.SourceIsIpv6=="false"
+    map:
+      - network.type: ipv4
+
+  # TODO Related IPs and DNS result parser ( dns.resolved_ip, related.ip, dns.answers, related.hosts)
+  # dns.question, should beextracted from the dns.question.name [www.example.com -> exmple.com]
+
+  #####################################
+  #         User fields
+  #####################################
+  - map:
+      - user.id: $~sysmonEvent.Event.user.identifier
+      - ~temp.user_parts: +split/$~sysmonEvent.Event.EventData.user/\
+      - user.domain: $~temp.user_parts.0
+      - user.name: $~temp.user_parts.1
+      - user.name: $~sysmonEvent.Event.EventData.user
+      # If the user cannnot be parsed, the user.name should be traslate fron the user.identifier
+
+  #####################################
+  #     Related fields
+  #####################################
+  - map:
+      - related.user: +array_append/$user.name
+      - related.ip: +array_append/$source.ip
+      - related.ip: +array_append/$destination.ip
+      # - related.ip: +array_append/$dns.resolved_ip #TODO
+      - related.hosts: +array_append/$source.domain
+      - related.hosts: +array_append/$destination.domain
+      # - related.hosts: +array_append/$dns.answers #TODO
+
+
+  # Cleanup
+  - map:
+    - ~tmp: +delete
+    - ~sysmonEvent: +delete
