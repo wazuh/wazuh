@@ -1,0 +1,57 @@
+name: decoder/docker-listener/0
+
+metadata:
+  title: Wazuh docker listener integration
+  description: Process events that comes from the Docker listener wodle
+  module: Docker-listener
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.4
+  versions:
+   - "20.10.12" #TODO: check backward compatibility
+  author:
+    email: info@wazuh.com
+    name: Wazuh, Inc.
+    date: 2023-06-01
+  references:
+    - https://documentation.wazuh.com/current/container-security/docker-monitor/index.html
+    - https://docs.docker.com/engine/reference/commandline/events/
+
+sources:
+  - decoder/integrations/0
+
+check:
+  - wazuh.origin: Wazuh-Docker
+  - event.original: +starts_with/{
+
+parse:
+  logpar:
+    - event.original: <~json/json>
+
+normalize:
+
+ - map:
+    - wazuh.decoders: +array_append/docker-listener
+
+ - check: +exists/~json.docker
+   map:
+    - event.id: $~json.docker.id #same as ~json.docker.Actor.ID container.id?
+    - container.image.name: $~json.docker.from #host.name ?
+    - event.created : $~json.docker.time
+    - service.origin.type: $~json.docker.Type #The type of object emitting the event - possible values : container, image, volume, network, daemon, plugin, service, node, secret, config
+    - container.image.tag: $~json.docker.Action #The type of event #volume, container, network, service, node #TODO: no event type -> doesn't match possible values
+    - process.command_line : $~json.docker.status #Event status #examples : "create", "start", "kill", "stop", "die","exec_create: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl", "exec_start: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl"
+
+    - event.outcome : success
+    - event.category : +array_append/process
+    - event.kind : event
+
+    - ~container.attributes : $~json.docker.Actor.Attributes #Various key/value attributes of the object, depending on its type
+    #contains fields: Attributes.image Attributes.name Attributes.org.opencontainers.image.ref.name Attributes.org.opencontainers.image.version
+
+    #Discarded fields
+    # $~json.docker.timeNano
+    # - ~container.scope : $~json.docker.scope #local or swarn
+
+ - check: +not_exists/~json.docker
+   map:
+    - event.outcome : failure
