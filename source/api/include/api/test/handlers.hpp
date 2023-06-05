@@ -21,10 +21,36 @@ struct Config
     std::shared_ptr<catalog::Catalog> catalog;
 };
 
+/**
+ * @brief API command handler to get the parameters of an active session.
+ *
+ * @return api::Handler
+ */
 api::Handler sessionGet(void);
+
+/**
+ * @brief API command handler to create a new session.
+ *
+ * @param router Router instance.
+ * @param catalog Catalog instance.
+ * @return api::Handler
+ */
 api::Handler sessionPost(std::shared_ptr<::router::Router> router, std::shared_ptr<catalog::Catalog> catalog);
 
+/**
+ * @brief API command handler to delete a session or all the sessions.
+ *
+ * @param router Router instance.
+ * @param catalog Catalog instance.
+ * @return api::Handler
+ */
 api::Handler sessionsDelete(std::shared_ptr<::router::Router> router, std::shared_ptr<catalog::Catalog> catalog);
+
+/**
+ * @brief API command handler to get the list of active sessions.
+ *
+ * @return api::Handler
+ */
 api::Handler sessionsGet(void);
 
 /**

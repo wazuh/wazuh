@@ -20,6 +20,8 @@ using ::api::adapter::fromWazuhRequest;
 using ::api::adapter::genericError;
 using ::api::adapter::toWazuhResponse;
 
+using ::router::Router;
+
 } // namespace
 
 namespace api::test::handlers
@@ -34,7 +36,7 @@ namespace eTest = ::com::wazuh::api::engine::test;
  * @param router Router instance.
  * @return int32_t Minimum available priority. If no priority is available, returns -1.
  */
-static inline int32_t getMinimumAvailablePriority(const shared_ptr<::router::Router>& router)
+static inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& router)
 {
     // Create a set to store the taken priorities given the table
     std::unordered_set<uint32_t> takenPriorities;
@@ -68,9 +70,9 @@ static inline int32_t getMinimumAvailablePriority(const shared_ptr<::router::Rou
 static inline std::optional<base::Error>
 addFilterToCatalog(shared_ptr<catalog::Catalog> catalog, const string& filterName, const string& filterContent)
 {
-    std::string error;
-
     catalog::Resource targetResource;
+
+    std::optional<base::Error> addFilterError;
 
     try
     {
@@ -78,20 +80,20 @@ addFilterToCatalog(shared_ptr<catalog::Catalog> catalog, const string& filterNam
     }
     catch (const std::exception& e)
     {
-        error = e.what();
+        addFilterError = std::optional<base::Error> {base::Error {e.what()}};
     }
 
     // If no error occurred, post the resource
-    if (error.empty())
+    if (!addFilterError.has_value())
     {
         const auto postResourceError = catalog->postResource(targetResource, filterContent);
         if (postResourceError)
         {
-            error = postResourceError.value().message;
+            addFilterError = std::optional<base::Error> {base::Error {postResourceError.value().message}};
         }
     }
 
-    return (error.empty() ? std::nullopt : std::make_optional(base::Error {error}));
+    return addFilterError;
 }
 
 /**
@@ -104,7 +106,7 @@ addFilterToCatalog(shared_ptr<catalog::Catalog> catalog, const string& filterNam
 static inline std::optional<base::Error> deleteFilterFromStore(const string& filterName,
                                                                shared_ptr<catalog::Catalog> catalog)
 {
-    std::string error;
+    std::optional<base::Error> deleteFilterError;
 
     // Build target resource
     catalog::Resource targetResource;
@@ -115,20 +117,21 @@ static inline std::optional<base::Error> deleteFilterFromStore(const string& fil
     }
     catch (const std::exception& e)
     {
-        error = e.what();
+        deleteFilterError = std::optional<base::Error> {base::Error {e.what()}};
     }
 
-    if (error.empty())
+    if (!deleteFilterError.has_value())
     {
         const auto deleteResourceError = catalog->deleteResource(targetResource);
         if (deleteResourceError.has_value())
         {
-            error = fmt::format(
+            const auto error = fmt::format(
                 "Filter '{}' could not be removed from the store: {}", filterName, deleteResourceError.value().message);
+            deleteFilterError = std::optional<base::Error> {base::Error {error}};
         };
     }
 
-    return (error.empty() ? std::nullopt : std::make_optional(base::Error {error}));
+    return deleteFilterError;
 }
 
 /**
@@ -138,8 +141,7 @@ static inline std::optional<base::Error> deleteFilterFromStore(const string& fil
  * @param router Router instance.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-static inline std::optional<base::Error> deleteRouteFromRouter(const string& routeName,
-                                                               shared_ptr<::router::Router> router)
+static inline std::optional<base::Error> deleteRouteFromRouter(const string& routeName, shared_ptr<Router> router)
 {
     std::string error;
 
@@ -147,7 +149,7 @@ static inline std::optional<base::Error> deleteRouteFromRouter(const string& rou
     {
         router->removeRoute(routeName);
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
         error = e.what();
     }
@@ -164,7 +166,7 @@ static inline std::optional<base::Error> deleteRouteFromRouter(const string& rou
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
 static inline std::optional<base::Error>
-deleteSession(const string& sessionName, shared_ptr<::router::Router> router, shared_ptr<catalog::Catalog> catalog)
+deleteSession(const string& sessionName, shared_ptr<Router> router, shared_ptr<catalog::Catalog> catalog)
 {
     auto& sessionManager = SessionManager::getInstance();
 
@@ -194,7 +196,7 @@ deleteSession(const string& sessionName, shared_ptr<::router::Router> router, sh
     return std::nullopt;
 }
 
-api::Handler sessionPost(shared_ptr<::router::Router> router, shared_ptr<catalog::Catalog> catalog)
+api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<catalog::Catalog> catalog)
 {
     return [router, catalog](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -211,15 +213,21 @@ api::Handler sessionPost(shared_ptr<::router::Router> router, shared_ptr<catalog
         const auto& eRequest = std::get<RequestType>(res);
 
         // Field name, policy and lifespan are required
-        const auto parametersError = !eRequest.has_name()     ? std::make_optional("Missing /name field")
-                                     : !eRequest.has_policy() ? std::make_optional("Missing /policy field")
-                                                              : std::nullopt;
+        const auto parametersError = (!eRequest.has_name()       ? std::make_optional("Missing /name field")
+                                      : !eRequest.has_policy()   ? std::make_optional("Missing /policy field")
+                                      : !eRequest.has_lifespan() ? std::make_optional("Missing /lifespan field")
+                                                                 : std::nullopt);
         if (parametersError.has_value())
         {
             return genericError<ResponseType>(parametersError.value());
         }
 
         auto& sessionManager = SessionManager::getInstance();
+
+        if (sessionManager.doesSessionExist(eRequest.name()))
+        {
+            return genericError<ResponseType>(fmt::format("Session '{}' already exists", eRequest.name()));
+        }
 
         const auto filterName = fmt::format(FILTER_NAME_FORMAT, eRequest.name());
 
@@ -239,12 +247,14 @@ api::Handler sessionPost(shared_ptr<::router::Router> router, shared_ptr<catalog
 
         if (0 > minAvailablePriority)
         {
+            deleteFilterFromStore(filterName, catalog);
             return genericError<ResponseType>("There is no available priority");
         }
 
         const auto addRouteError = router->addRoute(routeName, minAvailablePriority, filterName, eRequest.policy());
         if (addRouteError.has_value())
         {
+            deleteFilterFromStore(filterName, catalog);
             return genericError<ResponseType>(addRouteError.value().message);
         }
 
@@ -252,6 +262,8 @@ api::Handler sessionPost(shared_ptr<::router::Router> router, shared_ptr<catalog
             sessionManager.createSession(eRequest.name(), routeName, eRequest.policy(), eRequest.lifespan());
         if (createSessionError.has_value())
         {
+            deleteFilterFromStore(filterName, catalog);
+            deleteRouteFromRouter(routeName, router);
             return genericError<ResponseType>(createSessionError.value().message);
         }
 
@@ -336,7 +348,7 @@ api::Handler sessionsGet(void)
     };
 }
 
-api::Handler sessionsDelete(shared_ptr<::router::Router> router, shared_ptr<catalog::Catalog> catalog)
+api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<catalog::Catalog> catalog)
 {
     return [router, catalog](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -353,9 +365,9 @@ api::Handler sessionsDelete(shared_ptr<::router::Router> router, shared_ptr<cata
         const auto& eRequest = std::get<RequestType>(res);
 
         const auto errorMsg =
-            !eRequest.has_name() && !eRequest.has_removeall()
-                ? std::make_optional("Missing both /name and /removeall fields, at least one field must be set")
-                : std::nullopt;
+            ((!eRequest.has_name() && !eRequest.has_removeall())
+                 ? std::make_optional("Missing both /name and /removeall fields, at least one field must be set")
+                 : std::nullopt);
         if (errorMsg.has_value())
         {
             return genericError<ResponseType>(errorMsg.value());
