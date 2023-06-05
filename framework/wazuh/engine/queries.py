@@ -61,7 +61,6 @@ class FieldSelector(BaseQuery):
 
         Note:
             If the data is a list of dictionaries, the transformation is applied to each dictionary.
-            If the data is a single dictionary, the transformation is applied to the dictionary.
         """
         # Create an empty list if the data is a list, otherwise create an empty dictionary
         transformed_data = [] if isinstance(data, list) else {}
@@ -160,7 +159,6 @@ class FieldSearch(BaseQuery):
 
         Note:
             If the data is a list of dictionaries, the transformation is applied to each dictionary.
-            If the data is a single dictionary, the transformation is applied to the dictionary.
         """
         transformed_data = []
 
@@ -250,12 +248,6 @@ def sorting_lambda(filters: List[Dict[str, Any]], data: Dict[str, Any]) -> tuple
 
     Returns:
         tuple: A tuple containing the sorted values based on the filters.
-
-    Example:
-        filters = [{'fields': ['name'], 'reverse': False}, {'fields': ['age'], 'reverse': True}]
-        data = {'name': 'John', 'age': 25}
-        result = sorting_lambda(filters, data)
-        print(result)  # Output: ('John', -25)
     """
 
     final_tuple = []
@@ -341,8 +333,6 @@ class FieldQuery(BaseQuery):
             params: A dictionary containing the query parameters.
                 - 'q': The query string to filter results by.
 
-        Raises:
-            KeyError: If 'q' is not present in the params dictionary.
         """
         self._validate_query_value(params['q'])
         self.q = params['q']
