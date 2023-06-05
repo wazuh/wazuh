@@ -1,0 +1,4 @@
+items:
+    - version: 0.0.1
+      short: Created integration for MySQL
+      pr: <#46546>

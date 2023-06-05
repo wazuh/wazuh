@@ -1,0 +1,21 @@
+title: MySQL Server integration
+overview: >
+  This integration processes the following logs from [MySQL](https://dev.mysql.com/) Server:
+    - MySQL error logs
+compatibility: The integration was tested with MySQL server logs from version 5.7 and 8.0
+configuration: >
+  This integration uses the logcollector source localfile to ingest the logs from /var/log/mysql/error.log.
+  Add to the ossec.conf file in the monitored agent the following block:
+
+  ```xml
+  <localfile>
+    <!-- Edit location to appropriate path if needed -->
+    <location>/var/log/mysql/error.log</location>
+    <log_format>json</log_format>
+    <label key="event.module">mysql</label>
+    <label key="event.dataset">mysql.error</label>
+  </localfile>
+  ```
+event:
+  module: mysql
+  dataset: mysql.error
