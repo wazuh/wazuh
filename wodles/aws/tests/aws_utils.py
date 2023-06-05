@@ -11,7 +11,10 @@ import aws_bucket
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'services'))
 import aws_service
-import cloudwatchlogs
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'subscribers'))
+import sqsqueue
+import slsubscriberbucket
 
 TEST_TABLE_NAME = "cloudtrail"
 TEST_SERVICE_NAME = "s3"
@@ -27,6 +30,7 @@ TEST_TOKEN = 'test_token'
 TEST_CREATION_DATE = "2022-01-01"
 TEST_BUCKET = "test-bucket"
 TEST_SERVICE = "test-service"
+TEST_SQS_NAME = "test-sqs"
 TEST_PREFIX = "test_prefix"
 TEST_SUFFIX = "test_suffix"
 TEST_REGION = "us-east-1"
@@ -88,6 +92,7 @@ THROTTLING_ERROR_CODE = 16
 INVALID_KEY_FORMAT_ERROR_CODE = 17
 INVALID_PREFIX_ERROR_CODE = 18
 INVALID_REQUEST_TIME_ERROR_CODE = 19
+UNABLE_TO_FETCH_DELETE_FROM_QUEUE = 21
 INVALID_REGION_ERROR_CODE = 22
 
 
@@ -310,6 +315,61 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
 
+def get_aws_sqs_queue_parameters(name: str = TEST_SQS_NAME, external_id: str = TEST_EXTERNAL_ID,
+                                 iam_role_arn: str = TEST_IAM_ROLE_ARN, iam_role_duration: str = None,
+                                 sts_endpoint: str = None, service_endpoint: str = None):
+    """Return a dict containing every parameter supported by AWSSQSQueue. Used to simulate different ossec.conf
+    configurations.
+
+    Parameters
+    ----------
+    name: str
+        Name of the SQS Queue.
+    external_id : str
+        The name of the External ID to use.
+    iam_role_arn : str
+        IAM Role.
+    sts_endpoint : str
+        STS endpoint URL.
+    service_endpoint : str
+        Service endpoint URL.
+    iam_role_duration : str
+        The desired duration of the session that is going to be assumed.
+
+    Returns
+    -------
+    dict
+        A dict containing the configuration parameters with their default values.
+    """
+    return {'name': name, 'external_id': external_id, 'iam_role_arn': iam_role_arn,
+            'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
+
+
+def get_aws_sl_subscriber_bucket_parameters(iam_role_arn: str = None, iam_role_duration: str = None,
+                                            service_endpoint: str = None, sts_endpoint: str = None):
+    """Return a dict containing every parameter supported by AWSSLSubscriberBucket. Used to simulate different ossec.conf
+    configurations.
+
+    Parameters
+    ----------
+    iam_role_arn : str
+        IAM Role.
+    iam_role_duration : str
+        The desired duration of the session that is going to be assumed.
+    sts_endpoint : str
+        STS endpoint URL.
+    service_endpoint : str
+        Service endpoint URL.
+
+    Returns
+    -------
+    dict
+        A dict containing the configuration parameters with their default values.
+    """
+    return {'iam_role_arn': iam_role_arn, 'iam_role_duration': iam_role_duration,
+            'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint}
+
+
 def get_mocked_wazuh_integration(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
@@ -352,6 +412,20 @@ def get_mocked_service(class_=aws_service.AWSService, **kwargs):
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
         return class_(**get_aws_service_parameters(**kwargs))
+
+
+def get_mocked_aws_sqs_queue(**kwargs):
+    with patch('wazuh_integration.WazuhIntegration.get_client'), \
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
+        return sqsqueue.AWSSQSQueue(**get_aws_sqs_queue_parameters(**kwargs))
+
+
+def get_mocked_aws_sl_subscriber_bucket(**kwargs):
+    with patch('wazuh_integration.WazuhIntegration.get_client'), \
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
+        return slsubscriberbucket.AWSSLSubscriberBucket(**get_aws_sl_subscriber_bucket_parameters(**kwargs))
 
 
 def database_execute_script(connector, sql_file):
