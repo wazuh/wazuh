@@ -57,7 +57,6 @@ def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
 def test_aws_sqs_queue_delete_message(mock_wazuh_integration, mock_sts_client, mock_get_url):
     """Test 'delete_message' method sends the given message to SQS."""
-
     instance = utils.get_mocked_aws_sqs_queue()
     instance.delete_message(SAMPLE_MESSAGE)
 
