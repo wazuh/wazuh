@@ -28,7 +28,7 @@ std::optional<base::Error> SessionManager::createSession(const string& sessionNa
                                                          const string& policyName,
                                                          uint32_t lifespan)
 {
-    std::lock_guard<std::mutex> lock(m_sessionMutex);
+    std::unique_lock<std::shared_mutex> lock(m_sessionMutex);
 
     if (m_activeSessions.count(sessionName) > 0)
     {
@@ -59,7 +59,7 @@ std::optional<base::Error> SessionManager::createSession(const string& sessionNa
 
 std::vector<string> SessionManager::getSessionsList(void)
 {
-    std::lock_guard<std::mutex> lock(m_sessionMutex);
+    std::shared_lock<std::shared_mutex> lock(m_sessionMutex);
 
     std::vector<string> sessionNames;
 
@@ -72,7 +72,7 @@ std::vector<string> SessionManager::getSessionsList(void)
 
 std::optional<Session> SessionManager::getSession(const string& sessionName)
 {
-    std::lock_guard<std::mutex> lock(m_sessionMutex);
+    std::shared_lock<std::shared_mutex> lock(m_sessionMutex);
 
     auto it = m_activeSessions.find(sessionName);
     if (it != m_activeSessions.end())
@@ -84,7 +84,7 @@ std::optional<Session> SessionManager::getSession(const string& sessionName)
 
 bool SessionManager::deleteSessions(const bool removeAll, const string sessionName)
 {
-    std::lock_guard<std::mutex> lock(m_sessionMutex);
+    std::unique_lock<std::shared_mutex> lock(m_sessionMutex);
 
     bool sessionRemoved {false};
 
@@ -102,8 +102,8 @@ bool SessionManager::deleteSessions(const bool removeAll, const string sessionNa
         auto sessionIt = m_activeSessions.find(sessionName);
         if (sessionIt != m_activeSessions.end())
         {
-            const auto policyName = sessionIt->second.getPolicyName();
-            const auto routeName = sessionIt->second.getRouteName();
+            const auto& policyName = sessionIt->second.getPolicyName();
+            const auto& routeName = sessionIt->second.getRouteName();
 
             m_activeSessions.erase(sessionIt);
             m_policyMap.erase(policyName);
@@ -124,6 +124,20 @@ bool SessionManager::deleteAllSessions(void)
 bool SessionManager::deleteSession(const string& sessionName)
 {
     return deleteSessions(false, sessionName);
+}
+
+bool SessionManager::doesSessionExist(const std::string& sessionName)
+{
+    std::shared_lock<std::shared_mutex> lock(m_sessionMutex);
+
+    bool doesExist {false};
+
+    if (m_activeSessions.count(sessionName) > 0)
+    {
+        doesExist = true;
+    }
+
+    return doesExist;
 }
 
 } // namespace api::sessionManager
