@@ -31,7 +31,9 @@ def test_select_runs_when_valid(params, data, expected):
          [
              {'data': {'name': 'some1', 'example': 'example1'}, 'version': 1},
              {'data': {'name': 'some2', 'example': 'example2'}, 'version': 2}],
-         [{'data': {'name': 'some1'}, 'version': 1}, {'data': {'name': 'some2'}, 'version': 2}])
+         [{'data': {'name': 'some1'}, 'version': 1}, {'data': {'name': 'some2'}, 'version': 2}]),
+        # Handle case when nest field is a list
+        ({'select': 'name.list.name'}, [{'name': {'list': [1, 2, 3]}, 'number': 1}], [{}])
 
     ])
 def test_selects_correct_fields(params, data, expected):
@@ -169,7 +171,10 @@ def test_sort_runs_when_valid(params, data, expected):
                  {'key': {'v': 10}, 'n': 4}],
         ),  # Sorting two keys, one nested, the other not
         ({'sort': '+key'}, [{'key': 'z'}, {'key': 'j'}, {'key': 'b'}],
-         [{'key': 'b'}, {'key': 'j'}, {'key': 'z'}])  # Sorting with one key with string values
+         [{'key': 'b'}, {'key': 'j'}, {'key': 'z'}]),  # Sorting with one key with string values
+        # Sorting with one key with list values
+        ({'sort': '+key'}, [{'key': [3, 1]}, {'key': [1, 2]}, {'key': [3, 2]}],
+         [{'key': [1, 2]}, {'key': [3, 1]}, {'key': [3, 2]}])
     ]
 )
 def test_sort_correct_elements(params, data, expected):
@@ -212,12 +217,18 @@ def test_query_has_a_valid_string(params):
 @pytest.mark.parametrize(
     "params,data,expected",
     [
+        # Handle query with one key
         ({'q': 'key=example'},
          [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': 2}, {'key': 'example', 'n': 3}],
-         [{'key': 'example', 'n': 1},{'key': 'example', 'n': 3}]),
+         [{'key': 'example', 'n': 1}, {'key': 'example', 'n': 3}]),
+        # Handle query with 2 keys
         ({'q': 'key=example,n=1'},
          [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': 2}, {'key': 'example', 'n': 3}],
          [{'key': 'example', 'n': 1}]),
+        # Handle query with 2 keys even if one is a list
+        ({'q': 'key=example,n=1'},
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': [1, 2]}, {'key': 'example', 'n': 3}],
+         [{'key': 'example', 'n': 1}])
     ]
 )
 def test_query_return_correct_elements(params, data, expected):
@@ -229,22 +240,22 @@ def test_query_return_correct_elements(params, data, expected):
 
 
 def test_sequence_runs_all_valid_queries():
-    class TransformationMock(queries.BaseQuery):
-        """Mock implementation of a transformation for testing."""
+    class QueyMock(queries.BaseQuery):
+        """Mock implementation of a query for testing."""
         counter = 0
 
         def __init__(self, params):
-            TransformationMock.counter += 1
+            QueyMock.counter += 1
 
         def apply_transformation(self, data):
-            data['counter'] = TransformationMock.counter
+            data['counter'] = QueyMock.counter
             return data
 
         @staticmethod
         def can_i_run(params, data):
             return True
 
-    list_of_queries = [TransformationMock, TransformationMock, TransformationMock]
+    list_of_queries = [QueyMock, QueyMock, QueyMock]
     transformation_sequence = queries.EngineQuery(list_of_queries)
     result = transformation_sequence.apply_sequence({}, {})
 

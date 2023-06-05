@@ -453,7 +453,7 @@ class EngineQuery:
             An instance of EngineQuery with the default transformations.
         """
         list_of_transformations = [
-            FieldSearch, FieldSelector,
+            FieldSearch, FieldQuery, FieldSelector,
             FieldOffsetLimit, FieldSort]
 
         return cls(list_of_transformations)
