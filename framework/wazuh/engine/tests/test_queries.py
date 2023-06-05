@@ -13,7 +13,7 @@ import pytest
     [
         ({}, {}, False),  # Empty params
         ({'select': None}, {}, False),   # Key exist in params but is None
-        ({'select': 'select'}, {}, True),  # Key exists in params, data is a Dict
+        ({'select': 'select'}, {}, False),  # Key exists in params, data is a Dict
         ({'select': 'select'}, [{}, {}], True)  # Key exists in params, data is List[Dict]
     ])
 def test_select_runs_when_valid(params, data, expected):
@@ -24,11 +24,8 @@ def test_select_runs_when_valid(params, data, expected):
 @pytest.mark.parametrize(
     "params,data,expected",
     [
-        ({'select': 'name'}, {'name': 'example', 'number': 1}, {'name': 'example'}),  # Select applied to Dict
         ({'select': 'name'}, [{'name': 'example1', 'number': 1}, {'name': 'example2', 'number': 2}],
          [{'name': 'example1'}, {'name': 'example2'}]),  # Select applied to List[Dict]
-        ({'select': 'data.name'}, {'data': {'name': 'some', 'example': 'example'}, 'version': 1},
-         {'data': {'name': 'some'}}),  # Select a nested field applied to Dict
         # Select a nested field applied to List[Dict]
         ({'select': 'data.name,version'},
          [

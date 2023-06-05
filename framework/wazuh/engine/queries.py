@@ -10,7 +10,7 @@ from wazuh.core.exception import WazuhError
 class BaseQuery:
     """Base class for response transformations."""
 
-    def apply_transformation(self, data):
+    def apply_transformation(self, data: List[Dict[str, Any]]):
         """Apply the transformation to the given data.
 
         Args:
@@ -46,11 +46,11 @@ class FieldSelector(BaseQuery):
 
     @staticmethod
     def can_i_run(params: Dict[str, Any], data: Any) -> bool:
-        if 'select' in params and params['select']:
+        if 'select' in params and params['select'] and isinstance(data, list):
             return True
         return False
 
-    def apply_transformation(self, data: Dict[str, Any] or List[Dict[str, Any]]):
+    def apply_transformation(self, data: List[Dict[str, Any]]):
         """Apply the field selection transformation to the data.
 
         Args:
@@ -69,13 +69,10 @@ class FieldSelector(BaseQuery):
         # Remove leading/trailing spaces and split the selected fields based on comma separation
         selected_fields = [name.strip() for name in self.select.split(",")]
 
-        if isinstance(data, list):
-            # If the data is a list, iterate over each element
-            for element in data:
-                selected_elements = self._select_fields(selected_fields, element)
-                transformed_data.append(selected_elements)
-        else:
-            transformed_data = self._select_fields(selected_fields, data)
+        # If the data is a list, iterate over each element
+        for element in data:
+            selected_elements = self._select_fields(selected_fields, element)
+            transformed_data.append(selected_elements)
 
         # Return the transformed data
         return transformed_data
