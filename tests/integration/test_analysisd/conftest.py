@@ -33,7 +33,7 @@ def prepare_custom_rules_file(request, metadata):
     os.remove(target_rule)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='module')
 def wait_for_analysisd_startup(request):
     """Wait until analysisd has begun and alerts.json is created."""
     log_monitor = file_monitor.FileMonitor(OSSEC_LOG_PATH)

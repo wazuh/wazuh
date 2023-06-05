@@ -126,4 +126,4 @@ def test_scan_messages(metadata, configure_local_internal_options, configure_soc
 
     # Check that expected message appears
     expected = callbacks.callback_analysisd_message(metadata['output'])
-    assert monitored_sockets[0].callback_result == expected
+    assert monitored_sockets[0].callback_result == expected, 'Failed test case stage: {}'.format(metadata['stage'])
