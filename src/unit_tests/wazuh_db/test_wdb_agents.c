@@ -16,13 +16,13 @@
 #include <string.h>
 
 #include "os_err.h"
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "wazuhdb_op.h"
-#include "wazuh_db/wdb_agents.h"
+#include "../wazuh_db/wdb_agents.h"
 
 /* setup/teardown */
 

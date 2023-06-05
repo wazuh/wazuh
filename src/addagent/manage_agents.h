@@ -13,7 +13,7 @@
 
 #include "shared.h"
 #include "sec.h"
-#include "external/cJSON/cJSON.h"
+#include <cJSON.h>
 
 /** Prototypes **/
 

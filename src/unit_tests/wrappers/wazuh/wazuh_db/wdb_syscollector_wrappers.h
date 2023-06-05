@@ -11,7 +11,7 @@
 #ifndef WDB_SYSCOLLECTOR_WRAPPERS_H
 #define WDB_SYSCOLLECTOR_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 int __wrap_wdb_osinfo_save(wdb_t * wdb,
                            const char * scan_id,

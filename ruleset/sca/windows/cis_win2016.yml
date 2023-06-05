@@ -13,7 +13,7 @@
 policy:
   id: "cis_win2016"
   file: "cis_win2016.yml"
-  name: "CIS Benchmark for Windows Server 2016"
+  name: "CIS Microsoft Windows Server 2016 RTM (Release 1607) Benchmark v1.1.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2016."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

@@ -12,7 +12,7 @@
 policy:
   id: "cis_ubuntu22-04"
   file: "cis_ubuntu22-04.yml"
-  name: "SCA policy for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS."
+  name: "CIS Ubuntu Linux 22.04 LTS Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

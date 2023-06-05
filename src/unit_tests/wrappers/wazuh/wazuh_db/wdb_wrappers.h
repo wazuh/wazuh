@@ -11,7 +11,7 @@
 #ifndef WDB_WRAPPERS_H
 #define WDB_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 wdb_t* __wrap_wdb_open_global();
 

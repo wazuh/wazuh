@@ -22,11 +22,11 @@
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 
 #include "../external/cJSON/cJSON.h"
-#include "headers/store_op.h"
-#include "monitord/monitord.h"
-#include "headers/defs.h"
-#include "headers/shared.h"
-#include "config/config.h"
+#include "../headers/store_op.h"
+#include "../monitord/monitord.h"
+#include "../headers/defs.h"
+#include "../headers/shared.h"
+#include "../config/config.h"
 #include "os_err.h"
 
 /* redefinitons/wrapping */

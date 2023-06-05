@@ -11,7 +11,7 @@
 #ifndef WDB_AGENTS_HELPERS_WRAPPERS_H
 #define WDB_AGENTS_HELPERS_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 cJSON* __wrap_wdb_insert_vuln_cves(int id,
                                    const char *name,
