@@ -82,10 +82,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         crypt32
     )
 else()
-    add_executable(utils_unit_test
-      ${UTIL_CXX_UNITTEST_COMMON_SRC}
-      ${UTIL_CXX_UNITTEST_LINUX_SRC}
-    )
+
+    if (APPLE)
+      add_executable(utils_unit_test
+        ${UTIL_CXX_UNITTEST_COMMON_SRC}
+      )
+    else()
+      add_executable(utils_unit_test
+        ${UTIL_CXX_UNITTEST_COMMON_SRC}
+        ${UTIL_CXX_UNITTEST_LINUX_SRC}
+      )
+    endif(APPLE)
+
     target_link_libraries(utils_unit_test
         debug gtestd
         debug gmockd
