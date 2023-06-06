@@ -34,14 +34,6 @@ private:
     /* Resources */
     std::shared_ptr<builder::Builder> m_builder; ///< Builder for policy creation
 
-    struct Data
-    {
-        DebugMode debugMode;
-        std::tuple<std::string, std::string> payload;
-    };
-
-    Data m_data;
-
 public:
     /**
      * @brief Create the policy manager
@@ -113,24 +105,23 @@ public:
     std::optional<base::Error> forwardEvent(const std::string& name, std::size_t instance, base::Event event);
 
     /**
-     * @brief Set the Debug Mode object
+     * @brief 
      * 
-     * @param debugMode 
+     * @param name 
+     * @param instance 
+     * @return std::optional<base::Error> 
      */
-    void inline setDebugMode(DebugMode debugMode)
-    {
-        m_data.debugMode = debugMode;
-    }
+    std::optional<base::Error> subscribeOutputAndTraces(const std::string& name, std::size_t instance);
 
     /**
-     * @brief Get the Output object
+     * @brief Get the Data object
      * 
-     * @return std::stringstream 
+     * @param name 
+     * @param instance 
+     * @param debugMode 
+     * @return const std::variant<std::tuple<std::string, std::string>,base::Error> 
      */
-    inline const std::tuple<std::string, std::string> getData()
-    {
-        return m_data.payload;
-    }
+    const std::variant<std::tuple<std::string, std::string>,base::Error> getData(const std::string& name, std::size_t instance, router::DebugMode debugMode);
 };
 } // namespace router
 

@@ -1,5 +1,6 @@
 add_executable(test_handler_test
-  handlers_test.cpp
+  #handlers_test.cpp
+  handlers_without_files_test.cpp
 )
 
 target_include_directories(test_handler_test

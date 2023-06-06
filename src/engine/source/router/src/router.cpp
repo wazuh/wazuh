@@ -42,7 +42,6 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
     auto result = m_store->get(ROUTES_TABLE_NAME);
     if (std::holds_alternative<base::Error>(result))
     {
-        std::cout << "que cagada" << std::endl;
         const auto error = std::get<base::Error>(result);
         LOG_DEBUG("Router: Routes table not found in store. Creating new table: {}.", error.message);
         m_store->add(ROUTES_TABLE_NAME, json::Json {"[]"});
@@ -333,11 +332,10 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                         {
                             if (route.second[i].accept(event))
                             {
-                                m_policyManager->setDebugMode(m_data.debugMode);
                                 const auto& target = route.second[i].getTarget();
                                 m_policyManager->forwardEvent(target, i, std::move(event));
-                                m_data.payload = m_policyManager->getData();
-                                LOG_DEBUG("Traces'{}'", std::get<1>(m_data.payload));
+
+                                // Condition variable that notifies that the outputs and traces were generated
                                 m_data.isDataReady = true;
                                 lock.unlock();
                                 m_data.dataReady.notify_all();
@@ -408,6 +406,43 @@ void Router::clear()
 
     dumpTableToStorage();
     m_policyManager->delAllPolicies();
+}
+
+std::optional<base::Error> Router::subscribeOutputAndTraces(const std::string& policyName)
+{
+    std::unique_lock lock {m_mutexRoutes};
+
+    for (std::size_t i = 0; i < m_numThreads; ++i)
+    {
+        auto data = m_policyManager->subscribeOutputAndTraces(policyName, i);
+        if (data.has_value())
+        {
+            return data.value();
+        }
+    }
+
+    return std::nullopt;
+}
+
+const std::variant<std::tuple<std::string, std::string>,base::Error> Router::getData(const std::string& policyName, router::DebugMode debugMode)
+{
+    std::unique_lock<std::shared_mutex> lock {m_mutexRoutes};
+
+    m_data.dataReady.wait(lock, [this]() { return m_data.isDataReady; });
+
+    std::variant<std::tuple<std::string, std::string>,base::Error> data;
+    for (std::size_t i = 0; i < m_numThreads; ++i)
+    {
+        data = m_policyManager->getData(policyName, i, debugMode);
+        if (std::holds_alternative<base::Error>(data))
+        {
+            return std::get<base::Error>(data);
+        }
+    }
+
+    auto payload = std::get<std::tuple<std::string,std::string>>(data);
+    m_data.isDataReady = false;
+    return payload;
 }
 
 } // namespace router
