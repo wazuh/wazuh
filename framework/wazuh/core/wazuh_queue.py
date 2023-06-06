@@ -57,13 +57,29 @@ class BaseQueue:
     def __enter__(self):
         return self
 
-    def _send(self, msg):
+    def _send(self, msg: bytes) -> None:
+        """Send a message through a socket.
+
+        Parameters
+        ----------
+        msg : bytes
+            The message to send.
+
+        Raises
+        ------
+        WazuhInternalError(1011)
+            If there was an error communicating with queue.
+        WazuhInternalError(1012)
+            If the size of the message is bigger than the buffer socket for Wazuh.
+        """
         try:
             sent = self.socket.send(msg)
 
             if sent == 0:
                 raise WazuhInternalError(1011, self.path)
-        except Exception:
+        except socket.error as e:
+            if e.errno == 90:
+                raise WazuhInternalError(1012, "The size of the event is longer than the buffer socket for Wazuh.")
             raise WazuhInternalError(1011, self.path)
 
     def close(self):
@@ -191,9 +207,10 @@ class WazuhAnalysisdQueue(BaseQueue):
         WazuhError(1014)
             If there was an error communicating with socket.
         """
+        socket_msg = f"{msg_header}{msg}".encode()
+
         try:
-            socket_msg = (f"{msg_header}{msg}")
             # Send message
-            self._send(socket_msg.encode())
+            self._send(socket_msg)
         except Exception as e:
-            raise WazuhError(1014, extra_message=f': WazuhAnalysisdQueue socket with path {self.path}. Error: {str(e)}')
+            raise WazuhError(1014, extra_message=f': WazuhAnalysisdQueue socket with path {self.path}. {str(e)}')
