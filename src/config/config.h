@@ -11,31 +11,31 @@
 #ifndef HCONFIG_H
 #define HCONFIG_H
 
-#define CGLOBAL       000000001
-#define CRULES        000000002
-#define CSYSCHECK     000000004
-#define CROOTCHECK    000000010
-#define CALERTS       000000020
-#define CLOCALFILE    000000040
-#define CREMOTE       000000100
-#define CCLIENT       000000200
-#define CMAIL         000000400
-#define CAR           000001000
-#define CDBD          000002000
-#define CSYSLOGD      000004000
-#define CAGENT_CONFIG 000010000
-#define CAGENTLESS    000020000
-#define CREPORTS      000040000
-#define CINTEGRATORD  000100000
-#define CWMODULE      000200000
-#define CLABELS       000400000
-#define CAUTHD        001000000
-#define CBUFFER       002000000
-#define CCLUSTER      004000000
-#define CLGCSOCKET    010000000
-#define CANDSOCKET    020000000
-#define WAZUHDB       040000000
-#define CLOGTEST      100000000
+#define CGLOBAL       0000000001
+#define CRULES        0000000002
+#define CSYSCHECK     0000000004
+#define CROOTCHECK    0000000010
+#define CALERTS       0000000020
+#define CLOCALFILE    0000000040
+#define CREMOTE       0000000100
+#define CCLIENT       0000000200
+#define CMAIL         0000000400
+#define CAR           0000001000
+#define CDBD          0000002000
+#define CSYSLOGD      0000004000
+#define CAGENT_CONFIG 0000010000
+#define CAGENTLESS    0000020000
+#define CREPORTS      0000040000
+#define CINTEGRATORD  0000100000
+#define CWMODULE      0000200000
+#define CLABELS       0000400000
+#define CAUTHD        0001000000
+#define CBUFFER       0002000000
+#define CCLUSTER      0004000000
+#define CLGCSOCKET    0010000000
+#define CANDSOCKET    0020000000
+#define WAZUHDB       0040000000
+#define CLOGTEST      0100000000
 
 #define MAX_NEEDED_TAGS 4
 
@@ -47,7 +47,8 @@
                             (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      ) |\
                             (modules & CINTEGRATORD  ) | (modules & CWMODULE      ) | (modules & CLABELS       ) |\
                             (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
-                            (modules & CSOCKET       ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) )
+                            (modules & CLGCSOCKET    ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) |\
+                            (modules & CANDSOCKET    ) )
 
 typedef enum needed_tags {
     JSONOUT_OUTPUT = 0,
