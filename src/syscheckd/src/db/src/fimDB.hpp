@@ -88,7 +88,7 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     arch TEXT CHECK (arch IN ('[x32]', '[x64]')),
     name TEXT NOT NULL,
     type INTEGER,
-    size INTEGER,
+    size BIGINT,
     hash_md5 TEXT,
     hash_sha1 TEXT,
     hash_sha256 TEXT,
