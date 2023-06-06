@@ -24,9 +24,11 @@ SessionManager& SessionManager::getInstance(void)
 }
 
 std::optional<base::Error> SessionManager::createSession(const string& sessionName,
-                                                         const string& routeName,
                                                          const string& policyName,
-                                                         uint32_t lifespan)
+                                                         const string& filterName,
+                                                         const string& routeName,
+                                                         uint32_t lifespan,
+                                                         const string& description)
 {
     std::unique_lock<std::shared_mutex> lock(m_sessionMutex);
 
@@ -41,18 +43,20 @@ std::optional<base::Error> SessionManager::createSession(const string& sessionNa
             fmt::format("Policy '{}' is already assigned to a route ('')", policyName, m_policyMap[policyName])};
     }
 
-    Session session(sessionName, policyName, routeName, lifespan);
+    Session session(sessionName, policyName, filterName, routeName, lifespan, description);
     m_activeSessions.emplace(sessionName, session);
     m_routeMap.emplace(routeName, sessionName);
     m_policyMap.emplace(policyName, routeName);
 
-    LOG_DEBUG("Session created: ID={}, Name={}, Creation Date={}, Policy Name={}, Route Name={}, Life Span={}\n",
+    LOG_DEBUG("Session created: ID={}, Name={}, Creation Date={}, Policy Name={}, Route Name={}, Life Span={}, "
+              "Description=\n",
               session.getSessionID(),
               session.getSessionName(),
               session.getCreationDate(),
               session.getPolicyName(),
               session.getRouteName(),
-              session.getLifespan());
+              session.getLifespan(),
+              session.getDescription());
 
     return std::nullopt;
 }
@@ -114,11 +118,6 @@ bool SessionManager::deleteSessions(const bool removeAll, const string sessionNa
     }
 
     return sessionRemoved;
-}
-
-bool SessionManager::deleteAllSessions(void)
-{
-    return deleteSessions(true);
 }
 
 bool SessionManager::deleteSession(const string& sessionName)
