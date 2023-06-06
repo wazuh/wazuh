@@ -68,8 +68,6 @@ private:
 
     struct Data
     {
-        DebugMode debugMode;
-        std::tuple<std::string, std::string> payload;
         std::condition_variable_any dataReady;
         bool isDataReady;
     };
@@ -206,32 +204,21 @@ public:
     void clear();
 
     /**
-     * @brief Set the Debug Mode object
+     * @brief 
      * 
-     * @param debugMode 
+     * @param policyName 
+     * @return std::optional<base::Error> 
      */
-    void inline setDebugMode(DebugMode debugMode)
-    {
-        m_data.debugMode = debugMode;
-    }
+    std::optional<base::Error> subscribeOutputAndTraces(const std::string& policyName);
 
     /**
      * @brief Get the Data object
      * 
-     * @return const Data 
+     * @param policyName 
+     * @param debugMode 
+     * @return const std::variant<std::tuple<std::string, std::string>,base::Error> 
      */
-    inline const std::tuple<std::string, std::string> getData()
-    {
-        std::unique_lock<std::shared_mutex> lock {m_mutexRoutes};
-        m_data.dataReady.wait(lock, [this]() { return m_data.isDataReady; });
-
-        std::string first = std::get<0>(m_data.payload);
-        std::string second = std::get<1>(m_data.payload);
-
-        m_data.isDataReady = false;
-
-        return std::make_tuple(first, second);
-    }
+    const std::variant<std::tuple<std::string, std::string>,base::Error> getData(const std::string& policyName, router::DebugMode debugMode);
 };
 } // namespace router
 #endif // _ROUTER_ROUTER_HPP

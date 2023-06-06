@@ -14,7 +14,7 @@ enum DebugMode
 
 message Run_Request
 {
-    optional string policy = 1;
+    optional string session = 1;
     optional google.protobuf.Value event = 2;
     optional uint32 protocolqueue = 3;
     optional DebugMode debugmode = 4;
