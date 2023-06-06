@@ -381,9 +381,11 @@ class SessionGet_Response final :
     kIdFieldNumber = 3,
     kCreationDateFieldNumber = 4,
     kPolicyNameFieldNumber = 5,
-    kRouteNameFieldNumber = 6,
+    kFilterNameFieldNumber = 6,
+    kRouteNameFieldNumber = 7,
+    kDescriptionFieldNumber = 9,
     kStatusFieldNumber = 1,
-    kLifespanFieldNumber = 7,
+    kLifespanFieldNumber = 8,
   };
   // optional string error = 2;
   bool has_error() const;
@@ -457,7 +459,25 @@ class SessionGet_Response final :
   std::string* _internal_mutable_policyname();
   public:
 
-  // optional string routeName = 6;
+  // optional string filterName = 6;
+  bool has_filtername() const;
+  private:
+  bool _internal_has_filtername() const;
+  public:
+  void clear_filtername();
+  const std::string& filtername() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_filtername(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_filtername();
+  PROTOBUF_NODISCARD std::string* release_filtername();
+  void set_allocated_filtername(std::string* filtername);
+  private:
+  const std::string& _internal_filtername() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_filtername(const std::string& value);
+  std::string* _internal_mutable_filtername();
+  public:
+
+  // optional string routeName = 7;
   bool has_routename() const;
   private:
   bool _internal_has_routename() const;
@@ -475,6 +495,24 @@ class SessionGet_Response final :
   std::string* _internal_mutable_routename();
   public:
 
+  // optional string description = 9;
+  bool has_description() const;
+  private:
+  bool _internal_has_description() const;
+  public:
+  void clear_description();
+  const std::string& description() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_description(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_description();
+  PROTOBUF_NODISCARD std::string* release_description();
+  void set_allocated_description(std::string* description);
+  private:
+  const std::string& _internal_description() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_description(const std::string& value);
+  std::string* _internal_mutable_description();
+  public:
+
   // .com.wazuh.api.engine.ReturnStatus status = 1;
   void clear_status();
   ::com::wazuh::api::engine::ReturnStatus status() const;
@@ -484,7 +522,7 @@ class SessionGet_Response final :
   void _internal_set_status(::com::wazuh::api::engine::ReturnStatus value);
   public:
 
-  // optional uint32 lifespan = 7;
+  // optional uint32 lifespan = 8;
   bool has_lifespan() const;
   private:
   bool _internal_has_lifespan() const;
@@ -511,7 +549,9 @@ class SessionGet_Response final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr id_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr creationdate_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policyname_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr filtername_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr routename_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     int status_;
     uint32_t lifespan_;
   };
@@ -643,6 +683,7 @@ class SessionPost_Request final :
   enum : int {
     kNameFieldNumber = 1,
     kPolicyFieldNumber = 2,
+    kDescriptionFieldNumber = 4,
     kLifespanFieldNumber = 3,
   };
   // optional string name = 1;
@@ -681,6 +722,24 @@ class SessionPost_Request final :
   std::string* _internal_mutable_policy();
   public:
 
+  // optional string description = 4;
+  bool has_description() const;
+  private:
+  bool _internal_has_description() const;
+  public:
+  void clear_description();
+  const std::string& description() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_description(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_description();
+  PROTOBUF_NODISCARD std::string* release_description();
+  void set_allocated_description(std::string* description);
+  private:
+  const std::string& _internal_description() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_description(const std::string& value);
+  std::string* _internal_mutable_description();
+  public:
+
   // optional uint32 lifespan = 3;
   bool has_lifespan() const;
   private:
@@ -706,6 +765,7 @@ class SessionPost_Request final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     uint32_t lifespan_;
   };
   union { Impl_ _impl_; };
@@ -1910,9 +1970,77 @@ inline void SessionGet_Response::set_allocated_policyname(std::string* policynam
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionGet_Response.policyName)
 }
 
-// optional string routeName = 6;
-inline bool SessionGet_Response::_internal_has_routename() const {
+// optional string filterName = 6;
+inline bool SessionGet_Response::_internal_has_filtername() const {
   bool value = (_impl_._has_bits_[0] & 0x00000010u) != 0;
+  return value;
+}
+inline bool SessionGet_Response::has_filtername() const {
+  return _internal_has_filtername();
+}
+inline void SessionGet_Response::clear_filtername() {
+  _impl_.filtername_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000010u;
+}
+inline const std::string& SessionGet_Response::filtername() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionGet_Response.filterName)
+  return _internal_filtername();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void SessionGet_Response::set_filtername(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000010u;
+ _impl_.filtername_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionGet_Response.filterName)
+}
+inline std::string* SessionGet_Response::mutable_filtername() {
+  std::string* _s = _internal_mutable_filtername();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.SessionGet_Response.filterName)
+  return _s;
+}
+inline const std::string& SessionGet_Response::_internal_filtername() const {
+  return _impl_.filtername_.Get();
+}
+inline void SessionGet_Response::_internal_set_filtername(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000010u;
+  _impl_.filtername_.Set(value, GetArenaForAllocation());
+}
+inline std::string* SessionGet_Response::_internal_mutable_filtername() {
+  _impl_._has_bits_[0] |= 0x00000010u;
+  return _impl_.filtername_.Mutable(GetArenaForAllocation());
+}
+inline std::string* SessionGet_Response::release_filtername() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.SessionGet_Response.filterName)
+  if (!_internal_has_filtername()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000010u;
+  auto* p = _impl_.filtername_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.filtername_.IsDefault()) {
+    _impl_.filtername_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void SessionGet_Response::set_allocated_filtername(std::string* filtername) {
+  if (filtername != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000010u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000010u;
+  }
+  _impl_.filtername_.SetAllocated(filtername, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.filtername_.IsDefault()) {
+    _impl_.filtername_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionGet_Response.filterName)
+}
+
+// optional string routeName = 7;
+inline bool SessionGet_Response::_internal_has_routename() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000020u) != 0;
   return value;
 }
 inline bool SessionGet_Response::has_routename() const {
@@ -1920,7 +2048,7 @@ inline bool SessionGet_Response::has_routename() const {
 }
 inline void SessionGet_Response::clear_routename() {
   _impl_.routename_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000010u;
+  _impl_._has_bits_[0] &= ~0x00000020u;
 }
 inline const std::string& SessionGet_Response::routename() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionGet_Response.routeName)
@@ -1929,7 +2057,7 @@ inline const std::string& SessionGet_Response::routename() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void SessionGet_Response::set_routename(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000010u;
+ _impl_._has_bits_[0] |= 0x00000020u;
  _impl_.routename_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionGet_Response.routeName)
 }
@@ -1942,11 +2070,11 @@ inline const std::string& SessionGet_Response::_internal_routename() const {
   return _impl_.routename_.Get();
 }
 inline void SessionGet_Response::_internal_set_routename(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000010u;
+  _impl_._has_bits_[0] |= 0x00000020u;
   _impl_.routename_.Set(value, GetArenaForAllocation());
 }
 inline std::string* SessionGet_Response::_internal_mutable_routename() {
-  _impl_._has_bits_[0] |= 0x00000010u;
+  _impl_._has_bits_[0] |= 0x00000020u;
   return _impl_.routename_.Mutable(GetArenaForAllocation());
 }
 inline std::string* SessionGet_Response::release_routename() {
@@ -1954,7 +2082,7 @@ inline std::string* SessionGet_Response::release_routename() {
   if (!_internal_has_routename()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000010u;
+  _impl_._has_bits_[0] &= ~0x00000020u;
   auto* p = _impl_.routename_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (_impl_.routename_.IsDefault()) {
@@ -1965,9 +2093,9 @@ inline std::string* SessionGet_Response::release_routename() {
 }
 inline void SessionGet_Response::set_allocated_routename(std::string* routename) {
   if (routename != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000010u;
+    _impl_._has_bits_[0] |= 0x00000020u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000010u;
+    _impl_._has_bits_[0] &= ~0x00000020u;
   }
   _impl_.routename_.SetAllocated(routename, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -1978,9 +2106,9 @@ inline void SessionGet_Response::set_allocated_routename(std::string* routename)
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionGet_Response.routeName)
 }
 
-// optional uint32 lifespan = 7;
+// optional uint32 lifespan = 8;
 inline bool SessionGet_Response::_internal_has_lifespan() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000020u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000080u) != 0;
   return value;
 }
 inline bool SessionGet_Response::has_lifespan() const {
@@ -1988,7 +2116,7 @@ inline bool SessionGet_Response::has_lifespan() const {
 }
 inline void SessionGet_Response::clear_lifespan() {
   _impl_.lifespan_ = 0u;
-  _impl_._has_bits_[0] &= ~0x00000020u;
+  _impl_._has_bits_[0] &= ~0x00000080u;
 }
 inline uint32_t SessionGet_Response::_internal_lifespan() const {
   return _impl_.lifespan_;
@@ -1998,12 +2126,80 @@ inline uint32_t SessionGet_Response::lifespan() const {
   return _internal_lifespan();
 }
 inline void SessionGet_Response::_internal_set_lifespan(uint32_t value) {
-  _impl_._has_bits_[0] |= 0x00000020u;
+  _impl_._has_bits_[0] |= 0x00000080u;
   _impl_.lifespan_ = value;
 }
 inline void SessionGet_Response::set_lifespan(uint32_t value) {
   _internal_set_lifespan(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionGet_Response.lifespan)
+}
+
+// optional string description = 9;
+inline bool SessionGet_Response::_internal_has_description() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000040u) != 0;
+  return value;
+}
+inline bool SessionGet_Response::has_description() const {
+  return _internal_has_description();
+}
+inline void SessionGet_Response::clear_description() {
+  _impl_.description_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000040u;
+}
+inline const std::string& SessionGet_Response::description() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionGet_Response.description)
+  return _internal_description();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void SessionGet_Response::set_description(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000040u;
+ _impl_.description_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionGet_Response.description)
+}
+inline std::string* SessionGet_Response::mutable_description() {
+  std::string* _s = _internal_mutable_description();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.SessionGet_Response.description)
+  return _s;
+}
+inline const std::string& SessionGet_Response::_internal_description() const {
+  return _impl_.description_.Get();
+}
+inline void SessionGet_Response::_internal_set_description(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000040u;
+  _impl_.description_.Set(value, GetArenaForAllocation());
+}
+inline std::string* SessionGet_Response::_internal_mutable_description() {
+  _impl_._has_bits_[0] |= 0x00000040u;
+  return _impl_.description_.Mutable(GetArenaForAllocation());
+}
+inline std::string* SessionGet_Response::release_description() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.SessionGet_Response.description)
+  if (!_internal_has_description()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000040u;
+  auto* p = _impl_.description_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.description_.IsDefault()) {
+    _impl_.description_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void SessionGet_Response::set_allocated_description(std::string* description) {
+  if (description != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000040u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000040u;
+  }
+  _impl_.description_.SetAllocated(description, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.description_.IsDefault()) {
+    _impl_.description_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionGet_Response.description)
 }
 
 // -------------------------------------------------------------------
@@ -2148,7 +2344,7 @@ inline void SessionPost_Request::set_allocated_policy(std::string* policy) {
 
 // optional uint32 lifespan = 3;
 inline bool SessionPost_Request::_internal_has_lifespan() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
   return value;
 }
 inline bool SessionPost_Request::has_lifespan() const {
@@ -2156,7 +2352,7 @@ inline bool SessionPost_Request::has_lifespan() const {
 }
 inline void SessionPost_Request::clear_lifespan() {
   _impl_.lifespan_ = 0u;
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
 }
 inline uint32_t SessionPost_Request::_internal_lifespan() const {
   return _impl_.lifespan_;
@@ -2166,12 +2362,80 @@ inline uint32_t SessionPost_Request::lifespan() const {
   return _internal_lifespan();
 }
 inline void SessionPost_Request::_internal_set_lifespan(uint32_t value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_._has_bits_[0] |= 0x00000008u;
   _impl_.lifespan_ = value;
 }
 inline void SessionPost_Request::set_lifespan(uint32_t value) {
   _internal_set_lifespan(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionPost_Request.lifespan)
+}
+
+// optional string description = 4;
+inline bool SessionPost_Request::_internal_has_description() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  return value;
+}
+inline bool SessionPost_Request::has_description() const {
+  return _internal_has_description();
+}
+inline void SessionPost_Request::clear_description() {
+  _impl_.description_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000004u;
+}
+inline const std::string& SessionPost_Request::description() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionPost_Request.description)
+  return _internal_description();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void SessionPost_Request::set_description(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_.description_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionPost_Request.description)
+}
+inline std::string* SessionPost_Request::mutable_description() {
+  std::string* _s = _internal_mutable_description();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.SessionPost_Request.description)
+  return _s;
+}
+inline const std::string& SessionPost_Request::_internal_description() const {
+  return _impl_.description_.Get();
+}
+inline void SessionPost_Request::_internal_set_description(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.description_.Set(value, GetArenaForAllocation());
+}
+inline std::string* SessionPost_Request::_internal_mutable_description() {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  return _impl_.description_.Mutable(GetArenaForAllocation());
+}
+inline std::string* SessionPost_Request::release_description() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.SessionPost_Request.description)
+  if (!_internal_has_description()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000004u;
+  auto* p = _impl_.description_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.description_.IsDefault()) {
+    _impl_.description_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void SessionPost_Request::set_allocated_description(std::string* description) {
+  if (description != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000004u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000004u;
+  }
+  _impl_.description_.SetAllocated(description, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.description_.IsDefault()) {
+    _impl_.description_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionPost_Request.description)
 }
 
 // -------------------------------------------------------------------

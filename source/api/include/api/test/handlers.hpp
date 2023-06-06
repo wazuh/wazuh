@@ -8,8 +8,17 @@
 namespace api::test::handlers
 {
 
-constexpr auto MINIMUM_PRIORITY = 255; ///< Minimum priority allowed for a route
-constexpr auto MAXIMUM_PRIORITY = 0;   ///< Maximum priority allowed for a route
+constexpr auto MINIMUM_PRIORITY = 255;                      ///< Minimum priority allowed for a route
+constexpr auto MAXIMUM_PRIORITY = 0;                        ///< Maximum priority allowed for a route
+
+constexpr auto DEFAULT_POLICY_FULL_NAME = "policy/wazuh/0"; ///< Default policy full name
+
+constexpr auto ASSET_NAME_FIELD_FORMAT = R"("name":"{}")";  ///< JSON name field format, where '{}' is the asset name
+constexpr auto FILTER_CONTENT_FORMAT =
+    R"({{"name": "{}", "check":[{{"~TestSessionName":"{}"}}]}})";   ///< Filter content format
+constexpr auto TEST_FILTER_FULL_NAME_FORMAT = "filter/{}_filter/0"; ///< Filter name format, '{}' is the session name
+constexpr auto TEST_POLICY_FULL_NAME_FORMAT = "policy/{}_policy/0"; ///< Policy name format, '{}' is the session name
+constexpr auto TEST_ROUTE_NAME_FORMAT = "{}_route";                 ///< Route name format, '{}' is the session name
 
 /**
  * @brief Test configuration parameters.
