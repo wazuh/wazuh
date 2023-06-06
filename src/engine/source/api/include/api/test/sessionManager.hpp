@@ -16,25 +16,32 @@
 namespace api::sessionManager
 {
 
-constexpr auto FILTER_CONTENT_FORMAT =
-    R"({{"name": "{}", "check":[{{"~TestSessionName":"{}"}}]}})"; ///< Filter content format, where '{}' is the session
-                                                                  ///< name
-constexpr auto FILTER_NAME_FORMAT = "filter/test-{}/0"; ///< Filter name format, where '{}' is the session name
-constexpr auto ROUTE_NAME_FORMAT = "{}_route";          ///< Route name format, where '{}' is the session name
-
 struct Session
 {
 public:
-    Session(const std::string& name, const std::string& policy, const std::string& route, const uint32_t lifespan = 0)
+    Session(const std::string& sessionName,
+            const std::string& policyName,
+            const std::string& filterName,
+            const std::string& routeName,
+            const uint32_t lifespan = 0,
+            const std::string& description = "")
         : m_creationDate(std::time(nullptr))
-        , m_filterName(fmt::format(FILTER_NAME_FORMAT, name))
+        , m_description(description)
+        , m_filterName(filterName)
         , m_lifespan(lifespan)
-        , m_policyName(policy)
-        , m_routeName(route)
+        , m_policyName(policyName)
+        , m_routeName(routeName)
         , m_sessionID(generateSessionID())
-        , m_sessionName(name)
+        , m_sessionName(sessionName)
     {
     }
+
+    /**
+     * @brief Get the session description.
+     *
+     * @return std::string
+     */
+    std::string getDescription(void) const { return m_description; };
 
     /**
      * @brief Get the filter name.
@@ -86,6 +93,7 @@ public:
     uint32_t getLifespan(void) const { return m_lifespan; };
 
 private:
+    const std::string m_description;
     const std::string m_filterName;
     const std::string m_policyName;
     const std::string m_routeName;
@@ -133,9 +141,11 @@ public:
      * @return std::optional<base::Error>
      */
     std::optional<base::Error> createSession(const std::string& sessionName,
-                                             const std::string& routeName,
                                              const std::string& policyName,
-                                             uint32_t lifespan = 0);
+                                             const std::string& filterName,
+                                             const std::string& routeName,
+                                             uint32_t lifespan = 0,
+                                             const std::string& description = "");
 
     /**
      * @brief Get the list of active sessions.
@@ -162,7 +172,6 @@ public:
     bool doesSessionExist(const std::string& sessionName);
 
     bool deleteSessions(const bool removeAll, const std::string sessionName = "");
-    bool deleteAllSessions(void);
     /**
      * @brief Delete a session.
      *
