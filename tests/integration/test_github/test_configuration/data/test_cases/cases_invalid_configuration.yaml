@@ -1,0 +1,175 @@
+- name: Invalid_enabled_tag_value
+  description: Check github integration does not start with invalid enabled tag value
+  configuration_parameters:
+    ENABLED: 'invalid'
+    ONLY_FUTURE_EVENTS: 'yes'
+    INTERVAL: '1m'
+    CURL_MAX_SIZE: '1024'
+    TIME_DELAY: '1s'
+    ORG_NAME: 'dummy'
+    API_TOKEN: 'token'
+    EVENT_TYPE: 'all'
+  metadata:
+    error_type: 'Invalid'
+    tag: 'enabled'
+
+- name: xxx
+  description: Check github integration does not start with invalid enabled tag value
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE_EVENTS: 'invalid'
+    INTERVAL: '1m'
+    CURL_MAX_SIZE: '1024'
+    TIME_DELAY: '1s'
+    ORG_NAME: 'dummy'
+    API_TOKEN: 'token'
+    EVENT_TYPE: 'all'
+  metadata:
+    error_type: 'Invalid'
+    tag: 'only_future_events'
+
+
+
+
+
+
+
+
+
+
+
+
+
+cases = [
+    # Case 1: Invalid enabled (version 4.3)
+    {
+        'params': {
+            'ENABLED': 'asdfasdf',
+            'ONLY_FUTURE_EVENTS': 'yes',
+            'INTERVAL': '1m',
+            'CURL_MAX_SIZE': '1024',
+            'TIME_DELAY': '1s',
+            'ORG_NAME': 'dummy',
+            'API_TOKEN': 'token',
+            'EVENT_TYPE': 'all'
+        },
+        'metadata': {
+            'tags': 'invalid_enabled'
+        }
+    },
+    # Case 2: Invalid only_future_events (version 4.3)
+    {
+        'params': {
+            'ENABLED': 'yes',
+            'ONLY_FUTURE_EVENTS': 'asdfasdf',
+            'INTERVAL': '1m',
+            'CURL_MAX_SIZE': '1024',
+            'TIME_DELAY': '1s',
+            'ORG_NAME': 'dummy',
+            'API_TOKEN': 'token',
+            'EVENT_TYPE': 'all'
+        },
+        'metadata': {
+            'tags': 'invalid_only_future_events'
+        }
+    },
+    # Case 3: Invalid interval (version 4.3)
+    {
+        'params': {
+            'ENABLED': 'yes',
+            'ONLY_FUTURE_EVENTS': 'yes',
+            'INTERVAL': '-5s',
+            'CURL_MAX_SIZE': '1024',
+            'TIME_DELAY': '1s',
+            'ORG_NAME': 'dummy',
+            'API_TOKEN': 'token',
+            'EVENT_TYPE': 'all'
+        },
+        'metadata': {
+            'tags': 'invalid_interval'
+        }
+    },
+    # Case 4: Invalid curl_max_size (version 4.3)
+    {
+        'params': {
+            'ENABLED': 'yes',
+            'ONLY_FUTURE_EVENTS': 'yes',
+            'INTERVAL': '1m',
+            'CURL_MAX_SIZE': '-12',
+            'TIME_DELAY': '1s',
+            'ORG_NAME': 'dummy',
+            'API_TOKEN': 'token',
+            'EVENT_TYPE': 'all'
+        },
+        'metadata': {
+            'tags': 'invalid_curl_max_size'
+        }
+    },
+    # Case 5: Invalid time_delay (version 4.3)
+    {
+        'params': {
+            'ENABLED': 'yes',
+            'ONLY_FUTURE_EVENTS': 'yes',
+            'INTERVAL': '1m',
+            'CURL_MAX_SIZE': '1024',
+            'TIME_DELAY': '7k',
+            'ORG_NAME': 'dummy',
+            'API_TOKEN': 'token',
+            'EVENT_TYPE': 'all'
+        },
+        'metadata': {
+            'tags': 'invalid_time_delay'
+        }
+    },
+    # Case 6: Invalid org_name (version 4.3)
+    {
+        'params': {
+            'ENABLED': 'yes',
+            'ONLY_FUTURE_EVENTS': 'yes',
+            'INTERVAL': '1m',
+            'CURL_MAX_SIZE': '1024',
+            'TIME_DELAY': '1s',
+            'ORG_NAME': '',
+            'API_TOKEN': 'token',
+            'EVENT_TYPE': 'all'
+        },
+        'metadata': {
+            'tags': 'invalid_org_name'
+        }
+    },
+    # Case 7: Invalid api_token (version 4.3)
+    {
+        'params': {
+            'ENABLED': 'yes',
+            'ONLY_FUTURE_EVENTS': 'yes',
+            'INTERVAL': '1m',
+            'CURL_MAX_SIZE': '1024',
+            'TIME_DELAY': '1s',
+            'ORG_NAME': 'dummy',
+            'API_TOKEN': '',
+            'EVENT_TYPE': 'all'
+        },
+        'metadata': {
+            'tags': 'invalid_api_token'
+        }
+    },
+    # Case 8: Invalid event_type (version 4.3)
+    {
+        'params': {
+            'ENABLED': 'yes',
+            'ONLY_FUTURE_EVENTS': 'yes',
+            'INTERVAL': '1m',
+            'CURL_MAX_SIZE': '1024',
+            'TIME_DELAY': '1s',
+            'ORG_NAME': 'dummy',
+            'API_TOKEN': 'token',
+            'EVENT_TYPE': 'invalid'
+        },
+        'metadata': {
+            'tags': 'invalid_event_type'
+        }
+    }
+]
+
+
+
