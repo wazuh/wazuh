@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.4.4]
 
+### Manager
+
+#### Fixed
+
+- The vulnerability scanner stops producing false positives for some Windows 11 vulnerabilities due to a change in the feed's CPE. ([#17178](https://github.com/wazuh/wazuh/pull/17178))
+- Prevented the VirusTotal integration from querying the API when the source alert is missing the MD5. ([#16908](https://github.com/wazuh/wazuh/pull/16908))
+
+### Ruleset
+
+#### Changed
+
+- Updated all current rule descriptions from "Ossec" to "Wazuh". ([#17211](https://github.com/wazuh/wazuh/pull/17211))
+
 
 ## [v4.4.3]
 
