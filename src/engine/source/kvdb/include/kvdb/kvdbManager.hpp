@@ -93,7 +93,7 @@ public:
      * @copydoc IKVDBHandlerManager::getKVDBHandler
      *
      */
-    std::variant<std::unique_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
+    std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
 
     /**
      * @copydoc IKVDBHandlerManager::removeKVDBHandler

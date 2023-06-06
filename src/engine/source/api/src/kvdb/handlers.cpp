@@ -179,7 +179,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
             throw std::runtime_error(fmt::format("Engine KVDB API: {}", std::get<base::Error>(resultHandler).message));
         }
 
-        auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+        auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
 
         auto dumpRes = handler->dump();
 
@@ -262,7 +262,7 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
             throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
-        auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+        auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
         auto result = handler->get(eRequest.key());
 
         if (std::holds_alternative<base::Error>(result))
@@ -335,7 +335,7 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
             throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
-        auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+        auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
 
         auto result = handler->remove(eRequest.key());
 
@@ -409,7 +409,7 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
             throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
-        auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+        auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
         auto result = handler->set(eRequest.entry().key(), std::get<std::string>(value));
 
         if (std::holds_alternative<base::Error>(result))

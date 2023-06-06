@@ -42,10 +42,10 @@ public:
      * @param cfHandle Pointer to the RocksDB Column Family Handle.
      * @param dbName Name of the DB.
      * @param scopeName Name of the Scope.
-     * @return std::unique_ptr<IKVDBHandler> A KVDBHandler.
+     * @return std::shared_ptr<IKVDBHandler> A KVDBHandler.
      *
      */
-    std::unique_ptr<IKVDBHandler> getKVDBHandler(rocksdb::DB* db,
+    std::shared_ptr<IKVDBHandler> getKVDBHandler(rocksdb::DB* db,
                                rocksdb::ColumnFamilyHandle* cfHandle,
                                const std::string& dbName,
                                const std::string& scopeName);
