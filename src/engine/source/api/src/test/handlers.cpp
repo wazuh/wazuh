@@ -13,6 +13,7 @@ namespace
 
 using namespace api::sessionManager;
 
+using std::optional;
 using std::shared_ptr;
 using std::string;
 
@@ -21,6 +22,9 @@ using ::api::adapter::genericError;
 using ::api::adapter::toWazuhResponse;
 
 using ::router::Router;
+
+using api::catalog::Catalog;
+using api::catalog::Resource;
 
 } // namespace
 
@@ -50,7 +54,7 @@ static inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& rout
     int32_t minAvailablePriority {MINIMUM_PRIORITY};
 
     // The condition may be confusing as the actual priority increases while the value decreases
-    while (takenPriorities.count(minAvailablePriority) > 0 && MAXIMUM_PRIORITY > minAvailablePriority)
+    while (takenPriorities.count(minAvailablePriority) > 0 && MAXIMUM_PRIORITY < minAvailablePriority)
     {
         // If priority is taken, decrease the value (so, increase the priority)
         minAvailablePriority--;
@@ -60,78 +64,144 @@ static inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& rout
 }
 
 /**
- * @brief Add a filter to the catalog.
+ * @brief Add a asset to the catalog.
  *
  * @param catalog Catalog instance.
- * @param filterName Filter name.
- * @param filterContent Filter content.
+ * @param assetName Asset name.
+ * @param assetContent Asset content.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-static inline std::optional<base::Error>
-addFilterToCatalog(shared_ptr<catalog::Catalog> catalog, const string& filterName, const string& filterContent)
+static inline optional<base::Error>
+addAssetToCatalog(shared_ptr<Catalog> catalog, const string& assetType, const string& assetContent)
 {
-    catalog::Resource targetResource;
+    Resource targetResource;
 
-    std::optional<base::Error> addFilterError;
+    optional<base::Error> addAssetError;
 
     try
     {
-        targetResource = catalog::Resource {base::Name {"filter"}, catalog::Resource::Format::json};
+        targetResource = Resource {base::Name {assetType}, Resource::Format::json};
     }
     catch (const std::exception& e)
     {
-        addFilterError = std::optional<base::Error> {base::Error {e.what()}};
+        addAssetError = optional<base::Error> {base::Error {e.what()}};
     }
 
     // If no error occurred, post the resource
-    if (!addFilterError.has_value())
+    if (!addAssetError.has_value())
     {
-        const auto postResourceError = catalog->postResource(targetResource, filterContent);
+        const auto postResourceError = catalog->postResource(targetResource, assetContent);
         if (postResourceError)
         {
-            addFilterError = std::optional<base::Error> {base::Error {postResourceError.value().message}};
+            addAssetError = optional<base::Error> {base::Error {postResourceError.value().message}};
         }
     }
 
-    return addFilterError;
+    return addAssetError;
 }
 
 /**
- * @brief Delete a filter from the catalog.
+ * @brief Add the test's filter to the catalog.
  *
- * @param filterName Filter name.
  * @param catalog Catalog instance.
+ * @param sessionName Session name.
+ * @param filterName Filter name.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-static inline std::optional<base::Error> deleteFilterFromStore(const string& filterName,
-                                                               shared_ptr<catalog::Catalog> catalog)
+static inline optional<base::Error>
+addTestFilterToCatalog(shared_ptr<Catalog> catalog, const string& sessionName, const string& filterName)
 {
-    std::optional<base::Error> deleteFilterError;
+    const auto filterContent = fmt::format(FILTER_CONTENT_FORMAT, filterName, sessionName);
+    return addAssetToCatalog(catalog, "filter", filterContent);
+}
+
+/**
+ * @brief Add the test's policy to the catalog.
+ *
+ * @param catalog Catalog instance.
+ * @param sessionName Session name.
+ * @param policyName Policy name.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+static inline optional<base::Error>
+addTestPolicyToCatalog(shared_ptr<Catalog> catalog, const string& sessionName, const string& policyName)
+{
+    optional<base::Error> addTestPolicyToCatalogError;
 
     // Build target resource
-    catalog::Resource targetResource;
+    Resource targetResource;
     try
     {
-        base::Name name {filterName};
-        targetResource = catalog::Resource {name, catalog::Resource::Format::json};
+        base::Name name {policyName};
+        targetResource = Resource {name, Resource::Format::json};
     }
     catch (const std::exception& e)
     {
-        deleteFilterError = std::optional<base::Error> {base::Error {e.what()}};
+        addTestPolicyToCatalogError = optional<base::Error> {base::Error {e.what()}};
     }
 
-    if (!deleteFilterError.has_value())
+    if (!addTestPolicyToCatalogError.has_value())
+    {
+        // Get the original policy's content
+        const auto getResourceResult = catalog->getResource(targetResource);
+        if (std::holds_alternative<base::Error>(getResourceResult))
+        {
+            addTestPolicyToCatalogError = optional<base::Error> {std::get<base::Error>(getResourceResult)};
+        }
+        else
+        {
+            string policyContent {std::get<string>(getResourceResult)};
+
+            // Replace the policy's name
+            const auto oldJsonNameField = fmt::format(ASSET_NAME_FIELD_FORMAT, policyName);
+            const auto newPolicyName = fmt::format(TEST_POLICY_FULL_NAME_FORMAT, sessionName);
+            const auto newJsonNameField = fmt::format(ASSET_NAME_FIELD_FORMAT, newPolicyName);
+            const auto newPolicyContent =
+                policyContent.replace(policyContent.find(oldJsonNameField), oldJsonNameField.size(), newJsonNameField);
+
+            // Add the new policy to the catalog
+            addTestPolicyToCatalogError = addAssetToCatalog(catalog, "policy", newPolicyContent);
+        }
+    }
+
+    return addTestPolicyToCatalogError;
+}
+
+/**
+ * @brief Delete a asset from the catalog.
+ *
+ * @param assetName Asset name.
+ * @param catalog Catalog instance.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+static inline optional<base::Error> deleteAssetFromStore(shared_ptr<Catalog> catalog, const string& assetName)
+{
+    optional<base::Error> deleteAssetError;
+
+    // Build target resource
+    Resource targetResource;
+    try
+    {
+        base::Name name {assetName};
+        targetResource = Resource {name, Resource::Format::json};
+    }
+    catch (const std::exception& e)
+    {
+        deleteAssetError = optional<base::Error> {base::Error {e.what()}};
+    }
+
+    if (!deleteAssetError.has_value())
     {
         const auto deleteResourceError = catalog->deleteResource(targetResource);
         if (deleteResourceError.has_value())
         {
             const auto error = fmt::format(
-                "Filter '{}' could not be removed from the store: {}", filterName, deleteResourceError.value().message);
-            deleteFilterError = std::optional<base::Error> {base::Error {error}};
+                "Asset '{}' could not be removed from the store: {}", assetName, deleteResourceError.value().message);
+            deleteAssetError = optional<base::Error> {base::Error {error}};
         };
     }
 
-    return deleteFilterError;
+    return deleteAssetError;
 }
 
 /**
@@ -141,9 +211,9 @@ static inline std::optional<base::Error> deleteFilterFromStore(const string& fil
  * @param router Router instance.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-static inline std::optional<base::Error> deleteRouteFromRouter(const string& routeName, shared_ptr<Router> router)
+static inline optional<base::Error> deleteRouteFromRouter(shared_ptr<Router> router, const string& routeName)
 {
-    std::string error;
+    string error;
 
     try
     {
@@ -165,8 +235,8 @@ static inline std::optional<base::Error> deleteRouteFromRouter(const string& rou
  * @param catalog Catalog instance.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-static inline std::optional<base::Error>
-deleteSession(const string& sessionName, shared_ptr<Router> router, shared_ptr<catalog::Catalog> catalog)
+static inline optional<base::Error>
+deleteSession(shared_ptr<Router> router, shared_ptr<Catalog> catalog, const string& sessionName)
 {
     auto& sessionManager = SessionManager::getInstance();
 
@@ -176,16 +246,22 @@ deleteSession(const string& sessionName, shared_ptr<Router> router, shared_ptr<c
         return base::Error {fmt::format("Session '{}' could not be found", sessionName)};
     }
 
-    const auto deleteFilterError = deleteFilterFromStore(session->getFilterName(), catalog);
+    const auto deleteRouteError = deleteRouteFromRouter(router, session->getRouteName());
+    if (deleteRouteError.has_value())
+    {
+        return deleteRouteError;
+    }
+
+    const auto deleteFilterError = deleteAssetFromStore(catalog, session->getFilterName());
     if (deleteFilterError.has_value())
     {
         return deleteFilterError;
     }
 
-    const auto deleteRouteError = deleteRouteFromRouter(session->getRouteName(), router);
-    if (deleteRouteError.has_value())
+    const auto deletePolicyError = deleteAssetFromStore(catalog, session->getPolicyName());
+    if (deletePolicyError.has_value())
     {
-        return deleteRouteError;
+        return deletePolicyError;
     }
 
     if (!sessionManager.deleteSession(sessionName))
@@ -196,7 +272,7 @@ deleteSession(const string& sessionName, shared_ptr<Router> router, shared_ptr<c
     return std::nullopt;
 }
 
-api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<catalog::Catalog> catalog)
+api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<Catalog> catalog)
 {
     return [router, catalog](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -213,10 +289,7 @@ api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<catalog::Catalog>
         const auto& eRequest = std::get<RequestType>(res);
 
         // Field name, policy and lifespan are required
-        const auto parametersError = (!eRequest.has_name()       ? std::make_optional("Missing /name field")
-                                      : !eRequest.has_policy()   ? std::make_optional("Missing /policy field")
-                                      : !eRequest.has_lifespan() ? std::make_optional("Missing /lifespan field")
-                                                                 : std::nullopt);
+        const auto parametersError = (!eRequest.has_name()) ? std::make_optional("Missing /name field") : std::nullopt;
         if (parametersError.has_value())
         {
             return genericError<ResponseType>(parametersError.value());
@@ -224,46 +297,70 @@ api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<catalog::Catalog>
 
         auto& sessionManager = SessionManager::getInstance();
 
-        if (sessionManager.doesSessionExist(eRequest.name()))
+        const auto& sessionName = eRequest.name();
+
+        // Check if the session already exists
+        if (sessionManager.doesSessionExist(sessionName))
         {
-            return genericError<ResponseType>(fmt::format("Session '{}' already exists", eRequest.name()));
+            return genericError<ResponseType>(fmt::format("Session '{}' already exists", sessionName));
         }
 
-        const auto filterName = fmt::format(FILTER_NAME_FORMAT, eRequest.name());
+        // Set up the test session's policy
 
-        const auto filterContent = fmt::format(FILTER_CONTENT_FORMAT, filterName, eRequest.name());
+        // If the policy is not set, use the default policy
+        const auto originalPolicyName = eRequest.has_policy() ? eRequest.policy() : DEFAULT_POLICY_FULL_NAME;
 
-        const auto addFilterError = addFilterToCatalog(catalog, filterName, filterContent);
+        const auto addPolicyError = addTestPolicyToCatalog(catalog, sessionName, originalPolicyName);
+        if (addPolicyError.has_value())
+        {
+            return genericError<ResponseType>(addPolicyError.value().message);
+        }
+        const auto policyName = fmt::format(TEST_POLICY_FULL_NAME_FORMAT, sessionName);
 
+        // Set up the test session's filter
+
+        const auto filterName = fmt::format(TEST_FILTER_FULL_NAME_FORMAT, sessionName);
+
+        const auto addFilterError = addTestFilterToCatalog(catalog, sessionName, filterName);
         if (addFilterError.has_value())
         {
+            deleteAssetFromStore(catalog, policyName);
             return genericError<ResponseType>(addFilterError.value().message);
         }
 
-        const auto routeName = fmt::format(ROUTE_NAME_FORMAT, eRequest.name());
+        // Set up the test session's route
+
+        const auto routeName = fmt::format(TEST_ROUTE_NAME_FORMAT, sessionName);
 
         // Find the minimum priority that is not already taken
         const int32_t minAvailablePriority = getMinimumAvailablePriority(router);
-
         if (0 > minAvailablePriority)
         {
-            deleteFilterFromStore(filterName, catalog);
+            deleteAssetFromStore(catalog, filterName);
+            deleteAssetFromStore(catalog, policyName);
             return genericError<ResponseType>("There is no available priority");
         }
 
-        const auto addRouteError = router->addRoute(routeName, minAvailablePriority, filterName, eRequest.policy());
+        const auto addRouteError = router->addRoute(routeName, minAvailablePriority, filterName, policyName);
         if (addRouteError.has_value())
         {
-            deleteFilterFromStore(filterName, catalog);
+            deleteAssetFromStore(catalog, filterName);
+            deleteAssetFromStore(catalog, policyName);
             return genericError<ResponseType>(addRouteError.value().message);
         }
 
+        // Create the session
+
+        // If the lifespan is not set, use 0 (no expiration). TODO: review what to do in this case
+        const auto lifespan = eRequest.has_lifespan() ? eRequest.lifespan() : 0;
+        const auto description = eRequest.has_description() ? eRequest.description() : "";
         const auto createSessionError =
-            sessionManager.createSession(eRequest.name(), routeName, eRequest.policy(), eRequest.lifespan());
+            sessionManager.createSession(sessionName, policyName, filterName, routeName, lifespan, description);
         if (createSessionError.has_value())
         {
-            deleteFilterFromStore(filterName, catalog);
-            deleteRouteFromRouter(routeName, router);
+            deleteRouteFromRouter(router, routeName);
+            deleteAssetFromStore(catalog, filterName);
+            deleteAssetFromStore(catalog, policyName);
             return genericError<ResponseType>(createSessionError.value().message);
         }
 
@@ -307,6 +404,8 @@ api::Handler sessionGet(void)
 
         // TODO: improve creation date representation
         eResponse.set_creationdate(std::to_string(session->getCreationDate()));
+        eResponse.set_description(session->getDescription());
+        eResponse.set_filtername(session->getFilterName());
         eResponse.set_id(session->getSessionID());
         eResponse.set_lifespan(session->getLifespan());
         eResponse.set_policyname(session->getPolicyName());
@@ -348,7 +447,7 @@ api::Handler sessionsGet(void)
     };
 }
 
-api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<catalog::Catalog> catalog)
+api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<Catalog> catalog)
 {
     return [router, catalog](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -379,7 +478,7 @@ api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<catalog::Catal
         {
             for (auto& sessionName : sessionManager.getSessionsList())
             {
-                const auto deleteSessionError = deleteSession(sessionName, router, catalog);
+                const auto deleteSessionError = deleteSession(router, catalog, sessionName);
                 if (deleteSessionError.has_value())
                 {
                     return genericError<ResponseType>(deleteSessionError.value().message);
@@ -388,7 +487,7 @@ api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<catalog::Catal
         }
         else if (eRequest.has_name())
         {
-            const auto deleteSessionError = deleteSession(eRequest.name(), router, catalog);
+            const auto deleteSessionError = deleteSession(router, catalog, eRequest.name());
             if (deleteSessionError.has_value())
             {
                 return genericError<ResponseType>(deleteSessionError.value().message);
