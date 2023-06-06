@@ -215,3 +215,9 @@ add_custom_target( clean_insource
 add_custom_target( clean_build
     COMMAND rm -rf "${CMAKE_SOURCE_DIR}/build/*"
     ERROR_QUIET )
+
+add_custom_target(deploy
+    COMMAND bash ./deploy.sh
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Running Deployment Script : deploy.sh"
+)

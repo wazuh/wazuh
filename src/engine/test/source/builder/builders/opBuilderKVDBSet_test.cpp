@@ -194,7 +194,7 @@ TEST_F(opBuilderKVDBSetTest, SetSuccessCases)
     ASSERT_EQ(*result.payload(), *expectedEvent);
     auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
-    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(res));
+    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     auto rawValue = handler->get(keyOp1);
     if (const auto err = std::get_if<base::Error>(&rawValue))
     {
