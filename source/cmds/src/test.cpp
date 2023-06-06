@@ -21,7 +21,7 @@ void run(std::shared_ptr<apiclnt::Client> client, const Options& options)
 
     // Set policy name
     RequestType eRequest;
-    eRequest.set_policy(options.policyName);
+    eRequest.set_session(options.policyName);
 
     // Set protocol queue
     eRequest.set_protocolqueue(options.protocolQueue);

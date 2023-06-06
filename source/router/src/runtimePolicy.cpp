@@ -21,9 +21,6 @@ std::optional<base::Error> RuntimePolicy::build(std::shared_ptr<builder::Builder
         // Build the policy and create the pipeline
         m_environment = builder->buildPolicy(m_asset);
         m_spController = std::make_shared<rxbk::Controller>(rxbk::buildRxPipeline(m_environment));
-
-        subscribeToOutput();
-        listenAllTrace();
     }
     catch (std::exception& e)
     {
@@ -49,10 +46,9 @@ void RuntimePolicy::subscribeToOutput()
 {
     auto subscriber = rxcpp::make_subscriber<rxbk::RxEvent>(
         [&](const rxbk::RxEvent& event) {
-            std::lock_guard<std::mutex> lock(m_outputMutex);
             std::stringstream output;
             output << event->payload()->prettyStr() << std::endl;
-            m_output = output.str();
+            m_output.emplace(m_asset, output.str());
         });
 
     m_spController->getOutput().subscribe(subscriber);
@@ -63,13 +59,12 @@ void RuntimePolicy::listenAllTrace()
     m_spController->listenOnAllTrace(rxcpp::make_subscriber<std::string>(
         [&](const std::string& trace)
         {
-            std::lock_guard<std::mutex> lock(m_tracerMutex);
             const std::string opPatternTrace = R"(\[([^\]]+)\] \[condition\]:(.+))";
             const std::regex opRegex(opPatternTrace);
             std::smatch match;
             if (std::regex_search(trace, match, opRegex))
             {
-                m_history.push_back({match[1].str(), match[2].str()});
+                m_history[m_asset].push_back({match[1].str(), match[2].str()});
             }
             const std::string opPatternTraceVerbose = R"(^\[([^\]]+)\] (.+))";
             const std::regex opRegexVerbose(opPatternTraceVerbose);
@@ -80,21 +75,33 @@ void RuntimePolicy::listenAllTrace()
                 std::shared_ptr<std::stringstream> traceStream = std::make_shared<std::stringstream>();
                 *traceStream << trace;
 
-                m_traceBuffer[key].push_back(traceStream);
+                m_traceBuffer[m_asset].first = key;
+                m_traceBuffer[m_asset].second.push_back(traceStream);
             }
         }));
 }
 
-const std::tuple<std::string,std::string> RuntimePolicy::getData(DebugMode debugMode)
+const std::variant<std::tuple<std::string, std::string>, base::Error> RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
 {
-    auto trace = json::Json {R"({})"};
-    for (auto& [asset, condition] : m_history)
+    if (debugMode == DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS)
     {
-        if (debugMode == DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS)
+        if (m_history[policyName].empty())
         {
-            if (m_traceBuffer.find(asset) != m_traceBuffer.end())
+            return base::Error {fmt::format("Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
+        }
+
+        auto trace = json::Json {R"({})"};
+        for (const auto& [asset, condition] : m_history[policyName])
+        {
+            if (m_traceBuffer.find(policyName) == m_traceBuffer.end())
             {
-                auto& traceVector = m_traceBuffer[asset];
+                return base::Error {fmt::format("Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
+            }
+            
+            auto& tracePair = m_traceBuffer[policyName];
+            if (tracePair.first.compare(asset) == 0)
+            {
+                auto& traceVector = tracePair.second;
                 std::set<std::string> uniqueTraces;  // Set for warehouses single traces
                 for (const auto& traceStream : traceVector)
                 {
@@ -106,23 +113,31 @@ const std::tuple<std::string,std::string> RuntimePolicy::getData(DebugMode debug
                     combinedTrace << uniqueTrace;
                 }
                 trace.setString(combinedTrace.str(), std::string("/") + asset);
-                m_traceBuffer[asset].clear();
+                tracePair.second.clear();
             }
         }
-        else if (debugMode == DebugMode::OUTPUT_AND_TRACES)
-        {
-            trace.setString(condition.c_str(), std::string("/") + asset.c_str());
-        }
-        else
-        {
-            std::make_tuple(m_output, std::string());
-        }
+        m_history[policyName].clear();
+        return std::make_tuple(m_output[policyName], trace.prettyStr());
     }
-    if (!m_history.empty())
+    else if (debugMode == DebugMode::OUTPUT_AND_TRACES)
     {
-        m_history.clear();
+        if (m_history[policyName].empty())
+        {
+            return base::Error {fmt::format("Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
+        }
+
+        auto trace = json::Json {R"({})"};
+        for (const auto& [asset, condition] : m_history[policyName])
+        {
+            trace.setString(condition, std::string("/") + asset);
+        }
+        m_history[policyName].clear();
+        return std::make_tuple(m_output[policyName], trace.prettyStr());
     }
-    return std::make_tuple(m_output, trace.prettyStr());
+    else
+    {
+        return std::make_tuple(m_output[policyName], std::string());
+    }
 }
 
 } // namespace router
