@@ -1,5 +1,6 @@
 from wazuh.core.common import QUEUE_SOCKET
-from wazuh.core.results import WazuhResult
+from wazuh.core.exception import WazuhError
+from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.wazuh_queue import WazuhAnalysisdQueue
 from wazuh.rbac.decorators import expose_resources
 
@@ -20,9 +21,19 @@ def send_event_to_analysisd(events: list) -> WazuhResult:
     WazuhResult
         Confirmation message.
     """
+    result = AffectedItemsWazuhResult(
+        all_msg="All events were forwarded to analisysd",
+        some_msg="Some events were forwarded to analisysd",
+        none_msg="No events were forwarded to analisysd"
+    )
 
     with WazuhAnalysisdQueue(QUEUE_SOCKET) as queue:
         for event in events:
-            queue.send_msg(msg_header=MSG_HEADER, msg=event)
+            try:
+                queue.send_msg(msg_header=MSG_HEADER, msg=event)
+                result.affected_items.append(event)
+            except WazuhError as error:
+                result.add_failed_item(event, error=error)
 
-    return WazuhResult({'message': 'The events were forwarded to analisysd'})
+    result.total_affected_items = len(result.affected_items)
+    return result
