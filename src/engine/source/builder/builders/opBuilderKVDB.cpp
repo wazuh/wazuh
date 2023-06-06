@@ -397,19 +397,17 @@ base::Expression KVDBDelete(const std::string& targetField,
     const std::string failureTrace1 = fmt::format("[{}] -> Failure: reference '{}' not found", name, key.m_value);
     const std::string failureTrace2 =
         fmt::format("[{}] -> Failure: key '{}' could not be found on database '{}'", name, key.m_value, dbName);
-    const std::string failureTrace3 = fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField);
-    const std::string failureTrace5 = fmt::format("[{}] -> Failure: malformed JSON for key '{}'", name, key.m_value);
 
     auto resultHandler = kvdbScope->getKVDBHandler(dbName);
 
     if (std::holds_alternative<base::Error>(resultHandler))
     {
-        throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+        throw std::runtime_error(fmt::format("DB isn't available for usage: {}.", std::get<base::Error>(resultHandler).message));
     }
 
     // Return Expression
     return base::Term<base::EngineOp>::create(name,
-            [=, 
+            [=,
             targetField = std::move(targetField),
             kvdbHandler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler))
             ]
@@ -439,7 +437,6 @@ base::Expression KVDBDelete(const std::string& targetField,
 
                 if (std::holds_alternative<base::Error>(resultValue))
                 {
-                    auto error = std::get<base::Error>(resultValue);
                     return base::result::makeFailure(event, failureTrace2);
                 }
 
