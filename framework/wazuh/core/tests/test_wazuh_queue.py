@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import json
 from unittest.mock import patch
+import socket
 
 import pytest
 from wazuh.core.exception import WazuhException
@@ -88,16 +88,22 @@ def test_BaseQueue_protected_send(mock_conn, send_response, error):
     mock_conn.assert_called_with('test_path')
 
 
+@pytest.mark.parametrize(
+        "errno,match",
+        [(1, ".* 1011 .*"), (90, ".* 1012 .*")]
+)
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.BaseQueue.MAX_MSG_SIZE', new=0)
-@patch('socket.socket.send', side_effect=Exception)
-def test_BaseQueue_protected_send_ko(mock_send, mock_conn):
+@patch('socket.socket.send')
+def test_BaseQueue_protected_send_ko(mock_send, mock_conn, errno, match):
     """Test BaseQueue._send function exceptions."""
+    error = socket.error()
+    error.errno = errno
+    mock_send.side_effect = error
 
     queue = BaseQueue('test_path')
-
-    with pytest.raises(WazuhException, match=".* 1011 .*"):
-        queue._send('msg')
+    with pytest.raises(WazuhException, match=match):
+        queue._send('msg'.encode())
 
     mock_conn.assert_called_with('test_path')
 
@@ -195,8 +201,8 @@ def test_WazuhAnalysisdQueue_send_msg(mock_send, mock_conn):
 
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhAnalysisdQueue._send', side_effect=Exception)
-def test_WazuhAnalysisdQueue_send_msg_to_agent_ko(mock_send, mock_conn):
-    """Test WazuhAnalysisdQueue.send_msg_to_agent function exceptions."""
+def test_WazuhAnalysisdQueue_send_msg_ko(mock_send, mock_conn):
+    """Test WazuhAnalysisdQueue.send_msg function exceptions."""
 
     queue = WazuhAnalysisdQueue('test_path')
 

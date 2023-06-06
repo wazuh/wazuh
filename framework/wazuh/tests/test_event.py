@@ -1,6 +1,8 @@
 import os
 import sys
 from unittest.mock import MagicMock, patch
+from wazuh.core.exception import WazuhError
+
 
 import pytest
 
@@ -18,13 +20,16 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.event import MSG_HEADER, send_event_to_analysisd
 
 
-@pytest.mark.parametrize('events', [
-    [{"foo": 1}],
-    [{"foo": 1}, {"bar": 2}],
+@pytest.mark.parametrize('events,side_effects,message', [
+    (['{"foo": 1}'], (None,), 'All events were forwarded to analisysd'),
+    (['{"foo": 1}', '{"bar": 2}'], (None, None), 'All events were forwarded to analisysd'),
+    (['{"foo": 1}', '{"bar": 2}'], (WazuhError(1014), None), 'Some events were forwarded to analisysd'),
+    (['{"foo": 1}', '{"bar": 2}'], (WazuhError(1014), WazuhError(1014)), 'No events were forwarded to analisysd'),
 ])
 @patch('wazuh.event.WazuhAnalysisdQueue.send_msg')
 @patch('socket.socket.connect')
-def test_send_event_to_analysisd(socket_mock, send_msg_mock, events):
+def test_send_event_to_analysisd(socket_mock, send_msg_mock, events, side_effects, message):
+    send_msg_mock.side_effect = side_effects
     ret_val = send_event_to_analysisd(events=events)
 
     assert send_msg_mock.call_count == len(events)
@@ -32,4 +37,5 @@ def test_send_event_to_analysisd(socket_mock, send_msg_mock, events):
         assert send_msg_mock.call_args_list[i].kwargs['msg_header'] == MSG_HEADER
         assert send_msg_mock.call_args_list[i].kwargs['msg'] == event
 
-    assert ret_val.dikt['message'] == 'The events were forwarded to analisysd'
+    assert ret_val.affected_items == [events[i] for i, v in enumerate(side_effects) if v is None]
+    assert ret_val.message == message
