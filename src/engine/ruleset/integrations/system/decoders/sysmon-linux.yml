@@ -4,49 +4,48 @@ sources:
   - decoder/syslog/0
 
 metadata:
-  module: sysmon-linux # TODO CHECK
-  dataset: sysmon-linux # TODO CHECK
-  title: sysmon-linux logs # TODO CHECK
-  description: Decoder for sysmon logs. # TODO CHECK
+  module: sysmon-linux
+  dataset: sysmon
+  title: sysmon-linux logs
+  description: Decoder for sysmon logs.
   compatibility: This integration was tested on Ubuntu 22.04 (jammy), with sysmon version Sysmon v1.2.0
   versions:
-    - "1.2.0" # Maybe 1.1.0 and 1.1.1 ?
+    - "1.2.x"
   author:
     name: Wazuh Inc.
     email: info@wazuh.com
     date: 2023-06-xx
   references:
-    - https://github.com/Sysinternals/SysmonForLinux
-    - https://github.com/OTRF/OSSEM-DD/tree/main/linux/sysmon
-    - https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+    - "https://github.com/Sysinternals/SysmonForLinux"
+    - "https://github.com/OTRF/OSSEM-DD/tree/main/linux/sysmon"
+    - "https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon"
 
 check:
-  - process.name: "sysmon"
+  - process.name: sysmon
   - message: "+starts_with/<Event"
-  #TODO: Once the events arrive tagged, uncommnet following line
-  #- event.module=="sysmon-linux"
+  # TODO: Once the events arrive tagged, uncommnet following line
+  # - event.module=='sysmon-linux'
 
 parse:
   logpar:
-    - message: "<~sysmonEvent/xml/windows>" #TODO Change the name module
-
+    - message: "<~sysmonEvent/xml/windows>" # TODO Change the name module
 
 # Log level mapping
 definitions:
   lvl_map:
-    "0": "Audit"
-    "1": "Critical"
-    "2": "Error"
-    "3": "Warning"
-    "4": "Information"
-    "5": "Verbose"
+    "0": Audit
+    "1": Critical
+    "2": Error
+    "3": Warning
+    "4": Information
+    "5": Verbose
   idEvent_map:
     "1":
       category:
         - process
       type:
         - start
-      action: "process_creation"
+      action: process_creation
     "3":
       category:
         - network
@@ -54,60 +53,60 @@ definitions:
         - start
         - connection
         - protocol
-      action: "network_connection"
+      action: network_connection
     "4":
       category:
         - service
         - process
       type:
         - change
-      action: "sysmon_service_state_changed"
+      action: sysmon_service_state_changed
     "5":
       category:
         - process
       type:
         - end
-      action: "process_terminated"
-#    "6":
-#      category:
-#        - driver
-#      type:
-#        - start
-#    "7":
-#      category:
-#        - process
-#      type:
-#       - change
+      action: process_terminated
+    #    "6":
+    #      category:
+    #        - driver
+    #      type:
+    #        - start
+    #    "7":
+    #      category:
+    #        - process
+    #      type:
+    #       - change
     "9":
-     category:
-       - file
-       - process
-     type:
-       - access
-       - info
-     action: "raw_access_read"
-#    "10":
-#      category:
-#        - process
-#      type:
-#        - access
+      category:
+        - file
+        - process
+      type:
+        - access
+        - info
+      action: raw_access_read
+    #    "10":
+    #      category:
+    #        - process
+    #      type:
+    #        - access
     "11":
       category:
         - file
       type:
         - creation
-      action: "file_created"
-#    "15":
-#      category:
-#        - file
-#      type:
-#        - access
+      action: file_created
+    #    "15":
+    #      category:
+    #        - file
+    #      type:
+    #        - access
     "16":
       category:
         - configuration
       type:
         - change
-      action: "configuration_chage"
+      action: configuration_chage
     "17":
       category:
         - file
@@ -130,7 +129,7 @@ definitions:
         - file
       type:
         - deletion
-      action: "file_deleted"
+      action: file_deleted
     "24":
       type:
         - change
@@ -163,7 +162,7 @@ normalize:
       - event.action: $~tmp.action
 
   - check:
-    - event.code: "255"
+      - event.code: "255"
     map:
       - error.code: "255"
 
@@ -176,7 +175,6 @@ normalize:
       # TODO: The hash fields are not implemented in sysmon linux yet
       # ~tmp.hashes: +parse_key_value/$~sysmonEvent.Event.EventData.Hashes/=/,/'/'
       # - related.hash: $~tmp.hashes
-
 
   #########################################################
   #                   Process fields
@@ -211,34 +209,34 @@ normalize:
       - process.parent.command_line: $~sysmonEvent.Event.EventData.ParentCommandLine
 
   - check:
-    - event.code: +string_not_equal/7
+      - event.code: +string_not_equal/7
     map:
-    - process.pe.original_file_name: $~sysmonEvent.Event.EventData.OriginalFileName
-    - process.pe.company: $~sysmonEvent.Event.EventData.Company
-    - process.pe.description: $~sysmonEvent.Event.EventData.Description
-    - process.pe.file_version: $~sysmonEvent.Event.EventData.FileVersion
-    - process.pe.product: $~sysmonEvent.Event.EventData.Product
+      - process.pe.original_file_name: $~sysmonEvent.Event.EventData.OriginalFileName
+      - process.pe.company: $~sysmonEvent.Event.EventData.Company
+      - process.pe.description: $~sysmonEvent.Event.EventData.Description
+      - process.pe.file_version: $~sysmonEvent.Event.EventData.FileVersion
+      - process.pe.product: $~sysmonEvent.Event.EventData.Product
 
   - map:
       - ~tmp.file_data: +parse_file/$process.executable
       - process.name: $~tmp.file_data.name
       # Link issue:
-      - process.args: '+split/$process.command_line/ '
+      - process.args: "+split/$process.command_line/ "
 
   - check:
-    - process.parent.executable: +exists
+      - process.parent.executable: +exists
     map:
       - ~tmp.file_data: +parse_file/$process.parent.executable
       - process.parent.name: $~tmp.file_data.name
       # Link issue:
-      - process.parent.args: '+split/$process.parent.command_line/ '
+      - process.parent.args: "+split/$process.parent.command_line/ "
 
   #########################################################
   #                  Service fields
   # Event id 4 == Sysmon service state changed
   #########################################################
   - check:
-    - event.code: +string_equal/4
+      - event.code: +string_equal/4
     map:
       - event.action: "service_start"
       - service.name: "sysmon"
@@ -249,7 +247,7 @@ normalize:
   # Event id 16 == ServiceConfigurationChange
   #########################################################
   - check:
-    - event.code: +string_equal/16
+      - event.code: +string_equal/16
     map:
       - event.action: "configuration_chage"
       - file.path: $~sysmonEvent.Event.EventData.Configuration
@@ -277,7 +275,7 @@ normalize:
       - file.code_signature.status: $~sysmonEvent.Event.EventData.SignatureStatus
 
   - check:
-    - event.code: +string_equal/7
+      - event.code: +string_equal/7
     map:
       - file.pe.original_file_name: $~sysmonEvent.Event.EventData.OriginalFileName
       - file.pe.company: $~sysmonEvent.Event.EventData.Company
@@ -357,8 +355,7 @@ normalize:
       - related.hosts: +array_append/$destination.domain
       # - related.hosts: +array_append/$dns.answers #TODO
 
-
   # Cleanup
-  # - map:
-  #   - ~tmp: +delete
-  #   - ~sysmonEvent: +delete
+  - map:
+      - ~tmp: +delete
+      - ~sysmonEvent: +delete
