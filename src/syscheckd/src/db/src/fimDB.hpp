@@ -46,7 +46,7 @@ constexpr auto CREATE_FILE_DB_STATEMENT
     checksum TEXT NOT NULL,
     dev INTEGER,
     inode INTEGER,
-    size INTEGER,
+    size BIGINT,
     perm TEXT,
     attributes TEXT,
     uid TEXT,
