@@ -148,7 +148,8 @@ void KVDBManager::finalizeMainDB()
     delete m_pRocksDB;
 }
 
-std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHandler(const std::string& dbName, const std::string& scopeName)
+std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHandler(const std::string& dbName,
+                                                                                     const std::string& scopeName)
 {
     rocksdb::ColumnFamilyHandle* cfHandle;
 
@@ -174,16 +175,7 @@ std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHan
 
 void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
-    bool isRemoved {false};
-    m_kvdbHandlerCollection->removeKVDBHandler(dbName, scopeName, isRemoved);
-    if (isRemoved && m_mapCFHandles.size())
-    {
-        auto cfHandle = m_mapCFHandles[dbName];
-        assert(cfHandle);
-        rocksdb::Status s = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
-        assert(s.ok());
-        m_mapCFHandles.erase(dbName);
-    }
+    m_kvdbHandlerCollection->removeKVDBHandler(dbName, scopeName);
 }
 
 std::vector<std::string> KVDBManager::listDBs(const bool loaded)
@@ -219,7 +211,8 @@ std::variant<bool, base::Error> KVDBManager::deleteDB(const std::string& name)
         }
         else
         {
-            return base::Error {fmt::format("Could not remove the DB {}. RocksDB Status: {}", name, opStatus.ToString())};
+            return base::Error {
+                fmt::format("Could not remove the DB {}. RocksDB Status: {}", name, opStatus.ToString())};
         }
     }
     else

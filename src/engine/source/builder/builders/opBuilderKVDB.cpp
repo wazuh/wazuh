@@ -57,12 +57,14 @@ base::Expression KVDBGet(const std::string& targetField,
         throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
     }
 
-    auto kvdbHandler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
     // Return Expression
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](base::Event event)
+        [=, 
+        targetField = std::move(targetField),
+        kvdbHandler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler))
+        ]
+        (base::Event event)
         {
             // Get DB key
             std::string resolvedKey;
@@ -169,11 +171,13 @@ base::Expression existanceCheck(const std::string& targetField,
         throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
     }
 
-    auto kvdbHandler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
     return base::Term<base::EngineOp>::create(
         name,
-        [=, targetField = std::move(targetField)](base::Event event)
+        [=, 
+        targetField = std::move(targetField),
+        kvdbHandler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler))
+        ]
+        (base::Event event)
         {
             bool found = false;
             try // TODO We are only using try for JSON::get. Is correct to
@@ -273,12 +277,14 @@ base::Expression KVDBSet(const std::string& targetField,
         throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
     }
 
-    auto kvdbHandler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
     // Return Expression
     return base::Term<base::EngineOp>::create(
         name,
-        [=, dbName = std::move(dbName), targetField = std::move(targetField)](base::Event event)
+        [=, 
+        targetField = std::move(targetField),
+        kvdbHandler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler))
+        ]
+        (base::Event event)
         {
             event->setBool(false, targetField);
 
@@ -401,11 +407,13 @@ base::Expression KVDBDelete(const std::string& targetField,
         throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
     }
 
-    auto kvdbHandler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
-
     // Return Expression
     return base::Term<base::EngineOp>::create(name,
-            [=, targetField = std::move(targetField)](base::Event event)
+            [=, 
+            targetField = std::move(targetField),
+            kvdbHandler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler))
+            ]
+            (base::Event event)
             {
                 event->setBool(false, targetField);
 
