@@ -22,9 +22,9 @@ public:
      * @brief Gets a KVDB Handler given the provided DB name.
      *
      * @param dbName Name of the DB.
-     * @return std::variant<std::unique_ptr<IKVDBHandler>, base::Error> A KVDBHandler or specific error.
+     * @return std::variant<std::shared_ptr<IKVDBHandler>, base::Error> A KVDBHandler or specific error.
      */
-    virtual std::variant<std::unique_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName) = 0;
+    virtual std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName) = 0;
 };
 
 } // namespace kvdbManager
