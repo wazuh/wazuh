@@ -95,7 +95,7 @@ std::vector<std::string> PolicyManager::listPolicies()
 
 std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, std::size_t instance, base::Event event)
 {
-
+    
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_policies.find(name);
     if (m_policies.end() == it)
@@ -112,10 +112,53 @@ std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, 
     auto& env = it->second[instance];
     env->processEvent(std::move(event));
 
-    // Output and Traces
-    m_data.payload = env->getData(m_data.debugMode);
+    return std::nullopt;
+}
+
+std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(const std::string& name, std::size_t instance)
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    auto it = m_policies.find(name);
+    if (m_policies.end() == it)
+    {
+        return base::Error {fmt::format("Policy '{}' does not exist", name)};
+    }
+
+    if (m_numInstances <= instance)
+    {
+        return base::Error {
+            fmt::format("Invalid instance number '{}', the maximum is '{}'", instance, m_numInstances - 1)};
+    }
+    auto& env = it->second[instance];
+
+    env->subscribeToOutput();
+    env->listenAllTrace();
 
     return std::nullopt;
 }
 
+const std::variant<std::tuple<std::string, std::string>,base::Error> PolicyManager::getData(const std::string& name, std::size_t instance, router::DebugMode debugMode)
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+    auto it = m_policies.find(name);
+    if (m_policies.end() == it)
+    {
+        return base::Error {fmt::format("Policy '{}' does not exist", name)};
+    }
+
+    if (m_numInstances <= instance)
+    {
+        return base::Error {
+            fmt::format("Invalid instance number '{}', the maximum is '{}'", instance, m_numInstances - 1)};
+    }
+    auto& env = it->second[instance];
+
+    // Output and Traces
+    const auto& data = env->getData(name, debugMode);
+    if (std::holds_alternative<base::Error>(data))
+    {
+        return std::get<base::Error>(data);
+    }
+    return std::get<std::tuple<std::string,std::string>>(data);
+}
 } // namespace router

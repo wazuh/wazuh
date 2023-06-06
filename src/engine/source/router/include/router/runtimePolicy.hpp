@@ -31,9 +31,9 @@ private:
     std::shared_ptr<rxbk::Controller> m_spController;
     builder::Policy m_environment;
     
-    std::string m_output;
-    std::vector<std::pair<std::string, std::string>> m_history;
-    std::unordered_map<std::string, std::vector<std::shared_ptr<std::stringstream>>> m_traceBuffer;
+    std::unordered_map<std::string, std::string> m_output;
+    std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> m_history;
+    std::unordered_map<std::string, std::pair<std::string, std::vector<std::shared_ptr<std::stringstream>>>> m_traceBuffer;
     std::mutex m_outputMutex;
     std::mutex m_tracerMutex;
     
@@ -87,10 +87,11 @@ public:
     /**
      * @brief Get the Data object
      * 
+     * @param policyName 
      * @param debugMode 
-     * @return const std::variant<std::string, std::optional<std::string>> 
+     * @return const std::variant<std::tuple<std::string,std::string>,base::Error> 
      */
-    const std::tuple<std::string,std::string> getData(DebugMode debugMode);
+    const std::variant<std::tuple<std::string,std::string>,base::Error> getData(const std::string& policyName, DebugMode debugMode);
 };
 
 } // namespace router

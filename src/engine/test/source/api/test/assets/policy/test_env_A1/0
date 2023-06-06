@@ -1,5 +1,5 @@
 {
-    "name": "policy/env_A1/0",
+    "name": "policy/test_env_A1/0",
     "integrations": [
         "integration/wazuh_core_test/0"
     ]
