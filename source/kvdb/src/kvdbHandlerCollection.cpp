@@ -27,10 +27,10 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
     return std::make_unique<KVDBSpace>(m_handleManager, db, cfHandle, dbName, scopeName);
 }
 
-void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const std::string& scopeName, bool& isRemoved)
+void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    isRemoved = false;
+
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
@@ -39,7 +39,6 @@ void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const s
         if (instance->emptyScopes())
         {
             m_mapInstances.erase(it);
-            isRemoved = true;
         }
     }
 }
