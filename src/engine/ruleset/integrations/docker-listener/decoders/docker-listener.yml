@@ -49,8 +49,11 @@ normalize:
     #contains fields: Attributes.image Attributes.name Attributes.org.opencontainers.image.ref.name Attributes.org.opencontainers.image.version
 
     #Discarded fields
+    # $~json.docker.scope #local or swarn
     # $~json.docker.timeNano
-    # - ~container.scope : $~json.docker.scope #local or swarn
+    # $~json.docker.execID
+    # $~json.docker.exitCode
+    # $~json.docker.execDuration
 
  - check: +not_exists/~json.docker
    map:

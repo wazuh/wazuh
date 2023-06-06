@@ -1,0 +1,82 @@
+[{
+    "wazuh": {
+        "queue": 49,
+        "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+        "message": "{\"integration\":\"docker\",\"docker\":{\"status\":\"kill\",\"id\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"from\":\"tomcat\",\"Type\":\"container\",\"Action\":\"kill\",\"Actor\":{\"ID\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"Attributes\":{\"image\":\"tomcat\",\"name\":\"tomcat_hello\",\"org.opencontainers.image.ref.name\":\"ubuntu\",\"org.opencontainers.image.version\":\"22.04\",\"signal\":\"15\"}},\"scope\":\"local\",\"time\":1685567281,\"timeNano\":1685567281124527482}}",
+        "origin": "Wazuh-Docker",
+        "registered_ip": "any",
+        "decoders": [
+            "core-wazuh-message",
+            "core-localfile",
+            "integrations",
+            "docker-listener"
+        ],
+        "source": "logcollector"
+    },
+    "agent": {
+        "id": "003",
+        "name": "vm-ubuntu22",
+        "type": "wazuh"
+    },
+    "event": {
+        "original": "{\"integration\":\"docker\",\"docker\":{\"status\":\"kill\",\"id\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"from\":\"tomcat\",\"Type\":\"container\",\"Action\":\"kill\",\"Actor\":{\"ID\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"Attributes\":{\"image\":\"tomcat\",\"name\":\"tomcat_hello\",\"org.opencontainers.image.ref.name\":\"ubuntu\",\"org.opencontainers.image.version\":\"22.04\",\"signal\":\"15\"}},\"scope\":\"local\",\"time\":1685567281,\"timeNano\":1685567281124527482}}",
+        "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
+        "created": 1685567281,
+        "outcome": "success",
+        "category": [
+            "process"
+        ],
+        "kind": "event"
+    },
+    "host": {
+        "id": "003"
+    },
+    "~json": {
+        "integration": "docker",
+        "docker": {
+            "status": "kill",
+            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
+            "from": "tomcat",
+            "Type": "container",
+            "Action": "kill",
+            "Actor": {
+                "ID": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
+                "Attributes": {
+                    "image": "tomcat",
+                    "name": "tomcat_hello",
+                    "org.opencontainers.image.ref.name": "ubuntu",
+                    "org.opencontainers.image.version": "22.04",
+                    "signal": "15"
+                }
+            },
+            "scope": "local",
+            "time": 1685567281,
+            "timeNano": 1685567281124527482
+        }
+    },
+    "container": {
+        "image": {
+            "name": "tomcat",
+            "tag": "kill"
+        }
+    },
+    "service": {
+        "origin": {
+            "type": "container"
+        }
+    },
+    "process": {
+        "command_line": "kill"
+    },
+    "~container": {
+        "attributes": {
+            "image": "tomcat",
+            "name": "tomcat_hello",
+            "org.opencontainers.image.ref.name": "ubuntu",
+            "org.opencontainers.image.version": "22.04",
+            "signal": "15"
+        }
+    }
+}
+
+]
