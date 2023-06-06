@@ -83,7 +83,7 @@ TEST_F(KVDBTest, ScopeTest)
 
     ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
 
-    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
+    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
     auto result = handler->add("key1");
     ASSERT_TRUE(std::holds_alternative<bool>(result));
 

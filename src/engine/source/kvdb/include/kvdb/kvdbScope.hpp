@@ -31,7 +31,7 @@ public:
      * @copydoc IKVDBScope::getKVDBHandler
      *
      */
-    virtual std::variant<std::unique_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName) override;
+    virtual std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName) override;
 
 private:
     /**

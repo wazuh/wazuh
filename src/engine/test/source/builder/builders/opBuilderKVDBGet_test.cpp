@@ -126,7 +126,7 @@ TEST_F(opBuilderKVDBGetTest, GetSuccessCases)
     // Insert data in DB
     auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
-    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(res));
+    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     handler->set("keyString", R"("string_value")");
     handler->set("keyNumber", "123");
     handler->set("keyObject", R"({"field1": "value1", "field2": "value2"})");
@@ -319,7 +319,7 @@ TEST_F(opBuilderKVDBGetTest, GetMergeSuccessCases)
     // Insert data in DB
     auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
-    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(res));
+    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     handler->set("keyObject", R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
     handler->set("keyArray", R"(["value1", "value2", "value3"])");
 
@@ -398,7 +398,7 @@ TEST_F(opBuilderKVDBGetTest, GetMergeFailTargetNotFound)
     // Insert data in DB
     auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
-    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(res));
+    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     handler->set("keyObject", R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
 
     auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
@@ -421,7 +421,7 @@ TEST_F(opBuilderKVDBGetTest, GetMergeFailTypeErrors)
     // Insert data in DB
     auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
-    auto handler = std::move(std::get<std::unique_ptr<kvdbManager::IKVDBHandler>>(res));
+    auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     handler->set("keyObject", R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
     handler->set("keyArray", R"(["value1", "value2", "value3"])");
     handler->set("keyString", R"("value1")");
