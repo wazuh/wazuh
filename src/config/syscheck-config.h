@@ -318,7 +318,7 @@ typedef struct fim_registry_value_data {
     int arch;
     char* name;
     unsigned int type;
-    unsigned int size;
+    unsigned int long size;
     os_md5 hash_md5;
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
