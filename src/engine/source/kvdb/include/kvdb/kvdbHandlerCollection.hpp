@@ -53,14 +53,12 @@ public:
     /**
      * @brief Removes a KVDB Handler given the provided DB name and scope name.
      * This automatically manage the reference counters and mappings.
-     * If the handler is the last one, it will trigger the Column Family to be removed.
      *
      * @param dbName Name of the DB.
      * @param scopeName Name of the Scope.
-     * @param isRemoved True if the DB can be removed.
      *
      */
-    void removeKVDBHandler(const std::string& dbName, const std::string& scopeName, bool& isRemoved);
+    void removeKVDBHandler(const std::string& dbName, const std::string& scopeName);
 
     /**
      * @brief Returns all the registered Database names.
