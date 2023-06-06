@@ -47,7 +47,9 @@ PROTOBUF_CONSTEXPR SessionGet_Response::SessionGet_Response(
   , /*decltype(_impl_.id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.creationdate_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.policyname_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.filtername_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.routename_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.status_)*/0
   , /*decltype(_impl_.lifespan_)*/0u} {}
 struct SessionGet_ResponseDefaultTypeInternal {
@@ -65,6 +67,7 @@ PROTOBUF_CONSTEXPR SessionPost_Request::SessionPost_Request(
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.lifespan_)*/0u} {}
 struct SessionPost_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR SessionPost_RequestDefaultTypeInternal()
@@ -176,8 +179,10 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Response, _impl_.id_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Response, _impl_.creationdate_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Response, _impl_.policyname_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Response, _impl_.filtername_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Response, _impl_.routename_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Response, _impl_.lifespan_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Response, _impl_.description_),
   ~0u,
   0,
   1,
@@ -185,6 +190,8 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   3,
   4,
   5,
+  7,
+  6,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -194,8 +201,10 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Request, _impl_.name_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Request, _impl_.policy_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Request, _impl_.lifespan_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Request, _impl_.description_),
   0,
   1,
+  3,
   2,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Response, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Response, _internal_metadata_),
@@ -248,13 +257,13 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 7, -1, sizeof(::com::wazuh::api::engine::test::SessionGet_Request)},
-  { 8, 21, -1, sizeof(::com::wazuh::api::engine::test::SessionGet_Response)},
-  { 28, 37, -1, sizeof(::com::wazuh::api::engine::test::SessionPost_Request)},
-  { 40, 48, -1, sizeof(::com::wazuh::api::engine::test::SessionPost_Response)},
-  { 50, -1, -1, sizeof(::com::wazuh::api::engine::test::SessionsGet_Request)},
-  { 56, 65, -1, sizeof(::com::wazuh::api::engine::test::SessionsGet_Response)},
-  { 68, 76, -1, sizeof(::com::wazuh::api::engine::test::SessionsDelete_Request)},
-  { 78, 86, -1, sizeof(::com::wazuh::api::engine::test::SessionsDelete_Response)},
+  { 8, 23, -1, sizeof(::com::wazuh::api::engine::test::SessionGet_Response)},
+  { 32, 42, -1, sizeof(::com::wazuh::api::engine::test::SessionPost_Request)},
+  { 46, 54, -1, sizeof(::com::wazuh::api::engine::test::SessionPost_Response)},
+  { 56, -1, -1, sizeof(::com::wazuh::api::engine::test::SessionsGet_Request)},
+  { 62, 71, -1, sizeof(::com::wazuh::api::engine::test::SessionsGet_Response)},
+  { 74, 82, -1, sizeof(::com::wazuh::api::engine::test::SessionsDelete_Request)},
+  { 84, 92, -1, sizeof(::com::wazuh::api::engine::test::SessionsDelete_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -271,36 +280,39 @@ static const ::_pb::Message* const file_default_instances[] = {
 const char descriptor_table_protodef_test_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\ntest.proto\022\031com.wazuh.api.engine.test\032"
   "\014engine.proto\"0\n\022SessionGet_Request\022\021\n\004n"
-  "ame\030\001 \001(\tH\000\210\001\001B\007\n\005_name\"\235\002\n\023SessionGet_R"
+  "ame\030\001 \001(\tH\000\210\001\001B\007\n\005_name\"\357\002\n\023SessionGet_R"
   "esponse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api."
   "engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022"
   "\017\n\002id\030\003 \001(\tH\001\210\001\001\022\031\n\014creationDate\030\004 \001(\tH\002"
-  "\210\001\001\022\027\n\npolicyName\030\005 \001(\tH\003\210\001\001\022\026\n\trouteNam"
-  "e\030\006 \001(\tH\004\210\001\001\022\025\n\010lifespan\030\007 \001(\rH\005\210\001\001B\010\n\006_"
-  "errorB\005\n\003_idB\017\n\r_creationDateB\r\n\013_policy"
-  "NameB\014\n\n_routeNameB\013\n\t_lifespan\"u\n\023Sessi"
-  "onPost_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\023\n\006pol"
-  "icy\030\002 \001(\tH\001\210\001\001\022\025\n\010lifespan\030\003 \001(\rH\002\210\001\001B\007\n"
-  "\005_nameB\t\n\007_policyB\013\n\t_lifespan\"h\n\024Sessio"
-  "nPost_Response\0222\n\006status\030\001 \001(\0162\".com.waz"
-  "uh.api.engine.ReturnStatus\022\022\n\005error\030\002 \001("
-  "\tH\000\210\001\001B\010\n\006_error\"\025\n\023SessionsGet_Request\""
-  "v\n\024SessionsGet_Response\0222\n\006status\030\001 \001(\0162"
-  "\".com.wazuh.api.engine.ReturnStatus\022\022\n\005e"
-  "rror\030\002 \001(\tH\000\210\001\001\022\014\n\004list\030\003 \003(\tB\010\n\006_error\""
-  "Z\n\026SessionsDelete_Request\022\021\n\004name\030\001 \001(\tH"
-  "\000\210\001\001\022\026\n\tremoveAll\030\002 \001(\010H\001\210\001\001B\007\n\005_nameB\014\n"
-  "\n_removeAll\"k\n\027SessionsDelete_Response\0222"
-  "\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.Re"
-  "turnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001B\010\n\006_error"
-  "b\006proto3"
+  "\210\001\001\022\027\n\npolicyName\030\005 \001(\tH\003\210\001\001\022\027\n\nfilterNa"
+  "me\030\006 \001(\tH\004\210\001\001\022\026\n\trouteName\030\007 \001(\tH\005\210\001\001\022\025\n"
+  "\010lifespan\030\010 \001(\rH\006\210\001\001\022\030\n\013description\030\t \001("
+  "\tH\007\210\001\001B\010\n\006_errorB\005\n\003_idB\017\n\r_creationDate"
+  "B\r\n\013_policyNameB\r\n\013_filterNameB\014\n\n_route"
+  "NameB\013\n\t_lifespanB\016\n\014_description\"\237\001\n\023Se"
+  "ssionPost_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\023\n\006"
+  "policy\030\002 \001(\tH\001\210\001\001\022\025\n\010lifespan\030\003 \001(\rH\002\210\001\001"
+  "\022\030\n\013description\030\004 \001(\tH\003\210\001\001B\007\n\005_nameB\t\n\007_"
+  "policyB\013\n\t_lifespanB\016\n\014_description\"h\n\024S"
+  "essionPost_Response\0222\n\006status\030\001 \001(\0162\".co"
+  "m.wazuh.api.engine.ReturnStatus\022\022\n\005error"
+  "\030\002 \001(\tH\000\210\001\001B\010\n\006_error\"\025\n\023SessionsGet_Req"
+  "uest\"v\n\024SessionsGet_Response\0222\n\006status\030\001"
+  " \001(\0162\".com.wazuh.api.engine.ReturnStatus"
+  "\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004list\030\003 \003(\tB\010\n\006_e"
+  "rror\"Z\n\026SessionsDelete_Request\022\021\n\004name\030\001"
+  " \001(\tH\000\210\001\001\022\026\n\tremoveAll\030\002 \001(\010H\001\210\001\001B\007\n\005_na"
+  "meB\014\n\n_removeAll\"k\n\027SessionsDelete_Respo"
+  "nse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.engi"
+  "ne.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001B\010\n\006_"
+  "errorb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_test_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_test_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_test_2eproto = {
-    false, false, 968, descriptor_table_protodef_test_2eproto,
+    false, false, 1093, descriptor_table_protodef_test_2eproto,
     "test.proto",
     &descriptor_table_test_2eproto_once, descriptor_table_test_2eproto_deps, 1, 8,
     schemas, file_default_instances, TableStruct_test_2eproto::offsets,
@@ -553,11 +565,17 @@ class SessionGet_Response::_Internal {
   static void set_has_policyname(HasBits* has_bits) {
     (*has_bits)[0] |= 8u;
   }
-  static void set_has_routename(HasBits* has_bits) {
+  static void set_has_filtername(HasBits* has_bits) {
     (*has_bits)[0] |= 16u;
   }
-  static void set_has_lifespan(HasBits* has_bits) {
+  static void set_has_routename(HasBits* has_bits) {
     (*has_bits)[0] |= 32u;
+  }
+  static void set_has_lifespan(HasBits* has_bits) {
+    (*has_bits)[0] |= 128u;
+  }
+  static void set_has_description(HasBits* has_bits) {
+    (*has_bits)[0] |= 64u;
   }
 };
 
@@ -577,7 +595,9 @@ SessionGet_Response::SessionGet_Response(const SessionGet_Response& from)
     , decltype(_impl_.id_){}
     , decltype(_impl_.creationdate_){}
     , decltype(_impl_.policyname_){}
+    , decltype(_impl_.filtername_){}
     , decltype(_impl_.routename_){}
+    , decltype(_impl_.description_){}
     , decltype(_impl_.status_){}
     , decltype(_impl_.lifespan_){}};
 
@@ -614,12 +634,28 @@ SessionGet_Response::SessionGet_Response(const SessionGet_Response& from)
     _this->_impl_.policyname_.Set(from._internal_policyname(), 
       _this->GetArenaForAllocation());
   }
+  _impl_.filtername_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.filtername_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_filtername()) {
+    _this->_impl_.filtername_.Set(from._internal_filtername(), 
+      _this->GetArenaForAllocation());
+  }
   _impl_.routename_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.routename_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (from._internal_has_routename()) {
     _this->_impl_.routename_.Set(from._internal_routename(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.description_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.description_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_description()) {
+    _this->_impl_.description_.Set(from._internal_description(), 
       _this->GetArenaForAllocation());
   }
   ::memcpy(&_impl_.status_, &from._impl_.status_,
@@ -639,7 +675,9 @@ inline void SessionGet_Response::SharedCtor(
     , decltype(_impl_.id_){}
     , decltype(_impl_.creationdate_){}
     , decltype(_impl_.policyname_){}
+    , decltype(_impl_.filtername_){}
     , decltype(_impl_.routename_){}
+    , decltype(_impl_.description_){}
     , decltype(_impl_.status_){0}
     , decltype(_impl_.lifespan_){0u}
   };
@@ -659,9 +697,17 @@ inline void SessionGet_Response::SharedCtor(
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.policyname_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.filtername_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.filtername_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.routename_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.routename_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.description_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.description_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -680,7 +726,9 @@ inline void SessionGet_Response::SharedDtor() {
   _impl_.id_.Destroy();
   _impl_.creationdate_.Destroy();
   _impl_.policyname_.Destroy();
+  _impl_.filtername_.Destroy();
   _impl_.routename_.Destroy();
+  _impl_.description_.Destroy();
 }
 
 void SessionGet_Response::SetCachedSize(int size) const {
@@ -694,7 +742,7 @@ void SessionGet_Response::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x0000001fu) {
+  if (cached_has_bits & 0x0000007fu) {
     if (cached_has_bits & 0x00000001u) {
       _impl_.error_.ClearNonDefaultToEmpty();
     }
@@ -708,7 +756,13 @@ void SessionGet_Response::Clear() {
       _impl_.policyname_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000010u) {
+      _impl_.filtername_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000020u) {
       _impl_.routename_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000040u) {
+      _impl_.description_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.status_ = 0;
@@ -773,9 +827,19 @@ const char* SessionGet_Response::_InternalParse(const char* ptr, ::_pbi::ParseCo
         } else
           goto handle_unusual;
         continue;
-      // optional string routeName = 6;
+      // optional string filterName = 6;
       case 6:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+          auto str = _internal_mutable_filtername();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.SessionGet_Response.filterName"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string routeName = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
           auto str = _internal_mutable_routename();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
@@ -783,12 +847,22 @@ const char* SessionGet_Response::_InternalParse(const char* ptr, ::_pbi::ParseCo
         } else
           goto handle_unusual;
         continue;
-      // optional uint32 lifespan = 7;
-      case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
+      // optional uint32 lifespan = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
           _Internal::set_has_lifespan(&has_bits);
           _impl_.lifespan_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string description = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 74)) {
+          auto str = _internal_mutable_description();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.SessionGet_Response.description"));
         } else
           goto handle_unusual;
         continue;
@@ -869,20 +943,40 @@ uint8_t* SessionGet_Response::_InternalSerialize(
         5, this->_internal_policyname(), target);
   }
 
-  // optional string routeName = 6;
+  // optional string filterName = 6;
+  if (_internal_has_filtername()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_filtername().data(), static_cast<int>(this->_internal_filtername().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.test.SessionGet_Response.filterName");
+    target = stream->WriteStringMaybeAliased(
+        6, this->_internal_filtername(), target);
+  }
+
+  // optional string routeName = 7;
   if (_internal_has_routename()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_routename().data(), static_cast<int>(this->_internal_routename().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "com.wazuh.api.engine.test.SessionGet_Response.routeName");
     target = stream->WriteStringMaybeAliased(
-        6, this->_internal_routename(), target);
+        7, this->_internal_routename(), target);
   }
 
-  // optional uint32 lifespan = 7;
+  // optional uint32 lifespan = 8;
   if (_internal_has_lifespan()) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(7, this->_internal_lifespan(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(8, this->_internal_lifespan(), target);
+  }
+
+  // optional string description = 9;
+  if (_internal_has_description()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_description().data(), static_cast<int>(this->_internal_description().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.test.SessionGet_Response.description");
+    target = stream->WriteStringMaybeAliased(
+        9, this->_internal_description(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -902,7 +996,7 @@ size_t SessionGet_Response::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x0000001fu) {
+  if (cached_has_bits & 0x0000007fu) {
     // optional string error = 2;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -931,11 +1025,25 @@ size_t SessionGet_Response::ByteSizeLong() const {
           this->_internal_policyname());
     }
 
-    // optional string routeName = 6;
+    // optional string filterName = 6;
     if (cached_has_bits & 0x00000010u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_filtername());
+    }
+
+    // optional string routeName = 7;
+    if (cached_has_bits & 0x00000020u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_routename());
+    }
+
+    // optional string description = 9;
+    if (cached_has_bits & 0x00000040u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_description());
     }
 
   }
@@ -945,8 +1053,8 @@ size_t SessionGet_Response::ByteSizeLong() const {
       ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
   }
 
-  // optional uint32 lifespan = 7;
-  if (cached_has_bits & 0x00000020u) {
+  // optional uint32 lifespan = 8;
+  if (cached_has_bits & 0x00000080u) {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_lifespan());
   }
 
@@ -969,7 +1077,7 @@ void SessionGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x0000001fu) {
+  if (cached_has_bits & 0x0000007fu) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_error(from._internal_error());
     }
@@ -983,13 +1091,19 @@ void SessionGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
       _this->_internal_set_policyname(from._internal_policyname());
     }
     if (cached_has_bits & 0x00000010u) {
+      _this->_internal_set_filtername(from._internal_filtername());
+    }
+    if (cached_has_bits & 0x00000020u) {
       _this->_internal_set_routename(from._internal_routename());
+    }
+    if (cached_has_bits & 0x00000040u) {
+      _this->_internal_set_description(from._internal_description());
     }
   }
   if (from._internal_status() != 0) {
     _this->_internal_set_status(from._internal_status());
   }
-  if (cached_has_bits & 0x00000020u) {
+  if (cached_has_bits & 0x00000080u) {
     _this->_internal_set_lifespan(from._internal_lifespan());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -1029,8 +1143,16 @@ void SessionGet_Response::InternalSwap(SessionGet_Response* other) {
       &other->_impl_.policyname_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.filtername_, lhs_arena,
+      &other->_impl_.filtername_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.routename_, lhs_arena,
       &other->_impl_.routename_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.description_, lhs_arena,
+      &other->_impl_.description_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(SessionGet_Response, _impl_.lifespan_)
@@ -1058,6 +1180,9 @@ class SessionPost_Request::_Internal {
     (*has_bits)[0] |= 2u;
   }
   static void set_has_lifespan(HasBits* has_bits) {
+    (*has_bits)[0] |= 8u;
+  }
+  static void set_has_description(HasBits* has_bits) {
     (*has_bits)[0] |= 4u;
   }
 };
@@ -1076,6 +1201,7 @@ SessionPost_Request::SessionPost_Request(const SessionPost_Request& from)
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.policy_){}
+    , decltype(_impl_.description_){}
     , decltype(_impl_.lifespan_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -1095,6 +1221,14 @@ SessionPost_Request::SessionPost_Request(const SessionPost_Request& from)
     _this->_impl_.policy_.Set(from._internal_policy(), 
       _this->GetArenaForAllocation());
   }
+  _impl_.description_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.description_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_description()) {
+    _this->_impl_.description_.Set(from._internal_description(), 
+      _this->GetArenaForAllocation());
+  }
   _this->_impl_.lifespan_ = from._impl_.lifespan_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.test.SessionPost_Request)
 }
@@ -1108,6 +1242,7 @@ inline void SessionPost_Request::SharedCtor(
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.policy_){}
+    , decltype(_impl_.description_){}
     , decltype(_impl_.lifespan_){0u}
   };
   _impl_.name_.InitDefault();
@@ -1117,6 +1252,10 @@ inline void SessionPost_Request::SharedCtor(
   _impl_.policy_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.policy_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.description_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.description_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -1133,6 +1272,7 @@ inline void SessionPost_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
   _impl_.policy_.Destroy();
+  _impl_.description_.Destroy();
 }
 
 void SessionPost_Request::SetCachedSize(int size) const {
@@ -1146,12 +1286,15 @@ void SessionPost_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
       _impl_.name_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
       _impl_.policy_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000004u) {
+      _impl_.description_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.lifespan_ = 0u;
@@ -1192,6 +1335,16 @@ const char* SessionPost_Request::_InternalParse(const char* ptr, ::_pbi::ParseCo
           _Internal::set_has_lifespan(&has_bits);
           _impl_.lifespan_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string description = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_description();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.SessionPost_Request.description"));
         } else
           goto handle_unusual;
         continue;
@@ -1251,6 +1404,16 @@ uint8_t* SessionPost_Request::_InternalSerialize(
     target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_lifespan(), target);
   }
 
+  // optional string description = 4;
+  if (_internal_has_description()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_description().data(), static_cast<int>(this->_internal_description().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.test.SessionPost_Request.description");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_description(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -1268,7 +1431,7 @@ size_t SessionPost_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     // optional string name = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -1283,8 +1446,15 @@ size_t SessionPost_Request::ByteSizeLong() const {
           this->_internal_policy());
     }
 
-    // optional uint32 lifespan = 3;
+    // optional string description = 4;
     if (cached_has_bits & 0x00000004u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_description());
+    }
+
+    // optional uint32 lifespan = 3;
+    if (cached_has_bits & 0x00000008u) {
       total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_lifespan());
     }
 
@@ -1308,7 +1478,7 @@ void SessionPost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_name(from._internal_name());
     }
@@ -1316,6 +1486,9 @@ void SessionPost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
       _this->_internal_set_policy(from._internal_policy());
     }
     if (cached_has_bits & 0x00000004u) {
+      _this->_internal_set_description(from._internal_description());
+    }
+    if (cached_has_bits & 0x00000008u) {
       _this->_impl_.lifespan_ = from._impl_.lifespan_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
@@ -1347,6 +1520,10 @@ void SessionPost_Request::InternalSwap(SessionPost_Request* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.policy_, lhs_arena,
       &other->_impl_.policy_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.description_, lhs_arena,
+      &other->_impl_.description_, rhs_arena
   );
   swap(_impl_.lifespan_, other->_impl_.lifespan_);
 }
