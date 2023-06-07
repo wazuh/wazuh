@@ -6,6 +6,8 @@ enable_testing()
 
 include_directories(include)
 include_directories(${SRC_FOLDER}/shared_modules)
+include_directories(${SRC_FOLDER}/shared_modules/content_manager/tests)
+include_directories(${SRC_FOLDER}/shared_modules/content_manager/src/components)
 
 file(GLOB CONTENT_DOWNLOAD_SRC
     "src/*.cpp"
@@ -18,3 +20,4 @@ add_library(content_manager SHARED
 target_link_libraries(content_manager router)
 
 add_subdirectory(testtool)
+add_subdirectory(tests)
