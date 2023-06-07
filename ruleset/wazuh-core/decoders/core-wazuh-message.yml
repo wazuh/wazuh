@@ -31,6 +31,7 @@ normalize:
   - map:
       - event.original: $wazuh.message
       - wazuh.decoders: +array_append/core-wazuh-message
+      - ecs.version: "8.8"
 
   - check:
       - agent: +exists
