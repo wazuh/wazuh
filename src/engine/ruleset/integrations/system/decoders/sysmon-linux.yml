@@ -179,7 +179,15 @@ normalize:
   - check: +string_equal/~sysmonEvent.Event.EventData.DestinationPortName/-
     map:
       - ~sysmonEvent.Event.EventData.DestinationPortName: +delete
-
+  - check: +string_equal/~sysmonEvent.Event.EventData.ParentImage/-
+    map:
+      - ~sysmonEvent.Event.EventData.ParentImage: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.ParentCommandLine/-
+    map:
+      - ~sysmonEvent.Event.EventData.ParentCommandLine: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.ParentUser/-
+    map:
+      - ~sysmonEvent.Event.EventData.ParentUser: +delete
 
   - check:
       - event.code: "255"
