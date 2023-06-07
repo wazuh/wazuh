@@ -1,41 +1,49 @@
-#include <optional>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <vector>
-
 #include <fmt/format.h>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
-namespace hlp
+namespace
+{
+using namespace hlp;
+using namespace hlp::parser;
+
+syntax::Parser getSynParser(const std::string& literal)
+{
+    return syntax::combinators::many1(syntax::parsers::literal(literal));
+}
+} // namespace
+
+namespace hlp::parsers
 {
 
-parsec::Parser<json::Json> getIgnoreParser(std::string name, Stop endTokens, Options lst)
+Parser getIgnoreParser(const Params& params)
 {
-    if (lst.size() != 1 || lst[0].empty())
+    if (params.options.size() != 1 || params.options[0].empty())
     {
         throw std::runtime_error("Ignore parser requires exactly one parameter,"
                                  " with the string to match");
     }
 
-    return [repeatStr = lst.at(0)](std::string_view text, int index)
+    if (!params.targetField.empty())
     {
-        std::size_t repPos {0ul};
-        while (index < text.size() && text[index] == repeatStr[repPos])
-        {
-            ++index;
-            ++repPos;
-            if (repPos == repeatStr.size())
-            {
-                repPos = 0;
-            }
-        }
+        throw std::runtime_error("Ignore parser does not support targetField");
+    }
 
-        return parsec::makeSuccess<json::Json>({}, index);
+    auto synP = getSynParser(params.options[0]);
+    auto semP = noSemParser();
+
+    return [synP, semP, name = params.name](std::string_view txt)
+    {
+        auto synR = synP(txt);
+        if (synR.failure())
+        {
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
+        }
+        else
+        {
+            return abs::makeSuccess(SemToken {syntax::parsed(synR, txt), semP}, synR.remaining());
+        }
     };
 }
-} // namespace hlp
+} // namespace hlp::parsers

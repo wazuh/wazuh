@@ -1,112 +1,140 @@
-#include <optional>
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <fmt/format.h>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
-namespace hlp
+namespace
+{
+using namespace hlp;
+using namespace hlp::parser;
+
+Mapper getMapper(const std::string& parsed, std::string_view targetField)
+{
+    return [parsed, targetField](json::Json& event)
+    {
+        event.setString(parsed, targetField);
+    };
+}
+
+SemParser getSemParser(const std::string& targetField, char escape)
+{
+    return [targetField, escape](std::string_view parsed)
+    {
+        std::string tr(parsed.begin() + 1, parsed.end() - 1);
+        tr.erase(std::remove(tr.begin(), tr.end(), escape), tr.end());
+        return getMapper(tr, targetField);
+    };
+}
+
+syntax::Parser getSynParser(char quote, char escape)
+{
+    return [quote, escape](std::string_view input)
+    {
+        if (input.empty())
+        {
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        if (input[0] != quote)
+        {
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        bool checkEscape = false;
+        bool closed = false;
+        auto it = input.begin() + 1;
+        for (; it < input.end(); ++it)
+        {
+            if (checkEscape)
+            {
+                if (*it != quote && *it != escape)
+                {
+                    return abs::makeFailure<syntax::ResultT>(input, {});
+                }
+                checkEscape = false;
+                continue;
+            }
+            else if (*it == escape)
+            {
+                checkEscape = true;
+                continue;
+            }
+            else if (*it == quote)
+            {
+                ++it;
+                closed = true;
+                break;
+            }
+        }
+
+        if (closed)
+        {
+            return abs::makeSuccess<syntax::ResultT>(input.substr(it - input.begin()));
+        }
+        else
+        {
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+    };
+}
+
+} // namespace
+namespace hlp::parsers
 {
 
-parsec::Parser<json::Json> getQuotedParser(std::string name, Stop endTokens, Options lst)
+Parser getQuotedParser(const Params& params)
 {
-    if (lst.size() > 2)
+    if (params.options.size() > 2)
     {
         throw std::runtime_error("Quoted parser requires 0, 1 or 2 parameters."
                                  " The first parameter is the quote character, the "
                                  "second is the escape character");
     }
-    else if (lst.size() > 0 && lst[0].size() != 1)
+    else if (!params.options.empty() && params.options[0].size() != 1)
     {
         throw std::runtime_error("Quoted parser requires a single character "
                                  "as delimiter. Got: "
-                                 + lst[0]);
+                                 + params.options[0]);
     }
-    else if (lst.size() > 1 && lst[1].size() != 1)
+    else if (params.options.size() > 1 && params.options[1].size() != 1)
     {
         throw std::runtime_error("Quoted parser requires a single character "
                                  "as escape character. Got: "
-                                 + lst[1]);
+                                 + params.options[1]);
     }
 
     // Default values for quote and escape characters
-    char quoteChar = lst.size() > 0 ? lst[0][0] : '"';
-    char escapeChar = lst.size() > 1 ? lst[1][0] : '\\';
+    char quoteChar = params.options.size() > 0 ? params.options[0][0] : '"';
+    char escapeChar = params.options.size() > 1 ? params.options[1][0] : '\\';
 
     if (quoteChar == escapeChar)
     {
         throw std::runtime_error("Quoted parser requires different characters "
                                  "for quote and escape. Got: "
-                                 + lst[0]);
+                                 + params.options[0]);
     }
 
+    const auto synP = getSynParser(quoteChar, escapeChar);
+    const auto semP = params.targetField.empty()
+                          ? noSemParser()
+                          : getSemParser(json::Json::formatJsonPath(params.targetField), escapeChar);
+
     // The parser
-    return [quoteChar, escapeChar, name](std::string_view text, int index)
+    return [name = params.name, synP, semP](std::string_view txt)
     {
-        auto res = internal::eofError<json::Json>(text, index);
-        if (res.has_value())
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            return res.value();
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
 
-        json::Json ret;
-        if (text[index] != quoteChar)
-        {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Expected quote character '{}'", name, quoteChar), index);
-        }
-
-        std::string str {};
-        int i = index + 1;
-        while (i < text.size())
-        {
-            if (text[i] == quoteChar)
-            {
-                ret.setString(str);
-                return parsec::makeSuccess<json::Json>(std::move(ret), i + 1);
-            }
-            else if (text[i] == escapeChar)
-            {
-                if (i + 1 >= text.size())
-                {
-                    return parsec::makeError<json::Json>(
-                        fmt::format("{}: Unexpected end of input after escape character",
-                                    name),
-                        i + 1);
-                }
-                else if (text[i + 1] == quoteChar)
-                {
-                    str += quoteChar;
-                    i += 2;
-                }
-                else if (text[i + 1] == escapeChar)
-                {
-                    str += escapeChar;
-                    i += 2;
-                }
-                else
-                {
-                    return parsec::makeError<json::Json>(
-                        fmt::format(
-                            "{}: Unexpected escape sequence: \\{}", name, text[i + 1]),
-                        i + 1);
-                }
-            }
-            else
-            {
-                str += text[i];
-                i++;
-            }
-        }
-
-        return parsec::makeError<json::Json>(
-            fmt::format("{}: Expected quote character '{}'", name, quoteChar), i);
+        const auto parsed = syntax::parsed(synR, txt);
+        return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, synR.remaining());
     };
 }
-} // namespace hlp
+} // namespace hlp::parsers

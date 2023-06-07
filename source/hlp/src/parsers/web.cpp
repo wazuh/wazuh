@@ -2,35 +2,179 @@
 #include <cstring>
 #include <iostream>
 #include <map>
-#include <optional>
 #include <stdexcept>
 #include <string>
-#include <vector>
+#include <string_view>
 
 #include <curl/curl.h>
 #include <fmt/format.h>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
-namespace hlp
+namespace
+{
+using namespace hlp;
+using namespace hlp::parser;
+
+Mapper getUriMapper(std::map<std::string, std::string>&& uriAttrs, std::string_view targetField)
+{
+    return [uriAttrs, targetField](json::Json& event)
+    {
+        for (const auto& [attr, value] : uriAttrs)
+        {
+            const auto attrPath = std::string(targetField) + attr;
+            event.setString(value, attrPath);
+        }
+    };
+}
+
+SemParser getUriSemParser(const std::map<CURLUPart, std::string>& mapCurlFields, const std::string& targetField)
+{
+    return [mapCurlFields, targetField](std::string_view parsed) -> std::variant<Mapper, base::Error>
+    {
+        const auto urlstr = std::string(parsed);
+        auto urlCleanup = [](auto* url)
+        {
+            curl_url_cleanup(url);
+        };
+        std::unique_ptr<CURLU, decltype(urlCleanup)> url {curl_url(), urlCleanup};
+
+        if (!url)
+        {
+            return base::Error {"Unable to initialize the url container"};
+        }
+
+        auto uc = curl_url_set(url.get(), CURLUPART_URL, urlstr.c_str(), 0);
+        if (uc)
+        {
+            return base::Error {"Error parsing url"};
+        }
+
+        // TODO curl will parse and copy the URL into an allocated
+        // char ptr and we will copy it again into the string for the result
+        // Check if there's a way to avoid all the copying here
+
+        if (targetField.empty())
+        {
+            return noMapper();
+        }
+        else
+        {
+            // Load the fild values into the result
+            std::map<std::string, std::string> uriAttrs;
+            auto load = [&uriAttrs, &url](CURLUPart field, const std::string& path)
+            {
+                char* str = nullptr;
+                auto uc = curl_url_get(url.get(), field, &str, 0);
+                if (uc == CURLUE_OK)
+                {
+                    uriAttrs[path] = std::string {str};
+                    curl_free(str);
+                }
+            };
+
+            for (auto& [field, path] : mapCurlFields)
+            {
+                load(field, path);
+            }
+            // TODO Check if urlstr.size() == doc["original"].size()
+
+            return getUriMapper(std::move(uriAttrs), targetField);
+        }
+    };
+}
+
+Mapper getStrMapper(std::string_view parsed, std::string_view targetField)
+{
+    return [parsed, targetField](json::Json& event)
+    {
+        event.setString(parsed, targetField);
+    };
+}
+
+SemParser getStrSemParser(const std::string& targetField)
+{
+    return [targetField](std::string_view parsed)
+    {
+        return getStrMapper(parsed, targetField);
+    };
+}
+
+Mapper getUAMapper(std::string_view parsed, std::string_view targetField)
+{
+    return [parsed, targetField](json::Json& event)
+    {
+        auto originalPath = std::string(targetField) + "/original";
+        event.setString(parsed, originalPath);
+    };
+}
+
+SemParser getUASemParser(const std::string& targetField)
+{
+    return [targetField](std::string_view parsed)
+    {
+        return getUAMapper(parsed, targetField);
+    };
+}
+
+syntax::Parser getFQDNSynParser()
+{
+    using namespace syntax::combinators;
+    const auto p = many1(syntax::parsers::alnum() | syntax::parsers::char_('-') | syntax::parsers::char_('.'));
+    return [p](std::string_view input)
+    {
+        auto r = p(input);
+        if (r.failure())
+        {
+            return r;
+        }
+
+        const auto parsed = syntax::parsed(r, input);
+
+        /**
+         * RFC 1035 2.3.4
+         * don’t encode the dots, but encode the length bytes, they cancel out,
+         * except for the length byte of the first label and the length byte of the root
+         * label, for an additional cost of two bytes
+         */
+        if (parsed.size() > 253)
+        {
+            return abs::makeFailure<syntax::ResultT>(input, "FQDN is too long (>253)");
+        }
+
+        if (parsed.front() == '.')
+        {
+            return abs::makeFailure<syntax::ResultT>(input, "FQDN cannot start with a dot");
+        }
+
+        if (parsed.find("..") != std::string_view::npos)
+        {
+            return abs::makeFailure<syntax::ResultT>(input, "FQDN cannot contain two consecutive dots");
+        }
+
+        return r;
+    };
+}
+
+} // namespace
+
+namespace hlp::parsers
 {
 
-parsec::Parser<json::Json> getUriParser(std::string name, Stop endTokens, Options lst)
+Parser getUriParser(const Params& params)
 {
-    if (endTokens.empty())
+    if (params.stop.empty())
     {
         throw std::runtime_error(fmt::format("Uri parser needs a stop string"));
     }
 
-    if (lst.size() > 0)
+    if (!params.options.empty())
     {
         throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
     }
 
-    std::map<CURLUPart, std::string_view> mapCurlFields = {
+    std::map<CURLUPart, std::string> mapCurlFields = {
         {CURLUPART_URL, "/original"},
         {CURLUPART_HOST, "/domain"},
         {CURLUPART_PATH, "/path"},
@@ -43,144 +187,108 @@ parsec::Parser<json::Json> getUriParser(std::string name, Stop endTokens, Option
         // {CURLUPART_OPTIONS, "/options"}
     };
 
-    return [endTokens, mapCurlFields = std::move(mapCurlFields), name](
-               std::string_view text, int index)
+    const auto synP = syntax::parsers::toEnd(params.stop);
+    const auto target = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+    const auto semP = getUriSemParser(mapCurlFields, target);
+
+    return [name = params.name, synP, semP](std::string_view txt)
     {
-        auto res = internal::preProcess<json::Json>(text, index, endTokens);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            return std::get<parsec::Result<json::Json>>(res);
+            return abs::makeFailure<ResultT>(txt, name);
         }
 
-        auto urlStr = std::string {std::get<std::string_view>(res)};
+        const auto parsed = syntax::parsed(synR, txt);
 
-        auto urlCleanup = [](auto* url)
-        {
-            curl_url_cleanup(url);
-        };
-        std::unique_ptr<CURLU, decltype(urlCleanup)> url {curl_url(), urlCleanup};
-
-        if (url.get() == nullptr)
-        {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Unable to initialize the url container", name), index);
-        }
-
-        auto uc = curl_url_set(url.get(), CURLUPART_URL, urlStr.c_str(), 0);
-        if (uc)
-        {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Error parsing url", name), index);
-        }
-
-        // TODO curl will parse and copy the URL into an allocated
-        // char ptr and we will copy it again into the string for the result
-        // Check if there's a way to avoid all the copying here
-
-        // Load the fild values into the json document
-        json::Json doc {};
-        auto load = [&doc, &url](CURLUPart field, std::string_view path)
-        {
-            char* str = nullptr;
-            auto uc = curl_url_get(url.get(), field, &str, 0);
-            if (uc == CURLUE_OK)
-            {
-                doc.setString(std::string {str}, path);
-                curl_free(str);
-            }
-        };
-
-        for (auto& [field, path] : mapCurlFields)
-        {
-            load(field, path);
-        }
-        // TODO Check if urlStr.size() == doc["original"].size()
-        return parsec::makeSuccess<json::Json>(std::move(doc), urlStr.size() + index);
+        return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, synR.remaining());
     };
 }
 
-parsec::Parser<json::Json> getUAParser(std::string name, Stop endTokens, Options lst)
+Parser getUAParser(const Params& params)
 {
-    if (endTokens.empty())
+    if (params.stop.empty())
     {
         throw std::runtime_error(fmt::format("User-agent parser needs a stop string"));
     }
 
-    if (lst.size() != 0)
+    if (!params.options.empty())
     {
         throw std::runtime_error(fmt::format("URL parser do not accept arguments!"));
     }
 
-    return [endTokens, name](std::string_view text, int index)
+    const auto synP = syntax::parsers::toEnd(params.stop);
+    const auto semP =
+        params.targetField.empty() ? noSemParser() : getUASemParser(json::Json::formatJsonPath(params.targetField));
+
+    return [name = params.name, synP, semP](std::string_view txt)
     {
-        auto res = internal::preProcess<json::Json>(text, index, endTokens);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            return std::get<parsec::Result<json::Json>>(res);
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
 
-        auto fp = std::get<std::string_view>(res);
-        auto pos = fp.size() + index;
-
-        json::Json doc;
-        doc.setString(std::string {fp}, "/user_agent/original");
-
-        return parsec::makeSuccess<json::Json>(std::move(doc), pos);
+        const auto parsed = syntax::parsed(synR, txt);
+        return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, synR.remaining());
     };
 }
 
 // We validate it is a valid FQDN or PQDN we do not
 // extract any component here.
-parsec::Parser<json::Json> getFQDNParser(std::string name, Stop endTokens, Options lst)
+Parser getFQDNParser(const Params& params)
 {
+    using namespace syntax::combinators;
 
-    if (lst.size() > 0)
+    if (!params.options.empty())
     {
         throw std::runtime_error("FQDN parser do not accept arguments!");
     }
 
-    return [endTokens, name](std::string_view text, int index)
+    syntax::Parser toStopP;
+    bool stop = false;
+
+    if (!params.stop.empty())
     {
-        auto res = internal::preProcess<json::Json>(text, index, endTokens);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+        toStopP = syntax::parsers::toEnd(params.stop);
+        stop = true;
+    }
+
+    syntax::Parser synP = getFQDNSynParser();
+    const auto semP =
+        params.targetField.empty() ? noSemParser() : getStrSemParser(json::Json::formatJsonPath(params.targetField));
+
+    return [name = params.name, stop, toStopP, synP, semP](std::string_view txt)
+    {
+        std::string_view fqdnInput = txt;
+        if (stop)
         {
-            return std::get<parsec::Result<json::Json>>(res);
+            auto toStopR = toStopP(txt);
+            if (toStopR.failure())
+            {
+                return abs::makeFailure<ResultT>(toStopR.remaining(), name);
+            }
+            fqdnInput = syntax::parsed(toStopR, txt);
         }
 
-        auto fp = std::get<std::string_view>(res);
-        auto pos = fp.size() + index;
+        auto synR = synP(fqdnInput);
+        const auto remaining = txt.substr(fqdnInput.size() - synR.remaining().size());
 
-        /**
-         * RFC 1035 2.3.4
-         * don’t encode the dots, but encode the length bytes, they cancel out,
-         * except for the length byte of the first label and the length byte of the root
-         * label, for an additional cost of two bytes
-         */
-        if (fp.size() > 253)
+        if (synR.failure())
         {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Size '{}' too big for an fqdn", name, fp.size()), index);
+
+            return abs::makeFailure<ResultT>(remaining, name);
         }
 
-        char last = 0;
-        auto e = std::find_if_not(fp.begin(),
-                                  fp.end(),
-                                  [&last](char c) mutable
-                                  {
-                                      auto r = (std::isalnum(c) || c == '-')
-                                               || (c == '.' && c != last);
-                                      last = c;
-                                      return r;
-                                  });
-        json::Json doc;
-        if (e == fp.end())
+        const auto parsed = syntax::parsed(synR, fqdnInput);
+
+        if (stop & !synR.remaining().empty())
         {
-            doc.setString(std::string {fp});
-            return parsec::makeSuccess<json::Json>(std::move(doc), pos);
+            return abs::makeFailure<ResultT>(remaining, name);
         }
-        return parsec::makeError<json::Json>(
-            fmt::format("{}: Invalid char '{}' found while parsing", name, e[0]), index);
+
+        return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, remaining);
     };
 }
 
-} // namespace hlp
+} // namespace hlp::parsers

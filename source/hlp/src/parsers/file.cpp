@@ -1,37 +1,50 @@
-#include <hlp/hlp.hpp>
-
-#include <algorithm>
-#include <iostream>
-#include <optional>
-#include <sstream>
+#include <map>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 
 #include <fmt/format.h>
-#include <json/json.hpp>
 
-#include <hlp/base.hpp>
-#include <hlp/parsec.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
-json::Json parseFp(char slash, std::string_view in)
+namespace
 {
-    json::Json out {};
+using namespace hlp;
+using namespace hlp::parser;
+
+Mapper getMapper(std::map<std::string, std::string>&& fileAttrs, std::string_view targetField)
+{
+    return [fileAttrs, targetField](json::Json& event)
+    {
+        for (const auto& [attr, value] : fileAttrs)
+        {
+            const auto attrPath = std::string(targetField) + attr;
+            event.setString(value, attrPath);
+        }
+    };
+}
+
+std::map<std::string, std::string> parseFp(char slash, std::string_view in)
+{
+    std::map<std::string, std::string> out {};
 
     if (slash == '\\' && in[0] > 'A' && in[0] < 'Z')
     {
-        out.setString(std::string {in[0]}, "/drive_letter");
+        out["/drive_letter"] = std::string {in[0]};
     }
+
     // Get path
     auto indexPathEnd = in.find_last_of(slash);
     auto path = in.substr(0, indexPathEnd == 0 ? 1 : indexPathEnd);
 
-    out.setString(std::string {path}, "/path");
+    out["/path"] = std::string {path};
 
     // Get file name
-    auto indexNameStart = (indexPathEnd == std::string::npos)
-                             ? 0
-                             : (indexPathEnd + 1);
+    auto indexNameStart = (indexPathEnd == std::string::npos) ? 0 : (indexPathEnd + 1);
 
     auto fileName = in.substr(indexNameStart);
-    out.setString(std::string {fileName}, "/name");
+    out["/name"] = std::string {fileName};
 
     // Get extension
     auto indexExtStart = fileName.find_last_of('.');
@@ -39,53 +52,53 @@ json::Json parseFp(char slash, std::string_view in)
 
     std::string lext {ext};
     std::transform(lext.begin(), lext.end(), lext.begin(), ::tolower);
-    out.setString(std::string {lext}, "/ext");
+    out["/ext"] = std::string {lext};
 
     return out;
 }
 
-namespace hlp
+SemParser getSemParser(const std::string& targetField)
+{
+    return [targetField](std::string_view parsed)
+    {
+        auto res = parsed.find('\\') != std::string::npos ? parseFp('\\', parsed) : parseFp('/', parsed);
+
+        return getMapper(std::move(res), targetField);
+    };
+}
+
+} // namespace
+
+namespace hlp::parsers
 {
 
-parsec::Parser<json::Json>
-getFilePathParser(std::string name, Stop endTokens, Options lst)
+Parser getFilePathParser(const Params& params)
 {
-    if (endTokens.empty())
+    if (params.stop.empty())
     {
         throw std::runtime_error("File parser needs a stop string");
     }
 
-    if (!lst.empty())
+    if (!params.options.empty())
     {
         throw std::runtime_error("File parser does not support any options");
     }
-    return [endTokens, name](std::string_view text, int index)
+
+    const auto synP = syntax::parsers::toEnd(params.stop);
+    const auto semP =
+        params.targetField.empty() ? noSemParser() : getSemParser(json::Json::formatJsonPath(params.targetField));
+
+    return [name = params.name, synP, semP](std::string_view txt)
     {
-        auto res = internal::preProcess<json::Json>(text, index, endTokens);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            return std::get<parsec::Result<json::Json>>(res);
-        }
-        auto fp = std::get<std::string_view>(res);
-
-        if (fp.size() == 0)
-        {
-            return parsec::makeError<json::Json>("File path is empty", index);
+            return abs::makeFailure<ResultT>(txt, name);
         }
 
-
-        json::Json doc;
-        if (fp.find("\\") != std::string::npos)
-        {
-            doc = parseFp('\\', fp);
-        }
-        else
-        {
-           doc = parseFp('/', fp);
-        }
-
-        return parsec::makeSuccess<json::Json>(std::move(doc), fp.size() + index);
+        const auto parsed = syntax::parsed(synR, txt);
+        return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, synR.remaining());
     };
 }
 
-} // namespace hlp
+} // namespace hlp::parsers

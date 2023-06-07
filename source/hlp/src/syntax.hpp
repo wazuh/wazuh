@@ -2,6 +2,7 @@
 #define _HLP_SYNTAX_HPP
 
 #include <algorithm>
+#include <stdexcept>
 
 #include "abstractParser.hpp"
 
@@ -238,11 +239,61 @@ inline Parser toEnd()
     };
 }
 
+inline Parser toEnd(const std::vector<std::string>& endTokens)
+{
+    using namespace combinators;
+
+    if (endTokens.empty())
+    {
+        throw std::runtime_error("endTokens must not be empty");
+    }
+
+    Parser p;
+    if (endTokens[0].empty())
+    {
+        p = toEnd();
+    }
+    else
+    {
+        p = toEnd(endTokens[0]);
+    }
+
+    for (auto it = endTokens.begin() + 1; it != endTokens.end(); ++it)
+    {
+        Parser next;
+        if (it->empty())
+        {
+            next = toEnd();
+        }
+        else
+        {
+            next = toEnd(*it);
+        }
+
+        p = p | next;
+    }
+
+    return p;
+}
+
 inline Parser alnum()
 {
     return [](std::string_view input) -> Result
     {
         if (input.empty() || !std::isalnum(input[0]))
+        {
+            return abs::makeFailure<ResultT>(input, {});
+        }
+
+        return abs::makeSuccess<ResultT>(input.substr(1));
+    };
+}
+
+inline Parser hex()
+{
+    return [](std::string_view input) -> Result
+    {
+        if (input.empty() || !std::isxdigit(input[0]))
         {
             return abs::makeFailure<ResultT>(input, {});
         }

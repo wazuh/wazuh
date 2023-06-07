@@ -2,69 +2,89 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <fmt/format.h>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
-#include <utils/stringUtils.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
-namespace hlp
+namespace
+{
+using namespace hlp;
+using namespace hlp::parser;
+
+Mapper getMapper(std::string_view parsed, std::string_view targetField)
+{
+    return [parsed, targetField](json::Json& event)
+    {
+        event.setString(parsed, targetField);
+    };
+}
+
+SemParser getSemParser(const std::string& targetField, const std::string& startToken, const std::string& endToken)
+{
+    return [targetField, startToken, endToken](std::string_view parsed)
+    {
+        auto between = parsed.substr(startToken.size(), parsed.size() - startToken.size() - endToken.size());
+        return getMapper(between, targetField);
+    };
+}
+
+syntax::Parser getSynParser(const std::string& startToken, const std::string& endToken)
+{
+    return [startToken, endToken](std::string_view input) -> syntax::Result
+    {
+        if (input.substr(0, startToken.size()) != startToken)
+        {
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        auto endPos = input.find(endToken, startToken.size());
+        if (endPos == std::string_view::npos)
+        {
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        return abs::makeSuccess<syntax::ResultT>(input.substr(endPos + endToken.size()));
+    };
+}
+} // namespace
+
+namespace hlp::parsers
 {
 
-parsec::Parser<json::Json> getBetweenParser(std::string name, Stop, Options lst)
+Parser getBetweenParser(const Params& params)
 {
-    if (lst.size() != 2)
+    if (params.options.size() != 2)
     {
         throw std::runtime_error("between parser requires exactly two parameters,"
                                  " start and end substrings");
     }
     // check empty strings
-    if (lst[0].empty() && lst[1].empty())
+    if (params.options[0].empty() && params.options[1].empty())
     {
         throw std::runtime_error("between parser requires non-empty start and end substrings");
     }
 
-    auto start = lst[0];
-    auto end = lst[1];
+    const auto start = params.options[0];
+    const auto end = params.options[1];
 
-    return [name, start, end](std::string_view text, int index)
+    const auto synP = getSynParser(start, end);
+    const auto semP = params.targetField.empty()
+                          ? noSemParser()
+                          : getSemParser(json::Json::formatJsonPath(params.targetField), start, end);
+
+    return [name = params.name, synP, semP](std::string_view txt)
     {
-        // No check Stop, because the parser will only accept the input
-        // if the end substring is found. (Stop can cut the input before the end)
-        auto res = internal::eofError<json::Json>(text, index);
-        if (res.has_value())
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            return res.value();
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
-
-        // Check start substring
-        if (text.substr(index, start.size()) != start)
+        else
         {
-            return parsec::makeError<json::Json>(fmt::format("Expected '{}'", start),
-                                                 index);
+            return abs::makeSuccess(SemToken {syntax::parsed(synR, txt), semP}, synR.remaining());
         }
-        index += start.size();
-        auto remaining = text.substr(index);
-
-        // Find end substring in remaining text
-        auto endIndex = remaining.find(end);
-        if (endIndex == std::string_view::npos)
-        {
-            return parsec::makeError<json::Json>(
-                fmt::format("Expected '{}' at the end", end), index);
-        }
-
-        auto value = remaining.substr(0, endIndex);
-        json::Json doc;
-
-        doc.setString(std::string {value});
-        index += endIndex + end.size();
-
-        return parsec::makeSuccess<json::Json>(std::move(doc), index);
     };
 }
-} // namespace hlp
+} // namespace hlp::parsers

@@ -1,49 +1,69 @@
-#include <optional>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 #include <fmt/format.h>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
-namespace hlp
+namespace
+{
+using namespace hlp;
+using namespace hlp::parser;
+
+Mapper getMapper(const json::Json& parsed, std::string_view targetField)
+{
+    return [parsed, targetField](json::Json& event)
+    {
+        event.set(targetField, parsed);
+    };
+}
+
+SemParser getSemParser(std::string_view targetField, json::Json&& parsed)
+{
+    return [targetField, parsed = std::move(parsed)](std::string_view)
+    {
+        return getMapper(parsed, targetField);
+    };
+}
+
+} // namespace
+namespace hlp::parsers
 {
 
-parsec::Parser<json::Json> getJSONParser(std::string name, Stop endTokens, Options lst)
+Parser getJSONParser(const Params& params)
 {
-    if (lst.size() > 0)
+    if (!params.options.empty())
     {
         throw std::runtime_error(fmt::format("JSON parser do not accept arguments!"));
     }
 
-    return [endTokens, name](std::string_view text, int index)
+    const auto target = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+
+    return [name = params.name, target](std::string_view txt)
     {
-        auto res = internal::preProcess<json::Json>(text, index, endTokens);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+        if (txt.empty())
         {
-            return std::get<parsec::Result<json::Json>>(res);
+            return abs::makeFailure<ResultT>(txt, name);
         }
 
-        auto fp = std::get<std::string_view>(res);
-
         rapidjson::Reader reader;
-        rapidjson::StringStream ss {fp.data()}; // ignores the size of fp (end token)
+        const auto ssInput = std::string(txt);
+        rapidjson::StringStream ss(ssInput.c_str());
         rapidjson::Document doc;
 
         doc.ParseStream<rapidjson::kParseStopWhenDoneFlag>(ss);
         if (doc.HasParseError())
         {
-            auto msg = fmt::format("{}", doc.GetParseError());
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: {}", name, std::move(msg)), index);
+            return abs::makeFailure<ResultT>(txt, name);
         }
-
-        return parsec::makeSuccess<json::Json>(json::Json(std::move(doc)),
-                                               ss.Tell() + index);
+        const auto parsed = txt.substr(0, ss.Tell());
+        const auto remaining = txt.substr(ss.Tell());
+        const auto semP = target.empty() ? noSemParser() : getSemParser(target, json::Json(std::move(doc)));
+        return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, remaining);
     };
 }
-} // namespace hlp
+} // namespace hlp::parsers
