@@ -1,5 +1,10 @@
 #include "api/test/handlers.hpp"
 
+#include <optional>
+#include <string>
+
+#include <fmt/format.h>
+
 #include <api/adapter.hpp>
 #include <api/catalog/resource.hpp>
 
@@ -34,13 +39,7 @@ namespace api::test::handlers
 namespace eEngine = ::com::wazuh::api::engine;
 namespace eTest = ::com::wazuh::api::engine::test;
 
-/**
- * @brief Get the minimum available priority for a route.
- *
- * @param router Router instance.
- * @return int32_t Minimum available priority. If no priority is available, returns -1.
- */
-static inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& router)
+inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& router)
 {
     // Create a set to store the taken priorities given the table
     std::unordered_set<uint32_t> takenPriorities;
@@ -63,15 +62,7 @@ static inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& rout
     return minAvailablePriority;
 }
 
-/**
- * @brief Add a asset to the catalog.
- *
- * @param catalog Catalog instance.
- * @param assetName Asset name.
- * @param assetContent Asset content.
- * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
- */
-static inline optional<base::Error>
+inline optional<base::Error>
 addAssetToCatalog(shared_ptr<Catalog> catalog, const string& assetType, const string& assetContent)
 {
     Resource targetResource;
@@ -100,30 +91,14 @@ addAssetToCatalog(shared_ptr<Catalog> catalog, const string& assetType, const st
     return addAssetError;
 }
 
-/**
- * @brief Add the test's filter to the catalog.
- *
- * @param catalog Catalog instance.
- * @param sessionName Session name.
- * @param filterName Filter name.
- * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
- */
-static inline optional<base::Error>
+inline optional<base::Error>
 addTestFilterToCatalog(shared_ptr<Catalog> catalog, const string& sessionName, const string& filterName)
 {
     const auto filterContent = fmt::format(FILTER_CONTENT_FORMAT, filterName, sessionName);
     return addAssetToCatalog(catalog, "filter", filterContent);
 }
 
-/**
- * @brief Add the test's policy to the catalog.
- *
- * @param catalog Catalog instance.
- * @param sessionName Session name.
- * @param policyName Policy name.
- * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
- */
-static inline optional<base::Error>
+inline optional<base::Error>
 addTestPolicyToCatalog(shared_ptr<Catalog> catalog, const string& sessionName, const string& policyName)
 {
     optional<base::Error> addTestPolicyToCatalogError;
@@ -167,14 +142,7 @@ addTestPolicyToCatalog(shared_ptr<Catalog> catalog, const string& sessionName, c
     return addTestPolicyToCatalogError;
 }
 
-/**
- * @brief Delete a asset from the catalog.
- *
- * @param assetName Asset name.
- * @param catalog Catalog instance.
- * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
- */
-static inline optional<base::Error> deleteAssetFromStore(shared_ptr<Catalog> catalog, const string& assetName)
+inline optional<base::Error> deleteAssetFromStore(shared_ptr<Catalog> catalog, const string& assetName)
 {
     optional<base::Error> deleteAssetError;
 
@@ -204,16 +172,9 @@ static inline optional<base::Error> deleteAssetFromStore(shared_ptr<Catalog> cat
     return deleteAssetError;
 }
 
-/**
- * @brief Delete a route from the router.
- *
- * @param routeName Route name.
- * @param router Router instance.
- * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
- */
-static inline optional<base::Error> deleteRouteFromRouter(shared_ptr<Router> router, const string& routeName)
+inline optional<base::Error> deleteRouteFromRouter(shared_ptr<Router> router, const string& routeName)
 {
-    string error;
+    optional<base::Error> deleteRouteFromRouterError;
 
     try
     {
@@ -221,21 +182,13 @@ static inline optional<base::Error> deleteRouteFromRouter(shared_ptr<Router> rou
     }
     catch (const std::exception& e)
     {
-        error = e.what();
+        deleteRouteFromRouterError = optional<base::Error> {base::Error {e.what()}};
     }
 
-    return (error.empty() ? std::nullopt : std::make_optional(base::Error {error}));
+    return deleteRouteFromRouterError;
 }
 
-/**
- * @brief Delete a session and the resources created along with it.
- *
- * @param sessionName Session name.
- * @param router Router instance.
- * @param catalog Catalog instance.
- * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
- */
-static inline optional<base::Error>
+inline optional<base::Error>
 deleteSession(shared_ptr<Router> router, shared_ptr<Catalog> catalog, const string& sessionName)
 {
     auto& sessionManager = SessionManager::getInstance();

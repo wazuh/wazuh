@@ -21,6 +21,82 @@ constexpr auto TEST_POLICY_FULL_NAME_FORMAT = "policy/{}_policy/0"; ///< Policy 
 constexpr auto TEST_ROUTE_NAME_FORMAT = "{}_route";                 ///< Route name format, '{}' is the session name
 
 /**
+ * @brief Get the minimum available priority for a route.
+ *
+ * @param router Router instance.
+ * @return int32_t Minimum available priority. If no priority is available, returns -1.
+ */
+inline int32_t getMinimumAvailablePriority(const std::shared_ptr<::router::Router>& router);
+
+/**
+ * @brief Add an asset to the catalog.
+ *
+ * @param catalog Catalog instance.
+ * @param assetName Asset name.
+ * @param assetContent Asset content.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+inline std::optional<base::Error> addAssetToCatalog(std::shared_ptr<catalog::Catalog> catalog,
+                                                    const std::string& assetType,
+                                                    const std::string& assetContent);
+
+/**
+ * @brief Add the test's filter to the catalog.
+ *
+ * @param catalog Catalog instance.
+ * @param sessionName Session name.
+ * @param filterName Filter name.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+inline std::optional<base::Error> addTestFilterToCatalog(std::shared_ptr<catalog::Catalog> catalog,
+                                                         const std::string& sessionName,
+                                                         const std::string& filterName);
+
+/**
+ * @brief Add the test's policy to the catalog.
+ *
+ * @param catalog Catalog instance.
+ * @param sessionName Session name.
+ * @param policyName Policy name.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+inline std::optional<base::Error> addTestPolicyToCatalog(std::shared_ptr<catalog::Catalog> catalog,
+                                                         const std::string& sessionName,
+                                                         const std::string& policyName);
+
+/**
+ * @brief Delete a route from the router.
+ *
+ * @param routeName Route name.
+ * @param router Router instance.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+inline std::optional<base::Error> deleteRouteFromRouter(std::shared_ptr<::router::Router> router,
+                                                        const std::string& routeName);
+
+/**
+ * @brief Delete an asset from the catalog.
+ *
+ * @param assetName Asset name.
+ * @param catalog Catalog instance.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+inline std::optional<base::Error> deleteAssetFromStore(std::shared_ptr<catalog::Catalog> catalog,
+                                                       const std::string& assetName);
+
+/**
+ * @brief Delete a session and the resources created along with it.
+ *
+ * @param sessionName Session name.
+ * @param router Router instance.
+ * @param catalog Catalog instance.
+ * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+inline std::optional<base::Error> deleteSession(std::shared_ptr<::router::Router> router,
+                                                std::shared_ptr<catalog::Catalog> catalog,
+                                                const std::string& sessionName);
+
+/**
  * @brief Test configuration parameters.
  *
  */
