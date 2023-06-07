@@ -46,6 +46,8 @@ definitions:
       type:
         - start
       action: process_creation
+      kind: event
+      outcome: success
     "3":
       category:
         - network
@@ -54,6 +56,8 @@ definitions:
         - connection
         - protocol
       action: network_connection
+      kind: event
+      outcome: success
     "4":
       category:
         - service
@@ -61,22 +65,16 @@ definitions:
       type:
         - change
       action: sysmon_service_state_changed
+      kind: state
+      outcome: unknown
     "5":
       category:
         - process
       type:
         - end
       action: process_terminated
-    #    "6":
-    #      category:
-    #        - driver
-    #      type:
-    #        - start
-    #    "7":
-    #      category:
-    #        - process
-    #      type:
-    #       - change
+      kind: event
+      outcome: success
     "9":
       category:
         - file
@@ -85,64 +83,34 @@ definitions:
         - access
         - info
       action: raw_access_read
-    #    "10":
-    #      category:
-    #        - process
-    #      type:
-    #        - access
+      # can be considered a normal event in the operation of the system,
+      # although it can also be a sign of malicious behavior.
+      kind: alert
+      outcome: unknown
     "11":
       category:
         - file
       type:
         - creation
       action: file_created
-    #    "15":
-    #      category:
-    #        - file
-    #      type:
-    #        - access
+      kind: event
+      outcome: success
     "16":
       category:
         - configuration
       type:
         - change
       action: configuration_chage
-    "17":
-      category:
-        - file
-      type:
-        - creation
-    "18":
-      category:
-        - file
-      type:
-        - access
-    "22":
-      category:
-        - network
-      type:
-        - connection
-        - protocol
-        - info
+      kind: state
+      outcome: unknown
     "23":
       category:
         - file
       type:
         - deletion
       action: file_deleted
-    "24":
-      type:
-        - change
-    "25":
-      category:
-        - process
-      type:
-        - change
-    "26":
-      category:
-        - file
-      type:
-        - deletion
+      kind: event
+      outcome: success
 
 normalize:
   - map:
@@ -160,6 +128,58 @@ normalize:
       - event.category: $~tmp.category
       - event.type: $~tmp.type
       - event.action: $~tmp.action
+      - event.kind: $~tmp.kind
+      - event.outcome: $~tmp.outcome
+
+  #########################################################
+  #                   Delete invalid fields
+  #########################################################
+  - check: +string_equal/~sysmonEvent.Event.EventData.ConfigurationFileHash/-
+    map:
+      - ~sysmonEvent.Event.EventData.ConfigurationFileHash: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.FileVersion/-
+    map:
+      - ~sysmonEvent.Event.EventData.FileVersion: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.Description/-
+    map:
+      - ~sysmonEvent.Event.EventData.Description: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.Product/-
+    map:
+      - ~sysmonEvent.Event.EventData.Product: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.Company/-
+    map:
+      - ~sysmonEvent.Event.EventData.Company: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.OriginalFileName/-
+    map:
+      - ~sysmonEvent.Event.EventData.OriginalFileName: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.Hashes/-
+    map:
+      - ~sysmonEvent.Event.EventData.Hashes: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.User/-
+    map:
+      - ~sysmonEvent.Event.EventData.User: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.IsExecutable/-
+    map:
+      - ~sysmonEvent.Event.EventData.IsExecutable: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.Archived/-
+    map:
+      - ~sysmonEvent.Event.EventData.Archived: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.RuleName/-
+    map:
+      - ~sysmonEvent.Event.EventData.RuleName: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.SourceHostname/-
+    map:
+      - ~sysmonEvent.Event.EventData.SourceHostname: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.SourcePortName/-
+    map:
+      - ~sysmonEvent.Event.EventData.SourcePortName: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.DestinationHostname/-
+    map:
+      - ~sysmonEvent.Event.EventData.DestinationHostname: +delete
+  - check: +string_equal/~sysmonEvent.Event.EventData.DestinationPortName/-
+    map:
+      - ~sysmonEvent.Event.EventData.DestinationPortName: +delete
+
 
   - check:
       - event.code: "255"
@@ -169,9 +189,7 @@ normalize:
   - map:
       - rule.name: $~sysmonEvent.Event.EventData.RuleName
       - event.provider: $~sysmonEvent.Event.System.Provider.@Name
-      # TODO: Opcode and task define the location of the event in the Windows Event Log
-      # - event.opcode: $~sysmonEvent.Event.System.Opcode.#text
-      # - event.task: $~sysmonEvent.Event.System.Task.#text
+
       # TODO: The hash fields are not implemented in sysmon linux yet
       # ~tmp.hashes: +parse_key_value/$~sysmonEvent.Event.EventData.Hashes/=/,/'/'
       # - related.hash: $~tmp.hashes
