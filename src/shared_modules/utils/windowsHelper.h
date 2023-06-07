@@ -192,43 +192,55 @@ namespace Utils
         return ret;
     }
 
-    static std::string normalizeTimestamp(const std::string& timestamp1, const std::string& timestamp2)
+    // https://en.wikipedia.org/wiki/ISO_8601#Calendar_dates
+    // https://en.wikipedia.org/wiki/ISO_8601#Combined_date_and_time_representations
+    static std::string normalizeTimestamp(const std::string& dateISO8601CalendarDateFormat, const std::string& dateISO8601CombinedFormat)
     {
         std::string normalizedTimestamp;
 
-        if (timestamp1.size() == INSTALLDATE_REGISTRY_VALUE_SIZE)
+        if (dateISO8601CalendarDateFormat.size() == INSTALLDATE_REGISTRY_VALUE_SIZE)
         {
-            if (isNumber(timestamp1))
+            if (isNumber(dateISO8601CalendarDateFormat))
             {
-                size_t pos = timestamp2.find(' ');
+                const auto pos = dateISO8601CombinedFormat.find(' ');
 
                 if (pos != std::string::npos)
                 {
-                    std::string date2_trimmed = timestamp2.substr(0, pos);
-                    std::string time2_trimmed = timestamp2.substr(pos + 1);
+                    // Substracts "YYYY/MM/DD" from "YYYY/MM/DD hh:mm:ss" string.
+                    auto dateTrimmed = dateISO8601CombinedFormat.substr(0, pos);
+                    // Substracts "hh:mm:ss" from "YYYY/MM/DD hh:mm:ss" string.
+                    auto timeTrimmed = dateISO8601CombinedFormat.substr(pos + 1);
 
-                    Utils::replaceAll(date2_trimmed, "/", "");
-                    Utils::replaceAll(time2_trimmed, ":", "");
+                    // Converts "YYYY/MM/DD" string to "YYYYMMDD".
+                    Utils::replaceAll(dateTrimmed, "/", "");
+                    // Converts "hh:mm:ss" string to "hhmmss".
+                    Utils::replaceAll(timeTrimmed, ":", "");
 
-                    if (date2_trimmed.size() == INSTALLDATE_REGISTRY_VALUE_SIZE
-                            || time2_trimmed.size() == HOURMINSEC_VALUE_SIZE)
+                    if (dateTrimmed.size() == INSTALLDATE_REGISTRY_VALUE_SIZE
+                            || timeTrimmed.size() == HOURMINSEC_VALUE_SIZE)
                     {
-                        if (date2_trimmed.compare(timestamp1) == 0)
+                        if (dateTrimmed.compare(dateISO8601CalendarDateFormat) == 0)
                         {
-                            normalizedTimestamp = timestamp2;
+                            normalizedTimestamp = dateISO8601CombinedFormat;
                         }
                         else
                         {
                             tm local_time_s {};
-                            local_time_s.tm_year = std::stoi(timestamp1.substr(0, 4)) - REFERENCE_YEAR;
-                            local_time_s.tm_mon = std::stoi(timestamp1.substr(4, 2)) - 1;
-                            local_time_s.tm_mday = std::stoi(timestamp1.substr(6, 2));
-                            local_time_s.tm_hour = 0;
-                            local_time_s.tm_min = 0;
-                            local_time_s.tm_sec = 0;
-                            time_t local_time = mktime(&local_time_s);
 
-                            normalizedTimestamp = Utils::getTimestamp(local_time, false);
+                            try
+                            {
+                                // Parsing YYYYMMDD date format string.
+                                local_time_s.tm_year = std::stoi(dateISO8601CalendarDateFormat.substr(0, 4)) - REFERENCE_YEAR;
+                                local_time_s.tm_mon = std::stoi(dateISO8601CalendarDateFormat.substr(4, 2)) - 1;
+                                local_time_s.tm_mday = std::stoi(dateISO8601CalendarDateFormat.substr(6, 2));
+                                local_time_s.tm_hour = 0;
+                                local_time_s.tm_min = 0;
+                                local_time_s.tm_sec = 0;
+                                time_t local_time = mktime(&local_time_s);
+
+                                normalizedTimestamp = Utils::getTimestamp(local_time, false);
+                            }
+                            catch (...) {}
                         }
                     }
                 }
