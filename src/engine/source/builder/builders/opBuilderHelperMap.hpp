@@ -349,7 +349,7 @@ base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField
                                                   std::shared_ptr<schemf::ISchema> schema);
 
 /**
- * @brief Get the 'get_value' function helper builder
+ * @brief Get the 'date from epoch' function helper builder
  *
  * @param schema schema to validate fields
  * @return builder
