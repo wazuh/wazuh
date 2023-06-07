@@ -45,8 +45,7 @@ class EngineRequestMessage:
         self.add_origin(name=origin_name, module=module)
         self.add_command(command=command)
 
-        if parameters:
-            self.add_parameters(parameters=parameters)
+        self.add_parameters(parameters=parameters if parameters else {})
 
         return self.to_dict()
 
