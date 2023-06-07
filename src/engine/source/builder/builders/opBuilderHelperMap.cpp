@@ -1452,7 +1452,7 @@ base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField
         [=, targetField = std::move(targetField), parameter = std::move(parameters[0])](
             base::Event event) -> base::result::Result<base::Event>
         {
-            std::string resolvedParameter;
+            int IntResolvedParameter;
             // Check parameter
             if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
             {
@@ -1462,25 +1462,23 @@ base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField
                     return base::result::makeFailure(
                         event, (!event->exists(parameter.m_value) ? failureTrace1 : failureTrace2));
                 }
-                resolvedParameter = paramValue.value();
+                IntResolvedParameter = paramValue.value();
             }
             else
             {
-                resolvedParameter = parameter.m_value;
-            }
-
-            int IntResolvedParameter;
-            try
-            {
-                IntResolvedParameter = std::stoi(resolvedParameter);
-                if (IntResolvedParameter > std::numeric_limits<int>::max() || IntResolvedParameter < 0)
+                try
                 {
-                    return base::result::makeFailure(event, failureTrace3);
+                    IntResolvedParameter = std::stoi(parameter.m_value);
+                }
+                catch (const std::exception& e)
+                {
+                    return base::result::makeFailure(event, failureTrace4);
                 }
             }
-            catch (const std::exception& e)
+
+            if (IntResolvedParameter < 0 || IntResolvedParameter > std::numeric_limits<int>::max())
             {
-                return base::result::makeFailure(event, failureTrace4);
+                return base::result::makeFailure(event, failureTrace3);
             }
 
             date::sys_time<std::chrono::seconds> tp {std::chrono::seconds {IntResolvedParameter}};

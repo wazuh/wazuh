@@ -40,6 +40,9 @@ normalize:
     - service.origin.type: $~json.docker.Type #The type of object emitting the event - possible values : container, image, volume, network, daemon, plugin, service, node, secret, config
     - container.image.tag: $~json.docker.Action #The type of event #volume, container, network, service, node #TODO: no event type -> doesn't match possible values
     - process.command_line : $~json.docker.status #Event status #examples : "create", "start", "kill", "stop", "die","exec_create: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl", "exec_start: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl"
+    - event.duration: $~json.docker.execDuration
+    - process.exit_code: $~json.docker.exitCode
+    - process.pid: $~json.docker.execID
 
     - event.outcome : success
     - event.category : +array_append/process
@@ -47,11 +50,6 @@ normalize:
 
     - ~container.attributes : $~json.docker.Actor.Attributes #Various key/value attributes of the object, depending on its type
     #contains fields: Attributes.image Attributes.name Attributes.org.opencontainers.image.ref.name Attributes.org.opencontainers.image.version
-
-    #Discarded fields
-    # $~json.docker.execID
-    # $~json.docker.exitCode
-    # $~json.docker.execDuration
 
  - check: +not_exists/~json.docker
    map:

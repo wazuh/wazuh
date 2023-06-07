@@ -74,12 +74,13 @@ TEST(opBuilderHelperDateFromEpochTime, wrongParameters)
 TEST(opBuilderHelperDateFromEpochTime, inputNumberOutsideOfLimits)
 {
     // Big number (bigger than INT_MAX)
+    auto biggerThanMax = 1 + static_cast<long int>(INT_MAX);
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"date_from_epoch"},
                                  std::vector<std::string> {"$field_ref"},
                                  std::make_shared<defs::mocks::FailDef>());
 
-    auto event = std::make_shared<json::Json>(R"({"field_ref": "2147483648"})");
+    auto event = std::make_shared<json::Json>(fmt::format(R"({{"field_ref": {}}})",biggerThanMax).c_str());
     auto op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
                   ->getPtr<Term<EngineOp>>()
                   ->getFn();
@@ -116,16 +117,16 @@ TEST(opBuilderHelperDateFromEpochTime, inputNumberOutsideOfLimits)
 TEST(opBuilderHelperDateFromEpochTime, executionOkWithValues)
 {
     // now
-    auto dp = date::floor<std::chrono::seconds>(std::chrono::system_clock::now());
-    auto sec = std::chrono::duration_cast<std::chrono::seconds>(dp.time_since_epoch()).count();
-    std::string epoch_now = std::to_string(sec);
+    auto dateNow = date::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+    auto seccondsNow = std::chrono::duration_cast<std::chrono::seconds>(dateNow.time_since_epoch()).count();
+    std::string epoch_now = std::to_string(seccondsNow);
 
     auto tuple = std::make_tuple(std::string {"/field"},
                                  std::string {"date_from_epoch"},
                                  std::vector<std::string> {epoch_now},
                                  std::make_shared<defs::mocks::FailDef>());
 
-    auto event = std::make_shared<json::Json>(R"({"field": ""})");
+    auto event = std::make_shared<json::Json>(R"({"field": "", "reference" : 0})");
     auto op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
                   ->getPtr<Term<EngineOp>>()
                   ->getFn();
@@ -134,13 +135,13 @@ TEST(opBuilderHelperDateFromEpochTime, executionOkWithValues)
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->getString("/field"));
     auto nowSec = result.payload()->getString("/field").value();
-    auto now_str_result = date::format("%Y-%m-%dT%H:%M:%SZ", dp);
-    ASSERT_STREQ(now_str_result.c_str(), nowSec.c_str());
+    auto nowStrResult = date::format("%Y-%m-%dT%H:%M:%SZ", dateNow);
+    ASSERT_STREQ(nowStrResult.c_str(), nowSec.c_str());
 
-    // epoch begining
+    // epoch zero with reference
     auto tuple2 = std::make_tuple(std::string {"/field"},
                                   std::string {"date_from_epoch"},
-                                  std::vector<std::string> {"0"},
+                                  std::vector<std::string> {"$reference"},
                                   std::make_shared<defs::mocks::FailDef>());
 
     op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple2)
@@ -152,15 +153,15 @@ TEST(opBuilderHelperDateFromEpochTime, executionOkWithValues)
     ASSERT_TRUE(result.payload()->getString("/field"));
     nowSec = result.payload()->getString("/field").value();
     date::sys_time<std::chrono::seconds> tp {std::chrono::seconds {0}};
-    now_str_result = date::format("%Y-%m-%dT%H:%M:%SZ", tp);
-    ASSERT_STREQ(now_str_result.c_str(), nowSec.c_str());
+    nowStrResult = date::format("%Y-%m-%dT%H:%M:%SZ", tp);
+    ASSERT_STREQ(nowStrResult.c_str(), nowSec.c_str());
 }
 
-TEST(opBuilderHelperDateFromEpochTime, okWithFloatingPoint)
+TEST(opBuilderHelperDateFromEpochTime, SuccessTruncatingFloatingPoint)
 {
-    // ShouldTruncateIt
-    auto dp = date::floor<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    auto sec = std::chrono::duration_cast<std::chrono::milliseconds>(dp.time_since_epoch()).count();
+    // Now in milliseconds
+    auto dateNowMilli = date::floor<std::chrono::milliseconds>(std::chrono::system_clock::now());
+    auto sec = std::chrono::duration_cast<std::chrono::milliseconds>(dateNowMilli.time_since_epoch()).count();
     double secWithComma = static_cast<double>(sec) / 1000;
     std::string epoch_now = std::to_string(secWithComma);
     auto tuple = std::make_tuple(std::string {"/field"},
@@ -176,6 +177,8 @@ TEST(opBuilderHelperDateFromEpochTime, okWithFloatingPoint)
 
     ASSERT_TRUE(result);
     ASSERT_TRUE(result.payload()->getString("/field"));
+
+    // Result in string will truncate to only seconds
     auto nowSec = result.payload()->getString("/field").value();
     date::sys_time<std::chrono::seconds> tp {std::chrono::seconds {std::stoi(epoch_now)}};
     auto now_str_result = date::format("%Y-%m-%dT%H:%M:%SZ", tp);
