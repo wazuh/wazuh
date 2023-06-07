@@ -425,6 +425,8 @@ char * wm_osquery_already_running(char * text) {
             // Find "Pidfile::Error::Busy"
         } else if (strstr(text, PATTERNS[2]) != NULL) {
             os_strdup("unknown", text);
+        } else {
+            text = NULL;
         }
     }
     return text;
