@@ -20,8 +20,8 @@
 
 #include "shared.h"
 #include "syscheck.h"
-#include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
-#include "rootcheck/rootcheck.h"
+#include "../os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
+#include "../rootcheck/rootcheck.h"
 #include "db/include/db.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -30,9 +30,9 @@ time_t last_time = 0;
 void audit_set_db_consistency(void);
 #ifdef WIN32
 
-#include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
-#include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
-#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/synchapi_wrappers.h"
 #define localtime_r(x, y)
 #endif
 // Remove static qualifier when unit testing

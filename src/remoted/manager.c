@@ -12,10 +12,10 @@
 #include "remoted.h"
 #include "state.h"
 #include "remoted_op.h"
-#include "wazuh_db/helpers/wdb_global_helpers.h"
-#include "os_net/os_net.h"
+#include "../wazuh_db/helpers/wdb_global_helpers.h"
+#include "../os_net/os_net.h"
 #include "shared_download.h"
-#include "os_crypto/sha256/sha256_op.h"
+#include "../os_crypto/sha256/sha256_op.h"
 #include <pthread.h>
 
 #if defined(__FreeBSD__) || defined(__MACH__) || defined(__sun__)

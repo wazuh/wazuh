@@ -28,7 +28,6 @@
 #include "stringHelper.h"
 #include "registryHelper.h"
 #include "defs.h"
-#include "debug_op.h"
 #include "osinfo/sysOsInfoWin.h"
 #include "windowsHelper.h"
 #include "encodingWindowsHelper.h"

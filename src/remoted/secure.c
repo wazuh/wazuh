@@ -9,10 +9,10 @@
  */
 
 #include "shared.h"
-#include "os_net/os_net.h"
+#include "../os_net/os_net.h"
 #include "remoted.h"
 #include "state.h"
-#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "../wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -305,7 +305,7 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client)
         default:
             merror("TCP peer [%d]: %s (%d)", sock_client, strerror(errno), errno);
         }
-        fallthrough;
+        WFALLTHROUGH;
     case 0:
         mdebug1("handle incoming close socket [%d].", sock_client);
         _close_sock(&keys, sock_client);

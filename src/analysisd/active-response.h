@@ -11,8 +11,8 @@
 #ifndef ACTIVE_RESPONSE_H
 #define ACTIVE_RESPONSE_H
 
-#include "config/active-response.h"
-#include "config/config.h"
+#include "../config/active-response.h"
+#include "../config/config.h"
 #include "list_op.h"
 
 /* Initialize active response */

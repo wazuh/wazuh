@@ -12,8 +12,8 @@
 #define EXPRESSION_H_
 #define PCRE2_CODE_UNIT_WIDTH 8
 
-#include "external/libpcre2/include/pcre2.h"
-#include "os_regex/os_regex.h"
+#include "../external/libpcre2/include/pcre2.h"
+#include "../os_regex/os_regex.h"
 
 #define OSMATCH_STR  "osmatch"
 #define OSREGEX_STR  "osregex"

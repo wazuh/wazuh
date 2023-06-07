@@ -50,7 +50,30 @@ All notable changes to this project will be documented in this file.
 - The SSHD decoder has been improved to catch disconnection events. [#14138](https://github.com/wazuh/wazuh/pull/14138)
 
 
-## [v4.4.2]
+## [v4.4.3]
+
+### Agent
+
+#### Changed
+
+- Added support for Apple Silicon processors to the macOS agent. ([#16521](https://github.com/wazuh/wazuh/pull/16521))
+- Prevented the installer from checking the old users "ossecm" and "ossecr" on upgrade. ([#2211](https://github.com/wazuh/wazuh-packages/pull/2211))
+- The deployment variables capture has been changed on macOS. ([#17195](https://github.com/wazuh/wazuh/pull/17195))
+
+#### Fixed
+
+- The temporary file "ossec.confre" is now removed after upgrade on macOS. ([#2217](https://github.com/wazuh/wazuh-packages/pull/2217))
+- Prevented the installer from corrupting the agent configuration on macOS when deployment variables were defined on upgrade. ([#2208](https://github.com/wazuh/wazuh-packages/pull/2208))
+- The installation on macOS has been fixed by removing calls to launchctl. ([#2218](https://github.com/wazuh/wazuh-packages/pull/2218))
+
+### Ruleset
+
+#### Changed
+
+- The SCA policy names have been unified. ([#17202](https://github.com/wazuh/wazuh/pull/17202))
+
+
+## [v4.4.2] - 2022-05-18
 
 ### Manager
 
@@ -73,24 +96,24 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Changed _netstat_ command on macOS agents. ([#16743](https://github.com/wazuh/wazuh/pull/16743)) 
+- Changed _netstat_ command on macOS agents. ([#16743](https://github.com/wazuh/wazuh/pull/16743))
 
 #### Fixed
 
-- Fixed an issue with MAC address reporting on Windows systems. ([#16517](https://github.com/wazuh/wazuh/pull/16517)) 
-- Fixed Windows unit tests hanging during execution. ([#16857](https://github.com/wazuh/wazuh/pull/16857))  
+- Fixed an issue with MAC address reporting on Windows systems. ([#16517](https://github.com/wazuh/wazuh/pull/16517))
+- Fixed Windows unit tests hanging during execution. ([#16857](https://github.com/wazuh/wazuh/pull/16857))
 
 ### RESTful API
 
 #### Fixed
 
-- Fixed agent insertion when no key is specified using `POST /agents/insert` endpoint. ([#16381](https://github.com/wazuh/wazuh/pull/16381)) 
+- Fixed agent insertion when no key is specified using `POST /agents/insert` endpoint. ([#16381](https://github.com/wazuh/wazuh/pull/16381))
 
-### Ruleset 
+### Ruleset
 
 #### Added
 
-- Added macOS 13.0 Ventura SCA policy. ([#15566](https://github.com/wazuh/wazuh/pull/15566)) 
+- Added macOS 13.0 Ventura SCA policy. ([#15566](https://github.com/wazuh/wazuh/pull/15566))
 - Added new ruleset for macOS 13 Ventura and older versions. ([#15567](https://github.com/wazuh/wazuh/pull/15567))
 - Added a new base ruleset for log sources collected from Amazon Security Lake. ([#16549](https://github.com/wazuh/wazuh/pull/16549))
 

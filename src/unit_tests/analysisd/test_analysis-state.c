@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "analysisd/analysisd.h"
-#include "analysisd/state.h"
-#include "analysisd/config.h"
+#include "../../analysisd/analysisd.h"
+#include "../../analysisd/state.h"
+#include "../../analysisd/config.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/time_wrappers.h"

@@ -15,7 +15,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_metadata_wrappers.h"

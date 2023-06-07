@@ -13,7 +13,7 @@
 policy:
   id: "cis_win11_enterprise_21H2"
   file: "cis_win11_enterprise.yml"
-  name: "CIS Benchmark for Windows 11 Enterprise (Release 21H2)"
+  name: "CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows 11."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

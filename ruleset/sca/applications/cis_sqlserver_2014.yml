@@ -12,7 +12,7 @@
 policy:
   id: "cis_sqlserver_2014"
   file: "cis_sqlserver_2014"
-  name: "CIS Microsoft SQL Server 2014"
+  name: "CIS Microsoft SQL Server 2014 Benchmark v1.4.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft SQL Server 2014."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

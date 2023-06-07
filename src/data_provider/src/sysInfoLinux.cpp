@@ -11,13 +11,13 @@
 #include <fstream>
 #include <iostream>
 #include <regex>
+#include <sys/utsname.h>
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
 #include "sysInfo.hpp"
-#include "shared.h"
 #include "readproc.h"
 #include "networkUnixHelper.h"
 #include "networkHelper.h"

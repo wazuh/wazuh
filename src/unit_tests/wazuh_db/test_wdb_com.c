@@ -15,7 +15,7 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_state_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 char* wdbcom_output_builder(int error_code, const char* message, cJSON* data_json);
 cJSON* wdbcom_getconfig(char* section);

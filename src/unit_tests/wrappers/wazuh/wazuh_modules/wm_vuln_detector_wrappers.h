@@ -11,8 +11,8 @@
 #ifndef WM_VULN_DETECTOR_WRAPPERS_H
 #define WM_VULN_DETECTOR_WRAPPERS_H
 
-#include "headers/shared.h"
-#include "wazuh_modules/wmodules.h"
+#include "../../../../headers/shared.h"
+#include "../../../../wazuh_modules/wmodules.h"
 
 bool __wrap_c_isdigit(int c);
 
