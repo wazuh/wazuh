@@ -31,7 +31,7 @@ protected:
     static constexpr auto DB_NAME_1 = "TEST_DB_1";
     static constexpr auto DB_NAME_2 = "TEST_DB_2";
     static constexpr auto DB_REF_NAME = "$test_db_name";
-    static constexpr auto DB_DIR = "/tmp/";
+    static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
     static constexpr auto DB_NAME = "kvdb";
 
     std::shared_ptr<IMetricsManager> m_manager;
