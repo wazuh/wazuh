@@ -1,23 +1,38 @@
 #include <algorithm>
 #include <iostream>
-#include <optional>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include <fmt/format.h>
 
-#include <hlp/base.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
-
+#include "hlp.hpp"
 #include "number.hpp"
 #include "parse_field.hpp"
-
-namespace hlp
-{
+#include "syntax.hpp"
 
 namespace
 {
+using namespace hlp;
+using namespace hlp::parser;
+
+Mapper getMapper(const json::Json& doc, std::string_view targetField)
+{
+    return [doc, targetField](json::Json& event)
+    {
+        event.set(targetField, doc);
+    };
+}
+
+SemParser getSemParser(json::Json&& doc, const std::string& targetField)
+{
+    return [targetField, doc](std::string_view)
+    {
+        return getMapper(doc, targetField);
+    };
+}
+
 /**
  * @brief Return the dsv parser function
  *
@@ -28,41 +43,42 @@ namespace
  * @param headers The header names (destination)
  * @return parsec::Parser<json::Json>
  */
-inline auto dsvParserFunction(std::string name,
-                              Stop endTokens,
-                              const char delimiterChar,
-                              const char quoteChar,
-                              const char escapeChar,
-                              std::vector<std::string> headers)
-    -> parsec::Parser<json::Json>
+inline Parser dsvParserFunction(std::string name,
+                                Stop endTokens,
+                                const char delimiterChar,
+                                const char quoteChar,
+                                const char escapeChar,
+                                std::vector<std::string> headers,
+                                const std::string& targetField)
 {
     if (endTokens.empty())
     {
         throw std::runtime_error(fmt::format("CSV/DSV parser needs a stop string"));
     }
-    return [endTokens, delimiterChar, quoteChar, headers, escapeChar, name](
-               std::string_view text, int index)
+
+    const auto toStopP = syntax::parsers::toEnd(endTokens);
+
+    const auto target = targetField.empty() ? "" : json::Json::formatJsonPath(targetField);
+
+    return [toStopP, target, delimiterChar, quoteChar, headers, escapeChar, name](std::string_view txt)
     {
-        auto res = internal::preProcess<json::Json>(text, index, endTokens);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+        auto synR = toStopP(txt);
+        if (synR.failure())
         {
-            return std::get<parsec::Result<json::Json>>(res);
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
 
-        auto rawText = std::get<std::string_view>(res);
+        const auto parsed = syntax::parsed(synR, txt);
+
         std::size_t start {0};
 
         json::Json doc {};
         auto i = 0;
 
-        while (start <= rawText.size() && i < headers.size())
+        while (start <= parsed.size() && i < headers.size())
         {
-            auto remaining = rawText.substr(start, rawText.size() - start);
-            auto field = getField(remaining,
-                                  delimiterChar,
-                                  quoteChar,
-                                  escapeChar,
-                                  true);
+            auto remaining = parsed.substr(start, parsed.size() - start);
+            auto field = getField(remaining, delimiterChar, quoteChar, escapeChar, true);
 
             if (!field.has_value())
             {
@@ -78,46 +94,61 @@ inline auto dsvParserFunction(std::string name,
             i++;
         }
 
-        auto end = start + index - 1;
         if (headers.size() != i)
         {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Expected a DSV/CSV string", name), start + index);
+            return abs::makeFailure<ResultT>(txt.substr(start-1), name);
+            // return parsec::makeError<json::Json>(fmt::format("{}: Expected a DSV/CSV string", name), start + index);
         }
-        return parsec::makeSuccess<json::Json>(std::move(doc), end);
+
+        if (start-1 != parsed.size())
+        {
+            return abs::makeFailure<ResultT>(txt.substr(start-1), name);
+        }
+
+        SemParser semP;
+        if (target.empty())
+        {
+            semP = noSemParser();
+        }
+        else
+        {
+            semP = getSemParser(std::move(doc), target);
+        }
+        return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, synR.remaining());
     };
 }
 } // namespace
 
-parsec::Parser<json::Json> getDSVParser(std::string name, Stop endTokens, Options lst)
+namespace hlp::parsers
 {
-    if (lst.size() < 5)
+Parser getDSVParser(const Params& params)
+{
+    if (params.options.size() < 5)
     {
         throw std::runtime_error(fmt::format("Need at least five options: delim, quote, "
                                              "escape characters and two headers"));
     }
-    else if (lst[0].size() != 1 || lst[1].size() != 1 || lst[2].size() != 1)
+    else if (params.options[0].size() != 1 || params.options[1].size() != 1 || params.options[2].size() != 1)
     {
-        throw std::runtime_error(
-            fmt::format("Delim, quote and escape characters must be single characters"));
+        throw std::runtime_error(fmt::format("Delim, quote and escape characters must be single characters"));
     }
 
-    const char delimiter = lst[0][0];
-    const char quote = lst[1][0];
-    const char scape = lst[2][0];
+    const char delimiter = params.options[0][0];
+    const char quote = params.options[1][0];
+    const char scape = params.options[2][0];
 
     std::vector<std::string> headers;
-    std::transform(std::next(lst.begin(), 3),
-                   lst.end(),
+    std::transform(std::next(params.options.begin(), 3),
+                   params.options.end(),
                    std::back_inserter(headers),
                    [](auto s) { return fmt::format("/{}", s); });
 
-    return dsvParserFunction(name, endTokens, delimiter, quote, scape, headers);
+    return dsvParserFunction(params.name, params.stop, delimiter, quote, scape, headers, params.targetField);
 }
 
-parsec::Parser<json::Json> getCSVParser(std::string name, Stop endTokens, Options lst)
+Parser getCSVParser(const Params& params)
 {
-    if (lst.size() < 2)
+    if (params.options.size() < 2)
     {
         throw std::runtime_error(fmt::format("CSV parser need at least two headers"));
     }
@@ -127,12 +158,12 @@ parsec::Parser<json::Json> getCSVParser(std::string name, Stop endTokens, Option
     const char scape = '"';
 
     std::vector<std::string> headers;
-    std::transform(lst.begin(),
-                   lst.end(),
+    std::transform(params.options.begin(),
+                   params.options.end(),
                    std::back_inserter(headers),
                    [](auto s) { return fmt::format("/{}", s); });
 
-    return dsvParserFunction(name, endTokens, delimiter, quote, scape, headers);
+    return dsvParserFunction(params.name, params.stop, delimiter, quote, scape, headers, params.targetField);
 }
 
-} // namespace hlp
+} // namespace hlp::parsers

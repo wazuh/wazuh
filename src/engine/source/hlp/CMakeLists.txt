@@ -27,65 +27,22 @@ CPMAddPackage(
         GIT_SHALLOW TRUE
 )
 
-# add_library(hlp_parsec INTERFACE)
-# target_include_directories(hlp_parsec INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/parsec/include/)
-# target_link_libraries(hlp_parsec INTERFACE base)
-# add_library(hlp::parsec ALIAS hlp_parsec)
+CPMAddPackage(
+  NAME pugixml
+  GITHUB_REPOSITORY zeux/pugixml
+  GIT_TAG v1.12.1
+  VERSION 1.12.1
+)
 
-# add_library(hlp_logpar STATIC src/logpar.cpp)
-# target_include_directories(hlp_logpar PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
-# target_link_libraries(hlp_logpar PUBLIC hlp::parsec json base)
-# add_library(hlp::logpar ALIAS hlp_logpar)
+# https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
+# This works with glibc 2.28-211.el8 RHEL 8
+# add_compile_definitions(ONLY_C_LOCALE=1)
 
-# add_library(hlp2 STATIC
-#         src/number.cpp
-#         src/number.hpp
-#         src/web.cpp
-#         src/file.cpp
-#         src/json.cpp
-#         src/xml.cpp
-#         src/dsv_csv.cpp
-#         src/kvmap.cpp
-#         ${date_SOURCE_DIR}/src/tz.cpp
-#         src/parse_field.hpp
-#         src/date.cpp
-#         src/parse_field.cpp
-#         src/between.cpp
-#         src/bool.cpp
-#         src/ignore.cpp
-#         src/ip.cpp
-#         src/text.cpp
-#         src/quoted.cpp
-#         src/encodings.cpp
-#         src/literal.cpp
-#         src/alphanumeric.cpp)
-
-# # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
-# # This works with glibc 2.28-211.el8 RHEL 8
-# # add_compile_definitions(ONLY_C_LOCALE=1)
-
-# # https://howardhinnant.github.io/date/tz.html#Installation
-# #
-# # You may have to use -lpthread. If you're getting a mysterious crash on first access to the database, it is likely that
-# # you aren't linking to the pthread library. The pthread library is used to assure that that library initialization
-# # is thread safe in a multithreaded environment.
-# target_link_libraries(hlp2
-#         PUBLIC base hlp_parsec hlp::logpar
-#         PRIVATE
-#         pugixml
-#         date::date
-#         CURL::libcurl
-#         fast_float
-#         json
-#         pthread)
-
-# target_include_directories(hlp2
-#         PUBLIC
-#         ${CMAKE_CURRENT_LIST_DIR}/include
-#         PRIVATE
-#         ${csv_SOURCE_DIR}/include
-# )
-
+# https://howardhinnant.github.io/date/tz.html#Installation
+#
+# You may have to use -lpthread. If you're getting a mysterious crash on first access to the database, it is likely that
+# you aren't linking to the pthread library. The pthread library is used to assure that that library initialization
+# is thread safe in a multithreaded environment.
 add_library(hlp STATIC
   src/parsers/literal.cpp
   src/parsers/text.cpp
@@ -93,6 +50,20 @@ add_library(hlp STATIC
   src/parsers/number.cpp
   src/parsers/alphanumeric.cpp
   src/parsers/bool.cpp
+  src/parsers/between.cpp
+  src/parsers/date.cpp
+  ${date_SOURCE_DIR}/src/tz.cpp
+  src/parsers/encodings.cpp
+  src/parsers/json.cpp
+  src/parsers/ip.cpp
+  src/parsers/ignore.cpp
+  src/parsers/xml.cpp
+  src/parsers/quoted.cpp
+  src/parsers/file.cpp
+  src/parsers/web.cpp
+  src/parsers/parse_field.cpp
+  src/parsers/kvmap.cpp
+  src/parsers/dsv_csv.cpp
 )
 target_include_directories(hlp
 PUBLIC
@@ -102,4 +73,4 @@ PRIVATE
   src/parsers/
   include/hlp/
 )
-target_link_libraries(hlp PUBLIC base PRIVATE fast_float)
+target_link_libraries(hlp PUBLIC base PRIVATE fast_float date::date pthread CURL::libcurl pugixml)

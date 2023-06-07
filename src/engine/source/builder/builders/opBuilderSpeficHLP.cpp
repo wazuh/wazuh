@@ -96,27 +96,27 @@ base::Expression opBuilderSpecificHLPTypeParse(const std::string& targetField,
     hlp::Params params{.name = "parser", .targetField = targetField, .stop = {""}, .options = hlpOptionsList};
     switch (type)
     {
-        // case HLPParserType::ALPHANUMERIC: parser = hlp::parsers::getAlphanumericParser(params); break;
-        // case HLPParserType::BOOL: parser = hlp::parsers::getBoolParser(params); break;
+        case HLPParserType::ALPHANUMERIC: parser = hlp::parsers::getAlphanumericParser(params); break;
+        case HLPParserType::BOOL: parser = hlp::parsers::getBoolParser(params); break;
         case HLPParserType::BYTE: parser = hlp::parsers::getByteParser(params); break;
         case HLPParserType::LONG: parser = hlp::parsers::getLongParser(params); break;
         case HLPParserType::FLOAT: parser = hlp::parsers::getFloatParser(params); break;
         case HLPParserType::DOUBLE: parser = hlp::parsers::getDoubleParser(params); break;
         case HLPParserType::SCALED_FLOAT: parser = hlp::parsers::getScaledFloatParser(params); break;
-        // case HLPParserType::QUOTED: parser = hlp::parsers::getQuotedParser(params); break;
-        // case HLPParserType::BETWEEN: parser = hlp::parsers::getBetweenParser(params); break;
-        // case HLPParserType::BINARY: parser = hlp::parsers::getBinaryParser(params); break;
-        // case HLPParserType::DATE: parser = hlp::parsers::getDateParser(params); break;
-        // case HLPParserType::IP: parser = hlp::parsers::getIPParser(params); break;
-        // case HLPParserType::URI: parser = hlp::parsers::getUriParser(params); break;
-        // case HLPParserType::USERAGENT: parser = hlp::parsers::getUAParser(params); break;
-        // case HLPParserType::FQDN: parser = hlp::parsers::getFQDNParser(params); break;
-        // case HLPParserType::FILE: parser = hlp::parsers::getFilePathParser(params); break;
-        // case HLPParserType::JSON: parser = hlp::parsers::getJSONParser(params); break;
-        // case HLPParserType::XML: parser = hlp::parsers::getXMLParser(params); break;
-        // case HLPParserType::DSV: parser = hlp::parsers::getDSVParser(params); break;
-        // case HLPParserType::CSV: parser = hlp::parsers::getCSVParser(params); break;
-        // case HLPParserType::KV: parser = hlp::parsers::getKVParser(params); break;
+        case HLPParserType::QUOTED: parser = hlp::parsers::getQuotedParser(params); break;
+        case HLPParserType::BETWEEN: parser = hlp::parsers::getBetweenParser(params); break;
+        case HLPParserType::BINARY: parser = hlp::parsers::getBinaryParser(params); break;
+        case HLPParserType::DATE: parser = hlp::parsers::getDateParser(params); break;
+        case HLPParserType::IP: parser = hlp::parsers::getIPParser(params); break;
+        case HLPParserType::URI: parser = hlp::parsers::getUriParser(params); break;
+        case HLPParserType::USERAGENT: parser = hlp::parsers::getUAParser(params); break;
+        case HLPParserType::FQDN: parser = hlp::parsers::getFQDNParser(params); break;
+        case HLPParserType::FILE: parser = hlp::parsers::getFilePathParser(params); break;
+        case HLPParserType::JSON: parser = hlp::parsers::getJSONParser(params); break;
+        case HLPParserType::XML: parser = hlp::parsers::getXMLParser(params); break;
+        case HLPParserType::DSV: parser = hlp::parsers::getDSVParser(params); break;
+        case HLPParserType::CSV: parser = hlp::parsers::getCSVParser(params); break;
+        case HLPParserType::KV: parser = hlp::parsers::getKVParser(params); break;
         default: throw std::logic_error("Invalid HLP parser type");
     }
 
