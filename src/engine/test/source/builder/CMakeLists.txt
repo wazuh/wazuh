@@ -26,7 +26,7 @@ include_directories(
 )
 
 # TODO do this better
-link_libraries(gtest_main gtest base builders metrics defs::mocks schemf::mocks)
+link_libraries(gtest_main gtest base builders metrics defs::mocks schemf::mocks date::date)
 
 # ###################################################################################################
 # Builder targets
@@ -145,12 +145,13 @@ gtest_discover_tests(opBuilderHelperCheck_test)
 add_executable(opBuilderHelperMap_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppend_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperAppendSplitString_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperMergeRecursively_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperDateFromEpochTime_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperHashSHA1_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperHexToNumber_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntCalc_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperJsonDeleteField_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperMerge_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperMergeRecursively_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRenameField_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringConcat_test.cpp
