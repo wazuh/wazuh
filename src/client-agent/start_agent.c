@@ -13,7 +13,8 @@
 #include "os_net/os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING
-    #define static
+    // Remove static qualifier when unit testing
+    #define STATIC
     #ifdef WIN32
             #include "unit_tests/wrappers/wazuh/client-agent/start_agent.h"
             #undef CloseSocket
@@ -24,6 +25,8 @@
     // Redefine ossec_version
     #undef __ossec_version
     #define __ossec_version "v4.5.0"
+#else
+    #define STATIC static
 #endif
 
 #define ENROLLMENT_RETRY_TIME_MAX   60
@@ -33,8 +36,8 @@ int timeout;    //timeout in seconds waiting for a server reply
 
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
-static bool agent_handshake_to_server(int server_id, bool is_startup);
-static void send_msg_on_startup(void);
+STATIC bool agent_handshake_to_server(int server_id, bool is_startup);
+STATIC void send_msg_on_startup(void);
 
 /**
  * @brief Connects to a specified server
@@ -323,7 +326,7 @@ int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
  * @retval true on success
  * @retval false when failed
  * */
-static bool agent_handshake_to_server(int server_id, bool is_startup) {
+STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
     size_t msg_length;
     ssize_t recv_b = 0;
 
@@ -392,7 +395,7 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
 /**
  * @brief Sends log message about start up
  * */
-static void send_msg_on_startup(void) {
+STATIC void send_msg_on_startup(void) {
 
     char msg[OS_MAXSTR + 2] = { '\0' };
     char fmsg[OS_MAXSTR + 1] = { '\0' };
