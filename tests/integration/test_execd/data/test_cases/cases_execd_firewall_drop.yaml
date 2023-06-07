@@ -1,0 +1,17 @@
+- name: Firewall drops - Command drop5
+  description: Checks the firewall-drop5 command succeed
+  configuration_parameters:
+  metadata:
+    command: firewall-drop5
+    rule_id: 5715
+    ip: 3.3.3.3
+    success: yes
+
+- name: Firewall drops - Command drop0
+  description: Checks the firewall-drop0 command does not succeed
+  configuration_parameters:
+  metadata:
+    command: firewall-drop0
+    rule_id: 5715
+    ip: 3.3.3.3
+    success: no
