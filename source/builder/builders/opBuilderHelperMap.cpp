@@ -1,12 +1,15 @@
 #include "opBuilderHelperMap.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <numeric>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
 
+#include <date/date.h>
+#include <date/tz.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <re2/re2.h>
@@ -1410,6 +1413,93 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetFie
             event->setInt(sec, targetField);
             return base::result::makeSuccess(event, successTrace);
         });
+}
+
+// field: +date_from_epoch/<$epoch_field_ref>|epoch_field
+base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField,
+                                                  const std::string& rawName,
+                                                  const std::vector<std::string>& rawParameters,
+                                                  std::shared_ptr<defs::IDefinitions> definitions,
+                                                  std::shared_ptr<schemf::ISchema> schema)
+{
+    auto parameters = helper::base::processParameters(rawName, rawParameters, definitions);
+
+    // Check parameters
+    helper::base::checkParametersSize(rawName, parameters, 1);
+
+    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
+
+    // If target field (key) is a schema field, the value should be a string
+    if (schema->hasField(DotPath::fromJsonPath(targetField))
+        && (schema->getType(DotPath::fromJsonPath(targetField)) != json::Json::Type::String))
+    {
+        throw std::runtime_error(
+            fmt::format("Engine helper builder: [{}] failed schema validation: Target field '{}' value is not a string",
+                        name,
+                        targetField));
+    }
+
+    // Tracing
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, parameters[0].m_value)};
+    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "number", name, parameters[0].m_value)};
+    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Value overflow", name)};
+    const std::string failureTrace4 {fmt::format("[{}] -> Failure: Couldn't create int from parameter", name)};
+
+    // Return result
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, targetField = std::move(targetField), parameter = std::move(parameters[0])](
+            base::Event event) -> base::result::Result<base::Event>
+        {
+            std::string resolvedParameter;
+            // Check parameter
+            if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
+            {
+                const auto paramValue = event->getInt(parameter.m_value);
+                if (!paramValue.has_value())
+                {
+                    return base::result::makeFailure(
+                        event, (!event->exists(parameter.m_value) ? failureTrace1 : failureTrace2));
+                }
+                resolvedParameter = paramValue.value();
+            }
+            else
+            {
+                resolvedParameter = parameter.m_value;
+            }
+
+            int IntResolvedParameter;
+            try
+            {
+                IntResolvedParameter = std::stoi(resolvedParameter);
+                if (IntResolvedParameter > std::numeric_limits<int>::max() || IntResolvedParameter < 0)
+                {
+                    return base::result::makeFailure(event, failureTrace3);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                return base::result::makeFailure(event, failureTrace4);
+            }
+
+            date::sys_time<std::chrono::seconds> tp {std::chrono::seconds {IntResolvedParameter}};
+            auto result = date::format("%Y-%m-%dT%H:%M:%SZ", tp);
+
+            event->setString(result, targetField);
+            return base::result::makeSuccess(event, successTrace);
+        });
+}
+
+HelperBuilder getOpBuilderHelperDateFromEpochTime(std::shared_ptr<schemf::ISchema> schema)
+{
+    return [schema](const std::string& targetField,
+                    const std::string& rawName,
+                    const std::vector<std::string>& rawParameters,
+                    std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return opBuilderHelperDateFromEpochTime(targetField, rawName, rawParameters, definitions, schema);
+    };
 }
 
 //*************************************************
