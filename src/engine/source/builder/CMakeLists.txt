@@ -77,4 +77,5 @@ target_link_libraries(builders
   wdb
   OpenSSL::Crypto
   schemf::ischema
+  date::date
 )

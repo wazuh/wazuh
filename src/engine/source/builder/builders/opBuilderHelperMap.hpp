@@ -333,6 +333,29 @@ base::Expression opBuilderHelperEpochTimeFromSystem(const std::string& targetFie
                                                     const std::vector<std::string>& rawParameters,
                                                     std::shared_ptr<defs::IDefinitions> definitions);
 
+/**
+ * @brief Transform epoch time in seconds to human readable string
+ * @param targetField target field where the string will be stored
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
+ * @throw std::runtime when type of number of paramter missmatch
+ * @return base::Expression
+ */
+base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField,
+                                                  const std::string& rawName,
+                                                  const std::vector<std::string>& rawParameters,
+                                                  std::shared_ptr<defs::IDefinitions> definitions,
+                                                  std::shared_ptr<schemf::ISchema> schema);
+
+/**
+ * @brief Get the 'get_value' function helper builder
+ *
+ * @param schema schema to validate fields
+ * @return builder
+ */
+HelperBuilder getOpBuilderHelperDateFromEpochTime(std::shared_ptr<schemf::ISchema> schema);
+
 //*************************************************
 //*              Checksum and hash                *
 //*************************************************
