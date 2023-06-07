@@ -1,498 +1,469 @@
-#include "run_test.hpp"
-#include <fmt/format.h>
 #include <gtest/gtest.h>
-#include <hlp/hlp.hpp>
-#include <json/json.hpp>
-#include <optional>
-#include <string>
-#include <vector>
 
-#define GTEST_COUT std::cerr << "[          ] [ DEBUG ] "
+#include "hlp_test.hpp"
+
+auto constexpr NAME = "dsvcsvParser";
+auto constexpr TARGET = "TargetField";
 
 /************************************
  *  CSV Parser
  ************************************/
+INSTANTIATE_TEST_SUITE_P(
+    CSVBuild,
+    HlpBuildTest,
+    ::testing::Values(BuildT(FAILURE, getCSVParser, {NAME, TARGET, {}, {}}),
+                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {""}, {}}),
+                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {""}, {"out1"}}),
+                      BuildT(SUCCESS, getCSVParser, {NAME, TARGET, {""}, {"out1", "out2"}}),
+                      BuildT(SUCCESS, getCSVParser, {NAME, TARGET, {""}, {"out1", "out2", "out3"}}),
+                      BuildT(FAILURE, getCSVParser, {NAME, TARGET, {}, {"out1", "out2"}})));
 
-TEST(CSVParser, build_ok) {
-    ASSERT_NO_THROW(hlp::getCSVParser({"csv"}, {""}, {"out1", "out2"}));
-    ASSERT_NO_THROW(hlp::getCSVParser({"csv"}, {""}, {"out1", "out2", "out3"}));
-}
+INSTANTIATE_TEST_SUITE_P(
+    CSVParse,
+    HlpParseTest,
+    ::testing::Values(
 
-TEST(CSVParser, build_fail) {
-    ASSERT_THROW(hlp::getCSVParser({"csv"}, {""}, {"out1"}), std::runtime_error);
-    ASSERT_THROW(hlp::getCSVParser({"csv"}, {""}, {}), std::runtime_error);
-}
+        ParseT(SUCCESS,
+               "hi,hi2",
+               j(fmt::format(R"({{"{}":{{"field_1":"hi","field_2":"hi2"}}}})", TARGET)),
+               6,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2"}}),
 
-TEST(CSVParser, parser)
-{
-    auto fn = [](std::string in) -> json::Json
-    {
-        json::Json doc;
-        doc = json::Json(in.c_str());
-        return doc;
-    };
-
-    std::vector<TestCase> testCases {
-        // A single field CSV is just a field, use other parsers for it
-        TestCase {"hi",
-                  false,
-                  {""},
-                  Options {"field_1"},
-                  fn(R"({"field_1":"hi"})"),
-                  3}, // TODO: shouldn't this return true?
-        TestCase {"hi,hi2",
-                  true,
-                  {""},
-                  Options {"field_1", "field_2"},
-                  fn(R"({"field_1":"hi","field_2":"hi2"})"),
-                  6},
-        TestCase {R"(hi,hi2 bye)",
-                  true,
-                  {" "},
-                  Options {"field_1", "field_2"},
-                  fn(R"({"field_1":"hi","field_2":"hi2"})"),
-                  6},
+        ParseT(SUCCESS,
+               "hi,hi2 bye",
+               j(fmt::format(R"({{"{}":{{"field_1":"hi","field_2":"hi2"}}}})", TARGET)),
+               6,
+               getCSVParser,
+               {NAME, TARGET, {" "}, {"field_1", "field_2"}}),
         // TODO Should this case be valid? Stop token issue
-
         // TestCase {R"(hi,hi2,bye)",
-        //           true,
-        //           {","},
-        //           Options {"field_1", "field_2"},
-        //           fn(R"({"field_1":"hi","field_2":"hi2"})"),
-        //           6},
-        TestCase {R"(hi,hi2 bye)",
-                  true,
-                  {" "},
-                  Options {"field_1", "field_2"},
-                  fn(R"({"field_1":"hi","field_2":"hi2"})"),
-                  6},
-        TestCase {R"("v1","v2","v3" - ABC)",
-                  true,
-                  {" - ABC"},
-                  Options {"f1", "f2", "f3"},
-                  fn(R"({"f1":"v1","f2":"v2","f3":"v3"})"),
-                  14},
+        //   true,
+        //   {","},
+        //   Options {"field_1", "field_2"},
+        //   fn(R"({"field_1":"hi","field_2":"hi2"})"),
+        //   6},
+
+        ParseT(SUCCESS,
+               R"("v1","v2","v3" - ABC)",
+               j(fmt::format(R"({{"{}":{{"f1":"v1","f2":"v2","f3":"v3"}}}})", TARGET)),
+               14,
+               getCSVParser,
+               {NAME, TARGET, {" - ABC"}, {"f1", "f2", "f3"}}),
         // TODO Should this case be valid? Stop token issue
         // TestCase {R"("v1","v2 - ABC","v3" - ABC)",
-        //          true,
-        //          {" -"},
-        //          Options {"f1", "f2", "f3"},
-        //          fn(R"({"f1":"v1","f2":"v2 - ABC","f3":"v3"})"),
-        //          20},
-        TestCase {R"(,)",
-                  true,
-                  {""},
-                  Options {"field_1", "field_2"},
-                  fn(R"({"field_1":null,"field_2":null})"),
-                  1},
-        TestCase {
-            R"(,,,hi)",
-            true,
-            {""},
-            Options {"field_1", "field_2", "field_3", "field_4"},
-            fn(R"({"field_1":null,"field_2":null, "field_3":null, "field_4":"hi"})"),
-            5},
-        TestCase {
-            R"(hi,,,bye)",
-            true,
-            {""},
-            Options {"field_1", "field_2", "field_3", "field_4"},
-            fn(R"({"field_1":"hi","field_2":null, "field_3":null, "field_4":"bye"})"),
-            8},
-        TestCase {R"(hi,  "wazuh",,bye)",
-                  false,
-                  {""},
-                  Options {"field_1", "field_2", "field_3", "field_4"},
-                  fn(R"({})"),
-                  2},
-        TestCase {R"(,,,)",
-                  true,
-                  {""},
-                  Options {"field_1", "field_2", "field_3", "field_4"},
-                  fn(R"({"field_1":null,"field_2":null, "field_3":null,"field_4":null})"),
-                  3},
-        TestCase {R"("","","","")",
-                 true,
-                 {""},
-                 Options {"field_1", "field_2", "field_3", "field_4"},
-                 fn(R"({"field_1":null,"field_2":null, "field_3":null,"field_4":null})"),
-                 11},
-        TestCase {R"(, bye)",
-                  true,
-                  {" "},
-                  Options {"field_1", "field_2"},
-                  fn(R"({"field_1":null,"field_2":null})"),
-                  1},
+        //   true,
+        //   {" -"},
+        //   Options {"f1", "f2", "f3"},
+        //   fn(R"({"f1":"v1","f2":"v2 - ABC","f3":"v3"})"),
+        //   20},
+
+        ParseT(SUCCESS,
+               ",",
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null}}}})", TARGET)),
+               1,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2"}}),
+
+        ParseT(SUCCESS,
+               ",,,hi",
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null, "field_3":null, "field_4":"hi"}}}})", TARGET)),
+               5,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(SUCCESS,
+               "hi,,,bye",
+               j(fmt::format(R"({{"{}":{{"field_1":"hi","field_2":null, "field_3":null, "field_4":"bye"}}}})", TARGET)),
+               8,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(FAILURE,
+               "hi,  \"wazuh\",,bye",
+               {},
+               2,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(SUCCESS,
+               ",,,",
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null, "field_3":null,"field_4":null}}}})", TARGET)),
+               3,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(SUCCESS,
+               R"("","","","")",
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null, "field_3":null,"field_4":null}}}})", TARGET)),
+               11,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(SUCCESS,
+               ", bye",
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null}}}})", TARGET)),
+               1,
+               getCSVParser,
+               {NAME, TARGET, {" "}, {"field_1", "field_2"}}),
         // An empty field must have its delimiter
         // pos != end
-        TestCase {R"(hi1,hi2,hi3,hi4 bye)",
-                  true,
-                  {""},
-                  Options {"field_1", "field_2"},
-                  fn(R"({"field_1":"hi1","field_2":"hi2"})"),
-                  7},
-        // should we unescape CSV?
-        // pos != end
-        TestCase {
+
+        ParseT(FAILURE, "hi1,hi2,hi3,hi4 bye", {}, 7, getCSVParser, {NAME, TARGET, {""}, {"field_1", "field_2"}}),
+
+        ParseT(
+            SUCCESS,
             R"(,,hi,"semicolon scaped'"",""' <-- other here <,>",other value,,,value new,,)",
-            true,
-            {""},
-            Options {"null_1",
-                     "null_2",
-                     "word",
-                     "escaped_1",
-                     "no_escape,null_3",
-                     "null_4",
-                     "new",
-                     "null_5",
-                     "null_6",
-                     "null_7"},
-            fn(R"({"null_1":null,"null_2":null,"word":"hi","escaped_1":"semicolon scaped'\",\"' <-- other here <,>","no_escape,null_3":"other value","null_4":null,"new":null,"null_5":"value new","null_6":null,"null_7":null})"),
-            75},
-        TestCase {R"(f1,f2,f3)",
-                  false,
-                  {""},
-                  Options {"field_1", "field_2", "field_3", "field_4"},
-                  fn(R"({"field_1":"f1","field_2":"f2", "field_3": "f3"})"),
-                  8},
-        TestCase {
-            R"(f1,f2,f3,f4,f5)",
-            true,
-            {""},
-            Options {"field_1", "field_2", "field_3", "field_4"},
-            fn(R"({"field_1":"f1","field_2":"f2", "field_3": "f3", "field_4": "f4"})"),
-            11},
-        TestCase {
-            R"(f1,f2,f3,"f4,f5")",
-            true,
-            {""},
-            Options {"field_1", "field_2", "field_3", "field_4"},
-            fn(R"({"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"f4,f5"})"),
-            16},
-        TestCase {R"(f1,f2,f3,"f4,f5)",
-                  false,
-                  {""},
-                  Options {"field_1", "field_2", "field_3", "field_4"},
-                  fn(R"(null)"),
-                  8},
-        //// A quote can be escaped using another quote, so " must be encoded as "" in a
-        //// written CSV
-        //// if there string contains """, it would be invalid, as there is a single quote
-        TestCase {R"(f1,f2,f3,f4""")",
-                  false,
-                  {""},
-                  Options {"field_1", "field_2", "field_3", "field_4"},
-                  fn(R"(null)"),
-                  8},
-        //// https://www.rfc-editor.org/rfc/rfc4180 sect 2.5
-        TestCase {R"(f1,f2,f3,f4"""")",
-                  false,
-                  {""},
-                  Options {"field_1", "field_2", "field_3", "field_4"},
-                  fn(R"({"field_1":"f1","field_2":"f2","field_3":"f3"})"),
-                  8},
-        TestCase {
-            R"(f1,f2,f3,"--""--")",
-            true,
-            {""},
-            Options {"field_1", "field_2", "field_3", "field_4"},
-            fn(R"({"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"--\"--"})"),
-            17},
-        TestCase {
-            R"(f1,f2,f3,"--""--",)",
-            true,
-            {""},
-            Options {"field_1", "field_2", "field_3", "field_4", "field_5"},
-            fn(R"({"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"--\"--","field_5":null})"),
-            18},
-        TestCase {R"(f1,f2;asd)",
-                  true,
-                  {";"},
-                  Options {"field_1", "field_2"},
-                  fn(R"({"field_1":"f1","field_2":"f2"})"),
-                  5},
-        TestCase {R"(f1,"f2;wazuh";asd)",
-                  true,
-                  {";asd"},
-                  Options {"field_1", "field_2"},
-                  fn(R"({"field_1":"f1","field_2":"f2;wazuh"})"),
-                  13},
-        TestCase {R"(f1,f2;a,sd)",
-                  true,
-                  {""},
-                  Options {"field_1", "field_2"},
-                  fn(R"({"field_1":"f1","field_2":"f2;a"})"),
-                  7},
-        TestCase {R"(0,1.0,,"")",
-                  true,
-                  {""},
-                  Options {"field_1", "field_2", "field_3", "field_4"},
-                  fn(R"({"field_1":0,"field_2":1.0,"field_3":null,"field_4":null})"),
-                  9},
-        TestCase {R"("v1","v2","v3")",
-                  true,
-                  {""},
-                  Options {"f1", "f2", "f3"},
-                  fn(R"({"f1":"v1","f2":"v2","f3":"v3"})"),
-                  14}};
-    for (auto t : testCases)
-    {
-        auto testCase = std::get<0>(t);
-        runTest(t, hlp::getCSVParser);
-    }
-}
+            j(fmt::format(
+                R"({{"{}":{{"null_1":null,"null_2":null,"word":"hi","escaped_1":"semicolon scaped'\",\"' <-- other here <,>","no_escape,null_3":"other value","null_4":null,"new":null,"null_5":"value new","null_6":null,"null_7":null}}}})",
+                TARGET)),
+            75,
+            getCSVParser,
+            {NAME,
+             TARGET,
+             {""},
+             {"null_1",
+              "null_2",
+              "word",
+              "escaped_1",
+              "no_escape,null_3",
+              "null_4",
+              "new",
+              "null_5",
+              "null_6",
+              "null_7"}}),
+
+        ParseT(FAILURE,
+               "f1,f2,f3",
+               {},
+               8,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(FAILURE,
+               R"(f1,f2,f3,f4,f5)",
+               {},
+               11,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(SUCCESS,
+               R"(f1,f2,f3,"f4,f5")",
+               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"f4,f5"}}}})", TARGET)),
+               16,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(FAILURE,
+               R"(f1,f2,f3,"f4,f5)",
+               {},
+               8,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+        // A quote can be escaped using another quote, so " must be encoded as "" in a
+        // written CSV
+        // if there string contains """, it would be invalid, as there is a single quote
+
+        ParseT(FAILURE,
+               R"(f1,f2,f3,f4""")",
+               {},
+               8,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+        // https://www.rfc-editor.org/rfc/rfc4180 sect 2.5
+
+        ParseT(FAILURE,
+               R"(f1,f2,f3,f4"""")",
+               {},
+               8,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(SUCCESS,
+               R"(f1,f2,f3,"--""--")",
+               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"--\"--"}}}})",
+                             TARGET)),
+               17,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(SUCCESS,
+               R"(f1,f2,f3,"--""--",)",
+               j(fmt::format(
+                   R"({{"{}":{{"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"--\"--","field_5":null}}}})",
+                   TARGET)),
+               18,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4", "field_5"}}),
+
+        ParseT(SUCCESS,
+               R"(f1,f2;asd)",
+               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2"}}}})", TARGET)),
+               5,
+               getCSVParser,
+               {NAME, TARGET, {";"}, {"field_1", "field_2"}}),
+
+        ParseT(SUCCESS,
+               R"(f1,"f2;wazuh";asd)",
+               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2;wazuh"}}}})", TARGET)),
+               13,
+               getCSVParser,
+               {NAME, TARGET, {";asd"}, {"field_1", "field_2"}}),
+
+        ParseT(FAILURE, R"(f1,f2;a,sd)", {}, 7, getCSVParser, {NAME, TARGET, {""}, {"field_1", "field_2"}}),
+
+        ParseT(SUCCESS,
+               R"(0,1.0,,"")",
+               j(fmt::format(R"({{"{}":{{"field_1":0,"field_2":1.0,"field_3":null,"field_4":null}}}})", TARGET)),
+               9,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
+
+        ParseT(SUCCESS,
+               R"("v1","v2","v3")",
+               j(fmt::format(R"({{"{}":{{"f1":"v1","f2":"v2","f3":"v3"}}}})", TARGET)),
+               14,
+               getCSVParser,
+               {NAME, TARGET, {""}, {"f1", "f2", "f3"}})));
 
 /************************************
  *  DSV Parser
  ************************************/
-TEST(DSVParser, build_ok)
-{
+INSTANTIATE_TEST_SUITE_P(
+    DSVBuild,
+    HlpBuildTest,
+    ::testing::Values(BuildT(SUCCESS, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1", "out2"}}),
+                      BuildT(FAILURE, getDSVParser, {NAME, TARGET, {}, {"d", "q", "e", "out1", "out2"}}),
+                      BuildT(SUCCESS, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1", "out2", "out3"}}),
+                      BuildT(FAILURE, getDSVParser, {NAME, TARGET, {""}, {"d", "q", "e", "out1"}})));
 
-    ASSERT_NO_THROW(hlp::getDSVParser({"dsv"}, {""}, {"d", "q", "e", "out1", "out2"}));
-    ASSERT_NO_THROW(
-        hlp::getDSVParser({"dsv"}, {""}, {"d", "q", "e", "out1", "out2", "out3"}));
-}
+INSTANTIATE_TEST_SUITE_P(
+    DSVParse,
+    HlpParseTest,
+    ::testing::Values(
 
-TEST(DSVParser, build_fail)
-{
-    // Withot field
-    ASSERT_THROW(hlp::getDSVParser({"dsv"}, {""}, {"d", "q", "e"}), std::runtime_error);
-    // 1 field
-    ASSERT_THROW(hlp::getDSVParser({"dsv"}, {""}, {"d", "q", "e", "out1"}),
-                 std::runtime_error);
-    // withot stop field
-    ASSERT_THROW(hlp::getDSVParser({"dsv"}, {}, {"d", "q", "e", "out1", "out2", "out3"}),
-                 std::runtime_error);
-    // invalid delimiters/sep/scape (empty)
-    ASSERT_THROW(hlp::getDSVParser({"dsv"}, {""}, {"", "q", "e", "out1", "out2", "out3"}),
-                 std::runtime_error);
-    ASSERT_THROW(hlp::getDSVParser({"dsv"}, {""}, {"d", "", "e", "out1", "out2", "out3"}),
-                 std::runtime_error);
-    ASSERT_THROW(hlp::getDSVParser({"dsv"}, {""}, {"d", "q", "", "out1", "out2", "out3"}),
-                 std::runtime_error);
-    // invalid delimiters/sep/scape (more than 1 char)
-    ASSERT_THROW(
-        hlp::getDSVParser({"dsv"}, {""}, {"dd", "q", "e", "out1", "out2", "out3"}),
-        std::runtime_error);
-    ASSERT_THROW(
-        hlp::getDSVParser({"dsv"}, {""}, {"d", "qq", "e", "out1", "out2", "out3"}),
-        std::runtime_error);
-    ASSERT_THROW(
-        hlp::getDSVParser({"dsv"}, {""}, {"d", "q", "ee", "out1", "out2", "out3"}),
-        std::runtime_error);
-}
+        ParseT(FAILURE, "val", {}, 3, getDSVParser, {NAME, TARGET, {""}, {"*", "-", " ", "out1", "out2"}}),
 
-TEST(DSVParser, parser)
-{
-    auto fn = [](std::string in) -> json::Json
-    {
-        return json::Json {in.c_str()};
-    };
+        ParseT(SUCCESS,
+               "val1|val2",
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2"}}}})", TARGET)),
+               strlen("val1|val2"),
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2"}}),
 
-    std::vector<TestCase> testCases {
-        // A single field CSV is just a field, use other parsers for it
-        TestCase {"val", false, {""}, Options {",", "\"", "\"", "out1"}, fn("{}"), 0},
-        TestCase {
-            "val", false, {""}, Options {"*", "-", " ", "out1", "out2"}, fn(R"({})"), 0},
-        TestCase {"val1|val2",
-                  true,
-                  {""},
-                  Options {"|", "\"", "\"", "out1", "out2"},
-                  fn(R"({"out1":"val1","out2":"val2"})"),
-                  strlen("val1|val2")},
-        TestCase {"val1,val2",
-                  false,
-                  {""},
-                  Options {"|", "\"", "\"", "out1", "out2"},
-                  fn(R"({"out1":"val,val2"})"),
-                  0},
-        TestCase {"val1|val2 val3",
-                  true,
-                  {" "},
-                  Options {"|", "\"", "\"", "out1", "out2"},
-                  fn(R"({"out1":"val1","out2":"val2"})"),
-                  strlen("val1|val2")},
+        ParseT(FAILURE, "val1,val2", {}, 9, getDSVParser, {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2"}}),
+
+        ParseT(SUCCESS,
+               "val1|val2 val3",
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2"}}}})", TARGET)),
+               strlen("val1|val2"),
+               getDSVParser,
+               {NAME, TARGET, {" "}, {"|", "\"", "\"", "out1", "out2"}}),
         // TODO Should this case be valid? Stop token issue
         // TestCase {"val1|val2|val3",
-        //           true,
-        //           {"|"},
-        //           Options {"|", "\"", "\"", "out1", "out2"},
-        //           fn(R"({"out1":"val1","out2":"val2"})"),
-        //           9},
-        TestCase {"'val1'|'val2'|'val3' - something",
-                  true,
-                  {" - something"},
-                  Options {"|", "'", "'", "out1", "out2", "out3"},
-                  fn(R"({"out1":"val1","out2":"val2","out3":"val3"})"),
-                  strlen("'val1'|'val2'|'val3'")},
+        //   true,
+        //   {"|"},
+        //   Options {"|", "\"", "\"", "out1", "out2"},
+        //   fn(R"({"out1":"val1","out2":"val2"})"),
+        //   9},
+
+        ParseT(SUCCESS,
+               "'val1'|'val2'|'val3' - something",
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3"}}}})", TARGET)),
+               strlen("'val1'|'val2'|'val3'"),
+               getDSVParser,
+               {NAME, TARGET, {" - something"}, {"|", "'", "'", "out1", "out2", "out3"}}),
         // TODO Should this case be valid? Stop token issue
         // TestCase {"'val1'|'val2'|'val3 - something'",
-        //           true,
-        //           {" - something"},
-        //           Options {"|", "'", "'", "out1", "out2", "out3"},
-        //           fn(R"({"out1":"val1","out2":"val2","out3":"'val3"})"),
-        //           31},
+        //   true,
+        //   {" - something"},
+        //   Options {"|", "'", "'", "out1", "out2", "out3"},
+        //   fn(R"({"out1":"val1","out2":"val2","out3":"'val3"})"),
+        //   31},
         // TestCase {"#val1#$#val2 - something#$#val3# - val4",
-        //           true,
-        //           {" -"},
-        //           Options {"$", "#", "^", "out1", "out2", "out3"},
-        //           fn(R"({"out1":"val1","out2":"val2 - something","out3":"val3"})"),
-        //           32},
-        TestCase {"|",
-                  true,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2"},
-                  fn(R"({"out1":null,"out2":null})"),
-                  1},
-        TestCase {"|||",
-                  true,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn(R"({"out1":null,"out2":null,"out3":null,"out4":null})"),
-                  3},
-        TestCase {"val1|val2|val3",
-                  false,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn("{}"),
-                  0},
-        TestCase {"val1|val2|val3|val4|val5",
-                  true,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn(R"({"out1":"val1","out2":"val2", "out3": "val3", "out4": "val4"})"),
-                  strlen("val1|val2|val3|val4")}, // TODO: should this be true or false?
-        TestCase {"val1|val2|val3|'val4|val5'",
-                  true,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn(R"({"out1":"val1","out2":"val2","out3":"val3","out4":"val4|val5"})"),
-                  strlen("val1|val2|val3|'val4|val5'")},
-        TestCase {"val1|val2|val3|'val4|val5",
-                  false,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn("{}"),
-                  0},
-        TestCase {"val1|val2|val3|val4'''",
-                  false,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn("{}"),
-                  0},
-        TestCase {"val1|val2|val3|val4''''",
-                  false,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn("{}"),
-                  0},
-        TestCase {"val1|val2|val3|'--''--'",
-                  true,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn(R"({"out1":"val1","out2":"val2","out3":"val3","out4":"--'--"})"),
-                  strlen("val1,val2,val3,'--''--'")},
-        // should be terminated by ' and not by ,
-        TestCase {
-            "val1|val2|val3|'--''--',",
-            false,
-            {""},
-            Options {"|", "'", "'", "out1", "out2", "out3", "out4", "out5"},
-            fn(R"({"out1":"val1","out2":"val2","out3":"val3","out4":"--'--","out5":null})"),
-            strlen("val1,val2,val3,'--''--',")}, // TODO: Unable to parse from 14 to 24
-        TestCase {"val1|val2;asd",
-                  true,
-                  {";"},
-                  Options {"|", "'", "'", "out1", "out2"},
-                  fn(R"({"out1":"val1","out2":"val2"})"),
-                  strlen("val1|val2")},
-        TestCase {"val1|'val2;val3';val4",
-                  true,
-                  {";val4"},
-                  Options {"|", "'", "'", "out1", "out2"},
-                  fn(R"({"out1":"val1","out2":"val2;val3"})"),
-                  strlen("val1|'val2;val3'")},
-        TestCase {"val1|val2;x|yz",
-                  true,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2"},
-                  fn(R"({"out1":"val1","out2":"val2;x"})"),
-                  strlen("val1|val2;x")},
-        TestCase {R"(|||hi)",
-                  true,
-                  {""},
-                  Options {"|", "\"", "\"", "out1", "out2", "out3", "out4"},
-                  fn(R"({"out1":null,"out2":null, "out3":null, "out4":"hi"})"),
-                  5},
-        TestCase {R"(|||)",
-                  true,
-                  {""},
-                  Options {"|", "\"", "\"", "out1", "out2", "out3", "out4"},
-                  fn(R"({"out1":null,"out2":null, "out3":null, "out4":null})"),
-                  3},
-        TestCase {R"(hi|||bye)",
-                  true,
-                  {""},
-                  Options {"|", "\"", "\"", "out1", "out2", "out3", "out4"},
-                  fn(R"({"out1":"hi","out2":null, "out3":null, "out4":"bye"})"),
-                  8},
-        TestCase {R"(hi|  "wazuh"||bye)",
-                  false,
-                  {""},
-                  Options {"|", "\"", "\"", "out1", "out2", "out3", "out4"},
-                  fn(R"({})"),
-                  0},
-        TestCase {R"(""|""|""|"")",
-                 true,
-                 {""},
-                 Options {"|", "\"", "\"", "out1", "out2", "out3", "out4"},
-                 fn(R"({"out1":null,"out2":null,"out3":null,"out4":null})"),
-                 11},
-        TestCase {"| bye",
-                  true,
-                  {" "},
-                  Options {"|", "\"", "\"", "out1", "out2"},
-                  fn(R"({"out1":null,"out2":null})"),
-                  1},
-        TestCase {"0|1.0||''",
-                  true,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3", "out4"},
-                  fn(R"({"out1":0,"out2":1.0,"out3":null,"out4":null})"),
-                  strlen("0|1.0||''")},
-        TestCase {"'val1'|'val2'|'val3'",
-                  true,
-                  {""},
-                  Options {"|", "'", "'", "out1", "out2", "out3"},
-                  fn(R"({"out1":"val1","out2":"val2","out3":"val3"})"),
-                  strlen("'val1','val2','val3'")},
-        TestCase {
-            R"(,,hi,"semicolon scaped'\",\"' <-- other here <,>",other value,,,value new,,)",
-            true,
-            {""},
-            Options {",", "\"", "\\",
-                     "null_1",
-                     "null_2",
-                     "word",
-                     "escaped_1",
-                     "no_escape,null_3",
-                     "null_4",
-                     "new",
-                     "null_5",
-                     "null_6",
-                     "null_7"},
-            fn(R"({"null_1":null,"null_2":null,"word":"hi","escaped_1":"semicolon scaped'\",\"' <-- other here <,>","no_escape,null_3":"other value","null_4":null,"new":null,"null_5":"value new","null_6":null,"null_7":null})"),
-            75},
-        TestCase {R"("\"value1\""|value2|value3|valueN)",
-                  true,
-                  {""},
-                  Options {"|", "\"", "\\", "out1", "out2", "out3", "outN"},
-                  fn(R"({"out1":"\"value1\"","out2":"value2","out3":"value3","outN":"valueN"})"),
-                  strlen(R"("\"value1\""|value2|value3|valueN)")}
-    };
+        //   true,
+        //   {" -"},
+        //   Options {"$", "#", "^", "out1", "out2", "out3"},
+        //   fn(R"({"out1":"val1","out2":"val2 - something","out3":"val3"})"),
+        //   32},
 
-    for (auto t : testCases)
-    {
-        runTest(t, hlp::getDSVParser);
-    }
-}
+        ParseT(SUCCESS,
+               "|",
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null}}}})", TARGET)),
+               1,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2"}}),
+
+        ParseT(SUCCESS,
+               "|||",
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null,"out3":null,"out4":null}}}})", TARGET)),
+               3,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(FAILURE,
+               "val1|val2|val3",
+               {},
+               14,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(FAILURE,
+               "val1|val2|val3|val4|val5",
+               {},
+               strlen("val1|val2|val3|val4"),
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(SUCCESS,
+               "val1|val2|val3|'val4|val5'",
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3","out4":"val4|val5"}}}})", TARGET)),
+               strlen("val1|val2|val3|'val4|val5'"),
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(FAILURE,
+               "val1|val2|val3|'val4|val5",
+               {},
+               14,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(FAILURE,
+               "val1|val2|val3|val4'''",
+               {},
+               14,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(FAILURE,
+               "val1|val2|val3|val4''''",
+               {},
+               14,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(SUCCESS,
+               "val1|val2|val3|'--''--'",
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3","out4":"--'--"}}}})", TARGET)),
+               strlen("val1,val2,val3,'--''--'"),
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
+        // should be terminated by ' and not by ,
+
+        ParseT(FAILURE,
+               "val1|val2|val3|'--''--',",
+               {},
+               14,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4", "out5"}}),
+
+        ParseT(SUCCESS,
+               "val1|val2;asd",
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2"}}}})", TARGET)),
+               strlen("val1|val2"),
+               getDSVParser,
+               {NAME, TARGET, {";"}, {"|", "'", "'", "out1", "out2"}}),
+
+        ParseT(SUCCESS,
+               "val1|'val2;val3';val4",
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2;val3"}}}})", TARGET)),
+               strlen("val1|'val2;val3'"),
+               getDSVParser,
+               {NAME, TARGET, {";val4"}, {"|", "'", "'", "out1", "out2"}}),
+
+        ParseT(FAILURE,
+               "val1|val2;x|yz",
+               {},
+               strlen("val1|val2;x"),
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2"}}),
+
+        ParseT(SUCCESS,
+               "|||hi",
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null, "out3":null, "out4":"hi"}}}})", TARGET)),
+               5,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(SUCCESS,
+               "|||",
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null, "out3":null, "out4":null}}}})", TARGET)),
+               3,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(SUCCESS,
+               "hi|||bye",
+               j(fmt::format(R"({{"{}":{{"out1":"hi","out2":null, "out3":null, "out4":"bye"}}}})", TARGET)),
+               8,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(FAILURE,
+               R"(hi|  "wazuh"||bye)",
+               {},
+               2,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(SUCCESS,
+               R"(""|""|""|"")",
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null,"out3":null,"out4":null}}}})", TARGET)),
+               11,
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(SUCCESS,
+               "| bye",
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null}}}})", TARGET)),
+               1,
+               getDSVParser,
+               {NAME, TARGET, {" "}, {"|", "\"", "\"", "out1", "out2"}}),
+
+        ParseT(SUCCESS,
+               "0|1.0||''",
+               j(fmt::format(R"({{"{}":{{"out1":0,"out2":1.0,"out3":null,"out4":null}}}})", TARGET)),
+               strlen("0|1.0||''"),
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
+
+        ParseT(SUCCESS,
+               "'val1'|'val2'|'val3'",
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3"}}}})", TARGET)),
+               strlen("'val1','val2','val3'"),
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3"}}),
+
+        ParseT(
+            SUCCESS,
+            R"(,,hi,"semicolon scaped'\",\"' <-- other here <,>",other value,,,value new,,)",
+            j(fmt::format(
+                R"({{"{}":{{"null_1":null,"null_2":null,"word":"hi","escaped_1":"semicolon scaped'\",\"' <-- other here <,>","no_escape,null_3":"other value","null_4":null,"new":null,"null_5":"value new","null_6":null,"null_7":null}}}})",
+                TARGET)),
+            75,
+            getDSVParser,
+            {NAME,
+             TARGET,
+             {""},
+             {",",
+              "\"",
+              "\\",
+              "null_1",
+              "null_2",
+              "word",
+              "escaped_1",
+              "no_escape,null_3",
+              "null_4",
+              "new",
+              "null_5",
+              "null_6",
+              "null_7"}}),
+
+        ParseT(SUCCESS,
+               R"("\"value1\""|value2|value3|valueN)",
+               j(fmt::format(R"({{"{}":{{"out1":"\"value1\"","out2":"value2","out3":"value3","outN":"valueN"}}}})",
+                             TARGET)),
+               strlen(R"("\"value1\""|value2|value3|valueN)"),
+               getDSVParser,
+               {NAME, TARGET, {""}, {"|", "\"", "\\", "out1", "out2", "out3", "outN"}})));

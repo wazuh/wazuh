@@ -2,18 +2,18 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include <fmt/format.h>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
 namespace
 {
-inline bool is_valid_base64_char(const char c)
+using namespace hlp;
+using namespace hlp::parser;
+
+inline bool isBase64(const char c)
 {
     if ((c >= 'A') && (c <= 'Z'))
     {
@@ -37,61 +37,95 @@ inline bool is_valid_base64_char(const char c)
 
     return false;
 }
+
+Mapper getMapper(std::string_view parsed, std::string_view targetField)
+{
+    return [parsed, targetField](json::Json& event)
+    {
+        event.setString(parsed, targetField);
+    };
+}
+
+SemParser getSemParser(const std::string& targetField)
+{
+    return [targetField](std::string_view parsed)
+    {
+        return getMapper(parsed, targetField);
+    };
+}
+
+syntax::Parser getSynParser()
+{
+    return [](std::string_view input) -> syntax::Result
+    {
+        if (input.empty())
+        {
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        auto i = 0;
+        for (; i != input.size(); ++i)
+        {
+            if (!isBase64(input[i]))
+            {
+                break;
+            }
+        }
+
+        if (i == 0)
+        {
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        // Consume up to two padding characters
+        if (i < input.size())
+        {
+            if (input[i] == '=')
+            {
+                ++i;
+                if ((i < input.size()) && (input[i] == '='))
+                {
+                    ++i;
+                }
+            }
+        }
+
+        // Ensure is multiple of 4
+        if ((i % 4) != 0)
+        {
+            return abs::makeFailure<syntax::ResultT>(input, {});
+        }
+
+        return abs::makeSuccess<syntax::ResultT>(input.substr(i));
+    };
+}
 } // namespace
 
-namespace hlp
+namespace hlp::parsers
 {
 
-parsec::Parser<json::Json> getBinaryParser(std::string name, Stop, Options lst)
+Parser getBinaryParser(const Params& params)
 {
-    if (!lst.empty())
+    if (!params.options.empty())
     {
         throw std::runtime_error("binary parser doesn't accept parameters");
     }
 
-    return [name](std::string_view text, int index)
+    const auto semP =
+        params.targetField.empty() ? noSemParser() : getSemParser(json::Json::formatJsonPath(params.targetField));
+    const auto synP = getSynParser();
+
+    return [name = params.name, semP, synP](std::string_view txt)
     {
-        auto error = internal::eofError<json::Json>(text, index);
-        if (error.has_value())
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            return error.value();
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
-
-        auto end = std::find_if(std::begin(text) + index,
-                                std::end(text),
-                                [](char c) { return !is_valid_base64_char(c); });
-
-        auto endPos = end - std::begin(text);
-        if (endPos == index)
+        else
         {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Invalid base64 char '{}'", name, *end), endPos);
+            return abs::makeSuccess(SemToken {syntax::parsed(synR, txt), semP}, synR.remaining());
         }
-
-        // consume up to two '=' padding chars
-        if ('=' == *end)
-        {
-            ++endPos;
-            auto nx = std::next(end);
-            if ('=' == *nx)
-            {
-                ++endPos;
-            }
-        }
-
-        if (0 != (endPos - index) % 4)
-        {
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: Wrong input string size ({}) for base64",
-                            name,
-                            endPos - index,
-                            index),
-                endPos);
-        }
-        json::Json doc;
-        // copy can be slow
-        doc.setString(std::string {text.substr(index, endPos - index)});
-        return parsec::makeSuccess<json::Json>(std::move(doc), endPos);
     };
 }
-} // namespace hlp
+} // namespace hlp::parsers

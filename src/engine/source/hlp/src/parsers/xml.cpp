@@ -1,15 +1,18 @@
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 #include <fmt/format.h>
 #include <pugixml.hpp>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
 namespace
 {
+using namespace hlp;
+using namespace hlp::parser;
+
 using xmlModule = std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
 bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
 {
@@ -29,10 +32,7 @@ std::unordered_map<std::string_view, xmlModule> xmlModules = {
     {"windows", xmlWinModule},
 };
 
-void xmlToJson(pugi::xml_node& docXml,
-               json::Json& docJson,
-               xmlModule mod,
-               std::string path = "")
+void xmlToJson(pugi::xml_node& docXml, json::Json& docJson, xmlModule mod, std::string path = "")
 {
     // TODO: add array support
     // Iterate over the xml generating the corresponding json
@@ -77,30 +77,63 @@ void xmlToJson(pugi::xml_node& docXml,
         }
     }
 }
+
+Mapper getMapper(const json::Json& parsed, std::string_view targetField)
+{
+    return [parsed, targetField](json::Json& event)
+    {
+        event.set(targetField, parsed);
+    };
+}
+
+SemParser getSemParser(const std::string& targetField, xmlModule moduleFn)
+{
+    return [targetField, moduleFn](std::string_view parsed) -> std::variant<Mapper, base::Error>
+    {
+        json::Json jParsed;
+        pugi::xml_document xmlDoc;
+        auto bufferInput = std::string(parsed);
+        auto parseResult = xmlDoc.load_buffer(bufferInput.data(), bufferInput.size());
+
+        if (parseResult.status != pugi::status_ok)
+        {
+            return base::Error {"Invalid XML"};
+        }
+        xmlToJson(xmlDoc, jParsed, moduleFn);
+
+        if (targetField.empty())
+        {
+            return noMapper();
+        }
+
+        return getMapper(jParsed, targetField);
+    };
+}
+
 } // namespace
-namespace hlp
+
+namespace hlp::parsers
 {
 
-parsec::Parser<json::Json> getXMLParser(std::string name, Stop endTokens, Options lst)
+Parser getXMLParser(const Params& params)
 {
-    if (endTokens.empty())
+    if (params.stop.empty())
     {
         throw std::runtime_error(fmt::format("XML parser requires end token."));
     }
 
     std::string moduleName;
 
-    if (lst.empty())
+    if (params.options.empty())
     {
         moduleName = "default";
     }
-    else if (lst.size() == 1)
+    else if (params.options.size() == 1)
     {
-        moduleName = lst[0];
+        moduleName = params.options[0];
         if (xmlModules.count(moduleName) == 0)
         {
-            throw std::runtime_error(
-                fmt::format("XML parser module {} not found.", moduleName));
+            throw std::runtime_error(fmt::format("XML parser module {} not found.", moduleName));
         }
     }
     else
@@ -109,35 +142,21 @@ parsec::Parser<json::Json> getXMLParser(std::string name, Stop endTokens, Option
     }
 
     xmlModule moduleFn = xmlModules[moduleName];
+    const auto target = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+    const auto semP = getSemParser(target, moduleFn);
+    const auto synP = syntax::parsers::toEnd(params.stop);
 
-    return [moduleFn, endTokens, name](std::string_view text, int index)
+    return [moduleFn, name = params.name, semP, synP](std::string_view txt)
     {
-        auto res = internal::preProcess<json::Json>(text, index, endTokens);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            auto& err = std::get<parsec::Result<json::Json>>(res);
-            return parsec::makeError<json::Json>(
-                fmt::format("{}: {}", name, err.trace().message().value()),
-                err.trace().index());
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
 
-        auto fp = std::get<std::string_view>(res);
-        auto pos = fp.size() + index;
+        const auto parsed = syntax::parsed(synR, txt);
 
-        pugi::xml_document xmlDoc;
-        json::Json jsonDoc;
-
-        auto parseResult = xmlDoc.load_buffer(fp.data(), fp.size());
-
-        if (parseResult.status == pugi::status_ok)
-        {
-            xmlToJson(xmlDoc, jsonDoc, moduleFn);
-
-            return parsec::makeSuccess<json::Json>(std::move(jsonDoc), pos);
-        }
-
-        return parsec::makeError<json::Json>(
-            fmt::format("{}: {}", name, parseResult.description()), index);
+        return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, synR.remaining());
     };
 }
-} // namespace hlp
+} // namespace hlp::parsers

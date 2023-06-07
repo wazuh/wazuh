@@ -1,48 +1,86 @@
 #include <gtest/gtest.h>
 
-#include "fmt/format.h"
-#include "run_test.hpp"
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
-#include <string>
-#include <vector>
+#include "hlp_test.hpp"
 
-TEST(JSONParser, build_OK)
-{
-    ASSERT_NO_THROW(hlp::getJSONParser({}, {}, {}));
-    ASSERT_NO_THROW(hlp::getJSONParser({}, {"stop1"}, {}));
-    ASSERT_NO_THROW(hlp::getJSONParser({}, {"stop1", "stop2"}, {}));
-}
+auto constexpr NAME = "jsonParser";
+auto constexpr TARGET = "TargetField";
 
-TEST(JSONParser, build_fail)
-{
-    // Parser with no stop
-    ASSERT_THROW(hlp::getJSONParser({}, {}, {"arg1"}), std::runtime_error);
-    ASSERT_THROW(hlp::getJSONParser({}, {}, {"arg1", "arg2"}), std::runtime_error);
-    // stop but also options
-    ASSERT_THROW(hlp::getJSONParser({}, {"stop1"}, {"opt1"}), std::runtime_error);
-}
+INSTANTIATE_TEST_SUITE_P(JSONBuild,
+                         HlpBuildTest,
+                         ::testing::Values(BuildT(SUCCESS, getJSONParser, {NAME, TARGET, {}, {}}),
+                                           BuildT(FAILURE, getJSONParser, {NAME, TARGET, {}, {"unexpected"}})));
 
-TEST(JSONParser, parser)
-{
-    auto fn = [](std::string in) -> json::Json
-    {
-        json::Json doc {in.c_str()};
-        return doc;
-    };
-
-    std::vector<TestCase> testCases {
-        // TestCase {R"(..\Windows\..\Users\Administrator\rootkit.exe)", true, {},
-        // Options{}, R"()", "", 28},
-        TestCase {R"({}}}}})", true, {}, Options {}, fn(R"({})"), 2},
-        TestCase {R"(42)", true, {}, Options {}, fn(R"(42)"), 2},
-        TestCase {
-            R"({ "key": "value"})", true, {}, Options {}, fn(R"({ "key": "value"})"), 17},
-    };
-
-    for (auto t : testCases)
-    {
-        runTest(t, hlp::getJSONParser);
-    }
-}
+INSTANTIATE_TEST_SUITE_P(
+    JSONParse,
+    HlpParseTest,
+    ::testing::Values(
+        ParseT(SUCCESS, "{}", j(fmt::format(R"({{"{}":{{}}}})", TARGET)), 2, getJSONParser, {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "{}left over",
+               j(fmt::format(R"({{"{}":{{}}}})", TARGET)),
+               2,
+               getJSONParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS, "null", j(fmt::format(R"({{"{}":null}})", TARGET)), 4, getJSONParser, {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "nullleft over",
+               j(fmt::format(R"({{"{}":null}})", TARGET)),
+               4,
+               getJSONParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS, "true", j(fmt::format(R"({{"{}":true}})", TARGET)), 4, getJSONParser, {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "trueleft over",
+               j(fmt::format(R"({{"{}":true}})", TARGET)),
+               4,
+               getJSONParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS, "false", j(fmt::format(R"({{"{}":false}})", TARGET)), 5, getJSONParser, {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "falseleft over",
+               j(fmt::format(R"({{"{}":false}})", TARGET)),
+               5,
+               getJSONParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS, "123", j(fmt::format(R"({{"{}":123}})", TARGET)), 3, getJSONParser, {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "123left over",
+               j(fmt::format(R"({{"{}":123}})", TARGET)),
+               3,
+               getJSONParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "123.456",
+               j(fmt::format(R"({{"{}":123.456}})", TARGET)),
+               7,
+               getJSONParser,
+               {NAME, TARGET, {}, {}}),
+        // This should pass
+        // TODO: this fails on rapidjson parser
+        // ParseT(SUCCESS,
+        //        "123.456left over",
+        //        j(fmt::format(R"({{"{}":123.456}})", TARGET)),
+        //        7,
+        //        getJSONParser,
+        //        {NAME, TARGET, {}, {}}),
+        ParseT(
+            SUCCESS, R"("abc")", j(fmt::format(R"({{"{}":"abc"}})", TARGET)), 5, getJSONParser, {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               R"("abc"left over)",
+               j(fmt::format(R"({{"{}":"abc"}})", TARGET)),
+               5,
+               getJSONParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS, "[]", j(fmt::format(R"({{"{}":[]}})", TARGET)), 2, getJSONParser, {NAME, TARGET, {}, {}}),
+        ParseT(
+            SUCCESS, "[]left over", j(fmt::format(R"({{"{}":[]}})", TARGET)), 2, getJSONParser, {NAME, TARGET, {}, {}}),
+        ParseT(
+            SUCCESS,
+            R"({"Actors":[{"name":"Tom Cruise","age":56,"Born At":"Syracuse, NY","Birthdate":"July 3, 1962","photo":"https://jsonformatterdotorg/img/tom-cruise.jpg","wife":null,"weight":67.5,"hasChildren":true,"hasGreyHair":false,"children":["Suri","Isabella Jane","Connor"]},{"name":"Robert Downey Jr.","age":53,"Born At":"New York City, NY","Birthdate":"April 4, 1965","photo":"https://jsonformatterdotorg/img/Robert-Downey-Jr.jpg","wife":"Susan Downey","weight":77.1,"hasChildren":true,"hasGreyHair":false,"children":["Indio Falconer","Avri Roel","Exton Elias"]}]})",
+            j(fmt::format(
+                R"({{"{}":{} }})",
+                TARGET,
+                R"({"Actors":[{"name":"Tom Cruise","age":56,"Born At":"Syracuse, NY","Birthdate":"July 3, 1962","photo":"https://jsonformatterdotorg/img/tom-cruise.jpg","wife":null,"weight":67.5,"hasChildren":true,"hasGreyHair":false,"children":["Suri","Isabella Jane","Connor"]},{"name":"Robert Downey Jr.","age":53,"Born At":"New York City, NY","Birthdate":"April 4, 1965","photo":"https://jsonformatterdotorg/img/Robert-Downey-Jr.jpg","wife":"Susan Downey","weight":77.1,"hasChildren":true,"hasGreyHair":false,"children":["Indio Falconer","Avri Roel","Exton Elias"]}]})")),
+            552,
+            getJSONParser,
+            {NAME, TARGET, {}, {}})));
