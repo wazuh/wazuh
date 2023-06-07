@@ -23,7 +23,7 @@ class opBuilderKVDBMatchTest : public ::testing::Test
 {
 
 protected:
-    static constexpr auto DB_DIR = "/tmp/";
+    static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
     static constexpr auto DB_NAME = "kvdb";
     static constexpr auto DB_NAME_1 = "TEST_DB";
     std::shared_ptr<IMetricsManager> m_manager;
