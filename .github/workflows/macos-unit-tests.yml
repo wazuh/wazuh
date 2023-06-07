@@ -16,8 +16,8 @@ jobs:
           brew install cmocka lcov
       - name: Build wazuh agent for macOS 11 with tests flags
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2 DEBUG=1 TEST=1
+          make deps -C src TARGET=agent -j3
+          LIBRARY_PATH=/usr/local/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
       - name: Run wazuh unit tests for macOS 11
         run: |
           cd src/data_provider/build
@@ -40,8 +40,8 @@ jobs:
           brew install cmocka lcov
       - name: Build wazuh agent for macOS 12 with tests flags
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2 DEBUG=1 TEST=1
+          make deps -C src TARGET=agent -j3
+          LIBRARY_PATH=/usr/local/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
       - name: Run wazuh unit tests for macOS 12
         run: |
           cd src/data_provider/build
@@ -64,8 +64,8 @@ jobs:
           brew install cmocka lcov
       - name: Build wazuh agent for macOS 13 with tests flags
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2 DEBUG=1 TEST=1
+          make deps -C src TARGET=agent -j3
+          LIBRARY_PATH=/usr/local/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
       - name: Run wazuh unit tests for macOS 13
         run: |
           cd src/data_provider/build
