@@ -1,62 +1,109 @@
-
-#include <optional>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <sys/types.h>
-#include <vector>
 
 #include <arpa/inet.h>
 #include <fmt/format.h>
 
-#include <hlp/base.hpp>
-#include <hlp/hlp.hpp>
-#include <hlp/parsec.hpp>
-#include <json/json.hpp>
+#include "hlp.hpp"
+#include "syntax.hpp"
 
-namespace hlp
+namespace
 {
-parsec::Parser<json::Json> getIPParser(std::string name, Stop endTokens, Options lst)
+using namespace hlp;
+using namespace hlp::parser;
+
+Mapper getMapper(std::string_view parsed, std::string_view targetField)
 {
-    if (endTokens.empty())
+    return [parsed, targetField](json::Json& event)
     {
-        throw std::runtime_error("IP parser needs a stop string");
-    }
+        event.setString(parsed, targetField);
+    };
+}
 
-    if (lst.size() > 0)
+SemParser getSemParser(const std::string& targetField)
+{
+    return [targetField](std::string_view parsed) -> std::variant<Mapper, base::Error>
+    {
+        struct in_addr ip;
+        struct in6_addr ip6;
+
+        if (!inet_pton(AF_INET, std::string(parsed).c_str(), &ip)
+            && !inet_pton(AF_INET6, std::string(parsed).c_str(), &ip6))
+        {
+            return base::Error {"Invalid IPv4 or IPv6 address"};
+        }
+
+        if (targetField.empty())
+        {
+            return noMapper();
+        }
+        else
+        {
+            return getMapper(parsed, targetField);
+        }
+    };
+}
+
+syntax::Parser getSynParser()
+{
+    using namespace syntax::combinators;
+
+    // IPv4
+    auto digits = times(syntax::parsers::digit(), 1, 3);
+    auto dot = syntax::parsers::char_('.');
+    auto part = digits & dot;
+    auto ipv4 = repeat(part, 3) & digits;
+
+    // IPv6
+    auto hexes = times(syntax::parsers::hex(), 0, 4);
+    auto colon = syntax::parsers::char_(':');
+    auto part6 = hexes & colon;
+    auto ipv6 = times(part6, 2, 7) & hexes;
+
+    // Mixed
+    auto mixed = times(part6, 2, 6) & ipv4;
+
+    return ipv4 | mixed | ipv6;
+}
+
+} // namespace
+
+namespace hlp::parsers
+{
+Parser getIPParser(const Params& params)
+{
+    if (!params.options.empty())
     {
         throw std::runtime_error("The IP parser does not accept any argument");
     }
 
-    return [endTokens, name](std::string_view text, size_t index)
+    syntax::Parser synP;
+    if (!params.stop.empty())
     {
-        struct in_addr ip;
-        struct in6_addr ipv6;
+        synP = syntax::parsers::toEnd(params.stop);
+    }
+    else
+    {
+        synP = getSynParser();
+    }
 
-        auto res = internal::preProcess<json::Json>(text, index, endTokens);
-        if (std::holds_alternative<parsec::Result<json::Json>>(res))
+    auto target = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+    auto semP = getSemParser(target);
+
+    return [name = params.name, synP, semP](std::string_view txt)
+    {
+        auto synR = synP(txt);
+        if (synR.failure())
         {
-            return std::get<parsec::Result<json::Json>>(res);
+            return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
-
-        auto fp = std::get<std::string_view>(res);
-        auto pos = fp.size() + index;
-
-        // copy can be slow
-        std::string addr(fp.data(), fp.size());
-        json::Json doc;
-
-        if (inet_pton(AF_INET, addr.c_str(), &ip))
+        else
         {
-            doc.setString(addr);
-            return parsec::makeSuccess<json::Json>(std::move(doc), pos);
+            auto parsed = syntax::parsed(synR, txt);
+            return abs::makeSuccess(SemToken {parsed, semP}, synR.remaining());
         }
-        else if (inet_pton(AF_INET6, addr.c_str(), &ipv6))
-        {
-            doc.setString(addr);
-            return parsec::makeSuccess<json::Json>(std::move(doc), pos);
-        }
-
-        return parsec::makeError<json::Json>(
-            fmt::format("{}: Expected IPv4 or IPv6", name), index);
     };
 }
-} // namespace hlp
+} // namespace hlp::parsers

@@ -28,20 +28,20 @@ public:
         , m_isQuoted(isQuoted)
     {
     }
-    inline const int end() const { return m_end; }
+    inline int end() const { return m_end; }
 
-    inline const int len() const
+    inline int len() const
     {
         return m_isQuoted ? m_end - m_start - 2 : m_end - m_start;
     }
 
-    inline const int start() const { return m_isQuoted ? m_start + 1 : m_start; }
+    inline int start() const { return m_isQuoted ? m_start + 1 : m_start; }
 
-    inline const bool isEscaped() const { return m_isEscaped; }
+    inline bool isEscaped() const { return m_isEscaped; }
 
-    inline const bool isQuoted() const { return m_isQuoted; }
+    inline bool isQuoted() const { return m_isQuoted; }
 
-    inline void addOffset(const int offset)
+    inline void addOffset(size_t offset)
     {
         m_start += offset;
         m_end += offset;

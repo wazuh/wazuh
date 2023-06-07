@@ -1,274 +1,244 @@
-#include "run_test.hpp"
 #include <gtest/gtest.h>
-#include <hlp/hlp.hpp>
-#include <json/json.hpp>
-#include <optional>
-#include <string>
-#include <vector>
+
+#include "hlp_test.hpp"
+
+auto constexpr NAME = "webParser";
+auto constexpr TARGET = "TargetField";
 
 /************************************
  *  Uri parser test
  ************************************/
 
-TEST(URIParser, build_OK)
-{
-    ASSERT_NO_THROW(hlp::getUriParser({}, {"stop1"}, {}));
-    ASSERT_NO_THROW(hlp::getUriParser({}, {"stop1", "stop2"}, {}));
-}
+INSTANTIATE_TEST_SUITE_P(UriBuild,
+                         HlpBuildTest,
+                         ::testing::Values(BuildT(FAILURE, getUriParser, {NAME, TARGET, {""}, {"unexpected"}}),
+                                           BuildT(SUCCESS, getUriParser, {NAME, TARGET, {""}, {}}),
+                                           BuildT(FAILURE, getUriParser, {NAME, TARGET, {}, {}})));
 
-TEST(URIParser, build_fail)
-{
-    // Parser with no stop
-    ASSERT_THROW(hlp::getUriParser({}, {}, {}), std::runtime_error);
-    ASSERT_THROW(hlp::getUriParser({}, {}, {"arg1"}), std::runtime_error);
-    ASSERT_THROW(hlp::getUriParser({}, {}, {"arg1", "arg2"}), std::runtime_error);
-    // stop but also options
-    ASSERT_THROW(hlp::getUriParser({}, {"stop1"}, {"opt1"}), std::runtime_error);
-}
-
-TEST(URIParser, parser)
-{
-
-    auto fn = [](std::string in) -> json::Json
-    {
-        json::Json doc(in.c_str());
-        return doc;
-    };
-
-    std::vector<TestCase> testCases {
-        TestCase {R"(C:\Windows\System32\virus.exe)", false, {""}, Options {}, {}, 0},
-        TestCase {"/home", false, {""}, Options {}, fn(R"({"path": "/home"})"), 0},
-        TestCase {
+INSTANTIATE_TEST_SUITE_P(
+    UriParse,
+    HlpParseTest,
+    ::testing::Values(
+        // testCases
+        ParseT(FAILURE, R"(C:\Windows\System32\virus.exe)", {}, 29, getUriParser, {NAME, TARGET, {""}, {}}),
+        ParseT(FAILURE, "/home", {}, 5, getUriParser, {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             "https://demo.wazuh.com:8080/user.php?name=pepe&pass=123#login",
-            true,
-            {""},
-            Options {},
-            fn(R"({"original":"https://demo.wazuh.com:8080/user.php?name=pepe&pass=123#login","domain":"demo.wazuh.com","path":"/user.php","scheme":"https","query":"name=pepe&pass=123","port":"8080","fragment":"login"})"),
-            61},
-        TestCase {
-            "https://john.doe@www.example.com:123/forum/questions/"
+            j(fmt::format(
+                R"({{"{}": {{"original":"https://demo.wazuh.com:8080/user.php?name=pepe&pass=123#login","domain":"demo.wazuh.com","path":"/user.php","scheme":"https","query":"name=pepe&pass=123","port":"8080","fragment":"login"}}}})",
+                TARGET)),
+            61,
+            getUriParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
+            "https://john.doe@localhost:123/forum/questions/"
             "?tag=networking&order=newest#top",
-            true,
-            {""},
-            Options {},
-            fn(R"({"original":"https://john.doe@www.example.com:123/forum/questions/?tag=networking&order=newest#top","domain":"www.example.com","path":"/forum/questions/","scheme":"https","username":"john.doe","query":"tag=networking&order=newest","port":"123","fragment":"top"})"),
-            85},
-        TestCase {
+            j(fmt::format(
+                R"({{"{}": {{"original":"https://john.doe@localhost:123/forum/questions/?tag=networking&order=newest#top","domain":"localhost","path":"/forum/questions/","scheme":"https","username":"john.doe","query":"tag=networking&order=newest","port":"123","fragment":"top"}}}})",
+                TARGET)),
+            79,
+            getUriParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             "https://john.doe@[2001:db8::7]:123/forum/questions/"
             "?tag=networking&order=newest#top",
-            true,
-            {""},
-            Options {},
-            fn(R"({"original":"https://john.doe@[2001:db8::7]:123/forum/questions/?tag=networking&order=newest#top","domain":"[2001:db8::7]","path":"/forum/questions/","scheme":"https","username":"john.doe","query":"tag=networking&order=newest","port":"123","fragment":"top"})"),
-            83},
-        TestCase {
+            j(fmt::format(
+                R"({{"{}": {{"original":"https://john.doe@[2001:db8::7]:123/forum/questions/?tag=networking&order=newest#top","domain":"[2001:db8::7]","path":"/forum/questions/","scheme":"https","username":"john.doe","query":"tag=networking&order=newest","port":"123","fragment":"top"}}}})",
+                TARGET)),
+            83,
+            getUriParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             "telnet://192.0.2.16:80/",
-            true,
-            {""},
-            Options {},
-            fn(R"({"original":"telnet://192.0.2.16:80/","domain":"192.0.2.16","path":"/","scheme":"telnet","port":"80"})"),
-            23},
-        // TestCase {
-        //     "mailto:John.Doe@example.com",
-        //     true,
-        //     {""},
-        //     Options {},
-        //     fn(R"({"original":"mailto:John.Doe@example.com","scheme":"mailto","path":"John.Doe@example.com"})"),
-        //     27},
-        // TestCase {
-        //     "ldap://[2001:db8::7]/c=GB?objectClass?one",
-        //     true,
-        //     {""},
-        //     Options {},
-        //     fn(R"({"original":"ldap://[2001:db8::7]/c=GB?objectClass?one","domain":"[2001:db8::7]","path":"/c=GB","scheme":"ldap","query":"objectClass?one"})"),
-        //     41},
-    };
-
-    for (auto t : testCases)
-    {
-        runTest(t, hlp::getUriParser);
-    }
-}
+            j(fmt::format(
+                R"({{"{}":{{"original":"telnet://192.0.2.16:80/","domain":"192.0.2.16","path":"/","scheme":"telnet","port":"80"}}}})",
+                TARGET)),
+            23,
+            getUriParser,
+            {NAME, TARGET, {""}, {}})));
+// TestCase {
+//     "mailto:John.Doe@example.com",
+//     true,
+//     {""},
+//     Options {},
+//     fn(R"({"original":"mailto:John.Doe@example.com","scheme":"mailto","path":"John.Doe@example.com"})"),
+//     27},
+// TestCase {
+//     "ldap://[2001:db8::7]/c=GB?objectClass?one",
+//     true,
+//     {""},
+//     Options {},
+//     fn(R"({"original":"ldap://[2001:db8::7]/c=GB?objectClass?one","domain":"[2001:db8::7]","path":"/c=GB","scheme":"ldap","query":"objectClass?one"})"),
+//      41}
 
 /************************************
  *  User Agent test
  ************************************/
-TEST(UAParser, build_OK)
-{
-    ASSERT_NO_THROW(hlp::getUAParser({}, {"stop1"}, {}));
-    ASSERT_NO_THROW(hlp::getUAParser({}, {"stop1", "stop2"}, {}));
-}
+INSTANTIATE_TEST_SUITE_P(UABuild,
+                         HlpBuildTest,
+                         ::testing::Values(BuildT(FAILURE, getUAParser, {NAME, TARGET, {""}, {"unexpected"}}),
+                                           BuildT(SUCCESS, getUAParser, {NAME, TARGET, {""}, {}}),
+                                           BuildT(FAILURE, getUAParser, {NAME, TARGET, {}, {}})));
 
-TEST(UAParser, build_fail)
-{
-
-    // Parser with no stop
-    ASSERT_THROW(hlp::getUAParser({}, {}, {}), std::runtime_error);
-    ASSERT_THROW(hlp::getUAParser({}, {}, {"arg1"}), std::runtime_error);
-    ASSERT_THROW(hlp::getUAParser({}, {}, {"arg1", "arg2"}), std::runtime_error);
-    // stop but also options
-    ASSERT_THROW(hlp::getUAParser({}, {"stop1"}, {"opt1"}), std::runtime_error);
-}
-
-TEST(UAParser, parser)
-{
-
-    auto fn = [](std::string in) -> json::Json
-    {
-        json::Json doc;
-        doc.setString(in.c_str(), "/user_agent/original");
-        return doc;
-    };
-
-    // https://github.com/ua-parser/uap-core/blob/master/regexes.yaml
-    std::vector<TestCase> testCases {
-        TestCase {
+INSTANTIATE_TEST_SUITE_P(
+    UAParse,
+    HlpParseTest,
+    ::testing::Values(
+        // https://github.com/ua-parser/uap-core/blob/master/regexes.yaml
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0)",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0)"),
-            77},
-        TestCase {
+            j(fmt::format(
+                R"({{"{}":{{"original":"Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:47.0) Gecko/20100101 Firefox/47.0"}}}})",
+                TARGET)),
+            77,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0)",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0)"),
-            80},
-        TestCase {
+            j(fmt::format(
+                R"({{"{}":{{"original":"Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:42.0) Gecko/20100101 Firefox/42.0"}}}})",
+                TARGET)),
+            80,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36)",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36)"),
-            105},
-        TestCase {
+            j(fmt::format(
+                R"({{"{}":{{"original":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"}}}})",
+                TARGET)),
+            105,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41)",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41)"),
-            122},
-        TestCase {
+            j(fmt::format(
+                R"({{"{}":{{"original":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41"}}}})",
+                TARGET)),
+            122,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Opera/9.80 (Macintosh; Intel Mac OS X; U; en) Presto/2.2.15 Version/10.00)",
-            true,
-            {""},
-            Options {},
-            fn(R"(Opera/9.80 (Macintosh; Intel Mac OS X; U; en) Presto/2.2.15 Version/10.00)"),
-            73},
-        TestCase {R"(Opera/9.60 (Windows NT 6.0; U; en) Presto/2.1.1)",
-                  true,
-                  {""},
-                  Options {},
-                  fn(R"(Opera/9.60 (Windows NT 6.0; U; en) Presto/2.1.1)"),
-                  47},
-        TestCase {
+            j(fmt::format(
+                R"({{"{}":{{"original":"Opera/9.80 (Macintosh; Intel Mac OS X; U; en) Presto/2.2.15 Version/10.00"}}}})",
+                TARGET)),
+            73,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(SUCCESS,
+               R"(Opera/9.60 (Windows NT 6.0; U; en) Presto/2.1.1)",
+               j(fmt::format(R"({{"{}":{{"original":"Opera/9.60 (Windows NT 6.0; U; en) Presto/2.1.1"}}}})", TARGET)),
+               47,
+               getUAParser,
+               {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59)",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59)"),
-            131},
-        TestCase {
+            j(fmt::format(
+                R"({{"{}":{{"original":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59"}}}})",
+                TARGET)),
+            131,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1)",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1)"),
-            139},
-        TestCase {
+            j(fmt::format(
+                R"({{"{}":{{"original":"Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1"}}}})",
+                TARGET)),
+            139,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (compatible; MSIE 9.0; Windows Phone OS 7.5; Trident/5.0; IEMobile/9.0))",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (compatible; MSIE 9.0; Windows Phone OS 7.5; Trident/5.0; IEMobile/9.0))"),
-            83},
-        TestCase {
+            j(fmt::format(
+                R"d({{"{}":{{"original":"Mozilla/5.0 (compatible; MSIE 9.0; Windows Phone OS 7.5; Trident/5.0; IEMobile/9.0)"}}}})d",
+                TARGET)),
+            83,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html))",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html))"),
-            72},
-        TestCase {
+            j(fmt::format(
+                R"d({{"{}":{{"original":"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"}}}})d",
+                TARGET)),
+            72,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots))",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots))"),
-            77},
-        TestCase {R"(curl/7.64.1)", false, {}, Options {}, fn(R"(curl/7.64.1)"), 0},
-        TestCase {R"(PostmanRuntime/7.26.5)",
-                  true,
-                  {""},
-                  Options {},
-                  fn(R"(PostmanRuntime/7.26.5)"),
-                  21},
-        TestCase {
+            j(fmt::format(
+                R"d({{"{}":{{"original":"Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots)"}}}})d",
+                TARGET)),
+            77,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(SUCCESS,
+               R"(PostmanRuntime/7.26.5)",
+               j(fmt::format(R"d({{"{}":{{"original":"PostmanRuntime/7.26.5"}}}})d", TARGET)),
+               21,
+               getUAParser,
+               {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (Series40; Nokia201/11.81; Profile/MIDP-2.1 Configuration/CLDC-1.1) Gecko/20100401 S40OviBrowser/2.0.2.68.14)",
-            true,
-            {""},
-            Options {},
-            fn(R"(Mozilla/5.0 (Series40; Nokia201/11.81; Profile/MIDP-2.1 Configuration/CLDC-1.1) Gecko/20100401 S40OviBrowser/2.0.2.68.14)"),
-            120},
-        TestCase {
+            j(fmt::format(
+                R"d({{"{}":{{"original":"Mozilla/5.0 (Series40; Nokia201/11.81; Profile/MIDP-2.1 Configuration/CLDC-1.1) Gecko/20100401 S40OviBrowser/2.0.2.68.14"}}}})d",
+                TARGET)),
+            120,
+            getUAParser,
+            {NAME, TARGET, {""}, {}}),
+        ParseT(
+            SUCCESS,
             R"(Mozilla/5.0 (Series40; Nokia201/11.81; Profile/MIDP-2.1 Configuration/CLDC-1.1) Gecko/20100401 S40OviBrowser/2.0.2.68.14-----)",
-            true,
-            {"-----"},
-            Options {},
-            fn(R"(Mozilla/5.0 (Series40; Nokia201/11.81; Profile/MIDP-2.1 Configuration/CLDC-1.1) Gecko/20100401 S40OviBrowser/2.0.2.68.14)"),
-            120},
-    };
-
-    for (auto t : testCases)
-    {
-        runTest(t, hlp::getUAParser, "header ", " tail", true);
-    }
-}
+            j(fmt::format(
+                R"d({{"{}":{{"original":"Mozilla/5.0 (Series40; Nokia201/11.81; Profile/MIDP-2.1 Configuration/CLDC-1.1) Gecko/20100401 S40OviBrowser/2.0.2.68.14"}}}})d",
+                TARGET)),
+            120,
+            getUAParser,
+            {NAME, TARGET, {"-----"}, {}})));
 
 /************************************
  *  FQDNParser test
  ************************************/
-TEST(FQDNParser, build_fail)
-{
+INSTANTIATE_TEST_SUITE_P(FQDNBuild,
+                         HlpBuildTest,
+                         ::testing::Values(BuildT(SUCCESS, getFQDNParser, {NAME, TARGET, {}, {}}),
+                                           BuildT(SUCCESS, getFQDNParser, {NAME, TARGET, {""}, {}}),
+                                           BuildT(FAILURE, getFQDNParser, {NAME, TARGET, {}, {"unexpected"}}),
+                                           BuildT(FAILURE, getFQDNParser, {NAME, TARGET, {""}, {"unexpected"}})));
 
-    // Parser cannot be built with arguments
-    ASSERT_THROW(hlp::getFQDNParser({}, {}, {"arg1"}), std::runtime_error);
-    ASSERT_THROW(hlp::getFQDNParser({}, {}, {"arg1", "arg2"}), std::runtime_error);
-    ASSERT_THROW(hlp::getFQDNParser({}, {"stop1"}, {"opt1"}), std::runtime_error);
-}
-
-TEST(FQDNParser, build_OK)
-{
-    ASSERT_NO_THROW(hlp::getFQDNParser({}, {"stop1"}, {}));
-    ASSERT_NO_THROW(hlp::getFQDNParser({}, {"stop1", "stop2"}, {}));
-    ASSERT_NO_THROW(hlp::getFQDNParser({}, {}, {}));
-}
-
-TEST(FQDNParser, parser)
-{
-    auto fn = [](std::string in) -> json::Json
-    {
-        json::Json doc;
-        doc.setString(in);
-        return doc;
-    };
-
-    std::vector<TestCase> testCases {
-        TestCase {R"(www.wazuh.com)", true, {}, Options {}, fn(R"(www.wazuh.com)"), 13},
-        TestCase {R"(www.wazuh.com.)", true, {}, Options {}, fn(R"(www.wazuh.com.)"), 14},
-        TestCase {R"(..wazuh.com)", false, {}, Options {}, fn(R"()"), 0},
-        TestCase {R"(www.wazuh.com.   )",
-                  true,
-                  {"   "},
-                  Options {},
-                  fn(R"(www.wazuh.com.)"),
-                  14},
-    };
-
-    for (auto t : testCases)
-    {
-        runTest(t, hlp::getFQDNParser);
-    }
-}
+INSTANTIATE_TEST_SUITE_P(
+    FQDNParse,
+    HlpParseTest,
+    ::testing::Values(ParseT(SUCCESS,
+                             R"(www.wazuh.com)",
+                             j(fmt::format(R"({{"{}": "www.wazuh.com"}})", TARGET)),
+                             13,
+                             getFQDNParser,
+                             {NAME, TARGET, {}, {}}),
+                      ParseT(SUCCESS,
+                             R"(www.wazuh.com.)",
+                             j(fmt::format(R"({{"{}": "www.wazuh.com."}})", TARGET)),
+                             14,
+                             getFQDNParser,
+                             {NAME, TARGET, {}, {}}),
+                      ParseT(FAILURE, R"(..wazuh.com)", {}, 0, getFQDNParser, {NAME, TARGET, {}, {}}),
+                      ParseT(SUCCESS,
+                             R"(www.wazuh.com.   )",
+                             j(fmt::format(R"({{"{}": "www.wazuh.com."}})", TARGET)),
+                             14,
+                             getFQDNParser,
+                             {NAME, TARGET, {"   "}, {}})));

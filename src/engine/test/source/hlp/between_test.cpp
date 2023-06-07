@@ -1,69 +1,66 @@
-#include <optional>
-#include <string>
-#include <vector>
-
-#include <fmt/format.h>
 #include <gtest/gtest.h>
 
-#include <hlp/hlp.hpp>
-#include <json/json.hpp>
+#include "hlp_test.hpp"
 
-#include "run_test.hpp"
+auto constexpr NAME = "betweenParser";
+auto constexpr TARGET = "TargetField";
 
-/************************************
- *  between Parser
- ************************************/
+INSTANTIATE_TEST_SUITE_P(
+    BetweenBuild,
+    HlpBuildTest,
+    ::testing::Values(BuildT(FAILURE, getBetweenParser, {NAME, TARGET, {}, {}}),
+                      BuildT(FAILURE, getBetweenParser, {NAME, TARGET, {}, {"one"}}),
+                      BuildT(SUCCESS, getBetweenParser, {NAME, TARGET, {}, {"one", "two"}}),
+                      BuildT(FAILURE, getBetweenParser, {NAME, TARGET, {}, {"one", "two", "three"}}),
+                      BuildT(SUCCESS, getBetweenParser, {NAME, TARGET, {}, {"", "two"}}),
+                      BuildT(SUCCESS, getBetweenParser, {NAME, TARGET, {}, {"one", ""}}),
+                      BuildT(FAILURE, getBetweenParser, {NAME, TARGET, {}, {"", ""}})));
 
-TEST(BetweenParser, build_ok)
-{
-    ASSERT_NO_THROW(hlp::getBetweenParser({"csv"}, {}, {"start", "end"}));
-    ASSERT_NO_THROW(hlp::getBetweenParser({"csv"}, {""}, {"start", "end"}));
-}
-
-TEST(BetweenParser, build_fail)
-{
-    ASSERT_THROW(hlp::getBetweenParser({"csv"}, {""}, {}), std::runtime_error);
-    ASSERT_THROW(hlp::getBetweenParser({"csv"}, {""}, {"start"}), std::runtime_error);
-    ASSERT_THROW(hlp::getBetweenParser({"csv"}, {""}, {"start", "end", "other"}),
-                 std::runtime_error);
-
-    ASSERT_THROW(hlp::getBetweenParser({"csv"}, {""}, {"", ""}), std::runtime_error);
-}
-
-TEST(BetweenParser, parser)
-{
-    auto fn = [](const std::string& in) -> json::Json
-    {
-        json::Json doc;
-        doc.setString(in);
-        return doc;
-    };
-
-    std::vector<TestCase> testCases {
-        TestCase {"[start]value[end]",
-                  true,
-                  {},
-                  Options {"[start]", "[end]"},
-                  fn(R"(value)"),
-                  17},
-        TestCase {"[start][end]", true, {}, Options {"[start]", "[end]"}, fn(R"()"), 12},
-        TestCase {"[start]", true, {}, Options {"[start]", ""}, fn(R"()"), 7},
-        TestCase {"[end]", true, {}, Options {"", "[end]"}, fn(R"()"), 5},
-
-        TestCase {"[start]value[end] after end",
-                  true,
-                  {},
-                  Options {"[start]", "[end]"},
-                  fn(R"(value)"),
-                  17},
-        TestCase {"[start][end] after end", true, {}, Options {"[start]", "[end]"}, fn(R"()"), 12},
-        TestCase {"[start] after end", true, {}, Options {"[start]", ""}, fn(R"()"), 7},
-        TestCase {"[end] after end", true, {}, Options {"", "[end]"}, fn(R"()"), 5},
-
-    };
-    for (auto t : testCases)
-    {
-        auto testCase = std::get<0>(t);
-        runTest(t, hlp::getBetweenParser);
-    }
-}
+INSTANTIATE_TEST_SUITE_P(
+    BetweenParse,
+    HlpParseTest,
+    ::testing::Values(
+        ParseT(SUCCESS,
+               "[start]value[end]",
+               j(fmt::format(R"({{"{}": "value"}})", TARGET)),
+               17,
+               getBetweenParser,
+               {NAME, TARGET, {}, {"[start]", "[end]"}}),
+        ParseT(SUCCESS,
+               "[start][end]",
+               j(fmt::format(R"({{"{}": ""}})", TARGET)),
+               12,
+               getBetweenParser,
+               {NAME, TARGET, {}, {"[start]", "[end]"}}),
+        ParseT(SUCCESS,
+               "[start]",
+               j(fmt::format(R"({{"{}": ""}})", TARGET)),
+               7,
+               getBetweenParser,
+               {NAME, TARGET, {}, {"[start]", ""}}),
+        ParseT(SUCCESS,
+               "[end]",
+               j(fmt::format(R"({{"{}": ""}})", TARGET)),
+               5,
+               getBetweenParser,
+               {NAME, TARGET, {}, {"", "[end]"}}),
+        ParseT(SUCCESS,
+               "[start]value[end] after end",
+               j(fmt::format(R"({{"{}": "value"}})", TARGET)),
+               17,
+               getBetweenParser,
+               {NAME, TARGET, {}, {"[start]", "[end]"}}),
+        ParseT(FAILURE, "[other]value[end]", {}, 0, getBetweenParser, {NAME, TARGET, {}, {"[start]", "[end]"}}),
+        ParseT(FAILURE, "[start]value[other]", {}, 0, getBetweenParser, {NAME, TARGET, {}, {"[start]", "[end]"}}),
+        ParseT(SUCCESS,
+               "[start]value[end][end]",
+               j(fmt::format(R"({{"{}": "value"}})", TARGET)),
+               17,
+               getBetweenParser,
+               {NAME, TARGET, {}, {"[start]", "[end]"}}),
+        ParseT(SUCCESS,
+               "[start][start]value[end]",
+               j(fmt::format(R"({{"{}": "[start]value"}})", TARGET)),
+               24,
+               getBetweenParser,
+               {NAME, TARGET, {}, {"[start]", "[end]"}})));
