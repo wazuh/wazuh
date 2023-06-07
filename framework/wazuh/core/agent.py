@@ -1130,7 +1130,7 @@ def get_rbac_filters(system_resources=None, permitted_resources=None, filters=No
 
 
 def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, version=None,
-                        force=False, use_http=False, file_path=None, installer=None, get_result=False):
+                        force=False, use_http=False, filename=None, installer=None, get_result=False):
     """Send command to upgrade module / task module
 
     Parameters
@@ -1147,8 +1147,8 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
         force the update even if it is a downgrade.
     use_http : bool
         False for HTTPS protocol, True for HTTP protocol.
-    file_path : str
-        Path to the installation file.
+    filename : str
+        filename of the installation file.
     installer : str
         Selected installer.
     get_result : bool
@@ -1166,7 +1166,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
                                           'force_upgrade': force,
                                           'use_http': use_http,
                                           'wpk_repo': wpk_repo,
-                                          'file_path': file_path,
+                                          'filename': filename,
                                           'installer': installer
                                       } if not get_result else {'agents': agents_chunk})
 

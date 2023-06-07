@@ -595,7 +595,7 @@ async def put_upgrade_agents(request, agents_list: list = None, pretty: bool = F
 
 
 async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: bool = False,
-                                    wait_for_complete: bool = False, file_path: str = None, installer: str = None,
+                                    wait_for_complete: bool = False, filename: str = None, installer: str = None,
                                     q: str = None, manager: str = None, version: str = None, group: str = None,
                                     node_name: str = None, name: str = None, ip: str = None) -> web.Response:
     """Upgrade agents using a local WPK file.
@@ -608,8 +608,8 @@ async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: b
         Disable timeout response.
     agents_list : list
         List of agent IDs. All possible values from 000 onwards.
-    file_path : str
-        Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
+    filename : str
+        File name of the WPK file. The file must be inside the upgrade folder (/var/ossec/var/upgrade)
     installer : str
         Installation file.
     q : str
@@ -637,7 +637,7 @@ async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: b
         agents_list = '*'
 
     f_kwargs = {'agent_list': agents_list,
-                'file_path': file_path,
+                'filename': filename,
                 'installer': installer,
                 'filters': {
                     'manager': manager,

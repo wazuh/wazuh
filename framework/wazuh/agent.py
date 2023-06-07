@@ -878,7 +878,7 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET})
 def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str = None, force: bool = False,
-                   use_http: bool = False, file_path: str = None, installer: str = None, filters: dict = None,
+                   use_http: bool = False, filename: str = None, installer: str = None, filters: dict = None,
                    q: str = None) -> AffectedItemsWazuhResult:
     """Start the agent upgrade process.
 
@@ -894,7 +894,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         force the update even if it is a downgrade.
     use_http : bool
         False for HTTPS protocol, True for HTTP protocol.
-    file_path : str
+    filename : str
         Path to the installation file.
     installer : str
         Selected installer.
@@ -959,9 +959,9 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         agent_results = list()
         for agents_chunk in agents_result_chunks:
             agent_results.append(
-                core_upgrade_agents(command='upgrade' if not (installer or file_path) else 'upgrade_custom',
+                core_upgrade_agents(command='upgrade' if not (installer or filename) else 'upgrade_custom',
                                     agents_chunk=agents_chunk, wpk_repo=wpk_repo, version=version, force=force,
-                                    use_http=use_http, file_path=file_path, installer=installer))
+                                    use_http=use_http, filename=filename, installer=installer))
 
         for agent_result_chunk in agent_results:
             for agent_result in agent_result_chunk['data']:

@@ -7981,7 +7981,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list_all'
-        - $ref: '#/components/parameters/file_path'
+        - $ref: '#/components/parameters/filename'
         - $ref: '#/components/parameters/installer'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/os.platform'
