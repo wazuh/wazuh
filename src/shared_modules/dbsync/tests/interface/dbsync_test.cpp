@@ -22,7 +22,7 @@ constexpr auto DATABASE_TEMP {"TEMP.db"};
 constexpr auto DATABASE_MEMORY {":memory:"};
 constexpr auto DATABASE_PERMISSIONS
 {
-    0640
+    0640u
 };
 
 
