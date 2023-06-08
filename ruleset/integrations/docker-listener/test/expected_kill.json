@@ -21,44 +21,22 @@
         },
         "event": {
             "original": "{\"integration\":\"docker\",\"docker\":{\"status\":\"kill\",\"id\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"from\":\"tomcat\",\"Type\":\"container\",\"Action\":\"kill\",\"Actor\":{\"ID\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"Attributes\":{\"image\":\"tomcat\",\"name\":\"tomcat_hello\",\"org.opencontainers.image.ref.name\":\"ubuntu\",\"org.opencontainers.image.version\":\"22.04\",\"signal\":\"15\"}},\"scope\":\"local\",\"time\":1685567281,\"timeNano\":1685567281124527482}}",
-            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "created": "2023-05-31T21:08:01Z",
-            "outcome": "success",
+            "action": "kill",
+            "outcome": "unknown",
             "category": [
                 "process"
             ],
-            "kind": "event"
+            "kind": "event",
+            "module": "docker-listener"
         },
         "host": {
             "id": "003"
         },
-        "~json": {
-            "integration": "docker",
-            "docker": {
-                "status": "kill",
-                "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                "from": "tomcat",
-                "Type": "container",
-                "Action": "kill",
-                "Actor": {
-                    "ID": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                    "Attributes": {
-                        "image": "tomcat",
-                        "name": "tomcat_hello",
-                        "org.opencontainers.image.ref.name": "ubuntu",
-                        "org.opencontainers.image.version": "22.04",
-                        "signal": "15"
-                    }
-                },
-                "scope": "local",
-                "time": 1685567281,
-                "timeNano": 1685567281124527482
-            }
-        },
         "container": {
+            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "image": {
-                "name": "tomcat",
-                "tag": "kill"
+                "name": "tomcat"
             }
         },
         "service": {

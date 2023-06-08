@@ -21,43 +21,22 @@
         },
         "event": {
             "original": "{\"integration\":\"docker\",\"docker\":{\"status\":\"destroy\",\"id\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"from\":\"tomcat\",\"Type\":\"container\",\"Action\":\"destroy\",\"Actor\":{\"ID\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"Attributes\":{\"image\":\"tomcat\",\"name\":\"tomcat_hello\",\"org.opencontainers.image.ref.name\":\"ubuntu\",\"org.opencontainers.image.version\":\"22.04\"}},\"scope\":\"local\",\"time\":1685567285,\"timeNano\":1685567285429724295}}",
-            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "created": "2023-05-31T21:08:05Z",
-            "outcome": "success",
+            "action": "destroy",
+            "outcome": "unknown",
             "category": [
                 "process"
             ],
-            "kind": "event"
+            "kind": "event",
+            "module": "docker-listener"
         },
         "host": {
             "id": "003"
         },
-        "~json": {
-            "integration": "docker",
-            "docker": {
-                "status": "destroy",
-                "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                "from": "tomcat",
-                "Type": "container",
-                "Action": "destroy",
-                "Actor": {
-                    "ID": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                    "Attributes": {
-                        "image": "tomcat",
-                        "name": "tomcat_hello",
-                        "org.opencontainers.image.ref.name": "ubuntu",
-                        "org.opencontainers.image.version": "22.04"
-                    }
-                },
-                "scope": "local",
-                "time": 1685567285,
-                "timeNano": 1685567285429724295
-            }
-        },
         "container": {
+            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "image": {
-                "name": "tomcat",
-                "tag": "destroy"
+                "name": "tomcat"
             }
         },
         "service": {
