@@ -3,6 +3,7 @@ import subprocess
 import os
 import csv
 import pathlib
+import time
 
 EXE_PATH = 'C:\\executables'
 PROCMON_PATH = 'C:\\ProcessMonitor\\Procmon64.exe'
@@ -32,6 +33,8 @@ def generate_csv_logs(exe_path):
         for command in commands_no_wait:
             print(f"Running '{command}'")
             subprocess.Popen(command)
+            # Giving the command time to execute
+            time.sleep(5)
 
         commands_wait = [f"{PROCMON_PATH} /waitforidle",
                          f"{exe_path}",
@@ -67,7 +70,12 @@ def test_dll_not_found(current_exe):
     # Read .csv file
     with open(PROCMON_CSV_OUTPUT) as csv_file:
         csv_reader = csv.DictReader(csv_file, delimiter=',')
-        for row in csv_reader:
+        # Checking if CSV file contains data
+        rows = list(csv_reader)
+        if not rows:
+            pytest.fail("Process Monitor didn't capture any event.")
+
+        for row in rows:
             if (not row['Process Name'] in current_exe ):
                 continue
             print("Checking row: " + str(row))
