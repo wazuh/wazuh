@@ -21,44 +21,22 @@
         },
         "event": {
             "original": "{\"integration\":\"docker\",\"docker\":{\"status\":\"exec_create: sh -c echo test 31321 353541 s\\\\u00f1daskd\\\\u00f1asl\",\"id\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"from\":\"tomcat\",\"Type\":\"container\",\"Action\":\"exec_create: sh -c echo test 31321 353541 s\\\\u00f1daskd\\\\u00f1asl\",\"Actor\":{\"ID\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"Attributes\":{\"execID\":\"5864f50a99ea3dadcb42490fdb0218790926a85da61630376964fc2c20482c29\",\"image\":\"tomcat\",\"name\":\"tomcat_hello\",\"org.opencontainers.image.ref.name\":\"ubuntu\",\"org.opencontainers.image.version\":\"22.04\"}},\"scope\":\"local\",\"time\":1685565165,\"timeNano\":1685565165728452838}}",
-            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "created": "2023-05-31T20:32:45Z",
-            "outcome": "success",
+            "action": "exec_create: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl",
+            "outcome": "unknown",
             "category": [
                 "process"
             ],
-            "kind": "event"
+            "kind": "event",
+            "module": "docker-listener"
         },
         "host": {
             "id": "003"
         },
-        "~json": {
-            "integration": "docker",
-            "docker": {
-                "status": "exec_create: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl",
-                "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                "from": "tomcat",
-                "Type": "container",
-                "Action": "exec_create: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl",
-                "Actor": {
-                    "ID": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                    "Attributes": {
-                        "execID": "5864f50a99ea3dadcb42490fdb0218790926a85da61630376964fc2c20482c29",
-                        "image": "tomcat",
-                        "name": "tomcat_hello",
-                        "org.opencontainers.image.ref.name": "ubuntu",
-                        "org.opencontainers.image.version": "22.04"
-                    }
-                },
-                "scope": "local",
-                "time": 1685565165,
-                "timeNano": 1685565165728452838
-            }
-        },
         "container": {
+            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "image": {
-                "name": "tomcat",
-                "tag": "exec_create: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl"
+                "name": "tomcat"
             }
         },
         "service": {
@@ -101,44 +79,22 @@
         },
         "event": {
             "original": "{\"integration\":\"docker\",\"docker\":{\"status\":\"exec_create: sh -c ps\",\"id\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"from\":\"tomcat\",\"Type\":\"container\",\"Action\":\"exec_create: sh -c ps\",\"Actor\":{\"ID\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"Attributes\":{\"execID\":\"8f78a917f903ee062e483edb13c357bd3913671b219770617a9f6fdd1ae014bf\",\"image\":\"tomcat\",\"name\":\"tomcat_hello\",\"org.opencontainers.image.ref.name\":\"ubuntu\",\"org.opencontainers.image.version\":\"22.04\"}},\"scope\":\"local\",\"time\":1685566462,\"timeNano\":1685566462638654454}}",
-            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "created": "2023-05-31T20:54:22Z",
-            "outcome": "success",
+            "action": "exec_create: sh -c ps",
+            "outcome": "unknown",
             "category": [
                 "process"
             ],
-            "kind": "event"
+            "kind": "event",
+            "module": "docker-listener"
         },
         "host": {
             "id": "003"
         },
-        "~json": {
-            "integration": "docker",
-            "docker": {
-                "status": "exec_create: sh -c ps",
-                "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                "from": "tomcat",
-                "Type": "container",
-                "Action": "exec_create: sh -c ps",
-                "Actor": {
-                    "ID": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                    "Attributes": {
-                        "execID": "8f78a917f903ee062e483edb13c357bd3913671b219770617a9f6fdd1ae014bf",
-                        "image": "tomcat",
-                        "name": "tomcat_hello",
-                        "org.opencontainers.image.ref.name": "ubuntu",
-                        "org.opencontainers.image.version": "22.04"
-                    }
-                },
-                "scope": "local",
-                "time": 1685566462,
-                "timeNano": 1685566462638654454
-            }
-        },
         "container": {
+            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "image": {
-                "name": "tomcat",
-                "tag": "exec_create: sh -c ps"
+                "name": "tomcat"
             }
         },
         "service": {
@@ -181,44 +137,22 @@
         },
         "event": {
             "original": "{\"integration\":\"docker\",\"docker\":{\"status\":\"exec_create: sh -c top\",\"id\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"from\":\"tomcat\",\"Type\":\"container\",\"Action\":\"exec_create: sh -c top\",\"Actor\":{\"ID\":\"14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313\",\"Attributes\":{\"execID\":\"ed183769eb9e33dd9a85bb731f18433014cf8a954e51030b6fe301cf70b3b3b7\",\"image\":\"tomcat\",\"name\":\"tomcat_hello\",\"org.opencontainers.image.ref.name\":\"ubuntu\",\"org.opencontainers.image.version\":\"22.04\"}},\"scope\":\"local\",\"time\":1685566466,\"timeNano\":1685566466124968989}}",
-            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "created": "2023-05-31T20:54:26Z",
-            "outcome": "success",
+            "action": "exec_create: sh -c top",
+            "outcome": "unknown",
             "category": [
                 "process"
             ],
-            "kind": "event"
+            "kind": "event",
+            "module": "docker-listener"
         },
         "host": {
             "id": "003"
         },
-        "~json": {
-            "integration": "docker",
-            "docker": {
-                "status": "exec_create: sh -c top",
-                "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                "from": "tomcat",
-                "Type": "container",
-                "Action": "exec_create: sh -c top",
-                "Actor": {
-                    "ID": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
-                    "Attributes": {
-                        "execID": "ed183769eb9e33dd9a85bb731f18433014cf8a954e51030b6fe301cf70b3b3b7",
-                        "image": "tomcat",
-                        "name": "tomcat_hello",
-                        "org.opencontainers.image.ref.name": "ubuntu",
-                        "org.opencontainers.image.version": "22.04"
-                    }
-                },
-                "scope": "local",
-                "time": 1685566466,
-                "timeNano": 1685566466124968989
-            }
-        },
         "container": {
+            "id": "14e0ba9dcf5896330de73d52cb483685befea2283c50f5ca50ff4c3cf170a313",
             "image": {
-                "name": "tomcat",
-                "tag": "exec_create: sh -c top"
+                "name": "tomcat"
             }
         },
         "service": {

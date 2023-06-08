@@ -17,4 +17,3 @@ configuration: >
   ```
 event:
   module: docker-listener
-  dataset: docker-event

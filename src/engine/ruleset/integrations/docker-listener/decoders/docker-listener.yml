@@ -5,8 +5,9 @@ metadata:
   description: Process events that comes from the Docker listener wodle
   module: Docker-listener
   compatibility: >
-    This decoder has been tested on Wazuh version 4.4
+    This decoder has been tested on Wazuh version 4.4 and docker 20.10.12
   versions:
+   - "4.4"
    - "20.10.12" #TODO: check backward compatibility
   author:
     email: info@wazuh.com
@@ -34,23 +35,23 @@ normalize:
 
  - check: +exists/~json.docker
    map:
-    - event.id: $~json.docker.id #same as ~json.docker.Actor.ID container.id?
-    - container.image.name: $~json.docker.from #host.name ?
-    - event.created : +date_from_epoch/$~json.docker.time
-    - service.origin.type: $~json.docker.Type #The type of object emitting the event - possible values : container, image, volume, network, daemon, plugin, service, node, secret, config
-    - container.image.tag: $~json.docker.Action #The type of event #volume, container, network, service, node #TODO: no event type -> doesn't match possible values
-    - process.command_line : $~json.docker.status #Event status #examples : "create", "start", "kill", "stop", "die","exec_create: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl", "exec_start: sh -c echo test 31321 353541 s\\u00f1daskd\\u00f1asl"
-    - event.duration: $~json.docker.execDuration
+    - container.id: $~json.docker.id
+    - container.image.name: $~json.docker.from
+    - service.origin.type: $~json.docker.Type
+    - process.command_line: $~json.docker.status
     - process.exit_code: $~json.docker.exitCode
     - process.pid: $~json.docker.execID
+    - event.duration: $~json.docker.execDuration
+    - event.created: +date_from_epoch/$~json.docker.time
+    - event.action: $~json.docker.Action
+    - event.outcome: unknown
+    - event.category: +array_append/process
+    - event.kind: event
+    - event.module: docker-listener
 
-    - event.outcome : success
-    - event.category : +array_append/process
-    - event.kind : event
+    # Custom field
+    - ~container.attributes: $~json.docker.Actor.Attributes
 
-    - ~container.attributes : $~json.docker.Actor.Attributes #Various key/value attributes of the object, depending on its type
-    #contains fields: Attributes.image Attributes.name Attributes.org.opencontainers.image.ref.name Attributes.org.opencontainers.image.version
+    #cleanup
+    - ~json: +delete
 
- - check: +not_exists/~json.docker
-   map:
-    - event.outcome : failure
