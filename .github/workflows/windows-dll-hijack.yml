@@ -23,6 +23,8 @@ jobs:
           mkdir -p src/exe_files
           # We exclude the installer from the test
           find src/win32/ -regex '.*wazuh-agent-[0-9]+.[0-9]+.[0-9]+\.exe$' -delete
+          # We remove the executables that aren't distributed in the signed installer
+          rm -f src/win32/setup-*.exe
           cp src/win32/*.exe src/exe_files/
       - name: Upload Artifact executables
         uses: actions/upload-artifact@v3

@@ -2388,7 +2388,8 @@ test-rules:
 #### windows #######
 ####################
 
-# For security reasons, all executables must have a manifest.
+# For security reasons, all executables must have a manifest
+# except those .exe files that aren't distributed in the final signed .msi
 
 win32/ui_resource.o: win32/ui/win32ui.rc
 	${OSSEC_WINDRES} -i $< -o $@
@@ -2412,15 +2413,6 @@ win32/netsh_resource.o: win32/netsh.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
 win32/wazuh_agent_eventchannel_resource.o: win32/wazuh-agent-eventchannel.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/setup_windows_resource.o: win32/setup_windows_resource.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/setup_syscheck_resource.o: win32/setup_syscheck_resource.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/setup_iis_resource.o: win32/setup_iis_resource.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
 win32/icon.o: win32/icofile.rc
@@ -2452,13 +2444,13 @@ win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o wi
 win32/manage_agents.exe: win32/manage_agents_resource.o win32/win_service_rk.o ${addagent_o}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-windows.exe: win32/setup_windows_resource.o win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
+win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-syscheck.exe: win32/setup_syscheck_resource.o win32/setup-syscheck.o win32/setup-shared.o win32/win_service_rk.o
+win32/setup-syscheck.exe: win32/setup-syscheck.o win32/setup-shared.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-syscheck\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-iis.exe: win32/setup_iis_resource.o win32/setup-iis.o win32/win_service_rk.o
+win32/setup-iis.exe: win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
