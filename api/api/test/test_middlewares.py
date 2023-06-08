@@ -132,7 +132,7 @@ async def test_middlewares_check_rate_limit(current_time, max_requests, current_
 @pytest.mark.parametrize(
     "request_body,expected_calls,call_args",
     [
-        ({"path": "/events"}, 2, ['events_request_counter', 'events_current_time']),
+        ({"path": "/events"}, 2, ['events_request_counter', 'events_current_time', 5]),
         ({"path": "some_path"}, 1, ['general_request_counter', 'general_current_time', 5])
     ]
 )
@@ -149,9 +149,11 @@ async def test_middlewares_security_middleware(
         "api.middlewares.api_conf",
         new={'access': {'max_request_per_minute': max_req, 'block_time': block_time}}
     ):
-        await security_middleware(request, handler_mock)
+        with patch("api.middlewares.MAX_REQUESTS_EVENTS_DEFAULT", max_req):
 
-        assert rate_limit_mock.call_count == expected_calls
-        rate_limit_mock.assert_called_with(request, *call_args)
+            await security_middleware(request, handler_mock)
 
-        unlock_mock.assert_called_once_with(request, block_time=block_time)
+            assert rate_limit_mock.call_count == expected_calls
+            rate_limit_mock.assert_called_with(request, *call_args)
+
+            unlock_mock.assert_called_once_with(request, block_time=block_time)
