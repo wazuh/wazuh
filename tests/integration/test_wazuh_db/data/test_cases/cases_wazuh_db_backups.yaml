@@ -1,0 +1,87 @@
+- name: Empty max files value.
+  description: Check the behavior when the max files options is empty.
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: ''
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: ''
+
+- name: Max files not Empty.
+  description: Check the behavior when the max files options is not empty.
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: 'value'
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: 'value'
+
+- name: Empty interval.
+  description: Check the behavior when the interval options is empty.
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: ''
+    MAX_FILES: '1'
+  metadata:
+    enabled: 'yes'
+    interval: ''
+    max_files: '1'
+
+- name: Non empty interval.
+  description: Check the behavior when the interval options is not empty.
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 'value'
+    MAX_FILES: '1'
+  metadata:
+    enabled: 'yes'
+    interval: 'value'
+    max_files: '1'
+
+- name: Disabled backup.
+  description: Check the behavior when backup is disabled.
+  configuration_parameters:
+    ENABLED: 'no'
+    INTERVAL: '5s'
+    MAX_FILES: '1'
+  metadata:
+    enabled: 'no'
+    interval: '5s'
+    max_files: '1'
+
+- name: One file max allowed.
+  description: Check the behavior when the max files options is one.
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: '1'
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: '1'
+
+- name: More than one file max allowed.
+  description: Check the behavior when the max files options is grater than one.
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: '3'
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: '3'
+
+- name: Zero file max allowed.
+  description: Check the behavior when the max files options is zero.
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: '0'
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: '0'
