@@ -8,7 +8,7 @@ metadata:
   dataset: system-auth
   title: system-auth logs
   description: Decoder for system athenticated action logs.
-  compatibility: This integration was tested with logs from OS like Ubuntu 12.04, Centos 7, and macOS Sierra.
+  compatibility: This integration was tested with logs from OS like Ubuntu 20.04, Centos 7, and macOS Sierra.
   versions:
     - "any"
   author:
