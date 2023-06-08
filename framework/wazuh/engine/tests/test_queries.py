@@ -203,13 +203,15 @@ def test_query_runs_when_valid(params, data, expected):
     "params",
     [
         {'q': 'example'},
-        {'q': 'example='}
+        {'q': 'example='},
+        {'q': 'example!='},
+        {'q': 'example!==value'}
     ]
 )
 def test_query_has_a_valid_string(params):
     """Test that FieldQuery raises error with invalid value"""
     with pytest.raises(WazuhError) as error_info:
-        queries.FieldQuery(params)
+        queries.FieldQuery(params).apply_transformation(data=[{}])
 
     assert error_info.value.code == 1407
 
@@ -222,13 +224,33 @@ def test_query_has_a_valid_string(params):
          [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': 2}, {'key': 'example', 'n': 3}],
          [{'key': 'example', 'n': 1}, {'key': 'example', 'n': 3}]),
         # Handle query with 2 keys
-        ({'q': 'key=example,n=1'},
+        ({'q': 'key=example;n=1'},
          [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': 2}, {'key': 'example', 'n': 3}],
          [{'key': 'example', 'n': 1}]),
         # Handle query with 2 keys even if one is a list
-        ({'q': 'key=example,n=1'},
+        ({'q': 'key=example;n=1'},
          [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': [1, 2]}, {'key': 'example', 'n': 3}],
-         [{'key': 'example', 'n': 1}])
+         [{'key': 'example', 'n': 1}]),
+        # Handle > operator
+        ({'q': 'key=example;n>2'},
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': [1, 2]}, {'key': 'example', 'n': 3}],
+         [{'key': 'example', 'n': 3}]),
+        # Handle < operator
+        ({'q': 'key=example;n<2'},
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': [1, 2]}, {'key': 'example', 'n': 3}],
+         [{'key': 'example', 'n': 1}]),
+        # Handle ~ operator
+        ({'q': 'key~example'},
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': [1, 2]}, {'key': 'example', 'n': 3}],
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': [1, 2]}, {'key': 'example', 'n': 3}]),
+        # Handle != operator
+        ({'q': 'key!=example'},
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': [1, 2]}, {'key': 'example', 'n': 3}],
+         [{'key': 'not_example', 'n': [1, 2]}]),
+        # Handle or
+        ({'q': 'key!=example,n=1'},
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': [1, 2]}, {'key': 'example', 'n': 3}],
+         [{'key': 'example', 'n': 1}, {'key': 'not_example', 'n': [1, 2]}]),
     ]
 )
 def test_query_return_correct_elements(params, data, expected):

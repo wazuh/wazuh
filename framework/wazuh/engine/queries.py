@@ -5,6 +5,7 @@
 from typing import Any, Dict, List, Type
 
 from wazuh.core.exception import WazuhError
+from wazuh.core.utils import filter_array_by_query
 
 
 class BaseQuery:
@@ -334,7 +335,6 @@ class FieldQuery(BaseQuery):
                 - 'q': The query string to filter results by.
 
         """
-        self._validate_query_value(params['q'])
         self.q = params['q']
 
     @staticmethod
@@ -367,26 +367,6 @@ class FieldQuery(BaseQuery):
             return True
         return False
 
-    @staticmethod
-    def _separate_key_and_value(query_field: str) -> Dict[str, Any]:
-        """
-        Separate the key and value from a query field.
-
-        Args:
-            query_field: A string representing a query field in the format "key=value".
-
-        Returns:
-            dict: A dictionary containing the separated key and value.
-                - 'key': The key extracted from the query field.
-                - 'value': The value extracted from the query field.
-
-        Raises:
-            WazuhError: If the query field is invalid (does not contain '=').
-        """
-        split_value = query_field.split('=')
-
-        return {'key': split_value[0], 'value': split_value[1]}
-
     def apply_transformation(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Apply the field-based query transformation to the given data.
@@ -397,15 +377,7 @@ class FieldQuery(BaseQuery):
         Returns:
             list: A filtered list of dictionaries containing only the entries that satisfy the query conditions.
         """
-        query_fields = [self._separate_key_and_value(query) for query in self.q.split(',')]
-        selected_data = filter(
-            lambda x: all(
-                query['key'] in x and str(x.get(query['key'])) == query['value']
-                for query in query_fields
-            ),
-            data
-        )
-        return list(selected_data)
+        return filter_array_by_query(self.q, data)
 
 
 class EngineQuery:
