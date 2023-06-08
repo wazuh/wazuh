@@ -55,43 +55,6 @@ DWORD WINAPI logcollector_thread(__attribute__((unused)) LPVOID arg)
 void *logcollector_thread()
 #endif
 {
-    /* Read logcollector config file */
-    mdebug1("Reading logcollector configuration.");
-
-    /* Init message queue */
-    w_msg_hash_queues_init();
-
-    /* Read config file */
-    if (LogCollectorConfig(cfg) < 0) {
-        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
-    }
-
-    /* No file available to monitor -- continue */
-    if (logff == NULL) {
-        os_calloc(2, sizeof(logreader), logff);
-        logff[0].file = NULL;
-        logff[0].ffile = NULL;
-        logff[0].logformat = NULL;
-        logff[0].fp = NULL;
-        logff[1].file = NULL;
-        logff[1].logformat = NULL;
-
-        minfo(NO_FILE);
-    }
-
-    /* No sockets defined */
-    if (logsk == NULL) {
-        os_calloc(2, sizeof(socket_forwarder), logsk);
-        logsk[0].name = NULL;
-        logsk[0].location = NULL;
-        logsk[0].mode = 0;
-        logsk[0].prefix = NULL;
-        logsk[1].name = NULL;
-        logsk[1].location = NULL;
-        logsk[1].mode = 0;
-        logsk[1].prefix = NULL;
-    }
-
     LogCollectorStart();
 #ifdef WIN32
     return 0;
@@ -226,6 +189,43 @@ int local_start()
                      NULL,
                      0,
                      (LPDWORD)&threadID);
+
+    /* Read logcollector config file */
+    mdebug1("Reading logcollector configuration.");
+
+    /* Init message queue */
+    w_msg_hash_queues_init();
+
+    /* Read config file */
+    if (LogCollectorConfig(cfg) < 0) {
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+    }
+
+    /* No file available to monitor -- continue */
+    if (logff == NULL) {
+        os_calloc(2, sizeof(logreader), logff);
+        logff[0].file = NULL;
+        logff[0].ffile = NULL;
+        logff[0].logformat = NULL;
+        logff[0].fp = NULL;
+        logff[1].file = NULL;
+        logff[1].logformat = NULL;
+
+        minfo(NO_FILE);
+    }
+
+    /* No sockets defined */
+    if (logsk == NULL) {
+        os_calloc(2, sizeof(logsocket), logsk);
+        logsk[0].name = NULL;
+        logsk[0].location = NULL;
+        logsk[0].mode = 0;
+        logsk[0].prefix = NULL;
+        logsk[1].name = NULL;
+        logsk[1].location = NULL;
+        logsk[1].mode = 0;
+        logsk[1].prefix = NULL;
+    }
 
     /* Start logcollector thread */
     w_create_thread(NULL,
