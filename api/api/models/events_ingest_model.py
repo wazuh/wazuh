@@ -4,7 +4,7 @@ from connexion import ProblemException
 
 from api.models.base_model_ import Body
 
-MAX_EVENTS_PER_REQUEST = 10  # This value isn't definitive. It will be defined based on performance tests.
+MAX_EVENTS_PER_REQUEST = 100
 
 
 class EventsIngestModel(Body):

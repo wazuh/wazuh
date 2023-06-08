@@ -121,7 +121,7 @@ async def check_rate_limit(
     request: web_request.BaseRequest,
     request_counter_key: str,
     current_time_key: str,
-    max_requests: int = MAX_REQUESTS_EVENTS_DEFAULT
+    max_requests: int
 ) -> None:
     """This function checks that the maximum number of requests per minute passed in `max_requests` is not exceeded.
 
@@ -134,7 +134,7 @@ async def check_rate_limit(
     current_time_key : str
         Key of the current time variable to get from globals() dict.
     max_requests : int, optional
-        Maximum number of requests per minute permitted, by default MAX_REQUESTS_DEFAULT.
+        Maximum number of requests per minute permitted.
     """
 
     if not globals()[current_time_key]:
@@ -169,6 +169,7 @@ async def security_middleware(request, handler):
                 request,
                 'events_request_counter',
                 'events_current_time',
+                MAX_REQUESTS_EVENTS_DEFAULT
             )
 
     await unlock_ip(request, block_time=access_conf['block_time'])
