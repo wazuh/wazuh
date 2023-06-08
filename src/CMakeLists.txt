@@ -66,6 +66,7 @@ foreach(loop_var ${EXTERNAL_RES})
 endforeach(loop_var)
 
 set(BENCHMARK_ENABLE_TESTING "OFF")
+link_directories(${SRC_FOLDER})
 add_subdirectory(external/benchmark EXCLUDE_FROM_ALL)
 
 include_directories(${SRC_FOLDER}/shared_modules/utils)
@@ -74,10 +75,13 @@ include_directories(${SRC_FOLDER}/shared_modules/content_manager/include)
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/)
 include_directories(${SRC_FOLDER}/external/cJSON)
+include_directories(${SRC_FOLDER}/external/nlohmann)
 
 add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 add_subdirectory(shared_modules/router)
 add_subdirectory(shared_modules/content_manager)
+set(CURL_DEP wazuhext)
+add_subdirectory(shared_modules/wazuh-http-request)
 add_subdirectory(wazuh_modules/vulnerability_scanner)
 
 add_subdirectory(shared_modules/utils/testtool)
