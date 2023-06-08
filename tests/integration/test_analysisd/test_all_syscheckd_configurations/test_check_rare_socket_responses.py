@@ -53,7 +53,7 @@ from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH, ANALYSISD_QUEUE_SOCKET_PATH
 from wazuh_testing.modules.analysisd import callbacks, ANALYSISD_DEBUG_CONFIG
 from wazuh_testing.tools import mitm
-from wazuh_testing.utils import config
+from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_PATH
 
@@ -64,7 +64,7 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=2), pytest.mark.server]
 cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_rare_events.yaml')
 
 # Test configurations.
-_, metadata, cases_ids = config.get_test_cases_data(cases_path)
+_, metadata, cases_ids = configuration.get_test_cases_data(cases_path)
 
 # Test internal options.
 local_internal_options = ANALYSISD_DEBUG_CONFIG
