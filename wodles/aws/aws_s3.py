@@ -3909,12 +3909,20 @@ def main(argv):
                                        )
                 service.get_alerts()
         elif options.subscriber:
-            asl_queue = AWSSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
-                                    sts_endpoint=options.sts_endpoint,
-                                    service_endpoint=options.service_endpoint,
-                                    name=options.queue)
-            asl_queue.sync_events()
-
+            if options.subscriber.lower() == "security_lake":
+                asl_queue = AWSSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
+                                        sts_endpoint=options.sts_endpoint,
+                                        service_endpoint=options.service_endpoint,
+                                        name=options.queue)
+                asl_queue.sync_events()
+            elif options.subscriber.lower() == "buckets":
+                asl_queue = AWSNewSQSQueue(external_id=options.external_id, iam_role_arn=options.iam_role_arn,
+                                        sts_endpoint=options.sts_endpoint,
+                                        service_endpoint=options.service_endpoint,
+                                        name=options.queue, profile=options.aws_profile)
+                asl_queue.sync_events()
+            else:
+                raise Exception("Invalid type of subscriber")
     except Exception as err:
         debug("+++ Error: {}".format(err), 2)
         if debug_level > 0:
