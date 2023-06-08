@@ -1,0 +1,15 @@
+- name: BRUTE_FORCE_BLOCKING_TIME
+  description: Check if the blocking time, for IP addresses detected as brute-force attack, works.
+  configuration_parameters:
+    block_time: 10
+    max_login_attempts: 10
+    max_request_per_minute: 300
+  metadata:
+
+- name: -
+  description: -
+  configuration_parameters:
+    block_time: 6
+    max_login_attempts: 3
+    max_request_per_minute: 300
+  metadata:
