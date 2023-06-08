@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from typing import Dict, Any
-from wazuh.engine.commands import  MetricCommand
+from wazuh.engine.commands import MetricCommand
 
 HARDCODED_DUMP_RESPONSE = [{
     'scope': 'CountExample',
