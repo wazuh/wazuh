@@ -7,14 +7,14 @@ metadata:
   module: sysmon-linux
   dataset: sysmon
   title: sysmon-linux logs
-  description: Decoder for sysmon logs.
+  description: Decoder for sysmon logs. Currently suport all events generate with id 1, 3, 4, 5, 9, 11, 16 and 23
   compatibility: This integration was tested on Ubuntu 22.04 (jammy), with sysmon version Sysmon v1.2.0
   versions:
     - "1.2.x"
   author:
     name: Wazuh Inc.
     email: info@wazuh.com
-    date: 2023-06-xx
+    date: 2023-06-09
   references:
     - "https://github.com/Sysinternals/SysmonForLinux"
     - "https://github.com/OTRF/OSSEM-DD/tree/main/linux/sysmon"
@@ -28,7 +28,7 @@ check:
 
 parse:
   logpar:
-    - message: "<~sysmonEvent/xml/windows>" # TODO Change the name module
+    - message: "<~sysmonEvent/xml/windows>"
 
 # Log level mapping
 definitions:
