@@ -91,7 +91,7 @@ def pytest_collection_modifyitems(session, config, items):
 
 
 @pytest.fixture()
-def set_wazuh_configuration(test_configuration):
+def set_wazuh_configuration(test_configuration: dict):
     """Set wazuh configuration
 
     Args:
@@ -107,7 +107,7 @@ def set_wazuh_configuration(test_configuration):
     configuration.write_wazuh_conf(test_config)
 
     # Set current configuration
-    session_parameters.current_configuration = test_configuration
+    session_parameters.current_configuration = test_config
 
     yield
 

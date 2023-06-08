@@ -59,13 +59,13 @@ test_configs_path = Path(CONFIGS_PATH, 'config_signature_id_values.yaml')
 test_cases_path = Path(TEST_CASES_PATH, 'cases_invalid_signature_id.yaml')
 
 # Test configurations.
-test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
-test_configuration = configuration.load_configuration_template(test_configs_path, test_configuration, test_metadata)
+config_parameters, metadata, cases_ids = configuration.get_test_cases_data(cases_path)
+test_configuration = configuration.load_configuration_template(configs_path, config_parameters, metadata)
 
 
 # Test function.
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_invalid_signature_id(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
+@pytest.mark.parametrize('test_configuration, metadata', zip(test_configuration, metadata), ids=cases_ids)
+def test_invalid_signature_id(test_configuration, metadata, set_wazuh_configuration, truncate_monitored_files,
                               prepare_custom_rules_file, restart_wazuh):
     '''
     description: Check that when a rule has an empty or invalid signature ID value (invalid format) assigned to the

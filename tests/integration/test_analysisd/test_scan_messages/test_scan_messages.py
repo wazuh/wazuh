@@ -64,7 +64,7 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 test_cases_path = Path(TEST_CASES_PATH, 'cases_scan_messages.yaml')
 
 # Test configurations.
-_, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
+_, metadata, cases_ids = configuration.get_test_cases_data(cases_path)
 
 # Test internal options.
 local_internal_options = ANALYSISD_DEBUG_CONFIG
