@@ -32,7 +32,7 @@ Adding to the ossec.conf file in the monitored agent the following blocks:
   <log_format>multi-line-regex</log_format>
   <!-- Edit location to appropriate path if needed -->
   <location>/var/log/mysql/mysql-slow.log</location>
-  <multiline_regex replace="wspace">^# Time:</multiline_regex>
+  <multiline_regex>^# Time:</multiline_regex>
 </localfile>
 ```
 
