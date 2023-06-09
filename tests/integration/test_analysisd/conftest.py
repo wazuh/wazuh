@@ -15,13 +15,13 @@ from wazuh_testing.utils import callbacks
 
 
 @pytest.fixture()
-def prepare_custom_rules_file(request, metadata):
+def prepare_custom_rules_file(request, test_metadata):
     """Configure a syscollector custom rules for testing.
     Restarting wazuh-analysisd is required to apply this changes.
     """
     data_dir = getattr(request.module, 'RULES_SAMPLE_PATH')
-    source_rule = os.path.join(data_dir, metadata['rules_file'])
-    target_rule = os.path.join(CUSTOM_RULES_PATH, metadata['rules_file'])
+    source_rule = os.path.join(data_dir, test_metadata['rules_file'])
+    target_rule = os.path.join(CUSTOM_RULES_PATH, test_metadata['rules_file'])
 
     # copy custom rule with specific privileges
     shutil.copy(source_rule, target_rule)

@@ -47,7 +47,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
 from wazuh_testing.modules.analysisd.testrule import patterns
 from wazuh_testing.tools import file_monitor
-from wazuh_testing.utils import config, callbacks
+from wazuh_testing.utils import configuration, callbacks
 
 from . import CONFIGS_PATH, TEST_CASES_PATH, RULES_SAMPLE_PATH
 
@@ -56,16 +56,16 @@ pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_signature_id_values.yaml')
-cases_path = Path(TEST_CASES_PATH, 'cases_valid_signature_id.yaml')
+test_cases_path = Path(TEST_CASES_PATH, 'cases_valid_signature_id.yaml')
 
 # Test configurations.
-config_parameters, metadata, cases_ids = config.get_test_cases_data(cases_path)
-configuration = config.load_configuration_template(configs_path, config_parameters, metadata)
+test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
+test_configuration = configuration.load_configuration_template(configs_path, test_configuration, test_metadata)
 
 
 # Test function.
-@pytest.mark.parametrize('configuration, metadata', zip(configuration, metadata), ids=cases_ids)
-def test_valid_signature_id(configuration, metadata, set_wazuh_configuration, truncate_monitored_files,
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_valid_signature_id(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
                             prepare_custom_rules_file, restart_wazuh):
     '''
     description: Check that when a rule has an valid signature ID value assigned to the if_sid option, the rule is
@@ -80,7 +80,7 @@ def test_valid_signature_id(configuration, metadata, set_wazuh_configuration, tr
             - Check no log for "if_sid not found" is detected
             - Check no log for "empty if_sid" is detected
             - Check no log for "invalid if_sid" is detected
-        - Tierdown:
+        - Teardown:
             - Delete custom rule file
             - Restore configuration
             - Stop wazuh
@@ -90,10 +90,10 @@ def test_valid_signature_id(configuration, metadata, set_wazuh_configuration, tr
     tier: 1
 
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Configuration loaded from `config_templates`.
-        - metadata:
+        - test_metadata:
             type: dict
             brief: Test case metadata.
         - set_wazuh_configuration:

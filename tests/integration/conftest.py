@@ -7,7 +7,7 @@ import sys
 
 from wazuh_testing import session_parameters
 from wazuh_testing.tools import queue_monitor, socket_controller
-from wazuh_testing.utils import config, database, file, services
+from wazuh_testing.utils import configuration, database, file, services
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths import ROOT_PREFIX
@@ -91,28 +91,28 @@ def pytest_collection_modifyitems(session, config, items):
 
 
 @pytest.fixture()
-def set_wazuh_configuration(configuration):
+def set_wazuh_configuration(test_configuration):
     """Set wazuh configuration
 
     Args:
-        configuration (dict): Configuration template data to write in the ossec.config
+        test_configuration (dict): Configuration template data to write in the ossec.conf
     """
     # Save current configuration
-    backup_config = config.get_wazuh_conf()
+    backup_config = configuration.get_wazuh_conf()
 
     # Configuration for testing
-    test_config = config.set_section_wazuh_conf(configuration.get('sections'))
+    test_config = configuration.set_section_wazuh_conf(test_configuration.get('sections'))
 
     # Set new configuration
-    config.write_wazuh_conf(test_config)
+    configuration.write_wazuh_conf(test_config)
 
     # Set current configuration
-    session_parameters.current_configuration = configuration
+    session_parameters.current_configuration = test_configuration
 
     yield
 
     # Restore previous configuration
-    config.write_wazuh_conf(backup_config)
+    configuration.write_wazuh_conf(backup_config)
 
 
 @pytest.fixture()
@@ -160,13 +160,13 @@ def configure_local_internal_options(request):
                                  'parameter has been passed explicitly, nor is the variable local_internal_options '
                                  'found in the module.') from AttributeError
 
-    backup_local_internal_options = config.get_local_internal_options_dict()
+    backup_local_internal_options = configuration.get_local_internal_options_dict()
 
-    config.set_local_internal_options_dict(local_internal_options)
+    configuration.set_local_internal_options_dict(local_internal_options)
 
     yield
 
-    config.set_local_internal_options_dict(backup_local_internal_options)
+    configuration.set_local_internal_options_dict(backup_local_internal_options)
 
 
 @pytest.fixture(scope='module')
