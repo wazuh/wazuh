@@ -3,9 +3,9 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
-#include <termios.h>
 #include <thread>
 
+#include <termios.h>
 #include <re2/re2.h>
 
 #include <cmds/details/stackExecutor.hpp>

@@ -39,10 +39,8 @@ SemParser getSemParser(const std::string& targetField)
         {
             return noMapper();
         }
-        else
-        {
-            return getMapper(parsed, targetField);
-        }
+
+        return getMapper(parsed, targetField);
     };
 }
 
