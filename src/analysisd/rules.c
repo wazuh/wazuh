@@ -759,6 +759,13 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                     } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_field) == 0) {
 
+                        if (Config.decoder_order_size <= ifield) {
+                            smerror(log_msg, "Rule %d has exceeded the maximum number of allowed fields",
+                                   config_ruleinfo->sigid);
+
+                            goto cleanup;
+                        }
+
                         if (!w_check_attr_field_name(rule_tmp_params.rule_arr_opt[k],
                                                      &config_ruleinfo->fields[ifield],
                                                      config_ruleinfo->sigid, log_msg)) {
@@ -2159,7 +2166,7 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
     ruleinfo_pt->program_name = NULL;
     ruleinfo_pt->action = NULL;
     ruleinfo_pt->location = NULL;
-    os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
+    os_calloc(Config.decoder_order_size + 1, sizeof(FieldInfo*), ruleinfo_pt->fields);
 
     ruleinfo_pt->same_fields = NULL;
     ruleinfo_pt->not_same_fields = NULL;
