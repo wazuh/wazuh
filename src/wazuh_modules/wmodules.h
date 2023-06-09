@@ -14,7 +14,7 @@
 
 #include "shared.h"
 #include <pthread.h>
-#include "config/config.h"
+#include "../config/config.h"
 #include "wmodules_def.h"
 
 #define WM_STATE_DIR    "var/wodles"               // Default directory for states.

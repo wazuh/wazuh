@@ -13,7 +13,7 @@
 policy:
   id: "cis_oracle_database_19c"
   file: "cis_oracle_database_19c.yml"
-  name: "CIS Benchmark for Oracle Database 19c"
+  name: "CIS Benchmark for Oracle Database 19c v1.0.0"
   description: "The Oracle installation version and patches should be the most recent that are compatible with the organization's operational needs."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

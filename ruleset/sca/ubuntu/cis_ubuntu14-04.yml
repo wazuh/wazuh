@@ -13,7 +13,7 @@
 policy:
   id: "cis_ubuntu14-04"
   file: "cis_ubuntu14-04.yml"
-  name: "CIS benchmark for Ubuntu Linux 14.04 LTS"
+  name: "CIS Ubuntu Linux 14.04 LTS Benchmark v2.1.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 14.04 LTS."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

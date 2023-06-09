@@ -13,8 +13,8 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "headers/shared.h"
-#include "os_integrator/integrator.h"
+#include "../headers/shared.h"
+#include "../os_integrator/integrator.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"

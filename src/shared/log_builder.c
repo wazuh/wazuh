@@ -241,7 +241,7 @@ int log_builder_update_host_ip(log_builder_t * builder) {
     if ((now - last_update) >= g_ip_update_interval) {
         last_update = now;
 #ifdef WIN32
-        char * tmp_host_ip = get_agent_ip();
+        char * tmp_host_ip = get_agent_ip_legacy_win32();
 
         if (tmp_host_ip) {
             strncpy(host_ip, tmp_host_ip, IPSIZE - 1);

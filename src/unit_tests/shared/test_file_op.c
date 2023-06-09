@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "headers/defs.h"
+#include "../headers/defs.h"
 #include "../headers/file_op.h"
-#include "error_messages/error_messages.h"
+#include "../error_messages/error_messages.h"
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"

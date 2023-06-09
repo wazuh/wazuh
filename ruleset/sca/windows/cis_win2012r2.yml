@@ -9,13 +9,11 @@
 #
 # Based on:
 # Center for Internet Security Benchmark for Microsoft Windows Server 2012 R2 v2.3.0 - 03-30-2018
-# Center for Internet Security Benchmark for Microsoft Windows Server 2012 R2 v2.1.0 - 11-02-2015
-# Center for Internet Security Benchmark for Microsoft Windows Server 2012 R2 v2.0.0 - 09-30-2015
 
 policy:
   id: "cis_win2012r2"
   file: "cis_win2012r2.yml"
-  name: "CIS Benchmark for Windows 2012 R2"
+  name: "CIS Microsoft Windows Server 2012 R2 Benchmark v2.3.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2012 R2."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

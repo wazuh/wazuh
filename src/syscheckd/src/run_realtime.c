@@ -19,10 +19,10 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
-#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
-#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
-#include "unit_tests/wrappers/windows/synchapi_wrappers.h"
-#include "unit_tests/wrappers/windows/winbase_wrappers.h"
+#include "../../unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/synchapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/winbase_wrappers.h"
 #endif
 #endif
 

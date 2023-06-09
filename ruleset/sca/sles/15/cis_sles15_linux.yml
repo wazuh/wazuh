@@ -13,7 +13,7 @@
 policy:
   id: "cis_sles15_linux"
   file: "cis_sles15_linux.yml"
-  name: "CIS SUSE Linux Enterprise 15 Benchmark"
+  name: "CIS SUSE Linux Enterprise 15 Benchmark v1.1.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for SUSE Linux Enterprise 12 systems running on x86 and x64 platforms. This document was tested against SUSE Linux Enterprise Server 15 SP1."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -3902,4 +3902,3 @@ checks:
 # 6.2.16 Ensure no duplicate user names exist - Not implemented
 # 6.2.17 Ensure no duplicate group names exist - Not implemented
 # 6.2.18 Ensure shadow group is empty - Not implemented
-

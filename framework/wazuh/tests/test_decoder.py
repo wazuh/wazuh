@@ -133,7 +133,6 @@ def test_get_decoders_files_filters(status, relative_dirname, filename, expected
     'test1_decoders.xml',
     'test2_decoders.xml'
 ])
-@patch('wazuh.core.common.DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "decoders"))
 def test_get_decoder_file(filename):
     """Test get file function.
 
@@ -161,17 +160,15 @@ def test_get_decoder_file_exceptions():
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1503
 
     # Invalid XML
-    with patch('wazuh.core.common.DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "decoders")):
-        result = decoder.get_decoder_file(filename='wrong_decoders.xml')
-        assert not result.affected_items
-        assert result.render()['data']['failed_items'][0]['error']['code'] == 1501
+    result = decoder.get_decoder_file(filename='wrong_decoders.xml')
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1501
 
     # File permissions
     with patch('builtins.open', side_effect=PermissionError):
-        with patch('wazuh.core.common.DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "decoders")):
-            result = decoder.get_decoder_file(filename='test2_decoders.xml')
-            assert not result.affected_items
-            assert result.render()['data']['failed_items'][0]['error']['code'] == 1502
+        result = decoder.get_decoder_file(filename='test2_decoders.xml')
+        assert not result.affected_items
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1502
 
 
 @pytest.mark.parametrize('file, overwrite', [
@@ -184,7 +181,6 @@ def test_get_decoder_file_exceptions():
 @patch('wazuh.decoder.remove')
 @patch('wazuh.decoder.safe_move')
 @patch('wazuh.core.utils.check_remote_commands')
-@patch('wazuh.core.common.DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "decoders"))
 def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_full_copy, mock_xml, mock_delete, file,
                      overwrite):
     """Test uploading a decoder file.

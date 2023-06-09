@@ -30,7 +30,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "headers/logging_helper.h"
+#include "logging_helper.h"
 
 typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 

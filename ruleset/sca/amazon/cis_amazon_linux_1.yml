@@ -8,13 +8,13 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Benchmark for Amazon Linux v2.1.0 - 12-27-2017
+# Center for Internet Security Benchmark for Amazon Linux v2.1.0 - 08-19-2020
 
 policy:
   id: "cis_amazon_linux_1"
   file: "cis_amazon_linux_1.yml"
-  name: "CIS Benchmark for Amazon Linux 1"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Amazon Linux systems running on x86 and x64 platforms. This document was tested against CentOS 6."
+  name: "CIS Amazon Linux Benchmark v2.1.0"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Amazon Linux systems."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
