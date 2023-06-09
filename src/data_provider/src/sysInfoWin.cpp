@@ -345,7 +345,14 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
 
                 if (packageReg.string("InstallDate", value))
                 {
-                    install_time = Utils::normalizeTimestamp(value, packageReg.keyModificationDate());
+                    try
+                    {
+                        install_time = Utils::normalizeTimestamp(value, packageReg.keyModificationDate());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        install_time = packageReg.keyModificationDate();
+                    }
                 }
                 else
                 {
