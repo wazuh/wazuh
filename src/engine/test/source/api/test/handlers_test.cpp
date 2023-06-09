@@ -268,7 +268,7 @@ TEST_P(TestRunWithoutFilesCommand, ParameterEvaluation)
 
     m_spSession->sessionPost(m_spRouter);
 
-    ASSERT_NO_THROW(m_cmdAPI = sessionRun(m_spRouter));
+    ASSERT_NO_THROW(m_cmdAPI = runPost(m_spRouter));
     json::Json params {input.c_str()};
     base::utils::wazuhProtocol::WazuhRequest request;
     ASSERT_NO_THROW(request = api::wpRequest::create(rCommand, rOrigin, params));

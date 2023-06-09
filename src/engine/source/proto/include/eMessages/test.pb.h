@@ -53,6 +53,12 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace test {
+class RunPost_Request;
+struct RunPost_RequestDefaultTypeInternal;
+extern RunPost_RequestDefaultTypeInternal _RunPost_Request_default_instance_;
+class RunPost_Response;
+struct RunPost_ResponseDefaultTypeInternal;
+extern RunPost_ResponseDefaultTypeInternal _RunPost_Response_default_instance_;
 class SessionGet_Request;
 struct SessionGet_RequestDefaultTypeInternal;
 extern SessionGet_RequestDefaultTypeInternal _SessionGet_Request_default_instance_;
@@ -77,18 +83,14 @@ extern SessionsGet_RequestDefaultTypeInternal _SessionsGet_Request_default_insta
 class SessionsGet_Response;
 struct SessionsGet_ResponseDefaultTypeInternal;
 extern SessionsGet_ResponseDefaultTypeInternal _SessionsGet_Response_default_instance_;
-class SessionsRun_Request;
-struct SessionsRun_RequestDefaultTypeInternal;
-extern SessionsRun_RequestDefaultTypeInternal _SessionsRun_Request_default_instance_;
-class SessionsRun_Response;
-struct SessionsRun_ResponseDefaultTypeInternal;
-extern SessionsRun_ResponseDefaultTypeInternal _SessionsRun_Response_default_instance_;
 }  // namespace test
 }  // namespace engine
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
 PROTOBUF_NAMESPACE_OPEN
+template<> ::com::wazuh::api::engine::test::RunPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::RunPost_Request>(Arena*);
+template<> ::com::wazuh::api::engine::test::RunPost_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::RunPost_Response>(Arena*);
 template<> ::com::wazuh::api::engine::test::SessionGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionGet_Request>(Arena*);
 template<> ::com::wazuh::api::engine::test::SessionGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionGet_Response>(Arena*);
 template<> ::com::wazuh::api::engine::test::SessionPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionPost_Request>(Arena*);
@@ -97,8 +99,6 @@ template<> ::com::wazuh::api::engine::test::SessionsDelete_Request* Arena::Creat
 template<> ::com::wazuh::api::engine::test::SessionsDelete_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionsDelete_Response>(Arena*);
 template<> ::com::wazuh::api::engine::test::SessionsGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionsGet_Request>(Arena*);
 template<> ::com::wazuh::api::engine::test::SessionsGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionsGet_Response>(Arena*);
-template<> ::com::wazuh::api::engine::test::SessionsRun_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionsRun_Request>(Arena*);
-template<> ::com::wazuh::api::engine::test::SessionsRun_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::test::SessionsRun_Response>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
 namespace com {
 namespace wazuh {
@@ -107,14 +107,14 @@ namespace engine {
 namespace test {
 
 enum DebugMode : int {
-  ONLY_OUTPUT = 0,
+  OUTPUT_ONLY = 0,
   OUTPUT_AND_TRACES = 1,
   OUTPUT_AND_TRACES_WITH_DETAILS = 2,
   DebugMode_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
   DebugMode_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
 };
 bool DebugMode_IsValid(int value);
-constexpr DebugMode DebugMode_MIN = ONLY_OUTPUT;
+constexpr DebugMode DebugMode_MIN = OUTPUT_ONLY;
 constexpr DebugMode DebugMode_MAX = OUTPUT_AND_TRACES_WITH_DETAILS;
 constexpr int DebugMode_ARRAYSIZE = DebugMode_MAX + 1;
 
@@ -1633,24 +1633,24 @@ class SessionsDelete_Response final :
 };
 // -------------------------------------------------------------------
 
-class SessionsRun_Request final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.test.SessionsRun_Request) */ {
+class RunPost_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.test.RunPost_Request) */ {
  public:
-  inline SessionsRun_Request() : SessionsRun_Request(nullptr) {}
-  ~SessionsRun_Request() override;
-  explicit PROTOBUF_CONSTEXPR SessionsRun_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+  inline RunPost_Request() : RunPost_Request(nullptr) {}
+  ~RunPost_Request() override;
+  explicit PROTOBUF_CONSTEXPR RunPost_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
 
-  SessionsRun_Request(const SessionsRun_Request& from);
-  SessionsRun_Request(SessionsRun_Request&& from) noexcept
-    : SessionsRun_Request() {
+  RunPost_Request(const RunPost_Request& from);
+  RunPost_Request(RunPost_Request&& from) noexcept
+    : RunPost_Request() {
     *this = ::std::move(from);
   }
 
-  inline SessionsRun_Request& operator=(const SessionsRun_Request& from) {
+  inline RunPost_Request& operator=(const RunPost_Request& from) {
     CopyFrom(from);
     return *this;
   }
-  inline SessionsRun_Request& operator=(SessionsRun_Request&& from) noexcept {
+  inline RunPost_Request& operator=(RunPost_Request&& from) noexcept {
     if (this == &from) return *this;
     if (GetOwningArena() == from.GetOwningArena()
   #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
@@ -1673,20 +1673,20 @@ class SessionsRun_Request final :
   static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
     return default_instance().GetMetadata().reflection;
   }
-  static const SessionsRun_Request& default_instance() {
+  static const RunPost_Request& default_instance() {
     return *internal_default_instance();
   }
-  static inline const SessionsRun_Request* internal_default_instance() {
-    return reinterpret_cast<const SessionsRun_Request*>(
-               &_SessionsRun_Request_default_instance_);
+  static inline const RunPost_Request* internal_default_instance() {
+    return reinterpret_cast<const RunPost_Request*>(
+               &_RunPost_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
     8;
 
-  friend void swap(SessionsRun_Request& a, SessionsRun_Request& b) {
+  friend void swap(RunPost_Request& a, RunPost_Request& b) {
     a.Swap(&b);
   }
-  inline void Swap(SessionsRun_Request* other) {
+  inline void Swap(RunPost_Request* other) {
     if (other == this) return;
   #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
     if (GetOwningArena() != nullptr &&
@@ -1699,7 +1699,7 @@ class SessionsRun_Request final :
       ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
     }
   }
-  void UnsafeArenaSwap(SessionsRun_Request* other) {
+  void UnsafeArenaSwap(RunPost_Request* other) {
     if (other == this) return;
     GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
     InternalSwap(other);
@@ -1707,14 +1707,14 @@ class SessionsRun_Request final :
 
   // implements Message ----------------------------------------------
 
-  SessionsRun_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<SessionsRun_Request>(arena);
+  RunPost_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<RunPost_Request>(arena);
   }
   using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const SessionsRun_Request& from);
+  void CopyFrom(const RunPost_Request& from);
   using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const SessionsRun_Request& from) {
-    SessionsRun_Request::MergeImpl(*this, from);
+  void MergeFrom( const RunPost_Request& from) {
+    RunPost_Request::MergeImpl(*this, from);
   }
   private:
   static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
@@ -1732,15 +1732,15 @@ class SessionsRun_Request final :
   void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
   void SharedDtor();
   void SetCachedSize(int size) const final;
-  void InternalSwap(SessionsRun_Request* other);
+  void InternalSwap(RunPost_Request* other);
 
   private:
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
   static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.test.SessionsRun_Request";
+    return "com.wazuh.api.engine.test.RunPost_Request";
   }
   protected:
-  explicit SessionsRun_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+  explicit RunPost_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                        bool is_message_owned = false);
   public:
 
@@ -1840,7 +1840,7 @@ class SessionsRun_Request final :
   void _internal_set_debugmode(::com::wazuh::api::engine::test::DebugMode value);
   public:
 
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.test.SessionsRun_Request)
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.test.RunPost_Request)
  private:
   class _Internal;
 
@@ -1861,24 +1861,24 @@ class SessionsRun_Request final :
 };
 // -------------------------------------------------------------------
 
-class SessionsRun_Response final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.test.SessionsRun_Response) */ {
+class RunPost_Response final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.test.RunPost_Response) */ {
  public:
-  inline SessionsRun_Response() : SessionsRun_Response(nullptr) {}
-  ~SessionsRun_Response() override;
-  explicit PROTOBUF_CONSTEXPR SessionsRun_Response(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+  inline RunPost_Response() : RunPost_Response(nullptr) {}
+  ~RunPost_Response() override;
+  explicit PROTOBUF_CONSTEXPR RunPost_Response(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
 
-  SessionsRun_Response(const SessionsRun_Response& from);
-  SessionsRun_Response(SessionsRun_Response&& from) noexcept
-    : SessionsRun_Response() {
+  RunPost_Response(const RunPost_Response& from);
+  RunPost_Response(RunPost_Response&& from) noexcept
+    : RunPost_Response() {
     *this = ::std::move(from);
   }
 
-  inline SessionsRun_Response& operator=(const SessionsRun_Response& from) {
+  inline RunPost_Response& operator=(const RunPost_Response& from) {
     CopyFrom(from);
     return *this;
   }
-  inline SessionsRun_Response& operator=(SessionsRun_Response&& from) noexcept {
+  inline RunPost_Response& operator=(RunPost_Response&& from) noexcept {
     if (this == &from) return *this;
     if (GetOwningArena() == from.GetOwningArena()
   #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
@@ -1901,20 +1901,20 @@ class SessionsRun_Response final :
   static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
     return default_instance().GetMetadata().reflection;
   }
-  static const SessionsRun_Response& default_instance() {
+  static const RunPost_Response& default_instance() {
     return *internal_default_instance();
   }
-  static inline const SessionsRun_Response* internal_default_instance() {
-    return reinterpret_cast<const SessionsRun_Response*>(
-               &_SessionsRun_Response_default_instance_);
+  static inline const RunPost_Response* internal_default_instance() {
+    return reinterpret_cast<const RunPost_Response*>(
+               &_RunPost_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
     9;
 
-  friend void swap(SessionsRun_Response& a, SessionsRun_Response& b) {
+  friend void swap(RunPost_Response& a, RunPost_Response& b) {
     a.Swap(&b);
   }
-  inline void Swap(SessionsRun_Response* other) {
+  inline void Swap(RunPost_Response* other) {
     if (other == this) return;
   #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
     if (GetOwningArena() != nullptr &&
@@ -1927,7 +1927,7 @@ class SessionsRun_Response final :
       ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
     }
   }
-  void UnsafeArenaSwap(SessionsRun_Response* other) {
+  void UnsafeArenaSwap(RunPost_Response* other) {
     if (other == this) return;
     GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
     InternalSwap(other);
@@ -1935,14 +1935,14 @@ class SessionsRun_Response final :
 
   // implements Message ----------------------------------------------
 
-  SessionsRun_Response* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<SessionsRun_Response>(arena);
+  RunPost_Response* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<RunPost_Response>(arena);
   }
   using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const SessionsRun_Response& from);
+  void CopyFrom(const RunPost_Response& from);
   using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const SessionsRun_Response& from) {
-    SessionsRun_Response::MergeImpl(*this, from);
+  void MergeFrom( const RunPost_Response& from) {
+    RunPost_Response::MergeImpl(*this, from);
   }
   private:
   static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
@@ -1960,15 +1960,15 @@ class SessionsRun_Response final :
   void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
   void SharedDtor();
   void SetCachedSize(int size) const final;
-  void InternalSwap(SessionsRun_Response* other);
+  void InternalSwap(RunPost_Response* other);
 
   private:
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
   static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.test.SessionsRun_Response";
+    return "com.wazuh.api.engine.test.RunPost_Response";
   }
   protected:
-  explicit SessionsRun_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+  explicit RunPost_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                        bool is_message_owned = false);
   public:
 
@@ -2050,7 +2050,7 @@ class SessionsRun_Response final :
   void _internal_set_status(::com::wazuh::api::engine::ReturnStatus value);
   public:
 
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.test.SessionsRun_Response)
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.test.RunPost_Response)
  private:
   class _Internal;
 
@@ -3368,49 +3368,49 @@ inline void SessionsDelete_Response::set_allocated_error(std::string* error) {
 
 // -------------------------------------------------------------------
 
-// SessionsRun_Request
+// RunPost_Request
 
 // optional string name = 1;
-inline bool SessionsRun_Request::_internal_has_name() const {
+inline bool RunPost_Request::_internal_has_name() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool SessionsRun_Request::has_name() const {
+inline bool RunPost_Request::has_name() const {
   return _internal_has_name();
 }
-inline void SessionsRun_Request::clear_name() {
+inline void RunPost_Request::clear_name() {
   _impl_.name_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& SessionsRun_Request::name() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsRun_Request.name)
+inline const std::string& RunPost_Request::name() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.name)
   return _internal_name();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void SessionsRun_Request::set_name(ArgT0&& arg0, ArgT... args) {
+void RunPost_Request::set_name(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000001u;
  _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionsRun_Request.name)
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.name)
 }
-inline std::string* SessionsRun_Request::mutable_name() {
+inline std::string* RunPost_Request::mutable_name() {
   std::string* _s = _internal_mutable_name();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.SessionsRun_Request.name)
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Request.name)
   return _s;
 }
-inline const std::string& SessionsRun_Request::_internal_name() const {
+inline const std::string& RunPost_Request::_internal_name() const {
   return _impl_.name_.Get();
 }
-inline void SessionsRun_Request::_internal_set_name(const std::string& value) {
+inline void RunPost_Request::_internal_set_name(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000001u;
   _impl_.name_.Set(value, GetArenaForAllocation());
 }
-inline std::string* SessionsRun_Request::_internal_mutable_name() {
+inline std::string* RunPost_Request::_internal_mutable_name() {
   _impl_._has_bits_[0] |= 0x00000001u;
   return _impl_.name_.Mutable(GetArenaForAllocation());
 }
-inline std::string* SessionsRun_Request::release_name() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.SessionsRun_Request.name)
+inline std::string* RunPost_Request::release_name() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Request.name)
   if (!_internal_has_name()) {
     return nullptr;
   }
@@ -3423,7 +3423,7 @@ inline std::string* SessionsRun_Request::release_name() {
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void SessionsRun_Request::set_allocated_name(std::string* name) {
+inline void RunPost_Request::set_allocated_name(std::string* name) {
   if (name != nullptr) {
     _impl_._has_bits_[0] |= 0x00000001u;
   } else {
@@ -3435,28 +3435,28 @@ inline void SessionsRun_Request::set_allocated_name(std::string* name) {
     _impl_.name_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionsRun_Request.name)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Request.name)
 }
 
 // optional .google.protobuf.Value event = 2;
-inline bool SessionsRun_Request::_internal_has_event() const {
+inline bool RunPost_Request::_internal_has_event() const {
   bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   PROTOBUF_ASSUME(!value || _impl_.event_ != nullptr);
   return value;
 }
-inline bool SessionsRun_Request::has_event() const {
+inline bool RunPost_Request::has_event() const {
   return _internal_has_event();
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& SessionsRun_Request::_internal_event() const {
+inline const ::PROTOBUF_NAMESPACE_ID::Value& RunPost_Request::_internal_event() const {
   const ::PROTOBUF_NAMESPACE_ID::Value* p = _impl_.event_;
   return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Value&>(
       ::PROTOBUF_NAMESPACE_ID::_Value_default_instance_);
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& SessionsRun_Request::event() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsRun_Request.event)
+inline const ::PROTOBUF_NAMESPACE_ID::Value& RunPost_Request::event() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.event)
   return _internal_event();
 }
-inline void SessionsRun_Request::unsafe_arena_set_allocated_event(
+inline void RunPost_Request::unsafe_arena_set_allocated_event(
     ::PROTOBUF_NAMESPACE_ID::Value* event) {
   if (GetArenaForAllocation() == nullptr) {
     delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.event_);
@@ -3467,9 +3467,9 @@ inline void SessionsRun_Request::unsafe_arena_set_allocated_event(
   } else {
     _impl_._has_bits_[0] &= ~0x00000004u;
   }
-  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.SessionsRun_Request.event)
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.RunPost_Request.event)
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Request::release_event() {
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::release_event() {
   _impl_._has_bits_[0] &= ~0x00000004u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.event_;
   _impl_.event_ = nullptr;
@@ -3484,14 +3484,14 @@ inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Request::release_event() {
 #endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
   return temp;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Request::unsafe_arena_release_event() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.SessionsRun_Request.event)
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::unsafe_arena_release_event() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Request.event)
   _impl_._has_bits_[0] &= ~0x00000004u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.event_;
   _impl_.event_ = nullptr;
   return temp;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Request::_internal_mutable_event() {
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::_internal_mutable_event() {
   _impl_._has_bits_[0] |= 0x00000004u;
   if (_impl_.event_ == nullptr) {
     auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
@@ -3499,12 +3499,12 @@ inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Request::_internal_mutable_ev
   }
   return _impl_.event_;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Request::mutable_event() {
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Request::mutable_event() {
   ::PROTOBUF_NAMESPACE_ID::Value* _msg = _internal_mutable_event();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.SessionsRun_Request.event)
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Request.event)
   return _msg;
 }
-inline void SessionsRun_Request::set_allocated_event(::PROTOBUF_NAMESPACE_ID::Value* event) {
+inline void RunPost_Request::set_allocated_event(::PROTOBUF_NAMESPACE_ID::Value* event) {
   ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
   if (message_arena == nullptr) {
     delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.event_);
@@ -3522,106 +3522,106 @@ inline void SessionsRun_Request::set_allocated_event(::PROTOBUF_NAMESPACE_ID::Va
     _impl_._has_bits_[0] &= ~0x00000004u;
   }
   _impl_.event_ = event;
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionsRun_Request.event)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Request.event)
 }
 
 // optional uint32 protocolqueue = 3;
-inline bool SessionsRun_Request::_internal_has_protocolqueue() const {
+inline bool RunPost_Request::_internal_has_protocolqueue() const {
   bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
   return value;
 }
-inline bool SessionsRun_Request::has_protocolqueue() const {
+inline bool RunPost_Request::has_protocolqueue() const {
   return _internal_has_protocolqueue();
 }
-inline void SessionsRun_Request::clear_protocolqueue() {
+inline void RunPost_Request::clear_protocolqueue() {
   _impl_.protocolqueue_ = 0u;
   _impl_._has_bits_[0] &= ~0x00000008u;
 }
-inline uint32_t SessionsRun_Request::_internal_protocolqueue() const {
+inline uint32_t RunPost_Request::_internal_protocolqueue() const {
   return _impl_.protocolqueue_;
 }
-inline uint32_t SessionsRun_Request::protocolqueue() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsRun_Request.protocolqueue)
+inline uint32_t RunPost_Request::protocolqueue() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.protocolqueue)
   return _internal_protocolqueue();
 }
-inline void SessionsRun_Request::_internal_set_protocolqueue(uint32_t value) {
+inline void RunPost_Request::_internal_set_protocolqueue(uint32_t value) {
   _impl_._has_bits_[0] |= 0x00000008u;
   _impl_.protocolqueue_ = value;
 }
-inline void SessionsRun_Request::set_protocolqueue(uint32_t value) {
+inline void RunPost_Request::set_protocolqueue(uint32_t value) {
   _internal_set_protocolqueue(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionsRun_Request.protocolqueue)
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.protocolqueue)
 }
 
 // optional .com.wazuh.api.engine.test.DebugMode debugmode = 4;
-inline bool SessionsRun_Request::_internal_has_debugmode() const {
+inline bool RunPost_Request::_internal_has_debugmode() const {
   bool value = (_impl_._has_bits_[0] & 0x00000010u) != 0;
   return value;
 }
-inline bool SessionsRun_Request::has_debugmode() const {
+inline bool RunPost_Request::has_debugmode() const {
   return _internal_has_debugmode();
 }
-inline void SessionsRun_Request::clear_debugmode() {
+inline void RunPost_Request::clear_debugmode() {
   _impl_.debugmode_ = 0;
   _impl_._has_bits_[0] &= ~0x00000010u;
 }
-inline ::com::wazuh::api::engine::test::DebugMode SessionsRun_Request::_internal_debugmode() const {
+inline ::com::wazuh::api::engine::test::DebugMode RunPost_Request::_internal_debugmode() const {
   return static_cast< ::com::wazuh::api::engine::test::DebugMode >(_impl_.debugmode_);
 }
-inline ::com::wazuh::api::engine::test::DebugMode SessionsRun_Request::debugmode() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsRun_Request.debugmode)
+inline ::com::wazuh::api::engine::test::DebugMode RunPost_Request::debugmode() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.debugmode)
   return _internal_debugmode();
 }
-inline void SessionsRun_Request::_internal_set_debugmode(::com::wazuh::api::engine::test::DebugMode value) {
+inline void RunPost_Request::_internal_set_debugmode(::com::wazuh::api::engine::test::DebugMode value) {
   _impl_._has_bits_[0] |= 0x00000010u;
   _impl_.debugmode_ = value;
 }
-inline void SessionsRun_Request::set_debugmode(::com::wazuh::api::engine::test::DebugMode value) {
+inline void RunPost_Request::set_debugmode(::com::wazuh::api::engine::test::DebugMode value) {
   _internal_set_debugmode(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionsRun_Request.debugmode)
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.debugmode)
 }
 
 // optional string protocollocation = 5;
-inline bool SessionsRun_Request::_internal_has_protocollocation() const {
+inline bool RunPost_Request::_internal_has_protocollocation() const {
   bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
   return value;
 }
-inline bool SessionsRun_Request::has_protocollocation() const {
+inline bool RunPost_Request::has_protocollocation() const {
   return _internal_has_protocollocation();
 }
-inline void SessionsRun_Request::clear_protocollocation() {
+inline void RunPost_Request::clear_protocollocation() {
   _impl_.protocollocation_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000002u;
 }
-inline const std::string& SessionsRun_Request::protocollocation() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsRun_Request.protocollocation)
+inline const std::string& RunPost_Request::protocollocation() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Request.protocollocation)
   return _internal_protocollocation();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void SessionsRun_Request::set_protocollocation(ArgT0&& arg0, ArgT... args) {
+void RunPost_Request::set_protocollocation(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000002u;
  _impl_.protocollocation_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionsRun_Request.protocollocation)
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Request.protocollocation)
 }
-inline std::string* SessionsRun_Request::mutable_protocollocation() {
+inline std::string* RunPost_Request::mutable_protocollocation() {
   std::string* _s = _internal_mutable_protocollocation();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.SessionsRun_Request.protocollocation)
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Request.protocollocation)
   return _s;
 }
-inline const std::string& SessionsRun_Request::_internal_protocollocation() const {
+inline const std::string& RunPost_Request::_internal_protocollocation() const {
   return _impl_.protocollocation_.Get();
 }
-inline void SessionsRun_Request::_internal_set_protocollocation(const std::string& value) {
+inline void RunPost_Request::_internal_set_protocollocation(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000002u;
   _impl_.protocollocation_.Set(value, GetArenaForAllocation());
 }
-inline std::string* SessionsRun_Request::_internal_mutable_protocollocation() {
+inline std::string* RunPost_Request::_internal_mutable_protocollocation() {
   _impl_._has_bits_[0] |= 0x00000002u;
   return _impl_.protocollocation_.Mutable(GetArenaForAllocation());
 }
-inline std::string* SessionsRun_Request::release_protocollocation() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.SessionsRun_Request.protocollocation)
+inline std::string* RunPost_Request::release_protocollocation() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Request.protocollocation)
   if (!_internal_has_protocollocation()) {
     return nullptr;
   }
@@ -3634,7 +3634,7 @@ inline std::string* SessionsRun_Request::release_protocollocation() {
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void SessionsRun_Request::set_allocated_protocollocation(std::string* protocollocation) {
+inline void RunPost_Request::set_allocated_protocollocation(std::string* protocollocation) {
   if (protocollocation != nullptr) {
     _impl_._has_bits_[0] |= 0x00000002u;
   } else {
@@ -3646,74 +3646,74 @@ inline void SessionsRun_Request::set_allocated_protocollocation(std::string* pro
     _impl_.protocollocation_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionsRun_Request.protocollocation)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Request.protocollocation)
 }
 
 // -------------------------------------------------------------------
 
-// SessionsRun_Response
+// RunPost_Response
 
 // .com.wazuh.api.engine.ReturnStatus status = 1;
-inline void SessionsRun_Response::clear_status() {
+inline void RunPost_Response::clear_status() {
   _impl_.status_ = 0;
 }
-inline ::com::wazuh::api::engine::ReturnStatus SessionsRun_Response::_internal_status() const {
+inline ::com::wazuh::api::engine::ReturnStatus RunPost_Response::_internal_status() const {
   return static_cast< ::com::wazuh::api::engine::ReturnStatus >(_impl_.status_);
 }
-inline ::com::wazuh::api::engine::ReturnStatus SessionsRun_Response::status() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsRun_Response.status)
+inline ::com::wazuh::api::engine::ReturnStatus RunPost_Response::status() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Response.status)
   return _internal_status();
 }
-inline void SessionsRun_Response::_internal_set_status(::com::wazuh::api::engine::ReturnStatus value) {
+inline void RunPost_Response::_internal_set_status(::com::wazuh::api::engine::ReturnStatus value) {
   
   _impl_.status_ = value;
 }
-inline void SessionsRun_Response::set_status(::com::wazuh::api::engine::ReturnStatus value) {
+inline void RunPost_Response::set_status(::com::wazuh::api::engine::ReturnStatus value) {
   _internal_set_status(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionsRun_Response.status)
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Response.status)
 }
 
 // optional string error = 2;
-inline bool SessionsRun_Response::_internal_has_error() const {
+inline bool RunPost_Response::_internal_has_error() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool SessionsRun_Response::has_error() const {
+inline bool RunPost_Response::has_error() const {
   return _internal_has_error();
 }
-inline void SessionsRun_Response::clear_error() {
+inline void RunPost_Response::clear_error() {
   _impl_.error_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& SessionsRun_Response::error() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsRun_Response.error)
+inline const std::string& RunPost_Response::error() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Response.error)
   return _internal_error();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void SessionsRun_Response::set_error(ArgT0&& arg0, ArgT... args) {
+void RunPost_Response::set_error(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000001u;
  _impl_.error_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionsRun_Response.error)
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.RunPost_Response.error)
 }
-inline std::string* SessionsRun_Response::mutable_error() {
+inline std::string* RunPost_Response::mutable_error() {
   std::string* _s = _internal_mutable_error();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.SessionsRun_Response.error)
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Response.error)
   return _s;
 }
-inline const std::string& SessionsRun_Response::_internal_error() const {
+inline const std::string& RunPost_Response::_internal_error() const {
   return _impl_.error_.Get();
 }
-inline void SessionsRun_Response::_internal_set_error(const std::string& value) {
+inline void RunPost_Response::_internal_set_error(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000001u;
   _impl_.error_.Set(value, GetArenaForAllocation());
 }
-inline std::string* SessionsRun_Response::_internal_mutable_error() {
+inline std::string* RunPost_Response::_internal_mutable_error() {
   _impl_._has_bits_[0] |= 0x00000001u;
   return _impl_.error_.Mutable(GetArenaForAllocation());
 }
-inline std::string* SessionsRun_Response::release_error() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.SessionsRun_Response.error)
+inline std::string* RunPost_Response::release_error() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Response.error)
   if (!_internal_has_error()) {
     return nullptr;
   }
@@ -3726,7 +3726,7 @@ inline std::string* SessionsRun_Response::release_error() {
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void SessionsRun_Response::set_allocated_error(std::string* error) {
+inline void RunPost_Response::set_allocated_error(std::string* error) {
   if (error != nullptr) {
     _impl_._has_bits_[0] |= 0x00000001u;
   } else {
@@ -3738,28 +3738,28 @@ inline void SessionsRun_Response::set_allocated_error(std::string* error) {
     _impl_.error_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionsRun_Response.error)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Response.error)
 }
 
 // optional .google.protobuf.Value output = 3;
-inline bool SessionsRun_Response::_internal_has_output() const {
+inline bool RunPost_Response::_internal_has_output() const {
   bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
   PROTOBUF_ASSUME(!value || _impl_.output_ != nullptr);
   return value;
 }
-inline bool SessionsRun_Response::has_output() const {
+inline bool RunPost_Response::has_output() const {
   return _internal_has_output();
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& SessionsRun_Response::_internal_output() const {
+inline const ::PROTOBUF_NAMESPACE_ID::Value& RunPost_Response::_internal_output() const {
   const ::PROTOBUF_NAMESPACE_ID::Value* p = _impl_.output_;
   return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Value&>(
       ::PROTOBUF_NAMESPACE_ID::_Value_default_instance_);
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& SessionsRun_Response::output() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsRun_Response.output)
+inline const ::PROTOBUF_NAMESPACE_ID::Value& RunPost_Response::output() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Response.output)
   return _internal_output();
 }
-inline void SessionsRun_Response::unsafe_arena_set_allocated_output(
+inline void RunPost_Response::unsafe_arena_set_allocated_output(
     ::PROTOBUF_NAMESPACE_ID::Value* output) {
   if (GetArenaForAllocation() == nullptr) {
     delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.output_);
@@ -3770,9 +3770,9 @@ inline void SessionsRun_Response::unsafe_arena_set_allocated_output(
   } else {
     _impl_._has_bits_[0] &= ~0x00000002u;
   }
-  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.SessionsRun_Response.output)
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.RunPost_Response.output)
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::release_output() {
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Response::release_output() {
   _impl_._has_bits_[0] &= ~0x00000002u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.output_;
   _impl_.output_ = nullptr;
@@ -3787,14 +3787,14 @@ inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::release_output() {
 #endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
   return temp;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::unsafe_arena_release_output() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.SessionsRun_Response.output)
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Response::unsafe_arena_release_output() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Response.output)
   _impl_._has_bits_[0] &= ~0x00000002u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.output_;
   _impl_.output_ = nullptr;
   return temp;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::_internal_mutable_output() {
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Response::_internal_mutable_output() {
   _impl_._has_bits_[0] |= 0x00000002u;
   if (_impl_.output_ == nullptr) {
     auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
@@ -3802,12 +3802,12 @@ inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::_internal_mutable_o
   }
   return _impl_.output_;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::mutable_output() {
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Response::mutable_output() {
   ::PROTOBUF_NAMESPACE_ID::Value* _msg = _internal_mutable_output();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.SessionsRun_Response.output)
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Response.output)
   return _msg;
 }
-inline void SessionsRun_Response::set_allocated_output(::PROTOBUF_NAMESPACE_ID::Value* output) {
+inline void RunPost_Response::set_allocated_output(::PROTOBUF_NAMESPACE_ID::Value* output) {
   ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
   if (message_arena == nullptr) {
     delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.output_);
@@ -3825,28 +3825,28 @@ inline void SessionsRun_Response::set_allocated_output(::PROTOBUF_NAMESPACE_ID::
     _impl_._has_bits_[0] &= ~0x00000002u;
   }
   _impl_.output_ = output;
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionsRun_Response.output)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Response.output)
 }
 
 // optional .google.protobuf.Value traces = 4;
-inline bool SessionsRun_Response::_internal_has_traces() const {
+inline bool RunPost_Response::_internal_has_traces() const {
   bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   PROTOBUF_ASSUME(!value || _impl_.traces_ != nullptr);
   return value;
 }
-inline bool SessionsRun_Response::has_traces() const {
+inline bool RunPost_Response::has_traces() const {
   return _internal_has_traces();
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& SessionsRun_Response::_internal_traces() const {
+inline const ::PROTOBUF_NAMESPACE_ID::Value& RunPost_Response::_internal_traces() const {
   const ::PROTOBUF_NAMESPACE_ID::Value* p = _impl_.traces_;
   return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Value&>(
       ::PROTOBUF_NAMESPACE_ID::_Value_default_instance_);
 }
-inline const ::PROTOBUF_NAMESPACE_ID::Value& SessionsRun_Response::traces() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsRun_Response.traces)
+inline const ::PROTOBUF_NAMESPACE_ID::Value& RunPost_Response::traces() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.RunPost_Response.traces)
   return _internal_traces();
 }
-inline void SessionsRun_Response::unsafe_arena_set_allocated_traces(
+inline void RunPost_Response::unsafe_arena_set_allocated_traces(
     ::PROTOBUF_NAMESPACE_ID::Value* traces) {
   if (GetArenaForAllocation() == nullptr) {
     delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.traces_);
@@ -3857,9 +3857,9 @@ inline void SessionsRun_Response::unsafe_arena_set_allocated_traces(
   } else {
     _impl_._has_bits_[0] &= ~0x00000004u;
   }
-  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.SessionsRun_Response.traces)
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.test.RunPost_Response.traces)
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::release_traces() {
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Response::release_traces() {
   _impl_._has_bits_[0] &= ~0x00000004u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.traces_;
   _impl_.traces_ = nullptr;
@@ -3874,14 +3874,14 @@ inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::release_traces() {
 #endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
   return temp;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::unsafe_arena_release_traces() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.SessionsRun_Response.traces)
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Response::unsafe_arena_release_traces() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.test.RunPost_Response.traces)
   _impl_._has_bits_[0] &= ~0x00000004u;
   ::PROTOBUF_NAMESPACE_ID::Value* temp = _impl_.traces_;
   _impl_.traces_ = nullptr;
   return temp;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::_internal_mutable_traces() {
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Response::_internal_mutable_traces() {
   _impl_._has_bits_[0] |= 0x00000004u;
   if (_impl_.traces_ == nullptr) {
     auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Value>(GetArenaForAllocation());
@@ -3889,12 +3889,12 @@ inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::_internal_mutable_t
   }
   return _impl_.traces_;
 }
-inline ::PROTOBUF_NAMESPACE_ID::Value* SessionsRun_Response::mutable_traces() {
+inline ::PROTOBUF_NAMESPACE_ID::Value* RunPost_Response::mutable_traces() {
   ::PROTOBUF_NAMESPACE_ID::Value* _msg = _internal_mutable_traces();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.SessionsRun_Response.traces)
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.test.RunPost_Response.traces)
   return _msg;
 }
-inline void SessionsRun_Response::set_allocated_traces(::PROTOBUF_NAMESPACE_ID::Value* traces) {
+inline void RunPost_Response::set_allocated_traces(::PROTOBUF_NAMESPACE_ID::Value* traces) {
   ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
   if (message_arena == nullptr) {
     delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.traces_);
@@ -3912,7 +3912,7 @@ inline void SessionsRun_Response::set_allocated_traces(::PROTOBUF_NAMESPACE_ID::
     _impl_._has_bits_[0] &= ~0x00000004u;
   }
   _impl_.traces_ = traces;
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionsRun_Response.traces)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.RunPost_Response.traces)
 }
 
 #ifdef __GNUC__
