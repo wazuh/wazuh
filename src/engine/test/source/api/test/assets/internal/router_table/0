@@ -1,8 +1,0 @@
-[
-    {
-        "name": "allow_all_A1",
-        "priority": 50,
-        "filter": "filter/allow-all/0",
-        "target": "policy/test_env_A1/0"
-    }
-]
