@@ -3537,7 +3537,7 @@ class AWSSQSQueue(WazuhIntegration):
 
 class AWSSQSBucket(WazuhIntegration):
     """
-    Class for processing AWS Security Lake events from S3.
+    Class for processing AWS SQS messages.
 
     Attributes
     ----------
@@ -3558,19 +3558,19 @@ class AWSSQSBucket(WazuhIntegration):
                                   **kwargs)
 
     def fetch_logs(self, bucket_path: str, log_path: str):
-        """Fetch a parquet file from a bucket and obtain a list of the events it contains.
+        """Fetch a log file from a bucket and obtain its content.
 
         Parameters
         ----------
         bucket_path : str
-            Path of the bucket to get the parquet file from.
+            Path of the bucket to get the log file from.
         log_path : str
             Relative path of the log file inside the bucket.
 
         Returns
         -------
-        events : 
-            Events contained inside the parquet file.
+        raw_log : 
+            Content of the log file.
         """
         debug(f'Processing file {log_path} in {bucket_path}', 2)
 
@@ -3580,24 +3580,26 @@ class AWSSQSBucket(WazuhIntegration):
             debug(f'Could not get the parquet file {log_path} in {bucket_path}: {e}', 1)
             sys.exit(21)
 
-        """
-        debug(f'Processing file {raw_log}', 3)
-        crudo = raw_log.getvalue().decode("utf-8")
-        crujson = json.dumps(crudo)
-        debug(f'El archivo normal --> {crudo} \n', 2)
-        debug(f'El archivo json --> {crujson} \n', 2)
-        """
         return raw_log
 
-    def normalize_logs(self, raw_log: object, log_path: str):
+    def normalize_logs(self, raw_log: object, log_path: str) -> str:
         """
         AWS logs are stored in different formats depending on the service:
         * A JSON with an unique field "Records" which is an array of jsons. The filename has .json extension. (Cloudtrail)
         * Multiple JSONs stored in the same line and with no separation. The filename has no extension. (GuardDuty, IAM, Macie, Inspector)
         * TSV format. The filename has no extension. Has multiple lines. (VPC)
-        :param raw_log: name of the log file
-        :
-        :return: list of events in json format.
+
+        Parameters
+        ----------
+        raw_log: object
+            Raw content of the log file.
+        log_path : str
+            Relative path of the log file inside the bucket.
+
+        Returns
+        -------
+        normalized_log: str
+            Normalized raw log
         """
 
         if log_path.endswith('.gz'):
@@ -3611,8 +3613,6 @@ class AWSSQSBucket(WazuhIntegration):
         else:
             return io.TextIOWrapper(raw_log).read()
 
-        return 1
-
     def process_file(self, message: dict) -> None:
         """Parse an SQS message, obtain the events associated, and send them to Analysisd.
         
@@ -3622,10 +3622,9 @@ class AWSSQSBucket(WazuhIntegration):
             An SQS message received from the queue.
         """
         raw_log = self.fetch_logs(bucket_path=message['bucket_path'],
-                                  log_path=message['log_path']) # We 
+                                  log_path=message['log_path'])
         
         formatted_log = self.normalize_logs(raw_log=raw_log, log_path=message['log_path'])
-        debug(f'\nThe processed log --> {formatted_log} \n', 2)
         self.send_msg(formatted_log, dump_json=False)
 
     def _decompress_gzip(self, raw_object: io.BytesIO):
