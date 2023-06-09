@@ -13,4 +13,11 @@
 #include "pubSubPublisher.hpp"
 #include "updaterContext.hpp"
 
-// TODO - Add the unit tests for the PubSubPublisher class
+/*
+ * @brief Tests the instantiation of the PubSubPublisher class
+ */
+TEST_F(PubSubPublisherTest, instantiation)
+{
+    // Check that the PubSubPublisher class can be instantiated
+    EXPECT_NO_THROW(std::make_shared<PubSubPublisher>());
+}
