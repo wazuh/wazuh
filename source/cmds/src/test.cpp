@@ -13,50 +13,45 @@ namespace cmd::test
 namespace eTest = ::com::wazuh::api::engine::test;
 namespace eEngine = ::com::wazuh::api::engine;
 
-void run(std::shared_ptr<apiclnt::Client> client, const Options& options)
+void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
-    using RequestType = eTest::SessionsRun_Request;
-    using ResponseType = eTest::SessionsRun_Response;
-    const std::string command {"test.session/run"};
+    using RequestType = eTest::RunPost_Request;
+    using ResponseType = eTest::RunPost_Response;
+    const std::string command {"test.run/post"};
 
     // Set policy name
     RequestType eRequest;
-    eRequest.set_name(options.sessionName);
+    eRequest.set_name(parameters.sessionName);
 
     // Set protocol queue
-    eRequest.set_protocolqueue(options.protocolQueue);
+    eRequest.set_protocolqueue(parameters.protocolQueue);
 
     // Set debug mode
     auto intToDebugMode = [](int debugModeValue) -> eTest::DebugMode
     {
-        std::unordered_map<int, ::com::wazuh::api::engine::test::DebugMode> debugModeMap = {
-            {0, eTest::DebugMode::ONLY_OUTPUT},
-            {1, eTest::DebugMode::OUTPUT_AND_TRACES},
-            {2, eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS}};
-        if (debugModeMap.find(debugModeValue) != debugModeMap.end())
+        switch (debugModeValue)
         {
-            return debugModeMap[debugModeValue];
-        }
-        else
-        {
-            return eTest::DebugMode::ONLY_OUTPUT;
+            case 0: return eTest::DebugMode::OUTPUT_ONLY;
+            case 1: return eTest::DebugMode::OUTPUT_AND_TRACES;
+            case 2: return eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
+            default: return eTest::DebugMode::OUTPUT_ONLY;
         }
     };
-    eRequest.set_debugmode(intToDebugMode(options.debugLevel));
+    eRequest.set_debugmode(intToDebugMode(parameters.debugLevel));
 
     // Set location
-    eRequest.set_protocollocation(options.protocolLocation);
+    eRequest.set_protocollocation(parameters.protocolLocation);
 
     // Set event
     json::Json jevent {};
     try
     {
-        jevent = json::Json {options.event.c_str()};
+        jevent = json::Json {parameters.event.c_str()};
     }
     catch (const std::exception& e)
     {
         // If not, set it as a string
-        jevent.setString(options.event);
+        jevent.setString(parameters.event);
     }
 
     // Convert the value to protobuf value
@@ -94,34 +89,34 @@ void run(std::shared_ptr<apiclnt::Client> client, const Options& options)
 void configure(CLI::App_p app)
 {
     auto logtestApp = app->add_subcommand("test", "Utility to test the ruleset.");
-    auto options = std::make_shared<Options>();
+    auto parameters = std::make_shared<Parameters>();
 
-    logtestApp->add_option("-a, --api_socket", options->apiEndpoint, "engine api address")
+    logtestApp->add_option("-a, --api_socket", parameters->apiEndpoint, "engine api address")
         ->default_val(ENGINE_SRV_API_SOCK);
-    const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
+    const auto client = std::make_shared<apiclnt::Client>(parameters->apiEndpoint);
 
     // Policy
-    logtestApp->add_option("--name", options->sessionName, "Name of the session to be used.")->required();
+    logtestApp->add_option("--name", parameters->sessionName, "Name of the session to be used.")->required();
 
     // Event
-    logtestApp->add_option("--event", options->event, "Event to be processed")->required();
+    logtestApp->add_option("--event", parameters->event, "Event to be processed")->required();
 
     logtestApp
         ->add_option(
-            "-q, --protocol_queue", options->protocolQueue, "Event protocol queue identifier (a single character).")
+            "-q, --protocol_queue", parameters->protocolQueue, "Event protocol queue identifier (a single character).")
         ->default_val(ENGINE_PROTOCOL_QUEUE);
 
     // Debug levels
     logtestApp->add_flag("-d, --debug",
-                         options->debugLevel,
+                         parameters->debugLevel,
                          "Enable debug mode [0-3]. Flag can appear multiple times. "
                          "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
                          "Full tracing, ddd[3]: 2 + detailed parser trace.");
 
-    logtestApp->add_option("--protocol_location", options->protocolLocation, "Protocol location.")
+    logtestApp->add_option("--protocol_location", parameters->protocolLocation, "Protocol location.")
         ->default_val(ENGINE_PROTOCOL_LOCATION);
 
     // Register callback
-    logtestApp->callback([options, client]() { run(client, *options); });
+    logtestApp->callback([parameters, client]() { run(client, *parameters); });
 }
 } // namespace cmd::test
