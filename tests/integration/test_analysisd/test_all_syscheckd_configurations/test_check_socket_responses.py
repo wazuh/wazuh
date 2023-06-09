@@ -53,7 +53,7 @@ from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH, ANALYSISD_QUEUE_SOCKET_PATH
 from wazuh_testing.modules.analysisd import callbacks, ANALYSISD_DEBUG_CONFIG
 from wazuh_testing.tools import mitm
-from wazuh_testing.utils import config
+from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_PATH
 
@@ -61,10 +61,10 @@ from . import TEST_CASES_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=2), pytest.mark.server]
 
 # Configuration and cases data.
-cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_events.yaml')
+test_cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_events.yaml')
 
 # Test configurations.
-_, metadata, cases_ids = config.get_test_cases_data(cases_path)
+_, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
 
 # Test internal options.
 local_internal_options = ANALYSISD_DEBUG_CONFIG
@@ -79,8 +79,8 @@ monitored_sockets_params = [(WAZUH_DB_DAEMON, mitm_wdb, True), (ANALYSISD_DAEMON
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 # Test function.
-@pytest.mark.parametrize('metadata', metadata, ids=cases_ids)
-def test_validate_socket_responses(metadata, configure_local_internal_options, configure_sockets_environment,
+@pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
+def test_validate_socket_responses(test_metadata, configure_local_internal_options, configure_sockets_environment,
                                    connect_to_sockets, wait_for_analysisd_startup):
     '''
     description: Validate every response from the 'wazuh-analysisd' daemon socket
@@ -91,6 +91,9 @@ def test_validate_socket_responses(metadata, configure_local_internal_options, c
     tier: 2
 
     parameters:
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
         - configure_sockets_environment:
             type: fixture
             brief: Configure environment for sockets and MITM.
@@ -122,9 +125,9 @@ def test_validate_socket_responses(metadata, configure_local_internal_options, c
         - wdb_socket
     '''
     # Start monitor
-    receiver_sockets[0].send(metadata['input'])
+    receiver_sockets[0].send(test_metadata['input'])
     monitored_sockets[0].start(callback=callbacks.callback_wazuh_db_message, timeout=session_parameters.default_timeout)
 
     # Check that expected message appears
-    expected = callbacks.callback_analysisd_message(metadata['output'])
-    assert monitored_sockets[0].callback_result == expected, 'Failed test case stage: {}'.format(metadata['stage'])
+    expected = callbacks.callback_analysisd_message(test_metadata['output'])
+    assert monitored_sockets[0].callback_result == expected, 'Failed test case stage: {}'.format(test_metadata['stage'])
