@@ -78,15 +78,12 @@ syntax::Parser getSynParser()
         }
 
         // Consume up to two padding characters
-        if (i < input.size())
+        if ((i < input.size()) && (input[i] == '='))
         {
-            if (input[i] == '=')
+            ++i;
+            if ((i < input.size()) && (input[i] == '='))
             {
                 ++i;
-                if ((i < input.size()) && (input[i] == '='))
-                {
-                    ++i;
-                }
             }
         }
 
@@ -122,10 +119,8 @@ Parser getBinaryParser(const Params& params)
         {
             return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
-        else
-        {
-            return abs::makeSuccess(SemToken {syntax::parsed(synR, txt), semP}, synR.remaining());
-        }
+
+        return abs::makeSuccess(SemToken {syntax::parsed(synR, txt), semP}, synR.remaining());
     };
 }
 } // namespace hlp::parsers
