@@ -7,15 +7,25 @@
 #include <variant>
 #include <vector>
 
-#include <json/json.hpp>
 #include <fmt/format.h>
+#include <json/json.hpp>
 
 #include "abstractParser.hpp"
 
+/**
+ * @brief Contains the Parser and Results types used by HLP.
+ *
+ */
 namespace hlp::parser
 {
 // Mapper functions dont check
 using Mapper = std::function<void(json::Json&)>;
+
+/**
+ * @brief Empty mapper function, used when a parser has semantic parser but it is told to not map.
+ *
+ * @return Mapper
+ */
 inline Mapper noMapper()
 {
     return [](json::Json&) {
@@ -27,9 +37,16 @@ struct SemToken
     std::string_view parsed;
     SemParser semParser;
 };
+
+/**
+ * @brief Empty semantic parser function, used when a parser has no semantic parser and it is told to not map.
+ *
+ * @return SemParser
+ */
 inline SemParser noSemParser()
 {
-    return [](std::string_view) -> std::variant<Mapper, base::Error> {
+    return [](std::string_view) -> std::variant<Mapper, base::Error>
+    {
         return noMapper();
     };
 }
@@ -38,6 +55,15 @@ using ResultT = SemToken;
 using Result = abs::Result<ResultT>;
 using Parser = abs::Parser<ResultT>;
 
+/**
+ * @brief Runs three steps of parsing: syntax, semantic and mapping. Returns an error if any of the steps fails at any
+ * point.
+ *
+ * @param parser Parser to run
+ * @param text Text to parse
+ * @param event Event to map to
+ * @return std::optional<base::Error>
+ */
 inline std::optional<base::Error> run(const Parser& parser, std::string_view text, json::Json& event)
 {
     // Syntax parsing
@@ -90,6 +116,10 @@ inline std::optional<base::Error> run(const Parser& parser, std::string_view tex
     return std::nullopt;
 }
 
+/**
+ * @brief Combinators used by HLP.
+ *
+ */
 namespace combinator
 {
 inline Parser choice(const Parser& lhs, const Parser& rhs)

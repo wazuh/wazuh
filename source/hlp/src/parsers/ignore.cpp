@@ -40,10 +40,8 @@ Parser getIgnoreParser(const Params& params)
         {
             return abs::makeFailure<ResultT>(synR.remaining(), name);
         }
-        else
-        {
-            return abs::makeSuccess(SemToken {syntax::parsed(synR, txt), semP}, synR.remaining());
-        }
+
+        return abs::makeSuccess(SemToken {syntax::parsed(synR, txt), semP}, synR.remaining());
     };
 }
 } // namespace hlp::parsers

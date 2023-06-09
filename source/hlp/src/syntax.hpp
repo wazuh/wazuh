@@ -6,17 +6,33 @@
 
 #include "abstractParser.hpp"
 
+/**
+ * @brief Contains the Parser and Result types for the syntax parsers
+ *
+ */
 namespace hlp::syntax
 {
 using ResultT = std::string_view;
 using Result = abs::Result<ResultT>;
 using Parser = abs::Parser<ResultT>;
 
+/**
+ * @brief Given a syntax parser result and the original input, returns the parsed string.
+ *
+ * @param result
+ * @param original
+ * @return std::string_view
+ */
 inline std::string_view parsed(const Result& result, std::string_view original)
 {
     return original.substr(0, original.size() - result.remaining().size());
 }
 
+/**
+ * @brief Contains the combinators for the syntax parsers, this combinators do not extract any value and do not nest the
+ * results.
+ *
+ */
 namespace combinators
 {
 inline Parser operator&(const Parser& lhs, const Parser& rhs)
@@ -118,9 +134,18 @@ inline Parser repeat(const Parser& parser, size_t count)
 
 } // namespace combinators
 
+/**
+ * @brief Basic parsers for the syntax parsers, this parsers do not extract any value and do not nest the results.
+ *
+ */
 namespace parsers
 {
 
+/**
+ * @brief Matches any character, if the input is empty returns a failure.
+ *
+ * @return Parser
+ */
 inline Parser any()
 {
     return [](std::string_view input) -> Result
@@ -134,6 +159,13 @@ inline Parser any()
     };
 }
 
+/**
+ * @brief Matches the given character, if the input is empty or the first character is not the given one returns a
+ * failure.
+ *
+ * @param c
+ * @return Parser
+ */
 inline Parser char_(char c)
 {
     return [c](std::string_view input) -> Result
@@ -147,6 +179,11 @@ inline Parser char_(char c)
     };
 }
 
+/**
+ * @brief Matches any digit, if the input is empty or the first character is not a digit returns a failure.
+ *
+ * @return Parser
+ */
 inline Parser digit()
 {
     return [](std::string_view input) -> Result
@@ -160,6 +197,13 @@ inline Parser digit()
     };
 }
 
+/**
+ * @brief Matches the given literal
+ *
+ * @param lit The literal to match
+ * @param caseSensitive If true, the literal is case sensitive
+ * @return Parser
+ */
 inline Parser literal(const std::string lit, bool caseSensitive = true)
 {
     if (caseSensitive)
@@ -198,6 +242,13 @@ inline Parser literal(const std::string lit, bool caseSensitive = true)
     }
 }
 
+/**
+ * @brief Matches any input up to the given character without consuming the character. If the input is empty returns a
+ * failure.
+ *
+ * @param endToken
+ * @return Parser
+ */
 inline Parser toEnd(char endToken)
 {
     return [endToken](std::string_view input) -> Result
@@ -212,6 +263,13 @@ inline Parser toEnd(char endToken)
     };
 }
 
+/**
+ * @brief Matches any input up to the given string without consuming the string. If the input is empty returns a
+ * failure.
+ *
+ * @param endToken
+ * @return Parser
+ */
 inline Parser toEnd(const std::string& endToken)
 {
     return [endToken](std::string_view input) -> Result
@@ -226,6 +284,11 @@ inline Parser toEnd(const std::string& endToken)
     };
 }
 
+/**
+ * @brief Matches until the end of the input. If the input is empty returns a failure.
+ *
+ * @return Parser
+ */
 inline Parser toEnd()
 {
     return [](std::string_view input) -> Result
@@ -239,6 +302,13 @@ inline Parser toEnd()
     };
 }
 
+/**
+ * @brief For each endToken, build a parser that matches until the endToken is found. If the endToken is empty, matches
+ * until the end of the input. Returns a parser that matches if any of the endToken parsers matches.
+ *
+ * @param endTokens
+ * @return Parser
+ */
 inline Parser toEnd(const std::vector<std::string>& endTokens)
 {
     using namespace combinators;
@@ -276,6 +346,12 @@ inline Parser toEnd(const std::vector<std::string>& endTokens)
     return p;
 }
 
+/**
+ * @brief Matches an alphanumeric character. If the input is empty or the first character is not alphanumeric returns a
+ * failure.
+ *
+ * @return Parser
+ */
 inline Parser alnum()
 {
     return [](std::string_view input) -> Result
@@ -289,6 +365,12 @@ inline Parser alnum()
     };
 }
 
+/**
+ * @brief Matches a hexadecimal character. If the input is empty or the first character is not hexadecimal returns a
+ * failure.
+ *
+ * @return Parser
+ */
 inline Parser hex()
 {
     return [](std::string_view input) -> Result
