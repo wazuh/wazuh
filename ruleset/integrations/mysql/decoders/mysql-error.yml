@@ -2,6 +2,7 @@ name: decoder/mysql-error/0
 
 metadata:
   module: mysql
+  dataset: mysql.error
   title: MySQL Server error log
   description: Decoder for MySQL Server error logs
   compatibility: This decoder has been tested with logs from MySQL server version 5.7 and 8.0
@@ -19,7 +20,7 @@ metadata:
 sources:
   - decoder/integrations/0
 
-#TODO: Once the events arrive tagged, uncomment these lines below
+#TODO: Once the events arrive tagged, uncomment following lines
 # check:
 #   - event.module: mysql
 #   - event.dataset: mysql.error
@@ -32,11 +33,14 @@ parse:
     # Version 5.7:
     # 2023-05-31T16:20:39.576833Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
     # 2023-05-31T16:20:47.213373Z 0 [Note] InnoDB: PUNCH HOLE support available
+    # Multiline event:
+    # 2023-06-09T15:33:07.602593Z 0 [Note] /usr/sbin/mysqld: ready for connections.
+    # Version: '5.7.33-0ubuntu0.16.04.1'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  (Ubuntu)
     - event.original: <@timestamp/%FT%TZ> <process.thread.id> [<log.level>] (?[<event.code>] [<event.provider>] )<message>
 
     # mysqld_safe
     # 161209 13:08:33 mysqld_safe Starting mysqld daemon with databases from /usr/local/var/mysql
-    - event.original: <@timestamp/%y%m%d %T> <message>
+    - event.original: <@timestamp/%y%m%d %T> mysqld_safe <message>
 
 normalize:
   - map:
