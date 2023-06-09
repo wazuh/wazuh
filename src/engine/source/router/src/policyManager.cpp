@@ -111,7 +111,7 @@ std::vector<std::string> PolicyManager::listPolicies()
 
 std::optional<base::Error> PolicyManager::forwardEvent(const std::string& name, std::size_t instance, base::Event event)
 {
-    
+
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_policies.find(name);
     if (m_policies.end() == it)
@@ -153,7 +153,8 @@ std::optional<base::Error> PolicyManager::subscribeOutputAndTraces(const std::st
     return std::nullopt;
 }
 
-const std::variant<std::tuple<std::string, std::string>,base::Error> PolicyManager::getData(const std::string& name, std::size_t instance, router::DebugMode debugMode)
+const std::variant<std::tuple<std::string, std::string>, base::Error>
+PolicyManager::getData(const std::string& name, std::size_t instance, router::DebugMode debugMode)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     auto it = m_policies.find(name);
@@ -175,6 +176,6 @@ const std::variant<std::tuple<std::string, std::string>,base::Error> PolicyManag
     {
         return std::get<base::Error>(data);
     }
-    return std::get<std::tuple<std::string,std::string>>(data);
+    return std::get<std::tuple<std::string, std::string>>(data);
 }
 } // namespace router
