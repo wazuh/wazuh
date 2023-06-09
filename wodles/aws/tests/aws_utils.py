@@ -13,8 +13,8 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 import aws_service
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'subscribers'))
-import sqsqueue
-import slsubscriberbucket
+import sqs_queue
+import sl_subscriber_bucket
 
 TEST_TABLE_NAME = "cloudtrail"
 TEST_SERVICE_NAME = "s3"
@@ -418,14 +418,14 @@ def get_mocked_aws_sqs_queue(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
-        return sqsqueue.AWSSQSQueue(**get_aws_sqs_queue_parameters(**kwargs))
+        return sqs_queue.AWSSQSQueue(**get_aws_sqs_queue_parameters(**kwargs))
 
 
 def get_mocked_aws_sl_subscriber_bucket(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=WAZUH_VERSION):
-        return slsubscriberbucket.AWSSLSubscriberBucket(**get_aws_sl_subscriber_bucket_parameters(**kwargs))
+        return sl_subscriber_bucket.AWSSLSubscriberBucket(**get_aws_sl_subscriber_bucket_parameters(**kwargs))
 
 
 def database_execute_script(connector, sql_file):

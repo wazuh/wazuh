@@ -1,8 +1,8 @@
-from subscribers import sqsqueue
-from subscribers import slsubscriberbucket
+from subscribers import sqs_queue
+from subscribers import sl_subscriber_bucket
 
 
 __all__ = [
-  "sqsqueue",
-  "slsubscriberbucket"
+  "sqs_queue.py",
+    "sl_subscriber_bucket.py"
 ]

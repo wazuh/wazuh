@@ -27,7 +27,7 @@ import aws_utils as utils
     (['main', '--bucket', 'bucket-name', '--type', 'server_access'], 'buckets_s3.server_access.AWSServerAccess'),
     (['main', '--service', 'inspector'], 'services.inspector.AWSInspector'),
     (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs'),
-    (['main', '--subscriber', 'security_lake'], 'subscribers.sqsqueue.AWSSQSQueue')
+    (['main', '--subscriber', 'security_lake'], 'subscribers.sqs_queue.AWSSQSQueue')
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
 def test_main(mock_arguments, args: list[str], class_):

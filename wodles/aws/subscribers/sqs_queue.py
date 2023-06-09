@@ -4,7 +4,7 @@ import json
 import botocore
 
 sys.path.append(path.dirname(path.realpath(__file__)))
-from slsubscriberbucket import AWSSLSubscriberBucket
+from sl_subscriber_bucket import AWSSLSubscriberBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration

@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'subscribers'))
-import slsubscriberbucket
+import sl_subscriber_bucket
 
 SAMPLE_PARQUET_KEY = 'aws/source/region=region/accountId=accountID/eventHour=YYYYMMDDHH/file.gz.parquet'
 SAMPLE_MESSAGE = {'bucket_path': utils.TEST_MESSAGE, 'parquet_path': SAMPLE_PARQUET_KEY}
@@ -31,7 +31,7 @@ def test_aws_sl_subscriber_bucket_initializes_properly(mock_wazuh_integration, m
                                                            service_endpoint=utils.TEST_SERVICE_ENDPOINT,
                                                            sts_endpoint=utils.TEST_STS_ENDPOINT)
 
-    integration = slsubscriberbucket.AWSSLSubscriberBucket(**kwargs)
+    integration = sl_subscriber_bucket.AWSSLSubscriberBucket(**kwargs)
 
     mock_wazuh_integration.assert_called_with(integration, service_name='s3',
                                               sts_endpoint=kwargs["sts_endpoint"],
@@ -70,7 +70,7 @@ def test_aws_sl_subscriber_bucket_obtain_information_from_parquet_handles_except
     assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
 
 
-@patch('slsubscriberbucket.AWSSLSubscriberBucket.obtain_information_from_parquet')
+@patch('sl_subscriber_bucket.AWSSLSubscriberBucket.obtain_information_from_parquet')
 @patch('wazuh_integration.WazuhIntegration.send_msg')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
