@@ -6,4 +6,5 @@ from pathlib import Path
 
 # Constants & base paths
 DATA_PATH = Path(Path(__file__).parent, 'data')
+CONFIGS_PATH = Path(DATA_PATH, 'config_templates')
 TEST_CASES_PATH = Path(DATA_PATH, 'test_cases')
