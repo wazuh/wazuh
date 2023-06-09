@@ -64,14 +64,14 @@ void RuntimePolicy::listenAllTrace()
     m_spController->listenOnAllTrace(rxcpp::make_subscriber<std::string>(
         [&](const std::string& trace)
         {
-            const std::string opPatternTrace = R"(\[([^\]]+)\] \[condition\]:(.+))";
+            constexpr auto opPatternTrace = R"(\[([^\]]+)\] \[condition\]:(.+))";
             const std::regex opRegex(opPatternTrace);
             std::smatch match;
             if (std::regex_search(trace, match, opRegex))
             {
                 m_history[m_asset].push_back({match[1].str(), match[2].str()});
             }
-            const std::string opPatternTraceVerbose = R"(^\[([^\]]+)\] (.+))";
+            constexpr auto opPatternTraceVerbose = R"(^\[([^\]]+)\] (.+))";
             const std::regex opRegexVerbose(opPatternTraceVerbose);
             std::smatch matchVerbose;
             if (std::regex_search(trace, matchVerbose, opRegexVerbose))
@@ -113,7 +113,8 @@ void RuntimePolicy::listenAllTrace()
 const std::variant<std::tuple<std::string, std::string>, base::Error>
 RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
 {
-    if (debugMode == DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS)
+    auto trace = json::Json {R"({})"};
+    if (DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == debugMode)
     {
         if (m_history[policyName].empty())
         {
@@ -121,7 +122,6 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
                 "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
         }
 
-        auto trace = json::Json {R"({})"};
         for (const auto& [asset, condition] : m_history[policyName])
         {
             if (m_traceBuffer.find(policyName) == m_traceBuffer.end())
@@ -150,7 +150,7 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
         m_history[policyName].clear();
         return std::make_tuple(m_output[policyName], trace.prettyStr());
     }
-    else if (debugMode == DebugMode::OUTPUT_AND_TRACES)
+    else if (DebugMode::OUTPUT_AND_TRACES == debugMode)
     {
         if (m_history[policyName].empty())
         {
@@ -158,7 +158,6 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
                 "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
         }
 
-        auto trace = json::Json {R"({})"};
         for (const auto& [asset, condition] : m_history[policyName])
         {
             trace.setString(condition, std::string("/") + asset);
@@ -166,10 +165,8 @@ RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
         m_history[policyName].clear();
         return std::make_tuple(m_output[policyName], trace.prettyStr());
     }
-    else
-    {
-        return std::make_tuple(m_output[policyName], std::string());
-    }
+
+    return std::make_tuple(m_output[policyName], std::string());
 }
 
 } // namespace router

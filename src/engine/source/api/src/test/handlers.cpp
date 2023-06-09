@@ -301,9 +301,6 @@ api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<Catalog> catalog)
             return genericError<ResponseType>(addRouteError.value().message);
         }
 
-        // Suscribe to output and Trace
-        router->subscribeOutputAndTraces(policyName);
-
         // Create the session
 
         // If the lifespan is not set, use 0 (no expiration). TODO: review what to do in this case
@@ -317,6 +314,16 @@ api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<Catalog> catalog)
             deleteAssetFromStore(catalog, filterName);
             deleteAssetFromStore(catalog, policyName);
             return genericError<ResponseType>(createSessionError.value().message);
+        }
+
+        // Suscribe to output and Trace
+        const auto subscriptionError = router->subscribeOutputAndTraces(policyName);
+        if (subscriptionError.has_value())
+        {
+            deleteRouteFromRouter(router, routeName);
+            deleteAssetFromStore(catalog, filterName);
+            deleteAssetFromStore(catalog, policyName);
+            return genericError<ResponseType>(subscriptionError.value().message);
         }
 
         ResponseType eResponse;
@@ -460,13 +467,13 @@ api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<Catalog> catal
     };
 }
 
-api::Handler sessionRun(std::shared_ptr<::router::Router> router)
+api::Handler runPost(std::shared_ptr<::router::Router> router)
 {
     return [router](api::wpRequest wRequest) -> api::wpResponse
     {
-        using RequestType = eTest::SessionsRun_Request;
-        using ResponseType = eTest::SessionsRun_Response;
-        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+        using RequestType = eTest::RunPost_Request;
+        using ResponseType = eTest::RunPost_Response;
+        const auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
 
         // If the request is not valid, return the error
         if (std::holds_alternative<api::wpResponse>(res))
@@ -475,45 +482,35 @@ api::Handler sessionRun(std::shared_ptr<::router::Router> router)
         }
 
         // Validate the params request
-        auto& eRequest = std::get<RequestType>(res);
-        auto errorMsg = !eRequest.has_name()    ? std::make_optional("Missing /session name")
-                        : !eRequest.has_event() ? std::make_optional("Missing /event")
-                                                : std::nullopt;
-
-        if (!eRequest.has_debugmode())
-        {
-            eRequest.set_debugmode(eTest::DebugMode::ONLY_OUTPUT);
-        }
-
-        if (!eRequest.has_protocolqueue())
-        {
-            eRequest.set_protocolqueue(DEFAULT_PROTOCOL_QUEUE);
-        }
-
-        if (!eRequest.has_protocollocation())
-        {
-            eRequest.set_protocollocation(DEFAULT_PROTOCOL_LOCATION);
-        }
+        const auto& eRequest = std::get<RequestType>(res);
+        const auto errorMsg = !eRequest.has_name()    ? std::make_optional("Missing /session name")
+                              : !eRequest.has_event() ? std::make_optional("Missing /event")
+                                                      : std::nullopt;
 
         if (errorMsg.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
 
+        // Set optional parameters
+        const auto debugMode = eRequest.has_debugmode() ? eRequest.debugmode() : eTest::DebugMode::OUTPUT_ONLY;
+
+        const auto protocolQueue =
+            eRequest.has_protocolqueue() ? eRequest.protocolqueue() : TEST_DEFAULT_PROTOCOL_QUEUE;
+
+        const auto protocolLocation =
+            eRequest.has_protocollocation() ? eRequest.protocollocation() : TEST_DEFAULT_PROTOCOL_LOCATION;
+
         // Set debug mode
-        auto debugMode = [](eTest::DebugMode debugModeValue) -> router::DebugMode
+        auto debugModes = [](eTest::DebugMode debugModeValue) -> router::DebugMode
         {
-            std::unordered_map<eTest::DebugMode, router::DebugMode> debugModeMap = {
-                {eTest::DebugMode::ONLY_OUTPUT, router::DebugMode::ONLY_OUTPUT},
-                {eTest::DebugMode::OUTPUT_AND_TRACES, router::DebugMode::OUTPUT_AND_TRACES},
-                {eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS, router::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS}};
-            if (debugModeMap.find(debugModeValue) != debugModeMap.end())
+            switch (debugModeValue)
             {
-                return debugModeMap[debugModeValue];
-            }
-            else
-            {
-                return router::DebugMode::ONLY_OUTPUT;
+                case eTest::DebugMode::OUTPUT_ONLY: return router::DebugMode::OUTPUT_ONLY;
+                case eTest::DebugMode::OUTPUT_AND_TRACES: return router::DebugMode::OUTPUT_AND_TRACES;
+                case eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS:
+                    return router::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
+                default: return router::DebugMode::OUTPUT_ONLY;
             }
         };
 
@@ -527,28 +524,28 @@ api::Handler sessionRun(std::shared_ptr<::router::Router> router)
         }
 
         // Event in Wazuh format
-        auto eventFormat = fmt::format(EVENT_CONTENT_FORMAT,
-                                       eRequest.protocolqueue(),
-                                       eRequest.protocollocation(),
-                                       eRequest.event().string_value(),
-                                       eRequest.name());
+        const auto eventFormat = fmt::format(TEST_EVENT_CONTENT_FORMAT,
+                                             protocolQueue,
+                                             protocolLocation,
+                                             eRequest.event().string_value(),
+                                             eRequest.name());
         auto ev = std::make_shared<json::Json>(eventFormat.c_str());
 
-        auto err = router->enqueueEvent(std::move(ev));
-        if (err.has_value())
+        const auto enqueueEventError = router->enqueueEvent(std::move(ev));
+        if (enqueueEventError.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(err.value().message);
+            return ::api::adapter::genericError<ResponseType>(enqueueEventError.value().message);
         }
 
-        ResponseType eResponse;
-
         // Get payload (output and traces)
-        auto payload = router->getData(session.value().getPolicyName(), debugMode(eRequest.debugmode()));
+        auto payload = router->getData(session.value().getPolicyName(), debugModes(debugMode));
 
         if (std::holds_alternative<base::Error>(payload))
         {
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(payload).message);
         }
+
+        ResponseType eResponse;
 
         // Get output
         const auto output = eMessage::eMessageFromJson<google::protobuf::Value>(
@@ -579,7 +576,7 @@ void registerHandlers(const Config& config, shared_ptr<api::Api> api)
         api->registerHandler("test.session/post", sessionPost(config.router, config.catalog));
         api->registerHandler("test.sessions/delete", sessionsDelete(config.router, config.catalog));
         api->registerHandler("test.sessions/get", sessionsGet());
-        api->registerHandler("test.session/run", sessionRun(config.router));
+        api->registerHandler("test.run/post", runPost(config.router));
     }
     catch (const std::exception& e)
     {

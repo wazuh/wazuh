@@ -10,7 +10,7 @@ namespace api::test::handlers
 
 constexpr auto MINIMUM_PRIORITY = 255;                      ///< Minimum priority allowed for a route
 constexpr auto MAXIMUM_PRIORITY = 0;                        ///< Maximum priority allowed for a route
-constexpr auto DEFAULT_PROTOCOL_QUEUE {49};                  ///< Default protocol queue
+constexpr auto TEST_DEFAULT_PROTOCOL_QUEUE {49};                  ///< Default protocol queue
 
 constexpr auto DEFAULT_POLICY_FULL_NAME = "policy/wazuh/0"; ///< Default policy full name
 
@@ -20,9 +20,9 @@ constexpr auto FILTER_CONTENT_FORMAT =
 constexpr auto TEST_FILTER_FULL_NAME_FORMAT = "filter/{}_filter/0"; ///< Filter name format, '{}' is the session name
 constexpr auto TEST_POLICY_FULL_NAME_FORMAT = "policy/{}_policy/0"; ///< Policy name format, '{}' is the session name
 constexpr auto TEST_ROUTE_NAME_FORMAT = "{}_route";                 ///< Route name format, '{}' is the session name
-constexpr auto EVENT_CONTENT_FORMAT =
+constexpr auto TEST_EVENT_CONTENT_FORMAT =
     R"({{"wazuh":{{"queue": {}, "location": "{}", "message": "{}"}}, "~TestSessionName": "{}"}})";   ///< Event content format
-constexpr auto DEFAULT_PROTOCOL_LOCATION {"/dev/stdin"}; ///< Default protocol location
+constexpr auto TEST_DEFAULT_PROTOCOL_LOCATION {"api.test"}; ///< Default protocol location
 
 /**
  * @brief Get the minimum available priority for a route.
@@ -148,7 +148,7 @@ api::Handler sessionsGet(void);
  * @param router Router instance.
  * @return api::Handler 
  */
-api::Handler sessionRun(std::shared_ptr<::router::Router> router);
+api::Handler runPost(std::shared_ptr<::router::Router> router);
 
 /**
  * @brief Register all handlers for the test API.
