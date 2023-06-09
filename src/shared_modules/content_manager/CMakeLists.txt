@@ -17,7 +17,7 @@ add_library(content_manager SHARED
     ${CONTENT_DOWNLOAD_SRC}
     )
 
-target_link_libraries(content_manager router)
+target_link_libraries(content_manager router urlrequest)
 
 add_subdirectory(testtool)
 add_subdirectory(tests)

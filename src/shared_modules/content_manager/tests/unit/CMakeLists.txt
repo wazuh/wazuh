@@ -13,6 +13,7 @@ target_link_libraries(${PROJECT_NAME}
     gtest
     gtest_main
     gmock
+    urlrequest
 )
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
