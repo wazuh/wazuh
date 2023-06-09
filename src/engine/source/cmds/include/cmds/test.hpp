@@ -16,7 +16,7 @@ namespace details
 constexpr auto ORIGIN_NAME {"engine_integrated_test_api"};
 } // namespace details
 
-struct Options
+struct Parameters
 {
     std::string apiEndpoint;
     std::string sessionName;
@@ -30,9 +30,9 @@ struct Options
  * @brief Command handler to test an event in a certain session.
  * 
  * @param client Client instance
- * @param options Options instance
+ * @param parameters Parameters instance
  */
-void run(std::shared_ptr<apiclnt::Client> client, const Options& options);
+void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters);
 
 void configure(CLI::App_p app);
 } // namespace cmd::test
