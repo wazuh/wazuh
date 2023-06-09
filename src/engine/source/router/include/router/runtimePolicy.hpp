@@ -1,9 +1,10 @@
 #ifndef _ROUTER_RUNTIME_ENVIRONMENT_HPP
 #define _ROUTER_RUNTIME_ENVIRONMENT_HPP
 
-#include <logging/logging.hpp>
 #include <optional>
 #include <string>
+
+#include <logging/logging.hpp>
 
 #include <builder.hpp>
 #include <error.hpp>
@@ -19,7 +20,7 @@ namespace router
  */
 enum class DebugMode
 {
-    ONLY_OUTPUT,
+    OUTPUT_ONLY,
     OUTPUT_AND_TRACES,
     OUTPUT_AND_TRACES_WITH_DETAILS
 };

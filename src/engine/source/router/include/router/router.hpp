@@ -9,8 +9,10 @@
 #include <thread>
 #include <unordered_map>
 
-#include <baseTypes.hpp>
 #include <condition_variable>
+#include <unordered_map>
+
+#include <baseTypes.hpp>
 #include <parseEvent.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <store/istore.hpp>
@@ -66,13 +68,13 @@ private:
     /* Config */
     std::size_t m_numThreads; ///< Number of threads for the router
 
-    struct Data
+    struct DataState
     {
         std::condition_variable_any dataReady;
         bool isDataReady;
     };
 
-    Data m_data;
+    DataState m_dataState;
 
     /**
      * @brief Get a Json with the routes table

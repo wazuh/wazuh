@@ -338,9 +338,9 @@ std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
                                 m_policyManager->forwardEvent(target, i, std::move(event));
 
                                 // Condition variable that notifies that the outputs and traces were generated
-                                m_data.isDataReady = true;
+                                m_dataState.isDataReady = true;
                                 lock.unlock();
-                                m_data.dataReady.notify_all();
+                                m_dataState.dataReady.notify_all();
                                 break;
                             }
                         }
@@ -431,7 +431,7 @@ const std::variant<std::tuple<std::string, std::string>, base::Error> Router::ge
 {
     std::unique_lock<std::shared_mutex> lock {m_mutexRoutes};
 
-    m_data.dataReady.wait(lock, [this]() { return m_data.isDataReady; });
+    m_dataState.dataReady.wait(lock, [this]() { return m_dataState.isDataReady; });
 
     std::variant<std::tuple<std::string, std::string>, base::Error> data;
     for (std::size_t i = 0; i < m_numThreads; ++i)
@@ -444,7 +444,7 @@ const std::variant<std::tuple<std::string, std::string>, base::Error> Router::ge
     }
 
     auto payload = std::get<std::tuple<std::string, std::string>>(data);
-    m_data.isDataReady = false;
+    m_dataState.isDataReady = false;
     return payload;
 }
 
