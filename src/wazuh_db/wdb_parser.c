@@ -739,12 +739,12 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             result = OS_INVALID;
         }
+        wdb_leave(wdb);
         if (result == OS_INVALID && wdb) {
             w_mutex_lock(&pool_mutex);
             wdb_close(wdb, FALSE);
             w_mutex_unlock(&pool_mutex);
         }
-        wdb_leave(wdb);
         return result;
     } else if (strcmp(actor, "wazuhdb") == 0) {
         query = next;
