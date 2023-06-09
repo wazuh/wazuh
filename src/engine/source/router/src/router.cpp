@@ -81,8 +81,10 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
     }
 };
 
-std::optional<base::Error>
-Router::addRoute(const std::string& routeName, int priority, const std::string& filterName, const std::string& policyName)
+std::optional<base::Error> Router::addRoute(const std::string& routeName,
+                                            int priority,
+                                            const std::string& filterName,
+                                            const std::string& policyName)
 {
     // Validate route name
     if (routeName.empty())
@@ -424,13 +426,14 @@ std::optional<base::Error> Router::subscribeOutputAndTraces(const std::string& p
     return std::nullopt;
 }
 
-const std::variant<std::tuple<std::string, std::string>,base::Error> Router::getData(const std::string& policyName, router::DebugMode debugMode)
+const std::variant<std::tuple<std::string, std::string>, base::Error> Router::getData(const std::string& policyName,
+                                                                                      router::DebugMode debugMode)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutexRoutes};
 
     m_data.dataReady.wait(lock, [this]() { return m_data.isDataReady; });
 
-    std::variant<std::tuple<std::string, std::string>,base::Error> data;
+    std::variant<std::tuple<std::string, std::string>, base::Error> data;
     for (std::size_t i = 0; i < m_numThreads; ++i)
     {
         data = m_policyManager->getData(policyName, i, debugMode);
@@ -440,7 +443,7 @@ const std::variant<std::tuple<std::string, std::string>,base::Error> Router::get
         }
     }
 
-    auto payload = std::get<std::tuple<std::string,std::string>>(data);
+    auto payload = std::get<std::tuple<std::string, std::string>>(data);
     m_data.isDataReady = false;
     return payload;
 }

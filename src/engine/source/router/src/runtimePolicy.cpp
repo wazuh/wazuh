@@ -2,9 +2,9 @@
 
 #include <base/parseEvent.hpp>
 #include <logging/logging.hpp>
+#include <regex>
 #include <rxbk/rxFactory.hpp>
 #include <utils/getExceptionStack.hpp>
-#include <regex>
 
 namespace router
 {
@@ -45,10 +45,15 @@ std::optional<base::Error> RuntimePolicy::processEvent(base::Event event)
 void RuntimePolicy::subscribeToOutput()
 {
     auto subscriber = rxcpp::make_subscriber<rxbk::RxEvent>(
-        [&](const rxbk::RxEvent& event) {
+        [&](const rxbk::RxEvent& event)
+        {
             std::stringstream output;
             output << event->payload()->prettyStr() << std::endl;
-            m_output.emplace(m_asset, output.str());
+            auto result = m_output.emplace(m_asset, output.str());
+            if (!result.second)
+            {
+                result.first->second = output.str();
+            }
         });
 
     m_spController->getOutput().subscribe(subscriber);
@@ -75,19 +80,45 @@ void RuntimePolicy::listenAllTrace()
                 std::shared_ptr<std::stringstream> traceStream = std::make_shared<std::stringstream>();
                 *traceStream << trace;
 
-                m_traceBuffer[m_asset].first = key;
-                m_traceBuffer[m_asset].second.push_back(traceStream);
+                // Check if an entry with the same key already exists in the first level of m_traceBuffer
+                auto outerIt = m_traceBuffer.find(m_asset);
+                if (outerIt == m_traceBuffer.end())
+                {
+                    // There is no entry for m_asset, create a new one
+                    std::unordered_map<std::string, std::vector<std::shared_ptr<std::stringstream>>> innerMap;
+                    innerMap[key] = std::vector<std::shared_ptr<std::stringstream>> {traceStream};
+
+                    m_traceBuffer[m_asset] = innerMap;
+                }
+                else
+                {
+                    // Check if an entry with the same key already exists in the second level of m_traceBuffer
+                    auto& innerMap = outerIt->second;
+                    auto innerIt = innerMap.find(key);
+                    if (innerIt == innerMap.end())
+                    {
+                        // There is no entry for the key in the second level, create a new one
+                        innerMap[key] = std::vector<std::shared_ptr<std::stringstream>> {traceStream};
+                    }
+                    else
+                    {
+                        // The key already exists at the second level, add the traceStream to the existing list
+                        innerIt->second.push_back(traceStream);
+                    }
+                }
             }
         }));
 }
 
-const std::variant<std::tuple<std::string, std::string>, base::Error> RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
+const std::variant<std::tuple<std::string, std::string>, base::Error>
+RuntimePolicy::getData(const std::string& policyName, DebugMode debugMode)
 {
     if (debugMode == DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS)
     {
         if (m_history[policyName].empty())
         {
-            return base::Error {fmt::format("Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
+            return base::Error {fmt::format(
+                "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
         }
 
         auto trace = json::Json {R"({})"};
@@ -95,17 +126,17 @@ const std::variant<std::tuple<std::string, std::string>, base::Error> RuntimePol
         {
             if (m_traceBuffer.find(policyName) == m_traceBuffer.end())
             {
-                return base::Error {fmt::format("Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
+                return base::Error {fmt::format(
+                    "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
             }
-            
             auto& tracePair = m_traceBuffer[policyName];
-            if (tracePair.first.compare(asset) == 0)
+            if (tracePair.find(asset) != tracePair.end())
             {
-                auto& traceVector = tracePair.second;
-                std::set<std::string> uniqueTraces;  // Set for warehouses single traces
+                auto& traceVector = tracePair[asset];
+                std::set<std::string> uniqueTraces; // Set for warehouses single traces
                 for (const auto& traceStream : traceVector)
                 {
-                    uniqueTraces.insert(traceStream->str());  // Insert unique traces in the set
+                    uniqueTraces.insert(traceStream->str()); // Insert unique traces in the set
                 }
                 std::stringstream combinedTrace;
                 for (const auto& uniqueTrace : uniqueTraces)
@@ -113,7 +144,7 @@ const std::variant<std::tuple<std::string, std::string>, base::Error> RuntimePol
                     combinedTrace << uniqueTrace;
                 }
                 trace.setString(combinedTrace.str(), std::string("/") + asset);
-                tracePair.second.clear();
+                tracePair[asset].clear();
             }
         }
         m_history[policyName].clear();
@@ -123,7 +154,8 @@ const std::variant<std::tuple<std::string, std::string>, base::Error> RuntimePol
     {
         if (m_history[policyName].empty())
         {
-            return base::Error {fmt::format("Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
+            return base::Error {fmt::format(
+                "Policy '{}' has not been configured for trace tracking and output subscription", policyName)};
         }
 
         auto trace = json::Json {R"({})"};
