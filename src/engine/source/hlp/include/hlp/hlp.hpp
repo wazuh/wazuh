@@ -27,9 +27,10 @@ using namespace parser;
  * @brief Returns a parser which will accept a string between two substrings.
  *
  * The parser will consume the start substring, until the end substring is found.
- * @param name
- * @param lst
- * @return parsec::Parser<json::Json>
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.options
+ * @return Parser
  */
 Parser getBetweenParser(const Params& params);
 
@@ -37,9 +38,10 @@ Parser getBetweenParser(const Params& params);
  * Returns a parser which will accept booleans represented by the strings
  * 'true' and 'false'.
  *
- * @param name
- * @param endTokens
- * @param lst
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options
  * @return
  */
 Parser getBoolParser(const Params& params);
@@ -47,9 +49,10 @@ Parser getBoolParser(const Params& params);
 /**
  * Returns a parser which will accept numbers represented by the strings
  * accepted by std::from_char in the C++ STL.
- * @param name
- * @param endTokens
- * @param lst
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options
  * @return
  */
 Parser getByteParser(const Params& params);
@@ -64,9 +67,10 @@ Parser getScaledFloatParser(const Params& params);
  * The stop substring must be found complete, or it will not accept
  * the input.
  *
- * @param name
- * @param endTokens
- * @param lst
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options
  * @return
  */
 Parser getTextParser(const Params& params);
@@ -77,9 +81,10 @@ Parser getTextParser(const Params& params);
  * base64 char, then it will consume the padding '='.
  *
  * The accepted base64 chars are A-Z, a-z, 0-9, +, or /
- * @param name
- * @param endTokens
- * @param lst
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options
  * @return
  */
 Parser getBinaryParser(const Params& params);
@@ -111,9 +116,10 @@ Parser getBinaryParser(const Params& params);
  *
  *
  *
- * @param name
- * @param endTokens
- * @param lst format, locale
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options format, locale
  * @return
  */
 Parser getDateParser(const Params& params);
@@ -130,9 +136,10 @@ Parser getDateParser(const Params& params);
  * inet_pton implementation might differ depending
  * on the system on which the engine is built.
  *
- * @param name
- * @param endTokens
- * @param lst list of field names
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options list of field names
  * @return
  */
 Parser getIPParser(const Params& params);
@@ -145,9 +152,10 @@ Parser getIPParser(const Params& params);
  * encoded in a JSON string.
  *
  * https://www.elastic.co/guide/en/ecs/current/ecs-url.html
- * @param name
- * @param endTokens
- * @param lst list of field names
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options list of field names
  * @return
  */
 Parser getUriParser(const Params& params);
@@ -156,9 +164,10 @@ Parser getUriParser(const Params& params);
  * Returns a parser which will consume input
  * until the str substring.
  *
- * @param name
- * @param endTokens
- * @param lst
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options
  * @return
  */
 Parser getUAParser(const Params& params);
@@ -171,9 +180,10 @@ Parser getUAParser(const Params& params);
  *
  *  Which is a max len of 255 and ('-', 0-9, and a-z)
  *  chars plus the dot for separation.
- * @param name
- * @param endTokens
- * @param lst list of field names
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options list of field names
  * @return
  */
 Parser getFQDNParser(const Params& params);
@@ -183,9 +193,10 @@ Parser getFQDNParser(const Params& params);
  * in
  *   https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats
  *
- * @param name
- * @param endTokens
- * @param lst list of field names
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options list of field names
  * @return
  */
 Parser getFilePathParser(const Params& params);
@@ -196,9 +207,10 @@ Parser getFilePathParser(const Params& params);
  *
  * The parsing is done using rapidJSON doc parser.
  *
- * @param name
- * @param endTokens
- * @param lst list of field names
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options list of field names
  */
 Parser getJSONParser(const Params& params);
 
@@ -208,9 +220,10 @@ Parser getJSONParser(const Params& params);
  *
  * The parsing is done using pugixml doc parser.
  *
- * @param name
- * @param endTokens
- * @param lst list of field names
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options list of field names
  * @return
  */
 Parser getXMLParser(const Params& params);
@@ -228,9 +241,10 @@ Parser getXMLParser(const Params& params);
  * The parsing is done using vincentlaucsb/csv-parser
  * library.
  *
- * @param name
- * @param endTokens
- * @param lst list of field names
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options list of field names
  * @return
  */
 Parser getDSVParser(const Params& params);
@@ -248,9 +262,10 @@ Parser getDSVParser(const Params& params);
  * Its a wrapper around getDSVParser with the delimiter set to ','
  * and the quote char set to '"'
  *
- * @param name
- * @param endTokens
- * @param lst list of field names
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop List of end tokens
+ * @param params.options list of field names
  * @return
  */
 Parser getCSVParser(const Params& params);
@@ -266,9 +281,10 @@ Parser getCSVParser(const Params& params);
  * A value can be a quoted string which can contain
  * sep or dlm.
  *
- * @param name
- * @param endTokens
- * @param lst sep and dlm
+ * @param params.name
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.stop
+ * @param params.options sep and dlm
  * @return
  */
 Parser getKVParser(const Params& params);
@@ -283,6 +299,12 @@ Parser getKVParser(const Params& params);
  */
 Parser getLiteralParser(const Params& params);
 
+/**
+ * @brief Get the Eof Parser object
+ *
+ * @param params.name: name of the parser
+ * @return Parser
+ */
 Parser getEofParser(const Params& params);
 
 /**
@@ -292,29 +314,33 @@ Parser getEofParser(const Params& params);
  * The parser never fails, and the string can be partially repeated, as long as it is the
  * last time it appears. For example, the parser will return parse to ' test!' in the case
  * where the string to ignore is 'wazuh' and the string to parse is "wazuhwazuhwa test!"
- * @param endTokens Unused
- * @param lst a list with one element, the string to ignore
- * @return parsec::Parser<json::Json> the parser
+ *
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.options a list with one element, the string to ignore
+ * @return Parser the parser
  */
 Parser getIgnoreParser(const Params& params);
 
 /**
  * @brief Get the Quoted Parser, which will parse a quoted string, returning the string
  *
- * @param endTokens unused
- * @param lst Option[0] is the quote character, Option[1] is the escape character. If not
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.options Option[0] is the quote character, Option[1] is the escape character. If not
  * provided, the default is " and \
- * @return parsec::Parser<json::Json>
+ * @return Parser
  */
 Parser getQuotedParser(const Params& params);
 
 /**
  * @brief Get the alphanumeric parser, which will parse a string and return the alphanumeric content
  *
- * @param endTokens unused
- * @param lst Option[0] is the quote character, Option[1] is the escape character. If not
+ * @param params.name name of the parser
+ * @param params.targetField: field to store the parsed value, if not present, the value is ignored
+ * @param params.options Option[0] is the quote character, Option[1] is the escape character. If not
  * provided, the default is " and \
- * @return parsec::Parser<json::Json>
+ * @return Parser
  */
 Parser getAlphanumericParser(const Params& params);
 } // namespace parsers

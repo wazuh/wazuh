@@ -6,8 +6,14 @@
 #include <type_traits>
 #include <vector>
 
+/**
+ * @brief Contains the Parser and Result types for the parser combinators.
+ *
+ */
 namespace hlp::abs
 {
+// TODO: Split trace from extracted value and build a single Result and Parse definition for logpar and hlp.
+
 template<typename T>
 class Result
 {
@@ -28,17 +34,22 @@ public:
     Result() = default;
     ~Result() = default;
 
-    Result(T&& value, std::string_view remaining, bool success, std::string_view trace, bool hasValue)
-        : m_value(std::move(value))
-        , m_remaining(remaining)
-        , m_success(success)
-        , m_trace(trace)
-        , m_hasValue(hasValue)
-        , m_nested()
-    {
-    }
-
-    Result(T&& value, std::string_view remaining, bool success, std::string_view trace, bool hasValue, Nested&& nested)
+    /**
+     * @brief Construct a new Result object
+     *
+     * @param value Extracted value.
+     * @param remaining Remaining string not consumed by the parser.
+     * @param success If the parser was successful.
+     * @param trace Contextual information about the parser failure (name)
+     * @param hasValue If the parser has a value.
+     * @param nested Nested results if any.
+     */
+    Result(T&& value,
+           std::string_view remaining,
+           bool success,
+           std::string_view trace,
+           bool hasValue,
+           Nested&& nested = {})
         : m_value(std::move(value))
         , m_remaining(remaining)
         , m_success(success)
@@ -48,6 +59,17 @@ public:
     {
     }
 
+    /**
+     * @brief Construct a new Result object
+     *
+     * @tparam Nested
+     * @param value Extracted value.
+     * @param remaining Remaining string not consumed by the parser.
+     * @param success If the parser was successful.
+     * @param trace Contextual information about the parser failure (name)
+     * @param hasValue If the parser has a value.
+     * @param nested Nested results if any.
+     */
     template<typename... Nested>
     Result(
         T&& value, std::string_view remaining, bool success, std::string_view trace, bool hasValue, Nested&&... nested)
@@ -61,36 +83,59 @@ public:
         (m_nested.emplace_back(std::move(nested)), ...);
     }
 
-    Result(const Result& other)
-        : m_value(other.m_value)
-        , m_remaining(other.m_remaining)
-        , m_trace(other.m_trace)
-        , m_success(other.m_success)
-        , m_hasValue(other.m_hasValue)
-        , m_nested(other.m_nested)
-    {
-    }
+    Result(const Result& other) = default;
+    Result(Result&& other) noexcept = default;
 
-    Result(Result&& other) noexcept
-        : m_value(std::move(other.m_value))
-        , m_remaining(std::move(other.m_remaining))
-        , m_trace(std::move(other.m_trace))
-        , m_success(std::move(other.m_success))
-        , m_hasValue(std::move(other.m_hasValue))
-        , m_nested(std::move(other.m_nested))
-    {
-    }
-
+    /**
+     * @brief Returns true if the parser was successful.
+     *
+     * @return true
+     * @return false
+     */
     bool success() const { return m_success; }
+
+    /**
+     * @brief Returns true if the parser failed.
+     *
+     * @return true
+     * @return false
+     */
     bool failure() const { return !m_success; }
 
+    /**
+     * @brief Returns the remaining string not consumed by the parser.
+     *
+     * @return std::string_view
+     */
     std::string_view remaining() const { return m_remaining; }
 
+    /**
+     * @brief Returns true if the parser has extracted a value.
+     *
+     * @return true
+     * @return false
+     */
     bool hasValue() const { return m_hasValue; }
+
+    /**
+     * @brief Returns the extracted value.
+     *
+     * @return const T&
+     */
     const T& value() const { return m_value; }
 
+    /**
+     * @brief Returns the nested results.
+     *
+     * @return const Nested&
+     */
     const Nested& nested() const { return m_nested; }
 
+    /**
+     * @brief Returns the contextual information about the parser failure (name).
+     *
+     * @return std::string_view
+     */
     std::string_view trace() const { return m_trace; }
 };
 
