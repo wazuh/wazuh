@@ -13,4 +13,11 @@
 #include "APIDownloader.hpp"
 #include "updaterContext.hpp"
 
-// TODO - Add the unit tests for the APIDownloader class
+/*
+ * @brief Tests the instantiation of the APIDownloader class
+ */
+TEST_F(APIDownloaderTest, instantiation)
+{
+    // Check that the APIDownloader class can be instantiated
+    EXPECT_NO_THROW(std::make_shared<APIDownloader>());
+}
