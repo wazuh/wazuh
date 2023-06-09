@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <sys/select.h>
 #include <termios.h>
-#include <ncurses.h>
 
 #include "cmd.h"
 #include "shared.h"
