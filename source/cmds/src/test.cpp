@@ -15,13 +15,13 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 void run(std::shared_ptr<apiclnt::Client> client, const Options& options)
 {
-    using RequestType = eTest::Run_Request;
-    using ResponseType = eTest::Run_Response;
-    const std::string command {"test.resource/run"};
+    using RequestType = eTest::SessionsRun_Request;
+    using ResponseType = eTest::SessionsRun_Response;
+    const std::string command {"test.session/run"};
 
     // Set policy name
     RequestType eRequest;
-    eRequest.set_session(options.policyName);
+    eRequest.set_name(options.sessionName);
 
     // Set protocol queue
     eRequest.set_protocolqueue(options.protocolQueue);
@@ -29,12 +29,10 @@ void run(std::shared_ptr<apiclnt::Client> client, const Options& options)
     // Set debug mode
     auto intToDebugMode = [](int debugModeValue) -> eTest::DebugMode
     {
-        std::unordered_map<int, ::com::wazuh::api::engine::test::DebugMode> debugModeMap =
-        {
+        std::unordered_map<int, ::com::wazuh::api::engine::test::DebugMode> debugModeMap = {
             {0, eTest::DebugMode::ONLY_OUTPUT},
             {1, eTest::DebugMode::OUTPUT_AND_TRACES},
-            {2, eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS}
-        };
+            {2, eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS}};
         if (debugModeMap.find(debugModeValue) != debugModeMap.end())
         {
             return debugModeMap[debugModeValue];
@@ -78,8 +76,8 @@ void run(std::shared_ptr<apiclnt::Client> client, const Options& options)
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print results
-    if (eTest::DebugMode::OUTPUT_AND_TRACES == eRequest.debugmode() ||
-        eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == eRequest.debugmode())
+    if (eTest::DebugMode::OUTPUT_AND_TRACES == eRequest.debugmode()
+        || eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == eRequest.debugmode())
     {
         const auto& traces = eResponse.traces();
         const auto jsonDecoders = eMessage::eMessageToJson<google::protobuf::Value>(traces);
@@ -103,25 +101,25 @@ void configure(CLI::App_p app)
     const auto client = std::make_shared<apiclnt::Client>(options->apiEndpoint);
 
     // Policy
-    logtestApp->add_option("--policy", options->policyName, "Name of the policy to be used.")
-        ->default_val(ENGINE_DEFAULT_POLICY);
+    logtestApp->add_option("--name", options->sessionName, "Name of the session to be used.")->required();
 
     // Event
     logtestApp->add_option("--event", options->event, "Event to be processed")->required();
 
-    logtestApp->add_option(
+    logtestApp
+        ->add_option(
             "-q, --protocol_queue", options->protocolQueue, "Event protocol queue identifier (a single character).")
         ->default_val(ENGINE_PROTOCOL_QUEUE);
 
     // Debug levels
     logtestApp->add_flag("-d, --debug",
-                                    options->debugLevel,
-                                    "Enable debug mode [0-3]. Flag can appear multiple times. "
-                                    "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
-                                    "Full tracing, ddd[3]: 2 + detailed parser trace.");
+                         options->debugLevel,
+                         "Enable debug mode [0-3]. Flag can appear multiple times. "
+                         "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
+                         "Full tracing, ddd[3]: 2 + detailed parser trace.");
 
     logtestApp->add_option("--protocol_location", options->protocolLocation, "Protocol location.")
-         ->default_val(ENGINE_PROTOCOL_LOCATION);
+        ->default_val(ENGINE_PROTOCOL_LOCATION);
 
     // Register callback
     logtestApp->callback([options, client]() { run(client, *options); });
