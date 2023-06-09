@@ -31,7 +31,7 @@ private:
     std::string m_name;
 
 public:
-    explicit ContentRegister(std::string topicName, const nlohmann::json& parameters);
+    explicit ContentRegister(std::string topicName, const nlohmann::json parameters);
     ~ContentRegister() = default;
 
     void changeSchedulerInterval(size_t newInterval);

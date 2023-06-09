@@ -12,6 +12,7 @@
 #ifndef _ACTION_MODULE_HPP
 #define _ACTION_MODULE_HPP
 
+#include "actionOrchestrator.hpp"
 #include "onDemandManager.hpp"
 #include "routerProvider.hpp"
 #include <atomic>
@@ -38,6 +39,7 @@ public:
         , m_topicName {std::move(topicName)}
         , m_interval {0}
         , m_parameters {std::move(parameters)}
+        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, m_parameters)}
     {
     }
 
@@ -58,11 +60,14 @@ public:
                         bool expected = false;
                         if (m_actionInProgress.compare_exchange_strong(expected, true))
                         {
+                            std::cout << "Action: Initiating scheduling action for " << m_topicName << std::endl;
                             runAction(ActionID::SCHEDULED);
                         }
                         else
                         {
-                            std::cerr << "Action: Request scheduling - ignored, download in progress." << std::endl;
+                            std::cerr << "Action: Request scheduling - Download in progress. "
+                                         "The scheduling is ignored for "
+                                      << m_topicName << std::endl;
                         }
                     }
                 }
@@ -78,7 +83,7 @@ public:
         {
             m_schedulerThread.join();
         }
-        std::cout << "Action: Scheduler stopped" << std::endl;
+        std::cout << "Action: Scheduler stopped for " << m_topicName << std::endl;
     }
 
     void registerActionOnDemand()
@@ -96,11 +101,12 @@ public:
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
+            std::cout << "Action: Ondemand request - starting action for " << m_topicName << std::endl;
             runAction(ActionID::ON_DEMAND);
         }
         else
         {
-            std::cerr << "Action: Ondemand request - another action in progress." << std::endl;
+            std::cerr << "Action: Ondemand request - another action in progress for " << m_topicName << std::endl;
         }
     }
 
@@ -120,11 +126,12 @@ private:
     std::condition_variable m_cv;
     std::string m_topicName;
     nlohmann::json m_parameters;
+    std::unique_ptr<ActionOrchestrator> m_orchestration;
 
     void runAction(const ActionID id)
     {
-        // Add orchestration.
-        // TO DO, used to publish to all subscribers.
+        m_orchestration->run();
+
         m_actionInProgress = false;
     }
 };
