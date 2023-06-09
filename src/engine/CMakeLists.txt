@@ -1,6 +1,6 @@
 # Minimum 3.14 required by googletest discover tests
-# Todo find wich component is not working properly until 3.20 version
-cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
+# Todo find wich component is not working properly until 3.24 version
+cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
 
 # Set c++17
 set(CMAKE_CXX_STANDARD 17)
