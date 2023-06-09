@@ -123,8 +123,11 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
         Get messages from the SQS queue, parse their events, send them to AnalysisD, and delete them from the queue.
         """
         messages = self.get_messages()
-        while messages:
-            for message in messages:
-                self.asl_bucket_handler.process_file(message)
-                self.delete_message(message)
-            messages = self.get_messages()
+        if not messages:
+            aws_tools.debug(f'No messages in: {self.sqs_name}', 2)
+        else:
+            while messages:
+                for message in messages:
+                    self.asl_bucket_handler.process_file(message)
+                    self.delete_message(message)
+                messages = self.get_messages()
