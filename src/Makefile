@@ -710,6 +710,7 @@ settings:
 BUILD_SERVER+=wazuh-maild -
 BUILD_SERVER+=wazuh-csyslogd -
 BUILD_SERVER+=wazuh-agentlessd -
+BUILD_SERVER+=wazuh-cli -
 BUILD_SERVER+=wazuh-execd -
 BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
@@ -1819,6 +1820,17 @@ agentlessd/%.o: agentlessd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-agentlessd\" -c $^ -o $@
 
 wazuh-agentlessd: ${os_agentlessd_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+#### cli ####
+
+os_cli_c := $(wildcard cli/*.c)
+os_cli_o := $(os_cli_c:.c=.o)
+
+cli/%.o: cli/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-cli\" -DARGV0=\"wazuh-cli\" -c $^ -o $@
+
+wazuh-cli: ${os_cli_o} addagent/manage_agents.o addagent/read_from_user.o ${WAZUH_LIB} -lncurses
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### os_execd #####

@@ -1,0 +1,61 @@
+//
+// Created by beto on 28/05/23.
+//
+
+#ifndef LINER_IAC_H
+#define LINER_IAC_H
+#define IAC 0xFF            // Interpret As Command
+#define DONT 0xFE           // Dont
+#define DO 0xFD
+#define WONT 0xFC
+#define WILL 0xFB
+#define SB 0xFA
+#define GO_AHEAD 0xF9
+#define ERASE_LINE 0xF8
+#define ERASE_CHAR 0xF7
+#define ARE_YOU_THERE 0xF6
+#define ABORT_OUTPUT 0xF5
+#define INTERRUPT_PROCESS 0xF4
+#define BREAK 0xF3
+#define DATA_MARK 0xF2
+#define NOP 0xF1
+#define SE 0xF0
+
+#define BIN_TX 0x00
+#define ECHO 0x01
+#define RECONNECTION 0x02
+#define SUPPRESS_GO_AHEAD 0x03
+#define Approx Message Size Negotiation 0x04
+#define STATUS 0x05
+#define TIMING_MARK 0x06
+#define REMOTE_CONTROLLED_TRANS_AND_ENCHO 0x07
+#define OUTPUT_LINE_WIDTH 0x08
+#define OUTPUT_PAGE_SIZE 0x09
+#define OUTPUT_CARRIAGE_RETURN_DISPOSITION 0x0A
+#define OUTPUT_HORIZONTAL_TAB_STOPS 0x0B
+#define OUTPUT_HORIZONAL_TAB_DISPOSITION 0x0C
+#define OUTPUT_FORMFEED_DISPOSITION 0x0D
+#define OUTPUT_VERTICAL_TABSTOPS 0x0E
+#define OUTPUT_VERTICAL_TAB_DISPOSITION 0x0F
+#define OUTUPT_LINEFEED_DISPOSITION 0x10
+#define EXTENDED_ASCII 0x11
+#define LOGOUT 0x12
+#define BYTE_MACRO 0x13
+#define DATA_ENTRY_TERMINAL 0x14
+#define SUPDUP 0x15
+#define SUPDUP_OUTPUT 0x16
+#define SEND_LOCATION 0x17
+#define TERMINAL_TYPE 0x18
+#define END_OF_RECORD 0x19
+#define TACACS_USER_ID 0x1A
+#define OUTPUT_MARKING 0x1B
+#define TERMINAL_LOCATION_NUMBER 0x1C
+#define TELNET_3270_REGIME 0x1D
+#define X_3_PAD 0x1E
+#define NEGOTIATE_ABOUT_WINDOW_SIZE 0x1F
+#define TERMINAL_SPEED 0x20
+#define REMOTE_FLOW_CONTROL 0x21
+#define LINEMODE 0x22
+#define X_DISPLAY_LOCATION 0x23
+
+#endif //LINER_IAC_H
