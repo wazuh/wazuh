@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "src/**"
+      - ".github/workflows/scan-build.yml"
 
 jobs:
   scan-build-ubuntu-agent:
