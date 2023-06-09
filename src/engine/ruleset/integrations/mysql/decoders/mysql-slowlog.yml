@@ -1,0 +1,44 @@
+name: decoder/mysql-slowlog/0
+
+metadata:
+  module: mysql
+  dataset: mysql.slowlog
+  title: MySQL Server Slow Query log
+  description: Decoder for MySQL Server Slow Query logs
+  compatibility: This decoder has been tested with logs from MySQL server version 5.7 and 8.0
+  versions:
+    - "5.7"
+    - "8.0"
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2023-06-01
+  references:
+    - https://dev.mysql.com/doc/refman/5.7/en/slow-query-log.html
+    - https://dev.mysql.com/doc/refman/8.0/en/slow-query-log.html
+
+sources:
+  - decoder/integrations/0
+
+check:
+  - event.original: "+starts_with/# Time:"
+#TODO: Once the events arrive tagged, uncomment these lines below
+#   - event.module: mysql
+#   - event.dataset: mysql.slowlog
+
+parse:
+  logpar:
+    # Version 8.0.33
+    # # Time: 2023-06-05T20:52:36.770702Z # User@Host: root[root] @ localhost []  Id:     8 # Query_time: 3.000281  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1 SET timestamp=1685998353; select sleep(3);
+    - event.original: "# Time: <@timestamp/%FT%TZ> # User@Host: <user.name>[<?~mysql.slowlog.current_user>] @ <?source.domain> [<?source.ip>]  Id:<~/ignore/ ><process.thread.id> # Query_time: <~mysql.slowlog.duration/scaled_float>  Lock_time: <~mysql.slowlog.lock_time.sec/scaled_float> Rows_sent: <~mysql.slowlog.rows_sent>  Rows_examined: <~mysql.slowlog.rows_examined> (?use <~mysql.slowlog.schema>; )SET timestamp=<~mysql.slowlog.timestamp>; <~mysql.slowlog.query>; "
+
+normalize:
+  - map:
+      #TODO: Uncomment the line below when merge [#17406](https://github.com/wazuh/wazuh/pull/17406)
+      # - @timestamp: +date_from_epoch/$~mysql.slowlog.timestamp
+      - event.module: mysql
+      - event.dataset: mysql.slowlog
+      - event.kind: event
+      - event.category: +array_append/database
+      - event.type: +array_append/info
+      - wazuh.decoders: +array_append/mysql-slowlog
