@@ -6,8 +6,12 @@ on:
       - ".github/workflows/scan-build.yml"
 
 jobs:
-  scan-build-ubuntu-agent:
+  scan-build-linux:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ['agent', 'server']
     steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
@@ -19,38 +23,13 @@ jobs:
         continue-on-error: true
         run: |
           cd src
-          make deps TARGET=agent -j2
-          scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=agent DEBUG=1 -j2
+          make deps TARGET=${{matrix.target}} -j$(nproc)
+          scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=${{ matrix.target }} DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
         uses: actions/upload-artifact@v3
         with:
-          name: linux-agent-scan-build-report
-          path: src/scan-build-report/
-      - name: Fail job if build failed
-        if: steps.build_step.outcome == 'failure'
-        run: exit 1
-
-  scan-build-ubuntu-manager:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-tools-14
-      - name: Build
-        id: build_step
-        continue-on-error: true
-        run: |
-          cd src
-          make deps TARGET=server -j2
-          scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=server DEBUG=1 -j2
-      - name: Upload scan-build report
-        if: steps.build_step.outcome == 'failure'
-        uses: actions/upload-artifact@v3
-        with:
-          name: manager-scan-build-report
+          name: linux-${{ matrix.target }}-scan-build-report
           path: src/scan-build-report/
       - name: Fail job if build failed
         if: steps.build_step.outcome == 'failure'
@@ -69,10 +48,10 @@ jobs:
         continue-on-error: true
         run: |
           cd src
-          make deps TARGET=winagent -j2
-          make TARGET=winagent DEBUG=1 -j2
+          make deps TARGET=winagent -j$(nproc)
+          make TARGET=winagent DEBUG=1 -j$(nproc)
           make clean-internals
-          scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=winagent DEBUG=1 -j2
+          scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=winagent DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
         uses: actions/upload-artifact@v3
