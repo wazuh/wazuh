@@ -25,7 +25,7 @@ void ContentModule::stop()
     ContentModuleFacade::instance().stop();
 }
 
-ContentRegister::ContentRegister(std::string name, const nlohmann::json& parameters)
+ContentRegister::ContentRegister(std::string name, const nlohmann::json parameters)
     : m_name {std::move(name)}
 {
     ContentModuleFacade::instance().addProvider(m_name, parameters);
@@ -68,4 +68,3 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
-
