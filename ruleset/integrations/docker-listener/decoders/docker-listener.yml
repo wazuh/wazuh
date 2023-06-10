@@ -85,7 +85,7 @@ definitions:
     "remove": "deletion"
 
   MAP_BaseActionToEventType:
-    "create": "creation"
+    "create": "creation,deletion"
     "remove": "deletion"
     "update": "change"
 
@@ -103,7 +103,7 @@ normalize:
     - event.created: +date_from_epoch/$~json.docker.time
 
   # Containers
- - check: +string_equal/~json.docker.Type/Containers
+ - check: +string_equal/~json.docker.Type/container
    logpar:
       - ~json.docker.status: '<~tmp.docker_status>(?:<~tmp.docker_command>)'
    map:
@@ -117,19 +117,19 @@ normalize:
     - process.uptime: $~json.docker.execDuration
     # Custom field
     - ~container.attributes: $~json.docker.Actor.Attributes
- - check: +string_equal/~json.docker.Type/Containers AND string_not_equal/~json.docker.exitCode/0
+ - check: +string_equal/~json.docker.Type/container AND +string_not_equal/~json.docker.exitCode/0
    map:
     - event.outcome: failed
 
   # Images
- - check: +string_equal/~json.docker.Type/Images
+ - check: +string_equal/~json.docker.Type/image
    map:
     - event.category: +array_append/
     - event.type: +get_value/$MAP_ImageActionToEventType/$~json.docker.Action
     - container.image.name: $~json.docker.Actor.Attributes.name
 
   # Plugins
- - check: +string_equal/~json.docker.Type/Plugins
+ - check: +string_equal/~json.docker.Type/plugins
    map:
     - event.category: +array_append/package
     - event.type: +get_value/$MAP_PluginActionToEventType/$~json.docker.Action
@@ -138,7 +138,7 @@ normalize:
     - ~plugin.name: $~json.docker.Actor.Attributes.name
 
   # Volumes
- - check: +string_equal/~json.docker.Type/Volumes
+ - check: +string_equal/~json.docker.Type/volume
    map:
     - event.category: +array_append/file/driver #TODO: check!
     - event.type: +get_value/$MAP_VolumeActionToEventType/$~json.docker.Action
@@ -147,7 +147,7 @@ normalize:
     - ~volume.attributes: $~json.docker.Actor.Attributes.destination
 
   # Networks
- - check: +string_equal/~json.docker.Type/Networks
+ - check: +string_equal/~json.docker.Type/network
    map:
     - event.category: +array_append/network
     - event.type: +get_value/$MAP_NetworkActionToEventType/$~json.docker.Action
@@ -156,13 +156,13 @@ normalize:
     - network.name: $~json.docker.Actor.Attributes.name
 
   # Daemons
- - check: +string_equal/~json.docker.Type/Daemons
+ - check: +string_equal/~json.docker.Type/daemon
    map:
     - event.category: +array_append/process
     - event.type: +array_append/end/start
 
   # Services
- - check: +string_equal/~json.docker.Type/Services
+ - check: +string_equal/~json.docker.Type/service
    map:
     - event.category: +array_append/process
     - event.type: +get_value/$MAP_BaseActionToEventType/$~json.docker.Action
@@ -170,7 +170,7 @@ normalize:
     - service.name: $~json.docker.Actor.Attributes.name
 
   # Nodes
- - check: +string_equal/~json.docker.Type/Nodes
+ - check: +string_equal/~json.docker.Type/node
    map:
     - event.category: +array_append/host/network
     - event.type: +get_value/$MAP_BaseActionToEventType/$~json.docker.Action
@@ -179,7 +179,7 @@ normalize:
     - ~node.attributes: $~json.docker.Actor.Attributes
 
   # Secrets
- - check: +string_equal/~json.docker.Type/Secrets
+ - check: +string_equal/~json.docker.Type/secret
    map:
     - event.category: +array_append/file/authentication
     - event.type: +get_value/$MAP_BaseActionToEventType/$~json.docker.Action
@@ -188,7 +188,7 @@ normalize:
     - ~secret.name : $~json.docker.Actor.Attributes.name
 
   # Configs
- - check: +string_equal/~json.docker.Type/Configs
+ - check: +string_equal/~json.docker.Type/config
    map:
     - event.category: +array_append/configuration/file
     - event.type: +get_value/$MAP_BaseActionToEventType/$~json.docker.Action
