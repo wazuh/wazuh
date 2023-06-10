@@ -41,7 +41,6 @@ static void controlCmd(cmdStatus_t *c){
             }
 
             root = cJSON_Parse(s);
-            printf("root:%p\r\n", root);fflush(stdout);
             if(!root){
                 cmdPrintf(c, "Bad response 1.\r\n");
                 cmdEnd(c);
@@ -86,7 +85,6 @@ static void controlCmd(cmdStatus_t *c){
             }
 
             root = cJSON_Parse(s);
-            printf("root:%p\r\n", root);fflush(stdout);
             if(!root){
                 cmdPrintf(c, "Bad response 1.\r\n");
                 cmdEnd(c);
@@ -126,7 +124,6 @@ static void controlCmd(cmdStatus_t *c){
         break;
         default:break;
     }
-
 }
 
 static char *execute(const char *cmd){

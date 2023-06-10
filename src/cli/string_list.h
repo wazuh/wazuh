@@ -1,7 +1,3 @@
-//
-// Created by beto on 04/06/23.
-//
-
 #ifndef STRING_LIST_H
 #define STRING_LIST_H
 

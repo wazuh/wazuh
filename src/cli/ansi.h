@@ -1,7 +1,3 @@
-//
-// Created by beto on 29/05/23.
-//
-
 #ifndef ANSI_H
 #define ANSI_H
 

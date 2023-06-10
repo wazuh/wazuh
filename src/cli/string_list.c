@@ -1,6 +1,3 @@
-//
-// Created by beto on 04/06/23.
-//
 #include <string.h>
 #include <stdlib.h>
 #include "string_list.h"

@@ -1,7 +1,3 @@
-//
-// Created by beto on 04/06/23.
-//
-
 #ifndef COLOR_H
 #define COLOR_H
 

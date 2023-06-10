@@ -1,7 +1,3 @@
-//
-// Created by beto on 29/05/23.
-//
-
 #ifndef CLI_H
 #define CLI_H
 #include "stream.h"

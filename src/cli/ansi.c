@@ -1,7 +1,3 @@
-//
-// Created by beto on 29/05/23.
-//
-
 #include "ansi.h"
 #include <stdio.h>
 #include <string.h>

@@ -1,12 +1,9 @@
-//
-// Created by beto on 29/05/23.
-//
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
+
 #include "hints.h"
 #include "cli.h"
 #include "liner.h"
@@ -27,6 +24,14 @@ typedef struct cliSession_t{
     linerSession_t *ls;
     stream_t *s;
 }cliSession_t;
+
+static hintStyle_t cliDefaultStyle = {
+        .bold = 0,
+        .back = colorBlack,
+        .fore = colorGreen,
+        .header = " <- [",
+        .trailer = "]"
+};
 
 static void (*cliAutocompleteCb)(stringList_t *l, char *buf) = NULL;
 static hint_t *(*cliHintsCb)(char *str) = NULL;
@@ -53,19 +58,9 @@ static void exitCmd(cmdStatus_t *s){
 
 void cliExit(cliSession_t *s){
     s->work = false;
-
 }
 
-static hintStyle_t cliDefaultStyle = {
-        .bold = 0,
-        .back = colorBlack,
-        .fore = colorGreen,
-        .header = " <- [",
-        .trailer = "]"
-};
-
 cliSession_t * cliInit(stream_t *s){
-    //linenoiseHistoryLoad("history.txt");
     cliSession_t *cs = calloc(1, sizeof(cliSession_t));
     if(!cs)
         return NULL;
@@ -106,9 +101,6 @@ void cliTask(cliSession_t *cs){
                 break;
             case cliGetLine:
                 line = liner(cs->ls);
-                if(line){
-                    printf("Line input: %s\r\n", line);fflush(stdout);
-                }
 
                 if (line == NULL){
                     break;

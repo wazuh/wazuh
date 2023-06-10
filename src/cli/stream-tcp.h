@@ -1,7 +1,3 @@
-//
-// Created by beto on 28/05/23.
-//
-
 #ifndef STREAM_TCP_H
 #define STREAM_TCP_H
 

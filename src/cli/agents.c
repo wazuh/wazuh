@@ -22,7 +22,6 @@ static void agentsCmd(cmdStatus_t *s);
 static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize);
 
 void agentsInit(void){
-    printf("Cargando agents\r\n");
     cmdLoad("agents", "list agents", hintDefaultStyle, agentsCmd);
 }
 

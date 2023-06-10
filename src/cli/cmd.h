@@ -1,7 +1,3 @@
-//
-// Created by beto on 29/05/23.
-//
-
 #ifndef LINER_CMD_H
 #define LINER_CMD_H
 

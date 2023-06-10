@@ -1,7 +1,3 @@
-//
-// Created by beto on 27/05/23.
-//
-
 #ifndef LINER_LINER_H
 #define LINER_LINER_H
 #include <stdbool.h>

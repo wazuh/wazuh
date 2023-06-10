@@ -1,7 +1,3 @@
-//
-// Created by beto on 04/06/23.
-//
-
 #ifndef HINTS_H
 #define HINTS_H
 #include "color.h"

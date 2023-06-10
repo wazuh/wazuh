@@ -1,7 +1,3 @@
-//
-// Created by beto on 28/05/23.
-//
-
 #ifndef LINER_IAC_H
 #define LINER_IAC_H
 #define IAC 0xFF            // Interpret As Command

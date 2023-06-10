@@ -1,6 +1,3 @@
-//
-// Created by beto on 28/05/23.
-//
 #include <stdio.h>
 #include <netdb.h>
 #include <fcntl.h>

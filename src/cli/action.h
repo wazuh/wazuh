@@ -1,6 +1,6 @@
 #include "stream.h"
 
-typedef void (*keyAction_t)(void *custom, stream_t *s, char c);
+typedef void (*keyAction_t)(__attribute__((unused))void *custom, __attribute__((unused))stream_t *s, __attribute__((unused))char c);
 
 typedef struct keyActions_t{
     keyAction_t Escape;
@@ -53,5 +53,4 @@ typedef struct keyActions_t{
     keyAction_t Default;
 }keyActions_t;
 
-void keyActionSet(keyActions_t *actions);
-keyAction_t keyActionGet(stream_t *s, unsigned char c);
+keyAction_t keyActionGet(stream_t *s, keyActions_t *actions, unsigned char c);
