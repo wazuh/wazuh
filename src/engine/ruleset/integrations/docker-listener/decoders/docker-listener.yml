@@ -28,6 +28,67 @@ parse:
   logpar:
     - event.original: <~json/json>
 
+definitions:
+  MAP_ContainerStatusToEventType:
+    "attach": "access,connection" #TODO: check with double values
+    "commit": "creation"
+    "copy": "change"
+    "create": "creation"
+    "destroy": "deletion"
+    "detach": "connection"
+    "die": "end"
+    "exec_create": "creation,start"
+    "exec_detach": "change,start"
+    "exec_die": "creation,end"
+    "exec_start": "creation,start"
+    "export": "change"
+    "health_status": "info"
+    "kill": "end"
+    "oom": "error"
+    "pause": "change"
+    "rename": "change"
+    "resize": "change"
+    "restart": "start"
+    "start": "start"
+    "stop": "end"
+    "top": "info"
+    "unpause": "start"
+    "update": "change"
+
+  MAP_ImageActionToEventType: #TODO: Double check
+    "delete": "deletion"
+    "import": "creation"
+    "load": "start"
+    "pull": "start"
+    "push": "creation"
+    "save": "change"
+    "tag": "indicator"
+    "untag": "indicator"
+
+  MAP_PluginActionToEventType:
+    "enable": "start"
+    "disable": "end"
+    "install": "creation"
+    "remove": "deletion"
+
+  MAP_VolumeActionToEventType:
+    "create": "creation"
+    "destroy": "deletion"
+    "mount": "start"
+    "unmount": "end"
+
+  MAP_NetworkActionToEventType:
+    "create": "creation"
+    "connect": "connection,start"
+    "destroy": "deletion,end"
+    "disconnect": "connection,end"
+    "remove": "deletion"
+
+  MAP_BaseActionToEventType:
+    "create": "creation"
+    "remove": "deletion"
+    "update": "change"
+
 normalize:
 
  - map:
@@ -35,23 +96,107 @@ normalize:
 
  - check: +exists/~json.docker
    map:
+    - event.module: docker-listener
+    - event.kind: event #alert or metric
+    - event.outcome: unknown
     - container.id: $~json.docker.id
+    - event.created: +date_from_epoch/$~json.docker.time
+
+  # Containers
+ - check: +string_equal/~json.docker.Type/Containers
+   logpar:
+      - ~json.docker.status: '<~tmp.docker_status>(?:<~tmp.docker_command>)'
+   map:
+    - event.category: +array_append/host/session
+    - event.type: +get_value/$MAP_ContainerStatusToEventType/$~tmp.docker_status
+    - event.outcome: success
     - container.image.name: $~json.docker.from
-    - service.origin.type: $~json.docker.Type
-    - process.command_line: $~json.docker.status
+    - process.command_line: $~tmp.docker_command
     - process.exit_code: $~json.docker.exitCode
     - process.pid: $~json.docker.execID
-    - event.duration: $~json.docker.execDuration
-    - event.created: +date_from_epoch/$~json.docker.time
-    - event.action: $~json.docker.Action
-    - event.outcome: unknown
-    - event.category: +array_append/process
-    - event.kind: event
-    - event.module: docker-listener
-
+    - process.uptime: $~json.docker.execDuration
     # Custom field
     - ~container.attributes: $~json.docker.Actor.Attributes
+ - check: +string_equal/~json.docker.Type/Containers AND string_not_equal/~json.docker.exitCode/0
+   map:
+    - event.outcome: failed
+
+  # Images
+ - check: +string_equal/~json.docker.Type/Images
+   map:
+    - event.category: +array_append/
+    - event.type: +get_value/$MAP_ImageActionToEventType/$~json.docker.Action
+    - container.image.name: $~json.docker.Actor.Attributes.name
+
+  # Plugins
+ - check: +string_equal/~json.docker.Type/Plugins
+   map:
+    - event.category: +array_append/package
+    - event.type: +get_value/$MAP_PluginActionToEventType/$~json.docker.Action
+    - container.id: $~json.docker.Actor.ID
+    #Custom field
+    - ~plugin.name: $~json.docker.Actor.Attributes.name
+
+  # Volumes
+ - check: +string_equal/~json.docker.Type/Volumes
+   map:
+    - event.category: +array_append/file/driver #TODO: check!
+    - event.type: +get_value/$MAP_VolumeActionToEventType/$~json.docker.Action
+    - container.id: $~json.docker.Actor.ID
+    #Custom field
+    - ~volume.attributes: $~json.docker.Actor.Attributes.destination
+
+  # Networks
+ - check: +string_equal/~json.docker.Type/Networks
+   map:
+    - event.category: +array_append/network
+    - event.type: +get_value/$MAP_NetworkActionToEventType/$~json.docker.Action
+    - container.id: $~json.docker.Actor.ID
+    - network.type: $~json.docker.Actor.Attributes.type
+    - network.name: $~json.docker.Actor.Attributes.name
+
+  # Daemons
+ - check: +string_equal/~json.docker.Type/Daemons
+   map:
+    - event.category: +array_append/process
+    - event.type: +array_append/end/start
+
+  # Services
+ - check: +string_equal/~json.docker.Type/Services
+   map:
+    - event.category: +array_append/process
+    - event.type: +get_value/$MAP_BaseActionToEventType/$~json.docker.Action
+    - container.id: $~json.docker.Actor.ID
+    - service.name: $~json.docker.Actor.Attributes.name
+
+  # Nodes
+ - check: +string_equal/~json.docker.Type/Nodes
+   map:
+    - event.category: +array_append/host/network
+    - event.type: +get_value/$MAP_BaseActionToEventType/$~json.docker.Action
+    - service.node.name: $~json.docker.Actor.Attributes.name
+    #Custom field
+    - ~node.attributes: $~json.docker.Actor.Attributes
+
+  # Secrets
+ - check: +string_equal/~json.docker.Type/Secrets
+   map:
+    - event.category: +array_append/file/authentication
+    - event.type: +get_value/$MAP_BaseActionToEventType/$~json.docker.Action
+    - container.id: $~json.docker.Actor.ID
+    #Custom field
+    - ~secret.name : $~json.docker.Actor.Attributes.name
+
+  # Configs
+ - check: +string_equal/~json.docker.Type/Configs
+   map:
+    - event.category: +array_append/configuration/file
+    - event.type: +get_value/$MAP_BaseActionToEventType/$~json.docker.Action
+    - container.id: $~json.docker.Actor.ID
+    #Custom field
+    - ~configuration.name : $~json.docker.Actor.Attributes.name
 
     #cleanup
     - ~json: +delete
+    - ~tmp: +delete
 
