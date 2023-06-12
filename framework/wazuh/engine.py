@@ -1,7 +1,7 @@
 from wazuh.core.results import WazuhResult
 from wazuh.core import engine
 
-def get_runtime_config(name: str) -> WazuhResult:
+def get_runtime_config(name: str = None) -> WazuhResult:
     """Get the runtime configuration of the manager.
 
     Parameters
