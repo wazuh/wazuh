@@ -124,12 +124,7 @@ normalize:
       - event.kind: "event"
       - event.code: $~sysmonEvent.Event.System.EventID.#text
 
-      - ~tmp: +get_value/$idEvent_map/$~sysmonEvent.Event.System.EventID.#text
-      - event.category: $~tmp.category
-      - event.type: $~tmp.type
-      - event.action: $~tmp.action
-      - event.kind: $~tmp.kind
-      - event.outcome: $~tmp.outcome
+      - event: +merge_value/$idEvent_map/$~sysmonEvent.Event.System.EventID.#text
 
   #########################################################
   #                   Delete invalid fields
