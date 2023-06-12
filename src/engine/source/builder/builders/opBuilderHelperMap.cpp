@@ -1472,140 +1472,12 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
 //*                  Definition                   *
 //*************************************************
 
-// <field>: +get_value/$<definition_object>|$<object_reference>/$<key>
 base::Expression opBuilderHelperGetValue(const std::string& targetField,
                                          const std::string& rawName,
                                          const std::vector<std::string>& rawParameters,
                                          std::shared_ptr<defs::IDefinitions> definitions,
-                                         std::shared_ptr<schemf::ISchema> schema)
-{
-    auto parameters {helper::base::processParameters(rawName, rawParameters, definitions, false)};
-    helper::base::checkParametersSize(rawName, parameters, 2);
-    helper::base::checkParameterType(rawName, parameters[1], helper::base::Parameter::Type::REFERENCE);
-
-    const auto name = helper::base::formatHelperName(rawName, targetField, parameters);
-
-    // If key field is a schema field, the value should be a string
-    if (schema->hasField(DotPath::fromJsonPath(parameters[1].m_value))
-        && (schema->getType(DotPath::fromJsonPath(parameters[1].m_value)) != json::Json::Type::String))
-    {
-        throw std::runtime_error(
-            fmt::format("Engine helper builder: [{}] failed schema validation: Field '{}' value is not a string",
-                        name,
-                        parameters[1].m_value));
-    }
-
-    std::optional<json::Json> definitionObject {std::nullopt};
-
-    if (helper::base::Parameter::Type::VALUE == parameters[0].m_type)
-    {
-        try
-        {
-            definitionObject = json::Json {parameters[0].m_value.c_str()};
-        }
-        catch (std::runtime_error& e)
-        {
-            throw std::runtime_error(fmt::format(
-                "Engine helper builder: [{}] Definition '{}' has an invalid type", name, parameters[0].m_value));
-        }
-
-        if (!definitionObject->isObject())
-        {
-            throw std::runtime_error(fmt::format(
-                "Engine helper builder: [{}] Definition '{}' is not an object", name, parameters[0].m_value));
-        }
-    }
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-
-    const std::string failureTrace1 {
-        fmt::format("[{}] -> Failure: Reference '{}' not found", name, parameters[1].m_value)};
-    const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: Parameter '{}' not found", name, parameters[0].m_value)};
-    const std::string failureTrace3 {
-        fmt::format("[{}] -> Failure: Parameter '{}' has an invalid type", name, parameters[0].m_value)};
-    const std::string failureTrace4 {
-        fmt::format("[{}] -> Failure: Parameter '{}' is not an object", name, parameters[0].m_value)};
-    const std::string failureTrace5 {
-        fmt::format("[{}] -> Failure: Object '{}' does not contain '{}'", name, parameters[0].m_value, targetField)};
-
-    // Return Term
-    return base::Term<base::EngineOp>::create(
-        name,
-        [=,
-         targetField = std::move(targetField),
-         parameter = std::move(parameters[0]),
-         key = std::move(parameters[1].m_value),
-         definitionObject = std::move(definitionObject)](base::Event event) -> base::result::Result<base::Event>
-        {
-            // Get key
-            std::string resolvedKey;
-            const auto value = event->getString(key);
-            if (value)
-            {
-                resolvedKey = value.value();
-            }
-            else
-            {
-                return base::result::makeFailure(event, failureTrace1);
-            }
-
-            auto pointerPath = json::Json::formatJsonPath(resolvedKey);
-
-            // Get object
-            std::optional<json::Json> resolvedValue {std::nullopt};
-
-            if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
-            {
-                // Parameter is a reference
-                const auto resolvedJson = event->getJson(parameter.m_value);
-                if (!resolvedJson.has_value())
-                {
-                    return base::result::makeFailure(
-                        event, (!event->exists(parameter.m_value)) ? failureTrace2 : failureTrace3);
-                }
-                if (!resolvedJson->isObject())
-                {
-                    return base::result::makeFailure(event, failureTrace4);
-                }
-                resolvedValue = resolvedJson->getJson(pointerPath);
-            }
-            else
-            {
-                // Parameter is a definition
-                resolvedValue = definitionObject->getJson(pointerPath);
-            }
-
-            // Check if object contains the key
-            if (!resolvedValue.has_value())
-            {
-                return base::result::makeFailure(event, failureTrace5);
-            }
-
-            event->set(targetField, resolvedValue.value());
-            return base::result::makeSuccess(event, successTrace);
-        });
-}
-
-HelperBuilder getOpBuilderHelperGetValue(std::shared_ptr<schemf::ISchema> schema)
-{
-    return [schema](const std::string& targetField,
-                    const std::string& rawName,
-                    const std::vector<std::string>& rawParameters,
-                    std::shared_ptr<defs::IDefinitions> definitions)
-    {
-        return opBuilderHelperGetValue(targetField, rawName, rawParameters, definitions, schema);
-    };
-}
-
-
-// <field>: +merge_value/$<definition_object>|$<object_reference>/$<key>
-base::Expression opBuilderHelperMergeValue(const std::string& targetField,
-                                         const std::string& rawName,
-                                         const std::vector<std::string>& rawParameters,
-                                         std::shared_ptr<defs::IDefinitions> definitions,
-                                         std::shared_ptr<schemf::ISchema> schema)
+                                         std::shared_ptr<schemf::ISchema> schema,
+                                         bool isMerge)
 {
     auto parameters {helper::base::processParameters(rawName, rawParameters, definitions, false)};
     helper::base::checkParametersSize(rawName, parameters, 2);
@@ -1713,19 +1585,40 @@ base::Expression opBuilderHelperMergeValue(const std::string& targetField,
                 return base::result::makeFailure(event, failureTrace5);
             }
 
-            // Merge the value
-            //event->set(targetField, resolvedValue.value());
-            try
+            if (!isMerge)
             {
-                event->merge(json::NOT_RECURSIVE, resolvedValue.value(), targetField);
-            } catch (std::runtime_error& e)
-            {
-                return base::result::makeFailure(event, failureTrace6);
+                event->set(targetField, resolvedValue.value());
             }
+            else
+            {
+                try
+                {
+                    event->merge(json::NOT_RECURSIVE, resolvedValue.value(), targetField);
+                }
+                catch (std::runtime_error& e)
+                {
+                    return base::result::makeFailure(event, failureTrace6);
+                }
+                return base::result::makeSuccess(event, successTrace);
+            }
+
             return base::result::makeSuccess(event, successTrace);
         });
 }
 
+// <field>: +get_value/$<definition_object>|$<object_reference>/$<key>
+HelperBuilder getOpBuilderHelperGetValue(std::shared_ptr<schemf::ISchema> schema)
+{
+    return [schema](const std::string& targetField,
+                    const std::string& rawName,
+                    const std::vector<std::string>& rawParameters,
+                    std::shared_ptr<defs::IDefinitions> definitions)
+    {
+        return opBuilderHelperGetValue(targetField, rawName, rawParameters, definitions, schema);
+    };
+}
+
+// <field>: +merge_value/$<definition_object>|$<object_reference>/$<key>
 HelperBuilder getOpBuilderHelperMergeValue(std::shared_ptr<schemf::ISchema> schema)
 {
     return [schema](const std::string& targetField,
@@ -1733,7 +1626,7 @@ HelperBuilder getOpBuilderHelperMergeValue(std::shared_ptr<schemf::ISchema> sche
                     const std::vector<std::string>& rawParameters,
                     std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return opBuilderHelperMergeValue(targetField, rawName, rawParameters, definitions, schema);
+        return opBuilderHelperGetValue(targetField, rawName, rawParameters, definitions, schema, true);
     };
 }
 
