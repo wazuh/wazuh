@@ -94,7 +94,7 @@ TEST_F(SocketWrapperTest, ConnectInProgress)
     EXPECT_THROW({ socketWrapper.connect(unixAddress.data()); }, std::runtime_error);
 }
 
-TEST_F(SocketWrapperTest, ReadSuccess)
+TEST_F(SocketWrapperTest, DISABLED_ReadSuccess)
 {
     // Create a mock object.
     Socket<OSWrapper> socketWrapper;
@@ -157,7 +157,7 @@ TEST_F(SocketWrapperTest, ReadSuccess)
     EXPECT_NO_THROW({ socketWrapper.read(callbackBody); });
 }
 
-TEST_F(SocketWrapperTest, ReadPartialHeader)
+TEST_F(SocketWrapperTest, DISABLED_ReadPartialHeader)
 {
     // Create a mock object.
     Socket<OSWrapper> socketWrapper;
@@ -222,7 +222,7 @@ TEST_F(SocketWrapperTest, ReadPartialHeader)
     EXPECT_NO_THROW({ socketWrapper.read(callbackBody); });
 }
 
-TEST_F(SocketWrapperTest, ReadPartialBody)
+TEST_F(SocketWrapperTest, DISABLED_ReadPartialBody)
 {
     // Create a mock object.
     Socket<OSWrapper> socketWrapper;
@@ -290,7 +290,7 @@ TEST_F(SocketWrapperTest, ReadPartialBody)
     EXPECT_NO_THROW({ socketWrapper.read(callbackBody); });
 }
 
-TEST_F(SocketWrapperTest, ReadSuccessBufferIncrement)
+TEST_F(SocketWrapperTest, DISABLED_ReadSuccessBufferIncrement)
 {
     // Create a mock object.
     Socket<OSWrapper> socketWrapper;

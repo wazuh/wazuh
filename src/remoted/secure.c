@@ -13,6 +13,8 @@
 #include "remoted.h"
 #include "state.h"
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
+#include "router.h"
+#include "sym_load.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -35,6 +37,11 @@ OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
 
+router_provider_create_func router_provider_create_ptr = NULL;
+router_provider_send_func router_provider_send_ptr = NULL;
+router_provider_destroy_func router_provider_destroy_ptr = NULL;
+void* router_module_p = NULL;
+
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
@@ -47,7 +54,7 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock);
+STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock, ROUTER_PROVIDER_HANDLE *router_provider_handle);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -91,6 +98,23 @@ void HandleSecure()
     }
     if (!OSHash_setSize(remoted_agents_state, 2048)) {
         merror_exit(HSETSIZE_ERROR, "remoted_agents_state");
+    }
+
+    // Initialize router library
+    if (router_module_p = so_get_module_handle("router"), router_module_p)
+    {
+        router_provider_create_ptr = so_get_function_sym(router_module_p, "router_provider_create");
+        router_provider_send_ptr = so_get_function_sym(router_module_p, "router_provider_send");
+        router_provider_destroy_ptr = so_get_function_sym(router_module_p, "router_provider_destroy");
+
+        if (!router_provider_create_ptr || !router_provider_send_ptr || !router_provider_destroy_ptr)
+        {
+            merror_exit("Unable to initialize router module.");
+        }
+    }
+    else
+    {
+        merror_exit("Unable to load router module %s.", dlerror());
     }
 
     /* Initialize manager */
@@ -348,11 +372,12 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
 void * rem_handler_main(__attribute__((unused)) void * args) {
     message_t * message;
     int wdb_sock = -1;
+    static ROUTER_PROVIDER_HANDLE router_provider_handle = NULL;
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
-        HandleSecureMessage(message, &wdb_sock);
+        HandleSecureMessage(message, &wdb_sock, &router_provider_handle);
         rem_msgfree(message);
     }
 
@@ -422,7 +447,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
+STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock, ROUTER_PROVIDER_HANDLE *router_provider_handle) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -687,25 +712,42 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
     key_unlock();
 
-    /* If we can't send the message, try to connect to the
-     * socket again. If it not exit.
-     */
-    if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
-        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+    // Print first letter of the message
+    if (tmp_msg[0] == SYSCOLLECTOR_MQ) {
+        minfo("Received message from syscollector");
+        if (!*router_provider_handle) {
+            if (*router_provider_handle = router_provider_create_ptr("syscollector"), !*router_provider_handle)
+            {
+                os_free(agentid_str);
+                return;
+            }
+        }
 
-        // Try to reconnect infinitely
-        logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+        minfo("Sending message to router provider");
 
-        minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+        router_provider_send_ptr(*router_provider_handle, tmp_msg, msg_length);
 
+    } else {
+        /* If we can't send the message, try to connect to the
+        * socket again. If it not exit.
+        */
         if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
-            // Something went wrong sending a message after an immediate reconnection...
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+
+            // Try to reconnect infinitely
+            logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+            minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+            if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+                // Something went wrong sending a message after an immediate reconnection...
+                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+            } else {
+                rem_inc_recv_evt(agentid_str);
+            }
         } else {
             rem_inc_recv_evt(agentid_str);
         }
-    } else {
-        rem_inc_recv_evt(agentid_str);
     }
 
     os_free(agentid_str);

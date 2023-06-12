@@ -72,16 +72,36 @@ add_subdirectory(external/benchmark EXCLUDE_FROM_ALL)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)
 include_directories(${SRC_FOLDER}/shared_modules/content_manager/include)
+include_directories(${SRC_FOLDER}/shared_modules/wazuh-http-request/include)
 include_directories(${SRC_FOLDER}/headers)
 include_directories(${SRC_FOLDER}/)
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/nlohmann)
+include_directories(${SRC_FOLDER}/external/rocksdb/include)
+include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
+include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
+
+
+# Disable gflags rocksdb
+set(WITH_GFLAGS OFF CACHE BOOL "Turn off gflags" FORCE)
+set(WITH_TESTS OFF CACHE BOOL "Turn off tests" FORCE)
+set(WITH_BENCHMARK_TOOLS OFF CACHE BOOL "Turn off benchmark tools" FORCE)
+set(WITH_TOOLS OFF CACHE BOOL "Turn off tools" FORCE)
+set(WITH_FOLLY_DISTRIBUTED_MUTEX OFF CACHE BOOL "Turn off folly distributed mutex" FORCE)
+set(USE_RTTI ON CACHE BOOL "Turn on RTTI" FORCE)
+set(ROCKSDB_BUILD_SHARED OFF CACHE BOOL "Turn off shared rocksdb" FORCE)
+set(CMAKE_DISABLE_FIND_PACKAGE_gtest ON CACHE BOOL "Turn off gtest" FORCE)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+add_subdirectory(${SRC_FOLDER}/external/rocksdb EXCLUDE_FROM_ALL)
 
 add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
+
+add_subdirectory(shared_modules/utils)
 add_subdirectory(shared_modules/router)
 add_subdirectory(shared_modules/content_manager)
 set(CURL_DEP wazuhext)
 add_subdirectory(shared_modules/wazuh-http-request)
+add_subdirectory(shared_modules/indexer_connector)
 add_subdirectory(wazuh_modules/vulnerability_scanner)
 
-add_subdirectory(shared_modules/utils/testtool)
