@@ -8,7 +8,7 @@ RefCounter::RefCounter(const RefCounter& other)
     m_refMap = other.m_refMap;
 }
 
-void RefCounter::addRef(const std::string& name, const unsigned int& times)
+void RefCounter::addRef(const std::string& name, const uint times)
 {
     m_refMap[name] += times;
 }

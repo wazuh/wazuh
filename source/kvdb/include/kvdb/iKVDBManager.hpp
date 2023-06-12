@@ -47,19 +47,19 @@ public:
      * @brief Try to delete a DB if there are no references to it.
      *
      * @param name Name of the DB.
-     * @return std::variant<bool, base::Error> True if the DB was deleted successfully. Specific error otherwise.
+     * @return std::variant<base::Error> If base::Error not exists the DB was deleted successfully. Specific error otherwise.
      *
      */
-    virtual std::variant<bool, base::Error> deleteDB(const std::string& name) = 0;
+    virtual std::optional<base::Error> deleteDB(const std::string& name) = 0;
 
     /**
      * @brief Creates a DB with the provided name.
      *
      * @param name Name of the DB.
-     * @return std::variant<bool, base::Error> True if the DB was created successfully. Specific error otherwise.
+     * @return std::variant<base::Error> If base::Error not exists the DB was created successfully. Specific error otherwise.
      *
      */
-    virtual std::variant<bool, base::Error> createDB(const std::string& name) = 0;
+    virtual std::optional<base::Error> createDB(const std::string& name) = 0;
 
     /**
      * @brief Checks if a DB exists.

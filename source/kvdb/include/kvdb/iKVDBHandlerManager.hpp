@@ -21,7 +21,8 @@ public:
      * @param scopeName Name of the Scope.
      * @return std::variant<std::shared_ptr<IKVDBHandler>, base::Error> A KVDBHandler or specific error.
      */
-    virtual std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName, const std::string& scopeName) = 0;
+    virtual std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName,
+                                                                                    const std::string& scopeName) = 0;
 
     /**
      * @brief Removes a KVDB Handler given the provided DB name and scope name.
@@ -33,12 +34,15 @@ public:
 
     /**
      * @brief Returns if the Manager is in Shutdown mode.
-     * If Manager is shutting down, handlers will not auto remove.
+     * Shutdown mode is a flag added for compatibility with Unit Test cycle. UT Setup and Teardown forces creation of
+     * KVDBManagers. In a normal scenario, the Manager is shutdown when the server stops. To cope with both scenarios,
+     * the finalize method enables the shutdown mode  and the handlers do not automatically unregister their references
+     * to avoid memory deletion issues.
      *
      * @return true The Manager is shutting down.
      * @return false The Manager is not shutting down.
      */
-    virtual bool skipAutoRemoveEnabled() = 0;
+    virtual bool managerShuttingDown() = 0;
 };
 
 } // namespace kvdbManager

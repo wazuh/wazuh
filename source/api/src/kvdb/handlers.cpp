@@ -86,9 +86,9 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
 
         const auto path = eRequest.has_path() ? eRequest.path() : std::string {""};
         auto resultCreate = kvdbManager->createDB(eRequest.name());
-        if (std::holds_alternative<base::Error>(resultCreate))
+        if (resultCreate)
         {
-            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(resultCreate).message);
+            return ::api::adapter::genericError<ResponseType>(resultCreate.value().message);
         }
 
         // Adapt the response to wazuh api
@@ -131,9 +131,9 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
 
         auto resultDelete = kvdbManager->deleteDB(eRequest.name());
 
-        if (std::holds_alternative<base::Error>(resultDelete))
+        if (resultDelete)
         {
-            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(resultDelete).message);
+            return ::api::adapter::genericError<ResponseType>(resultDelete.value().message);
         }
 
         return ::api::adapter::genericSuccess<ResponseType>();
@@ -339,9 +339,9 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
 
         auto result = handler->remove(eRequest.key());
 
-        if (std::holds_alternative<base::Error>(result))
+        if (result)
         {
-            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(result).message);
+            return ::api::adapter::genericError<ResponseType>(result.value().message);
         }
 
         return ::api::adapter::genericSuccess<ResponseType>();
@@ -412,9 +412,9 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
         auto result = handler->set(eRequest.entry().key(), std::get<std::string>(value));
 
-        if (std::holds_alternative<base::Error>(result))
+        if (result)
         {
-            return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(result).message);
+            return ::api::adapter::genericError<ResponseType>(result.value().message);
         }
 
         return ::api::adapter::genericSuccess<ResponseType>();
