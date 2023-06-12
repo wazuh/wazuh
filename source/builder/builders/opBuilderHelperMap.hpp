@@ -383,6 +383,33 @@ base::Expression opBuilderHelperGetValue(const std::string& targetField,
  */
 HelperBuilder getOpBuilderHelperGetValue(std::shared_ptr<schemf::ISchema> schema);
 
+
+/**
+ * @brief Create 'merge_value' helper function that merge target field value with the content of the some key in the
+ * definition object, where the key is specified with a reference to another field.
+ * <field>: +merge_value/$<definition_object>|$<object_reference>/$<key>
+ *
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition.
+ * @param definitions handler with definitions
+ * @param schema schema to validate fields
+ * @return base::Expression
+ */
+base::Expression opBuilderHelperMergeValue(const std::string& targetField,
+                                              const std::string& rawName,
+                                              const std::vector<std::string>& rawParameters,
+                                              std::shared_ptr<defs::IDefinitions> definitions,
+                                              std::shared_ptr<schemf::ISchema> schema);
+
+/**
+ * @brief Get the 'merge_value' function helper builder
+ *
+ * @param schema schema to validate fields
+ * @return builder
+ */
+HelperBuilder getOpBuilderHelperMergeValue(std::shared_ptr<schemf::ISchema> schema);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_MAP_H
