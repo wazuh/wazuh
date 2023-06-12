@@ -14,7 +14,7 @@ from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.models.group_added_model import GroupAddedModel
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, deprecate_endpoint
-from api.validator import check_component_configuration_pair
+from api.validator import check_component_configuration_pair, check_file_exists
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -655,6 +655,9 @@ async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: b
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = request.query.get(field, None)
+
+    # Check if the file exists before proceeding
+    raise_if_exc(check_file_exists(f_kwargs['filename']))
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

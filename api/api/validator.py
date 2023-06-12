@@ -316,6 +316,37 @@ def check_component_configuration_pair(component: str, configuration: str) -> Wa
                                               f"{WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]}")
 
 
+def check_file_exists(filename: str):
+    """Check if the given file exists in the specified path
+
+    This function takes a filename as an argument and checks if it exists
+    in the '/var/ossec/var/upgrade/' directory.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file to check
+
+    Returns
+    -------
+    bool
+        True if the file exists, False otherwise.
+
+    Raises
+    ------
+    WazuhError
+        If the file does not exist.
+    """
+
+    # common.WAZUH_PATH is assumed to be '/var/ossec'
+    file_path = os.path.join(common.WAZUH_PATH, 'var', 'upgrade', filename)
+
+    if not os.path.isfile(file_path):
+        raise WazuhError(1006, extra_message=f'File {filename} not found in {file_path}')
+
+    return True
+
+
 @draft4_format_checker.checks("alphanumeric")
 def format_alphanumeric(value):
     return check_exp(value, _alphanumeric_param)
