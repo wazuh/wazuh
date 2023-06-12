@@ -7,8 +7,8 @@ metadata:
   compatibility: >
     This decoder has been tested on Wazuh version 4.4 and docker 20.10.12
   versions:
-   - "4.4"
-   - "20.10.12" #TODO: check backward compatibility
+   - "4.4.3"
+   - "24.0.2" #TODO: check backward compatibility
   author:
     email: info@wazuh.com
     name: Wazuh, Inc.
@@ -126,8 +126,6 @@ normalize:
     - process.command_line: $~tmp.docker_command
     - process.exit_code: $~json.docker.Actor.Attributes.exitCode
     - process.pid: $~json.docker.execID
-    # Custom field
-    - ~container.attributes: $~json.docker.Actor.Attributes
  - check: +string_equal/~json.docker.Type/container AND +string_not_equal/~json.docker.Actor.Attributes.exitCode/0
    map:
     - event.outcome: failed

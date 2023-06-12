@@ -14,10 +14,13 @@
 using namespace base;
 namespace bld = builder::internals::builders;
 
+const std::string targetField {"/field"};
+const std::string helperName {"date_from_epoch"};
+
 TEST(opBuilderHelperDateFromEpochTime, Builds)
 {
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"date_from_epoch"},
+    auto tuple = std::make_tuple(std::string {targetField},
+                                 std::string {helperName},
                                  std::vector<std::string> {"1685564382"},
                                  std::make_shared<defs::mocks::FailDef>());
 
@@ -27,8 +30,8 @@ TEST(opBuilderHelperDateFromEpochTime, Builds)
 TEST(opBuilderHelperDateFromEpochTime, wrongParameters)
 {
     // None parameter
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"date_from_epoch"},
+    auto tuple = std::make_tuple(std::string {targetField},
+                                 std::string {helperName},
                                  std::vector<std::string> {},
                                  std::make_shared<defs::mocks::FailDef>());
 
@@ -36,82 +39,37 @@ TEST(opBuilderHelperDateFromEpochTime, wrongParameters)
                  std::runtime_error);
 
     // more than 1 parameter
-    tuple = std::make_tuple(std::string {"/field"},
-                            std::string {"date_from_epoch"},
+    tuple = std::make_tuple(std::string {targetField},
+                            std::string {helperName},
                             std::vector<std::string> {"1", "2"},
                             std::make_shared<defs::mocks::FailDef>());
 
     ASSERT_THROW(std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple),
                  std::runtime_error);
-
-    // reference doesn't exist
-    tuple = std::make_tuple(std::string {"/field"},
-                            std::string {"date_from_epoch"},
-                            std::vector<std::string> {"$someField"},
-                            std::make_shared<defs::mocks::FailDef>());
-
-    auto event = std::make_shared<json::Json>(R"({"otherField": 10})");
-    auto op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
-                  ->getPtr<Term<EngineOp>>()
-                  ->getFn();
-    auto result = op(event);
-    ASSERT_FALSE(result);
-
-    // empty parameter
-    tuple = std::make_tuple(std::string {"/field"},
-                            std::string {"date_from_epoch"},
-                            std::vector<std::string> {""},
-                            std::make_shared<defs::mocks::FailDef>());
-
-    event = std::make_shared<json::Json>(R"({"field": ""})");
-    op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
-             ->getPtr<Term<EngineOp>>()
-             ->getFn();
-    result = op(event);
-    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperDateFromEpochTime, inputNumberOutsideOfLimits)
+TEST(opBuilderHelperDateFromEpochTime, nonCorrectArguments)
 {
     // Big number (bigger than INT_MAX)
     auto biggerThanMax = 1 + static_cast<long int>(INT_MAX);
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"date_from_epoch"},
-                                 std::vector<std::string> {"$field_ref"},
-                                 std::make_shared<defs::mocks::FailDef>());
+    auto event =
+        std::make_shared<json::Json>(fmt::format(R"({{"field_ref": {}, "field": ""}})", biggerThanMax).c_str());
 
-    auto event = std::make_shared<json::Json>(fmt::format(R"({{"field_ref": {}}})",biggerThanMax).c_str());
-    auto op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
-                  ->getPtr<Term<EngineOp>>()
-                  ->getFn();
-    auto result = op(event);
-    ASSERT_FALSE(result);
+    // fail arguments: empty reference, non number, negative, ampty value, inexistent reference
+    std::vector<std::string> arguments_array = {"$field_ref", "abcdef", "-1", "", "$someField"};
+    for (const auto& argument : arguments_array)
+    {
+        auto tuple = std::make_tuple(std::string {targetField},
+                                     std::string {helperName},
+                                     std::vector<std::string> {argument},
+                                     std::make_shared<defs::mocks::FailDef>());
 
-    // parameter not number
-    tuple = std::make_tuple(std::string {"/field"},
-                            std::string {"date_from_epoch"},
-                            std::vector<std::string> {"abcdef"},
-                            std::make_shared<defs::mocks::FailDef>());
-
-    event = std::make_shared<json::Json>(R"({"field": ""})");
-    op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
-             ->getPtr<Term<EngineOp>>()
-             ->getFn();
-    result = op(event);
-    ASSERT_FALSE(result);
-
-    // negative
-    tuple = std::make_tuple(std::string {"/field"},
-                            std::string {"date_from_epoch"},
-                            std::vector<std::string> {"-1"},
-                            std::make_shared<defs::mocks::FailDef>());
-
-    event = std::make_shared<json::Json>(R"({"field": ""})");
-    op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
-             ->getPtr<Term<EngineOp>>()
-             ->getFn();
-    result = op(event);
-    ASSERT_FALSE(result);
+        auto op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
+                      ->getPtr<Term<EngineOp>>()
+                      ->getFn();
+        auto result = op(event);
+        ASSERT_FALSE(result);
+    }
 }
 
 TEST(opBuilderHelperDateFromEpochTime, executionOkWithValues)
@@ -121,66 +79,38 @@ TEST(opBuilderHelperDateFromEpochTime, executionOkWithValues)
     auto seccondsNow = std::chrono::duration_cast<std::chrono::seconds>(dateNow.time_since_epoch()).count();
     std::string epoch_now = std::to_string(seccondsNow);
 
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"date_from_epoch"},
-                                 std::vector<std::string> {epoch_now},
-                                 std::make_shared<defs::mocks::FailDef>());
+    // date beginning
+    date::sys_time<std::chrono::seconds> dateBegin {std::chrono::seconds {0}};
 
-    auto event = std::make_shared<json::Json>(R"({"field": "", "reference" : 0})");
-    auto op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
-                  ->getPtr<Term<EngineOp>>()
-                  ->getFn();
-    auto result = op(event);
-
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->getString("/field"));
-    auto nowSec = result.payload()->getString("/field").value();
-    auto nowStrResult = date::format("%Y-%m-%dT%H:%M:%SZ", dateNow);
-    ASSERT_STREQ(nowStrResult.c_str(), nowSec.c_str());
-
-    // epoch zero with reference
-    auto tuple2 = std::make_tuple(std::string {"/field"},
-                                  std::string {"date_from_epoch"},
-                                  std::vector<std::string> {"$reference"},
-                                  std::make_shared<defs::mocks::FailDef>());
-
-    op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple2)
-             ->getPtr<Term<EngineOp>>()
-             ->getFn();
-    result = op(event);
-
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->getString("/field"));
-    nowSec = result.payload()->getString("/field").value();
-    date::sys_time<std::chrono::seconds> tp {std::chrono::seconds {0}};
-    nowStrResult = date::format("%Y-%m-%dT%H:%M:%SZ", tp);
-    ASSERT_STREQ(nowStrResult.c_str(), nowSec.c_str());
-}
-
-TEST(opBuilderHelperDateFromEpochTime, SuccessTruncatingFloatingPoint)
-{
     // Now in milliseconds
     auto dateNowMilli = date::floor<std::chrono::milliseconds>(std::chrono::system_clock::now());
     auto sec = std::chrono::duration_cast<std::chrono::milliseconds>(dateNowMilli.time_since_epoch()).count();
-    double secWithComma = static_cast<double>(sec) / 1000;
-    std::string epoch_now = std::to_string(secWithComma);
-    auto tuple = std::make_tuple(std::string {"/field"},
-                                 std::string {"date_from_epoch"},
-                                 std::vector<std::string> {epoch_now},
-                                 std::make_shared<defs::mocks::FailDef>());
+    auto epoch_now_milli = std::to_string(static_cast<double>(sec) / 1000);
 
-    auto event = std::make_shared<json::Json>(R"({})");
-    auto op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
-                  ->getPtr<Term<EngineOp>>()
-                  ->getFn();
-    auto result = op(event);
+    auto event = std::make_shared<json::Json>(R"({"field": "", "reference" : 0})");
 
-    ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->getString("/field"));
+    // ok arguments and expected values:
+    std::vector<std::tuple<std::string, date::sys_time<std::chrono::seconds>>> arguments_array = {
+        {epoch_now, dateNow}, {"$reference", dateBegin}, {epoch_now_milli, dateNow}};
 
-    // Result in string will truncate to only seconds
-    auto nowSec = result.payload()->getString("/field").value();
-    date::sys_time<std::chrono::seconds> tp {std::chrono::seconds {std::stoi(epoch_now)}};
-    auto now_str_result = date::format("%Y-%m-%dT%H:%M:%SZ", tp);
-    ASSERT_STREQ(now_str_result.c_str(), nowSec.c_str());
+    // std::vector<std::string> arguments_array = {epoch_now, "$reference", epoch_now_milli};
+    for (const auto& argument : arguments_array)
+    {
+        auto tuple = std::make_tuple(std::string {targetField},
+                                     std::string {helperName},
+                                     std::vector<std::string> {std::get<0>(argument)},
+                                     std::make_shared<defs::mocks::FailDef>());
+
+        auto op = std::apply(bld::getOpBuilderHelperDateFromEpochTime(schemf::mocks::EmptySchema::create()), tuple)
+                      ->getPtr<Term<EngineOp>>()
+                      ->getFn();
+        auto result = op(event);
+
+        ASSERT_TRUE(result);
+        ASSERT_TRUE(result.payload()->getString(targetField));
+
+        auto resultString = result.payload()->getString(targetField).value();
+        auto nowStrResult = date::format("%Y-%m-%dT%H:%M:%SZ", std::get<1>(argument));
+        ASSERT_STREQ(resultString.c_str(), nowStrResult.c_str());
+    }
 }
