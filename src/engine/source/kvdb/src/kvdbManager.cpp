@@ -1,4 +1,3 @@
-#include <kvdb/kvdbExcept.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
@@ -35,7 +34,7 @@ void KVDBManager::finalize()
     m_isInitialized = false;
 }
 
-bool KVDBManager::skipAutoRemoveEnabled()
+bool KVDBManager::managerShuttingDown()
 {
     return m_isShuttingDown;
 }
@@ -190,7 +189,7 @@ std::vector<std::string> KVDBManager::listDBs(const bool loaded)
     return spaces;
 }
 
-std::variant<bool, base::Error> KVDBManager::deleteDB(const std::string& name)
+std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
 {
     auto handlersInfo = getKVDBHandlersInfo();
 
@@ -220,14 +219,14 @@ std::variant<bool, base::Error> KVDBManager::deleteDB(const std::string& name)
         return base::Error {fmt::format("The DB not exists.")};
     }
 
-    return true;
+    return std::nullopt;
 }
 
-std::variant<bool, base::Error> KVDBManager::createDB(const std::string& name)
+std::optional<base::Error> KVDBManager::createDB(const std::string& name)
 {
     if (existsDB(name))
     {
-        return true;
+        return std::nullopt;
     }
 
     auto createResult = createColumnFamily(name);
@@ -237,7 +236,7 @@ std::variant<bool, base::Error> KVDBManager::createDB(const std::string& name)
         return std::get<base::Error>(createResult);
     }
 
-    return true;
+    return std::nullopt;
 }
 
 bool KVDBManager::existsDB(const std::string& name)

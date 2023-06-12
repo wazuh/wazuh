@@ -1,10 +1,10 @@
 #ifndef _KVDB_SPACE_H
 #define _KVDB_SPACE_H
 
+#include "rocksdb/db.h"
+
 #include <kvdb/iKVDBHandler.hpp>
 #include <kvdb/kvdbManagedHandler.hpp>
-
-#include "rocksdb/db.h"
 
 namespace kvdbManager
 {
@@ -49,25 +49,25 @@ public:
      * @copydoc IKVDBHandler::set(const std::string& key, const std::string& value)
      *
      */
-    std::variant<bool, base::Error> set(const std::string& key, const std::string& value) override;
+    std::optional<base::Error> set(const std::string& key, const std::string& value) override;
 
     /**
      * @copydoc IKVDBHandler::set(const std::string& key, const json::Json& value)
      *
      */
-    std::variant<bool, base::Error> set(const std::string& key, const json::Json& value) override;
+    std::optional<base::Error> set(const std::string& key, const json::Json& value) override;
 
     /**
      * @copydoc IKVDBHandler::add
      *
      */
-    std::variant<bool, base::Error> add(const std::string& key) override;
+    std::optional<base::Error> add(const std::string& key) override;
 
     /**
      * @copydoc IKVDBHandler::remove
      *
      */
-    std::variant<bool, base::Error> remove(const std::string& key) override;
+    std::optional<base::Error> remove(const std::string& key) override;
 
     /**
      * @copydoc IKVDBHandler::contains

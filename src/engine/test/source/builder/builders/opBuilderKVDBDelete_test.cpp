@@ -8,7 +8,6 @@
 #include <defs/mocks/failDef.hpp>
 #include <json/json.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <kvdb/kvdbExcept.hpp>
 #include <opBuilderKVDB.hpp>
 #include <testsCommon.hpp>
 
@@ -56,9 +55,9 @@ protected:
 
         kvdbScope = kvdbManager->getKVDBScope("builder_test");
         auto err1 = kvdbManager->createDB(DB_NAME_1);
-        ASSERT_FALSE(std::holds_alternative<base::Error>(err1));
+        ASSERT_FALSE(err1);
         auto err2 = kvdbManager->createDB(DB_NAME_2);
-        ASSERT_FALSE(std::holds_alternative<base::Error>(err2));
+        ASSERT_FALSE(err2);
     }
 
     void TearDown() override
@@ -67,9 +66,9 @@ protected:
         {
             kvdbManager->finalize();
         }
-        catch (kvdbManager::KVDBException& e)
+        catch (const std::exception& e)
         {
-            FAIL() << "KVDBException: " << e.what();
+            FAIL() << "Exception: " << e.what();
         }
 
         if (std::filesystem::exists(DB_DIR))

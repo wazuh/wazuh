@@ -1,6 +1,8 @@
 #include <fmt/format.h>
-#include <kvdb/kvdbHandlerCollection.hpp>
+
 #include <logging/logging.hpp>
+
+#include <kvdb/kvdbHandlerCollection.hpp>
 
 namespace kvdbManager
 {
@@ -10,7 +12,7 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
                                                   const std::string& dbName,
                                                   const std::string& scopeName)
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<std::shared_mutex> lock(m_mutex);
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
@@ -24,12 +26,12 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
         m_mapInstances.insert(std::make_pair(dbName, std::move(spInstance)));
     }
 
-    return std::make_unique<KVDBSpace>(m_handleManager, db, cfHandle, dbName, scopeName);
+    return std::make_shared<KVDBSpace>(m_handleManager, db, cfHandle, dbName, scopeName);
 }
 
 void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<std::shared_mutex> lock(m_mutex);
 
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
@@ -45,7 +47,7 @@ void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const s
 
 std::vector<std::string> KVDBHandlerCollection::getDBNames()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<std::shared_mutex> lock(m_mutex);
     std::vector<std::string> dbNames;
     for (const auto& instance : m_mapInstances)
     {
@@ -56,7 +58,7 @@ std::vector<std::string> KVDBHandlerCollection::getDBNames()
 
 std::map<std::string, int> KVDBHandlerCollection::getRefMap(const std::string& dbName)
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<std::shared_mutex> lock(m_mutex);
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {

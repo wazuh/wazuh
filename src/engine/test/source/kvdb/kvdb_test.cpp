@@ -1,7 +1,6 @@
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <kvdb/kvdbManager.hpp>
-#include <kvdb/kvdbExcept.hpp>
 #include <testsCommon.hpp>
 
 #include <metrics/metricsManager.hpp>
@@ -45,9 +44,9 @@ protected:
         {
             m_spKVDBManager->finalize();
         }
-        catch (kvdbManager::KVDBException& e)
+        catch (const std::exception& e)
         {
-            FAIL() << "KVDBException: " << e.what();
+            FAIL() << "Exception: " << e.what();
         }
 
         if (std::filesystem::exists(KVDB_PATH))
@@ -85,13 +84,13 @@ TEST_F(KVDBTest, ScopeTest)
 
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
     auto result = handler->add("key1");
-    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_TRUE(result == std::nullopt);
 
     auto result1 = handler->contains("key1");
     ASSERT_TRUE(std::holds_alternative<bool>(result1));
 
     auto result2 = handler->set("key1", "value");
-    ASSERT_TRUE(std::holds_alternative<bool>(result2));
+    ASSERT_TRUE(result2 == std::nullopt);
 
     auto result3 = handler->get("key1");
     ASSERT_TRUE(std::holds_alternative<std::string>(result3));

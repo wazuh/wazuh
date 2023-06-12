@@ -9,7 +9,6 @@
 #include <defs/mocks/failDef.hpp>
 
 #include <kvdb/kvdbManager.hpp>
-#include <kvdb/kvdbExcept.hpp>
 #include <opBuilderKVDB.hpp>
 #include <testsCommon.hpp>
 
@@ -63,9 +62,9 @@ protected:
         {
             kvdbManager->finalize();
         }
-        catch (kvdbManager::KVDBException& e)
+        catch (const std::exception& e)
         {
-            FAIL() << "KVDBException: " << e.what();
+            FAIL() << "Exception: " << e.what();
         }
 
         if (std::filesystem::exists(DB_DIR))
