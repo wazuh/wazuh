@@ -38,7 +38,9 @@ public:
                                                      const std::string& filterName,
                                                      const std::string& routeName,
                                                      uint32_t lifespan = 0,
-                                                     const std::string& description = "") = 0;
+                                                     const std::string& description = "",
+                                                     const std::time_t creationDate = std::time(nullptr),
+                                                     const std::string& sessionID = "") = 0;
 
     /**
      * @brief Get the list of active sessions.

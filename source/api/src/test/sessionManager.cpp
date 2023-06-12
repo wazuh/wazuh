@@ -28,7 +28,9 @@ std::optional<base::Error> SessionManager::createSession(const string& sessionNa
                                                          const string& filterName,
                                                          const string& routeName,
                                                          uint32_t lifespan,
-                                                         const string& description)
+                                                         const string& description,
+                                                         const std::time_t creationDate,
+                                                         const string& sessionID)
 {
     std::unique_lock<std::shared_mutex> lock(m_sessionMutex);
 
@@ -43,17 +45,18 @@ std::optional<base::Error> SessionManager::createSession(const string& sessionNa
             fmt::format("Policy '{}' is already assigned to a route ('')", policyName, m_policyMap[policyName])};
     }
 
-    Session session(sessionName, policyName, filterName, routeName, lifespan, description);
+    Session session(sessionName, policyName, filterName, routeName, lifespan, description, creationDate, sessionID);
     m_activeSessions.emplace(sessionName, session);
     m_routeMap.emplace(routeName, sessionName);
     m_policyMap.emplace(policyName, routeName);
 
-    LOG_DEBUG("Session created: ID={}, Name={}, Creation Date={}, Policy Name={}, Route Name={}, Life Span={}, "
-              "Description=\n",
+    LOG_DEBUG("Session created: ID={}, Name={}, Creation Date={}, Policy Name={}, Filter Name={}, Route Name={}, Life "
+              "Span={}, Description={}\n",
               session.getSessionID(),
               session.getSessionName(),
               session.getCreationDate(),
               session.getPolicyName(),
+              session.getFilterName(),
               session.getRouteName(),
               session.getLifespan(),
               session.getDescription());

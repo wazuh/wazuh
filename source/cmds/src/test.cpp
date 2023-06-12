@@ -1,5 +1,6 @@
 #include "cmds/test.hpp"
 
+#include <api/test/handlers.hpp>
 #include <cmds/apiclnt/client.hpp>
 #include <cmds/details/stackExecutor.hpp>
 #include <eMessages/test.pb.h>
@@ -17,14 +18,14 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
     using RequestType = eTest::RunPost_Request;
     using ResponseType = eTest::RunPost_Response;
-    const std::string command {"test.run/post"};
+    const std::string command {api::test::handlers::TEST_RUN_API_CMD};
 
     // Set policy name
     RequestType eRequest;
     eRequest.set_name(parameters.sessionName);
 
     // Set protocol queue
-    eRequest.set_protocolqueue(parameters.protocolQueue);
+    eRequest.set_protocol_queue(parameters.protocolQueue);
 
     // Set debug mode
     auto intToDebugMode = [](int debugModeValue) -> eTest::DebugMode
@@ -37,10 +38,10 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
             default: return eTest::DebugMode::OUTPUT_ONLY;
         }
     };
-    eRequest.set_debugmode(intToDebugMode(parameters.debugLevel));
+    eRequest.set_debug_mode(intToDebugMode(parameters.debugLevel));
 
     // Set location
-    eRequest.set_protocollocation(parameters.protocolLocation);
+    eRequest.set_protocol_location(parameters.protocolLocation);
 
     // Set event
     json::Json jevent {};
@@ -71,8 +72,8 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print results
-    if (eTest::DebugMode::OUTPUT_AND_TRACES == eRequest.debugmode()
-        || eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == eRequest.debugmode())
+    if (eTest::DebugMode::OUTPUT_AND_TRACES == eRequest.debug_mode()
+        || eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == eRequest.debug_mode())
     {
         const auto& traces = eResponse.traces();
         const auto jsonDecoders = eMessage::eMessageToJson<google::protobuf::Value>(traces);
@@ -119,4 +120,5 @@ void configure(CLI::App_p app)
     // Register callback
     logtestApp->callback([parameters, client]() { run(client, *parameters); });
 }
+
 } // namespace cmd::test
