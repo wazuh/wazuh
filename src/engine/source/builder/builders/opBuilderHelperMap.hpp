@@ -358,53 +358,37 @@ base::Expression opBuilderHelperHashSHA1(const std::string& targetField,
 //*************************************************
 
 /**
- * @brief Create 'get_value' helper function that maps target field value with the content of the some key in the
+ * @brief Create 'get_value' helper function that maps or merge target field value with the content of the some key in the
  * definition object, where the key is specified with a reference to another field.
- * <field>: +get_value/$<definition_object>|$<object_reference>/$<key>
  *
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
  * @param rawParameters vector of parameters as present in the raw definition.
  * @param definitions handler with definitions
  * @param schema schema to validate fields
+ * @param isMerge true if the helper is used in a merge operation (merge_value), false if only get the value
  * @return base::Expression
  */
 base::Expression opBuilderHelperGetValue(const std::string& targetField,
                                               const std::string& rawName,
                                               const std::vector<std::string>& rawParameters,
                                               std::shared_ptr<defs::IDefinitions> definitions,
-                                              std::shared_ptr<schemf::ISchema> schema);
+                                              std::shared_ptr<schemf::ISchema> schema,
+                                              bool isMerge = false);
 
 /**
  * @brief Get the 'get_value' function helper builder
  *
+ * <field>: +get_value/$<definition_object>|$<object_reference>/$<key>
  * @param schema schema to validate fields
  * @return builder
  */
 HelperBuilder getOpBuilderHelperGetValue(std::shared_ptr<schemf::ISchema> schema);
 
-
-/**
- * @brief Create 'merge_value' helper function that merge target field value with the content of the some key in the
- * definition object, where the key is specified with a reference to another field.
- * <field>: +merge_value/$<definition_object>|$<object_reference>/$<key>
- *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition.
- * @param definitions handler with definitions
- * @param schema schema to validate fields
- * @return base::Expression
- */
-base::Expression opBuilderHelperMergeValue(const std::string& targetField,
-                                              const std::string& rawName,
-                                              const std::vector<std::string>& rawParameters,
-                                              std::shared_ptr<defs::IDefinitions> definitions,
-                                              std::shared_ptr<schemf::ISchema> schema);
-
 /**
  * @brief Get the 'merge_value' function helper builder
  *
+ * <field>: +merge_value/$<definition_object>|$<object_reference>/$<key>
  * @param schema schema to validate fields
  * @return builder
  */
