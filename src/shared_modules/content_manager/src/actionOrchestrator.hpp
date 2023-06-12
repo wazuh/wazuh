@@ -50,7 +50,7 @@ public:
         {
             // Create a context
             m_spBaseContext = std::make_shared<UpdaterBaseContext>();
-            m_spBaseContext->configData = parameters[0].at("configData");
+            m_spBaseContext->configData = parameters.at("configData");
             m_spBaseContext->spChannel = channel;
 
             // Create and run the execution context
