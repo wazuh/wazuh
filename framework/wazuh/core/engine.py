@@ -1,5 +1,6 @@
 import json
 from typing import Any
+import re
 
 class EngineMock:
 
@@ -7,26 +8,18 @@ class EngineMock:
     path = '/var/ossec/engine_conf'
 
     def get_config(self, name: str = None) -> dict[str, Any]:
-        resp = {'status': 1, 'error': None}
         if name is not None:
-            resp['content'] = self.configs[name]
+            return self.configs[name]
         else:
-            resp['content'] = json.dumps(self.configs)
+            data = json.dumps(self.configs)
+            return json.loads(data)
 
-        return resp
-
-    def update_config(self, name: str, content: str, save: bool = None) -> object:
+    def update_config(self, name: str, content: str, save: bool = None):
         self.configs[name] = content
 
         if save:
-            try:
-                with open(self.path, 'w', encoding='utf-8') as f:
-                    f.write(json.dumps(self.configs))
-            except Exception as e:
-                raise e
-        
-        return {'status': 1, 'error': None}
-
+            with open(self.path, 'w+', encoding='utf-8') as f:
+                f.write(json.dumps(self.configs))
 
 ENGINE = EngineMock()
 
@@ -45,7 +38,13 @@ def get_runtime_config(name: str = None) -> dict[str, Any]:
         A dictionary with the status, error and content. If no name is provided, the whole configuration is returned.
     """
     # TODO: use socket to send the command instead of the mock
-    return ENGINE.get_config(name)
+    resp = {'status': 'OK', 'error': None}
+    try:
+        resp['content'] = ENGINE.get_config(name)
+    except Exception as exc:
+        resp = {'status': 'ERROR', 'error': f'The specified configuration does not exist: {exc}'}
+
+    return resp
 
 def update_runtime_config(name: str, content: str, save: bool = False) -> dict[str, Any]:
     """Update the runtime configuration of the manager.
@@ -65,4 +64,58 @@ def update_runtime_config(name: str, content: str, save: bool = False) -> dict[s
         Engine response.
     """
     # TODO: use socket to send the command instead of the mock
-    return ENGINE.update_config(name, content, save)
+    resp = {'status': 'OK', 'error': None}
+
+    try:
+        ENGINE.update_config(name, content, save)
+    except Exception as exc:
+        resp = {'status': 'ERROR', 'error': f'Failed reading configuration file: {exc}'}
+
+    return resp
+
+def parse_content(content: str) -> str:
+        """Parse the Engine runtime configuration to JSON
+
+        Parameters
+        ----------
+        content : str
+            Engine runtime configuration content.
+        
+        Returns
+        -------
+        str
+            JSON-encoded object.
+        """
+        # Parse the data string and create a dictionary
+        pattern = r'([\w.]+)=("[^"]*"|\d+)'
+        content_dict = dict(re.findall(pattern, content.strip()))
+        result = {}
+
+        for keys, value in content_dict.items():
+            # Remove double quotes and convert strings to numbers
+            value = value.replace('"', '')
+            if value.isdigit():
+                value = int(value)
+            dotted_str_to_dict(result, keys, value)
+
+        return json.dumps(result)
+
+def dotted_str_to_dict(result: dict, keys: str, value: Any):
+    """Coverts dot delimited string to a dictionary
+
+    Parameters
+    ----------
+    result : dict
+        Final dictionary containing keys and value.
+    keys : str
+        Dot delimited key.
+    value : Any
+        Value of the key.
+    """
+    if "." in keys:
+        key, rest = keys.split(".", 1)
+        if key not in result:
+            result[key] = {}
+        dotted_str_to_dict(result[key], rest, value)
+    else:
+        result[keys] = value
