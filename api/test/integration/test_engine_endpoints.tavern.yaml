@@ -1,0 +1,128 @@
+---
+test_name: PUT /engine/config/runtime
+
+stages:
+
+  - name: Update engine config with an invalid body (invalid name)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        invalid_name: ""
+    response:
+      status_code: 400
+
+  - name: Update engine config with an invalid body (invalid content)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        name: "server_timeout"
+    response:
+      status_code: 400
+
+  - name: Update engine config with a valid body
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        name: "key"
+        content: "value"
+    response:
+      status_code: 200
+      json:
+        <<: *config_json_response
+        data:
+          status: "OK"
+          error: null
+
+  - name: Update engine config with a valid body and save
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      params:
+        save: true
+      json:
+        name: "key"
+        content: "value"
+    response:
+      status_code: 200
+      json:
+        <<: *config_json_response
+        data:
+          status: "OK"
+          error: null
+
+
+---
+test_name: GET /engine/config/runtime
+stages:
+
+  - name: Get all engine runtime configuration key-values
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+    response:
+      status_code: 200
+      json:
+        data:
+          status: "OK"
+          error: null
+          content:
+            - key: "value"
+        error: 0
+
+  - name: Get engine runtime configuration non existent value
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        name: server_timeout
+    response:
+      status_code: 200
+      json:
+        data:
+          status: "ERROR"
+          error: "The specified configuration does not exist: 'server_timeout'"
+        error: 0
+
+  - name: Get engine runtime configuration value
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/engine/config/runtime"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        name: key
+    response:
+      status_code: 200
+      json:
+        data:
+          status: "OK"
+          error: null
+          content: "value"
+        error: 0
