@@ -6,10 +6,12 @@ from typing import Optional
 
 from wazuh.engine.request_message import EngineRequestMessage
 from wazuh.engine.commands import MetricCommand
-from wazuh.engine.wazuh_engine import WazuhMockedEngine
 from wazuh.engine.transformations import EngineTransformationSequence
+
+from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.results import WazuhResult
 from wazuh.core.exception import WazuhError
+from wazuh.core.wazuh_socket import WazuhSocketJSON
 
 
 # TODO Redefine HARDCODED values
@@ -44,8 +46,6 @@ def get_metrics(
         WazuhResult with the results of the command
     """
 
-    wazuh_engine = WazuhMockedEngine(socket_path=HARDCODED_SOCKET_PATH)
-
     request_builder = EngineRequestMessage(ENGINE_METRICS_VERSION)
     request_builder.add_origin(
         name=HARDCODED_ORIGIN_NAME, module=HARDCODED_ORIGIN_MODULE
@@ -64,10 +64,12 @@ def get_metrics(
             "instrumentName": instrument_name
         })
 
-    result = wazuh_engine.send_command(command=request_builder.to_dict())
+    engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
+    engine_socket.send(request_builder.to_dict())
+    result = engine_socket.receive()
     result = EngineTransformationSequence.default_sequence().apply_sequence(
         params={'limit': limit, 'select': select, 'sort': sort, 'offset': offset, 'search': search},
-        data=result
+        data=result['value']
     )
     return WazuhResult({'data': result})
 
@@ -92,18 +94,18 @@ def get_instruments(
     Returns:
         WazuhResult with the results of the command
     """
-    wazuh_engine = WazuhMockedEngine(socket_path=HARDCODED_SOCKET_PATH)
-
     msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
         origin_name=HARDCODED_ORIGIN_NAME,
         module=HARDCODED_ORIGIN_MODULE,
         command=MetricCommand.LIST,
     )
 
-    result = wazuh_engine.send_command(command=msg)
+    engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
+    engine_socket.send(msg)
+    result = engine_socket.receive()
     result = EngineTransformationSequence.default_sequence().apply_sequence(
         params={'limit': limit, 'select': select, 'sort': sort, 'offset': offset, 'search': search},
-        data=result
+        data=result['value']
     )
     return WazuhResult({'data': result})
 
@@ -124,7 +126,6 @@ def enable_instrument(
     Returns:
         WazuhResult with the results of the command
     """
-    wazuh_engine = WazuhMockedEngine(socket_path=HARDCODED_SOCKET_PATH)
     msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
         origin_name=HARDCODED_ORIGIN_NAME,
         module=HARDCODED_ORIGIN_MODULE,
@@ -136,8 +137,10 @@ def enable_instrument(
         },
     )
 
-    result = wazuh_engine.send_command(command=msg)
-    return WazuhResult({'data': result})
+    engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
+    engine_socket.send(msg)
+    result = engine_socket.receive()
+    return WazuhResult({'data': result['value']})
 
 
 def get_test_dummy_metric():
@@ -147,12 +150,13 @@ def get_test_dummy_metric():
     Returns:
         WazuhResult with the results of the command
     """
-    wazuh_engine = WazuhMockedEngine(socket_path=HARDCODED_SOCKET_PATH)
     msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
         origin_name=HARDCODED_ORIGIN_NAME,
         module=HARDCODED_ORIGIN_MODULE,
         command=MetricCommand.TEST,
     )
 
-    result = wazuh_engine.send_command(command=msg)
-    return WazuhResult({'data': result})
+    engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
+    engine_socket.send(msg)
+    result = engine_socket.receive()
+    return WazuhResult({'data': result['value']})
