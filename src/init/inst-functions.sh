@@ -1128,6 +1128,14 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libvulnerability_scanner.so
         fi
     fi
+    if [ -f build/shared_modules/indexer_connector/libindexer_connector.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/indexer_connector/libindexer_connector.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_connector.so
+        fi
+    fi
 
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
