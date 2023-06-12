@@ -15094,9 +15094,9 @@ paths:
         - Engine
       summary: "Get the engine configuration"
       description: "Get the runtime configuration of the manager"
-      operationId: api.controllers.engine.config_controller.get_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/engine:read_config'
+      operationId: api.controllers.engine_controller.get_runtime_config
+      # x-rbac-actions:
+      #   - $ref: '#/x-rbac-catalog/actions/engine:read_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -15134,9 +15134,9 @@ paths:
         - Engine
       summary: "Update the engine configuration"
       description: "Update the runtime configuration of the manager"
-      operationId: api.controllers.engine.config_controller.update_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/engine:update_config'
+      operationId: api.controllers.engine_controller.update_runtime_config
+      # x-rbac-actions:
+      #   - $ref: '#/x-rbac-catalog/actions/engine:update_config'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
