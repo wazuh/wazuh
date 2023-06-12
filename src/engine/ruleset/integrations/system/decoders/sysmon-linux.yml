@@ -119,7 +119,7 @@ normalize:
       - wazuh.decoders: +array_append/sysmon-linux
 
       - log.level: +get_value/$lvl_map/$~sysmonEvent.Event.System.Level.#text
-      - event.created: $~sysmonEvent.Event.System.TimeCreated.@SystemTime # TODO: Is this the right field, and the right format?
+      - event.start: $~sysmonEvent.Event.System.TimeCreated.@SystemTime
       - host.name: $~sysmonEvent.Event.System.Computer.#text
       - event.kind: "event"
       - event.code: $~sysmonEvent.Event.System.EventID.#text
