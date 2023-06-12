@@ -59,8 +59,11 @@ import os
 import time
 
 import pytest
-from wazuh_testing.utils.config import get_test_cases_data
+from wazuh_testing.constants.daemons import API_DAEMON
+from wazuh_testing.modules.api.configuration import replace_in_api_configuration_template
 from wazuh_testing.modules.api.helpers import login
+from wazuh_testing.modules.api.patterns import API_LOGIN_ERROR_MSG
+from wazuh_testing.utils.configuration import get_test_cases_data
 
 
 # Marks
@@ -69,16 +72,21 @@ pytestmark = pytest.mark.server
 # Paths
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 configuration_folder_path = os.path.join(test_data_path, 'configuration_template')
+cases_folder_path = os.path.join(test_data_path, 'test_cases')
 test_configuration_path = os.path.join(configuration_folder_path, 'configuration_bruteforce_blocking_system.yaml')
+test_cases_path = os.path.join(cases_folder_path, 'cases_bruteforce_blocking_system.yaml')
 
 # Configurations
-test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_configuration_path)
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = replace_in_api_configuration_template(test_configuration_path, test_configuration, test_metadata)
+daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 # Tests
 
 @pytest.mark.filterwarnings('ignore::urllib3.exceptions.InsecureRequestWarning')
-@pytest.mark.parametrize('configuration,metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_bruteforce_blocking_system(configuration, metadata, configure_api_environment, daemons_handler, wait_for_start):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_bruteforce_blocking_system(test_configuration, test_metadata, add_configuration, daemons_handler,
+                                    wait_for_api_start):
     '''
     description: Check if the blocking time for IP addresses detected as brute-force attack works.
                  For this purpose, the test causes an IP blocking, make a request before
@@ -122,19 +130,40 @@ def test_bruteforce_blocking_system(configuration, metadata, configure_api_envir
     tags:
         - brute_force_attack
     '''
-    block_time = configuration['block_time']
-    max_login_attempts = configuration['max_login_attempts']
+    block_time = test_configuration['base']['access']['block_time']
+    max_login_attempts = test_configuration['base']['access']['max_login_attempts']
+    expected_message = test_metadata['expected_message'].rstrip()
+    expected_error = test_metadata['expected_error']
 
     # Provoke a block from an unknown IP (N attempts (N=max_login_attempts) with incorrect credentials).
     with pytest.raises(RuntimeError):
         login(user='wrong', password='wrong', login_attempts=max_login_attempts)
 
-    # Request with correct credentials before blocking time expires.
-    with pytest.raises(RuntimeError) as login_exc:
+    # Request with correct credentials before blocking time expires and get the exception information
+    with pytest.raises(RuntimeError) as login_exception:
         login()
-    assert 'Error obtaining login token' in login_exc.value.args[0], 'An error getting the token was expected, but ' \
-                                                                     'it was not obtained. \nFull response: ' \
-                                                                     f"{login_exc.value}"
 
     # Request after time expires.
-    time.sleep(block_time)  # 300 = default blocking time
+    time.sleep(block_time)
+    try:
+        login()
+    except RuntimeError:
+        pytest.fail('The login attempt has failed unexpectedly '
+                    'but was expected to be successful after the `block_time` expires.')
+
+    # Get values from exception information
+    exception_message = login_exception.value.args[0]
+    api_response = login_exception.value.args[1]
+    response_message = api_response['detail']
+    response_error_code = api_response['error']
+
+    # Check that the API's error is the expected
+    assert API_LOGIN_ERROR_MSG in exception_message, 'The login attempt was not blocked, instead the token' \
+                                                     'was successfully obtained.\n' \
+                                                     f"API response: {api_response}"
+    assert expected_message == response_message, 'The error message is not the expected.\n' \
+                                                 f"Expected: {exception_message}" \
+                                                 f"API response error message: {response_message}"
+    assert expected_error == response_error_code, f"The error code is not the expected.\n" \
+                                                  f"Expected: {expected_error}" \
+                                                  f"API response error code: {response_error_code}"
