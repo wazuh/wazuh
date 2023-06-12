@@ -22,9 +22,6 @@ targets:
 
 daemons:
     - wazuh-apid
-    - wazuh-analysisd
-    - wazuh-syscheckd
-    - wazuh-db
 
 os_platform:
     - linux
