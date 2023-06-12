@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from wazuh.engine.request_message import EngineRequestMessage
 from wazuh.engine.commands import MetricCommand
@@ -19,6 +19,28 @@ HARDCODED_SOCKET_PATH = "som/path/"
 HARDCODED_ORIGIN_NAME = "metric"
 HARDCODED_ORIGIN_MODULE = "metric"
 ENGINE_METRICS_VERSION = 1
+
+
+def normalize_metrics(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Normalizes the input data by transforming it into a list of dictionaries.
+
+    Args:
+        data (Dict[str, Any]): The input data containing the metrics.
+
+    Returns:
+        List[Dict[str, Any]]: The normalized list of dictionaries.
+
+    """
+    new_list = []
+    for key, value in data.items():
+        if value and isinstance(value, dict):
+            for instrument in value.values():
+                instrument_dict = instrument
+                instrument_dict['scope_name'] = key
+                new_list.append(instrument_dict)
+
+    return new_list
 
 
 def get_metrics(
@@ -67,9 +89,11 @@ def get_metrics(
     engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
     engine_socket.send(request_builder.to_dict())
     result = engine_socket.receive()
+
+    normalized_result = normalize_metrics(result['value'])
     result = EngineTransformationSequence.default_sequence().apply_sequence(
         params={'limit': limit, 'select': select, 'sort': sort, 'offset': offset, 'search': search},
-        data=result['value']
+        data=normalized_result
     )
     return WazuhResult({'data': result})
 
@@ -159,4 +183,6 @@ def get_test_dummy_metric():
     engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
     engine_socket.send(msg)
     result = engine_socket.receive()
-    return WazuhResult({'data': result['value']})
+
+    normalized_result = normalize_metrics(result['value'])
+    return WazuhResult({'data': normalized_result})
