@@ -24,7 +24,7 @@ public:
     virtual ~KVDBManagedHandler()
     {
         // TODO: Add simple validation. Nullptrs, lengths, etc.
-        if (m_handlerManager && !m_handlerManager->skipAutoRemoveEnabled())
+        if (m_handlerManager && !m_handlerManager->managerShuttingDown())
         {
             m_handlerManager->removeKVDBHandler(m_dbName, m_scopeName);
         }

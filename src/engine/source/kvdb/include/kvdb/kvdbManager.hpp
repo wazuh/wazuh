@@ -6,16 +6,16 @@
 #include <map>
 #include <mutex>
 
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+
+#include <utils/baseMacros.hpp>
+
 #include <kvdb/iKVDBHandlerManager.hpp>
 #include <kvdb/iKVDBManager.hpp>
 #include <kvdb/kvdbHandlerCollection.hpp>
 #include <kvdb/kvdbScope.hpp>
 #include <kvdb/kvdbSpace.hpp>
-
-#include <utils/baseMacros.hpp>
-
-#include <rocksdb/db.h>
-#include <rocksdb/options.h>
 
 namespace metricsManager
 {
@@ -102,10 +102,10 @@ public:
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
 
     /**
-     * @copydoc IKVDBHandlerManager::skipAutoRemoveEnabled
+     * @copydoc IKVDBHandlerManager::managerShuttingDown
      *
      */
-    bool skipAutoRemoveEnabled() override;
+    bool managerShuttingDown() override;
 
     /**
      * @copydoc IKVDBManager::listDBs
@@ -117,13 +117,13 @@ public:
      * @copydoc IKVDBManager::deleteDB
      *
      */
-    std::variant<bool, base::Error> deleteDB(const std::string& name) override;
+    std::optional<base::Error> deleteDB(const std::string& name) override;
 
     /**
      * @copydoc IKVDBManager::createDB
      *
      */
-    std::variant<bool, base::Error> createDB(const std::string& name) override;
+    std::optional<base::Error> createDB(const std::string& name) override;
 
     /**
      * @copydoc IKVDBManager::existsDB

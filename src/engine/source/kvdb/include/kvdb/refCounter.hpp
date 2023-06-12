@@ -41,7 +41,7 @@ public:
      * @param name Reference name to increase
      * @param times How many times to increase the reference. Default is 1.
      */
-    void addRef(const std::string& name, const unsigned int& times = 1);
+    void addRef(const std::string& name, const uint times = 1);
 
     /**
      * @brief Remove 1 reference from the counter.

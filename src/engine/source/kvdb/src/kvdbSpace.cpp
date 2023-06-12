@@ -19,42 +19,42 @@ KVDBSpace::KVDBSpace(IKVDBHandlerManager* manager,
 
 KVDBSpace::~KVDBSpace() {}
 
-std::variant<bool, base::Error> KVDBSpace::set(const std::string& key, const std::string& value)
+std::optional<base::Error> KVDBSpace::set(const std::string& key, const std::string& value)
 {
     auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), m_pCFhandle, rocksdb::Slice(key), rocksdb::Slice(value));
 
     if (status.ok())
     {
-        return true;
+        return std::nullopt;
     }
 
     return base::Error {fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
 }
 
-std::variant<bool, base::Error> KVDBSpace::set(const std::string& key, const json::Json& value)
+std::optional<base::Error> KVDBSpace::set(const std::string& key, const json::Json& value)
 {
     auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), m_pCFhandle, rocksdb::Slice(key), rocksdb::Slice(value.str()));
 
     if (status.ok())
     {
-        return true;
+        return std::nullopt;
     }
 
     return base::Error {fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value.str(), key, status.getState())};
 }
 
-std::variant<bool, base::Error> KVDBSpace::add(const std::string& key)
+std::optional<base::Error> KVDBSpace::add(const std::string& key)
 {
     return set(key, "");
 }
 
-std::variant<bool, base::Error> KVDBSpace::remove(const std::string& key)
+std::optional<base::Error> KVDBSpace::remove(const std::string& key)
 {
     auto status = m_pRocksDB->Delete(rocksdb::WriteOptions(), m_pCFhandle, rocksdb::Slice(key));
 
     if (status.ok())
     {
-        return true;
+        return std::nullopt;
     }
 
     return base::Error {fmt::format("Cannot remove key '{}'. Error: {}", key, status.getState())};
