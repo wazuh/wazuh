@@ -44,16 +44,18 @@ async def test_get_runtime_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.engine_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_update_runtime_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'update_config' endpoint is working as expected."""
-    result = await update_runtime_config(request=mock_request)
-    f_kwargs = {'save': False}
-    mock_dapi.assert_called_once_with(f=engine_framework.update_runtime_config,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                                      )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, web_response.Response)
+    with patch('api.controllers.engine_controller.Body.validate_content_type'):
+        with patch('api.controllers.engine_controller.UpdateConfigModel.get_kwargs',
+                   return_value=AsyncMock()) as mock_getkwargs:
+            result = await update_runtime_config(request=mock_request)
+            mock_dapi.assert_called_once_with(f=engine_framework.update_runtime_config,
+                                            f_kwargs=mock_remove.return_value,
+                                            request_type='local_master',
+                                            is_async=False,
+                                            wait_for_complete=False,
+                                            logger=ANY,
+                                            rbac_permissions=mock_request['token_info']['rbac_policies']
+                                            )
+            mock_exc.assert_called_once_with(mock_dfunc.return_value)
+            mock_remove.assert_called_once_with(mock_getkwargs.return_value)
+            assert isinstance(result, web_response.Response)

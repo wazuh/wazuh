@@ -10,6 +10,8 @@ from api.encoder import dumps, prettify
 from api.util import raise_if_exc, remove_nones_to_dict
 from wazuh import engine
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from api.models.base_model_ import Body
+from api.models.engine_model import UpdateConfigModel
 
 logger = logging.getLogger('wazuh-api')
 
@@ -67,7 +69,8 @@ async def update_runtime_config(request, pretty: bool = False, wait_for_complete
     web.Response
         API response.
     """
-    f_kwargs = {'save': save}
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await UpdateConfigModel.get_kwargs(request, additional_kwargs={'save': save})
 
     dapi = DistributedAPI(f=engine.update_runtime_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
