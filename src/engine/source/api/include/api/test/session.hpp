@@ -18,17 +18,23 @@ public:
             const std::string& policyName,
             const std::string& filterName,
             const std::string& routeName,
-            const uint32_t lifespan = 0,
-            const std::string& description = "")
-        : m_creationDate(std::time(nullptr))
+            const uint32_t lifespan,
+            const std::string& description,
+            const std::time_t creationDate,
+            const std::string& sessionID = "")
+        : m_creationDate(creationDate)
         , m_description(description)
         , m_filterName(filterName)
         , m_lifespan(lifespan)
         , m_policyName(policyName)
         , m_routeName(routeName)
-        , m_sessionID(generateSessionID())
+        , m_sessionID(sessionID)
         , m_sessionName(sessionName)
     {
+        if (m_sessionID.empty())
+        {
+            m_sessionID = generateSessionID();
+        }
     }
 
     /**
@@ -92,10 +98,10 @@ private:
     const std::string m_filterName;
     const std::string m_policyName;
     const std::string m_routeName;
-    const std::string m_sessionID;
     const std::string m_sessionName;
     const std::time_t m_creationDate;
     const uint32_t m_lifespan; ///< Session m_lifespan in seconds. 0 means no expiration.
+    std::string m_sessionID;
 
     /**
      * @brief Generates a session ID based on the creation date.
