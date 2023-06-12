@@ -38,9 +38,9 @@ public:
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
-        , m_parameters {std::move(parameters)}
-        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, m_parameters)}
+        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters)}
     {
+        m_parameters = std::move(parameters);
     }
 
     void startActionScheduler(const size_t interval)
