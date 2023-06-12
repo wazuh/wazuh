@@ -184,81 +184,58 @@ TEST_F(WindowsHelperTest, getSerialNumberFromSMBIOSTables2NoEndDoubleNull_TEST)
     EXPECT_EQ(SERIAL_NUMBER_DATA, serialNumber);
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampShortValue)
+TEST_F(WindowsHelperTest, normalizeTimestampShortRegistryInstallDateValue)
 {
-    std::string value = "202202";
-    std::string timestamp = "2022/02/15 14:04:50";
-    std::string expected;
+    std::string RegistryInstallDateValue = "202202";
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
 
-    std::string result = Utils::normalizeTimestamp(value, timestamp);
-
-    EXPECT_EQ(expected, result);
+    EXPECT_ANY_THROW(Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue));
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampLongValue)
+TEST_F(WindowsHelperTest, normalizeTimestampLongRegistryInstallDateValue)
 {
-    std::string value = "2022021516";
-    std::string timestamp = "2022/02/15 14:04:50";
-    std::string expected;
+    std::string RegistryInstallDateValue = "2022021516";
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
 
-    std::string result = Utils::normalizeTimestamp(value, timestamp);
-
-    EXPECT_EQ(expected, result);
+    EXPECT_ANY_THROW(Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue));
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampUnknownValue)
+TEST_F(WindowsHelperTest, normalizeTimestampUnknownRegistryInstallDateValue)
 {
-    std::string value;
-    std::string timestamp = "2022/02/15 14:04:50";
-    std::string expected;
+    std::string RegistryInstallDateValue;
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
 
-    std::string result = Utils::normalizeTimestamp(value, timestamp);
-
-    EXPECT_EQ(expected, result);
+    EXPECT_ANY_THROW(Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue));
 }
 
 TEST_F(WindowsHelperTest, normalizeTimestampNotEqual)
 {
-    std::string value = "20220214";
-    std::string timestamp = "2022/02/15 14:04:50";
+    std::string RegistryInstallDateValue = "20220214";
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
     std::string expected = "2022/02/14 00:00:00";
 
-    std::string result = Utils::normalizeTimestamp(value, timestamp);
+    std::string result = Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue);
 
     EXPECT_EQ(expected, result);
 }
 
 TEST_F(WindowsHelperTest, normalizeTimestampEqual)
 {
-    std::string value = "20220215";
-    std::string timestamp = "2022/02/15 14:04:50";
+    std::string RegistryInstallDateValue = "20220215";
+    std::string RegistryModificationDateValue = "2022/02/15 14:04:50";
     std::string expected = "2022/02/15 14:04:50";
 
-    std::string result = Utils::normalizeTimestamp(value, timestamp);
+    std::string result = Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue);
 
     EXPECT_EQ(expected, result);
 }
 
-TEST_F(WindowsHelperTest, normalizeTimestampWrongTimestamp1)
+TEST_F(WindowsHelperTest, normalizeTimestampWrongRegistryInstallDateValue)
 {
-    std::string value = "a0220215";
-    std::string timestamp = "2022/02/15 23:59:59";
-    std::string expected;
+    std::string RegistryInstallDateValue = "a0220215";
+    std::string RegistryModificationDateValue = "2022/02/15 23:59:59";
 
-    std::string result = Utils::normalizeTimestamp(value, timestamp);
-
-    EXPECT_EQ(expected, result);
-}
-
-TEST_F(WindowsHelperTest, normalizeTimestampWrongTimestamp2)
-{
-    std::string value = "20220215";
-    std::string timestamp = "a022/02/15 23:59:59";
-    std::string expected = "2022/02/15 00:00:00";
-
-    std::string result = Utils::normalizeTimestamp(value, timestamp);
-
-    EXPECT_EQ(expected, result);
+    EXPECT_ANY_THROW(Utils::normalizeTimestamp(RegistryInstallDateValue, RegistryModificationDateValue));
 }
 
 #endif
