@@ -20,7 +20,7 @@
 namespace Utils
 {
 
-    template<typename T>
+    template<typename T, typename Tq=std::queue<T>>
     class SafeQueue
     {
         public:
@@ -34,6 +34,10 @@ namespace Utils
                 std::lock_guard<std::mutex> lock{ other.m_mutex };
                 m_queue = other.m_queue;
             }
+            explicit SafeQueue(Tq&& queue)
+                : m_queue{ std::move(queue) }
+                , m_canceled{ false }
+            {}
             ~SafeQueue()
             {
                 cancel();
@@ -52,7 +56,7 @@ namespace Utils
 
             bool pop(T& value, const bool wait = true)
             {
-                Lock lock{ m_mutex };
+                std::unique_lock<std::mutex> lock{ m_mutex };
 
                 if (wait)
                 {
@@ -75,7 +79,7 @@ namespace Utils
 
             std::shared_ptr<T> pop(const bool wait = true)
             {
-                Lock lock{ m_mutex };
+                std::unique_lock<std::mutex> lock{ m_mutex };
 
                 if (wait)
                 {
@@ -123,11 +127,10 @@ namespace Utils
             }
 
         private:
-            using Lock = std::unique_lock<std::mutex>;
             mutable std::mutex m_mutex;
             std::condition_variable m_cv;
-            bool m_canceled;
-            std::queue<T> m_queue;
+            bool m_canceled{};
+            Tq m_queue;
     };
 }//namespace Utils
 

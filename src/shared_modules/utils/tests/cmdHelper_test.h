@@ -11,7 +11,7 @@
 
 #ifndef CMD_HELPER_TESTS_H
 #define CMD_HELPER_TESTS_H
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 class CmdUtilsTest : public ::testing::Test
 {
