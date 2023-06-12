@@ -594,8 +594,9 @@ async def put_upgrade_agents(request, agents_list: list = None, pretty: bool = F
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+
 async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: bool = False,
-                                    wait_for_complete: bool = False, filename: str = None, installer: str = None,
+                                    wait_for_complete: bool = False, wpk_filename: str = None, installer: str = None,
                                     q: str = None, manager: str = None, version: str = None, group: str = None,
                                     node_name: str = None, name: str = None, ip: str = None) -> web.Response:
     """Upgrade agents using a local WPK file.
@@ -608,7 +609,7 @@ async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: b
         Disable timeout response.
     agents_list : list
         List of agent IDs. All possible values from 000 onwards.
-    filename : str
+    wpk_filename : str
         File name of the WPK file. The file must be inside the upgrade folder (/var/ossec/var/upgrade)
     installer : str
         Installation file.
@@ -633,11 +634,13 @@ async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: b
         Upgrade message after trying to upgrade the agents.
     """
     # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
+    import pydevd_pycharm
+    pydevd_pycharm.settrace('172.18.0.1', port=10005, stdoutToServer=True, stderrToServer=True)
     if 'all' in agents_list:
         agents_list = '*'
 
     f_kwargs = {'agent_list': agents_list,
-                'filename': filename,
+                'wpk_filename': wpk_filename,
                 'installer': installer,
                 'filters': {
                     'manager': manager,
@@ -657,7 +660,7 @@ async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: b
         f_kwargs['filters'][field] = request.query.get(field, None)
 
     # Check if the file exists before proceeding
-    raise_if_exc(check_file_exists(f_kwargs['filename']))
+    raise_if_exc(check_file_exists(f_kwargs['wpk_filename']))
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -677,15 +680,6 @@ async def get_agent_upgrade(request, agents_list: list = None, pretty: bool = Fa
                             q: str = None, manager: str = None, version: str = None, group: str = None,
                             node_name: str = None, name: str = None, ip: str = None) -> web.Response:
     """Get upgrade results from agents.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agents_list : list
-        List of agent IDs. All possible values from 000 onwards.
     q : str
         Query to filter agents by.
     manager : str

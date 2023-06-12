@@ -6895,11 +6895,11 @@ components:
       schema:
         type: boolean
         default: false
-    file_path:
+    wpk_filename:
       in: query
-      name: file_path
-      description: "Full path to the WPK file. The file must be on a folder on the Wazuh's installation directory
-      (by default, <code>/var/ossec</code>)"
+      name: wpk_filename
+      description: "Name to the WPK file. The file must be on the upgrade folder found in
+      (<code>/var/ossec/var/upgrade</code>)"
       required: True
       schema:
         type: string
