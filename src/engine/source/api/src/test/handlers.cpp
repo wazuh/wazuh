@@ -12,24 +12,25 @@
 #include <eMessages/test.pb.h>
 
 #include "api/test/sessionManager.hpp"
+#include "json/json.hpp"
 
 namespace
 {
 
 using namespace api::sessionManager;
 
-using std::optional;
-using std::shared_ptr;
-using std::string;
+using api::catalog::Catalog;
+using api::catalog::Resource;
 
 using ::api::adapter::fromWazuhRequest;
 using ::api::adapter::genericError;
 using ::api::adapter::toWazuhResponse;
 
-using ::router::Router;
+using std::optional;
+using std::shared_ptr;
+using std::string;
 
-using api::catalog::Catalog;
-using api::catalog::Resource;
+using ::router::Router;
 
 } // namespace
 
@@ -38,6 +39,90 @@ namespace api::test::handlers
 
 namespace eEngine = ::com::wazuh::api::engine;
 namespace eTest = ::com::wazuh::api::engine::test;
+
+optional<base::Error> loadSessionsFromJson(const json::Json jsonSessions)
+{
+    auto& sessionManager = SessionManager::getInstance();
+
+    if (!jsonSessions.isArray())
+    {
+        return optional<base::Error> {base::Error {"Invalid sessions JSON format"}};
+    }
+
+    for (const auto& jsonSession : jsonSessions.getArray().value_or(std::vector<json::Json> {}))
+    {
+        if (!jsonSession.isObject())
+        {
+            return optional<base::Error> {base::Error {"Invalid session JSON format"}};
+        }
+
+        const auto sessionName = jsonSession.getString("/name");
+        const auto sessionID = jsonSession.getString("/id");
+        const auto creationDate = jsonSession.getInt64("/creationdate");
+        const auto lifespan = jsonSession.getInt64("/lifespan");
+        const auto description = jsonSession.getString("/description");
+        const auto filterName = jsonSession.getString("/filtername");
+        const auto policyName = jsonSession.getString("/policyname");
+        const auto routeName = jsonSession.getString("/routename");
+
+        if (!sessionName.has_value() || !sessionID.has_value() || !creationDate.has_value() || !lifespan.has_value()
+            || !description.has_value() || !filterName.has_value() || !policyName.has_value() || !routeName.has_value())
+        {
+            return optional<base::Error> {base::Error {"Invalid session JSON format"}};
+        }
+
+        const auto createSessionError = sessionManager.createSession(sessionName.value(),
+                                                                     policyName.value(),
+                                                                     filterName.value(),
+                                                                     routeName.value(),
+                                                                     lifespan.value(),
+                                                                     description.value(),
+                                                                     creationDate.value(),
+                                                                     sessionID.value());
+        if (createSessionError.has_value())
+        {
+            return createSessionError;
+        }
+    }
+
+    return std::nullopt;
+}
+
+json::Json getSessionsAsJson(void)
+{
+    auto jsonSessions = json::Json("[]");
+
+    auto& sessionManager = SessionManager::getInstance();
+    auto list = sessionManager.getSessionsList();
+    for (auto& sessionName : list)
+    {
+        static int i = -1;
+        i++;
+
+        auto session = sessionManager.getSession(sessionName);
+        auto jsonSession = json::Json(R"({"name":"","id":"","creationdate":0,"lifespan":0,"description":"",
+                                      "filtername":"","policyname":"","routename":""})");
+
+        jsonSession.setString(session->getSessionName(), "/name");
+        jsonSession.setString(session->getSessionID(), "/id");
+        jsonSession.setInt64(session->getCreationDate(), "/creationdate");
+        jsonSession.setInt64(session->getLifespan(), "/lifespan");
+        jsonSession.setString(session->getDescription(), "/description");
+        jsonSession.setString(session->getFilterName(), "/filtername");
+        jsonSession.setString(session->getPolicyName(), "/policyname");
+        jsonSession.setString(session->getRouteName(), "/routename");
+
+        jsonSessions.appendJson(jsonSession);
+    }
+
+    return jsonSessions;
+}
+
+optional<base::Error> saveSessionsToStore(shared_ptr<store::IStore> store)
+{
+    const auto sessionsJson = getSessionsAsJson();
+    return store->update(SESSIONS_TABLE_NAME, sessionsJson);
+}
 
 inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& router)
 {
@@ -225,9 +310,9 @@ deleteSession(shared_ptr<Router> router, shared_ptr<Catalog> catalog, const stri
     return std::nullopt;
 }
 
-api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<Catalog> catalog)
+api::Handler sessionPost(shared_ptr<Catalog> catalog, shared_ptr<Router> router, shared_ptr<store::IStore> store)
 {
-    return [router, catalog](api::wpRequest wRequest) -> api::wpResponse
+    return [catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionPost_Request;
         using ResponseType = eTest::SessionPost_Response;
@@ -326,6 +411,16 @@ api::Handler sessionPost(shared_ptr<Router> router, shared_ptr<Catalog> catalog)
             return genericError<ResponseType>(subscriptionError.value().message);
         }
 
+        // Save the sessions to the store
+        const auto saveSessionsToStoreError = saveSessionsToStore(store);
+        if (saveSessionsToStoreError.has_value())
+        {
+            deleteRouteFromRouter(router, routeName);
+            deleteAssetFromStore(catalog, filterName);
+            deleteAssetFromStore(catalog, policyName);
+            return genericError<ResponseType>(saveSessionsToStoreError.value().message);
+        }
+
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
@@ -365,13 +460,13 @@ api::Handler sessionGet(void)
         ResponseType eResponse;
 
         // TODO: improve creation date representation
-        eResponse.set_creationdate(std::to_string(session->getCreationDate()));
+        eResponse.set_creation_date(std::to_string(session->getCreationDate()));
         eResponse.set_description(session->getDescription());
-        eResponse.set_filtername(session->getFilterName());
+        eResponse.set_filter(session->getFilterName());
         eResponse.set_id(session->getSessionID());
         eResponse.set_lifespan(session->getLifespan());
-        eResponse.set_policyname(session->getPolicyName());
-        eResponse.set_routename(session->getRouteName());
+        eResponse.set_policy(session->getPolicyName());
+        eResponse.set_route(session->getRouteName());
 
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
@@ -409,9 +504,9 @@ api::Handler sessionsGet(void)
     };
 }
 
-api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<Catalog> catalog)
+api::Handler sessionsDelete(shared_ptr<Catalog> catalog, shared_ptr<Router> router, shared_ptr<store::IStore> store)
 {
-    return [router, catalog](api::wpRequest wRequest) -> api::wpResponse
+    return [catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eTest::SessionsDelete_Request;
         using ResponseType = eTest::SessionsDelete_Response;
@@ -426,8 +521,8 @@ api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<Catalog> catal
         const auto& eRequest = std::get<RequestType>(res);
 
         const auto errorMsg =
-            ((!eRequest.has_name() && !eRequest.has_removeall())
-                 ? std::make_optional("Missing both /name and /removeall fields, at least one field must be set")
+            ((!eRequest.has_name() && !eRequest.has_remove_all())
+                 ? std::make_optional("Missing both /name and /remove_all fields, at least one field must be set")
                  : std::nullopt);
         if (errorMsg.has_value())
         {
@@ -436,7 +531,7 @@ api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<Catalog> catal
 
         auto& sessionManager = SessionManager::getInstance();
 
-        if (eRequest.has_removeall() && eRequest.removeall())
+        if (eRequest.has_remove_all() && eRequest.remove_all())
         {
             for (auto& sessionName : sessionManager.getSessionsList())
             {
@@ -460,6 +555,12 @@ api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<Catalog> catal
             return genericError<ResponseType>("Invalid request");
         }
 
+        const auto saveSessionsToStoreError = saveSessionsToStore(store);
+        if (saveSessionsToStoreError.has_value())
+        {
+            return genericError<ResponseType>(saveSessionsToStoreError.value().message);
+        }
+
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
@@ -467,7 +568,7 @@ api::Handler sessionsDelete(shared_ptr<Router> router, shared_ptr<Catalog> catal
     };
 }
 
-api::Handler runPost(std::shared_ptr<::router::Router> router)
+api::Handler runPost(shared_ptr<::router::Router> router)
 {
     return [router](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -483,8 +584,8 @@ api::Handler runPost(std::shared_ptr<::router::Router> router)
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        const auto errorMsg = !eRequest.has_name()    ? std::make_optional("Missing /session name")
-                              : !eRequest.has_event() ? std::make_optional("Missing /event")
+        const auto errorMsg = !eRequest.has_name()    ? std::make_optional("Missing /name field")
+                              : !eRequest.has_event() ? std::make_optional("Missing /event field")
                                                       : std::nullopt;
 
         if (errorMsg.has_value())
@@ -493,13 +594,13 @@ api::Handler runPost(std::shared_ptr<::router::Router> router)
         }
 
         // Set optional parameters
-        const auto debugMode = eRequest.has_debugmode() ? eRequest.debugmode() : eTest::DebugMode::OUTPUT_ONLY;
+        const auto debugMode = eRequest.has_debug_mode() ? eRequest.debug_mode() : eTest::DebugMode::OUTPUT_ONLY;
 
         const auto protocolQueue =
-            eRequest.has_protocolqueue() ? eRequest.protocolqueue() : TEST_DEFAULT_PROTOCOL_QUEUE;
+            eRequest.has_protocol_queue() ? eRequest.protocol_queue() : TEST_DEFAULT_PROTOCOL_QUEUE;
 
         const auto protocolLocation =
-            eRequest.has_protocollocation() ? eRequest.protocollocation() : TEST_DEFAULT_PROTOCOL_LOCATION;
+            eRequest.has_protocol_location() ? eRequest.protocol_location() : TEST_DEFAULT_PROTOCOL_LOCATION;
 
         // Set debug mode
         auto debugModes = [](eTest::DebugMode debugModeValue) -> router::DebugMode
@@ -520,7 +621,7 @@ api::Handler runPost(std::shared_ptr<::router::Router> router)
         if (!session.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(
-                fmt::format("Session '{}' was not found", eRequest.name()));
+                fmt::format("Session '{}' could not be found", eRequest.name()));
         }
 
         // Event in Wazuh format
@@ -549,15 +650,15 @@ api::Handler runPost(std::shared_ptr<::router::Router> router)
 
         // Get output
         const auto output = eMessage::eMessageFromJson<google::protobuf::Value>(
-            std::get<0>(std::get<std::tuple<std::string, std::string>>(payload)));
+            std::get<0>(std::get<std::tuple<string, string>>(payload)));
         const auto jsonOutput = std::get<google::protobuf::Value>(output);
         eResponse.mutable_output()->CopyFrom(jsonOutput);
 
         // Get traces
-        if (!std::get<1>(std::get<std::tuple<std::string, std::string>>(payload)).empty())
+        if (!std::get<1>(std::get<std::tuple<string, string>>(payload)).empty())
         {
             const auto trace = eMessage::eMessageFromJson<google::protobuf::Value>(
-                std::get<1>(std::get<std::tuple<std::string, std::string>>(payload)));
+                std::get<1>(std::get<std::tuple<string, string>>(payload)));
             const auto jsonTrace = std::get<google::protobuf::Value>(trace);
             eResponse.mutable_traces()->CopyFrom(jsonTrace);
         }
@@ -572,15 +673,15 @@ void registerHandlers(const Config& config, shared_ptr<api::Api> api)
 {
     try
     {
-        api->registerHandler("test.session/get", sessionGet());
-        api->registerHandler("test.session/post", sessionPost(config.router, config.catalog));
-        api->registerHandler("test.sessions/delete", sessionsDelete(config.router, config.catalog));
-        api->registerHandler("test.sessions/get", sessionsGet());
-        api->registerHandler("test.run/post", runPost(config.router));
+        api->registerHandler(TEST_GET_SESSION_DATA_API_CMD, sessionGet());
+        api->registerHandler(TEST_POST_SESSION_API_CMD, sessionPost(config.catalog, config.router, config.store));
+        api->registerHandler(TEST_DELETE_SESSIONS_API_CMD, sessionsDelete(config.catalog, config.router, config.store));
+        api->registerHandler(TEST_GET_SESSIONS_LIST_API_CMD, sessionsGet());
+        api->registerHandler(TEST_RUN_API_CMD, runPost(config.router));
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("test API commands could not be registered: {}", e.what()));
+        throw std::runtime_error(fmt::format("Test API commands could not be registered: {}", e.what()));
     }
 }
 

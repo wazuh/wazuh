@@ -145,7 +145,7 @@ PROTOBUF_CONSTEXPR QueuePost_Request::QueuePost_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.ossec_event_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
+  , /*decltype(_impl_.wazuh_event_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
 struct QueuePost_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR QueuePost_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -247,7 +247,7 @@ const uint32_t TableStruct_router_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::QueuePost_Request, _impl_.ossec_event_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::QueuePost_Request, _impl_.wazuh_event_),
   0,
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
@@ -295,8 +295,8 @@ const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "2\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.R"
   "eturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0221\n\005table"
   "\030\003 \003(\0132\".com.wazuh.api.engine.router.Ent"
-  "ryB\010\n\006_error\"J\n\021QueuePost_Request\022\030\n\013oss"
-  "ec_event\030\001 \001(\tH\000\210\001\001B\016\n\014_ossec_eventJ\004\010\002\020"
+  "ryB\010\n\006_error\"J\n\021QueuePost_Request\022\030\n\013waz"
+  "uh_event\030\001 \001(\tH\000\210\001\001B\016\n\014_wazuh_eventJ\004\010\002\020"
   "\003R\005eventb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_router_2eproto_deps[1] = {
@@ -2162,7 +2162,7 @@ void TableGet_Response::InternalSwap(TableGet_Response* other) {
 class QueuePost_Request::_Internal {
  public:
   using HasBits = decltype(std::declval<QueuePost_Request>()._impl_._has_bits_);
-  static void set_has_ossec_event(HasBits* has_bits) {
+  static void set_has_wazuh_event(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
 };
@@ -2179,15 +2179,15 @@ QueuePost_Request::QueuePost_Request(const QueuePost_Request& from)
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ossec_event_){}};
+    , decltype(_impl_.wazuh_event_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  _impl_.ossec_event_.InitDefault();
+  _impl_.wazuh_event_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ossec_event_.Set("", GetArenaForAllocation());
+    _impl_.wazuh_event_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (from._internal_has_ossec_event()) {
-    _this->_impl_.ossec_event_.Set(from._internal_ossec_event(), 
+  if (from._internal_has_wazuh_event()) {
+    _this->_impl_.wazuh_event_.Set(from._internal_wazuh_event(), 
       _this->GetArenaForAllocation());
   }
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.QueuePost_Request)
@@ -2200,11 +2200,11 @@ inline void QueuePost_Request::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.ossec_event_){}
+    , decltype(_impl_.wazuh_event_){}
   };
-  _impl_.ossec_event_.InitDefault();
+  _impl_.wazuh_event_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.ossec_event_.Set("", GetArenaForAllocation());
+    _impl_.wazuh_event_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -2219,7 +2219,7 @@ QueuePost_Request::~QueuePost_Request() {
 
 inline void QueuePost_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
-  _impl_.ossec_event_.Destroy();
+  _impl_.wazuh_event_.Destroy();
 }
 
 void QueuePost_Request::SetCachedSize(int size) const {
@@ -2234,7 +2234,7 @@ void QueuePost_Request::Clear() {
 
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
-    _impl_.ossec_event_.ClearNonDefaultToEmpty();
+    _impl_.wazuh_event_.ClearNonDefaultToEmpty();
   }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
@@ -2247,13 +2247,13 @@ const char* QueuePost_Request::_InternalParse(const char* ptr, ::_pbi::ParseCont
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // optional string ossec_event = 1;
+      // optional string wazuh_event = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
-          auto str = _internal_mutable_ossec_event();
+          auto str = _internal_mutable_wazuh_event();
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.QueuePost_Request.ossec_event"));
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.QueuePost_Request.wazuh_event"));
         } else
           goto handle_unusual;
         continue;
@@ -2287,14 +2287,14 @@ uint8_t* QueuePost_Request::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // optional string ossec_event = 1;
-  if (_internal_has_ossec_event()) {
+  // optional string wazuh_event = 1;
+  if (_internal_has_wazuh_event()) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_ossec_event().data(), static_cast<int>(this->_internal_ossec_event().length()),
+      this->_internal_wazuh_event().data(), static_cast<int>(this->_internal_wazuh_event().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.router.QueuePost_Request.ossec_event");
+      "com.wazuh.api.engine.router.QueuePost_Request.wazuh_event");
     target = stream->WriteStringMaybeAliased(
-        1, this->_internal_ossec_event(), target);
+        1, this->_internal_wazuh_event(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -2313,12 +2313,12 @@ size_t QueuePost_Request::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // optional string ossec_event = 1;
+  // optional string wazuh_event = 1;
   cached_has_bits = _impl_._has_bits_[0];
   if (cached_has_bits & 0x00000001u) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-        this->_internal_ossec_event());
+        this->_internal_wazuh_event());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
@@ -2339,8 +2339,8 @@ void QueuePost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, cons
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (from._internal_has_ossec_event()) {
-    _this->_internal_set_ossec_event(from._internal_ossec_event());
+  if (from._internal_has_wazuh_event()) {
+    _this->_internal_set_wazuh_event(from._internal_wazuh_event());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -2363,8 +2363,8 @@ void QueuePost_Request::InternalSwap(QueuePost_Request* other) {
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.ossec_event_, lhs_arena,
-      &other->_impl_.ossec_event_, rhs_arena
+      &_impl_.wazuh_event_, lhs_arena,
+      &other->_impl_.wazuh_event_, rhs_arena
   );
 }
 

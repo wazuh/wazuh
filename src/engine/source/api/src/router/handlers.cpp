@@ -210,12 +210,12 @@ api::Handler queuePost(std::shared_ptr<::router::Router> router)
 
         // Validate the params request
         const auto& eRequest = std::get<RequestType>(res);
-        if (!eRequest.has_ossec_event())
+        if (!eRequest.has_wazuh_event())
         {
             return ::api::adapter::genericError<ResponseType>("Missing /event");
         }
 
-        auto err = router->enqueueOssecEvent(eRequest.ossec_event());
+        auto err = router->enqueueOssecEvent(eRequest.wazuh_event());
         if (err.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(err.value().message);

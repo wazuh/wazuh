@@ -93,7 +93,7 @@ message TableGet_Response
  **************************************************/
 message QueuePost_Request
 {
-    optional string ossec_event = 1; // Event to send
+    optional string wazuh_event = 1; // Event to send
     reserved 2;                      // Reserved for future use (event json position)
     reserved "event";                // Reserved for event in json format for future use in the engine
 }

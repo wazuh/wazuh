@@ -136,7 +136,7 @@ void runIngest(std::shared_ptr<apiclnt::Client> client, const std::string& event
 
     // Prepare the request
     RequestType eRequest;
-    eRequest.set_ossec_event(event);
+    eRequest.set_wazuh_event(event);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);

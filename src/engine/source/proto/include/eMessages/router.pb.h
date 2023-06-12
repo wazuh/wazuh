@@ -1564,24 +1564,24 @@ class QueuePost_Request final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kOssecEventFieldNumber = 1,
+    kWazuhEventFieldNumber = 1,
   };
-  // optional string ossec_event = 1;
-  bool has_ossec_event() const;
+  // optional string wazuh_event = 1;
+  bool has_wazuh_event() const;
   private:
-  bool _internal_has_ossec_event() const;
+  bool _internal_has_wazuh_event() const;
   public:
-  void clear_ossec_event();
-  const std::string& ossec_event() const;
+  void clear_wazuh_event();
+  const std::string& wazuh_event() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_ossec_event(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_ossec_event();
-  PROTOBUF_NODISCARD std::string* release_ossec_event();
-  void set_allocated_ossec_event(std::string* ossec_event);
+  void set_wazuh_event(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_wazuh_event();
+  PROTOBUF_NODISCARD std::string* release_wazuh_event();
+  void set_allocated_wazuh_event(std::string* wazuh_event);
   private:
-  const std::string& _internal_ossec_event() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_ossec_event(const std::string& value);
-  std::string* _internal_mutable_ossec_event();
+  const std::string& _internal_wazuh_event() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_wazuh_event(const std::string& value);
+  std::string* _internal_mutable_wazuh_event();
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.router.QueuePost_Request)
@@ -1594,7 +1594,7 @@ class QueuePost_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr ossec_event_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr wazuh_event_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
@@ -2496,72 +2496,72 @@ TableGet_Response::table() const {
 
 // QueuePost_Request
 
-// optional string ossec_event = 1;
-inline bool QueuePost_Request::_internal_has_ossec_event() const {
+// optional string wazuh_event = 1;
+inline bool QueuePost_Request::_internal_has_wazuh_event() const {
   bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool QueuePost_Request::has_ossec_event() const {
-  return _internal_has_ossec_event();
+inline bool QueuePost_Request::has_wazuh_event() const {
+  return _internal_has_wazuh_event();
 }
-inline void QueuePost_Request::clear_ossec_event() {
-  _impl_.ossec_event_.ClearToEmpty();
+inline void QueuePost_Request::clear_wazuh_event() {
+  _impl_.wazuh_event_.ClearToEmpty();
   _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& QueuePost_Request::ossec_event() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.QueuePost_Request.ossec_event)
-  return _internal_ossec_event();
+inline const std::string& QueuePost_Request::wazuh_event() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.QueuePost_Request.wazuh_event)
+  return _internal_wazuh_event();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void QueuePost_Request::set_ossec_event(ArgT0&& arg0, ArgT... args) {
+void QueuePost_Request::set_wazuh_event(ArgT0&& arg0, ArgT... args) {
  _impl_._has_bits_[0] |= 0x00000001u;
- _impl_.ossec_event_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.QueuePost_Request.ossec_event)
+ _impl_.wazuh_event_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.QueuePost_Request.wazuh_event)
 }
-inline std::string* QueuePost_Request::mutable_ossec_event() {
-  std::string* _s = _internal_mutable_ossec_event();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.QueuePost_Request.ossec_event)
+inline std::string* QueuePost_Request::mutable_wazuh_event() {
+  std::string* _s = _internal_mutable_wazuh_event();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.router.QueuePost_Request.wazuh_event)
   return _s;
 }
-inline const std::string& QueuePost_Request::_internal_ossec_event() const {
-  return _impl_.ossec_event_.Get();
+inline const std::string& QueuePost_Request::_internal_wazuh_event() const {
+  return _impl_.wazuh_event_.Get();
 }
-inline void QueuePost_Request::_internal_set_ossec_event(const std::string& value) {
+inline void QueuePost_Request::_internal_set_wazuh_event(const std::string& value) {
   _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.ossec_event_.Set(value, GetArenaForAllocation());
+  _impl_.wazuh_event_.Set(value, GetArenaForAllocation());
 }
-inline std::string* QueuePost_Request::_internal_mutable_ossec_event() {
+inline std::string* QueuePost_Request::_internal_mutable_wazuh_event() {
   _impl_._has_bits_[0] |= 0x00000001u;
-  return _impl_.ossec_event_.Mutable(GetArenaForAllocation());
+  return _impl_.wazuh_event_.Mutable(GetArenaForAllocation());
 }
-inline std::string* QueuePost_Request::release_ossec_event() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.QueuePost_Request.ossec_event)
-  if (!_internal_has_ossec_event()) {
+inline std::string* QueuePost_Request::release_wazuh_event() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.QueuePost_Request.wazuh_event)
+  if (!_internal_has_wazuh_event()) {
     return nullptr;
   }
   _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.ossec_event_.Release();
+  auto* p = _impl_.wazuh_event_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.ossec_event_.IsDefault()) {
-    _impl_.ossec_event_.Set("", GetArenaForAllocation());
+  if (_impl_.wazuh_event_.IsDefault()) {
+    _impl_.wazuh_event_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void QueuePost_Request::set_allocated_ossec_event(std::string* ossec_event) {
-  if (ossec_event != nullptr) {
+inline void QueuePost_Request::set_allocated_wazuh_event(std::string* wazuh_event) {
+  if (wazuh_event != nullptr) {
     _impl_._has_bits_[0] |= 0x00000001u;
   } else {
     _impl_._has_bits_[0] &= ~0x00000001u;
   }
-  _impl_.ossec_event_.SetAllocated(ossec_event, GetArenaForAllocation());
+  _impl_.wazuh_event_.SetAllocated(wazuh_event, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.ossec_event_.IsDefault()) {
-    _impl_.ossec_event_.Set("", GetArenaForAllocation());
+  if (_impl_.wazuh_event_.IsDefault()) {
+    _impl_.wazuh_event_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.QueuePost_Request.ossec_event)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.QueuePost_Request.wazuh_event)
 }
 
 #ifdef __GNUC__
