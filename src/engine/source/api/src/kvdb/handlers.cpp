@@ -85,7 +85,7 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
         }
 
         const auto path = eRequest.has_path() ? eRequest.path() : std::string {""};
-        auto resultCreate = kvdbManager->createDB(eRequest.name());
+        auto resultCreate = kvdbManager->createDB(eRequest.name(), path);
         if (resultCreate)
         {
             return ::api::adapter::genericError<ResponseType>(resultCreate.value().message);
