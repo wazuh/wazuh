@@ -5,6 +5,8 @@
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 
+#include <filesystem>
+#include <fstream>
 #include <fmt/format.h>
 #include <optional>
 
@@ -222,11 +224,53 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
     return std::nullopt;
 }
 
-std::optional<base::Error> KVDBManager::createDB(const std::string& name)
+std::optional<base::Error> KVDBManager::createDB(const std::string& name, const std::string& path)
 {
     if (existsDB(name))
     {
         return std::nullopt;
+    }
+
+    std::vector<std::tuple<std::string, json::Json>> entries {};
+
+    // Open file and read content
+    if (!path.empty())
+    {
+        // Open file and read content
+        std::string contents;
+        // TODO: No check the size, the location, the type of file, the permissions it's a
+        // security issue. The API should be changed to receive a stream instead of a path
+        std::ifstream in(path, std::ios::in | std::ios::binary);
+        if (in)
+        {
+            in.seekg(0, std::ios::end);
+            contents.resize(in.tellg());
+            in.seekg(0, std::ios::beg);
+            in.read(&contents[0], contents.size());
+            in.close();
+        }
+        else
+        {
+            return base::Error {fmt::format("An error occurred while opening the file '{}'", path.c_str())};
+        }
+
+        json::Json jKv;
+        try
+        {
+            jKv = json::Json {contents.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {fmt::format("An error occurred while parsing the JSON file '{}'", path.c_str())};
+        }
+
+        if (!jKv.isObject())
+        {
+            return base::Error {
+                fmt::format("An error occurred while parsing the JSON file '{}': JSON is not an object", path.c_str())};
+        }
+
+        entries = jKv.getObject().value();
     }
 
     auto createResult = createColumnFamily(name);
@@ -234,6 +278,16 @@ std::optional<base::Error> KVDBManager::createDB(const std::string& name)
     if (std::holds_alternative<base::Error>(createResult))
     {
         return std::get<base::Error>(createResult);
+    }
+    auto cfHandle = std::get<rocksdb::ColumnFamilyHandle*>(createResult);
+
+    for (const auto& [key, value] : entries)
+    {
+        auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), cfHandle, key, value.str());
+        if (!status.ok())
+        {
+            //TODO check error
+        }
     }
 
     return std::nullopt;
