@@ -45,6 +45,7 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
+from wazuh_testing.modules import ALL_DAEMON_HANDLER
 from wazuh_testing.modules.analysisd.testrule import patterns
 from wazuh_testing.tools import file_monitor
 from wazuh_testing.utils import callbacks, configuration
@@ -62,11 +63,14 @@ test_cases_path = Path(TEST_CASES_PATH, 'cases_valid_signature_id.yaml')
 test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
 test_configuration = configuration.load_configuration_template(configs_path, test_configuration, test_metadata)
 
+# Test daemons to restart.
+daemons_handler_configuration = ALL_DAEMON_HANDLER
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_valid_signature_id(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                            prepare_custom_rules_file, restart_wazuh):
+                            prepare_custom_rules_file, daemons_handler):
     '''
     description: Check that when a rule has an valid signature ID value assigned to the if_sid option, the rule is
                  not ignored.
@@ -105,9 +109,9 @@ def test_valid_signature_id(test_configuration, test_metadata, set_wazuh_configu
         - prepare_custom_rules_file:
             type: fixture
             brief: Copies custom rules_file before test, deletes after test.
-        - restart_wazuh:
+        - daemons_handler:
             type: fixture
-            brief: Restart wazuh at the start of the module to apply configuration.
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Check that wazuh starts

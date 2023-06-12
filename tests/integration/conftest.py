@@ -129,8 +129,7 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
     configuration.write_wazuh_conf(backup_config)
 
 
-@pytest.fixture()
-def truncate_monitored_files() -> None:
+def truncate_monitored_files_implementation() -> None:
     """Truncate all the log files and json alerts files before and after the test execution"""
     if services.get_service() == WAZUH_MANAGER:
         log_files = [OSSEC_LOG_PATH, ALERTS_JSON_PATH]
@@ -148,12 +147,16 @@ def truncate_monitored_files() -> None:
             file.truncate_file(log_file)
 
 
-@pytest.fixture(scope='function')
-def restart_wazuh(daemon=None):
-    """Restart all Wazuh daemons"""
-    services.control_service("restart", daemon=daemon)
-    yield
-    services.control_service('stop', daemon=daemon)
+@pytest.fixture()
+def truncate_monitored_files() -> None:
+    """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
+    yield from truncate_monitored_files_implementation()
+
+
+@pytest.fixture(scope='module')
+def truncate_monitored_files_module() -> None:
+    """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
+    yield from truncate_monitored_files_implementation()
 
 
 def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
@@ -225,19 +228,19 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
             services.control_service('stop', daemon=daemon)
 
 
-@pytest.fixture
+@pytest.fixture()
 def daemons_handler(request: pytest.FixtureRequest) -> None:
-    """Wrapper of `daemons_handler_impl` which contains the general implementation.
+    """Wrapper of `daemons_handler_implementation` which contains the general implementation.
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
     """
-    yield from daemons_handler_impl(request)
+    yield from daemons_handler_implementation(request)
 
 
 @pytest.fixture(scope='module')
 def daemons_handler_module(request: pytest.FixtureRequest) -> None:
-    """Wrapper of `daemons_handler_impl` which contains the general implementation.
+    """Wrapper of `daemons_handler_implementation` which contains the general implementation.
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
