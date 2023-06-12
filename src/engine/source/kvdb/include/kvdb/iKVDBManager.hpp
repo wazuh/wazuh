@@ -59,7 +59,7 @@ public:
      * @return std::variant<base::Error> If base::Error not exists the DB was created successfully. Specific error otherwise.
      *
      */
-    virtual std::optional<base::Error> createDB(const std::string& name) = 0;
+    virtual std::optional<base::Error> createDB(const std::string& name, const std::string& path) = 0;
 
     /**
      * @brief Checks if a DB exists.
