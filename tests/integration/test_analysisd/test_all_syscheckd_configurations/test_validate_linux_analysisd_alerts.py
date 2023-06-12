@@ -48,9 +48,8 @@ import pytest
 
 from pathlib import Path
 
-from wazuh_testing import session_parameters
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
-from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH, ANALYSISD_QUEUE_SOCKET_PATH
+from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
 from wazuh_testing.modules.analysisd import utils, ANALYSISD_DEBUG_CONFIG
 from wazuh_testing.tools import mitm
 from wazuh_testing.utils import configuration
