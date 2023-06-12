@@ -23,38 +23,38 @@ public:
      *
      * @param key Provided key.
      * @param value Provided value. Must be a string.
-     * @return std::variant<bool, base::Error> True if the value was stored successfully. Specific error otherwise.
+     * @return std::variant<base::Error> If base::Error not exists the value was stored successfully. Specific error otherwise.
      *
     */
-    virtual std::variant<bool, base::Error> set(const std::string& key, const std::string& value) = 0;
+    virtual std::optional<base::Error> set(const std::string& key, const std::string& value) = 0;
 
     /**
      * @brief Stores a Json value in the database given the provided key.
      *
      * @param key Provided key.
      * @param value Provided value. Must be a Json.
-     * @return std::variant<bool, base::Error> True if the value was stored successfully. Specific error otherwise.
+     * @return std::optional<base::Error> If base::Error not exists the value was stored successfully. Specific error otherwise.
      *
      */
-    virtual std::variant<bool, base::Error> set(const std::string& key, const json::Json& value) = 0;
+    virtual std::optional<base::Error> set(const std::string& key, const json::Json& value) = 0;
 
     /**
      * @brief Stores a key. Treats the DB as a key set for further checking existence of the key.
      *
      * @param key Provided key.
-     * @return std::variant<bool, base::Error> True if the key was stored successfully. Specific error otherwise.
+     * @return std::optional<base::Error> If base::Error not exists the key was stored successfully. Specific error otherwise.
      *
      */
-    virtual std::variant<bool, base::Error> add(const std::string& key) = 0;
+    virtual std::optional<base::Error> add(const std::string& key) = 0;
 
     /**
      * @brief Removes a key from the DB.
      *
      * @param key Provided key.
-     * @return std::variant<bool, base::Error> True if the key was removed successfully. Specific error otherwise.
+     * @return std::variant<base::Error> If base::Error not exists the key was removed successfully. Specific error otherwise.
      *
      */
-    virtual std::variant<bool, base::Error> remove(const std::string& key) = 0;
+    virtual std::optional<base::Error> remove(const std::string& key) = 0;
 
     /**
      * @brief Checks if a key exists in the DB.

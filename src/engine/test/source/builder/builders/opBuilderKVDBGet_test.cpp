@@ -8,7 +8,6 @@
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <kvdb/kvdbExcept.hpp>
 #include <opBuilderKVDB.hpp>
 #include <testsCommon.hpp>
 
@@ -50,7 +49,7 @@ protected:
 
         kvdbScope = kvdbManager->getKVDBScope("builder_test");
         auto err = kvdbManager->createDB(DB_NAME_1);
-        ASSERT_FALSE(std::holds_alternative<base::Error>(err));
+        ASSERT_FALSE(err);
         auto result = kvdbScope->getKVDBHandler(DB_NAME_1);
         ASSERT_FALSE(std::holds_alternative<base::Error>(result));
     }
@@ -61,9 +60,9 @@ protected:
         {
             kvdbManager->finalize();
         }
-        catch (kvdbManager::KVDBException& e)
+        catch (std::exception& e)
         {
-            FAIL() << "KVDBException: " << e.what();
+            FAIL() << "Exception: " << e.what();
         }
 
         if (std::filesystem::exists(DB_DIR))

@@ -3,8 +3,8 @@
 
 #include <map>
 #include <memory>
-#include <mutex>
 #include <set>
+#include <shared_mutex>
 #include <string>
 
 #include <kvdb/kvdbSpace.hpp>
@@ -147,7 +147,7 @@ private:
      * @brief Mutex to protect the internal map.
      *
      */
-    std::mutex m_mutex;
+    std::shared_mutex m_mutex;
 };
 
 } // namespace kvdbManager
