@@ -1396,7 +1396,7 @@ components:
           description: "Type of the instrument"
         status:
           type: string
-          enum: ["enable", "disable"]
+          enum: ["enabled", "disabled"]
           description: "Status of the instrument"
 
     ArrayOfInstruments:
@@ -7300,16 +7300,7 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/InstrumentsFields'
               example:
-                data:
-                  scope: kvdb
-                  name: databeseCounter
-                  type: counter
-                  status: enable
                 message: ''
                 error: 0
 
