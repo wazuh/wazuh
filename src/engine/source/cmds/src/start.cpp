@@ -361,10 +361,33 @@ void runStart(ConfHandler confManager)
 
         // Test
         {
+            // Try to load the sessions from the store
+            const auto strJsonSessions = store->get(api::test::handlers::SESSIONS_TABLE_NAME);
+            if (std::holds_alternative<base::Error>(strJsonSessions))
+            {
+                LOG_WARNING("Could not retreive configuration file [{}] needed by the 'Test' module: {}",
+                            api::test::handlers::SESSIONS_TABLE_NAME,
+                            std::get<base::Error>(strJsonSessions).message);
+
+                // Create the sessions table
+                auto storeSetSessionsTable = store->add(api::test::handlers::SESSIONS_TABLE_NAME, json::Json("[]"));
+                if (storeSetSessionsTable.has_value())
+                {
+                    LOG_ERROR("API sessions table could not be created: {}", storeSetSessionsTable.value().message);
+                    g_exitHanlder.execute();
+                    return;
+                }
+            }
+            else
+            {
+                api::test::handlers::loadSessionsFromJson(std::get<json::Json>(strJsonSessions));
+            }
+
             // Register the Test command
             api::test::handlers::Config testConfig;
-            testConfig.router = router;
             testConfig.catalog = catalog;
+            testConfig.router = router;
+            testConfig.store = store;
             api::test::handlers::registerHandlers(testConfig, api);
             LOG_DEBUG("Test API registered.");
         }
