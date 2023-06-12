@@ -18,7 +18,7 @@ def add_configuration(test_configuration: list[dict]) -> None:
     """Add configuration to the Wazuh API configuration files.
 
     Args:
-        test_configuration (list[dict]): Configuration data to be added to the configuration files.
+        test_configuration (dict): Configuration data to be added to the configuration files.
     """
     configuration_types = ('base', 'security')
     # Configuration files the test will modify = test_target_types
@@ -54,7 +54,7 @@ def wait_for_api_start(test_configuration: list[dict]) -> None:
     """Monitor the API log file to detect whether it has been started or not.
 
     Args:
-        test_configuration (list[dict]): Configuration data.
+        test_configuration (dict): Configuration data.
     """
     # Set the default `log_format` value
     log_format = 'plain'

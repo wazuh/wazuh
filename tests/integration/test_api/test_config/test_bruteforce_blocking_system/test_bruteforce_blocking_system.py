@@ -1,4 +1,4 @@
-'''
+"""
 copyright: Copyright (C) 2015-2022, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
@@ -54,7 +54,7 @@ references:
 
 tags:
     - api
-'''
+"""
 import os
 import time
 
@@ -83,53 +83,67 @@ daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 # Tests
 
+@pytest.mark.tier(level=0)
 @pytest.mark.filterwarnings('ignore::urllib3.exceptions.InsecureRequestWarning')
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_bruteforce_blocking_system(test_configuration, test_metadata, add_configuration, daemons_handler,
                                     wait_for_api_start):
-    '''
+    """
     description: Check if the blocking time for IP addresses detected as brute-force attack works.
                  For this purpose, the test causes an IP blocking, make a request before
                  the blocking time finishes and one after the blocking time.
 
     wazuh_min_version: 4.2.0
 
+    test_phases:
+        - setup:
+            - Append configuration to the target configuration files (defined in the configuration template)
+            - Restart daemons defined in `daemons_handler_configuration` in this module
+            - Wait until the API is ready to receive requests
+        - test:
+            - Provoke a block from an unknown IP
+            - Try to login to check if the IP is blocked during the block time
+            - Try to login after the block time to check if the IP was removed from the blocked IP addresses
+        - teardown:
+            - Remove configuration and restore backup configuration
+            - Stop daemons defined in `daemons_handler_configuration` in this module
+
     tier: 0
 
     parameters:
-        - tags_to_apply:
-            type: set
-            brief: Run test if match with a configuration identifier, skip otherwise.
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration data from the test case.
+        - test_metadata:
+            type: dict
+            brief: Metadata from the test case.
+        - add_configuration:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_api_environment:
+            brief: Add configuration to the Wazuh API configuration files.
+        - daemons_handler:
             type: fixture
-            brief: Configure a custom environment for API testing.
-        - restart_api:
+            brief: Wrapper of a helper function to handle Wazuh daemons.
+        - wait_for_api_start:
             type: fixture
-            brief: Reset 'api.log' and start a new monitor.
-        - wait_for_start:
-            type: fixture
-            brief: Wait until the API starts.
-        - get_api_details:
-            type: fixture
-            brief: Get API information.
+            brief: Monitor the API log file to detect whether it has been started or not.
 
     assertions:
         - Verify that the IP address is blocked using incorrect credentials.
-        - Verify that the IP address is still blocked even when using
-          the correct credentials within the blocking time.
+        - Verify that the IP address is still blocked even when using the correct credentials within the "block time".
+        - Verify that the IP address is not blocked after the "block time" expiration.
+        - Verify that the API response during the "block time" is the expected.
 
-    input_description: Different test cases are contained in an external YAML file (conf.yaml)
-                       which includes API configuration parameters.
+    input_description: Different test cases are in the `cases_bruteforce_blocking_system.yaml` file which includes API
+                       configuration parameters that will be replaced in the configuration template file.
 
     expected_output:
-        - r"Error obtaining login token"
+        - Could not get the login token.
+        - Limit of login attempts reached. The current IP has been blocked due to a high number of login attempts
+        - 6000
 
     tags:
         - brute_force_attack
-    '''
+    """
     block_time = test_configuration['base']['access']['block_time']
     max_login_attempts = test_configuration['base']['access']['max_login_attempts']
     expected_message = test_metadata['expected_message'].rstrip()
@@ -139,11 +153,17 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
     with pytest.raises(RuntimeError):
         login(user='wrong', password='wrong', login_attempts=max_login_attempts)
 
-    # Request with correct credentials before blocking time expires and get the exception information
+    # Verify that the IP address is still blocked even when using the correct credentials within the "block time"
     with pytest.raises(RuntimeError) as login_exception:
         login()
 
-    # Request after time expires.
+    # Get values from exception information to verify them later
+    exception_message = login_exception.value.args[0]
+    api_response = login_exception.value.args[1]
+    response_message = api_response['detail']
+    response_error_code = api_response['error']
+
+    # Verify that the IP address is not blocked after the "block time" expiration
     time.sleep(block_time)
     try:
         login()
@@ -151,13 +171,7 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
         pytest.fail('The login attempt has failed unexpectedly '
                     'but was expected to be successful after the `block_time` expires.')
 
-    # Get values from exception information
-    exception_message = login_exception.value.args[0]
-    api_response = login_exception.value.args[1]
-    response_message = api_response['detail']
-    response_error_code = api_response['error']
-
-    # Check that the API's error is the expected
+    # Verify that the API response during the "block time" is the expected
     assert API_LOGIN_ERROR_MSG in exception_message, 'The login attempt was not blocked, instead the token' \
                                                      'was successfully obtained.\n' \
                                                      f"API response: {api_response}"
