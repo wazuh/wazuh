@@ -1404,56 +1404,81 @@ components:
       items:
         $ref: '#/components/schemas/InstrumentsFields'
 
-    MetricFieldsAttributes:
+    InstrumentHistogramAttributes:
+      type: object
+      properties:
+        buckets:
+          type: array
+          items:
+            type: integer
+        counts:
+          type: array
+          items:
+            type: integer
+        max:
+          type: integer
+        min:
+          type: integer
+        count:
+          type: integer
+        sum:
+          type: integer
+        type:
+          type: string
+          description: "Type of the histogram data"
+
+    InstrumentCounterAttributes:
       type: object
       properties:
         type:
           type: string
-          description: "Type of the metric"
+          description: "Type of the counter"
         value:
-          type: number
-          description: "Value of the attribute"
+          type: integer
+          description: "Value of the counter"
 
-    MetricFields:
+
+    MetricsRecordFields:
       type: object
       properties:
-        start_time:
-          type: string
-          description: "Time of the metric"
-        instrument_name:
-          type: string
-          description: "Name of the instrument"
         instrument_description:
           type: string
           description: "Description of the instrument"
-        unit:
+        instrument_name:
           type: string
-          description: "Unit with which the metric is measured"
+          description: "Name of the instrument"
         type:
           type: string
           description: "Type of the instrument"
+        unit:
+          type: string
+          description: "Unit used for the instrument"
+        start_time:
+          type: string
+          description: "Time of the record"
         attributes:
-         type: array
-         items:
-           $ref: '#/components/schemas/MetricFieldsAttributes'
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/InstrumentHistogramAttributes'
+              - $ref: '#/components/schemas/InstrumentCounterAttributes'
 
-    MetricDataFields:
+    MetricsFields:
       type: object
       properties:
-        scope:
-          type: string
-          description: "Scope of the metric"
-        schema:
-          type: string
-          description: "Name of the schema of the metric"
         version:
           type: string
-          description: "Version of the metric"
+          description: "Version of the engine"
+        schema:
+          type: string
+          description: "Name of the schema"
+        scope_name:
+          type: string
+          description: "Name of the scope it belongs to"
         records:
           type: array
           items:
-            $ref: '#/components/schemas/MetricFields'
-
+            $ref: '#/components/schemas/MetricsRecordFields'
 
     ## Agents models
     ExtraAgentFields:
@@ -7349,10 +7374,12 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/MetricDataFields'
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/MetricsFields'
               example:
                 data:
-                  - scope: CountExample
+                  - scope_name: CountExample
                     schema: ''
                     version: ''
                     records:
@@ -7404,10 +7431,12 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/MetricDataFields'
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/MetricsFields'
               example:
                 data:
-                  - scope: CountExample
+                  - scope_name: CountExample
                     schema: ''
                     version: ''
                     records:
