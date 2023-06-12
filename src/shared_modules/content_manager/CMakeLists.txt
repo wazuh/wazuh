@@ -17,7 +17,12 @@ add_library(content_manager SHARED
     ${CONTENT_DOWNLOAD_SRC}
     )
 
-target_link_libraries(content_manager router urlrequest)
+target_link_libraries(content_manager router urlrequest gcc_s)
+
+set_target_properties(content_manager PROPERTIES
+        BUILD_RPATH_USE_ORIGIN TRUE
+        BUILD_RPATH "$ORIGIN/../lib"
+)
 
 add_subdirectory(testtool)
 add_subdirectory(tests)
