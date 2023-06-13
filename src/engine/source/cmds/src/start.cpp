@@ -24,7 +24,6 @@
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <kvdb2/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
 #include <parseEvent.hpp> // Event
