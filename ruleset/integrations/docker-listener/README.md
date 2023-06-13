@@ -26,9 +26,10 @@ More details of this fields [here](https://docs.docker.com/engine/reference/comm
 This events are received and forwarded directly with the docker-listener wodle.
 More information on how to use and a example on how to achieve this [here](https://documentation.wazuh.com/current/proof-of-concept-guide/monitoring-docker.html).
 
+
 ## Compatibility
 
-This module has been tested against docker version 24.0.2 and wazuh 4.4.3
+This module has been tested against docker version 24.0.2 wazuh agent 4.4.3 in ubuntu 22
 
 
 ## Configuration
