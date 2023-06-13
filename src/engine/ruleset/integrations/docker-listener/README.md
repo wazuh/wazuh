@@ -4,6 +4,7 @@
 |   |   |
 |---|---|
 | event.module | docker-listener |
+| event.dataset | wodle-docker-listener |
 
 This integration receives, parses and processes logs obtained with the docker-listener wodle from docker. This are real-time events from the docker server.
 

@@ -5,7 +5,7 @@ metadata:
   description: Process events that comes from the Docker listener wodle
   module: Docker-listener
   compatibility: >
-    This decoder has been tested on Wazuh version 4.4 and docker 20.10.12
+    This decoder has been tested on Wazuh version 4.4 and docker 24.0.2
   versions:
    - "4.4.3"
    - "24.0.2" #TODO: check backward compatibility
@@ -107,6 +107,7 @@ normalize:
  - check: +exists/~json.docker
    map:
     - event.module: docker-listener
+    - event.dataset: wodle-docker-listener
     - event.kind: event # alert or metric kind can be a possibility too
     - event.outcome: unknown
     - container.id: $~json.docker.id
