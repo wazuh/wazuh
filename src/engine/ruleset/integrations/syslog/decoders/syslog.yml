@@ -40,5 +40,5 @@ normalize:
   - map:
       - event.kind: event
       - related.hosts: +array_append/$host.hostname
-      - process.name: $~TAG
+      - process.name: +rename/$~TAG
       - wazuh.decoders: +array_append/syslog
