@@ -1,6 +1,7 @@
 #ifndef _DOT_PATH_HPP
 #define _DOT_PATH_HPP
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -198,8 +199,45 @@ public:
      */
     static DotPath fromJsonPath(const std::string& jsonPath)
     {
+        if (jsonPath.empty())
+        {
+            return DotPath();
+        }
+
         std::string path = (jsonPath[0] == '/') ? jsonPath.substr(1) : jsonPath;
         auto parts = base::utils::string::split(path, '/');
+
+        std::transform(parts.begin(),
+                       parts.end(),
+                       parts.begin(),
+                       [](const std::string& part)
+                       {
+                           size_t index = 0;
+                           auto partCopy = part;
+                           // Replace all ~0 with ~
+                           while (true)
+                           {
+                               index = partCopy.find("~0", index);
+                               if (index == std::string::npos)
+                                   break;
+                               partCopy.replace(index, 2, "~");
+                               index += 3;
+                           }
+
+                           // Replace all ~1 with /
+                           index = 0;
+                           while (true)
+                           {
+                               index = partCopy.find("~1", index);
+                               if (index == std::string::npos)
+                                   break;
+                               partCopy.replace(index, 2, "/");
+                               index += 3;
+                           }
+
+                           return partCopy;
+                       });
+
         return DotPath(parts.begin(), parts.end());
     }
 };
