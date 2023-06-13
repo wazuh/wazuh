@@ -3,7 +3,7 @@
 #include "hlp_test.hpp"
 
 auto constexpr NAME = "eofParser";
-auto constexpr TARGET = "Unused";
+static const std::string TARGET = "/Unused";
 
 INSTANTIATE_TEST_SUITE_P(EofBuild,
                          HlpBuildTest,

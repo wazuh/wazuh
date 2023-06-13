@@ -3,7 +3,7 @@
 #include "hlp_test.hpp"
 
 auto constexpr NAME = "fileParser";
-auto constexpr TARGET = "TargetField";
+static const std::string TARGET = "/TargetField";
 
 INSTANTIATE_TEST_SUITE_P(FileBuild,
                          HlpBuildTest,
@@ -17,7 +17,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         ParseT(SUCCESS,
                R"(/user/login.php)",
-               j(fmt::format(R"({{"{}": {{"path":"/user","name":"login.php","ext":"php"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}": {{"path":"/user","name":"login.php","ext":"php"}}}})", TARGET.substr(1))),
                15,
                getFilePathParser,
                {NAME, TARGET, {""}, {}}),
@@ -25,13 +25,13 @@ INSTANTIATE_TEST_SUITE_P(
                R"(..\Windows\..\Users\"Administrator\rootkit.exe)",
                j(fmt::format(
                    R"({{"{}": {{"path":"..\\Windows\\..\\Users\\\"Administrator","name":"rootkit.exe","ext":"exe"}}}})",
-                   TARGET)),
+                   TARGET.substr(1))),
                46,
                getFilePathParser,
                {NAME, TARGET, {""}, {}}),
         ParseT(SUCCESS,
                R"(/home/user/.rootkit/.file.sh)",
-               j(fmt::format(R"({{"{}": {{"path": "/home/user/.rootkit","name": ".file.sh","ext": "sh"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}": {{"path": "/home/user/.rootkit","name": ".file.sh","ext": "sh"}}}})", TARGET.substr(1))),
                28,
                getFilePathParser,
                {NAME, TARGET, {""}, {}}),
@@ -40,33 +40,33 @@ INSTANTIATE_TEST_SUITE_P(
             R"(C:\Windows\System32\virus.exe)",
             j(fmt::format(
                 R"({{"{}": {{"path": "C:\\Windows\\System32","name": "virus.exe","ext": "exe","drive_letter": "C"}}}})",
-                TARGET)),
+                TARGET.substr(1))),
             29,
             getFilePathParser,
             {NAME, TARGET, {""}, {}}),
         ParseT(SUCCESS,
                R"(../home/..user/.rootkit/..file.sh)",
                j(fmt::format(R"({{"{}": {{"path": "../home/..user/.rootkit","name": "..file.sh","ext": "sh"}}}})",
-                             TARGET)),
+                             TARGET.substr(1))),
                33,
                getFilePathParser,
                {NAME, TARGET, {""}, {}}),
         ParseT(SUCCESS,
                R"(relative.test.log)",
                j(fmt::format(R"({{"{}": {{"path":"relative.test.log","name":"relative.test.log","ext":"log"}}}})",
-                             TARGET)),
+                             TARGET.substr(1))),
                17,
                getFilePathParser,
                {NAME, TARGET, {""}, {}}),
         ParseT(SUCCESS,
                R"(.hidden.log)",
-               j(fmt::format(R"({{"{}": {{"path":".hidden.log","name":".hidden.log","ext":"log"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}": {{"path":".hidden.log","name":".hidden.log","ext":"log"}}}})", TARGET.substr(1))),
                11,
                getFilePathParser,
                {NAME, TARGET, {""}, {}}),
         ParseT(SUCCESS,
                R"(/)",
-               j(fmt::format(R"({{"{}": {{"path":"/","name":"","ext":""}}}})", TARGET)),
+               j(fmt::format(R"({{"{}": {{"path":"/","name":"","ext":""}}}})", TARGET.substr(1))),
                1,
                getFilePathParser,
                {NAME, TARGET, {""}, {}})));

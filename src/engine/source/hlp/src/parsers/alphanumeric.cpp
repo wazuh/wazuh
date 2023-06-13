@@ -45,7 +45,7 @@ Parser getAlphanumericParser(const Params& params)
 
     const auto synP = getSynParser();
     const auto semP =
-        params.targetField.empty() ? noSemParser() : getSemParser(json::Json::formatJsonPath(params.targetField));
+        params.targetField.empty() ? noSemParser() : getSemParser(params.targetField);
 
     return [name = params.name, synP, semP](std::string_view txt)
     {

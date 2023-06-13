@@ -3,7 +3,7 @@
 #include "hlp_test.hpp"
 
 auto constexpr NAME = "dsvcsvParser";
-auto constexpr TARGET = "TargetField";
+static const std::string TARGET = "/TargetField";
 
 /************************************
  *  CSV Parser
@@ -25,14 +25,14 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "hi,hi2",
-               j(fmt::format(R"({{"{}":{{"field_1":"hi","field_2":"hi2"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":"hi","field_2":"hi2"}}}})", TARGET.substr(1))),
                6,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2"}}),
 
         ParseT(SUCCESS,
                "hi,hi2 bye",
-               j(fmt::format(R"({{"{}":{{"field_1":"hi","field_2":"hi2"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":"hi","field_2":"hi2"}}}})", TARGET.substr(1))),
                6,
                getCSVParser,
                {NAME, TARGET, {" "}, {"field_1", "field_2"}}),
@@ -46,7 +46,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                R"("v1","v2","v3" - ABC)",
-               j(fmt::format(R"({{"{}":{{"f1":"v1","f2":"v2","f3":"v3"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"f1":"v1","f2":"v2","f3":"v3"}}}})", TARGET.substr(1))),
                14,
                getCSVParser,
                {NAME, TARGET, {" - ABC"}, {"f1", "f2", "f3"}}),
@@ -60,21 +60,21 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                ",",
-               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null}}}})", TARGET.substr(1))),
                1,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2"}}),
 
         ParseT(SUCCESS,
                ",,,hi",
-               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null, "field_3":null, "field_4":"hi"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null, "field_3":null, "field_4":"hi"}}}})", TARGET.substr(1))),
                5,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
 
         ParseT(SUCCESS,
                "hi,,,bye",
-               j(fmt::format(R"({{"{}":{{"field_1":"hi","field_2":null, "field_3":null, "field_4":"bye"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":"hi","field_2":null, "field_3":null, "field_4":"bye"}}}})", TARGET.substr(1))),
                8,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
@@ -88,21 +88,21 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                ",,,",
-               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null, "field_3":null,"field_4":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null, "field_3":null,"field_4":null}}}})", TARGET.substr(1))),
                3,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
 
         ParseT(SUCCESS,
                R"("","","","")",
-               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null, "field_3":null,"field_4":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null, "field_3":null,"field_4":null}}}})", TARGET.substr(1))),
                11,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
 
         ParseT(SUCCESS,
                ", bye",
-               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":null,"field_2":null}}}})", TARGET.substr(1))),
                1,
                getCSVParser,
                {NAME, TARGET, {" "}, {"field_1", "field_2"}}),
@@ -116,7 +116,7 @@ INSTANTIATE_TEST_SUITE_P(
             R"(,,hi,"semicolon scaped'"",""' <-- other here <,>",other value,,,value new,,)",
             j(fmt::format(
                 R"({{"{}":{{"null_1":null,"null_2":null,"word":"hi","escaped_1":"semicolon scaped'\",\"' <-- other here <,>","no_escape,null_3":"other value","null_4":null,"new":null,"null_5":"value new","null_6":null,"null_7":null}}}})",
-                TARGET)),
+                TARGET.substr(1))),
             75,
             getCSVParser,
             {NAME,
@@ -149,7 +149,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                R"(f1,f2,f3,"f4,f5")",
-               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"f4,f5"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"f4,f5"}}}})", TARGET.substr(1))),
                16,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
@@ -182,7 +182,7 @@ INSTANTIATE_TEST_SUITE_P(
         ParseT(SUCCESS,
                R"(f1,f2,f3,"--""--")",
                j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"--\"--"}}}})",
-                             TARGET)),
+                             TARGET.substr(1))),
                17,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
@@ -191,21 +191,21 @@ INSTANTIATE_TEST_SUITE_P(
                R"(f1,f2,f3,"--""--",)",
                j(fmt::format(
                    R"({{"{}":{{"field_1":"f1","field_2":"f2","field_3":"f3","field_4":"--\"--","field_5":null}}}})",
-                   TARGET)),
+                   TARGET.substr(1))),
                18,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4", "field_5"}}),
 
         ParseT(SUCCESS,
                R"(f1,f2;asd)",
-               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2"}}}})", TARGET.substr(1))),
                5,
                getCSVParser,
                {NAME, TARGET, {";"}, {"field_1", "field_2"}}),
 
         ParseT(SUCCESS,
                R"(f1,"f2;wazuh";asd)",
-               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2;wazuh"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":"f1","field_2":"f2;wazuh"}}}})", TARGET.substr(1))),
                13,
                getCSVParser,
                {NAME, TARGET, {";asd"}, {"field_1", "field_2"}}),
@@ -214,14 +214,14 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                R"(0,1.0,,"")",
-               j(fmt::format(R"({{"{}":{{"field_1":0,"field_2":1.0,"field_3":null,"field_4":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"field_1":0,"field_2":1.0,"field_3":null,"field_4":null}}}})", TARGET.substr(1))),
                9,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
 
         ParseT(SUCCESS,
                R"("v1","v2","v3")",
-               j(fmt::format(R"({{"{}":{{"f1":"v1","f2":"v2","f3":"v3"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"f1":"v1","f2":"v2","f3":"v3"}}}})", TARGET.substr(1))),
                14,
                getCSVParser,
                {NAME, TARGET, {""}, {"f1", "f2", "f3"}})));
@@ -246,7 +246,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "val1|val2",
-               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2"}}}})", TARGET.substr(1))),
                strlen("val1|val2"),
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2"}}),
@@ -255,7 +255,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "val1|val2 val3",
-               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2"}}}})", TARGET.substr(1))),
                strlen("val1|val2"),
                getDSVParser,
                {NAME, TARGET, {" "}, {"|", "\"", "\"", "out1", "out2"}}),
@@ -269,7 +269,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "'val1'|'val2'|'val3' - something",
-               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3"}}}})", TARGET.substr(1))),
                strlen("'val1'|'val2'|'val3'"),
                getDSVParser,
                {NAME, TARGET, {" - something"}, {"|", "'", "'", "out1", "out2", "out3"}}),
@@ -289,14 +289,14 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "|",
-               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null}}}})", TARGET.substr(1))),
                1,
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2"}}),
 
         ParseT(SUCCESS,
                "|||",
-               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null,"out3":null,"out4":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null,"out3":null,"out4":null}}}})", TARGET.substr(1))),
                3,
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
@@ -317,7 +317,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "val1|val2|val3|'val4|val5'",
-               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3","out4":"val4|val5"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3","out4":"val4|val5"}}}})", TARGET.substr(1))),
                strlen("val1|val2|val3|'val4|val5'"),
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
@@ -345,7 +345,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "val1|val2|val3|'--''--'",
-               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3","out4":"--'--"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3","out4":"--'--"}}}})", TARGET.substr(1))),
                strlen("val1,val2,val3,'--''--'"),
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
@@ -360,14 +360,14 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "val1|val2;asd",
-               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2"}}}})", TARGET.substr(1))),
                strlen("val1|val2"),
                getDSVParser,
                {NAME, TARGET, {";"}, {"|", "'", "'", "out1", "out2"}}),
 
         ParseT(SUCCESS,
                "val1|'val2;val3';val4",
-               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2;val3"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2;val3"}}}})", TARGET.substr(1))),
                strlen("val1|'val2;val3'"),
                getDSVParser,
                {NAME, TARGET, {";val4"}, {"|", "'", "'", "out1", "out2"}}),
@@ -381,21 +381,21 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "|||hi",
-               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null, "out3":null, "out4":"hi"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null, "out3":null, "out4":"hi"}}}})", TARGET.substr(1))),
                5,
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2", "out3", "out4"}}),
 
         ParseT(SUCCESS,
                "|||",
-               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null, "out3":null, "out4":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null, "out3":null, "out4":null}}}})", TARGET.substr(1))),
                3,
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2", "out3", "out4"}}),
 
         ParseT(SUCCESS,
                "hi|||bye",
-               j(fmt::format(R"({{"{}":{{"out1":"hi","out2":null, "out3":null, "out4":"bye"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":"hi","out2":null, "out3":null, "out4":"bye"}}}})", TARGET.substr(1))),
                8,
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2", "out3", "out4"}}),
@@ -409,28 +409,28 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                R"(""|""|""|"")",
-               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null,"out3":null,"out4":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null,"out3":null,"out4":null}}}})", TARGET.substr(1))),
                11,
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "\"", "\"", "out1", "out2", "out3", "out4"}}),
 
         ParseT(SUCCESS,
                "| bye",
-               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":null,"out2":null}}}})", TARGET.substr(1))),
                1,
                getDSVParser,
                {NAME, TARGET, {" "}, {"|", "\"", "\"", "out1", "out2"}}),
 
         ParseT(SUCCESS,
                "0|1.0||''",
-               j(fmt::format(R"({{"{}":{{"out1":0,"out2":1.0,"out3":null,"out4":null}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":0,"out2":1.0,"out3":null,"out4":null}}}})", TARGET.substr(1))),
                strlen("0|1.0||''"),
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),
 
         ParseT(SUCCESS,
                "'val1'|'val2'|'val3'",
-               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3"}}}})", TARGET)),
+               j(fmt::format(R"({{"{}":{{"out1":"val1","out2":"val2","out3":"val3"}}}})", TARGET.substr(1))),
                strlen("'val1','val2','val3'"),
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3"}}),
@@ -440,7 +440,7 @@ INSTANTIATE_TEST_SUITE_P(
             R"(,,hi,"semicolon scaped'\",\"' <-- other here <,>",other value,,,value new,,)",
             j(fmt::format(
                 R"({{"{}":{{"null_1":null,"null_2":null,"word":"hi","escaped_1":"semicolon scaped'\",\"' <-- other here <,>","no_escape,null_3":"other value","null_4":null,"new":null,"null_5":"value new","null_6":null,"null_7":null}}}})",
-                TARGET)),
+                TARGET.substr(1))),
             75,
             getDSVParser,
             {NAME,
@@ -463,7 +463,7 @@ INSTANTIATE_TEST_SUITE_P(
         ParseT(SUCCESS,
                R"("\"value1\""|value2|value3|valueN)",
                j(fmt::format(R"({{"{}":{{"out1":"\"value1\"","out2":"value2","out3":"value3","outN":"valueN"}}}})",
-                             TARGET)),
+                             TARGET.substr(1))),
                strlen(R"("\"value1\""|value2|value3|valueN)"),
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "\"", "\\", "out1", "out2", "out3", "outN"}})));

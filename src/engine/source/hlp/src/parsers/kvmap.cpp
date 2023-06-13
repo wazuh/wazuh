@@ -72,7 +72,7 @@ Parser getKVParser(const Params& params)
         stop = true;
     }
 
-    const auto targetField = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+    const auto targetField = params.targetField.empty() ? "" : params.targetField;
 
     return [stop, toStopP, sep, delim, quote, esc, name = params.name, targetField](std::string_view txt)
     {

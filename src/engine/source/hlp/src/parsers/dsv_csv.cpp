@@ -58,9 +58,7 @@ inline Parser dsvParserFunction(std::string name,
 
     const auto toStopP = syntax::parsers::toEnd(endTokens);
 
-    const auto target = targetField.empty() ? "" : json::Json::formatJsonPath(targetField);
-
-    return [toStopP, target, delimiterChar, quoteChar, headers, escapeChar, name](std::string_view txt)
+    return [toStopP, target = targetField, delimiterChar, quoteChar, headers, escapeChar, name](std::string_view txt)
     {
         auto synR = toStopP(txt);
         if (synR.failure())

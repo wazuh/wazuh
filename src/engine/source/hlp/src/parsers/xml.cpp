@@ -142,7 +142,7 @@ Parser getXMLParser(const Params& params)
     }
 
     xmlModule moduleFn = xmlModules[moduleName];
-    const auto target = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+    const auto target = params.targetField.empty() ? "" : params.targetField;
     const auto semP = getSemParser(target, moduleFn);
     const auto synP = syntax::parsers::toEnd(params.stop);
 

@@ -89,7 +89,7 @@ Parser getNumericParser(const Params& params)
     }
 
     const auto synP = getSynParser();
-    const auto targetPath = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+    const auto targetPath = params.targetField.empty() ? "" : params.targetField;
     const auto semP = getSemParser<T>(targetPath);
 
     return [name = params.name, synP, semP](std::string_view text)
