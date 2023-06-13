@@ -205,7 +205,7 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
     if (it != m_mapCFHandles.end())
     {
         auto cfHandle = it->second;
-        auto opStatus = m_pRocksDB->DestroyColumnFamilyHandle(cfHandle);
+        auto opStatus = m_pRocksDB->DropColumnFamily(cfHandle);
         if (opStatus.ok())
         {
             m_mapCFHandles.erase(it);
