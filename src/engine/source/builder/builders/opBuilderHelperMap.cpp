@@ -1452,7 +1452,7 @@ base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField
         [=, targetField = std::move(targetField), parameter = std::move(parameters[0])](
             base::Event event) -> base::result::Result<base::Event>
         {
-            int IntResolvedParameter;
+            int64_t IntResolvedParameter;
             // Check parameter
             if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
             {
@@ -1485,7 +1485,7 @@ base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField
                 }
             }
 
-            if (IntResolvedParameter < 0 || IntResolvedParameter > std::numeric_limits<int>::max())
+            if (IntResolvedParameter < 0 || IntResolvedParameter > std::numeric_limits<int64_t>::max())
             {
                 return base::result::makeFailure(event, failureTrace3);
             }
