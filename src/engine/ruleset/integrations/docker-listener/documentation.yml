@@ -3,7 +3,7 @@ overview: >
   This integration processes logs obtained with the docker-listener wodle from docker.
   This are real-time events from the docker server.
 compatibility: >
-  This module has been tested against version 20.10.12
+  This module has been tested against docker version 24.0.2 wazuh agent 4.4.3 in ubuntu 22
 configuration: >
   Event are collected setting the ossec in the agent or the manager in the following way:
 
@@ -17,3 +17,4 @@ configuration: >
   ```
 event:
   module: docker-listener
+  dataset: wodle-docker-listener
