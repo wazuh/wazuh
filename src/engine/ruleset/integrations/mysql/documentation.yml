@@ -1,7 +1,7 @@
 title: MySQL Server integration
 
 overview: |
-  This integration processes the following logs from [MySQL](https://dev.mysql.com/) Server:
+  This integration collects, parses and analyzes the following logs from [MySQL](https://dev.mysql.com/) Server:
     - MySQL Error logs: contains a record of mysqld startup and shutdown times. It also contains diagnostic messages such as errors, warnings, and notes that occur during server startup and shutdown, and while the server is running. For example, if mysqld notices that a table needs to be automatically checked or repaired, it writes a message to the error log.
     - MySQL Slow Query logs: consists of SQL statements that take more than `long_query_time` seconds to execute and require at least `min_examined_row_limit` rows to be examined. The slow query log can be used to find queries that take a long time to execute and are therefore candidates for optimization.
 
