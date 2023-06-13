@@ -7,8 +7,8 @@ metadata:
   description: Decoder for MySQL Server Slow Query logs
   compatibility: This decoder has been tested with logs from MySQL server version 5.7 and 8.0
   versions:
-    - "5.7"
-    - "8.0"
+    - "MySQL 5.7"
+    - "MySQL 8.0"
   author:
     name: Wazuh Inc.
     email: info@wazuh.com
@@ -35,10 +35,11 @@ parse:
 normalize:
   - map:
       #TODO: Uncomment the line below when merge [#17406](https://github.com/wazuh/wazuh/pull/17406)
-      # - @timestamp: +date_from_epoch/$~mysql.slowlog.timestamp
+      # - ~mysql.slowlog.timestamp: +date_from_epoch/$~mysql.slowlog.timestamp
       - event.module: mysql
       - event.dataset: mysql.slowlog
       - event.kind: event
       - event.category: +array_append/database
       - event.type: +array_append/info
+      - event.outcome: unknown
       - wazuh.decoders: +array_append/mysql-slowlog
