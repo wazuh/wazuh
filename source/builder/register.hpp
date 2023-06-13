@@ -3,7 +3,6 @@
 
 #include <logpar/logpar.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <kvdb2/kvdbManager.hpp>
 #include <schemf/ischema.hpp>
 
 #include "builders/opBuilderFileOutput.hpp"
