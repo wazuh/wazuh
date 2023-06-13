@@ -594,7 +594,6 @@ async def put_upgrade_agents(request, agents_list: list = None, pretty: bool = F
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-
 async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: bool = False,
                                     wait_for_complete: bool = False, wpk_filename: str = None, installer: str = None,
                                     q: str = None, manager: str = None, version: str = None, group: str = None,
@@ -634,8 +633,6 @@ async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: b
         Upgrade message after trying to upgrade the agents.
     """
     # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
-    import pydevd_pycharm
-    pydevd_pycharm.settrace('172.18.0.1', port=10005, stdoutToServer=True, stderrToServer=True)
     if 'all' in agents_list:
         agents_list = '*'
 
@@ -658,9 +655,6 @@ async def put_upgrade_custom_agents(request, agents_list: list = None, pretty: b
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = request.query.get(field, None)
-
-    # Check if the file exists before proceeding
-    raise_if_exc(check_file_exists(f_kwargs['wpk_filename']))
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

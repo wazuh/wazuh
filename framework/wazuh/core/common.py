@@ -229,6 +229,7 @@ WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
 STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
 BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
 MULTI_GROUPS_PATH = os.path.join(WAZUH_PATH, 'var', 'multigroups')
+UPGRADE_PATH = os.path.join(WAZUH_PATH, 'var', 'upgrade')
 
 
 # ================================================ Wazuh path - Sockets ================================================

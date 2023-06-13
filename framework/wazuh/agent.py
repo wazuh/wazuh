@@ -958,10 +958,35 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
 
         agent_results = list()
         for agents_chunk in agents_result_chunks:
-            agent_results.append(
-                core_upgrade_agents(command='upgrade' if not (installer or filename) else 'upgrade_custom',
-                                    agents_chunk=agents_chunk, wpk_repo=wpk_repo, version=version, force=force,
-                                    use_http=use_http, filename=filename, installer=installer))
+            # Check if upgrade is a custom upgrade and if the file exists
+            if filename is not None:
+                # Check if file exist in upgrade path
+                file_path = path.join(common.UPGRADE_PATH, filename)
+
+                # Raise error if file is not found
+                if not path.isfile(file_path):
+                    raise WazuhError(1006, extra_message=f'File {filename} not found in {common.UPGRADE_PATH}')
+
+                agent_results.append(
+                    core_upgrade_agents(command='upgrade_custom',
+                                        agents_chunk=agents_chunk,
+                                        wpk_repo=wpk_repo,
+                                        version=version,
+                                        force=force,
+                                        use_http=use_http,
+                                        filename=filename,
+                                        installer=installer))
+
+            else:
+                agent_results.append(
+                    core_upgrade_agents(command='upgrade',
+                                        agents_chunk=agents_chunk,
+                                        wpk_repo=wpk_repo,
+                                        version=version,
+                                        force=force,
+                                        use_http=use_http,
+                                        filename=filename,
+                                        installer=installer))
 
         for agent_result_chunk in agent_results:
             for agent_result in agent_result_chunk['data']:
