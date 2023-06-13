@@ -1456,13 +1456,22 @@ base::Expression opBuilderHelperDateFromEpochTime(const std::string& targetField
             // Check parameter
             if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
             {
-                const auto paramValue = event->getInt(parameter.m_value);
-                if (!paramValue.has_value())
+                const auto paramValue = event->getInt64(parameter.m_value);
+                if (paramValue.has_value())
                 {
-                    return base::result::makeFailure(
-                        event, (!event->exists(parameter.m_value) ? failureTrace1 : failureTrace2));
+                    IntResolvedParameter = paramValue.value();
                 }
-                IntResolvedParameter = paramValue.value();
+                else
+                {
+                    const auto paramValue = event->getInt(parameter.m_value);
+                    if (!paramValue.has_value())
+                    {
+                        return base::result::makeFailure(
+                            event, (!event->exists(parameter.m_value) ? failureTrace1 : failureTrace2));
+                    }
+                    IntResolvedParameter = paramValue.value();
+                }
+
             }
             else
             {
