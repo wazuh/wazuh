@@ -87,7 +87,7 @@ Parser getIPParser(const Params& params)
         synP = getSynParser();
     }
 
-    auto target = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+    auto target = params.targetField.empty() ? "" : params.targetField;
     auto semP = getSemParser(target);
 
     return [name = params.name, synP, semP](std::string_view txt)

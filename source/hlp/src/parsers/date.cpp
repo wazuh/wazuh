@@ -186,7 +186,7 @@ Parser getDateParser(const Params& params)
         format = formatDateFromSample(format, localeStr);
     }
 
-    const auto target = params.targetField.empty() ? std::string {} : json::Json::formatJsonPath(params.targetField);
+    const auto target = params.targetField.empty() ? std::string {} : params.targetField;
 
     return [format, locale, name = params.name, target](std::string_view text)
     {

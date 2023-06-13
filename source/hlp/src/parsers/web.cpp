@@ -188,7 +188,7 @@ Parser getUriParser(const Params& params)
     };
 
     const auto synP = syntax::parsers::toEnd(params.stop);
-    const auto target = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+    const auto target = params.targetField.empty() ? "" : params.targetField;
     const auto semP = getUriSemParser(mapCurlFields, target);
 
     return [name = params.name, synP, semP](std::string_view txt)
@@ -219,7 +219,7 @@ Parser getUAParser(const Params& params)
 
     const auto synP = syntax::parsers::toEnd(params.stop);
     const auto semP =
-        params.targetField.empty() ? noSemParser() : getUASemParser(json::Json::formatJsonPath(params.targetField));
+        params.targetField.empty() ? noSemParser() : getUASemParser(params.targetField);
 
     return [name = params.name, synP, semP](std::string_view txt)
     {
@@ -256,7 +256,7 @@ Parser getFQDNParser(const Params& params)
 
     syntax::Parser synP = getFQDNSynParser();
     const auto semP =
-        params.targetField.empty() ? noSemParser() : getStrSemParser(json::Json::formatJsonPath(params.targetField));
+        params.targetField.empty() ? noSemParser() : getStrSemParser(params.targetField);
 
     return [name = params.name, stop, toStopP, synP, semP](std::string_view txt)
     {

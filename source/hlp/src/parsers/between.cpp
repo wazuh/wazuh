@@ -72,7 +72,7 @@ Parser getBetweenParser(const Params& params)
     const auto synP = getSynParser(start, end);
     const auto semP = params.targetField.empty()
                           ? noSemParser()
-                          : getSemParser(json::Json::formatJsonPath(params.targetField), start, end);
+                          : getSemParser(params.targetField, start, end);
 
     return [name = params.name, synP, semP](std::string_view txt)
     {

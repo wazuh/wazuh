@@ -86,7 +86,7 @@ Parser getFilePathParser(const Params& params)
 
     const auto synP = syntax::parsers::toEnd(params.stop);
     const auto semP =
-        params.targetField.empty() ? noSemParser() : getSemParser(json::Json::formatJsonPath(params.targetField));
+        params.targetField.empty() ? noSemParser() : getSemParser(params.targetField);
 
     return [name = params.name, synP, semP](std::string_view txt)
     {

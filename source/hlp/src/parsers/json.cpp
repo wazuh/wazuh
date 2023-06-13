@@ -41,7 +41,7 @@ Parser getJSONParser(const Params& params)
         throw std::runtime_error(fmt::format("JSON parser do not accept arguments!"));
     }
 
-    const auto target = params.targetField.empty() ? "" : json::Json::formatJsonPath(params.targetField);
+    const auto target = params.targetField.empty() ? "" : params.targetField;
 
     return [name = params.name, target](std::string_view txt)
     {
