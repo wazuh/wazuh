@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-from wazuh.engine import queries
+from wazuh.core.engine import queries
 from wazuh.core.exception import WazuhError
 import pytest
 
@@ -18,7 +18,7 @@ import pytest
     ])
 def test_select_runs_when_valid(params, data, expected):
     """Test that FieldSelector.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert queries.FieldSelector.can_i_run(params, data) == expected
+    assert queries.FieldSelector.should_apply(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -40,7 +40,7 @@ def test_selects_correct_fields(params, data, expected):
     """Test that the FieldSelector selects the correct fields"""
 
     selector = queries.FieldSelector(params)
-    result = selector.apply_transformation(data)
+    result = selector.apply(data)
 
     assert result == expected
 
@@ -55,7 +55,7 @@ def test_selects_correct_fields(params, data, expected):
     ])
 def test_search_runs_when_valid(params, data, expected):
     """Test that FieldSearch.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert queries.FieldSearch.can_i_run(params, data) == expected
+    assert queries.FieldSearch.should_apply(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -71,7 +71,7 @@ def test_search_correct_fields(params, data, expected):
     """Test that the FieldSearch applies the correct search"""
 
     searcher = queries.FieldSearch(params)
-    result = searcher.apply_transformation(data)
+    result = searcher.apply(data)
 
     assert result == expected
 
@@ -87,7 +87,7 @@ def test_search_correct_fields(params, data, expected):
     ])
 def test_offset_limit_runs_when_valid(params, data, expected):
     """Test that FieldOffsetLimit.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert queries.FieldOffsetLimit.can_i_run(params, data) == expected
+    assert queries.FieldOffsetLimit.should_apply(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -102,7 +102,7 @@ def test_offset_correct_elements(params, data, expected):
     """Test that the FieldOffsetLimit applies the correct offset"""
 
     transformation = queries.FieldOffsetLimit(params)
-    result = transformation.apply_transformation(data)
+    result = transformation.apply(data)
 
     assert result == expected
 
@@ -127,7 +127,7 @@ def test_limit_correct_elements(params, data, expected):
     """Test that the FieldOffsetLimit limits the number of elements"""
 
     limiter = queries.FieldOffsetLimit(params)
-    result = limiter.apply_transformation(data)
+    result = limiter.apply(data)
 
     assert result == expected
     assert len(result) == params['limit']
@@ -153,7 +153,7 @@ def test_limit_raises_error_with_invalid_value(limit):
     ])
 def test_sort_runs_when_valid(params, data, expected):
     """Test that FieldSort.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert queries.FieldSort.can_i_run(params, data) == expected
+    assert queries.FieldSort.should_apply(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -180,7 +180,7 @@ def test_sort_runs_when_valid(params, data, expected):
 def test_sort_correct_elements(params, data, expected):
     """Test that FieldSort sorts the elements as expected"""
     sort_transformation = queries.FieldSort(params)
-    result = sort_transformation.apply_transformation(data)
+    result = sort_transformation.apply(data)
 
     assert result == expected
 
@@ -196,7 +196,7 @@ def test_sort_correct_elements(params, data, expected):
 )
 def test_query_runs_when_valid(params, data, expected):
     """Test that FieldQuery.can_i_run() runs correctly when valid parameters and data are provided."""
-    assert queries.FieldQuery.can_i_run(params, data) == expected
+    assert queries.FieldQuery.should_apply(params, data) == expected
 
 
 @pytest.mark.parametrize(
@@ -211,7 +211,7 @@ def test_query_runs_when_valid(params, data, expected):
 def test_query_has_a_valid_string(params):
     """Test that FieldQuery raises error with invalid value"""
     with pytest.raises(WazuhError) as error_info:
-        queries.FieldQuery(params).apply_transformation(data=[{}])
+        queries.FieldQuery(params).apply(data=[{}])
 
     assert error_info.value.code == 1407
 
@@ -256,7 +256,7 @@ def test_query_has_a_valid_string(params):
 def test_query_return_correct_elements(params, data, expected):
     """Test that FieldQuery query the elements as expected"""
     query_transformation = queries.FieldQuery(params)
-    result = query_transformation.apply_transformation(data)
+    result = query_transformation.apply(data)
 
     assert result == expected
 
@@ -269,12 +269,12 @@ def test_sequence_runs_all_valid_queries():
         def __init__(self, params):
             QueyMock.counter += 1
 
-        def apply_transformation(self, data):
+        def apply(self, data):
             data['counter'] = QueyMock.counter
             return data
 
         @staticmethod
-        def can_i_run(params, data):
+        def should_apply(params, data):
             return True
 
     list_of_queries = [QueyMock, QueyMock, QueyMock]
