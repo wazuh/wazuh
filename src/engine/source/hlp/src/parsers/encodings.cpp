@@ -109,7 +109,7 @@ Parser getBinaryParser(const Params& params)
     }
 
     const auto semP =
-        params.targetField.empty() ? noSemParser() : getSemParser(json::Json::formatJsonPath(params.targetField));
+        params.targetField.empty() ? noSemParser() : getSemParser(params.targetField);
     const auto synP = getSynParser();
 
     return [name = params.name, semP, synP](std::string_view txt)

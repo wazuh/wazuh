@@ -59,9 +59,9 @@ Parser getBoolParser(const Params& params)
     const auto trueSynP = getTrueSynParser();
     const auto falseSynP = getFalseSynParser();
     const auto trueSemP =
-        params.targetField.empty() ? noSemParser() : getTrueSemParser(json::Json::formatJsonPath(params.targetField));
+        params.targetField.empty() ? noSemParser() : getTrueSemParser(params.targetField);
     const auto falseSemP =
-        params.targetField.empty() ? noSemParser() : getFalseSemParser(json::Json::formatJsonPath(params.targetField));
+        params.targetField.empty() ? noSemParser() : getFalseSemParser(params.targetField);
 
     return [name = params.name, trueSynP, trueSemP, falseSynP, falseSemP](std::string_view txt)
     {

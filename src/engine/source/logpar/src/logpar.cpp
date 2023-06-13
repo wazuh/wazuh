@@ -453,7 +453,7 @@ Logpar::Hlp Logpar::buildFieldParser(const parser::Field& field, const std::vect
     // Otherwise, set targetField
     if (field.name.value != std::string {syntax::EXPR_CUSTOM_FIELD})
     {
-        builderParams.targetField = field.name.value;
+        builderParams.targetField = json::Json::formatJsonPath(field.name.value);
     }
 
     auto p = m_parserBuilders.at(type)(builderParams);

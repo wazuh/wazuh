@@ -3,7 +3,7 @@
 #include "hlp_test.hpp"
 
 auto constexpr NAME = "textParser";
-auto constexpr TARGET = "TargetField";
+static const std::string TARGET = "/TargetField";
 
 INSTANTIATE_TEST_SUITE_P(LiteralBuild,
                          HlpBuildTest,
@@ -14,14 +14,14 @@ INSTANTIATE_TEST_SUITE_P(
     LiteralParse,
     HlpParseTest,
     ::testing::Values(
-        ParseT(SUCCESS, "a", j(fmt::format(R"({{"{}":"a"}})", TARGET)), 1, getLiteralParser, {NAME, TARGET, {}, {"a"}}),
+        ParseT(SUCCESS, "a", j(fmt::format(R"({{"{}":"a"}})", TARGET.substr(1))), 1, getLiteralParser, {NAME, TARGET, {}, {"a"}}),
         ParseT(FAILURE, "a", {}, 0, getLiteralParser, {NAME, TARGET, {}, {"b"}}),
         ParseT(
-            SUCCESS, "ab", j(fmt::format(R"({{"{}":"ab"}})", TARGET)), 2, getLiteralParser, {NAME, TARGET, {}, {"ab"}}),
+            SUCCESS, "ab", j(fmt::format(R"({{"{}":"ab"}})", TARGET.substr(1))), 2, getLiteralParser, {NAME, TARGET, {}, {"ab"}}),
         ParseT(FAILURE, "ab", {}, 0, getLiteralParser, {NAME, TARGET, {}, {"abc"}}),
         ParseT(SUCCESS,
                "abc",
-               j(fmt::format(R"({{"{}":"ab"}})", TARGET)),
+               j(fmt::format(R"({{"{}":"ab"}})", TARGET.substr(1))),
                2,
                getLiteralParser,
                {NAME, TARGET, {}, {"ab"}})));

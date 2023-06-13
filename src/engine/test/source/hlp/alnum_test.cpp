@@ -3,7 +3,7 @@
 #include "hlp_test.hpp"
 
 auto constexpr NAME = "alphanumParser";
-auto constexpr TARGET = "TargetField";
+static const std::string TARGET = "/TargetField";
 
 INSTANTIATE_TEST_SUITE_P(AlnumBuild,
                          HlpBuildTest,
@@ -15,13 +15,13 @@ INSTANTIATE_TEST_SUITE_P(
     HlpParseTest,
     ::testing::Values(ParseT(SUCCESS,
                              "abc1234ABC",
-                             j(fmt::format(R"({{"{}":"abc1234ABC"}})", TARGET)),
+                             j(fmt::format(R"({{"{}":"abc1234ABC"}})", TARGET.substr(1))),
                              10,
                              getAlphanumericParser,
                              {NAME, TARGET, {}, {}}),
                       ParseT(SUCCESS,
                              "abc1234ABC_",
-                             j(fmt::format(R"({{"{}":"abc1234ABC"}})", TARGET)),
+                             j(fmt::format(R"({{"{}":"abc1234ABC"}})", TARGET.substr(1))),
                              10,
                              getAlphanumericParser,
                              {NAME, TARGET, {}, {}}),
