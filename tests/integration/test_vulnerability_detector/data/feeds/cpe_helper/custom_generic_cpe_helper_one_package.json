@@ -1,0 +1,38 @@
+{
+    "VERSION_TAG": "VERSION_VALUE",
+    "FORMAT_TAG": "FORMAT_VALUE",
+    "UPDATE_TAG": "UPDATE_VALUE",
+    "DICTIONARY_TAG": [
+        {
+            "TARGET_TAG": "TARGET_VALUE",
+            "SOURCE_TAG": {
+                "VENDOR_S_TAG": [
+                    "VENDOR_S_VALUE"
+                ],
+                "PRODUCT_S_TAG": [
+                    "PRODUCT_S_VALUE_0"
+                ],
+                "VERSION_S_TAG": ["VERSION_S_VALUE"]
+            },
+            "TRANSLATION_TAG": {
+                "VENDOR_T_TAG": [
+                    "VENDOR_T_VALUE"
+                ],
+                "PRODUCT_T_TAG": [
+                    "PRODUCT_T_VALUE_0"
+                ],
+                "VERSION_T_TAG": ["VERSION_T_VALUE"]
+            },
+            "ACTION_TAG": [
+                "ACTION_VALUE_0",
+                "ACTION_VALUE_1"
+            ]
+        }
+      ],
+      "LICENSE_TAG": {
+          "TITLE_TAG": "TITLE_VALUE",
+          "COPYRIGHT_TAG": "COPYRIGHT_VALUE",
+          "DATE_TAG": "DATE_VALUE",
+          "TYPE_TAG" : "TYPE_VALUE"
+      }
+  }
