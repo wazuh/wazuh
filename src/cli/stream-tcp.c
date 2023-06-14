@@ -116,7 +116,10 @@ static void streamTcpTask(void){
         case 4:
             write(streamTcpStatus.con, startCmd, sizeof(startCmd));
             usleep(500000);
-            while(read(streamTcpStatus.con, &c, 1) > 0);
+            while(read(streamTcpStatus.con, &c, 1) > 0){
+                printf("%02X ", (unsigned char)c);
+            };
+            printf("----\r\n");
             streamTcpStatus.st = 5;
             break;
         case 5:
@@ -141,7 +144,7 @@ static int streamTcpGetChar(char *c){
     if(streamTcpStatus.isOnline){
         recvRet = recv(streamTcpStatus.con, c, 1, MSG_DONTWAIT);
         if(recvRet == 0){
-            streamTcpStatus.st = 6;// Se cerro el puerto
+            streamTcpStatus.st = 6;
             return 0;
         }
         return recvRet;
@@ -158,8 +161,7 @@ static int streamTcpDataAvailable(void){
         ret = recv(streamTcpStatus.con, &buf, 0, MSG_DONTWAIT);
         ret2 = ioctl(streamTcpStatus.con,FIONREAD,&bytes);
         if(ret == 0 && bytes == 0){
-            printf("se cerro el puerto");
-            streamTcpStatus.st = 6;// Se cerro el puerto
+            streamTcpStatus.st = 6;
             return 0;
         }
 

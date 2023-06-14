@@ -19,4 +19,6 @@ int cliVPrintf(cliSession_t *s, char *fmt, va_list arg);
 int cliDataAvailable(cliSession_t *s);
 int cliGetChar(cliSession_t *cs, char *c);
 
+stream_t * cliStreamGet(cliSession_t *cs);
+
 #endif //CLI_H

@@ -15,11 +15,14 @@ keyAction_t keyActionGet(stream_t *s, keyActions_t *actions, unsigned char c){
     switch(c){
         case ESC:
             remainingBytes = s->dataAvailable();
+            printf("ESC ");
             if(remainingBytes < 5) {
                 for (i = 0; i < remainingBytes; i++) {
                     s->getChar(cs + i);
+                    printf("%02X ", (char) *(cs + i));
                 }
             }
+            printf("\r\n");fflush(stdout);
 
             switch(remainingBytes){
                 case 0: return actions->Escape;

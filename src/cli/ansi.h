@@ -9,6 +9,8 @@
 #define ESC 0x1B
 
 #define CSI "\033["
+#define ANSI_SHIFT_UP                   "\x0E"
+#define ANSI_SHIFT_DOWN                 "\x0F"
 
 #define ansiScreenHome                  CSI"H"
 

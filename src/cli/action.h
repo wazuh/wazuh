@@ -1,6 +1,8 @@
 #include "stream.h"
 
-typedef void (*keyAction_t)(__attribute__((unused))void *custom, __attribute__((unused))stream_t *s, __attribute__((unused))char c);
+#define UNUSED __attribute__((unused))
+
+typedef void (*keyAction_t)(UNUSED void *custom, UNUSED stream_t *s, UNUSED char c);
 
 typedef struct keyActions_t{
     keyAction_t Escape;

@@ -8,18 +8,27 @@
 #include "cJSON.h"
 #include "addagent/manage_agents.h"
 #include "hints.h"
+#include "action.h"
 
 typedef struct agentStatus_t{
     cJSON *agents;
     int selectedAgent;
-    int first;
+    int refresh;
+    int exit;
     int count;
     cJSON *root;
+    keyActions_t agentsCmdActions;
 }agentStatus_t;
 
 extern char shost[512];
 static void agentsCmd(cmdStatus_t *s);
 static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize);
+
+static void agentsCursorUp  (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c);
+static void agentsCursorDown(UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c);
+static void agentsEnter     (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c);
+static void agentsTab       (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c);
+static void agentsEscape    (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c);
 
 void agentsInit(void){
     cmdLoad("agents", "list agents", hintDefaultStyle, agentsCmd);
@@ -31,23 +40,29 @@ static void agentsCmd(cmdStatus_t *s){
     char *render;
     cJSON *item;
     char key;
+    keyAction_t action;
 
     switch(st){
         case 0: /* Command initializacion */
-
             /* Prepare custom data */
             status = calloc(1, sizeof(agentStatus_t));
             if(!status){
-                cmdPrintf(s, "Ocurrio un error. No es posible ejecutar el comando\r\n");
+                cmdPrintf(s, "An error ocurred reserving memory. The command cannot continue\r\n");
                 cmdEnd(s);
                 return;
             }
-            cmdSetCustomData(s, status);
+            cmdSetCustomData(s, status, free);
+
+            status->agentsCmdActions.CursorUp = agentsCursorUp;
+            status->agentsCmdActions.CursorDown = agentsCursorDown;
+            status->agentsCmdActions.Enter = agentsEnter;
+            status->agentsCmdActions.Tab = agentsTab;
+            status->agentsCmdActions.Escape = agentsEscape;
 
             /* Obtain agent information */
             status->agents = (cJSON*)calloc(1, sizeof(cJSON));
             if(!status->agents){
-                cmdPrintf(s, "Ocurrio un error2 . No es posible ejecutar el comando\r\n");
+                cmdPrintf(s, "An error ocurred reserving memory. The command cannot continue\r\n");
                 cmdEnd(s);
                 return;
             }
@@ -76,55 +91,37 @@ static void agentsCmd(cmdStatus_t *s){
 
             status->count = cJSON_GetArraySize(status->agents);
             status->selectedAgent = 0;
-            status->first = 1;
+            status->refresh = 1;
 
-            cmdPrintf(s, "ID  |  AGENT NAME | AGENT IP | AGENT STATUS\r\n");
+            cmdPrintf(s, "ID   |  AGENT NAME          | AGENT IP             | AGENT STATUS\r\n");
 
             cmdSetState(s, 1);
-            //initscr();
-            /*cbreak();
-            noecho();
-            //scrollok(stdscr, TRUE);
-            nodelay(stdscr, TRUE);*/
         break;
 
         case 1:
             status = (agentStatus_t *)cmdGetCustomData(s);
-            if( (cmdDataAvailable(s) != 0 && cmdGetChar(s, &key) == 1) || status->first){
-                if(key == 'g' || status->first){
-                    status->first = 0;
-                    showAgentSet(s, status, 10);
-                    status->selectedAgent++;
-                    if(status->selectedAgent == 3)
-                        status->selectedAgent = 0;
-                }
+            if( (cmdDataAvailable(s) != 0 && cmdGetChar(s, &key) == 1)){
+                action = keyActionGet(cmdStreamGet(s), &(status->agentsCmdActions), key);
+                if(action)
+                    action(status, s, key);
             }
-            if(key == 'q')
+            if(status->refresh){
+                status->refresh = 0;
+                showAgentSet(s, status, 10);
+            }
+            if(status->exit){
+                showAgentSet(s, status, 10);
                 cmdSetState(s, 2);
-
-            // Closing JSON Object array
-            //char *render = cJSON_PrintUnformatted(status->root);
-
-//            printf("Count: %d\n", status->count);
-//            printf("%s", render);
-//            free(render);
-//            printf("\n");
-
-            // cmdSetState(s, st + 1);
+            }
         break;
         case 2:
             status = (agentStatus_t *)cmdGetCustomData(s);
             cJSON_Delete(status->root);
             cmdEnd(s);
-            //endwin();
         break;
     }
 }
 
-/*void get_agent_info(cJSON *agents, agentStatus_t *status){
-
-}
-*/
 static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize){
     int i = 0;
     cJSON *agents = cJSON_GetObjectItem(set->root, "data");
@@ -137,7 +134,7 @@ static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize){
             name = cJSON_GetObjectItem(item, "name");
             ip = cJSON_GetObjectItem(item, "ip");
             stat = cJSON_GetObjectItem(item, "status");
-            cmdPrintf(s, "%s%s | %s | %s | %s\033[0m\r\n", 
+            cmdPrintf(s, "%s%-4s | %-20s | %-20s | %-20s\033[0m\r\n", 
                 set->selectedAgent == i? "\033[47m\033[30m":"",
                 id->valuestring,
                 name->valuestring,
@@ -147,6 +144,40 @@ static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize){
         }
         i++;
     }while(item && i < setSize);
-    printf("Out Show agents\r\n");
+
     cmdPrintf(s, "\033[0m\033[%dA", set->count);
+}
+
+static void agentsCursorUp  (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c){
+    if(status->selectedAgent){
+        status->selectedAgent--;
+        status->refresh = 1;
+    }
+    else{
+        status->selectedAgent = status->count-1;
+        status->refresh = 1;
+    }
+}
+
+static void agentsCursorDown(UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c){
+    if(status->selectedAgent < status->count-1){
+        status->selectedAgent++;
+        status->refresh = 1;
+    }
+    else{
+        status->selectedAgent = 0;
+        status->refresh = 1;
+    }
+}
+
+static void agentsEnter     (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c){
+
+}
+
+static void agentsTab       (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c){
+
+}
+
+static void agentsEscape    (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c){
+    status->exit = 1;
 }

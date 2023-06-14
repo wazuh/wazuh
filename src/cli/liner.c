@@ -9,7 +9,6 @@
 #include "action.h"
 
 #define LINER_MAX_LENGTH 4096
-#define UNUSED __attribute((unused))
 
 typedef struct autocomplete_t{
     stringList_t *list;

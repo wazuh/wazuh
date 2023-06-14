@@ -22,6 +22,7 @@ typedef struct cmdStatus_t{
     cmd_t *cmd;
     int state;
     void *data;
+    void (*freeData)(void *data); 
     bool running;
     cliSession_t *cs;
 }cmdStatus_t;
@@ -128,8 +129,8 @@ bool cmdExecute(cmdStatus_t *s){
 }
 
 void cmdEnd(cmdStatus_t *s){
-    if(s->data)
-        free(s->data);
+    if(s->data && s->freeData)
+        s->freeData(s->data);
     s->running = false;
 }
 
@@ -141,7 +142,8 @@ int cmdGetState(cmdStatus_t *s){
     return s->state;
 }
 
-void cmdSetCustomData(cmdStatus_t *s, void *data){
+void cmdSetCustomData(cmdStatus_t *s, void *data, void (*f)(void *)){
+    s->freeData = f;
     s->data = data;
 }
 
@@ -217,6 +219,10 @@ int cmdDataAvailable(cmdStatus_t *s){
 
 int cmdGetChar(cmdStatus_t *s, char *c){
     return cliGetChar(s->cs, c);
+}
+
+stream_t * cmdStreamGet(cmdStatus_t *s){
+    return cliStreamGet(s->cs);
 }
 
 int cmdGetKey(cmdStatus_t *s, char *c){

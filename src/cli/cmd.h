@@ -32,9 +32,16 @@ void cmdSetState(cmdStatus_t *status, int state);
 int cmdGetState(cmdStatus_t *status);
 
 /* Command custom data */
-void cmdSetCustomData(cmdStatus_t *s, void *data);
+void cmdSetCustomData(cmdStatus_t *s, void *data, void (*f)(void *data));
 void * cmdGetCustomData(cmdStatus_t *s);
 
+/* It converts following UTF8 characters to its VT100 equivalent:
+    ┘ ┐ │ └ ┼ ─ ├ ┤ ┴ ┬ │ ┌
+ */
+void cmdDraw(cmdStatus_t *s, char *str);
+
 void cmdExit(cmdStatus_t *s);
+
+stream_t * cmdStreamGet(cmdStatus_t *s);
 
 #endif //LINER_CMD_H

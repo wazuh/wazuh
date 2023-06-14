@@ -4,7 +4,6 @@
 #include "cmd.h"
 #include "cJSON.h"
 
-
 static void controlCmd(cmdStatus_t *status);
 static char *execute(const char *cmd);;
 static cJSON * getObjectFromArrayByKey(cJSON *array, char *key);
@@ -35,7 +34,7 @@ static void controlCmd(cmdStatus_t *c){
         case 0:
             s = execute(cmds[0]);
             if(s == NULL){
-                cmdPrintf(c, "Ocurrio un error al ejecutar el comando.\r\n");
+                cmdPrintf(c, "There was an error while executing the command.\r\n");
                 cmdEnd(c);
                 return;
             }
@@ -65,13 +64,18 @@ static void controlCmd(cmdStatus_t *c){
                 cmdPrintf(c, "Information could not be retrieved\r\n");
             }
 
-            cmdPrintf(c, "%sWazuh %s %s, rev.%s%s\r\n",
-                ansiEraseScreen() ansiModeInverseSet(),
+            cmdPrintf(c, "%s┌──────────────────────────────────┐\r\n", ansiEraseScreen());
+            cmdPrintf(c, "│%sWazuh %s %s, rev.%s    %s│\r\n",
+                ansiModeInverseSet(),
                 cJSON_GetStringValue(type),
                 cJSON_GetStringValue(version),
                 cJSON_GetStringValue(revision),
                 ansiModeResetAll()
             );
+            cmdPrintf(c, "\x1B" "(A");
+            cmdPrintf(c, "\x1B" ")0");
+            cmdPrintf(c, ANSI_SHIFT_DOWN);
+            cmdPrintf(c, "├─────────────────────┬────────────┤\r\n");
             free(s);
             cJSON_Delete(root);
             cmdSetState(c, 1);
@@ -79,7 +83,7 @@ static void controlCmd(cmdStatus_t *c){
         case 1:
             s = execute(cmds[1]);
             if(s == NULL){
-                cmdPrintf(c, "Ocurrio un error al ejecutar el comando.\r\n");
+                cmdPrintf(c, "There was an error while executing the command.\r\n");
                 cmdEnd(c);
                 return;
             }
@@ -102,14 +106,15 @@ static void controlCmd(cmdStatus_t *c){
             }
 
             array_size = cJSON_GetArraySize(data_array);
-            cmdPrintf(c, "%20s | %10s\r\n", "Daemon", "status");
+            cmdPrintf(c, "│%-20s │ %-10s\r\n", "Daemon", "status     │");
+            cmdPrintf(c, "├─────────────────────┼────────────┤\r\n");
             for(i = 0; i < array_size; i++){
                 object = cJSON_GetArrayItem(data_array, i);
                 daemon = cJSON_GetObjectItemCaseSensitive(object, "daemon");
                 status = cJSON_GetObjectItemCaseSensitive(object, "status");
                 if(daemon && cJSON_IsString(daemon) && status && cJSON_IsString(status)){
                     green = strcmp(cJSON_GetStringValue(status), "running");
-                    cmdPrintf(c, "%20s | %s%10s%s\r\n",
+                    cmdPrintf(c, "│%-20s │ %s%-10s%s │\r\n",
                         cJSON_GetStringValue(daemon),
                         green? ansiColorBackgroundRed(): ansiColorBackgroundGreen(),
                         cJSON_GetStringValue(status),
@@ -117,7 +122,14 @@ static void controlCmd(cmdStatus_t *c){
                     );
                 }
             }
-
+            cmdPrintf(c, "├─────────────────────┴────────────┤\r\n");
+            cmdPrintf(c, "│ %sSTOP%s %sSTART%s %sRESTART%s %sDEBUG:%s%s │\r\n",
+            1? ansiModeInverseSet():"", ansiModeInverseRes(),
+            0? ansiModeInverseSet():"", ansiModeInverseRes(),
+            0? ansiModeInverseSet():"", ansiModeInverseRes(),
+            0? ansiModeInverseSet():"", 1?"ENABLE ":"DISABLE",  ansiModeInverseRes());
+            /* ┘ ┐ │ └ ┼ ─ ├ ┤ ┴ ┬ │  */
+            cmdPrintf(c, "└──────────────────────────────────┘\r\n");
             free(s);
             cJSON_Delete(root);
             cmdEnd(c);

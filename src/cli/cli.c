@@ -168,3 +168,7 @@ int cliDataAvailable(cliSession_t *cs){
 int cliGetChar(cliSession_t *cs, char *c){
     return cs->s->getChar(c);
 }
+
+stream_t * cliStreamGet(cliSession_t *cs){
+    return cs->s;
+}
