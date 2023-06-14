@@ -51,8 +51,8 @@ import os
 import sys
 
 import pytest
-from wazuh_testing.global_parameters.default_timeout
-from wazuh_testing.modules.integrations.event_monitors
+from wazuh_testing.global_parameters import GlobalParameters
+from wazuh_testing.modules.integrations.event_monitors import detect_wrong_content_config
 from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.modules.integrations import LOCAL_INTERNAL_OPTIONS as local_internal_options

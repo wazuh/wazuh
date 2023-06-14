@@ -4,13 +4,13 @@
 
 import pytest
 
-from wazuh_testing.tools import OSSEC_LOG_PATH
+from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
 from wazuh_testing.tools.file_monitor import FileMonitor
-from wazuh_testing.modules.integration.event_monitors import detect_integration_start
+from wazuh_testing.modules.integrations.event_monitors import detect_integration_start
 
 
 @pytest.fixture()
 def wait_for_github_start():
     # Wait for module github starts
     file_monitor = FileMonitor(OSSEC_LOG_PATH)
-    detect_github_start(file_monitor)
+    detect_integration_start("GitHub",file_monitor)
