@@ -1,12 +1,12 @@
-/*#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 
 #include <api/adapter.hpp>
-#include <eMessages/tests.pb.h>
+#include <eMessages/request_response.pb.h>
 
 using namespace api::adapter;
 namespace eEngine = ::com::wazuh::api::engine;
-using RequestType = eEngine::test::test_Request;
-using ResponseType = eEngine::test::test_Response;
+using RequestType = eEngine::test::Request;
+using ResponseType = eEngine::test::Response;
 using wazuhRequest = base::utils::wazuhProtocol::WazuhRequest;
 using wazuhResponse = base::utils::wazuhProtocol::WazuhResponse;
 
@@ -117,4 +117,3 @@ TEST(Adapter_genericSuccess, response_ok)
     ASSERT_EQ(wResponse.data(), json::Json(R"({"status":"OK"})"));
 
 }
-*/
