@@ -72,9 +72,9 @@ public:
      * @brief Get the Reference Count of scopes for a given DB.
      *
      * @param dbName Name of the DB.
-     * @return std::map<std::string, int> Map of Scope names and their reference count.
+     * @return std::map<std::string, unsigned int> Map of Scope names and their reference count.
      */
-    std::map<std::string, int> getRefMap(const std::string& dbName);
+    std::map<std::string, unsigned int> getRefMap(const std::string& dbName);
 
 private:
     /**
@@ -118,9 +118,9 @@ private:
         /**
          * @brief Get the Ref Map object
          *
-         * @return std::map<std::string, int> Map of DB names and their reference count.
+         * @return std::map<std::string, unsigned int> Map of DB names and their reference count.
          */
-        std::map<std::string, int> getRefMap() const;
+        std::map<std::string, unsigned int> getRefMap() const;
 
     private:
         /**

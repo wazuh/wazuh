@@ -8,7 +8,7 @@ RefCounter::RefCounter(const RefCounter& other)
     m_refMap = other.m_refMap;
 }
 
-void RefCounter::addRef(const std::string& name, const uint times)
+void RefCounter::addRef(const std::string& name, const unsigned int times)
 {
     m_refMap[name] += times;
 }
@@ -25,7 +25,7 @@ void RefCounter::removeRef(const std::string& name)
     }
 }
 
-int RefCounter::count(const std::string& name) const
+unsigned int RefCounter::count(const std::string& name) const
 {
     if (m_refMap.count(name) > 0)
     {
@@ -50,7 +50,7 @@ std::vector<std::string> RefCounter::getRefNames() const
     return refNames;
 }
 
-std::map<std::string, int> RefCounter::getRefMap() const
+std::map<std::string, unsigned int> RefCounter::getRefMap() const
 {
     return m_refMap;
 }
