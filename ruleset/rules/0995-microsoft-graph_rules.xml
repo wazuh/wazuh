@@ -1,5 +1,5 @@
 <!--
-  - Microsoft Graph rules - Security resource
+  -  Microsoft Graph rules - Security resource
   -  Created by Bryce Shurts & Swaroopa Allaparti
   -  Copyright (C) 2023, InfoDefense Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
@@ -25,6 +25,7 @@
         <field name="ms-graph.relationship">alerts|alerts_v2</field>
         <description>Alert related events</description>
     </rule>
+
 
 <!--Alerts/Classification 99005-99015-->
 
@@ -346,6 +347,7 @@
 
 <!--end of evidence-->
 
+
 <!--Alerts/ServiceSource 99145-99160-->
 
     <rule id="99152" level="4">
@@ -394,6 +396,7 @@
     </rule>
 
 <!--End of Alerts -->
+
 
 <!--Incidents 99201-99270-->
 
