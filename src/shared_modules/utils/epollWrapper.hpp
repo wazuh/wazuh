@@ -12,6 +12,7 @@
 #define _EPOLL_WRAPPER_HPP
 
 #include <filesystem>
+#include <iostream>
 #include <stdexcept>
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -65,7 +66,7 @@ public:
 
         if (epoll_ctl(m_epollFD, EPOLL_CTL_ADD, fd, &event) == -1)
         {
-            throw std::system_error(errno, std::system_category(), "Error adding FD to interface.");
+            std::cerr << "Error adding FD to interface." << std::endl;
         }
     }
 
@@ -78,7 +79,7 @@ public:
 
         if (epoll_ctl(m_epollFD, EPOLL_CTL_MOD, fd, &event) == -1)
         {
-            throw std::system_error(errno, std::system_category(), "Error modifying FD from interface.");
+            std::cerr << "Error modifying FD from interface." << std::endl;
         }
     }
 
@@ -87,7 +88,7 @@ public:
     {
         if (epoll_ctl(m_epollFD, EPOLL_CTL_DEL, fd, nullptr) == -1)
         {
-            throw std::system_error(errno, std::system_category(), "Error removing FD from interface.");
+            std::cerr << "Error removing FD from interface." << std::endl;
         }
     }
 };

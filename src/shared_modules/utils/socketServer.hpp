@@ -114,6 +114,9 @@ public:
 
     void listen(const std::function<void(const int, const char*, uint32_t, const char*, uint32_t)>& onRead)
     {
+        // Reset the stop flag
+        m_shouldStop = false;
+
         // Remove any existing socket file
         std::filesystem::remove(m_socketPath);
 

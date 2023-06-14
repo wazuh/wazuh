@@ -175,9 +175,82 @@ TEST_F(SocketTest, MultipleClients)
     EXPECT_EQ(counter, MESSAGE_QUANTITY);
 }
 
-TEST_F(SocketTest, DISABLED_SingleDelayedClientWithReconnection)
+TEST_F(SocketTest, SingleDelayedClientWithReconnectionSendMessageOffline)
 {
-    constexpr size_t MESSAGE_QUANTITY {1000000};
+    constexpr size_t MESSAGE_QUANTITY {100};
+    std::string socketPath {"/tmp/echo_sock"};
+    std::promise<void> promise;
+
+    SocketServer<Socket<OSPrimitives>, EpollWrapper> server {socketPath};
+    std::atomic<size_t> counter {0};
+    server.listen(
+        [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
+        {
+            std::ignore = fd;
+            std::ignore = dataHeader;
+            std::ignore = sizeHeader;
+            std::string message(data, size);
+            EXPECT_EQ(message, std::to_string(counter));
+            counter++;
+
+            if (counter == MESSAGE_QUANTITY)
+            {
+                promise.set_value();
+            }
+        });
+
+    SocketClient<Socket<OSPrimitives>, EpollWrapper> client {socketPath};
+    client.connect(
+        [](const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
+        {
+            std::ignore = dataHeader;
+            std::ignore = sizeHeader;
+            std::ignore = size;
+            std::ignore = data;
+        });
+
+    for (size_t i {0}; i < MESSAGE_QUANTITY; ++i)
+    {
+        auto message {std::to_string(i)};
+        client.send(message.c_str(), message.size());
+    }
+
+    promise.get_future().wait_for(std::chrono::seconds(10));
+
+    EXPECT_EQ(counter, MESSAGE_QUANTITY);
+    server.stop();
+
+    for (size_t i {0}; i < MESSAGE_QUANTITY; ++i)
+    {
+        auto message {std::to_string(i)};
+        client.send(message.c_str(), message.size());
+    }
+
+    std::promise<void> promise2;
+    counter = 0;
+    server.listen(
+        [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
+        {
+            std::ignore = fd;
+            std::ignore = dataHeader;
+            std::ignore = sizeHeader;
+            std::string message(data, size);
+            EXPECT_EQ(message, std::to_string(counter));
+            counter++;
+            if (counter == MESSAGE_QUANTITY)
+            {
+                promise2.set_value();
+            }
+        });
+
+    promise2.get_future().wait_for(std::chrono::seconds(10));
+
+    EXPECT_EQ(counter, MESSAGE_QUANTITY);
+}
+
+TEST_F(SocketTest, SingleDelayedClientWithReconnectionOnline)
+{
+    constexpr size_t MESSAGE_QUANTITY {100};
     std::string socketPath {"/tmp/echo_sock"};
     std::promise<void> promise;
 
@@ -231,7 +304,6 @@ TEST_F(SocketTest, DISABLED_SingleDelayedClientWithReconnection)
             std::string message(data, size);
             EXPECT_EQ(message, std::to_string(counter));
             counter++;
-            std::cout << "counter: " << counter << std::endl;
             if (counter == MESSAGE_QUANTITY)
             {
                 promise2.set_value();
@@ -249,3 +321,77 @@ TEST_F(SocketTest, DISABLED_SingleDelayedClientWithReconnection)
     EXPECT_EQ(counter, MESSAGE_QUANTITY);
 }
 
+TEST_F(SocketTest, SingleDelayedClientWithReconnectionServerReset)
+{
+    constexpr size_t MESSAGE_QUANTITY {100};
+    std::string socketPath {"/tmp/echo_sock"};
+    std::promise<void> promise;
+
+    auto server = std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(socketPath);
+    std::atomic<size_t> counter {0};
+    server->listen(
+        [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
+        {
+            std::ignore = fd;
+            std::ignore = dataHeader;
+            std::ignore = sizeHeader;
+            std::string message(data, size);
+            EXPECT_EQ(message, std::to_string(counter));
+            counter++;
+
+            if (counter == MESSAGE_QUANTITY)
+            {
+                promise.set_value();
+            }
+        });
+
+    SocketClient<Socket<OSPrimitives>, EpollWrapper> client {socketPath};
+    client.connect(
+        [](const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
+        {
+            std::ignore = dataHeader;
+            std::ignore = sizeHeader;
+            std::ignore = size;
+            std::ignore = data;
+        });
+
+    for (size_t i {0}; i < MESSAGE_QUANTITY; ++i)
+    {
+        auto message {std::to_string(i)};
+        client.send(message.c_str(), message.size());
+    }
+
+    promise.get_future().wait_for(std::chrono::seconds(10));
+
+    EXPECT_EQ(counter, MESSAGE_QUANTITY);
+    server.reset();
+
+    for (size_t i {0}; i < MESSAGE_QUANTITY; ++i)
+    {
+        auto message {std::to_string(i)};
+        client.send(message.c_str(), message.size());
+    }
+
+    std::promise<void> promise2;
+    counter = 0;
+    server = std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(socketPath);
+
+    server->listen(
+        [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
+        {
+            std::ignore = fd;
+            std::ignore = dataHeader;
+            std::ignore = sizeHeader;
+            std::string message(data, size);
+            EXPECT_EQ(message, std::to_string(counter));
+            counter++;
+            if (counter == MESSAGE_QUANTITY)
+            {
+                promise2.set_value();
+            }
+        });
+
+    promise2.get_future().wait_for(std::chrono::seconds(10));
+
+    EXPECT_EQ(counter, MESSAGE_QUANTITY);
+}
