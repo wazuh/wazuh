@@ -9,7 +9,7 @@ namespace metricsManager
 MetricsManager::MetricsManager() :
     m_statusRunning{false}
 {
-
+    opentelemetry::sdk::common::internal_log::GlobalLogHandler::SetLogLevel(opentelemetry::sdk::common::internal_log::LogLevel::Error);
 }
 
 void MetricsManager::start()
