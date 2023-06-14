@@ -51,9 +51,9 @@ from pathlib import Path
 from wazuh_testing import session_parameters
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH, ANALYSISD_QUEUE_SOCKET_PATH
-from wazuh_testing.modules.analysisd import utils, ANALYSISD_DEBUG_CONFIG
+from wazuh_testing.modules.analysisd import patterns, ANALYSISD_DEBUG_CONFIG
 from wazuh_testing.tools import mitm
-from wazuh_testing.utils import configuration
+from wazuh_testing.utils import configuration, callbacks
 
 from . import TEST_CASES_PATH
 
@@ -123,10 +123,12 @@ def test_scan_messages(test_metadata, configure_local_internal_options, configur
         - man_in_the_middle
         - wdb_socket
     '''
+    callback = callbacks.generate_callback(patterns.ANALYSISD_QUEUE_DB_MESSSAGE)
+
     # Start monitor
     receiver_sockets[0].send(test_metadata['input'])
-    monitored_sockets[0].start(callback=utils.callback_wazuh_db_message, timeout=session_parameters.default_timeout)
+    monitored_sockets[0].start(callback=callback, timeout=session_parameters.default_timeout)
 
     # Check that expected message appears
-    expected = utils.callback_analysisd_message(test_metadata['output'])
+    expected = callback(test_metadata['output'])
     assert monitored_sockets[0].callback_result == expected, 'Failed test case stage: {}'.format(test_metadata['stage'])

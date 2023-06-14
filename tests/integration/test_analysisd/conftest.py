@@ -7,17 +7,17 @@ import re
 import shutil
 import time
 from collections import defaultdict
-from datetime import datetime
 
 import pytest
 
 from wazuh_testing.constants.keys.events import *
+from wazuh_testing.constants.keys.alerts import *
 from wazuh_testing.constants.paths.configurations import CUSTOM_RULES_PATH
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH, OSSEC_LOG_PATH
 from wazuh_testing.constants.users import WAZUH_UNIX_GROUP, WAZUH_UNIX_USER
-from wazuh_testing.modules.analysisd import patterns, utils
+from wazuh_testing.modules.analysisd import patterns
 from wazuh_testing.tools import file_monitor
-from wazuh_testing.utils import callbacks
+from wazuh_testing.utils import callbacks, file
 
 
 @pytest.fixture()
@@ -46,48 +46,9 @@ def wait_for_analysisd_startup(request):
     log_monitor.start(callback=callbacks.generate_callback(patterns.ANALYSISD_STARTED))
 
 
-def wait_mtime(path, time_step=5, timeout=-1):
-    """
-    Wait until the monitored log is not being modified.
-
-    Args:
-        path (str): Path to the file.
-        time_step (int, optional): Time step between checks of mtime. Default `5`
-        timeout (int, optional): Timeout for function to fail. Default `-1`
-
-    Raises:
-        FileNotFoundError: Raised when the file does not exist.
-        TimeoutError: Raised when timeout is reached.
-    """
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"{path} not found.")
-
-    last_mtime = 0.0
-    tic = datetime.now().timestamp()
-
-    while last_mtime != os.path.getmtime(path):
-        last_mtime = os.path.getmtime(path)
-        time.sleep(time_step)
-
-        if last_mtime - tic >= timeout:
-            raise TimeoutError("Reached timeout.")
-
-
 @pytest.fixture(scope='module')
-def generate_events_and_alerts(request):
-    """Read the specified yaml and generate every event and alert using the input from every test case.
-
-    Alerts are saved in a list and events have the following structure (example):
-        {
-            'path':
-            {
-                'Added': event
-                'Modified': event
-                'Deleted': event
-            }
-            ...
-        }
-    """
+def generate_events_syscheck(request):
+    """Read the specified yaml and generate every event using the input from every test case."""
     events = defaultdict(dict)
 
     test_cases = getattr(request.module, 'test_metadata')
@@ -107,24 +68,42 @@ def generate_events_and_alerts(request):
         socket_controller.send(test_case['input'])
         time.sleep(1 / ips)
 
-    n_alerts = len(test_cases)
+    setattr(request.module, 'events_dict', events)
 
-    wait_mtime(ALERTS_JSON_PATH, time_step=5, timeout=60)
+
+@pytest.fixture(scope='module')
+def read_alerts_syscheck(request):
+    """Read the alerts from the JSON file. Return single alerts.
+
+    Alerts are saved in a list and events have the following structure (example):
+        {
+            'path':
+            {
+                'Added': event
+                'Modified': event
+                'Deleted': event
+            }
+            ...
+        }
+    """
+    alerts = list()
+
+    test_cases = getattr(request.module, 'test_metadata')
+
+    file.wait_mtime(ALERTS_JSON_PATH, time_step=5, timeout=60)
 
     with open(ALERTS_JSON_PATH, 'r') as f:
         alert_list = f.readlines()
 
-    alerts = list()
-
     for alert in alert_list:
-        result = utils.callback_fim_alert(alert)
+        try:
+            alert_json = json.loads(alert)
+            if (alert_json[ALERTS_RULE][ALERTS_ID] in patterns.ANALYSISD_ALERTS_SYSCHECK_IDS):
+                alerts.append(alert_json)
+        except json.decoder.JSONDecodeError:
+            continue
 
-        if result is not None:
-            alerts.append(result)
-
-    if len(alerts) != n_alerts:
-        raise ValueError(f"Number of alerts in {ALERTS_JSON_PATH} is not correct: {len(alerts)} != {n_alerts}")
-
-    setattr(request.module, 'events_dict', events)
+    if len(alerts) != len(test_cases):
+        raise ValueError(f"Number of alerts in {ALERTS_JSON_PATH} is not correct: {len(alerts)} != {len(test_cases)}")
 
     yield (i for i in alerts)
