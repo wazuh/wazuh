@@ -209,7 +209,7 @@ typedef struct _os_ip {
 } os_ip;
 
 /* Common structure for socket forwarding in Analysisd and logcollector */
-typedef struct _socket_fw {
+typedef struct _socket_forwarder {
     char   *name;
     char   *location;
     int    mode;

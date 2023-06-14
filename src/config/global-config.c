@@ -229,20 +229,20 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
         }
         /* Socket forwarding */
         else if (strcmp(node[i]->element, xml_forwardto) == 0) {
-            if(Config) {
+            if (Config) {
                 int target_count = 1;
-                for(int tgt_idx = 0; node[i]->content[tgt_idx]; tgt_idx++) {
-                    if(node[i]->content[tgt_idx] == ',') {
+                for (int tgt_idx = 0; node[i]->content[tgt_idx]; tgt_idx++) {
+                    if (node[i]->content[tgt_idx] == ',') {
                         target_count++;
                     }
                 }
-                mdebug2("Read %d targets to forwarding messages.",target_count);
+                mdebug2("Read %d targets to forwarding messages.", target_count);
                 Config->forwarders_list = OS_StrBreak(',', node[i]->content, target_count);
                 char * tmp;
-                if(Config->forwarders_list) {
+                if (Config->forwarders_list) {
                     for (int tgt_idx = 0; tgt_idx < target_count; tgt_idx++) {
                         os_strdup(w_strtrim(Config->forwarders_list[tgt_idx]), tmp);
-                        mdebug2("Add target: '%s'.",tmp);
+                        mdebug2("Add target: '%s'.", tmp);
                         os_free(Config->forwarders_list[tgt_idx]);
                         Config->forwarders_list[tgt_idx] = tmp;
                     }
@@ -813,12 +813,7 @@ void config_free(_Config *config) {
     }
 
     if (config->forwarders_list) {
-        int i = 0;
-        while (config->forwarders_list[i]) {
-            os_free(config->forwarders_list[i]);
-            i++;
-        }
-        os_free(config->forwarders_list);
+      free_strarray(config->forwarders_list);
     }
 
     if (config->g_rules_hash) {

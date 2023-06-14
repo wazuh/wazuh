@@ -307,13 +307,13 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
                 if (Config->socket = OS_ConnectUnixDomain(Config->location, sock_type, OS_MAXSTR + 256), Config->socket < 0) {
                     Config->last_attempt = mtime;
                     merror("Unable to connect to socket '%s': %s (%s)", Config->name, Config->location, strmode);
-                    free(message);
+                    os_free(message);
                     return -1;
                 }
                 mdebug1("Connected to socket '%s' (%s)", Config->name, Config->location);
             } else {
                 mdebug2("Discarding event '%s' due to connection issue with '%s'", message, Config->name);
-                free(message);
+                os_free(message);
                 return 1;
             }
         }
@@ -348,6 +348,6 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
             mdebug2("Message send to socket '%s' (%s) successfully.", Config->name, Config->location);
         }
     }
-    free(message);
-    return (retval);
+    os_free(message);
+    return retval;
 }

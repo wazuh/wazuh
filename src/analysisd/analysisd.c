@@ -442,14 +442,14 @@ int main_analysisd(int argc, char **argv)
             mdebug1("Socket '%s' (%s) added. Location: %s", forwarder_socket_list[num_sk].name, forwarder_socket_list[num_sk].mode == IPPROTO_UDP ? "udp" : "tcp", forwarder_socket_list[num_sk].location);
         }
 
-        for(int target_num = 0; Config.forwarders_list[target_num]; target_num++) {
+        for (int target_num = 0; Config.forwarders_list[target_num]; target_num++) {
             int found = -1;
             for (int num_sk = 0; forwarder_socket_list && forwarder_socket_list->name; num_sk++) {
                 found = strcmp(forwarder_socket_list[num_sk].name, Config.forwarders_list[target_num]);
                 if (found == 0) {
                     break;
                 } else if (found != 0) {
-                    mdebug1("Socket for target '%s' is not defined. Did you check your 'ossec.conf' file ?", Config.forwarders_list[target_num]);
+                    mwarn("Socket for target '%s' is not defined.", Config.forwarders_list[target_num]);
                 }
             }
         }
@@ -1502,7 +1502,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
 
                 if (Config.forwarders_list) {
                     char* json_msg = Eventinfo_to_jsonstr(lf, false, NULL);
-                    SendJSONtoSCK(json_msg,Config.socket_list);
+                    SendJSONtoSCK(json_msg, Config.socket_list);
                 }
             }
 

@@ -19,7 +19,7 @@ static const char *socket_location = "location";
 static const char *socket_mode = "mode";
 static const char *socket_prefix = "prefix";
 
-int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2) {
+int Read_LogCollecSocket(XML_NODE node, __attribute__((unused)) void *d1, void *d2) {
 
     socket_forwarder *sktf;
     logreader_config *log_config;
@@ -104,7 +104,7 @@ int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2) {
         return 0;
 }
 
-int Read_AnalysisdSocket(XML_NODE node, void *d1, void *d2) {
+int Read_AnalysisdSocket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     socket_forwarder *sktf;
     _Config *analysis_config;
@@ -114,7 +114,7 @@ int Read_AnalysisdSocket(XML_NODE node, void *d1, void *d2) {
     unsigned int pl = 0;
     unsigned int i = 0;
 
-    if(!analysis_config) {
+    if (!analysis_config) {
         return OS_INVALID;
     }
 
