@@ -14,6 +14,10 @@ namespace cmd::test
 namespace eTest = ::com::wazuh::api::engine::test;
 namespace eEngine = ::com::wazuh::api::engine;
 
+constexpr auto OUTPUT_ONLY {0};
+constexpr auto OUTPUT_AND_TRACES {1};
+constexpr auto OUTPUT_AND_TRACES_WITH_DETAILS {2};
+
 void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
     using RequestType = eTest::RunPost_Request;
@@ -28,17 +32,15 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     eRequest.set_protocol_queue(parameters.protocolQueue);
 
     // Set debug mode
-    auto intToDebugMode = [](int debugModeValue) -> eTest::DebugMode
+    eTest::DebugMode debugModeMap;
+    switch (parameters.debugLevel)
     {
-        switch (debugModeValue)
-        {
-            case 0: return eTest::DebugMode::OUTPUT_ONLY;
-            case 1: return eTest::DebugMode::OUTPUT_AND_TRACES;
-            case 2: return eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
-            default: return eTest::DebugMode::OUTPUT_ONLY;
-        }
-    };
-    eRequest.set_debug_mode(intToDebugMode(parameters.debugLevel));
+        case OUTPUT_ONLY: debugModeMap = eTest::DebugMode::OUTPUT_ONLY; break;
+        case OUTPUT_AND_TRACES: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES; break;
+        case OUTPUT_AND_TRACES_WITH_DETAILS: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS; break;
+        default: debugModeMap = eTest::DebugMode::OUTPUT_ONLY;
+    }
+    eRequest.set_debug_mode(debugModeMap);
 
     // Set location
     eRequest.set_protocol_location(parameters.protocolLocation);

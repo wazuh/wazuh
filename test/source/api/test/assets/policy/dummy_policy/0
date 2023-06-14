@@ -1,0 +1,6 @@
+{
+    "name": "policy/dummy_policy/0",
+    "integrations": [
+        "integration/wazuh-core/0"
+    ]
+}
