@@ -87,6 +87,8 @@ TEST_F(opBuilderKVDBDeleteTest, buildKVDBDeleteWithValue)
 
 TEST_F(opBuilderKVDBDeleteTest, buildKVDBDeleteWithReference)
 {
+    auto err1 = kvdbManager->createDB("/test_db_name");
+    ASSERT_FALSE(err1);
     ASSERT_NO_THROW(KVDBDelete(
         "/output", "", {DB_REF_NAME, "key1"}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBDeleteTest::kvdbScope));
 }

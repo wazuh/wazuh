@@ -160,12 +160,7 @@ std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHan
     }
     else
     {
-        auto createResult = createColumnFamily(dbName);
-        if (std::holds_alternative<base::Error>(createResult))
-        {
-            return std::get<base::Error>(createResult);
-        }
-        cfHandle = std::get<rocksdb::ColumnFamilyHandle*>(createResult);
+        return base::Error {fmt::format("The DB {} not exists.", dbName)};
     }
 
     auto retHandler = m_kvdbHandlerCollection->getKVDBHandler(m_pRocksDB, cfHandle, dbName, scopeName);
