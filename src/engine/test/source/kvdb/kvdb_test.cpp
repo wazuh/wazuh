@@ -115,6 +115,7 @@ TEST_F(KVDBTest, ScopeInfoSingle)
 TEST_F(KVDBTest, ScopeInfoSingleOneHandler)
 {
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
+    m_spKVDBManager->createDB("db_test");
     auto handler = scope->getKVDBHandler("db_test");
     auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
     ASSERT_EQ(scopeInfo.size(), 1);

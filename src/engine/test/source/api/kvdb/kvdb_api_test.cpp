@@ -134,6 +134,7 @@ TEST_F(KVDBApiTest, managerGetWitMultipleDBsLoaded)
 {
     api::Handler cmd;
 
+    kvdbManager->createDB("test2");
     kvdbManager->getKVDBHandler("test2", "test");
 
     ASSERT_NO_THROW(cmd = managerGet(KVDBApiTest::kvdbManager));
