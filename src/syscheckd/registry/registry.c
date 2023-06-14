@@ -758,6 +758,7 @@ void fim_read_values(HKEY key_handle,
         fim_registry_process_value_event(new, saved, mode, data_buffer);
     }
 
+    new->registry_entry.value = NULL;
     os_free(value_buffer);
     os_free(data_buffer);
 }
