@@ -180,7 +180,7 @@ public:
             {
                 std::lock_guard<std::shared_mutex> lock(m_socketMutex);
                 m_socket->connect(unixAddress.data());
-                m_epoll->addDescriptor(m_socket->fileDescriptor(), EPOLLIN);
+                m_epoll->addDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
                 break;
             }
             catch (const std::exception& e)
