@@ -87,38 +87,168 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     std::cout << std::get<std::string>(jsonOutput) << std::endl;
 }
 
+void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
+{
+    using RequestType = eTest::SessionPost_Request;
+    using ResponseType = eTest::SessionPost_Response;
+    const std::string command {api::test::handlers::TEST_POST_SESSION_API_CMD};
+
+    RequestType eRequest;
+
+    // Set session name
+    eRequest.set_name(parameters.sessionName);
+
+    // Set policy name
+    eRequest.set_policy(parameters.policy);
+
+    // Set lifespan
+    eRequest.set_lifespan(parameters.lifespan);
+
+    if (!parameters.description.empty())
+    {
+        eRequest.set_description(parameters.description);
+    }
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+}
+
+void sessionDelete(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
+{
+    using RequestType = eTest::SessionsDelete_Request;
+    using ResponseType = eTest::SessionsDelete_Response;
+    const std::string command {api::test::handlers::TEST_DELETE_SESSIONS_API_CMD};
+
+    RequestType eRequest;
+
+    if (parameters.deleteAll)
+    {
+        // Set delete all flag
+        eRequest.set_delete_all(true);
+    }
+    else if (!parameters.sessionName.empty())
+    {
+        // Set session name
+        eRequest.set_name(parameters.sessionName);
+    }
+    else
+    {
+        std::cerr << "Sessions delete configuration error: Please provide either --name parameter or --all flag."
+                  << std::endl;
+        return;
+    }
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+}
+
+void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
+{
+    using RequestType = eTest::SessionGet_Request;
+    using ResponseType = eTest::SessionGet_Response;
+    const std::string command {api::test::handlers::TEST_GET_SESSION_DATA_API_CMD};
+
+    RequestType eRequest;
+
+    // Set session name
+    eRequest.set_name(parameters.sessionName);
+
+    // Call the API
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    const auto output = fmt::format(R"({{"id":"{}","creation_date":"{}","policy":"{}", "filter":"{}","route":"{}",)"
+                                    R"("lifespan":{},"description":"{}"}})",
+                                    eResponse.id(),
+                                    eResponse.creation_date(),
+                                    eResponse.policy(),
+                                    eResponse.filter(),
+                                    eResponse.route(),
+                                    eResponse.lifespan(),
+                                    eResponse.description());
+
+    std::cout << output << std::endl;
+}
+
+void sessionList(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
+{
+    using RequestType = eTest::SessionsGet_Request;
+    using ResponseType = eTest::SessionsGet_Response;
+    const std::string command {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
+
+    // Call the API
+    RequestType eRequest;
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    for (const auto& str : eResponse.list())
+    {
+        std::cout << str << std::endl;
+    }
+}
+
 void configure(CLI::App_p app)
 {
-    auto logtestApp = app->add_subcommand("test", "Utility to test the ruleset.");
+    auto testApp = app->add_subcommand("test", "Utility to test events.");
     auto parameters = std::make_shared<Parameters>();
 
-    logtestApp->add_option("-a, --api_socket", parameters->apiEndpoint, "engine api address")
+    testApp->add_option("-a, --api_socket", parameters->apiEndpoint, "Set the API socket path.")
         ->default_val(ENGINE_SRV_API_SOCK);
     const auto client = std::make_shared<apiclnt::Client>(parameters->apiEndpoint);
 
-    // Policy
-    logtestApp->add_option("--name", parameters->sessionName, "Name of the session to be used.")->required();
+    // API test manage sessions
+    auto testSessionApp = testApp->add_subcommand("session", "Manage API sessions.");
 
-    // Event
-    logtestApp->add_option("--event", parameters->event, "Event to be processed")->required();
+    // API test session create
+    auto testSessionCreateApp = testSessionApp->add_subcommand("create", "Create a new session.");
+    testSessionCreateApp->add_option("-n, --name", parameters->sessionName, "Name of the new session.")->required();
+    testSessionCreateApp->add_option("-p, --policy", parameters->policy, "Policy to be used.")
+        ->default_val(api::test::handlers::DEFAULT_POLICY_FULL_NAME);
+    testSessionCreateApp->add_option("-l, --lifespan", parameters->lifespan, "Lifespan of the session in minutes.")
+        ->default_val(api::test::handlers::DEFAULT_SESSION_LIFESPAN);
+    testSessionCreateApp->add_option("-d, --description", parameters->description, "Description of the session.");
+    testSessionCreateApp->callback([parameters, client]() { sessionCreate(client, *parameters); });
 
-    logtestApp
+    // API test session delete
+    auto testSessionDeleteApp = testSessionApp->add_subcommand("delete", "Delete sessions.");
+    testSessionDeleteApp->add_option("-n, --name", parameters->sessionName, "Name of the session to be deleted.");
+    testSessionDeleteApp->add_flag("--all", parameters->deleteAll, "Delete all the sessions.");
+    testSessionDeleteApp->callback([parameters, client]() { sessionDelete(client, *parameters); });
+
+    // API test session data get
+    auto testSessionGetApp = testSessionApp->add_subcommand("get", "Get a session data.");
+    testSessionGetApp->add_option("-n, --name", parameters->sessionName, "Name of the session to be obtained.")
+        ->required();
+    testSessionGetApp->callback([parameters, client]() { sessionGet(client, *parameters); });
+
+    // API test session list
+    auto testSessionListApp = testSessionApp->add_subcommand("list", "List sessions.");
+    testSessionListApp->callback([parameters, client]() { sessionList(client, *parameters); });
+
+    /** ************************************************************************************************************ */
+
+    // API test Run
+    auto testRunApp = testApp->add_subcommand("run", "Utility to run a test.");
+    testRunApp->add_option("-n, --name", parameters->sessionName, "Name of the session to be used.")->required();
+    testRunApp->add_option("-e, --event", parameters->event, "Event to be processed")->required();
+    testRunApp
         ->add_option(
             "-q, --protocol_queue", parameters->protocolQueue, "Event protocol queue identifier (a single character).")
         ->default_val(ENGINE_PROTOCOL_QUEUE);
-
-    // Debug levels
-    logtestApp->add_flag("-d, --debug",
+    testRunApp->add_flag("-d, --debug",
                          parameters->debugLevel,
                          "Enable debug mode [0-3]. Flag can appear multiple times. "
                          "No flag[0]: No debug, d[1]: Asset history, dd[2]: 1 + "
                          "Full tracing, ddd[3]: 2 + detailed parser trace.");
-
-    logtestApp->add_option("--protocol_location", parameters->protocolLocation, "Protocol location.")
+    testRunApp->add_option("--protocol_location", parameters->protocolLocation, "Protocol location.")
         ->default_val(ENGINE_PROTOCOL_LOCATION);
-
-    // Register callback
-    logtestApp->callback([parameters, client]() { run(client, *parameters); });
+    testRunApp->callback([parameters, client]() { run(client, *parameters); });
 }
 
 } // namespace cmd::test

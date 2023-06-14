@@ -40,7 +40,9 @@ namespace api::test::handlers
 namespace eEngine = ::com::wazuh::api::engine;
 namespace eTest = ::com::wazuh::api::engine::test;
 
-optional<base::Error> loadSessionsFromJson(const json::Json jsonSessions)
+optional<base::Error> loadSessionsFromJson(const shared_ptr<Catalog>& catalog,
+                                           const shared_ptr<Router>& router,
+                                           const json::Json& jsonSessions)
 {
     auto& sessionManager = SessionManager::getInstance();
 
@@ -83,6 +85,17 @@ optional<base::Error> loadSessionsFromJson(const json::Json jsonSessions)
         {
             return createSessionError;
         }
+
+        // Suscribe to output and Trace
+        const auto subscriptionError = router->subscribeOutputAndTraces(policyName.value());
+        if (subscriptionError.has_value())
+        {
+            sessionManager.deleteSession(sessionName.value());
+            deleteRouteFromRouter(router, routeName.value());
+            deleteAssetFromStore(catalog, filterName.value());
+            deleteAssetFromStore(catalog, policyName.value());
+            return subscriptionError;
+        }
     }
 
     return std::nullopt;
@@ -100,8 +113,7 @@ json::Json getSessionsAsJson(void)
         i++;
 
         auto session = sessionManager.getSession(sessionName);
-        auto jsonSession = json::Json(R"({"name":"","id":"","creationdate":0,"lifespan":0,"description":"",
-                                      "filtername":"","policyname":"","routename":""})");
+        auto jsonSession = json::Json(API_SESSIONS_DATA_FORMAT);
 
         jsonSession.setString(session->getSessionName(), "/name");
         jsonSession.setString(session->getSessionID(), "/id");
@@ -118,10 +130,10 @@ json::Json getSessionsAsJson(void)
     return jsonSessions;
 }
 
-optional<base::Error> saveSessionsToStore(shared_ptr<store::IStore> store)
+optional<base::Error> saveSessionsToStore(const shared_ptr<store::IStore>& store)
 {
     const auto sessionsJson = getSessionsAsJson();
-    return store->update(SESSIONS_TABLE_NAME, sessionsJson);
+    return store->update(API_SESSIONS_TABLE_NAME, sessionsJson);
 }
 
 inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& router)
@@ -148,7 +160,7 @@ inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& router)
 }
 
 inline optional<base::Error>
-addAssetToCatalog(shared_ptr<Catalog> catalog, const string& assetType, const string& assetContent)
+addAssetToCatalog(const shared_ptr<Catalog>& catalog, const string& assetType, const string& assetContent)
 {
     Resource targetResource;
 
@@ -177,14 +189,14 @@ addAssetToCatalog(shared_ptr<Catalog> catalog, const string& assetType, const st
 }
 
 inline optional<base::Error>
-addTestFilterToCatalog(shared_ptr<Catalog> catalog, const string& sessionName, const string& filterName)
+addTestFilterToCatalog(const shared_ptr<Catalog>& catalog, const string& sessionName, const string& filterName)
 {
     const auto filterContent = fmt::format(FILTER_CONTENT_FORMAT, filterName, sessionName);
     return addAssetToCatalog(catalog, "filter", filterContent);
 }
 
 inline optional<base::Error>
-addTestPolicyToCatalog(shared_ptr<Catalog> catalog, const string& sessionName, const string& policyName)
+addTestPolicyToCatalog(const shared_ptr<Catalog>& catalog, const string& sessionName, const string& policyName)
 {
     optional<base::Error> addTestPolicyToCatalogError;
 
@@ -227,7 +239,7 @@ addTestPolicyToCatalog(shared_ptr<Catalog> catalog, const string& sessionName, c
     return addTestPolicyToCatalogError;
 }
 
-inline optional<base::Error> deleteAssetFromStore(shared_ptr<Catalog> catalog, const string& assetName)
+inline optional<base::Error> deleteAssetFromStore(const shared_ptr<Catalog>& catalog, const string& assetName)
 {
     optional<base::Error> deleteAssetError;
 
@@ -257,7 +269,7 @@ inline optional<base::Error> deleteAssetFromStore(shared_ptr<Catalog> catalog, c
     return deleteAssetError;
 }
 
-inline optional<base::Error> deleteRouteFromRouter(shared_ptr<Router> router, const string& routeName)
+inline optional<base::Error> deleteRouteFromRouter(const shared_ptr<Router>& router, const string& routeName)
 {
     optional<base::Error> deleteRouteFromRouterError;
 
@@ -274,7 +286,7 @@ inline optional<base::Error> deleteRouteFromRouter(shared_ptr<Router> router, co
 }
 
 inline optional<base::Error>
-deleteSession(shared_ptr<Router> router, shared_ptr<Catalog> catalog, const string& sessionName)
+deleteSession(const shared_ptr<Router>& router, const shared_ptr<Catalog>& catalog, const string& sessionName)
 {
     auto& sessionManager = SessionManager::getInstance();
 
@@ -310,7 +322,9 @@ deleteSession(shared_ptr<Router> router, shared_ptr<Catalog> catalog, const stri
     return std::nullopt;
 }
 
-api::Handler sessionPost(shared_ptr<Catalog> catalog, shared_ptr<Router> router, shared_ptr<store::IStore> store)
+api::Handler sessionPost(const shared_ptr<Catalog>& catalog,
+                         const shared_ptr<Router>& router,
+                         const shared_ptr<store::IStore>& store)
 {
     return [catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -325,7 +339,7 @@ api::Handler sessionPost(shared_ptr<Catalog> catalog, shared_ptr<Router> router,
         }
         const auto& eRequest = std::get<RequestType>(res);
 
-        // Field name, policy and lifespan are required
+        // Field name is required
         const auto parametersError = (!eRequest.has_name()) ? std::make_optional("Missing /name field") : std::nullopt;
         if (parametersError.has_value())
         {
@@ -405,6 +419,7 @@ api::Handler sessionPost(shared_ptr<Catalog> catalog, shared_ptr<Router> router,
         const auto subscriptionError = router->subscribeOutputAndTraces(policyName);
         if (subscriptionError.has_value())
         {
+            sessionManager.deleteSession(sessionName);
             deleteRouteFromRouter(router, routeName);
             deleteAssetFromStore(catalog, filterName);
             deleteAssetFromStore(catalog, policyName);
@@ -415,6 +430,7 @@ api::Handler sessionPost(shared_ptr<Catalog> catalog, shared_ptr<Router> router,
         const auto saveSessionsToStoreError = saveSessionsToStore(store);
         if (saveSessionsToStoreError.has_value())
         {
+            sessionManager.deleteSession(sessionName);
             deleteRouteFromRouter(router, routeName);
             deleteAssetFromStore(catalog, filterName);
             deleteAssetFromStore(catalog, policyName);
@@ -504,7 +520,9 @@ api::Handler sessionsGet(void)
     };
 }
 
-api::Handler sessionsDelete(shared_ptr<Catalog> catalog, shared_ptr<Router> router, shared_ptr<store::IStore> store)
+api::Handler sessionsDelete(const shared_ptr<Catalog>& catalog,
+                            const shared_ptr<Router>& router,
+                            const shared_ptr<store::IStore>& store)
 {
     return [catalog, router, store](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -521,8 +539,8 @@ api::Handler sessionsDelete(shared_ptr<Catalog> catalog, shared_ptr<Router> rout
         const auto& eRequest = std::get<RequestType>(res);
 
         const auto errorMsg =
-            ((!eRequest.has_name() && !eRequest.has_remove_all())
-                 ? std::make_optional("Missing both /name and /remove_all fields, at least one field must be set")
+            ((!eRequest.has_name() && !eRequest.has_delete_all())
+                 ? std::make_optional("Missing both /name and /delete_all fields, at least one field must be set")
                  : std::nullopt);
         if (errorMsg.has_value())
         {
@@ -531,7 +549,7 @@ api::Handler sessionsDelete(shared_ptr<Catalog> catalog, shared_ptr<Router> rout
 
         auto& sessionManager = SessionManager::getInstance();
 
-        if (eRequest.has_remove_all() && eRequest.remove_all())
+        if (eRequest.has_delete_all() && eRequest.delete_all())
         {
             for (auto& sessionName : sessionManager.getSessionsList())
             {
@@ -568,7 +586,7 @@ api::Handler sessionsDelete(shared_ptr<Catalog> catalog, shared_ptr<Router> rout
     };
 }
 
-api::Handler runPost(shared_ptr<::router::Router> router)
+api::Handler runPost(const shared_ptr<Router>& router)
 {
     return [router](api::wpRequest wRequest) -> api::wpResponse
     {

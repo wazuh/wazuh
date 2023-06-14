@@ -29,7 +29,7 @@ constexpr auto ENGINE_SRV_API_SOCK_ENV = "WZE_API_SOCK";
 constexpr auto ENGINE_SRV_API_QUEUE_TASK = 50;
 constexpr auto ENGINE_SRV_API_QUEUE_TASK_ENV = "WZE_API_QUEUE_TASK";
 
-constexpr auto ENGINE_SRV_API_TIMEOUT = 1000;
+constexpr auto ENGINE_SRV_API_TIMEOUT = 2000;
 constexpr auto ENGINE_SRV_API_TIMEOUT_ENV = "WZE_API_TIMEOUT";
 
 // Store module

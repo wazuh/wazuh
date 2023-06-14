@@ -9,13 +9,17 @@
 namespace api::test::handlers
 {
 
-constexpr auto MINIMUM_PRIORITY = 255;                          ///< Minimum priority allowed for a route
-constexpr auto MAXIMUM_PRIORITY = 0;                            ///< Maximum priority allowed for a route
-constexpr auto TEST_DEFAULT_PROTOCOL_QUEUE {49};                ///< Default protocol queue
+constexpr auto MINIMUM_PRIORITY = 255;           ///< Minimum priority allowed for a route
+constexpr auto MAXIMUM_PRIORITY = 0;             ///< Maximum priority allowed for a route
+constexpr auto TEST_DEFAULT_PROTOCOL_QUEUE {49}; ///< Default protocol queue
 
-constexpr auto DEFAULT_POLICY_FULL_NAME = "policy/wazuh/0";     ///< Default policy full name
+constexpr auto API_SESSIONS_DATA_FORMAT = R"({"name":"","id":"","creationdate":0,"lifespan":0,"description":"",)"
+                                          R"("filtername":"","policyname":"","routename":""})"; ///< API session data
+                                                                                                ///< format
+constexpr auto API_SESSIONS_TABLE_NAME = "internal/api_sessions/0"; ///< Name of the sessions table in the store
 
-constexpr auto SESSIONS_TABLE_NAME = "internal/api_sessions/0"; ///< Name of the sessions table in the store
+constexpr auto DEFAULT_POLICY_FULL_NAME = "policy/wazuh/0";         ///< Default policy full name
+constexpr auto DEFAULT_SESSION_LIFESPAN = 0;                        ///< Default session lifespan
 
 constexpr auto ASSET_NAME_FIELD_FORMAT = R"("name":"{}")"; ///< JSON name field format, where '{}' is the asset name
 constexpr auto FILTER_CONTENT_FORMAT =
@@ -49,8 +53,14 @@ struct Config
  * @brief Loads the sessions from a JSON string.
  *
  * @param json JSON string.
+ * @param router Router instance.
+ * @param catalog Catalog instance.
+ *
+ * @return optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-std::optional<base::Error> loadSessionsFromJson(const json::Json jsonSessions);
+std::optional<base::Error> loadSessionsFromJson(const std::shared_ptr<catalog::Catalog>& catalog,
+                                                const std::shared_ptr<::router::Router>& router,
+                                                const json::Json& jsonSessions);
 
 /**
  * @brief Get the sessions as a JSON object.
@@ -60,7 +70,12 @@ std::optional<base::Error> loadSessionsFromJson(const json::Json jsonSessions);
 json::Json getSessionsAsJson(void);
 
 /**
-optional<base::Error> saveSessionsToStore(std::shared_ptr<store::IStore> store);
+ * @brief Get the sessions as a JSON string.
+ *
+ * @param store Store instance.
+ * @return optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
+ */
+std::optional<base::Error> saveSessionsToStore(const std::shared_ptr<store::IStore>& store);
 
 /**
  * @brief Get the minimum available priority for a route.
@@ -78,7 +93,7 @@ inline int32_t getMinimumAvailablePriority(const std::shared_ptr<::router::Route
  * @param assetContent Asset content.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-inline std::optional<base::Error> addAssetToCatalog(std::shared_ptr<catalog::Catalog> catalog,
+inline std::optional<base::Error> addAssetToCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
                                                     const std::string& assetType,
                                                     const std::string& assetContent);
 
@@ -90,7 +105,7 @@ inline std::optional<base::Error> addAssetToCatalog(std::shared_ptr<catalog::Cat
  * @param filterName Filter name.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-inline std::optional<base::Error> addTestFilterToCatalog(std::shared_ptr<catalog::Catalog> catalog,
+inline std::optional<base::Error> addTestFilterToCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
                                                          const std::string& sessionName,
                                                          const std::string& filterName);
 
@@ -102,7 +117,7 @@ inline std::optional<base::Error> addTestFilterToCatalog(std::shared_ptr<catalog
  * @param policyName Policy name.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-inline std::optional<base::Error> addTestPolicyToCatalog(std::shared_ptr<catalog::Catalog> catalog,
+inline std::optional<base::Error> addTestPolicyToCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
                                                          const std::string& sessionName,
                                                          const std::string& policyName);
 
@@ -113,7 +128,7 @@ inline std::optional<base::Error> addTestPolicyToCatalog(std::shared_ptr<catalog
  * @param router Router instance.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-inline std::optional<base::Error> deleteRouteFromRouter(std::shared_ptr<::router::Router> router,
+inline std::optional<base::Error> deleteRouteFromRouter(const std::shared_ptr<::router::Router>& router,
                                                         const std::string& routeName);
 
 /**
@@ -123,7 +138,7 @@ inline std::optional<base::Error> deleteRouteFromRouter(std::shared_ptr<::router
  * @param catalog Catalog instance.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-inline std::optional<base::Error> deleteAssetFromStore(std::shared_ptr<catalog::Catalog> catalog,
+inline std::optional<base::Error> deleteAssetFromStore(const std::shared_ptr<catalog::Catalog>& catalog,
                                                        const std::string& assetName);
 
 /**
@@ -134,8 +149,8 @@ inline std::optional<base::Error> deleteAssetFromStore(std::shared_ptr<catalog::
  * @param catalog Catalog instance.
  * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
  */
-inline std::optional<base::Error> deleteSession(std::shared_ptr<::router::Router> router,
-                                                std::shared_ptr<catalog::Catalog> catalog,
+inline std::optional<base::Error> deleteSession(const std::shared_ptr<::router::Router>& router,
+                                                const std::shared_ptr<catalog::Catalog>& catalog,
                                                 const std::string& sessionName);
 
 /**
@@ -153,9 +168,9 @@ api::Handler sessionGet(void);
  * @param store Store instance.
  * @return api::Handler
  */
-api::Handler sessionPost(std::shared_ptr<catalog::Catalog> catalog,
-                         std::shared_ptr<::router::Router> router,
-                         std::shared_ptr<store::IStore> store);
+api::Handler sessionPost(const std::shared_ptr<catalog::Catalog>& catalog,
+                         const std::shared_ptr<::router::Router>& router,
+                         const std::shared_ptr<store::IStore>& store);
 
 /**
  * @brief API command handler to delete a session or all the sessions.
@@ -165,9 +180,9 @@ api::Handler sessionPost(std::shared_ptr<catalog::Catalog> catalog,
  * @param store Store instance.
  * @return api::Handler
  */
-api::Handler sessionsDelete(std::shared_ptr<catalog::Catalog> catalog,
-                            std::shared_ptr<::router::Router> router,
-                            std::shared_ptr<store::IStore> store);
+api::Handler sessionsDelete(const std::shared_ptr<catalog::Catalog>& catalog,
+                            const std::shared_ptr<::router::Router>& router,
+                            const std::shared_ptr<store::IStore>& store);
 
 /**
  * @brief API command handler to get the list of active sessions.
@@ -182,7 +197,7 @@ api::Handler sessionsGet(void);
  * @param router Router instance.
  * @return api::Handler
  */
-api::Handler runPost(std::shared_ptr<::router::Router> router);
+api::Handler runPost(const std::shared_ptr<::router::Router>& router);
 
 /**
  * @brief Register all handlers for the test API.
