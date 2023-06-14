@@ -204,7 +204,7 @@ async def get_decoders_parents(request, pretty: bool = False, wait_for_complete:
 
 
 async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
-                   raw: bool = False) -> Union[web.Response, ConnexionResponse]:
+                   raw: bool = False, default_ruleset: bool = True) -> Union[web.Response, ConnexionResponse]:
     """Get decoder file content.
 
     Parameters
@@ -218,6 +218,8 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
         Filename to download.
     raw : bool
         Whether to return the file content in raw or JSON format.
+     default_ruleset : bool
+        Whether to search for the rule in the default ruleset path or not. Default `True`
 
     Returns
     -------
@@ -227,7 +229,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
             raw=False (default) -> web.Response (application/json)
         If any exception was raised, it will return a web.Response with details.
     """
-    f_kwargs = {'filename': filename, 'raw': raw}
+    f_kwargs = {'filename': filename, 'raw': raw, 'default_ruleset': default_ruleset}
 
     dapi = DistributedAPI(f=decoder_framework.get_decoder_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
