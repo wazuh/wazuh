@@ -49,10 +49,11 @@ tags:
 '''
 import os
 import sys
-
+import pdb
 import pytest
 from pathlib import Path
 
+from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
 from wazuh_testing.global_parameters import GlobalParameters
 from wazuh_testing.modules.integrations.event_monitors import detect_wrong_content_config
 from wazuh_testing.modules.integrations import LOCAL_INTERNAL_OPTIONS as local_internal_options
@@ -73,14 +74,13 @@ configs_path = Path(CONFIGS_PATH, 'config_invalid_configuration.yaml')
 cases_path = Path(TEST_CASES_PATH, 'cases_invalid_configuration.yaml')
 
 # Test configurations.
-config_parameters, metadata, cases_ids = get_test_cases_data(cases_path)
-configuration = load_configuration_template(configs_path, config_parameters, metadata)
-
+config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
+test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 
 # Tests
-@pytest.mark.parametrize('configuration, metadata', zip(configuration, metadata), ids=cases_ids)
-def test_invalid(configuration, metadata, set_wazuh_configuration, configure_local_internal_options_module,
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options_module,
                  truncate_monitored_files):
     '''
     description: Check if the 'github' module detects invalid configurations. For this purpose, the test
@@ -122,7 +122,7 @@ def test_invalid(configuration, metadata, set_wazuh_configuration, configure_loc
     tags:
         - invalid_settings
     '''
-    wazuh_log_monitor = FileMonitor(LOG_FILE_PATH)
+    wazuh_log_monitor = FileMonitor(OSSEC_LOG_PATH)
     
     # Configuration error -> ValueError raised
     try:
@@ -130,6 +130,6 @@ def test_invalid(configuration, metadata, set_wazuh_configuration, configure_loc
     except ValueError:
         pass
 
-    invalid_monitor = detect_wrong_content_config(metadata['error_type'], metadata['tag'], 'GitHub', wazuh_log_monitor)
+    invalid_monitor = detect_wrong_content_config(test_metadata['error_type'], test_metadata['tag'], 'GitHub', wazuh_log_monitor)
     
     assert invalid_monitor.callback_result, f'Error invalid configuration event not detected'
