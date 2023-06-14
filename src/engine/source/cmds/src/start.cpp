@@ -362,15 +362,15 @@ void runStart(ConfHandler confManager)
         // Test
         {
             // Try to load the sessions from the store
-            const auto strJsonSessions = store->get(api::test::handlers::SESSIONS_TABLE_NAME);
+            const auto strJsonSessions = store->get(api::test::handlers::API_SESSIONS_TABLE_NAME);
             if (std::holds_alternative<base::Error>(strJsonSessions))
             {
                 LOG_WARNING("Could not retreive configuration file [{}] needed by the 'Test' module: {}",
-                            api::test::handlers::SESSIONS_TABLE_NAME,
+                            api::test::handlers::API_SESSIONS_TABLE_NAME,
                             std::get<base::Error>(strJsonSessions).message);
 
                 // Create the sessions table
-                auto storeSetSessionsTable = store->add(api::test::handlers::SESSIONS_TABLE_NAME, json::Json("[]"));
+                auto storeSetSessionsTable = store->add(api::test::handlers::API_SESSIONS_TABLE_NAME, json::Json("[]"));
                 if (storeSetSessionsTable.has_value())
                 {
                     LOG_ERROR("API sessions table could not be created: {}", storeSetSessionsTable.value().message);
@@ -380,7 +380,12 @@ void runStart(ConfHandler confManager)
             }
             else
             {
-                api::test::handlers::loadSessionsFromJson(std::get<json::Json>(strJsonSessions));
+                auto loadError =
+                    api::test::handlers::loadSessionsFromJson(catalog, router, std::get<json::Json>(strJsonSessions));
+                if (loadError.has_value())
+                {
+                    LOG_ERROR("API sessions loading could not be completed: {}", loadError.value().message);
+                }
             }
 
             // Register the Test command
@@ -586,4 +591,5 @@ void configure(CLI::App_p app)
             runStart(confManager);
         });
 }
+
 } // namespace cmd::server

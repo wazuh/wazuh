@@ -49,7 +49,7 @@ message SessionsGet_Response
 message SessionsDelete_Request
 {
     optional string name = 1;     // test session name
-    optional bool remove_all = 2; // option to remove all the sessions
+    optional bool delete_all = 2; // option to delete all the sessions
 }
 
 message SessionsDelete_Response
