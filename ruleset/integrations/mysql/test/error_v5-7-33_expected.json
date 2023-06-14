@@ -113,81 +113,13 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:05.690Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
         },
         "message": "Shutting down slave threads"
-    },
-    {
-        "wazuh": {
-            "queue": 49,
-            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
-            "message": "2023-06-09T15:33:05.690423Z 0 [Note] Shutting down plugin 'ngram'",
-            "origin": "/var/log/mysql/error.log",
-            "registered_ip": "any",
-            "decoders": [
-                "core-wazuh-message",
-                "core-localfile",
-                "integrations",
-                "mysql-error"
-            ],
-            "source": "logcollector"
-        },
-        "agent": {
-            "id": "001",
-            "name": "vm-ubuntu-agent",
-            "type": "wazuh"
-        },
-        "event": {
-            "original": "2023-06-09T15:33:05.690423Z 0 [Note] Shutting down plugin 'ngram'",
-            "module": "mysql",
-            "dataset": "mysql.error",
-            "kind": "event",
-            "category": [
-                "database"
-            ],
-            "type": [
-                "info"
-            ]
-        },
-        "host": {
-            "id": "001",
-            "architecture": "x86_64",
-            "hostname": "vm-ubuntu-agent",
-            "name": "vm-ubuntu-agent",
-            "os": {
-                "kernel": "4.4.0-210-generic",
-                "name": "Ubuntu",
-                "platform": "ubuntu",
-                "type": "linux",
-                "version": "16.04.7 LTS (Xenial Xerus)"
-            },
-            "mac": [
-                "02:be:82:6b:cc:1d",
-                "08:00:27:93:34:d0"
-            ],
-            "ip": [
-                "192.168.56.3",
-                "fe80::a00:27ff:fe93:34d0",
-                "fe80::be:82ff:fe6b:cc1d",
-                "10.0.2.15"
-            ]
-        },
-        "@timestamp": "2023-06-09T15:33:05.690Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
-        },
-        "log": {
-            "level": "Note"
-        },
-        "message": "Shutting down plugin 'ngram'"
     },
     {
         "wazuh": {
@@ -245,81 +177,13 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:05.690Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
         },
         "message": "Event Scheduler: Purging the queue. 0 events"
-    },
-    {
-        "wazuh": {
-            "queue": 49,
-            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
-            "message": "2023-06-09T15:33:05.690106Z 0 [Note] Forcefully disconnecting 0 remaining clients",
-            "origin": "/var/log/mysql/error.log",
-            "registered_ip": "any",
-            "decoders": [
-                "core-wazuh-message",
-                "core-localfile",
-                "integrations",
-                "mysql-error"
-            ],
-            "source": "logcollector"
-        },
-        "agent": {
-            "id": "001",
-            "name": "vm-ubuntu-agent",
-            "type": "wazuh"
-        },
-        "event": {
-            "original": "2023-06-09T15:33:05.690106Z 0 [Note] Forcefully disconnecting 0 remaining clients",
-            "module": "mysql",
-            "dataset": "mysql.error",
-            "kind": "event",
-            "category": [
-                "database"
-            ],
-            "type": [
-                "info"
-            ]
-        },
-        "host": {
-            "id": "001",
-            "architecture": "x86_64",
-            "hostname": "vm-ubuntu-agent",
-            "name": "vm-ubuntu-agent",
-            "os": {
-                "kernel": "4.4.0-210-generic",
-                "name": "Ubuntu",
-                "platform": "ubuntu",
-                "type": "linux",
-                "version": "16.04.7 LTS (Xenial Xerus)"
-            },
-            "mac": [
-                "02:be:82:6b:cc:1d",
-                "08:00:27:93:34:d0"
-            ],
-            "ip": [
-                "192.168.56.3",
-                "fe80::a00:27ff:fe93:34d0",
-                "fe80::be:82ff:fe6b:cc1d",
-                "10.0.2.15"
-            ]
-        },
-        "@timestamp": "2023-06-09T15:33:05.690Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
-        },
-        "log": {
-            "level": "Note"
-        },
-        "message": "Forcefully disconnecting 0 remaining clients"
     },
     {
         "wazuh": {
@@ -377,10 +241,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:05.690Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -391,7 +253,7 @@
         "wazuh": {
             "queue": 49,
             "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
-            "message": "2023-06-09T15:33:05.791292Z 0 [Note] InnoDB: Buffer pool(s) dump completed at 230609 15:33:05",
+            "message": "2023-06-09T15:33:05.690106Z 0 [Note] Forcefully disconnecting 0 remaining clients",
             "origin": "/var/log/mysql/error.log",
             "registered_ip": "any",
             "decoders": [
@@ -408,7 +270,7 @@
             "type": "wazuh"
         },
         "event": {
-            "original": "2023-06-09T15:33:05.791292Z 0 [Note] InnoDB: Buffer pool(s) dump completed at 230609 15:33:05",
+            "original": "2023-06-09T15:33:05.690106Z 0 [Note] Forcefully disconnecting 0 remaining clients",
             "module": "mysql",
             "dataset": "mysql.error",
             "kind": "event",
@@ -442,16 +304,78 @@
                 "10.0.2.15"
             ]
         },
-        "@timestamp": "2023-06-09T15:33:05.791Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "@timestamp": "2023-06-09T15:33:05.690Z",
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
         },
-        "message": "InnoDB: Buffer pool(s) dump completed at 230609 15:33:05"
+        "message": "Forcefully disconnecting 0 remaining clients"
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T15:33:05.690423Z 0 [Note] Shutting down plugin 'ngram'",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T15:33:05.690423Z 0 [Note] Shutting down plugin 'ngram'",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T15:33:05.690Z",
+        "~mysql": {
+            "thread_id": "0"
+        },
+        "log": {
+            "level": "Note"
+        },
+        "message": "Shutting down plugin 'ngram'"
     },
     {
         "wazuh": {
@@ -509,10 +433,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:05.690Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -575,15 +497,77 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:05.791Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
         },
         "message": "InnoDB: Dumping buffer pool(s) to /var/lib/mysql/ib_buffer_pool"
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/error.log",
+            "message": "2023-06-09T15:33:05.791292Z 0 [Note] InnoDB: Buffer pool(s) dump completed at 230609 15:33:05",
+            "origin": "/var/log/mysql/error.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "mysql-error"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "vm-ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "2023-06-09T15:33:05.791292Z 0 [Note] InnoDB: Buffer pool(s) dump completed at 230609 15:33:05",
+            "module": "mysql",
+            "dataset": "mysql.error",
+            "kind": "event",
+            "category": [
+                "database"
+            ],
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "architecture": "x86_64",
+            "hostname": "vm-ubuntu-agent",
+            "name": "vm-ubuntu-agent",
+            "os": {
+                "kernel": "4.4.0-210-generic",
+                "name": "Ubuntu",
+                "platform": "ubuntu",
+                "type": "linux",
+                "version": "16.04.7 LTS (Xenial Xerus)"
+            },
+            "mac": [
+                "02:be:82:6b:cc:1d",
+                "08:00:27:93:34:d0"
+            ],
+            "ip": [
+                "192.168.56.3",
+                "fe80::a00:27ff:fe93:34d0",
+                "fe80::be:82ff:fe6b:cc1d",
+                "10.0.2.15"
+            ]
+        },
+        "@timestamp": "2023-06-09T15:33:05.791Z",
+        "~mysql": {
+            "thread_id": "0"
+        },
+        "log": {
+            "level": "Note"
+        },
+        "message": "InnoDB: Buffer pool(s) dump completed at 230609 15:33:05"
     },
     {
         "wazuh": {
@@ -641,10 +625,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.108Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -707,10 +689,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.109Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -773,10 +753,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.110Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -839,10 +817,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.271Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Warning"
@@ -905,10 +881,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.457Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Warning"
@@ -971,10 +945,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.458Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1037,10 +1009,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.465Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1103,10 +1073,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.480Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1169,10 +1137,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.525Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1235,10 +1201,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.593Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1301,10 +1265,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.597Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1367,10 +1329,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.597Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Warning"
@@ -1433,10 +1393,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.597Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1499,10 +1457,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.597Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1565,10 +1521,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.597Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1631,10 +1585,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.598Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1697,10 +1649,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.602Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1763,10 +1713,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:07.602Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "Note"
@@ -1829,10 +1777,8 @@
             ]
         },
         "@timestamp": "2023-06-09T15:33:08.273Z",
-        "process": {
-            "thread": {
-                "id": 2
-            }
+        "~mysql": {
+            "thread_id": "2"
         },
         "log": {
             "level": "Note"
@@ -1896,10 +1842,8 @@
             ]
         },
         "@timestamp": "2023-06-09T17:11:48.730Z",
-        "process": {
-            "thread": {
-                "id": 0
-            }
+        "~mysql": {
+            "thread_id": "0"
         },
         "log": {
             "level": "ERROR"

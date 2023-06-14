@@ -2,7 +2,7 @@
     {
         "wazuh": {
             "queue": 49,
-            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/mysql-slow.log",
+            "location": "[002] (vm-ubuntu2204-agent) any->/var/log/mysql/mysql-slow.log",
             "message": "# Time: 2023-06-09T17:36:44.616690Z\n# User@Host: root[root] @ localhost []  Id:     3\n# Query_time: 5.005327  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 0\nSET timestamp=1686332204;\nselect sleep(5);",
             "origin": "/var/log/mysql/mysql-slow.log",
             "registered_ip": "any",
@@ -15,8 +15,8 @@
             "source": "logcollector"
         },
         "agent": {
-            "id": "001",
-            "name": "vm-ubuntu-agent",
+            "id": "002",
+            "name": "vm-ubuntu2204-agent",
             "type": "wazuh"
         },
         "event": {
@@ -29,28 +29,29 @@
             ],
             "type": [
                 "info"
-            ]
+            ],
+            "outcome": "unknown"
         },
         "host": {
-            "id": "001",
+            "id": "002",
             "architecture": "x86_64",
-            "hostname": "vm-ubuntu-agent",
-            "name": "vm-ubuntu-agent",
+            "hostname": "vm-ubuntu2204-agent",
+            "name": "vm-ubuntu2204-agent",
             "os": {
-                "kernel": "4.4.0-210-generic",
+                "kernel": "5.15.0-69-generic",
                 "name": "Ubuntu",
                 "platform": "ubuntu",
                 "type": "linux",
-                "version": "16.04.7 LTS (Xenial Xerus)"
+                "version": "22.04.2 LTS (Jammy Jellyfish)"
             },
             "mac": [
-                "02:be:82:6b:cc:1d",
-                "08:00:27:93:34:d0"
+                "08:00:27:04:2d:5b",
+                "08:00:27:fc:04:50"
             ],
             "ip": [
-                "192.168.56.3",
-                "fe80::a00:27ff:fe93:34d0",
-                "fe80::be:82ff:fe6b:cc1d",
+                "fe80::a00:27ff:fefc:450",
+                "fe80::a00:27ff:fe04:2d5b",
+                "192.168.56.4",
                 "10.0.2.15"
             ]
         },
@@ -67,7 +68,7 @@
                 },
                 "rows_sent": "1",
                 "rows_examined": "0",
-                "timestamp": "1686332204",
+                "timestamp": "2023-06-09T17:36:44Z",
                 "query": "select sleep(5)"
             }
         },
@@ -83,7 +84,7 @@
     {
         "wazuh": {
             "queue": 49,
-            "location": "[001] (vm-ubuntu-agent) any->/var/log/mysql/mysql-slow.log",
+            "location": "[002] (vm-ubuntu2204-agent) any->/var/log/mysql/mysql-slow.log",
             "message": "# Time: 2023-06-09T17:37:12.443209Z\n# User@Host: root[root] @ localhost []  Id:     3\n# Query_time: 10.003493  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 0\nSET timestamp=1686332232;\nselect sleep(10);",
             "origin": "/var/log/mysql/mysql-slow.log",
             "registered_ip": "any",
@@ -96,8 +97,8 @@
             "source": "logcollector"
         },
         "agent": {
-            "id": "001",
-            "name": "vm-ubuntu-agent",
+            "id": "002",
+            "name": "vm-ubuntu2204-agent",
             "type": "wazuh"
         },
         "event": {
@@ -110,28 +111,29 @@
             ],
             "type": [
                 "info"
-            ]
+            ],
+            "outcome": "unknown"
         },
         "host": {
-            "id": "001",
+            "id": "002",
             "architecture": "x86_64",
-            "hostname": "vm-ubuntu-agent",
-            "name": "vm-ubuntu-agent",
+            "hostname": "vm-ubuntu2204-agent",
+            "name": "vm-ubuntu2204-agent",
             "os": {
-                "kernel": "4.4.0-210-generic",
+                "kernel": "5.15.0-69-generic",
                 "name": "Ubuntu",
                 "platform": "ubuntu",
                 "type": "linux",
-                "version": "16.04.7 LTS (Xenial Xerus)"
+                "version": "22.04.2 LTS (Jammy Jellyfish)"
             },
             "mac": [
-                "02:be:82:6b:cc:1d",
-                "08:00:27:93:34:d0"
+                "08:00:27:04:2d:5b",
+                "08:00:27:fc:04:50"
             ],
             "ip": [
-                "192.168.56.3",
-                "fe80::a00:27ff:fe93:34d0",
-                "fe80::be:82ff:fe6b:cc1d",
+                "fe80::a00:27ff:fefc:450",
+                "fe80::a00:27ff:fe04:2d5b",
+                "192.168.56.4",
                 "10.0.2.15"
             ]
         },
@@ -148,7 +150,7 @@
                 },
                 "rows_sent": "1",
                 "rows_examined": "0",
-                "timestamp": "1686332232",
+                "timestamp": "2023-06-09T17:37:12Z",
                 "query": "select sleep(10)"
             }
         },
