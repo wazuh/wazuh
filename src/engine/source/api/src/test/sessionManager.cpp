@@ -42,13 +42,25 @@ std::optional<base::Error> SessionManager::createSession(const string& sessionNa
     if (m_policyMap.count(policyName) > 0)
     {
         return base::Error {
-            fmt::format("Policy '{}' is already assigned to a route ('')", policyName, m_policyMap[policyName])};
+            fmt::format("Policy '{}' is already assigned to a route '{}'", policyName, m_policyMap[policyName])};
+    }
+
+    if (m_filterMap.count(filterName) > 0)
+    {
+        return base::Error {
+            fmt::format("Filter '{}' is already assigned to a route '{}'", filterName, m_filterMap[filterName])};
+    }
+
+    if (m_routeMap.count(routeName) > 0)
+    {
+        return base::Error {fmt::format("Route name '{}' already exists", routeName)};
     }
 
     Session session(sessionName, policyName, filterName, routeName, lifespan, description, creationDate, sessionID);
     m_activeSessions.emplace(sessionName, session);
     m_routeMap.emplace(routeName, sessionName);
     m_policyMap.emplace(policyName, routeName);
+    m_filterMap.emplace(filterName, routeName);
 
     LOG_DEBUG("Session created: ID={}, Name={}, Creation Date={}, Policy Name={}, Filter Name={}, Route Name={}, Life "
               "Span={}, Description={}\n",
@@ -100,6 +112,7 @@ bool SessionManager::deleteSessions(const bool removeAll, const string sessionNa
         m_activeSessions.clear();
         m_policyMap.clear();
         m_routeMap.clear();
+        m_filterMap.clear();
 
         sessionRemoved = true;
     }
@@ -110,10 +123,12 @@ bool SessionManager::deleteSessions(const bool removeAll, const string sessionNa
         if (sessionIt != m_activeSessions.end())
         {
             const auto& policyName = sessionIt->second.getPolicyName();
+            const auto& filterName = sessionIt->second.getFilterName();
             const auto& routeName = sessionIt->second.getRouteName();
 
             m_activeSessions.erase(sessionIt);
             m_policyMap.erase(policyName);
+            m_filterMap.erase(filterName);
             m_routeMap.erase(routeName);
 
             sessionRemoved = true;

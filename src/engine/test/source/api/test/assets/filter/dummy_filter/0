@@ -1,0 +1,8 @@
+{
+    "name": "filter/dummy_filter/0",
+    "check": [
+        {
+            "~TestSessionName": "dummy"
+        }
+    ]
+}

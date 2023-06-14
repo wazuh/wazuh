@@ -1,0 +1,9 @@
+{
+    "decoders": [
+        "decoder/core-hostinfo/0"
+    ],
+    "filters": [
+        "filter/allow-all/0"
+    ],
+    "name": "integration/wazuh-core/0"
+}
