@@ -227,14 +227,17 @@ def test_get_requirement_invalid(mocked_config, requirement):
     assert result.total_affected_items == 0
 
 
-@pytest.mark.parametrize('file_, raw', [
-    ('0010-rules_config.xml', True),
-    ('0015-ossec_rules.xml', False)
+@pytest.mark.parametrize('file_, raw, default_ruleset', [
+    ('0010-rules_config.xml', True, True),
+    ('0015-ossec_rules.xml', False, True),
+    ('test_rules.xml', False, False),
+    ('subpath/test_rules.xml', False, False),
 ])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file(mock_config, file_, raw):
+@patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, data_path))
+@patch('wazuh.core.common.USER_RULES_PATH', new=os.path.join(parent_directory, "tests","data", "etc", "rules"))
+def test_get_rule_file(file_, raw, default_ruleset):
     """Test downloading a specified rule filter."""
-    d_files = rule.get_rule_file(filename=file_, raw=raw)
+    d_files = rule.get_rule_file(filename=file_, raw=raw, default_ruleset=default_ruleset)
     if raw:
         assert isinstance(d_files, str)
     else:
@@ -243,27 +246,40 @@ def test_get_rules_file(mock_config, file_, raw):
         assert not d_files.failed_items
 
 
-@pytest.mark.parametrize('item, file_, error_code', [
-    ([{'relative_dirname': 'ruleset/rules'}], 'no_exists_os_error.xml', 1414),
-    ([], 'no_exists_unk_error.xml', 1415)
-])
-@patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_failed(mock_config, item, file_, error_code):
-    """Test downloading a specified rule filter."""
-    with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
-            all_msg='test', affected_items=item)):
-        result = rule.get_rule_file(filename=file_)
-        assert not result.affected_items
-        assert result.render()['data']['failed_items'][0]['error']['code'] == error_code
+@patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, data_path))
+@patch('wazuh.core.common.USER_RULES_PATH', new=os.path.join(parent_directory, "tests", "data", "etc", "rules"))
+def test_get_rule_file_exceptions():
+    """Test file exceptions on get_rule_file method."""
+    # File does not exist in default ruleset
+    result = rule.get_rule_file(filename='non_existing_file.xml')
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1415
 
+    # File does not exist in user ruleset
+    result = rule.get_rule_file(filename='non_existing_file.xml', raw=False, default_ruleset=False)
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1415
 
-@patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
-    affected_items=[{'relative_dirname': 'tests/data'}]))
-def test_get_rules_file_invalid_xml(get_rules_mock):
-    """Test downloading a rule with invalid XML."""
-    result = rule.get_rule_file(filename='test_invalid_rules.xml')
+    # Invalid XML
+    result = rule.get_rule_file(filename='wrong_rules.xml', raw=False, default_ruleset=False)
     assert not result.affected_items
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1413
+
+    # File permissions
+    with patch('builtins.open', side_effect=PermissionError):
+        result = rule.get_rule_file(filename='0010-rules_config.xml')
+        assert not result.affected_items
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1414
+    
+    # Path Traversal vulnerability - relative path
+    result = rule.get_rule_file(filename='../path_traversal.file', raw=False, default_ruleset=False)
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1414
+
+    # Path Traversal vulnerability - absolute path
+    result = rule.get_rule_file(filename='/usr/bin/bash', raw=False, default_ruleset=False)
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1414
 
 
 @pytest.mark.parametrize('file, overwrite', [

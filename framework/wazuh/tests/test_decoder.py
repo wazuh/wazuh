@@ -129,11 +129,15 @@ def test_get_decoders_files_filters(status, relative_dirname, filename, expected
     assert result_files == expected_files
 
 
-@pytest.mark.parametrize('filename', [
-    'test1_decoders.xml',
-    'test2_decoders.xml'
+@pytest.mark.parametrize('filename, default_ruleset', [
+    ('test1_decoders.xml', True),
+    ('test2_decoders.xml', True),
+    ('test3_decoders.xml', False),
+    ('subpath/test4_decoders.xml', False),
 ])
-def test_get_decoder_file(filename):
+@patch('wazuh.core.common.DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "decoders"))
+@patch('wazuh.core.common.USER_DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "etc", "decoders"))
+def test_get_decoder_file(filename, default_ruleset):
     """Test get file function.
 
     Parameters
@@ -141,21 +145,30 @@ def test_get_decoder_file(filename):
     filename : str
         Decoder filename
     """
-    result = decoder.get_decoder_file(filename=filename)
+    # File exists in default decoders path
+    result = decoder.get_decoder_file(filename=filename, raw=False, default_ruleset=default_ruleset)
     # Assert the result is an AffectedItemsWazuhResult
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.affected_items
     assert not result.failed_items
 
-    result = decoder.get_decoder_file(filename=filename, raw=True)
+    result = decoder.get_decoder_file(filename=filename, raw=True, default_ruleset=default_ruleset)
     # Assert the result is a plain text str
     assert isinstance(result, str)
 
 
+@patch('wazuh.core.common.DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "decoders"))
+@patch('wazuh.core.common.USER_DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "etc", "decoders"))
 def test_get_decoder_file_exceptions():
     """Test exceptions on get method."""
-    # File does not exist
+
+    # File does not exist in default ruleset
     result = decoder.get_decoder_file(filename='non_existing_file.xml')
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1503
+
+    # File does not exist in user ruleset
+    result = decoder.get_decoder_file(filename='non_existing_file.xml', raw=False, default_ruleset=False)
     assert not result.affected_items
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1503
 
@@ -169,6 +182,17 @@ def test_get_decoder_file_exceptions():
         result = decoder.get_decoder_file(filename='test2_decoders.xml')
         assert not result.affected_items
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1502
+    
+    # Path Traversal vulnerability - relative path
+    result = decoder.get_decoder_file(filename='../path_traversal.file', raw=False, default_ruleset=False)
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1504
+
+
+    # Path Traversal vulnerability - absolute path
+    result = decoder.get_decoder_file(filename='/usr/bin/bash', raw=False, default_ruleset=False)
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1504
 
 
 @pytest.mark.parametrize('file, overwrite', [

@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from os import remove
-from os.path import join, exists
+from os.path import join, exists, abspath, commonpath, basename
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -179,47 +179,60 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
     return result
 
 
-def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
+def get_decoder_file(filename: str, raw: bool = False, default_ruleset: bool = True) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of a specified file.
 
     Parameters
     ----------
-    filename : str
-        Name of the decoder file.
+    filename : list. Mandatory.
+        List of one element with the complete relative path of the decoder file.
     raw : bool
         Whether to return the content in raw format (str->XML) or JSON.
+    default_ruleset : bool
+        Whether the file is in the default or custom ruleset directory
 
     Returns
     -------
     str or AffectedItemsWazuhResult
         Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
+
+    @expose_resources(actions=['decoders:read'], resources=['decoder:file:{filename}'])
+    def validate_rbac_file(filename: list = None):
+        return
+
+    # validate rbac read permission for the decoder
+    validate_rbac_file(filename=[basename(filename)])
+
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
                                       all_msg='Selected decoder was returned')
-    decoders = get_decoders_files(filename=filename).affected_items
+    decoders_path = common.DECODERS_PATH if default_ruleset else common.USER_DECODERS_PATH
+    full_path = abspath(join(decoders_path, filename))
+    if commonpath([decoders_path, full_path]) != decoders_path:
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1504, extra_message=f"{filename}"))
+        return result
 
-    if len(decoders) > 0:
-        decoder_path = decoders[0]['relative_dirname']
-        try:
-            full_path = join(common.WAZUH_PATH, decoder_path, filename)
-            with open(full_path) as f:
-                file_content = f.read()
-            if raw:
-                result = file_content
-            else:
-                # Missing root tag in decoder file
-                result.affected_items.append(xmltodict.parse(f'<root>{file_content}</root>')['root'])
-                result.total_affected_items = 1
-        except ExpatError as e:
-            result.add_failed_item(id_=filename,
-                                   error=WazuhError(1501, extra_message=f"{join('WAZUH_HOME', decoder_path, filename)}:"
-                                                                        f" {str(e)}"))
-        except OSError:
-            result.add_failed_item(id_=filename,
-                                   error=WazuhError(1502, extra_message=join('WAZUH_HOME', decoder_path, filename)))
+    if not exists(full_path):
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1503, extra_message=f"{filename}"))
+        return result
 
-    else:
-        result.add_failed_item(id_=filename, error=WazuhError(1503))
+    try:
+        with open(full_path) as f:
+            file_content = f.read()
+        if raw:
+            result = file_content
+        else:
+            # Missing root tag in decoder file
+            result.affected_items.append(xmltodict.parse(f'<root>{file_content}</root>')['root'])
+            result.total_affected_items = 1
+    except ExpatError as e:
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1501, extra_message=f"{filename}: {str(e)}"))
+    except OSError:
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1502, extra_message=f"{filename}"))
 
     return result
 
