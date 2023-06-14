@@ -125,7 +125,7 @@ PROTOBUF_CONSTEXPR SessionsDelete_Request::SessionsDelete_Request(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.remove_all_)*/false} {}
+  , /*decltype(_impl_.delete_all_)*/false} {}
 struct SessionsDelete_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR SessionsDelete_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -276,7 +276,7 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionsDelete_Request, _impl_.name_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionsDelete_Request, _impl_.remove_all_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionsDelete_Request, _impl_.delete_all_),
   0,
   1,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionsDelete_Response, _impl_._has_bits_),
@@ -370,8 +370,8 @@ const char descriptor_table_protodef_test_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "status\030\001 \001(\0162\".com.wazuh.api.engine.Retu"
   "rnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004list\030\003 \003"
   "(\tB\010\n\006_error\"\\\n\026SessionsDelete_Request\022\021"
-  "\n\004name\030\001 \001(\tH\000\210\001\001\022\027\n\nremove_all\030\002 \001(\010H\001\210"
-  "\001\001B\007\n\005_nameB\r\n\013_remove_all\"k\n\027SessionsDe"
+  "\n\004name\030\001 \001(\tH\000\210\001\001\022\027\n\ndelete_all\030\002 \001(\010H\001\210"
+  "\001\001B\007\n\005_nameB\r\n\013_delete_all\"k\n\027SessionsDe"
   "lete_Response\0222\n\006status\030\001 \001(\0162\".com.wazu"
   "h.api.engine.ReturnStatus\022\022\n\005error\030\002 \001(\t"
   "H\000\210\001\001B\010\n\006_error\"\227\002\n\017RunPost_Request\022\021\n\004n"
@@ -2215,7 +2215,7 @@ class SessionsDelete_Request::_Internal {
   static void set_has_name(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
-  static void set_has_remove_all(HasBits* has_bits) {
+  static void set_has_delete_all(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
   }
 };
@@ -2233,7 +2233,7 @@ SessionsDelete_Request::SessionsDelete_Request(const SessionsDelete_Request& fro
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
-    , decltype(_impl_.remove_all_){}};
+    , decltype(_impl_.delete_all_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.name_.InitDefault();
@@ -2244,7 +2244,7 @@ SessionsDelete_Request::SessionsDelete_Request(const SessionsDelete_Request& fro
     _this->_impl_.name_.Set(from._internal_name(), 
       _this->GetArenaForAllocation());
   }
-  _this->_impl_.remove_all_ = from._impl_.remove_all_;
+  _this->_impl_.delete_all_ = from._impl_.delete_all_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.test.SessionsDelete_Request)
 }
 
@@ -2256,7 +2256,7 @@ inline void SessionsDelete_Request::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
-    , decltype(_impl_.remove_all_){false}
+    , decltype(_impl_.delete_all_){false}
   };
   _impl_.name_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -2292,7 +2292,7 @@ void SessionsDelete_Request::Clear() {
   if (cached_has_bits & 0x00000001u) {
     _impl_.name_.ClearNonDefaultToEmpty();
   }
-  _impl_.remove_all_ = false;
+  _impl_.delete_all_ = false;
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -2314,11 +2314,11 @@ const char* SessionsDelete_Request::_InternalParse(const char* ptr, ::_pbi::Pars
         } else
           goto handle_unusual;
         continue;
-      // optional bool remove_all = 2;
+      // optional bool delete_all = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
-          _Internal::set_has_remove_all(&has_bits);
-          _impl_.remove_all_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          _Internal::set_has_delete_all(&has_bits);
+          _impl_.delete_all_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -2363,10 +2363,10 @@ uint8_t* SessionsDelete_Request::_InternalSerialize(
         1, this->_internal_name(), target);
   }
 
-  // optional bool remove_all = 2;
-  if (_internal_has_remove_all()) {
+  // optional bool delete_all = 2;
+  if (_internal_has_delete_all()) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteBoolToArray(2, this->_internal_remove_all(), target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(2, this->_internal_delete_all(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -2394,7 +2394,7 @@ size_t SessionsDelete_Request::ByteSizeLong() const {
           this->_internal_name());
     }
 
-    // optional bool remove_all = 2;
+    // optional bool delete_all = 2;
     if (cached_has_bits & 0x00000002u) {
       total_size += 1 + 1;
     }
@@ -2424,7 +2424,7 @@ void SessionsDelete_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg,
       _this->_internal_set_name(from._internal_name());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_impl_.remove_all_ = from._impl_.remove_all_;
+      _this->_impl_.delete_all_ = from._impl_.delete_all_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
   }
@@ -2452,7 +2452,7 @@ void SessionsDelete_Request::InternalSwap(SessionsDelete_Request* other) {
       &_impl_.name_, lhs_arena,
       &other->_impl_.name_, rhs_arena
   );
-  swap(_impl_.remove_all_, other->_impl_.remove_all_);
+  swap(_impl_.delete_all_, other->_impl_.delete_all_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata SessionsDelete_Request::GetMetadata() const {

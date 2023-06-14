@@ -30,7 +30,7 @@ public:
      * @param sessionName Name of the session.
      * @param routeName Name of the route.
      * @param policyName Name of the policy.
-     * @param lifespan Lifespan of the session in seconds. 0 means no expiration.
+     * @param lifespan Lifespan of the session in minutes. 0 means no expiration.
      * @return std::optional<base::Error>
      */
     virtual std::optional<base::Error> createSession(const std::string& sessionName,
