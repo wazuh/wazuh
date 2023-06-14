@@ -51,11 +51,15 @@ import os
 import sys
 
 import pytest
+from pathlib import Path
+
 from wazuh_testing.global_parameters import GlobalParameters
 from wazuh_testing.modules.integrations.event_monitors import detect_wrong_content_config
+from wazuh_testing.modules.integrations import LOCAL_INTERNAL_OPTIONS as local_internal_options
 from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils.services import control_service
-from wazuh_testing.modules.integrations import LOCAL_INTERNAL_OPTIONS as local_internal_options
+from wazuh_testing.utils.configuration import get_test_cases_data
+from wazuh_testing.utils.configuration import load_configuration_template
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
