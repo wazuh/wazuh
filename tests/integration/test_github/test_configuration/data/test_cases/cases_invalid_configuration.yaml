@@ -1,5 +1,5 @@
-- name: Invalid_enabled_tag_value
-  description: Check github integration does not start with invalid enabled tag value
+- name: Invalid_Enabled
+  description: Check github integration does not start with Invalid Enabled
   configuration_parameters:
     ENABLED: 'invalid'
     ONLY_FUTURE_EVENTS: 'yes'
@@ -10,11 +10,10 @@
     API_TOKEN: 'token'
     EVENT_TYPE: 'all'
   metadata:
-    error_type: 'Invalid'
-    tag: 'enabled'
+    event_monitor: 'invalid_enabled'
 
-- name: xxx
-  description: Check github integration does not start with invalid enabled tag value
+- name: Invalid_Only_Future_Events
+  description: Check github integration does not start with Invalid Only Future Events
   configuration_parameters:
     ENABLED: 'yes'
     ONLY_FUTURE_EVENTS: 'invalid'
@@ -25,151 +24,88 @@
     API_TOKEN: 'token'
     EVENT_TYPE: 'all'
   metadata:
-    error_type: 'Invalid'
-    tag: 'only_future_events'
+    event_monitor: 'invalid_only_future_events'
 
+- name: Invalid_Interval
+  description: Check github integration does not start with Invalid Interval
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE_EVENTS: 'yes'
+    INTERVAL: '-5s'
+    CURL_MAX_SIZE: '1024'
+    TIME_DELAY: '1s'
+    ORG_NAME: 'dummy'
+    API_TOKEN: 'token'
+    EVENT_TYPE: 'all'
+  metadata:
+    event_monitor: 'invalid_interval'
+    
+- name: Invalid_Curl_Max_Size
+  description: Check github integration does not start with Invalid Curl Max Size
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE_EVENTS: 'yes'
+    INTERVAL: '1m'
+    CURL_MAX_SIZE: '-12'
+    TIME_DELAY: '1s'
+    ORG_NAME: 'dummy'
+    API_TOKEN: 'token'
+    EVENT_TYPE: 'all'
+  metadata:
+    event_monitor: 'invalid_curl_max_size'
 
+- name: Invalid_Time_Delay
+  description: Check github integration does not start with Invalid Time Delay
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE_EVENTS: 'yes'
+    INTERVAL: '1m'
+    CURL_MAX_SIZE: '1024'
+    TIME_DELAY: '7k'
+    ORG_NAME: 'dummy'
+    API_TOKEN: 'token'
+    EVENT_TYPE: 'all'
+  metadata:
+    event_monitor: 'invalid_time_delay'
 
+- name: Invalid_Org_Name
+  description: Check github integration does not start with Invalid Org Name
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE_EVENTS: 'yes'
+    INTERVAL: '1m'
+    CURL_MAX_SIZE: '1024'
+    TIME_DELAY: '1s'
+    ORG_NAME: ''
+    API_TOKEN: 'token'
+    EVENT_TYPE: 'all'
+  metadata:
+    event_monitor: 'invalid_org_name'
 
+- name: Invalid_Api_Token
+  description: Check github integration does not start with Invalid Api Token
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE_EVENTS: 'yes'
+    INTERVAL: '1m'
+    CURL_MAX_SIZE: '1024'
+    TIME_DELAY: '1s'
+    ORG_NAME: 'dummy'
+    API_TOKEN: ''
+    EVENT_TYPE: 'all'
+  metadata:
+    event_monitor: 'invalid_api_token'
 
-
-
-
-
-
-
-
-
-cases = [
-    # Case 1: Invalid enabled (version 4.3)
-    {
-        'params': {
-            'ENABLED': 'asdfasdf',
-            'ONLY_FUTURE_EVENTS': 'yes',
-            'INTERVAL': '1m',
-            'CURL_MAX_SIZE': '1024',
-            'TIME_DELAY': '1s',
-            'ORG_NAME': 'dummy',
-            'API_TOKEN': 'token',
-            'EVENT_TYPE': 'all'
-        },
-        'metadata': {
-            'tags': 'invalid_enabled'
-        }
-    },
-    # Case 2: Invalid only_future_events (version 4.3)
-    {
-        'params': {
-            'ENABLED': 'yes',
-            'ONLY_FUTURE_EVENTS': 'asdfasdf',
-            'INTERVAL': '1m',
-            'CURL_MAX_SIZE': '1024',
-            'TIME_DELAY': '1s',
-            'ORG_NAME': 'dummy',
-            'API_TOKEN': 'token',
-            'EVENT_TYPE': 'all'
-        },
-        'metadata': {
-            'tags': 'invalid_only_future_events'
-        }
-    },
-    # Case 3: Invalid interval (version 4.3)
-    {
-        'params': {
-            'ENABLED': 'yes',
-            'ONLY_FUTURE_EVENTS': 'yes',
-            'INTERVAL': '-5s',
-            'CURL_MAX_SIZE': '1024',
-            'TIME_DELAY': '1s',
-            'ORG_NAME': 'dummy',
-            'API_TOKEN': 'token',
-            'EVENT_TYPE': 'all'
-        },
-        'metadata': {
-            'tags': 'invalid_interval'
-        }
-    },
-    # Case 4: Invalid curl_max_size (version 4.3)
-    {
-        'params': {
-            'ENABLED': 'yes',
-            'ONLY_FUTURE_EVENTS': 'yes',
-            'INTERVAL': '1m',
-            'CURL_MAX_SIZE': '-12',
-            'TIME_DELAY': '1s',
-            'ORG_NAME': 'dummy',
-            'API_TOKEN': 'token',
-            'EVENT_TYPE': 'all'
-        },
-        'metadata': {
-            'tags': 'invalid_curl_max_size'
-        }
-    },
-    # Case 5: Invalid time_delay (version 4.3)
-    {
-        'params': {
-            'ENABLED': 'yes',
-            'ONLY_FUTURE_EVENTS': 'yes',
-            'INTERVAL': '1m',
-            'CURL_MAX_SIZE': '1024',
-            'TIME_DELAY': '7k',
-            'ORG_NAME': 'dummy',
-            'API_TOKEN': 'token',
-            'EVENT_TYPE': 'all'
-        },
-        'metadata': {
-            'tags': 'invalid_time_delay'
-        }
-    },
-    # Case 6: Invalid org_name (version 4.3)
-    {
-        'params': {
-            'ENABLED': 'yes',
-            'ONLY_FUTURE_EVENTS': 'yes',
-            'INTERVAL': '1m',
-            'CURL_MAX_SIZE': '1024',
-            'TIME_DELAY': '1s',
-            'ORG_NAME': '',
-            'API_TOKEN': 'token',
-            'EVENT_TYPE': 'all'
-        },
-        'metadata': {
-            'tags': 'invalid_org_name'
-        }
-    },
-    # Case 7: Invalid api_token (version 4.3)
-    {
-        'params': {
-            'ENABLED': 'yes',
-            'ONLY_FUTURE_EVENTS': 'yes',
-            'INTERVAL': '1m',
-            'CURL_MAX_SIZE': '1024',
-            'TIME_DELAY': '1s',
-            'ORG_NAME': 'dummy',
-            'API_TOKEN': '',
-            'EVENT_TYPE': 'all'
-        },
-        'metadata': {
-            'tags': 'invalid_api_token'
-        }
-    },
-    # Case 8: Invalid event_type (version 4.3)
-    {
-        'params': {
-            'ENABLED': 'yes',
-            'ONLY_FUTURE_EVENTS': 'yes',
-            'INTERVAL': '1m',
-            'CURL_MAX_SIZE': '1024',
-            'TIME_DELAY': '1s',
-            'ORG_NAME': 'dummy',
-            'API_TOKEN': 'token',
-            'EVENT_TYPE': 'invalid'
-        },
-        'metadata': {
-            'tags': 'invalid_event_type'
-        }
-    }
-]
-
-
-
+- name: Invalid_Event_Type
+  description: Check github integration does not start with Invalid Event Type
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE_EVENTS: 'yes'
+    INTERVAL: '1m'
+    CURL_MAX_SIZE: '1024'
+    TIME_DELAY: '1s'
+    ORG_NAME: 'dummy'
+    API_TOKEN: 'token'
+    EVENT_TYPE: 'invalid'
+  metadata:
+    event_monitor: 'invalid_event_type'
