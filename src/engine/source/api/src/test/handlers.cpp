@@ -621,17 +621,16 @@ api::Handler runPost(const shared_ptr<Router>& router)
             eRequest.has_protocol_location() ? eRequest.protocol_location() : TEST_DEFAULT_PROTOCOL_LOCATION;
 
         // Set debug mode
-        auto debugModes = [](eTest::DebugMode debugModeValue) -> router::DebugMode
+        router::DebugMode debugModeMap;
+        switch (debugMode)
         {
-            switch (debugModeValue)
-            {
-                case eTest::DebugMode::OUTPUT_ONLY: return router::DebugMode::OUTPUT_ONLY;
-                case eTest::DebugMode::OUTPUT_AND_TRACES: return router::DebugMode::OUTPUT_AND_TRACES;
-                case eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS:
-                    return router::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
-                default: return router::DebugMode::OUTPUT_ONLY;
-            }
-        };
+            case eTest::DebugMode::OUTPUT_ONLY: debugModeMap = router::DebugMode::OUTPUT_ONLY; break;
+            case eTest::DebugMode::OUTPUT_AND_TRACES: debugModeMap = router::DebugMode::OUTPUT_AND_TRACES; break;
+            case eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS:
+                debugModeMap = router::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
+                break;
+            default: debugModeMap = router::DebugMode::OUTPUT_ONLY;
+        }
 
         // Get session
         auto& sessionManager = SessionManager::getInstance();
@@ -657,7 +656,7 @@ api::Handler runPost(const shared_ptr<Router>& router)
         }
 
         // Get payload (output and traces)
-        auto payload = router->getData(session.value().getPolicyName(), debugModes(debugMode));
+        auto payload = router->getData(session.value().getPolicyName(), debugModeMap);
 
         if (std::holds_alternative<base::Error>(payload))
         {
