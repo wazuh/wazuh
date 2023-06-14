@@ -29,92 +29,10 @@ requirements:
 checks:
   # 1.1.1.1 Ensure mounting of cramfs filesystems is disabled. (Automated) - Not Implemented
   # 1.1.1.2 Ensure mounting of freevxfs filesystems is disabled. (Automated) - Not Implemented
-
-  # 1.1.1.4 Ensure mounting of hfs filesystems is disabled. (Automated)
-  - id: 31003
-    title: "Ensure mounting of hfs filesystems is disabled."
-    description: "The hfs filesystem type is a hierarchical filesystem that allows you to mount Mac OS filesystems."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    remediation: "Run the following script to disable the hfs module: If the module is available in the running kernel: - Create a file with install hfs /bin/false in the /etc/modprobe.d/ directory - Create a file with blacklist hfs in the /etc/modprobe.d/ directory - Unload hfs from the kernel If available in ANY installed kernel: - Create a file with blacklist hfs in the /etc/modprobe.d/ directory If the kernel module is not available on the system or pre-compiled into the kernel: - No remediation is necessary #!/usr/bin/env bash { l_mname=\"hfs\" # set module name l_mtype=\"fs\" # set module type l_mpath=\"/lib/modules/**/kernel/$l_mtype\" l_mpname=\"$(tr '-' '_' <<< \"$l_mname\")\" l_mndir=\"$(tr '-' '/' <<< \"$l_mname\")\" module_loadable_fix() { # If the module is currently loadable, add \"install {MODULE_NAME} /bin/false\" to a file in \"/etc/modprobe.d\" l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \"\\n - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } module_loaded_fix() { # If the module is currently loaded, unload the module if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \"\\n - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi } module_deny_fix() { # If the module isn't deny listed, denylist the module if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mpname\\b\"; then echo -e \"\\n - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } # Check if the module exists on the system for l_mdir in $l_mpath; do if [ -d \"$l_mdir/$l_mndir\" ] && [ -n \"$(ls -A $l_mdir/$l_mndir)\" ]; then echo -e \"\\n - module: \\\"$l_mname\\\" exists in \\\"$l_mdir\\\"\\n - checking if disabled...\" module_deny_fix if [ \"$l_mdir\" = \"/lib/modules/$(uname -r)/kernel/$l_mtype\" ]; then module_loadable_fix module_loaded_fix fi else echo -e \"\\n - module: \\\"$l_mname\\\" doesn't exist in \\\"$l_mdir\\\"\\n\" fi done echo -e \"\\n - remediation of module: \\\"$l_mname\\\" complete\\n\" }."
-    compliance:
-      - cis: ["1.1.1.4"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1050"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1005"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 1.1.1.5 Ensure mounting of hfsplus filesystems is disabled. (Automated)
-  - id: 31004
-    title: "Ensure mounting of hfsplus filesystems is disabled."
-    description: "The hfsplus filesystem type is a hierarchical filesystem designed to replace hfs that allows you to mount Mac OS filesystems."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    remediation: "Run the following script to disable the hfsplus module: If the module is available in the running kernel: - Create a file with install hfsplus /bin/false in the /etc/modprobe.d/ directory - Create a file with blacklist hfsplus in the /etc/modprobe.d/ directory - Unload hfsplus from the kernel If available in ANY installed kernel: - Create a file with blacklist hfsplus in the /etc/modprobe.d/ directory If the kernel module is not available on the system or pre-compiled into the kernel: - No remediation is necessary #!/usr/bin/env bash { l_mname=\"hfsplus\" # set module name l_mtype=\"fs\" # set module type l_mpath=\"/lib/modules/**/kernel/$l_mtype\" l_mpname=\"$(tr '-' '_' <<< \"$l_mname\")\" l_mndir=\"$(tr '-' '/' <<< \"$l_mname\")\" module_loadable_fix() { # If the module is currently loadable, add \"install {MODULE_NAME} /bin/false\" to a file in \"/etc/modprobe.d\" l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \"\\n - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } module_loaded_fix() { # If the module is currently loaded, unload the module if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \"\\n - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi } module_deny_fix() { # If the module isn't deny listed, denylist the module if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mpname\\b\"; then echo -e \"\\n - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } # Check if the module exists on the system for l_mdir in $l_mpath; do if [ -d \"$l_mdir/$l_mndir\" ] && [ -n \"$(ls -A $l_mdir/$l_mndir)\" ]; then echo -e \"\\n - module: \\\"$l_mname\\\" exists in \\\"$l_mdir\\\"\\n - checking if disabled...\" module_deny_fix if [ \"$l_mdir\" = \"/lib/modules/$(uname -r)/kernel/$l_mtype\" ]; then module_loadable_fix module_loaded_fix fi else echo -e \"\\n - module: \\\"$l_mname\\\" doesn't exist in \\\"$l_mdir\\\"\\n\" fi done echo -e \"\\n - remediation of module: \\\"$l_mname\\\" complete\\n\" }."
-    compliance:
-      - cis: ["1.1.1.5"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1050"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1005"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 1.1.1.6 Ensure mounting of squashfs filesystems is disabled. (Automated)
-  - id: 31005
-    title: "Ensure mounting of squashfs filesystems is disabled."
-    description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A squashfs image can be used without having to first decompress the image."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    impact: 'As Snap packages utilizes squashfs as a compressed filesystem, disabling squashfs will cause Snap packages to fail. Snap application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software''s end-user. Snaps themselves have no dependency on any external store ("App store"), can be obtained from any source and can be therefore used for upstream software deployment.'
-    remediation: "Run the following script to disable the squashfs module: If the module is available in the running kernel: - Create a file with install squashfs /bin/false in the /etc/modprobe.d/ directory - Create a file with blacklist squashfs in the /etc/modprobe.d/ directory - Unload squashfs from the kernel If available in ANY installed kernel: - Create a file with blacklist squashfs in the /etc/modprobe.d/ directory If the kernel module is not available on the system or pre-compiled into the kernel: - No remediation is necessary #!/usr/bin/env bash { l_mname=\"squashfs\" # set module name l_mtype=\"fs\" # set module type l_mpath=\"/lib/modules/**/kernel/$l_mtype\" l_mpname=\"$(tr '-' '_' <<< \"$l_mname\")\" l_mndir=\"$(tr '-' '/' <<< \"$l_mname\")\" module_loadable_fix() { # If the module is currently loadable, add \"install {MODULE_NAME} /bin/false\" to a file in \"/etc/modprobe.d\" l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \"\\n - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } module_loaded_fix() { # If the module is currently loaded, unload the module if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \"\\n - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi } module_deny_fix() { # If the module isn't deny listed, denylist the module if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mpname\\b\"; then echo -e \"\\n - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } # Check if the module exists on the system for l_mdir in $l_mpath; do if [ -d \"$l_mdir/$l_mndir\" ] && [ -n \"$(ls -A $l_mdir/$l_mndir)\" ]; then echo -e \"\\n - module: \\\"$l_mname\\\" exists in \\\"$l_mdir\\\"\\n - checking if disabled...\" module_deny_fix if [ \"$l_mdir\" = \"/lib/modules/$(uname -r)/kernel/$l_mtype\" ]; then module_loadable_fix module_loaded_fix fi else echo -e \"\\n - module: \\\"$l_mname\\\" doesn't exist in \\\"$l_mdir\\\"\\n\" fi done echo -e \"\\n - remediation of module: \\\"$l_mname\\\" complete\\n\" }."
-    compliance:
-      - cis: ["1.1.1.6"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1050"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1005"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
-
-  # 1.1.1.7 Ensure mounting of udf filesystems is disabled. (Automated)
-  - id: 31006
-    title: "Ensure mounting of udf filesystems is disabled."
-    description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    impact: "Microsoft Azure requires the usage of udf. udf should not be disabled on systems run on Microsoft Azure."
-    remediation: "Run the following script to disable the udf module: If the module is available in the running kernel: - Create a file with install udf /bin/false in the /etc/modprobe.d/ directory - Create a file with blacklist udf in the /etc/modprobe.d/ directory - Unload udf from the kernel If available in ANY installed kernel: - Create a file with blacklist udf in the /etc/modprobe.d/ directory If the kernel module is not available on the system or pre-compiled into the kernel: - No remediation is necessary #!/usr/bin/env bash { l_mname=\"udf\" # set module name l_mtype=\"fs\" # set module type l_mpath=\"/lib/modules/**/kernel/$l_mtype\" l_mpname=\"$(tr '-' '_' <<< \"$l_mname\")\" l_mndir=\"$(tr '-' '/' <<< \"$l_mname\")\" module_loadable_fix() { # If the module is currently loadable, add \"install {MODULE_NAME} /bin/false\" to a file in \"/etc/modprobe.d\" l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \"\\n - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } module_loaded_fix() { # If the module is currently loaded, unload the module if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \"\\n - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi } module_deny_fix() { # If the module isn't deny listed, denylist the module if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mpname\\b\"; then echo -e \"\\n - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } # Check if the module exists on the system for l_mdir in $l_mpath; do if [ -d \"$l_mdir/$l_mndir\" ] && [ -n \"$(ls -A $l_mdir/$l_mndir)\" ]; then echo -e \"\\n - module: \\\"$l_mname\\\" exists in \\\"$l_mdir\\\"\\n - checking if disabled...\" module_deny_fix if [ \"$l_mdir\" = \"/lib/modules/$(uname -r)/kernel/$l_mtype\" ]; then module_loadable_fix module_loaded_fix fi else echo -e \"\\n - module: \\\"$l_mname\\\" doesn't exist in \\\"$l_mdir\\\"\\n\" fi done echo -e \"\\n - remediation of module: \\\"$l_mname\\\" complete\\n\" }."
-    compliance:
-      - cis: ["1.1.1.7"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1050"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1005"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
+  # 1.1.1.4 Ensure mounting of hfs filesystems is disabled. (Automated) - Not Implemented
+  # 1.1.1.5 Ensure mounting of hfsplus filesystems is disabled. (Automated) - Not Implemented
+  # 1.1.1.6 Ensure mounting of squashfs filesystems is disabled. (Automated) - Not Implemented
+  # 1.1.1.7 Ensure mounting of udf filesystems is disabled. (Automated) - Not Implemented
 
   # 1.1.2.1 Ensure /tmp is a separate partition. (Automated)
   - id: 31007
@@ -140,8 +58,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s'
 
   # 1.1.2.2 Ensure nodev option set on /tmp partition. (Automated)
   - id: 31008
@@ -163,8 +82,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s && r:nodev'
 
   # 1.1.2.3 Ensure noexec option set on /tmp partition. (Automated)
   - id: 31009
@@ -186,8 +106,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s && r:noexec'
 
   # 1.1.2.4 Ensure nosuid option set on /tmp partition. (Automated)
   - id: 31010
@@ -209,8 +130,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /tmp -> r:\s*/tmp\s && r:nosuid'
 
   # 1.1.3.1 Ensure separate partition exists for /var. (Automated)
   - id: 31011
@@ -234,8 +156,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var -> r:\s*/var\s'
 
   # 1.1.3.2 Ensure nodev option set on /var partition. (Automated)
   - id: 31012
@@ -257,8 +180,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var -> r:\s*/var\s && r:nodev'
 
   # 1.1.3.3 Ensure nosuid option set on /var partition. (Automated)
   - id: 31013
@@ -280,8 +204,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var -> r:\s*/var\s && r:nosuid'
 
   # 1.1.4.1 Ensure separate partition exists for /var/tmp. (Automated)
   - id: 31014
