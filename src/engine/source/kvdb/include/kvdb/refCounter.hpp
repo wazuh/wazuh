@@ -9,7 +9,7 @@ namespace kvdbManager
 {
 
 /**
- * @brief Basic Helper wrapping std::map<std::string, int> to count references.
+ * @brief Basic Helper wrapping std::map<std::string, unsigned int> to count references.
  *
  */
 class RefCounter
@@ -54,9 +54,9 @@ public:
      * @brief Get the number of references for a given name.
      *
      * @param name Reference name to get the count.
-     * @return int Number of references for the given name.
+     * @return unsigned int Number of references for the given name.
      */
-    int count(const std::string& name) const;
+    unsigned int count(const std::string& name) const;
 
     /**
      * @brief Checks if there are no references to any name.
@@ -77,14 +77,14 @@ public:
      *
      * @return std::map<std::string, int> Map of references.
      */
-    std::map<std::string, int> getRefMap() const;
+    std::map<std::string, unsigned int> getRefMap() const;
 
 private:
     /**
      * @brief Map of references with the counters.
      *
      */
-    std::map<std::string, int> m_refMap;
+    std::map<std::string, unsigned int> m_refMap;
 };
 
 } // namespace kvdbManager
