@@ -18,12 +18,16 @@ constexpr auto ORIGIN_NAME {"engine_integrated_test_api"};
 
 struct Parameters
 {
-    std::string apiEndpoint;
-    std::string sessionName;
-    std::string event;
-    std::string protocolLocation;
-    uint32_t protocolQueue;
+    bool deleteAll;
     int debugLevel;
+    std::string apiEndpoint;
+    std::string description;
+    std::string event;
+    std::string policy;
+    std::string protocolLocation;
+    std::string sessionName;
+    uint32_t lifespan;
+    uint32_t protocolQueue;
 };
 
 /**

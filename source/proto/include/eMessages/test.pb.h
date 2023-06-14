@@ -1413,7 +1413,7 @@ class SessionsDelete_Request final :
 
   enum : int {
     kNameFieldNumber = 1,
-    kRemoveAllFieldNumber = 2,
+    kDeleteAllFieldNumber = 2,
   };
   // optional string name = 1;
   bool has_name() const;
@@ -1433,17 +1433,17 @@ class SessionsDelete_Request final :
   std::string* _internal_mutable_name();
   public:
 
-  // optional bool remove_all = 2;
-  bool has_remove_all() const;
+  // optional bool delete_all = 2;
+  bool has_delete_all() const;
   private:
-  bool _internal_has_remove_all() const;
+  bool _internal_has_delete_all() const;
   public:
-  void clear_remove_all();
-  bool remove_all() const;
-  void set_remove_all(bool value);
+  void clear_delete_all();
+  bool delete_all() const;
+  void set_delete_all(bool value);
   private:
-  bool _internal_remove_all() const;
-  void _internal_set_remove_all(bool value);
+  bool _internal_delete_all() const;
+  void _internal_set_delete_all(bool value);
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.test.SessionsDelete_Request)
@@ -1457,7 +1457,7 @@ class SessionsDelete_Request final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
-    bool remove_all_;
+    bool delete_all_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_test_2eproto;
@@ -3246,32 +3246,32 @@ inline void SessionsDelete_Request::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.test.SessionsDelete_Request.name)
 }
 
-// optional bool remove_all = 2;
-inline bool SessionsDelete_Request::_internal_has_remove_all() const {
+// optional bool delete_all = 2;
+inline bool SessionsDelete_Request::_internal_has_delete_all() const {
   bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
   return value;
 }
-inline bool SessionsDelete_Request::has_remove_all() const {
-  return _internal_has_remove_all();
+inline bool SessionsDelete_Request::has_delete_all() const {
+  return _internal_has_delete_all();
 }
-inline void SessionsDelete_Request::clear_remove_all() {
-  _impl_.remove_all_ = false;
+inline void SessionsDelete_Request::clear_delete_all() {
+  _impl_.delete_all_ = false;
   _impl_._has_bits_[0] &= ~0x00000002u;
 }
-inline bool SessionsDelete_Request::_internal_remove_all() const {
-  return _impl_.remove_all_;
+inline bool SessionsDelete_Request::_internal_delete_all() const {
+  return _impl_.delete_all_;
 }
-inline bool SessionsDelete_Request::remove_all() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsDelete_Request.remove_all)
-  return _internal_remove_all();
+inline bool SessionsDelete_Request::delete_all() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.test.SessionsDelete_Request.delete_all)
+  return _internal_delete_all();
 }
-inline void SessionsDelete_Request::_internal_set_remove_all(bool value) {
+inline void SessionsDelete_Request::_internal_set_delete_all(bool value) {
   _impl_._has_bits_[0] |= 0x00000002u;
-  _impl_.remove_all_ = value;
+  _impl_.delete_all_ = value;
 }
-inline void SessionsDelete_Request::set_remove_all(bool value) {
-  _internal_set_remove_all(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionsDelete_Request.remove_all)
+inline void SessionsDelete_Request::set_delete_all(bool value) {
+  _internal_set_delete_all(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.test.SessionsDelete_Request.delete_all)
 }
 
 // -------------------------------------------------------------------
