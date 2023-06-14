@@ -78,7 +78,7 @@ extern const char *SYSCHECK_EVENT_STRINGS[];
 #define check_wildcard(x)                       strchr(x,'*') || strchr(x,'?')
 
 /* Fields for paths */
-typedef struct __path_strct {
+typedef struct _reg_path_struct {
     char* path;
     int has_wildcard;
     int checked;
@@ -466,7 +466,7 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey);
  * @param [in] array_struct Array of all possible paths.
  * @param [out] array_struct Array of paths with tag checked in 1 and has_wildcard in 0.
  */
-void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr);
+void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr);
 
 
 /**
@@ -483,7 +483,7 @@ char* get_subkey(char* key);
  * @param [in] entry Raw entry read from config file.
  * @param [out] paths Array of paths expanded with tag checked in 1 and has_wildcard in 0.
  */
-void expand_wildcard_registers(char* entry,char** paths);
+void expand_wildcard_registers(char* entry, char** paths);
 
 #endif
 

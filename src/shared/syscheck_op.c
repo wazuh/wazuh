@@ -1194,18 +1194,18 @@ HKEY w_switch_root_key(char* str_rootkey) {
         return HKEY_USERS;
     }
     else {
-        mdebug1("Invalid value of 'HKEY'. Please check your ossec.conf.");
+        mdebug1("Invalid value of root Handle to Registry Key.");
         return NULL;
     }
 }
 
-void expand_wildcard_registers(char* entry,char** paths) {
+void expand_wildcard_registers(char* entry, char** paths) {
     reg_path_struct** aux_vector;
     reg_path_struct** current_position;
-    os_calloc(OS_SIZE_8192,sizeof(reg_path_struct*),aux_vector);
+    os_calloc(OS_SIZE_8192, sizeof(reg_path_struct*), aux_vector);
 
     reg_path_struct* first_e;
-    os_calloc(1,sizeof(reg_path_struct),first_e);
+    os_calloc(1, sizeof(reg_path_struct), first_e);
 
     first_e->path           = strdup(entry);
     first_e->has_wildcard   = check_wildcard(entry);
@@ -1241,16 +1241,12 @@ void expand_wildcard_registers(char* entry,char** paths) {
                 current_position++;
             }
         }
-    }
-    //Check first if there is a *, for a single expansion
-    else if (strchr((*current_position)->path, '*')) {
+    } else if (strchr((*current_position)->path, '*')) { //Check first if there is a *, for a single expansion
         do {
             w_expand_by_wildcard(current_position, '*');
             current_position++;
         } while (w_is_still_a_wildcard(current_position));
-    }
-    //Then check if there is a ?
-    else if (strchr((*current_position)->path, '?')) {
+    } else if (strchr((*current_position)->path, '?')) { //Then check if there is a ?
         do {
             w_expand_by_wildcard(current_position, '?');
             current_position++;
@@ -1259,9 +1255,9 @@ void expand_wildcard_registers(char* entry,char** paths) {
     // ----- End expansion path section -----
 
     current_position = aux_vector;
-    while(*current_position != NULL) {
-        if(!(*current_position)->has_wildcard && (*current_position)->checked) {
-            os_strdup((*current_position)->path,*paths);
+    while (*current_position != NULL) {
+        if (!(*current_position)->has_wildcard && (*current_position)->checked) {
+            os_strdup((*current_position)->path, *paths);
             os_free((*current_position)->path);
             os_free(*current_position);
             paths++;
@@ -1281,7 +1277,7 @@ char* get_subkey(char* key) {
     char* remaining_key = NULL;
     char* subkey        = NULL;
 
-    os_strdup(strchr(key, '\\') + 1,remaining_key);
+    os_strdup(strchr(key, '\\') + 1, remaining_key);
     os_calloc(OS_SIZE_128, sizeof(char), subkey);
 
     char* aux_token;
@@ -1294,7 +1290,7 @@ char* get_subkey(char* key) {
     }
     int path_len = strlen(subkey) - 1;
     os_free(remaining_key);
-    if (path_len) {
+    if (path_len > 0) {
         if (subkey[path_len] == '\\') {
             subkey[path_len] = '\0';
         }
@@ -1306,8 +1302,8 @@ char* get_subkey(char* key) {
 }
 
 int w_is_still_a_wildcard(reg_path_struct **array_struct) {
-    while(*array_struct) {
-        if((*array_struct)->has_wildcard && !(*array_struct)->checked) {
+    while (*array_struct) {
+        if ((*array_struct)->has_wildcard && !(*array_struct)->checked) {
             return 1;
         }
         array_struct++;
@@ -1372,10 +1368,10 @@ char** w_list_all_keys(HKEY root_key, char* str_subkey) {
     return key_list;
 }
 
-void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
+void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr) {
     // ----- Begin setup variables section -----
     char* wildcard_str          = NULL;
-    os_calloc(2,sizeof(char),wildcard_str);
+    os_calloc(2, sizeof(char), wildcard_str);
     wildcard_str[0]             = wildcard_chr;
     wildcard_str[1]             = '\0';
 
@@ -1385,7 +1381,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
 
     //Create a copy of the path to be able to modify it.
     char* aux_path              = NULL;
-    os_strdup((*array_struct)->path,aux_path);
+    os_strdup((*array_struct)->path, aux_path);
 
     //Take the first part of the wildcard, splitting by wildcard. Clean any chars after a slash bar.
     char* first_part            = strtok(aux_path, wildcard_str);
@@ -1398,11 +1394,11 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
         }
     }
 
-    if(wildcard_chr == '?') {
+    if (wildcard_chr == '?') {
         //Usar strtok_r
         char* temp          = NULL;
         char* aux_matcher   = NULL;
-        os_strdup((*array_struct)->path,temp);
+        os_strdup((*array_struct)->path, temp);
 
         //Search through all tokens until you find the one that has the wildcard
         aux_matcher = strtok(temp, "\\");
@@ -1414,7 +1410,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
     }
 
     //Take the remainder part of the path.
-    char* second_part           = strchr(strchr((*array_struct)->path, wildcard_chr),'\\');
+    char* second_part           = strchr(strchr((*array_struct)->path, wildcard_chr), '\\');
 
     //Duplicate key part
     char* temp = NULL;
@@ -1424,7 +1420,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
     //Obtain the subkey. If it's empty, it's a NULL value.
     char* subkey                = get_subkey((*array_struct)->path);
 
-    os_strdup(strtok(temp, "\\"),str_root_key);
+    os_strdup(strtok(temp, "\\"), str_root_key);
     os_free(temp);
 
     HKEY root_key               = w_switch_root_key(str_root_key);
@@ -1454,7 +1450,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
                         // ----- Begin final path variable section -----
 
                         char* full_path = NULL;
-                        os_calloc(OS_SIZE_256, sizeof(char),full_path);
+                        os_calloc(OS_SIZE_256, sizeof(char), full_path);
 
                         //Copy first part.
                         strcpy(full_path, first_part);
@@ -1469,7 +1465,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
 
                         //Create new struct and add it to vector.
                         reg_path_struct* new_struct = NULL;
-                        os_calloc(1, sizeof(reg_path_struct),new_struct);
+                        os_calloc(1, sizeof(reg_path_struct), new_struct);
 
                         int path_length             = strlen(full_path);
                         if(full_path[path_length - 1] == '\\'){
@@ -1503,7 +1499,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
                     // ----- Begin final path variable section -----
 
                     char* full_path = NULL;
-                    os_calloc(OS_SIZE_256, sizeof(char),full_path);
+                    os_calloc(OS_SIZE_256, sizeof(char), full_path);
 
                     //Copy first part.
                     strcpy(full_path, first_part);
@@ -1518,7 +1514,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
 
                     //Create new struct and add it to vector.
                     reg_path_struct* new_struct = NULL;
-                    os_calloc(1, sizeof(reg_path_struct),new_struct);
+                    os_calloc(1, sizeof(reg_path_struct), new_struct);
 
                     int path_length             = strlen(full_path);
                     if(full_path[path_length - 1] == '\\') {
@@ -1543,8 +1539,7 @@ void w_expand_by_wildcard(reg_path_struct **array_struct,char wildcard_chr) {
     os_free(aux_path);
     os_free(str_root_key);
     os_free(subkey);
-    w_FreeArray(first_position);
-    os_free(first_position);
+    free_strarray(first_position);
     os_free(matcher);
 }
 
