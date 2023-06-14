@@ -56,7 +56,7 @@ std::vector<std::string> KVDBHandlerCollection::getDBNames()
     return dbNames;
 }
 
-std::map<std::string, int> KVDBHandlerCollection::getRefMap(const std::string& dbName)
+std::map<std::string, unsigned int> KVDBHandlerCollection::getRefMap(const std::string& dbName)
 {
     std::lock_guard<std::shared_mutex> lock(m_mutex);
     auto it = m_mapInstances.find(dbName);
@@ -65,7 +65,7 @@ std::map<std::string, int> KVDBHandlerCollection::getRefMap(const std::string& d
         return it->second->getRefMap();
     }
 
-    return std::map<std::string, int>();
+    return std::map<std::string, unsigned int>();
 }
 
 void KVDBHandlerCollection::KVDBHandlerInstance::addScope(const std::string& scopeName)
@@ -88,7 +88,7 @@ std::vector<std::string> KVDBHandlerCollection::KVDBHandlerInstance::getRefNames
     return m_scopeCounter.getRefNames();
 }
 
-std::map<std::string, int> KVDBHandlerCollection::KVDBHandlerInstance::getRefMap() const
+std::map<std::string, unsigned int> KVDBHandlerCollection::KVDBHandlerInstance::getRefMap() const
 {
     return m_scopeCounter.getRefMap();
 }
