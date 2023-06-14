@@ -2063,6 +2063,30 @@ components:
       - stopped
       - running
 
+    # Engine models
+
+    # Configuration
+    PolicyIntegration:
+      type: object
+      properties:
+        policy:
+          description: "Name of the policy"
+          type: string
+          format: names
+        integration:
+          description: "Name of the integration"
+          type: string
+
+    EngineGenericResponse:
+      type: object
+      properties:
+        status:
+          description: "Request status"
+          type: string
+        error:
+          description: "Error message"
+          type: string
+
     # Logtest models
     LogtestRequest:
       type: object
@@ -6990,6 +7014,20 @@ components:
       schema:
         type: boolean
         default: true
+    policy:
+      in: query
+      name: policy
+      description: "Engine policy name"
+      schema:
+        type: string
+        default: alphanumeric
+    integration:
+      in: query
+      name: integration
+      description: "Engine integration name"
+      schema:
+        type: string
+        default: alphanumeric
 
 
 tags:
@@ -7005,6 +7043,8 @@ tags:
     description: "Wazuh cluster and nodes management"
   - name: Decoders
     description: "Decoders management"
+  - name: Engine
+    description: "Wazuh engine"
   - name: Experimental
     description: "Not ready for production endpoints. Use with caution"
   - name: Groups
@@ -15054,6 +15094,105 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /engine/integration/policy:
+    delete:
+      tags:
+        - Engine
+      summary: "Remove an integration from a policy from the catalog"
+      description: "Remove an integration from a policy from the catalog"
+      operationId: api.controllers.engine_controller.remove_integration_policy
+      # x-rbac-actions:
+      #   - $ref: '#/x-rbac-catalog/actions/engine:remove_integration_policy'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy'
+        - $ref: '#/components/parameters/integration'
+      responses:
+        '200':
+          description: "Configuration update successful"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EngineGenericResponse'
+                example:
+                  data:
+                    - status: "OK"
+                      error: null
+                  message: "Policy integration was removed successfully"
+                  error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    post:
+      tags:
+        - Engine
+      summary: "Add an integration to a policy to the catalog"
+      description: "Add an integration to a policy to the catalog"
+      operationId: api.controllers.engine_controller.add_integration_policy
+      # x-rbac-actions:
+      #   - $ref: '#/x-rbac-catalog/actions/engine:add_integration_policy'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyIntegration'
+            example:
+              policy: "policy"
+              integration: "integration"
+      responses:
+        '200':
+          description: "Policy integration creation successful"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EngineGenericResponse'
+                example:
+                  data:
+                    - status: "OK"
+                      error: null
+                  message: "Policy integration was created successfully"
+                  error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
