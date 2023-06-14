@@ -29,7 +29,8 @@
             ],
             "type": [
                 "info"
-            ]
+            ],
+            "outcome": "unknown"
         },
         "host": {
             "id": "002",
@@ -67,7 +68,7 @@
                 },
                 "rows_sent": "1",
                 "rows_examined": "1",
-                "timestamp": "1686313248",
+                "timestamp": "2023-06-09T12:20:48Z",
                 "query": "select sleep(3)"
             }
         },
@@ -110,7 +111,8 @@
             ],
             "type": [
                 "info"
-            ]
+            ],
+            "outcome": "unknown"
         },
         "host": {
             "id": "002",
@@ -148,7 +150,7 @@
                 },
                 "rows_sent": "1",
                 "rows_examined": "1",
-                "timestamp": "1686313276",
+                "timestamp": "2023-06-09T12:21:16Z",
                 "query": "select sleep(10)"
             }
         },
@@ -191,7 +193,8 @@
             ],
             "type": [
                 "info"
-            ]
+            ],
+            "outcome": "unknown"
         },
         "host": {
             "id": "002",
@@ -230,7 +233,7 @@
                 "rows_sent": "10",
                 "rows_examined": "3145718",
                 "schema": "employees",
-                "timestamp": "1553436105",
+                "timestamp": "2019-03-24T14:01:45Z",
                 "query": "SELECT last_name, MAX(salary) AS salary FROM employees INNER JOIN salaries ON employees.emp_no = salaries.emp_no GROUP BY last_name ORDER BY salary DESC LIMIT 10"
             }
         },

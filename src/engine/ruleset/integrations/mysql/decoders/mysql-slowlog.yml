@@ -30,16 +30,15 @@ parse:
   logpar:
     # # Time: 2023-06-09T12:20:51.418903Z\n# User@Host: root[root] @ localhost []  Id:     8\n# Query_time: 3.000207  Lock_time: 0.000000 Rows_sent: 1  Rows_examined: 1\nSET timestamp=1686313248;\nselect sleep(3);
     # # Time: 2019-03-24T14:01:47.811234Z\n# User@Host: root[root] @ localhost []  Id:    14\n# Query_time: 2.475469  Lock_time: 0.000287 Rows_sent: 10  Rows_examined: 3145718\nuse employees;\nSET timestamp=1553436105;\nSELECT last_name, MAX(salary) AS salary FROM employees INNER JOIN salaries ON employees.emp_no = salaries.emp_no GROUP BY last_name ORDER BY salary DESC LIMIT 10;
-    - event.original: "# Time: <@timestamp/%FT%TZ>\n# User@Host: <user.name>[<?~mysql.slowlog.current_user>] @ <?source.domain> [<?source.ip>]  Id:<~/ignore/ ><process.thread.id>\n# Query_time: <~mysql.slowlog.duration/scaled_float>  Lock_time: <~mysql.slowlog.lock_time.sec/scaled_float> Rows_sent: <~mysql.slowlog.rows_sent>  Rows_examined: <~mysql.slowlog.rows_examined>\n(?use <~mysql.slowlog.schema>;\n)SET timestamp=<~mysql.slowlog.timestamp>;\n<~mysql.slowlog.query>;"
+    - event.original: "# Time: <@timestamp/%FT%TZ>\n# User@Host: <user.name>[<?~mysql.slowlog.current_user>] @ <?source.domain> [<?source.ip>]  Id:<~/ignore/ ><process.thread.id>\n# Query_time: <~mysql.slowlog.duration/scaled_float>  Lock_time: <~mysql.slowlog.lock_time.sec/scaled_float> Rows_sent: <~mysql.slowlog.rows_sent>  Rows_examined: <~mysql.slowlog.rows_examined>\n(?use <~mysql.slowlog.schema>;\n)SET timestamp=<~mysql.slowlog.timestamp/long>;\n<~mysql.slowlog.query>;"
 
 normalize:
   - map:
-      #TODO: Uncomment the line below when merge [#17406](https://github.com/wazuh/wazuh/pull/17406)
-      # - ~mysql.slowlog.timestamp: +date_from_epoch/$~mysql.slowlog.timestamp
       - event.module: mysql
       - event.dataset: mysql.slowlog
       - event.kind: event
       - event.category: +array_append/database
       - event.type: +array_append/info
       - event.outcome: unknown
+      - ~mysql.slowlog.timestamp: +date_from_epoch/$~mysql.slowlog.timestamp
       - wazuh.decoders: +array_append/mysql-slowlog
