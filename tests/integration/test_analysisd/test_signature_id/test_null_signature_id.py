@@ -44,7 +44,7 @@ import pytest
 
 from pathlib import Path
 
-from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules import ALL_DAEMON_HANDLER
 from wazuh_testing.modules.analysisd.testrule import patterns
 from wazuh_testing.tools import file_monitor
@@ -123,10 +123,10 @@ def test_null_signature_id(test_configuration, test_metadata, set_wazuh_configur
         - The `cases_null_signature_id.yaml` file provides the test cases.
     '''
     # Start monitors
-    monitor_not_found = file_monitor.FileMonitor(OSSEC_LOG_PATH)
+    monitor_not_found = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     monitor_not_found.start(callback=callbacks.generate_callback(patterns.SID_NOT_FOUND))
 
-    monitor_empty = file_monitor.FileMonitor(OSSEC_LOG_PATH)
+    monitor_empty = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     monitor_empty.start(callback=callbacks.generate_callback(patterns.EMPTY_IF_SID_RULE_IGNORED))
 
     # Check that expected log appears for rules if_sid field pointing to a non existent SID

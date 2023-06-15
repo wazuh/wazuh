@@ -44,7 +44,7 @@ import pytest
 
 from pathlib import Path
 
-from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules import ALL_DAEMON_HANDLER
 from wazuh_testing.modules.analysisd.testrule import patterns
 from wazuh_testing.tools import file_monitor
@@ -122,7 +122,7 @@ def test_invalid_signature_id(test_configuration, test_metadata, set_wazuh_confi
         - The `cases_invalid_signature_id.yaml` file provides the test cases.
     '''
     # Start monitor
-    monitor_invalid = file_monitor.FileMonitor(OSSEC_LOG_PATH)
+    monitor_invalid = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     monitor_invalid.start(callback=callbacks.generate_callback(patterns.INVALID_IF_SID_RULE_IGNORED))
 
     # Check that expected log appears for rules if_sid field being invalid
