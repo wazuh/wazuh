@@ -83,7 +83,7 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 # Test function.
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
 def test_validate_rare_socket_responses(test_metadata, configure_local_internal_options, configure_sockets_environment,
-                                        connect_to_sockets, wait_for_analysisd_startup):
+                                        connect_to_sockets_module, wait_for_analysisd_startup):
     '''
     description: Validate each response from the 'wazuh-analysisd' daemon socket
                  to the 'wazuh-db' daemon socket using rare 'syscheck' events
@@ -103,9 +103,9 @@ def test_validate_rare_socket_responses(test_metadata, configure_local_internal_
         - configure_sockets_environment:
             type: fixture
             brief: Configure environment for sockets and MITM.
-        - connect_to_sockets:
+        - connect_to_sockets_module:
             type: fixture
-            brief: Module scope version of 'connect_to_sockets' fixture.
+            brief: Module scope version of 'connect_to_sockets_module' fixture.
         - wait_for_analysisd_startup:
             type: fixture
             brief: Wait until the 'wazuh-analysisd' has begun and the 'alerts.json' file is created.
