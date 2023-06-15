@@ -9,13 +9,13 @@ type: integration
 
 brief: The 'wazuh-analysisd' daemon receives the log messages and compares them to the rules.
        It then creates an alert when a log message matches an applicable rule.
-       Specifically, these tests will verify if the 'wazuh-analysisd' daemon correctly handles
-       'syscheck' common events.
+       Specifically, these tests will check if the 'wazuh-analysisd' daemon handles correctly
+       the invalid events it receives.
 
 components:
     - analysisd
 
-suite: all_syscheckd_configurations
+suite: error_messages
 
 targets:
     - manager
@@ -45,25 +45,25 @@ tags:
     - events
 '''
 import pytest
-import json
+import time
 
 from pathlib import Path
 
 from wazuh_testing import session_parameters
-from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
-from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH, ANALYSISD_QUEUE_SOCKET_PATH
+from wazuh_testing.constants.daemons import ANALYSISD_DAEMON
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
 from wazuh_testing.modules.analysisd import patterns, configuration as analysisd_config
 from wazuh_testing.modules.monitord import configuration as monitord_config
-from wazuh_testing.tools import mitm
+from wazuh_testing.tools import file_monitor, mitm
 from wazuh_testing.utils import configuration, callbacks
 
 from . import TEST_CASES_PATH
 
-
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=2), pytest.mark.server]
+pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configuration and cases data.
-test_cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_events.yaml')
+test_cases_path = Path(TEST_CASES_PATH, 'cases_error_messages.yaml')
 
 # Test configurations.
 _, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
@@ -74,19 +74,19 @@ local_internal_options = {analysisd_config.ANALYSISD_DEBUG: '2', monitord_config
 # Test variables.
 receiver_sockets_params = [(ANALYSISD_QUEUE_SOCKET_PATH, 'AF_UNIX', 'UDP')]
 
-mitm_wdb = mitm.ManInTheMiddle(address=WAZUH_DB_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
 mitm_analysisd = mitm.ManInTheMiddle(address=ANALYSISD_QUEUE_SOCKET_PATH, family='AF_UNIX', connection_protocol='UDP')
-monitored_sockets_params = [(WAZUH_DB_DAEMON, mitm_wdb, True), (ANALYSISD_DAEMON, mitm_analysisd, True)]
+monitored_sockets_params = [(ANALYSISD_DAEMON, mitm_analysisd, True)]
 
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
+
 # Test function.
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
-def test_validate_socket_responses(test_metadata, configure_local_internal_options, configure_sockets_environment,
-                                   connect_to_sockets, wait_for_analysisd_startup):
+def test_error_messages(test_metadata, configure_local_internal_options, configure_sockets_environment,
+                       connect_to_sockets, wait_for_analysisd_startup, truncate_monitored_files):
     '''
-    description: Validate every response from the 'wazuh-analysisd' daemon socket
-                 to the 'wazuh-db' daemon socket using 'syscheck' common events.
+    description: Check if when the 'wazuh-analysisd' daemon socket receives a message with an invalid event,
+                 it generates the corresponding error that sends to the 'wazuh-db' daemon socket.
 
     wazuh_min_version: 4.2.0
 
@@ -104,40 +104,36 @@ def test_validate_socket_responses(test_metadata, configure_local_internal_optio
             brief: Configure environment for sockets and MITM.
         - connect_to_sockets:
             type: fixture
-            brief: Module scope version of 'connect_to_sockets' fixture.
+            brief: Connect to a given list of sockets.
         - wait_for_analysisd_startup:
             type: fixture
             brief: Wait until the 'wazuh-analysisd' has begun and the 'alerts.json' file is created.
-        - test_case:
-            type: list
-            brief: List of tests to be performed.
 
     assertions:
-        - Verify that the output logs are consistent with the syscheck events received.
+        - Verify that the errors messages generated are consistent with the events received.
 
-    input_description: Different test cases that are contained in an external 'YAML' file (syscheck_events.yaml)
+    input_description: Different test cases that are contained in an external YAML file (error_messages.yaml)
                        that includes 'syscheck' events data and the expected output.
 
-    inputs:
-        - 4096 test cases distributed among 'syscheck' events of type 'added', 'modified', and 'deleted'.
-
     expected_output:
-        - Multiple messages (event logs) corresponding to each test case,
+        - Multiple messages (error logs) corresponding to each test case,
           located in the external input data file.
 
     tags:
+        - errors
         - man_in_the_middle
         - wdb_socket
     '''
-    callback = callbacks.generate_callback(patterns.ANALYSISD_QUEUE_DB_MESSSAGE)
+    receiver_sockets[0].send(test_metadata['input'])
+
+    # Give time to log file after truncation
+    time.sleep(1)
 
     # Start monitor
-    receiver_sockets[0].send(test_metadata['input'])
-    monitored_sockets[0].start(callback=callback, timeout=session_parameters.default_timeout)
+    monitor_log = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    monitor_log.start(callback=callbacks.generate_callback(patterns.ANALYSISD_ERROR_MESSAGES),
+                      timeout=4*session_parameters.default_timeout)
 
-    # Check that expected message appears
-    for actual, expected in zip(monitored_sockets[0].callback_result, callback(test_metadata['output'])):
-        try:
-            assert json.loads(actual) == json.loads(expected), 'Failed test case stage: {}'.format(test_metadata['stage'])
-        except json.decoder.JSONDecodeError:
-            assert actual == expected, 'Failed test case stage: {}'.format(test_metadata['stage'])
+    # Check that expected log appears
+    assert monitor_log.callback_result
+    assert monitor_log.callback_result[0] == test_metadata['output']

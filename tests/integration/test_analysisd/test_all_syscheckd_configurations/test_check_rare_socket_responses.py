@@ -52,7 +52,8 @@ from pathlib import Path
 from wazuh_testing import session_parameters
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH, ANALYSISD_QUEUE_SOCKET_PATH
-from wazuh_testing.modules.analysisd import patterns, ANALYSISD_DEBUG_CONFIG
+from wazuh_testing.modules.analysisd import patterns, configuration as analysisd_config
+from wazuh_testing.modules.monitord import configuration as monitord_config
 from wazuh_testing.tools import mitm
 from wazuh_testing.utils import configuration, callbacks
 
@@ -68,7 +69,7 @@ test_cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_rare_events.yaml')
 _, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
 
 # Test internal options.
-local_internal_options = ANALYSISD_DEBUG_CONFIG
+local_internal_options = {analysisd_config.ANALYSISD_DEBUG: '2', monitord_config.MONITORD_ROTATE_LOG: '0'}
 
 # Test variables.
 receiver_sockets_params = [(ANALYSISD_QUEUE_SOCKET_PATH, 'AF_UNIX', 'UDP')]

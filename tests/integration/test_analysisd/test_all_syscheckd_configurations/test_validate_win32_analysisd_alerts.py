@@ -49,8 +49,11 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
+from wazuh_testing.constants.keys.alerts import *
+from wazuh_testing.constants.keys.events import *
 from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
-from wazuh_testing.modules.analysisd import utils, ANALYSISD_DEBUG_CONFIG
+from wazuh_testing.modules.analysisd import patterns, utils, configuration as analysisd_config
+from wazuh_testing.modules.monitord import configuration as monitord_config
 from wazuh_testing.tools import mitm
 from wazuh_testing.utils import configuration
 
@@ -65,7 +68,7 @@ test_cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_events_win32.yaml')
 _, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
 
 # Test internal options.
-local_internal_options = ANALYSISD_DEBUG_CONFIG
+local_internal_options = {analysisd_config.ANALYSISD_DEBUG: '2', monitord_config.MONITORD_ROTATE_LOG: '0'}
 
 # Test variables.
 receiver_sockets_params = [(ANALYSISD_QUEUE_SOCKET_PATH, 'AF_UNIX', 'UDP')]
@@ -76,7 +79,7 @@ monitored_sockets_params = [(WAZUH_DB_DAEMON, None, None), (ANALYSISD_DAEMON, mi
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 events_dict = {}
-analysisd_regex_keyword = r'(.*)syscheck:(.+)$'
+analysisd_regex_keyword = patterns.ANALYSISD_SYSCHECK_MESSSAGE
 analysisd_injections_per_second = 200
 
 
@@ -140,6 +143,6 @@ def test_validate_all_win32_alerts(test_metadata, configure_local_internal_optio
         - wdb_socket
     '''
     alert = next(read_alerts_syscheck)
-    path = alert['syscheck']['path']
-    mode = alert['syscheck']['event'].title()
+    path = alert[ALERTS_SYSCHECK][SYSCHECK_PATH]
+    mode = alert[ALERTS_SYSCHECK][ALERTS_SYSCHECK_EVENT].title()
     utils.validate_analysis_alert_syscheck(alert, events_dict[path][mode], schema='win32')
