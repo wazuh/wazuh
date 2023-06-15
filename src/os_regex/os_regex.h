@@ -15,6 +15,7 @@
 
 /* size_t */
 #include <stddef.h>
+#include <stdbool.h>
 #include <pthread.h>
 
 /* OSRegex_Compile flags */
@@ -56,6 +57,7 @@ typedef struct _OSRegex {
     char **patterns;
     const char ** *prts_closure;
     pthread_mutex_t mutex;
+    bool mutex_initialised;
     // Dynamic variables
     char **d_sub_strings;
     const char ***d_prts_str;
@@ -111,7 +113,7 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg) __attribute__((nonnul
  const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *regex_match) __attribute__((nonnull(2)));
 
 /* Release all the memory created by the compilation/execution phases */
-void OSRegex_FreePattern(OSRegex *reg) __attribute__((nonnull));
+void OSRegex_FreePattern(OSRegex *reg);
 
 /* This function is a wrapper around the compile/execute
  * functions. It should only be used when the pattern is
@@ -135,7 +137,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags);
 int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
 
 /* Release all the memory created by the compilation/execution phases */
-void OSMatch_FreePattern(OSMatch *reg) __attribute__((nonnull));
+void OSMatch_FreePattern(OSMatch *reg);
 
 int OS_Match2(const char *pattern, const char *str)  __attribute__((nonnull(2)));
 

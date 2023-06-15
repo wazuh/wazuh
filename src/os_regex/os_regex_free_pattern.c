@@ -17,14 +17,14 @@
 void OSRegex_FreePattern(OSRegex *reg)
 {
     int i = 0;
+    if(reg == NULL)
+        return;
 
     /* Free the patterns */
     if (reg->patterns) {
         char **pattern = reg->patterns;
         while (*pattern) {
-            if (*pattern) {
-                os_free(*pattern);
-            }
+            os_free(*pattern);
             pattern++;
         }
 
@@ -56,18 +56,17 @@ void OSRegex_FreePattern(OSRegex *reg)
             i++;
         }
         os_free(reg->d_prts_str);
-        reg->d_prts_str = NULL;
     }
 
     /* Free the sub strings */
     if (reg->d_sub_strings) {
         w_FreeArray(reg->d_sub_strings);
         os_free(reg->d_sub_strings);
-        reg->d_sub_strings = NULL;
     }
 
     os_free(reg->d_size.prts_str_size);
-    w_mutex_destroy(&reg->mutex);
+    if (reg->mutex_initialised)
+        w_mutex_destroy(&reg->mutex);
 
     return;
 }
