@@ -4,9 +4,9 @@
 
 from typing import Optional, List, Dict, Any
 
-from wazuh.engine.request_message import EngineRequestMessage
-from wazuh.engine.commands import MetricCommand
-from wazuh.engine.transformations import EngineTransformationSequence
+from wazuh.core.engine.request_message import EngineRequestMessage
+from wazuh.core.engine.commands import MetricCommand
+from wazuh.core.engine.transformations import EngineTransformationSequence
 
 from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.results import WazuhResult

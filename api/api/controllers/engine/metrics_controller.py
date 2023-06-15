@@ -9,7 +9,7 @@ from aiohttp import web
 from api.encoder import dumps, prettify
 from api.util import raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.engine import metrics
+from wazuh import engine_metrics as metrics
 
 logger = logging.getLogger('wazuh-api')
 

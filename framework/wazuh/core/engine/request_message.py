@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from typing import Dict, Any, Optional
-from wazuh.engine.commands import EngineCommand
+from wazuh.core.engine.commands import EngineCommand
 
 
 class EngineRequestMessage:

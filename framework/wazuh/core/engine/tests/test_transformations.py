@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-from wazuh.engine import transformations
+from wazuh.core.engine import transformations
 from wazuh.core.exception import WazuhError
 import pytest
 

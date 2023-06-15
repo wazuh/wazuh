@@ -2,8 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.engine import request_message
-from wazuh.engine import commands
+from wazuh.core.engine import request_message
+from wazuh.core.engine import commands
 
 
 def test_initial_msg_only_have_version():
