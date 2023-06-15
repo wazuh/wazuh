@@ -4414,78 +4414,45 @@ void test_get_registry_mtime_success(void **state) {
 
 void test_get_subkey(void **state)
 {
-    //Scenario one, single * 
-    char* path_one = "HKEY_SOMETHING\\*\\A";
-    char* subkey_one = get_subkey(path_one, '*');
+    char* test_vector_path[4] = {
+        "HKEY_SOMETHING\\*\\A",
+        "HKEY_SOMETHING\\A\\B\\*",
+        "HKEY_SOMETHING\\A?",
+        "HKEY_SOMETHING\\A\\B\\C?"
+    };
 
-    //Scenario two, something before *
-    char* path_two = "HKEY_SOMETHING\\A\\B\\*";
-    char* subkey_two = get_subkey(path_two, '*');
+    char* expected_subkey[4] = {
+        "",
+        "A\\B",
+        "",
+        "A\\B"
+    };
 
-    //Scenario three, single ? 
-    char* path_three = "HKEY_SOMETHING\\A?";
-    char* subkey_three = get_subkey(path_three, '?');
-
-    //Scenario four, something before ?
-    char* path_four = "HKEY_SOMETHING\\A\\B\\C?";
-    char* subkey_four = get_subkey(path_four, '?');
-
-    assert_string_equal(subkey_one,"");
-    assert_string_equal(subkey_two,"A\\B");
-    assert_string_equal(subkey_three, "");
-    assert_string_equal(subkey_four, "A\\B");
+    for (int scenario = 0; scenario < 4; scenario++) {
+        char* result_function = get_subkey(test_vector_path[scenario]);
+        assert_string_equal(result_function,expected_subkey[scenario]);
+    }
 }
 
 void test_w_is_still_a_wildcard(void **state) {
     int ret;
-    reg_path_struct** test_vector_one = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
-    test_vector_one[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
-    test_vector_one[0]->has_wildcard = 0;
-    test_vector_one[0]->checked = 0;
-    test_vector_one[1] = NULL;
+    reg_path_struct** test_reg;
+    int has_wildcard_vec = {0,1,1,0};
+    int checked_vec = {0,1,0,1};
 
-    ret = w_is_still_a_wildcard(test_vector_one);
+    test_reg    = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
+    test_reg[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
+    test_reg[1] = NULL;
 
-    assert_int_equal(0, ret);
+    for(int scenario = 0; scenario < 4; scenario++) {
+        test_reg[0]->has_wildcard = has_wildcard_vec[scenario];
+        test_reg[0]->checked = checked_vec[scenario];
+        ret = w_is_still_a_wildcard(test_reg);
+        assert_int_equal(0, ret);
+    }
 
-    reg_path_struct** test_vector_two = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
-    test_vector_two[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
-    test_vector_two[0]->has_wildcard = 1;
-    test_vector_two[0]->checked = 1;
-    test_vector_two[1] = NULL;
-
-    ret = w_is_still_a_wildcard(test_vector_two);
-
-    assert_int_equal(0, ret);
-
-    reg_path_struct** test_vector_three = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
-    test_vector_three[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
-    test_vector_three[0]->has_wildcard = 1;
-    test_vector_three[0]->checked = 0;
-    test_vector_three[1] = NULL;
-
-    ret = w_is_still_a_wildcard(test_vector_three);
-
-    reg_path_struct** test_vector_four = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
-    test_vector_four[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
-    test_vector_four[0]->has_wildcard = 0;
-    test_vector_four[0]->checked = 1;
-    test_vector_four[1] = NULL;
-
-    ret = w_is_still_a_wildcard(test_vector_four);
-
-    assert_int_equal(0, ret);
-
-    free(test_vector_one[0]);
-    free(test_vector_two[0]);
-    free(test_vector_three[0]);
-    free(test_vector_four[0]);
-
-    free(test_vector_three);
-    free(test_vector_two);
-    free(test_vector_one);
-    free(test_vector_four);
-
+    os_free(test_reg[0]);
+    os_free(test_reg);
 }
 
 void test_w_list_all_keys_subkey_notnull(void** state) {
