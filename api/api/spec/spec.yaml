@@ -19081,7 +19081,10 @@ paths:
       tags:
       - Events
       summary: "Ingest events"
-      description: "Send security events to analysisd"
+      description: |-
+        Send security events to analysisd.
+
+        The endpoint is limited to receiving a max of 30 requests per second and a max bulk size of 100 events per request.
       operationId: api.controllers.event_controller.forward_event
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/event:ingest'
