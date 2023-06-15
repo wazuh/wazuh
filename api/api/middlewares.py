@@ -16,7 +16,6 @@ from wazuh.core.utils import get_utc_now
 from api.configuration import api_conf
 from api.util import raise_if_exc
 
-MAX_REQUESTS_DEFAULT = 300
 MAX_REQUESTS_EVENTS_DEFAULT = 30
 
 # API secure headers
