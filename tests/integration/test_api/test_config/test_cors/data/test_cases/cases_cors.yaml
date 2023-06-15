@@ -1,5 +1,5 @@
 - name: CORS_ORIGIN_ALLOWED
-  description:
+  description: Check if the expected headers are returned when 'CORS' is enabled and `origin` is the same as `source`.
   configuration_parameters:
     ENABLED: yes
     SOURCE_ROUTE: "https://allowed.com"
@@ -13,7 +13,7 @@
     origin: "https://allowed.com"
 
 - name: CORS_ORIGIN_NOT_ALLOWED
-  description:
+  description: Check if the expected headers are returned when `origin` is different than `source` (CORS enabled)
   configuration_parameters:
     ENABLED: yes
     SOURCE_ROUTE: "https://allowed.com"
