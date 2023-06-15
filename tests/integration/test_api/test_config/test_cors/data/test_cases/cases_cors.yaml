@@ -1,0 +1,27 @@
+- name: CORS_ORIGIN_ALLOWED
+  description:
+  configuration_parameters:
+    ENABLED: yes
+    SOURCE_ROUTE: "https://allowed.com"
+    EXPOSE_HEADERS:
+      - "Test-expose"
+      - "another-expose"
+    ALLOW_HEADERS:
+      - "Content-type"
+    ALLOW_CREDENTIALS: yes
+  metadata:
+    origin: "https://allowed.com"
+
+- name: CORS_ORIGIN_NOT_ALLOWED
+  description:
+  configuration_parameters:
+    ENABLED: yes
+    SOURCE_ROUTE: "https://allowed.com"
+    EXPOSE_HEADERS:
+      - "Test-expose"
+      - "another-expose"
+    ALLOW_HEADERS:
+      - "Content-type"
+    ALLOW_CREDENTIALS: yes
+  metadata:
+    origin: "https://not-allowed.com"
