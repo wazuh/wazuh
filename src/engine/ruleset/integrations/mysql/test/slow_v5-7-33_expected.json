@@ -30,7 +30,9 @@
             "type": [
                 "info"
             ],
-            "outcome": "unknown"
+            "outcome": "unknown",
+            "start": "2023-06-09T17:36:44Z",
+            "end": "2023-06-09T17:36:44.616Z"
         },
         "host": {
             "id": "002",
@@ -68,7 +70,6 @@
                 },
                 "rows_sent": "1",
                 "rows_examined": "0",
-                "timestamp": "2023-06-09T17:36:44Z",
                 "query": "select sleep(5)"
             }
         },
@@ -112,7 +113,9 @@
             "type": [
                 "info"
             ],
-            "outcome": "unknown"
+            "outcome": "unknown",
+            "start": "2023-06-09T17:37:12Z",
+            "end": "2023-06-09T17:37:12.443Z"
         },
         "host": {
             "id": "002",
@@ -150,7 +153,6 @@
                 },
                 "rows_sent": "1",
                 "rows_examined": "0",
-                "timestamp": "2023-06-09T17:37:12Z",
                 "query": "select sleep(10)"
             }
         },
