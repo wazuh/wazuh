@@ -1,5 +1,5 @@
 """
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2023, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -57,14 +57,18 @@ import time
 
 import pytest
 from wazuh_testing.constants.daemons import API_DAEMON
-from wazuh_testing.modules.api.configuration import replace_in_api_configuration_template
+from wazuh_testing.modules.api.constants import CONFIGURATION_TYPES
 from wazuh_testing.modules.api.helpers import login
 from wazuh_testing.modules.api.patterns import API_LOGIN_ERROR_MSG
-from wazuh_testing.utils.configuration import get_test_cases_data
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 
 # Marks
 pytestmark = pytest.mark.server
+
+# Variable
+# Used by add_configuration to select the target configuration file
+configuration_type = CONFIGURATION_TYPES[0]
 
 # Paths
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -75,13 +79,12 @@ test_cases_path = os.path.join(cases_folder_path, 'cases_bruteforce_blocking_sys
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
-test_configuration = replace_in_api_configuration_template(test_configuration_path, test_configuration, test_metadata)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 # Tests
 
 @pytest.mark.tier(level=0)
-@pytest.mark.filterwarnings('ignore::urllib3.exceptions.InsecureRequestWarning')
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_bruteforce_blocking_system(test_configuration, test_metadata, add_configuration, daemons_handler,
                                     wait_for_api_start):
@@ -94,7 +97,7 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
 
     test_phases:
         - setup:
-            - Append configuration to the target configuration files (defined in the configuration template)
+            - Append configuration to the target configuration files (defined by configuration_type)
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
         - test:
@@ -141,8 +144,8 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
     tags:
         - brute_force_attack
     """
-    block_time = test_configuration['base']['access']['block_time']
-    max_login_attempts = test_configuration['base']['access']['max_login_attempts']
+    block_time = test_configuration['blocks']['access']['block_time']
+    max_login_attempts = test_configuration['blocks']['access']['max_login_attempts']
     expected_message = test_metadata['expected_message'].rstrip()
     expected_error = test_metadata['expected_error']
 

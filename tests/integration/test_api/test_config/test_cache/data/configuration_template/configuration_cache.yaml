@@ -1,0 +1,4 @@
+- blocks:
+    cache:
+      enabled: ENABLED
+      time: TIME

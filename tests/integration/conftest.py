@@ -342,7 +342,8 @@ def connect_to_sockets_implementation(request: pytest.FixtureRequest) -> None:
     # Create the SocketControllers
     receiver_sockets = list()
     for address, family, protocol in receiver_sockets_params:
-        receiver_sockets.append(socket_controller.SocketController(address=address, family=family, connection_protocol=protocol))
+        receiver_sockets.append(socket_controller.SocketController(address=address, family=family,
+                                                                   connection_protocol=protocol))
 
     setattr(request.module, 'receiver_sockets', receiver_sockets)
 
@@ -379,3 +380,22 @@ def connect_to_sockets_module(request: pytest.FixtureRequest) -> None:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
     """
     yield from connect_to_sockets_implementation(request)
+
+
+@pytest.fixture
+def prepare_test_files(request):
+    """Create the files/directories required by the test, and then delete them to clean up the environment.
+
+    The test module must define a variable called `test_files` which is a list of files (defined as str or os.PathLike)
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    files_required = request.module.test_files
+
+    created_files = file.create_files(files_required)
+
+    yield
+
+    # Reverse to delete in the correct order
+    file.delete_files(created_files.reverse())
