@@ -1,3 +1,0 @@
-decoders:
-- decoder/aws-elb/0
-name: integration/aws-elb/0
