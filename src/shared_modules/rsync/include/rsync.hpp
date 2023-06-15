@@ -33,6 +33,8 @@
 
 using SyncCallbackData = const std::function<void(const std::string&)>;
 
+constexpr auto RSYNC_LOG_TAG{ "rsync" };
+
 class EXPORTED RemoteSync
 {
 public:
