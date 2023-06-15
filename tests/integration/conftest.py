@@ -328,9 +328,8 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
     services.control_service('start')
 
 
-@pytest.fixture(scope='module')
-def connect_to_sockets(request: pytest.FixtureRequest) -> list:
-    """Module scope version of connect_to_sockets.
+def connect_to_sockets_implementation(request: pytest.FixtureRequest) -> None:
+    """Connect to the specified sockets for the test.
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
@@ -360,3 +359,23 @@ def connect_to_sockets(request: pytest.FixtureRequest) -> list:
             if e.errno == 9:
                 # Do not try to close the socket again if it was reused or closed already
                 pass
+
+
+@pytest.fixture()
+def connect_to_sockets(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `connect_to_sockets_implementation` which contains the general implementation.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    yield from connect_to_sockets_implementation(request)
+
+
+@pytest.fixture(scope='module')
+def connect_to_sockets_module(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `connect_to_sockets_implementation` which contains the general implementation.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    yield from connect_to_sockets_implementation(request)

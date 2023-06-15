@@ -83,7 +83,7 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 # Test function.
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
 def test_event_messages(test_metadata, configure_local_internal_options, configure_sockets_environment,
-                       connect_to_sockets, wait_for_analysisd_startup):
+                       connect_to_sockets_module, wait_for_analysisd_startup):
     '''
     description: Check if when the 'wazuh-analysisd' daemon socket receives a message with
                  a file modification-related event, it generates the corresponding alert
@@ -105,7 +105,7 @@ def test_event_messages(test_metadata, configure_local_internal_options, configu
         - configure_sockets_environment:
             type: fixture
             brief: Configure environment for sockets and MITM.
-        - connect_to_sockets:
+        - connect_to_sockets_module:
             type: fixture
             brief: Connect to a given list of sockets.
         - wait_for_analysisd_startup:
