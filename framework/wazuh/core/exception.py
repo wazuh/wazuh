@@ -544,7 +544,13 @@ class WazuhException(Exception):
                'remediation': 'Make sure you introduce the token within the field "token"'},
 
         # Vulnerability detector
-        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'}
+        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'},
+
+        # Engine
+        9000: {'message': "Scope doesn't exists"},
+        9001: {'message': "Instrument doesn't exists"},
+        9002: {'message': 'Unexpected error trying to request data from the engine'},
+        9003: {'message': 'Instrument name and Scope name must have a value or both be None'}
     }
 
     # Reserve agent upgrade custom errors

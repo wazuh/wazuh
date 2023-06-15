@@ -10,9 +10,8 @@ from wazuh.core.engine.transformations import EngineTransformationSequence
 
 from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.results import WazuhResult
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound, WazuhInternalError
 from wazuh.core.wazuh_socket import WazuhSocketJSON
-
 
 # TODO Redefine HARDCODED values
 HARDCODED_SOCKET_PATH = "som/path/"
@@ -44,13 +43,13 @@ def normalize_metrics(data: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def get_metrics(
-    limit: int,
-    scope_name: Optional[str] = None,
-    instrument_name: Optional[str] = None,
-    select: Optional[str] = None,
-    sort: Optional[str] = None,
-    search: Optional[str] = None,
-    offset: int = 0,
+        limit: int,
+        scope_name: Optional[str] = None,
+        instrument_name: Optional[str] = None,
+        select: Optional[str] = None,
+        sort: Optional[str] = None,
+        search: Optional[str] = None,
+        offset: int = 0,
 ) -> WazuhResult:
     """
     Retrieves metrics based on the specified parameters.
@@ -76,9 +75,9 @@ def get_metrics(
     if scope_name is None and instrument_name is None:
         request_builder.add_command(command=MetricCommand.DUMP)
     elif scope_name is None:
-        raise WazuhError(1703, extra_message="Instrument name must be None too")
+        raise WazuhError(9003)
     elif instrument_name is None:
-        raise WazuhError(1703, extra_message="Scope name must be None too")
+        raise WazuhError(9003)
     else:
         request_builder.add_command(command=MetricCommand.LIST)
         request_builder.add_parameters(parameters={
@@ -90,6 +89,14 @@ def get_metrics(
     engine_socket.send(request_builder.to_dict())
     result = engine_socket.receive()
 
+    if result['status'] == 'ERROR':
+        if f'The {scope_name} scope has not been created' in result['error']:
+            raise WazuhResourceNotFound(9000)
+        elif f'scope does not have {instrument_name} instrument' in result['error']:
+            raise WazuhResourceNotFound(9001)
+        else:
+            raise WazuhInternalError(9002)
+
     normalized_result = normalize_metrics(result['value'])
     result = EngineTransformationSequence.default_sequence().apply_sequence(
         params={'limit': limit, 'select': select, 'sort': sort, 'offset': offset, 'search': search},
@@ -99,11 +106,11 @@ def get_metrics(
 
 
 def get_instruments(
-    limit: int,
-    select: Optional[str] = None,
-    sort: Optional[str] = None,
-    search: Optional[str] = None,
-    offset: int = 0,
+        limit: int,
+        select: Optional[str] = None,
+        sort: Optional[str] = None,
+        search: Optional[str] = None,
+        offset: int = 0,
 ):
     """
     Retrieves information about instruments.
@@ -135,16 +142,16 @@ def get_instruments(
 
 
 def enable_instrument(
-    scope_name: Optional[str] = None,
-    instrument_name: Optional[str] = None,
-    enable: bool = True,
+        scope_name: str,
+        instrument_name: str,
+        enable: bool,
 ):
     """
     Enables or disables a specified metric.
 
     Args:
-        scope_name (Optional[str]): Name of the metric scope.
-        instrument_name (Optional[str]): Name of the metric instrument.
+        scope_name (str): Name of the metric scope.
+        instrument_name (str): Name of the metric instrument.
         enable (bool): True to enable the metric, False to disable.
 
     Returns:
@@ -164,7 +171,16 @@ def enable_instrument(
     engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
     engine_socket.send(msg)
     result = engine_socket.receive()
-    return WazuhResult({'data': result['value']})
+
+    if result['status'] == 'ERROR':
+        if f'The {scope_name} scope has not been created' in result['error']:
+            raise WazuhResourceNotFound(9000)
+        elif f'scope does not have {instrument_name} instrument' in result['error']:
+            raise WazuhResourceNotFound(9001)
+        else:
+            raise WazuhInternalError(9002)
+
+    return WazuhResult({'message': result['status']})
 
 
 def get_test_dummy_metric():
