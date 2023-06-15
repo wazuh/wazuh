@@ -1,0 +1,24 @@
+items:
+    - version: <v.v.v>
+      short: <v.v>
+      pr: <#46546>
+
+items:
+  - version: 0.0.1-dev
+    short: Created base integration for AWS
+    pr: "[#16766](#)"
+
+items:
+  - version: 0.0.1-dev
+    short: Created integration for AWS CloudTrail
+    pr: "[#16766](#)"
+
+items:
+  - version: 0.0.1-dev
+    short: Created integration for Amazon S3
+    pr: "[#16766](#)"
+
+# items:
+#   - version: 1.0.0-dev
+#     short: Created integration for Amazon Elastic Load Balancing
+#     pr: "[#16766](#)"
