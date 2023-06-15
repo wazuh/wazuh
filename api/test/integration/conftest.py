@@ -521,3 +521,8 @@ def pytest_html_results_summary(prefix, summary, postfix):
                 HTMLStyle.td(v['error']),
             ])
         ) for k, v in results.items()])])
+
+
+@pytest.fixture
+def big_events_payload():
+    return [f"Event {i}" for i in range(101)]
