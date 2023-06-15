@@ -11,13 +11,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       json:
-        events: [
-          {"foo": 1},
-        ]
+        events:
+          - foo event
     response:
       status_code: 200
-      json: &webhook_response_ok
-        message: The events were forwarded to analisysd
+      json:
+        data:
+          affected_items:
+            - foo event
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+        message: All events were forwarded to analisysd
         error: 0
 
   - name: POST /events with multiple elements
@@ -25,112 +30,89 @@ stages:
       verify: false
       <<: *webhook_request
       json:
-        events: [
-          {"foo": 1},
-          {"bar": 2},
-          {"gaz": 3},
-        ]
+        events:
+          - foo event
+          - bar event
+          - gaz event
     response:
       status_code: 200
       json:
-        <<: *webhook_response_ok
----
-
-test_name: POST /events tree times in less than a minute and trigger the EPS limit
-
-stages:
-  - name: First request OK
-    request:
-      verify: false
-      <<: *webhook_request
-      json:
-        events: [
-          {"foo": 1},
-          {"bar": 2},
-          {"gaz": 3},
-          {"foo": 4},
-          {"bar": 5},
-        ]
-    response:
-      status_code: 200
-      json:
-        <<: *webhook_response_ok
-
-  - name: Second request OK
-    request:
-      verify: false
-      <<: *webhook_request
-      json:
-        events: [
-          {"foo": 1},
-          {"bar": 2},
-          {"gaz": 3},
-          {"foo": 4},
-          {"bar": 5},
-        ]
-    response:
-      status_code: 200
-      json:
-        <<: *webhook_response_ok
-
-  - name: Third request and get 429 code
-    request:
-      verify: false
-      <<: *webhook_request
-      json:
-        events: [
-          {"foo": 1},
-          {"bar": 2},
-          {"gaz": 3},
-          {"foo": 4},
-          {"bar": 5},
-        ]
-    response:
-      status_code: 429
-      json: &webhook_response_bad
-        detail: !anystr
-        title: !anystr
+        data:
+          affected_items:
+            - foo event
+            - bar event
+            - gaz event
+          total_affected_items: 3
+          total_failed_items: 0
+          failed_items: []
+        message: All events were forwarded to analisysd
+        error: 0
 
 
 ---
-test_name: POST /events bad requests
+test_name: POST /events with invalid formats
 
 stages:
+  - name: POST /events with invalid event type
+    request:
+      verify: false
+      <<: *webhook_request
+      json:
+        events:
+          - "foo": 1
+    response:
+      status_code: 400
+      json:
+        detail: "{{'foo': 1}} is not of type 'string' - 'events.0'"
+        title: Bad Request
 
   - name: POST /events with invalid body
     request:
       verify: false
       <<: *webhook_request
       json:
-        [
-          {"foo": 1},
-          {"bar": 2}
-        ]
+        - foo
+        - bar
     response:
       status_code: 400
       json:
-        <<: *webhook_response_bad
+        detail: "['foo', 'bar'] is not of type 'object'"
+        title: Bad Request
 
+---
 
+test_name: POST /events with more than 100 events
+
+marks:
+  - usefixtures:
+      - big_events_payload
+
+stages:
   - name: POST /events with invalid size
     request:
       verify: false
       <<: *webhook_request
       json:
-        events: [
-          {"foo": 1},
-          {"bar": 2},
-          {"bar": 3},
-          {"bar": 4},
-          {"bar": 5},
-          {"bar": 6},
-          {"bar": 7},
-          {"bar": 8},
-          {"bar": 9},
-          {"bar": 10},
-          {"bar": 11},
-        ]
+        events: !force_format_include "{big_events_payload}"
     response:
       status_code: 400
       json:
-        <<: *webhook_response_bad
+        detail: The size of the events bulk is exceeding the limit
+        title: Events bulk size exceeded
+
+---
+
+test_name: POST /events more than 30 times trigger the EPS limit
+
+stages:
+  - name: Trigger EPS limit
+    max_retries: 30
+    request:
+      verify: false
+      <<: *webhook_request
+      json:
+        events:
+          - foo
+    response:
+      status_code: 429
+    delay_before: 1
