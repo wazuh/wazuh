@@ -54,6 +54,7 @@ from wazuh_testing.modules.api.constants import CONFIGURATION_TYPES
 from wazuh_testing.modules.api.helpers import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
+
 # Marks
 pytestmark = pytest.mark.server
 
