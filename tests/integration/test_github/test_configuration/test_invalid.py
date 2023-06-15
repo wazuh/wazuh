@@ -49,7 +49,6 @@ tags:
 '''
 import os
 import sys
-import pdb
 import pytest
 from pathlib import Path
 
@@ -80,7 +79,7 @@ test_configuration = load_configuration_template(configs_path, config_parameters
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options_module,
+def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                  truncate_monitored_files):
     '''
     description: Check if the 'github' module detects invalid configurations. For this purpose, the test
@@ -130,6 +129,7 @@ def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, con
     except ValueError:
         pass
 
-    invalid_monitor = detect_wrong_content_config(test_metadata['error_type'], test_metadata['tag'], 'GitHub', wazuh_log_monitor)
+
+    detect_wrong_content_config(test_metadata['error_type'], test_metadata['event_monitor'], 'GitHub', wazuh_log_monitor)
     
-    assert invalid_monitor.callback_result, f'Error invalid configuration event not detected'
+    assert (wazuh_log_monitor.callback_result != None), f'Error invalid configuration event not detected'
