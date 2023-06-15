@@ -30,7 +30,9 @@
             "type": [
                 "info"
             ],
-            "outcome": "unknown"
+            "outcome": "unknown",
+            "start": "2023-06-09T12:20:48Z",
+            "end": "2023-06-09T12:20:51.418Z"
         },
         "host": {
             "id": "002",
@@ -68,7 +70,6 @@
                 },
                 "rows_sent": "1",
                 "rows_examined": "1",
-                "timestamp": "2023-06-09T12:20:48Z",
                 "query": "select sleep(3)"
             }
         },
@@ -112,7 +113,9 @@
             "type": [
                 "info"
             ],
-            "outcome": "unknown"
+            "outcome": "unknown",
+            "start": "2023-06-09T12:21:16Z",
+            "end": "2023-06-09T12:21:26.826Z"
         },
         "host": {
             "id": "002",
@@ -150,7 +153,6 @@
                 },
                 "rows_sent": "1",
                 "rows_examined": "1",
-                "timestamp": "2023-06-09T12:21:16Z",
                 "query": "select sleep(10)"
             }
         },
@@ -194,7 +196,9 @@
             "type": [
                 "info"
             ],
-            "outcome": "unknown"
+            "outcome": "unknown",
+            "start": "2019-03-24T14:01:45Z",
+            "end": "2019-03-24T14:01:47.811Z"
         },
         "host": {
             "id": "002",
@@ -233,7 +237,6 @@
                 "rows_sent": "10",
                 "rows_examined": "3145718",
                 "schema": "employees",
-                "timestamp": "2019-03-24T14:01:45Z",
                 "query": "SELECT last_name, MAX(salary) AS salary FROM employees INNER JOIN salaries ON employees.emp_no = salaries.emp_no GROUP BY last_name ORDER BY salary DESC LIMIT 10"
             }
         },
