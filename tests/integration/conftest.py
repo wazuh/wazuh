@@ -17,7 +17,7 @@ from wazuh_testing.tools import queue_monitor, socket_controller
 from wazuh_testing.utils import configuration, database, file, services, mocking
 
 
-#- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
 def pytest_addoption(parser) -> None:
     """Add command-line options to the tests.
 
@@ -99,9 +99,9 @@ def pytest_collection_modifyitems(config, items: List[pytest.Item]) -> None:
     items[:] = selected_tests
 
 
-# - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - -
 
-# - - - - - - - - - - - - - - - - - - - - - - -Test Configuration Setup - -  - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - -Test Configuration Setup - -  - - - - - - - - - - - - - - - - - - - - -
 @pytest.fixture()
 def set_wazuh_configuration(test_configuration: dict) -> None:
     """Set wazuh configuration
@@ -176,9 +176,9 @@ def truncate_monitored_files() -> None:
             file.truncate_file(log_file)
 
 
-# - - - - - - - - - - - - - - - - - - - - - - -End of Test Configuration Setup - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - -End of Test Configuration Setup - - - - - - - - - - - - - - - - - - - -
 
-# - - - - - - - - - - - - - - - - - - - - - - -Daemon and Socked Handling - -  - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - -Daemon and Socked Handling - -  - - - - - - - - - - - - - - - - - - - -
 @pytest.fixture(scope='function')
 def restart_wazuh(daemon=None):
     """Restart all Wazuh daemons"""
@@ -341,7 +341,8 @@ def connect_to_sockets(request: pytest.FixtureRequest) -> list:
     # Create the SocketControllers
     receiver_sockets = list()
     for address, family, protocol in receiver_sockets_params:
-        receiver_sockets.append(socket_controller.SocketController(address=address, family=family, connection_protocol=protocol))
+        receiver_sockets.append(socket_controller.SocketController(address=address, family=family,
+                                                                   connection_protocol=protocol))
 
     setattr(request.module, 'receiver_sockets', receiver_sockets)
 
@@ -359,16 +360,17 @@ def connect_to_sockets(request: pytest.FixtureRequest) -> list:
                 # Do not try to close the socket again if it was reused or closed already
                 pass
 
-# - - - - - - - - - - - - - - - - - - - - -End of Daemon and Socked Handling - -  - - - - - - - - - - - - - - - - - - -
-# - - - - - - - - - - - - - - - - - - - - - - - - -Agent Mocking - -  - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# - - - - - - - - - - - - - - - - - - - - -End of Daemon and Socked Handling - -  - - - - - - - - - - - - - - - - - - -
+
+# - - - - - - - - - - - - - - - - - - - - - - - - -Agent Mocking - -  - - - - - - - - - - - - - - - - - - - - - - - - -
 @pytest.fixture()
-def mock_agent_with_custom_system(agent_system: str='RHEL8') -> int:
+def mock_agent_with_custom_system(agent_system: str = 'RHEL8') -> int:
     """Fixture to create a mocked agent with custom system specified as parameter
-    
+
     Args:
         agent_system (str, optional): System to be mocked. Defaults to 'RHEL8'.
-    
+
     Returns:
         int: Agent ID of the mocked agent
     """
@@ -385,10 +387,10 @@ def mock_agent_with_custom_system(agent_system: str='RHEL8') -> int:
 @pytest.fixture()
 def mock_agent_packages(mock_agent_with_custom_system) -> list:
     """Add 10 mocked packages to the mocked agent
-    
+
     Args:
         mock_agent_with_custom_system (int): Agent ID of the mocked agent
-    
+
     Returns:
         list: List of package names added to the mocked agent
     """
@@ -397,4 +399,3 @@ def mock_agent_packages(mock_agent_with_custom_system) -> list:
     yield package_names
 
     mocking.delete_mocked_packages(agent_id=mock_agent_with_custom_system)
-
