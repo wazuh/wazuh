@@ -1,0 +1,6 @@
+- name: 'disabled'
+  description: 'Set enabled to no value'
+  configuration_parameters:
+    ENABLED: 'no'
+  metadata:
+    enabled: 'no'
