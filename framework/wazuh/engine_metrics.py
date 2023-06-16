@@ -24,11 +24,15 @@ def normalize_metrics(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Normalizes the input data by transforming it into a list of dictionaries.
 
-    Args:
-        data (Dict[str, Any]): The input data containing the metrics.
+    Parameters
+    ---------
+    data: Dict[str, Any]
+        The input data containing the metrics
 
-    Returns:
-        List[Dict[str, Any]]: The normalized list of dictionaries.
+    Returns
+    ---------
+    List[Dict[str, Any]]
+        The normalized list of dictionaries wit the metrics data.
 
     """
     new_list = []
@@ -54,16 +58,27 @@ def get_metrics(
     """
     Retrieves metrics based on the specified parameters.
 
-    Args:
-        limit (int): Maximum number of metrics to retrieve.
-        scope_name (Optional[str]): Name of the metric scope.
-        instrument_name (Optional[str]): Name of the metric instrument.
-        select (Optional[str]): Fields to return (separated by comma).
-        sort (Optional[str]): Field(s) to sort the collection by (separated by comma).
-        search (Optional[str]): String to search for in the metrics.
-        offset (int): Number of elements to skip before returning the collection.
+    Parameters
+    ---------
+    limit: int
+        Maximum number of metrics to retrieve.
+    scope_name: Optional[str]
+        Name of the metric scope.
+    instrument_name: Optional[str]
+         Name of the metric instrument.
+    select: Optional[str]
+        Fields to return (separated by comma).
+    sort: Optional[str]
+        Field(s) to sort the collection by (separated by comma).
+    search: Optional[str]
+        String to search for in the metrics.
+    offset: int
+        Number of elements to skip before returning the collection.
 
-    Returns:
+
+    Returns
+    ---------
+    WazuhResult
         WazuhResult with the results of the command
     """
 
@@ -115,14 +130,22 @@ def get_instruments(
     """
     Retrieves information about instruments.
 
-    Args:
-        limit (int): Maximum number of instruments to retrieve.
-        select (Optional[str]): Fields to return (separated by comma).
-        sort (Optional[str]): Field(s) to sort the collection by (separated by comma).
-        search (Optional[str]): String to search for in the instruments.
-        offset (int): Number of elements to skip before returning the collection.
+    Parameters
+    ---------
+    limit: int
+        Maximum number of metrics to retrieve.
+    select: Optional[str]
+        Fields to return (separated by comma).
+    sort: Optional[str]
+        Field(s) to sort the collection by (separated by comma).
+    search: Optional[str]
+        String to search for in the metrics.
+    offset: int
+        Number of elements to skip before returning the collection.
 
-    Returns:
+    Returns
+    ---------
+    WazuhResult
         WazuhResult with the results of the command
     """
     msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
@@ -149,12 +172,18 @@ def enable_instrument(
     """
     Enables or disables a specified metric.
 
-    Args:
-        scope_name (str): Name of the metric scope.
-        instrument_name (str): Name of the metric instrument.
-        enable (bool): True to enable the metric, False to disable.
+    Parameters
+    ---------
+    scope_name: str
+        Name of the metric scope
+    instrument_name: str
+        Name of the metric instrument
+    enable: bool
+        True to enable the instrument,  False to disable
 
-    Returns:
+    Returns
+    ---------
+    WazuhResult
         WazuhResult with the results of the command
     """
     msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
