@@ -82,9 +82,12 @@ daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 @pytest.fixture
 def remove_test_file():
-    """Remove the file after finishing the test execution."""
+    """Remove the file before and after the test execution."""
+    delete_file(test_file)
 
-    yield delete_file(test_file)
+    yield 
+
+    delete_file(test_file)
 
 # Tests
 
