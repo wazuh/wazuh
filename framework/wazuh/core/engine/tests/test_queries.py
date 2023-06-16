@@ -274,7 +274,7 @@ def test_sequence_runs_all_valid_queries():
             return data
 
         @staticmethod
-        def should_apply(params, data):
+        def should_apply(filters, data):
             return True
 
     list_of_queries = [QueyMock, QueyMock, QueyMock]

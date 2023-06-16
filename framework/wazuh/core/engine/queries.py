@@ -9,15 +9,15 @@ from wazuh.core.utils import filter_array_by_query
 
 
 class BaseQuery:
-    """Base class for response transformations."""
+    """Base class for response filters."""
 
     def apply(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Apply the transformation to the given data.
+        """Apply the filter to the given data.
 
         Parameters
         ----------
         data:  List[Dict[str, Any]]
-            The data to be transformed.
+            The data to be filtered.
 
         Raises
         ------
@@ -27,20 +27,20 @@ class BaseQuery:
         raise NotImplementedError
 
     @staticmethod
-    def should_apply(params: Dict[str, Any], data: Any) -> bool:
-        """Check if the transformation can be applied to the given parameters and data.
+    def should_apply(filters: Dict[str, Any], data: Any) -> bool:
+        """Check if the filter can be applied to the given filters and data.
 
         Parameters
         ----------
-        params: Dict[str, Any]
-            The parameters used for the transformation.
+        filters: Dict[str, Any]
+            The filters used for the filter.
         data: Any
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         bool
-            True if the transformation can be applied, False otherwise.
+            True if the filter can be applied, False otherwise.
 
         Raises
         ----------
@@ -51,53 +51,48 @@ class BaseQuery:
 
 
 class FieldSelector(BaseQuery):
-    """Transformation to select specific fields from the data."""
+    """Filter to select specific fields from the data."""
 
     def __init__(self, params: Dict[str, Any]):
         self.select = params['select']
 
     @staticmethod
-    def should_apply(params: Dict[str, Any], data: Any) -> bool:
-        """ Check if the transformation can be applied to the given parameters and data.
-            The transformation can be applied if the following conditions are met:
-                - 'select' key is present in the params dictionary.
-                - 'select' value is not empty.
-                - The data is of type list.
-
+    def should_apply(filters: Dict[str, Any], data: Any) -> bool:
+        """ Check if the filter can be applied to the given filters and data.
 
         Parameters
         ----------
-        params: Dict[str, Any]
-            The parameters used for the transformation.
+        filters: Dict[str, Any]
+            The filters used for the filter.
         data: Any
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         bool
-            True if the transformation can be applied, False otherwise.
+            True if the filter can be applied, False otherwise.
         """
-        if 'select' in params and params['select'] and isinstance(data, list):
+        if 'select' in filters and filters['select'] and isinstance(data, list):
             return True
         return False
 
     def apply(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Apply the field selection transformation to the data.
+        """Apply the field selection filter to the data.
 
         Parameters
         ----------
         data:  List[Dict[str, Any]]
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         List[Dict[str, Any]
-            The transformed data.
+            The filtered data.
 
         Note:
-            If the data is a list of dictionaries, the transformation is applied to each dictionary.
+            If the data is a list of dictionaries, the filter is applied to each dictionary.
         """
-        transformed_data = []
+        filtered_data = []
 
         # Remove leading/trailing spaces and split the selected fields based on comma separation
         selected_fields = [name.strip() for name in self.select.split(",")]
@@ -105,10 +100,10 @@ class FieldSelector(BaseQuery):
         # If the data is a list, iterate over each element
         for element in data:
             selected_elements = self._select_fields(selected_fields, element)
-            transformed_data.append(selected_elements)
+            filtered_data.append(selected_elements)
 
-        # Return the transformed data
-        return transformed_data
+        # Return the filtered data
+        return filtered_data
 
     def _select_fields(self, selected_fields: List[str], data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -172,71 +167,67 @@ class FieldSelector(BaseQuery):
 
 
 class FieldSearch(BaseQuery):
-    """Transformation to search for elements containing a specific string."""
+    """Filter to search for elements containing a specific string."""
 
     def __init__(self, params: Dict[str, Any]):
         self.search = params['search']
 
     @staticmethod
-    def should_apply(params: Dict[str, Any], data: Any) -> bool:
-        """ Check if the transformation can be applied to the given parameters and data.
-            The transformation can be applied if the following conditions are met:
-                - 'search' key is present in the params dictionary.
-                - 'search' value is not empty.
-                - The data is of type list.
+    def should_apply(filters: Dict[str, Any], data: Any) -> bool:
+        """ Check if the filter can be applied to the given filters and data.
 
         Parameters
         ----------
-        params: Dict[str, Any]
-            The parameters used for the transformation.
+        filters: Dict[str, Any]
+            The filters used for the filter.
         data: Any
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         bool
-            True if the transformation can be applied, False otherwise.
+            True if the filter can be applied, False otherwise.
         """
-        if 'search' in params and params['search'] and isinstance(data, list):
+        if 'search' in filters and filters['search'] and isinstance(data, list):
             return True
         return False
 
     def apply(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Apply the field search transformation to the data.
+        """Apply the field search filter to the data.
 
         Parameters
         ----------
         data:  List[Dict[str, Any]]
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         List[Dict[str, Any]
-            The transformed data.
+            The filtered data.
 
         Note:
-            If the data is a list of dictionaries, the transformation is applied to each dictionary.
+            If the data is a list of dictionaries, the filter is applied to each dictionary.
         """
-        transformed_data = []
+        filtered_data = []
 
         if isinstance(data, list):
-            # If the data is a list of dictionaries, apply transformation to each dictionary
+            # If the data is a list of dictionaries, apply filter to each dictionary
             for element in data:
                 if self.search.startswith('-'):
                     # If search starts with '-', check for absence of complementary string in any value
                     complementary_string = self.search[1:]
                     if not any(complementary_string in value for value in element.values()):
-                        transformed_data.append(element)
+                        filtered_data.append(element)
                 else:
                     # Otherwise, check for presence of search string in any value
                     if any(self.search in value for value in element.values()):
-                        transformed_data.append(element)
+                        filtered_data.append(element)
 
-        return transformed_data
+        return filtered_data
 
 
 class FieldOffsetLimit(BaseQuery):
-    """Transformation to select a subset of elements from a list based on an offset and limit."""
+    """Filter to select a subset of elements from a list based on an offset and limit."""
 
     def __init__(self, params: Dict[str, Any]):
         self._validate_offset(params['offset'])
@@ -246,28 +237,22 @@ class FieldOffsetLimit(BaseQuery):
         self.limit = params['limit']
 
     @staticmethod
-    def should_apply(params: Dict[str, Any], data: Any) -> bool:
-        """ Check if the transformation can be applied to the given parameters and data.
-            The transformation can be applied if the following conditions are met:
-                - 'offset' key is present in the params dictionary.
-                - 'offset' value is not empty.
-                - 'limit' key is present in the params dictionary.
-                - 'limit' value is not empty.
-                - The data is of type list.
+    def should_apply(filters: Dict[str, Any], data: Any) -> bool:
+        """ Check if the filter can be applied to the given filters and data.
 
         Parameters
         ----------
-        params: Dict[str, Any]
-            The parameters used for the transformation.
+        filters: Dict[str, Any]
+            The filters used for the filter.
         data: Any
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         bool
-            True if the transformation can be applied, False otherwise.
+            True if the filter can be applied, False otherwise.
         """
-        if 'offset' in params and params['offset'] and 'limit' in params and params['limit'] and isinstance(data, list):
+        if 'offset' in filters and filters['offset'] and 'limit' in filters and filters['limit'] and isinstance(data, list):
             return True
         return False
 
@@ -306,20 +291,20 @@ class FieldOffsetLimit(BaseQuery):
             raise WazuhError(1401)
 
     def apply(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Apply the offset and limit transformations to the data.
+        """Apply the offset and limit filters to the data.
 
         Parameters
         ----------
         data:  List[Dict[str, Any]]
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         List[Dict[str, Any]
-            The transformed data.
+            The filtered data.
 
         Note:
-            The transformation is applied to a list of dictionaries.
+            The filter is applied to a list of dictionaries.
         """
         return data[self.offset:self.offset+self.limit]
 
@@ -370,46 +355,46 @@ def sort_by_filters(filters: List[Dict[str, Any]], data: Dict[str, Any]) -> tupl
 
 
 class FieldSort(BaseQuery):
-    """Transformation to sort a list of dictionaries based on a field or fields."""
+    """Filter to sort a list of dictionaries based on a field or fields."""
 
     def __init__(self, params: Dict[str, Any]):
         self.sort = params['sort']
 
     @staticmethod
-    def should_apply(params: Dict[str, Any], data: Any) -> bool:
-        """ Check if the transformation can be applied to the given parameters and data.
+    def should_apply(filters: Dict[str, Any], data: Any) -> bool:
+        """ Check if the filter can be applied to the given filters and data.
 
         Parameters
         ----------
-        params: Dict[str, Any]
-            The parameters used for the transformation.
+        filters: Dict[str, Any]
+            The filters used for the filter.
         data: Any
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         bool
-            True if the transformation can be applied, False otherwise.
+            True if the filter can be applied, False otherwise.
         """
-        if 'sort' in params and params['sort'] and isinstance(data, list):
+        if 'sort' in filters and filters['sort'] and isinstance(data, list):
             return True
         return False
 
     def apply(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Apply the sort transformation to the data.
+        """Apply the sort filter to the data.
 
         Parameters
         ----------
         data:  List[Dict[str, Any]]
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         List[Dict[str, Any]
-            The transformed data.
+            The filtered data.
 
         Note:
-            The transformation is applied to a list of dictionaries.
+            The filter is applied to a list of dictionaries.
         """
         # Split the sort string by commas to get individual sorting fields
         filters: List[str] = self.sort.split(',')
@@ -445,44 +430,39 @@ class FieldQuery(BaseQuery):
 
 
     @staticmethod
-    def should_apply(params: Dict[str, Any], data: Any) -> bool:
+    def should_apply(filters: Dict[str, Any], data: Any) -> bool:
         """
-        Check if the field-based query transformation can be applied.
-
-        The transformation can be applied if the following conditions are met:
-        - 'q' key is present in the params dictionary.
-        - 'q' value is not empty.
-        - The data is of type list.
+        Check if the field-based query filter can be applied.
 
         Parameters
         ----------
-        params: Dict[str, Any]
-            The parameters used for the transformation.
+        filters: Dict[str, Any]
+            The filters used for the filter.
         data: Any
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         bool
-            True if the transformation can be applied, False otherwise.
+            True if the filter can be applied, False otherwise.
         """
-        if 'q' in params and params['q'] and isinstance(data, list):
+        if 'q' in filters and filters['q'] and isinstance(data, list):
             return True
         return False
 
     def apply(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Apply the field-based query transformation to the given data.
+        Apply the field-based query filter to the given data.
 
         Parameters
         ----------
         data:  List[Dict[str, Any]]
-            The data to be transformed.
+            The data to be filtered.
 
         Returns
         ----------
         List[Dict[str, Any]
-            The transformed data.
+            The filtered data.
         """
         return filter_array_by_query(self.q, data)
 
@@ -499,25 +479,25 @@ class EngineQuery:
         Parameters
         ----------
         params: Dict[str, Any]
-            The parameters used for the queries.
+            The filters used for the queries.
         data: List[Dict[str, Any]]
-            The data to be transformed.
+            The data to be filtered.
 
 
         Returns
         ----------
         List[Dict[str, Any]
-            The transformed data.
+            The filtered data.
 
         Note:
             The queries are applied in the order specified in the sequence.
         """
-        transformed_data = data
+        filtered_data = data
         for query in self.queries:
-            if query.should_apply(params=params, data=data):
-                transformed_data = query(params=params).apply(transformed_data)
+            if query.should_apply(filters=params, data=data):
+                filtered_data = query(params=params).apply(filtered_data)
 
-        return transformed_data
+        return filtered_data
 
     @classmethod
     def default_sequence(cls):
@@ -526,10 +506,10 @@ class EngineQuery:
         Returns
         ----------
         EngineQuery
-            An instance of EngineQuery with the default transformations.
+            An instance of EngineQuery with the default filters.
         """
-        list_of_transformations = [
+        list_of_filters = [
             FieldSearch, FieldQuery, FieldSelector,
             FieldOffsetLimit, FieldSort]
 
-        return cls(list_of_transformations)
+        return cls(list_of_filters)
