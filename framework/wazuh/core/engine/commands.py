@@ -12,7 +12,7 @@ class EngineCommand(Enum):
 
 class MetricCommand(EngineCommand):
     """Enum class representing metric commands."""
-    DUMP = 'metrics.manager/get'
+    DUMP = 'metrics.manager/dump'
     ENABLE = 'metrics.manager/enable'
     LIST = 'metrics.manager/list'
     GET = 'metrics.manager/get'

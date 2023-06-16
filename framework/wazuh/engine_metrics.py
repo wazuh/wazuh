@@ -79,7 +79,7 @@ def get_metrics(
     elif instrument_name is None:
         raise WazuhError(9003)
     else:
-        request_builder.add_command(command=MetricCommand.LIST)
+        request_builder.add_command(command=MetricCommand.GET)
         request_builder.add_parameters(parameters={
             "scopeName": scope_name,
             "instrumentName": instrument_name
@@ -98,11 +98,11 @@ def get_metrics(
             raise WazuhInternalError(9002)
 
     normalized_result = normalize_metrics(result['value'])
-    result = EngineTransformationSequence.default_sequence().apply_sequence(
+    final_result = EngineTransformationSequence.default_sequence().apply_sequence(
         params={'limit': limit, 'select': select, 'sort': sort, 'offset': offset, 'search': search},
         data=normalized_result
     )
-    return WazuhResult({'data': result})
+    return WazuhResult({'data': final_result})
 
 
 def get_instruments(
