@@ -100,6 +100,8 @@ void KVDBManager::initializeMainDB()
     std::vector<rocksdb::ColumnFamilyDescriptor> cfDescriptors;
     std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
 
+    rocksdb::Status openStatus;
+
     if (listStatus.ok())
     {
         for (auto cfName : columnNames)
@@ -107,15 +109,13 @@ void KVDBManager::initializeMainDB()
             auto newDescriptor = rocksdb::ColumnFamilyDescriptor(cfName, rocksdb::ColumnFamilyOptions());
             cfDescriptors.push_back(newDescriptor);
         }
+
+        openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
     }
     else
     {
-        auto newDescriptor =
-            rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions());
-        cfDescriptors.push_back(newDescriptor);
+        openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, &m_pRocksDB);
     }
-
-    auto openStatus = rocksdb::DB::Open(m_rocksDBOptions, dbNameFullPath, cfDescriptors, &cfHandles, &m_pRocksDB);
 
     // rocksdb::DB::Open returns two vectors.
     // One with the descriptors containing the names of the DBs. (cfDescriptors)
