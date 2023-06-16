@@ -361,9 +361,17 @@ def connect_to_sockets(request: pytest.FixtureRequest) -> list:
 
 # - - - - - - - - - - - - - - - - - - - - -End of Daemon and Socked Handling - -  - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - -Agent Mocking - -  - - - - - - - - - - - - - - - - - - - - - - - - -
-@pytest.fixture(scope='function')
-def mock_agent_with_custom_system(agent_system):
-    """Fixture to create a mocked agent with custom system specified as parameter"""
+
+@pytest.fixture()
+def mock_agent_with_custom_system(agent_system: str='RHEL8') -> int:
+    """Fixture to create a mocked agent with custom system specified as parameter
+    
+    Args:
+        agent_system (str, optional): System to be mocked. Defaults to 'RHEL8'.
+    
+    Returns:
+        int: Agent ID of the mocked agent
+    """
     if agent_system not in mocking.SYSTEM_DATA:
         raise ValueError(f"{agent_system} is not supported as mocked system for an agent")
 
@@ -372,3 +380,21 @@ def mock_agent_with_custom_system(agent_system):
     yield agent_id
 
     mocking.delete_mocked_agent(agent_id)
+
+
+@pytest.fixture()
+def mock_agent_packages(mock_agent_with_custom_system) -> list:
+    """Add 10 mocked packages to the mocked agent
+    
+    Args:
+        mock_agent_with_custom_system (int): Agent ID of the mocked agent
+    
+    Returns:
+        list: List of package names added to the mocked agent
+    """
+    package_names = mocking.insert_mocked_packages(agent_id=mock_agent_with_custom_system)
+
+    yield package_names
+
+    mocking.delete_mocked_packages(agent_id=mock_agent_with_custom_system)
+
