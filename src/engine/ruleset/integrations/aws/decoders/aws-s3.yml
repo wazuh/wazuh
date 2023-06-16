@@ -4,18 +4,22 @@ name: decoder/aws-s3/0
 metadata:
   title: Wazuh integration of AWS S3 Decoder
   description: Decoder for Wazuh integration of Amazon S3 server access logs
+  module: AWS
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.4
   references:
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-s3.html
+    - https://documentation.wazuh.com/current/amazon/services/supported-services/server-access.html
     - https://docs.aws.amazon.com/AmazonS3/latest/userguide/LogFormat.html
-  product.name: Wazuh integration Amazon S3 server access
-  product.versions:
-    - 4.3
+  versions:
+    - "4.4"
   author:
       name: Wazuh, Inc.
       url: https://wazuh.com
       date: 2022/01/20
 
 sources:
-  - decoder/aws/0
+  - decoder/aws-json/0
 
 # Example of Wazuh's integration with AWS S3 server access log:
 # {"aws":{"authentication_type":"AuthHeader","bucket_owner":"eac45794b871afb34180f310f0c44732a6d1471a59da4832ba68fbabade1e177","bucket":"awsexamplebucket1","bytes_sent":3334567,"cipher_suite":"ECDHE-RSA-AES128-GCM-SHA256","error_code":"NoSuchBucket","host_header":"s3.us-west-2.amazonaws.com","host_id":"XUbDuBMraSiljG+cPksjMSSiwGWriDlVsSURFQw+JQnDTUXAbKvcsm/eTPFvsiP/XV/VLi31234=","http_status":200,"key":"/photos/2019/08/perri.jpg","object_sent":1234567,"operation":"REST.GET.VERSIONING","referer":"http://www.amazon.com/webservices","remote_ip":"192.10.20.30","request_id":"3E57427F3EXAMPLE","request_uri":"GET /awsexamplebucket1/photos/2019/08/perri.jpg?x-foo=bar HTTP/1.1","requester":"eac45794b871afb34180f310f0c44732a6d1471a59da4832ba68fbabade1e177","signature_version":"SigV2","source":"s3_server_access","time":"10/Jul/1992:00:00:38 +0000","tls_version":"TLSv1.2","total_time":70,"turn_around_time":10,"user_agent":"curl/7.15.1","version_id":"3HO6la5C0M0V440Ptjfkd"},"integration":"aws"}
@@ -49,29 +53,30 @@ normalize:
       - event.outcome: success
 
   - map:
-      - aws.s3access.authentication_type: $~json.aws.authentication_type
-      - aws.s3access.bucket_owner: $~json.aws.bucket_owner
-      - aws.s3access.bucket: $~json.aws.bucket
-      - aws.s3access.bytes_sent: $~json.aws.bytes_sent
-      - aws.s3access.cipher_suite: $~json.aws.cipher_suite
-      - aws.s3access.error_code: $~json.aws.error_code
-      - aws.s3access.host_header: $~json.aws.host_header
-      - aws.s3access.host_id: $~json.aws.host_id
-      - aws.s3access.http_status: $~json.aws.http_status
-      - aws.s3access.key: $~json.aws.key
-      - aws.s3access.object_size: $~json.aws.object_sent
-      - aws.s3access.operation: $~json.aws.operation
-      - aws.s3access.referrer: $~json.aws.referer
-      - aws.s3access.remote_ip: $~json.aws.remote_ip
-      - aws.s3access.request_id: $~json.aws.request_id
-      - aws.s3access.request_uri: $~json.aws.request_uri
-      - aws.s3access.requester: $~json.aws.requester
-      - aws.s3access.signature_version: $~json.aws.signature_version
-      - aws.s3access.tls_version: $~json.aws.tls_version
-      - aws.s3access.total_time: $~json.aws.total_time
-      - aws.s3access.turn_around_time: $~json.aws.turn_around_time
-      - aws.s3access.user_agent: $~json.aws.user_agent
-      - aws.s3access.version_id: $~json.aws.version_id
+      - event.dataset: aws.s3access
+      # - registry.data.type: $~json.aws.authentication_type #aws.s3access.authentication_type
+      - file.owner: $~json.aws.bucket_owner #aws.s3access.bucket_owner
+      - file.directory: $~json.aws.bucket #aws.s3access.bucket
+      - http.response.bytes: $~json.aws.bytes_sent #aws.s3access.bytes_sent
+      - tls.cipher: $~json.aws.cipher_suite # aws.s3access.cipher_suite
+      - error.code: $~json.aws.error_code #aws.s3access.error_code
+      - dns.header_flags: $~json.aws.host_header #aws.s3access.host_header
+      - host.id : $~json.aws.host_id #aws.s3access.host_id
+      - http.response.status_code: $~json.aws.http_status #aws.s3access.http_status
+      - registry.key: $~json.aws.key #aws.s3access.key
+      - file.size: $~json.aws.object_sent #aws.s3access.object_size
+      - event.action : $~json.aws.operation #aws.s3access.operation
+      - http.request.referrer: $~json.aws.referer #aws.s3access.referrer
+      - related.ip: $~json.aws.remote_ip #aws.s3access.remote_ip
+      - http.request.id: $~json.aws.request_id #aws.s3access.request_id
+      - url.original: $~json.aws.request_uri #aws.s3access.request_uri
+      # - ~requester  : $~json.aws.requester #aws.s3access.requester
+      - dll.code_signature.signing_id: $~json.aws.signature_version #aws.s3access.signature_version
+      - tls.version: $~json.aws.tls_version #aws.s3access.tls_version
+      - event.duration: $~json.aws.total_time #aws.s3access.total_time
+      # - time : $~json.aws.turn_around_time #aws.s3access.turn_around_time
+      - user_agent.name: $~json.aws.user_agent #aws.s3access.user_agent
+      # - version : $~json.aws.version_id #aws.s3access.version_id
 
       - client.address: $~json.aws.remote_ip
       - client.ip: $~json.aws.remote_ip
@@ -94,7 +99,7 @@ normalize:
       - related.ip: +array_append/$~json.aws.remote_ip
       - related.user: +array_append/$~json.aws.bucket_owner
 
-      - timestamp: $~json.aws.time
+      - event.start: $~json.aws.time
 
       - tls.cipher: $~json.aws.cipher_suite
 
