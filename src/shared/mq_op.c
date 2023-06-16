@@ -243,35 +243,6 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
     return (retval);
 }
 
-#else
-
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * targets) {
-    char * _message;
-    int retval;
-
-    if (!targets[0].log_socket) {
-        merror("No targets defined for a localfile.");
-        return -1;
-    }
-
-    _message = log_builder_build(mq_log_builder, targets[0].format, message, locmsg);
-    retval = SendMSG(queue, _message, locmsg, loc);
-    free(_message);
-    return retval;
-}
-
-#endif /* !WIN32 */
-
-void mq_log_builder_init() {
-    assert(mq_log_builder == NULL);
-    mq_log_builder = log_builder_init(true);
-}
-
-int mq_log_builder_update() {
-    assert(mq_log_builder != NULL);
-    return log_builder_update(mq_log_builder);
-}
-
 int SendJSONtoSCK(char* message, socket_forwarder* Config) {
     time_t mtime;
     int retval = 0;
@@ -350,4 +321,33 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
     }
     os_free(message);
     return retval;
+}
+
+#else
+
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * targets) {
+    char * _message;
+    int retval;
+
+    if (!targets[0].log_socket) {
+        merror("No targets defined for a localfile.");
+        return -1;
+    }
+
+    _message = log_builder_build(mq_log_builder, targets[0].format, message, locmsg);
+    retval = SendMSG(queue, _message, locmsg, loc);
+    free(_message);
+    return retval;
+}
+
+#endif /* !WIN32 */
+
+void mq_log_builder_init() {
+    assert(mq_log_builder == NULL);
+    mq_log_builder = log_builder_init(true);
+}
+
+int mq_log_builder_update() {
+    assert(mq_log_builder != NULL);
+    return log_builder_update(mq_log_builder);
 }
