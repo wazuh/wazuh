@@ -1166,7 +1166,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
                                           'force_upgrade': force,
                                           'use_http': use_http,
                                           'wpk_repo': wpk_repo,
-                                          'wpk_filename': wpk_filename,
+                                          'filename': wpk_filename,
                                           'installer': installer
                                       } if not get_result else {'agents': agents_chunk})
 
