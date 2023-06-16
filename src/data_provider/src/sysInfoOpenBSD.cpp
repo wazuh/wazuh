@@ -17,7 +17,7 @@
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
 
-void SysInfo::getMemory(nlohmann::json& info) const
+static void getMemory(nlohmann::json& info)
 {
     uint64_t ram{0};
     const std::vector<int> mib{CTL_HW, HW_PHYSMEM};
@@ -40,7 +40,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 0;
 }
 
-int SysInfo::getCpuMHz() const
+static int getCpuMHz()
 {
     unsigned long cpuMHz{0};
     const std::vector<int> mib{CTL_HW, HW_CPUSPEED};
@@ -60,7 +60,7 @@ int SysInfo::getCpuMHz() const
     return cpuMHz;
 }
 
-std::string SysInfo::getSerialNumber() const
+static std::string getSerialNumber()
 {
     const std::vector<int> mib{CTL_HW, HW_SERIALNO};
     size_t len{0};
@@ -100,6 +100,79 @@ std::string SysInfo::getSerialNumber() const
 
     spBuff.get()[len] = 0;
     return std::string{reinterpret_cast<const char*>(spBuff.get())};
+}
+
+static int getCpuCores()
+{
+    int cores{0};
+    size_t len{sizeof(cores)};
+    const std::vector<int> mib{CTL_HW, HW_NCPU};
+    const auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &cores, &len, nullptr, 0)};
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading cpu cores number."
+        };
+    }
+
+    return cores;
+}
+
+static std::string getCpuName()
+{
+    const std::vector<int> mib{CTL_HW, HW_MODEL};
+    size_t len{0};
+    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting cpu name size."
+        };
+    }
+
+    const auto spBuff{std::make_unique<char[]>(len + 1)};
+
+    if (!spBuff)
+    {
+        throw std::runtime_error
+        {
+            "Error allocating memory to read the cpu name."
+        };
+    }
+
+    ret = sysctl(const_cast<int*>(mib.data()), mib.size(), spBuff.get(), &len, nullptr, 0);
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting cpu name"
+        };
+    }
+
+    spBuff.get()[len] = 0;
+    return std::string{reinterpret_cast<const char*>(spBuff.get())};
+}
+
+nlohmann::json SysInfo::getHardware() const
+{
+    nlohmann::json hardware;
+    hardware["board_serial"] = getSerialNumber();
+    hardware["cpu_name"] = getCpuName();
+    hardware["cpu_cores"] = getCpuCores();
+    hardware["cpu_mhz"] = double(getCpuMHz());
+    getMemory(hardware);
+    return hardware;
 }
 
 nlohmann::json SysInfo::getProcessesInfo() const
