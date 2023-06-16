@@ -1214,44 +1214,25 @@ void expand_wildcard_registers(char* entry, char** paths) {
     current_position        = aux_vector; //Save the current pointer for future iteration
 
     // ----- Begin expansion path section -----
+    // New algorithm form proposal
 
-    //If we have a combination, we need to iterate over all possible paths
-    if (strchr((*current_position)->path, '*') && strchr((*current_position)->path, '?')) {
-        while (w_is_still_a_wildcard(current_position)) {
-            //We have two ways to analyze this case. When the ? is before * and when * is before ?
-            //so we check who came first.
-
-            char* pos_qk = strchr((*current_position)->path, '?');
-            char* pos_sr = strchr((*current_position)->path, '*');
+    while (w_is_still_a_wildcard(current_position)) {
+        char* pos_qk = strchr((*current_position)->path, '?');
+        char* pos_sr = strchr((*current_position)->path, '*');
+        if (pos_qk != NULL && pos_sr != NULL) {
             if (pos_qk < pos_sr) {
-                if (strchr((*current_position)->path, '?')) {
-                    w_expand_by_wildcard(current_position, '?');
-                }
-                else {
-                    w_expand_by_wildcard(current_position, '*');
-                }
-                current_position++;
+                w_expand_by_wildcard(current_position, '?');
             } else {
-                if (strchr((*current_position)->path, '*')) {
-                    w_expand_by_wildcard(current_position, '*');
-                }
-                else {
-                    w_expand_by_wildcard(current_position, '?');
-                }
-                current_position++;
+                w_expand_by_wildcard(current_position, '*');
             }
-        }
-    } else if (strchr((*current_position)->path, '*')) { //Check first if there is a *, for a single expansion
-        do {
+        } else if (pos_sr != NULL) {
             w_expand_by_wildcard(current_position, '*');
-            current_position++;
-        } while (w_is_still_a_wildcard(current_position));
-    } else if (strchr((*current_position)->path, '?')) { //Then check if there is a ?
-        do {
+        } else if (pos_qk != NULL) {
             w_expand_by_wildcard(current_position, '?');
-            current_position++;
-        } while (w_is_still_a_wildcard(current_position));
+        }
+        current_position++;
     }
+
     // ----- End expansion path section -----
 
     current_position = aux_vector;
