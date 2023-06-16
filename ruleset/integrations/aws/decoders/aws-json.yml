@@ -6,6 +6,10 @@ metadata:
   module: AWS
   compatibility: >
     This decoder has been tested on Wazuh version 4.4
+  references:
+    - #TODO
+  versions:
+    - "4.4"
   author:
     name: Wazuh, Inc.
     date: 2023/05/04
@@ -24,3 +28,10 @@ parse:
 normalize:
  - map:
     - wazuh.decoders: +array_append/aws-json
+
+ - check:
+    - ~json.integration: aws
+   map:
+    # - wazuh.integration: $~json.integration
+    - event.module: aws
+    - wazuh.decoders: +array_append/aws
