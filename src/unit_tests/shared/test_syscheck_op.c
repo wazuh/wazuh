@@ -4439,6 +4439,7 @@ void test_w_is_still_a_wildcard(void **state) {
     reg_path_struct** test_reg;
     int has_wildcard_vec[4] = {0, 1, 1, 0};
     int checked_vec[4] = {0, 1, 0, 1};
+    int expected_result[4] = {0, 0, 1, 0};
 
     test_reg    = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
     test_reg[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
@@ -4448,7 +4449,7 @@ void test_w_is_still_a_wildcard(void **state) {
         test_reg[0]->has_wildcard = has_wildcard_vec[scenario];
         test_reg[0]->checked = checked_vec[scenario];
         ret = w_is_still_a_wildcard(test_reg);
-        assert_int_equal(0, ret);
+        assert_int_equal(expected_result[scenario], ret);
     }
 
     os_free(test_reg[0]);
