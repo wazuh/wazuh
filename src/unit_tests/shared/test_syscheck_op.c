@@ -4430,15 +4430,15 @@ void test_get_subkey(void **state)
 
     for (int scenario = 0; scenario < 4; scenario++) {
         char* result_function = get_subkey(test_vector_path[scenario]);
-        assert_string_equal(result_function,expected_subkey[scenario]);
+        assert_string_equal(result_function, expected_subkey[scenario]);
     }
 }
 
 void test_w_is_still_a_wildcard(void **state) {
     int ret;
     reg_path_struct** test_reg;
-    int has_wildcard_vec = {0,1,1,0};
-    int checked_vec = {0,1,0,1};
+    int has_wildcard_vec = {0, 1, 1, 0};
+    int checked_vec = {0, 1, 0, 1};
 
     test_reg    = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
     test_reg[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
@@ -4468,18 +4468,18 @@ void test_w_list_all_keys_subkey_notnull(void** state) {
         "RESOURCEMAP"
     };
 
-    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ, NULL, ERROR_SUCCESS);
+    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(4, 0, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("ACPI",5,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("DESCRIPTION",12,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("DEVICEMAP",10,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("RESOURCEMAP",12,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("ACPI", 5, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("DESCRIPTION", 12, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("DEVICEMAP", 10, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("RESOURCEMAP", 12, ERROR_SUCCESS);
 
     char** query_result = w_list_all_keys(root_key, subkey);
 
     for (int idx = 0; idx < 4; idx++) {
         assert_string_equal(query_result[idx], result[idx]);
-        free(query_result[idx]);
+        os_free(query_result[idx]);
     }
 }
 
@@ -4498,20 +4498,20 @@ void test_w_list_all_keys_subkey_null(void** state) {
         "SYSTEM",
     };
 
-    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ, NULL, ERROR_SUCCESS);
+    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(6, 0, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("BCD00000000",12,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("HARDWARE",9,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SAM",4,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SECURITY",9,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SOFTWARE",9,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SYSTEM",7,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("BCD00000000", 12, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("HARDWARE", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SAM", 4, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SECURITY", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SOFTWARE", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SYSTEM", 7, ERROR_SUCCESS);
 
     char** query_result = w_list_all_keys(root_key, subkey);
 
     for (int idx = 0; idx < 6; idx++) {
         assert_string_equal(query_result[idx], result[idx]);
-        free(query_result[idx]);
+        os_free(query_result[idx]);
     }
 }
 
@@ -4550,7 +4550,7 @@ void test_w_switch_root_key(void** state) {
 void test_expand_wildcard_registers_star_only(void **state){
     char* entry     = "HKEY_LOCAL_MACHINE\\*";
     char** paths    = NULL;
-    os_calloc(OS_SIZE_1024,sizeof(char*),paths);
+    os_calloc(OS_SIZE_1024, sizeof(char*), paths);
     char* subkey    = "";
     HKEY root_key   = HKEY_LOCAL_MACHINE;
 
@@ -4566,21 +4566,21 @@ void test_expand_wildcard_registers_star_only(void **state){
     HKEY keyhandle;
     FILETIME last_write_time = { 0, 1000 };
 
-    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ, NULL, ERROR_SUCCESS);
+    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(6, 0, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("BCD00000000",12,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("HARDWARE",9,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SAM",4,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SECURITY",9,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SOFTWARE",9,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SYSTEM",7,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("BCD00000000", 12, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("HARDWARE", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SAM", 4, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SECURITY", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SOFTWARE", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SYSTEM", 7, ERROR_SUCCESS);
 
-    expand_wildcard_registers(entry,paths);
+    expand_wildcard_registers(entry, paths);
 
     int i = 0;
     while(*paths != NULL){
         assert_string_equal(*paths, result[i]);
-        free(*paths);
+        os_free(*paths);
         paths++;
         i++;
     }
@@ -4589,25 +4589,25 @@ void test_expand_wildcard_registers_star_only(void **state){
 void test_expand_wildcard_registers_invalid_path(void **state){
     char* entry     = "HKEY_LOCAL_MACHINE\\????";
     char** paths    = NULL;
-    os_calloc(OS_SIZE_1024,sizeof(char*),paths);
+    os_calloc(OS_SIZE_1024, sizeof(char*), paths);
     char* subkey    = "";
     HKEY root_key   = HKEY_LOCAL_MACHINE;
 
     FILETIME last_write_time = { 0, 1000 };
 
-    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ, NULL, ERROR_SUCCESS);
+    expect_RegOpenKeyEx_call(root_key, subkey, 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(6, 0, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("BCD00000000",12,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("HARDWARE",9,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SAM",4,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SECURITY",9,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SOFTWARE",9,ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("SYSTEM",7,ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("BCD00000000", 12, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("HARDWARE", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SAM", 4, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SECURITY", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SOFTWARE", 9, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("SYSTEM", 7, ERROR_SUCCESS);
 
-    expand_wildcard_registers(entry,paths);
+    expand_wildcard_registers(entry, paths);
 
     assert_null(*paths);
-    free(paths);
+    os_free(paths);
 
 }
 
