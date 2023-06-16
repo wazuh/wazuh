@@ -1276,8 +1276,8 @@ char* get_subkey(char* key) {
             subkey[path_len] = '\0';
         }
         return subkey;
-    }
-    else {
+    } else {
+        os_free(subkey);
         return strdup("");
     }
 }
