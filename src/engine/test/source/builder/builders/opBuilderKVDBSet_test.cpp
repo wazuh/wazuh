@@ -29,7 +29,7 @@ class opBuilderKVDBSetTest : public ::testing::Test
 {
 
 protected:
-    static constexpr auto DB_NAME_1 = "default";
+    static constexpr auto DB_NAME_1 = "test_db";
     static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
     static constexpr auto DB_NAME = "kvdb";
 
@@ -54,6 +54,7 @@ protected:
         kvdbManager->initialize();
 
         kvdbScope = kvdbManager->getKVDBScope("builder_test");
+        ASSERT_FALSE(kvdbManager->createDB("test_db"));
     }
 
     void TearDown() override

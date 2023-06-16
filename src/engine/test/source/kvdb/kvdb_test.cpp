@@ -78,7 +78,8 @@ TEST_F(KVDBTest, Startup)
 TEST_F(KVDBTest, ScopeTest)
 {
     auto scope = m_spKVDBManager->getKVDBScope("scope1");
-    auto resultHandler = scope->getKVDBHandler("default");
+    ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
+    auto resultHandler = scope->getKVDBHandler("test_db");
 
     ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
 

@@ -91,7 +91,7 @@ api::Handler resourceGet(const Config& config)
             deps.logpar = logpar;
             deps.kvdbScope = config.kvdbManager->getKVDBScope("graph");
             deps.kvdbManager = config.kvdbManager;
-            deps.schema = std::make_shared<schemf::Schema>();;
+            deps.schema = std::make_shared<schemf::Schema>();
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
             builder::internals::registerBuilders(registry, deps);
