@@ -7407,49 +7407,6 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
 
-  /engine/metrics/test:
-    get:
-      tags:
-        - Engine
-      summary: "Get metrics for testing"
-      description: "Return a list of dummy metrics"
-      operationId: api.controllers.engine.metrics_controller.get_test_dummy_metric
-      # TODO Change RBAC
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:read'
-        - $ref: '#/x-rbac-catalog/actions/group:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-      responses:
-        '200':
-          description: "List of metrics"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/MetricsFields'
-              example:
-                data:
-                  - scope_name: CountExample
-                    schema: ''
-                    version: ''
-                    records:
-                      - start_time: 'Tue Mar 7 14:46:09 2023'
-                        instrument_name: CountExample_counter
-                        instrument_description: some description
-                        unit: some unit
-                        attributes:
-                          - type: SumPointData
-                            value: 1
-                message: ''
-                error: 0
-
   /agents:
     delete:
       tags:

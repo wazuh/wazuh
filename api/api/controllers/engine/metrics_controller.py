@@ -162,27 +162,3 @@ async def enable_instrument(request, scope_name: Optional[str] = None, instrumen
     data = raise_if_exc(await dapi.distribute_function())
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
-
-async def get_test_dummy_metric(request, pretty: bool = False):
-    """Generate dummy metrics for testing.
-
-    Parameters
-    ----------
-    request : connexion.request
-    pretty : bool
-        Show results in human-readable format.
-
-    Returns
-    -------
-    TODO
-    """
-    dapi = DistributedAPI(f=metrics.get_test_dummy_metric,
-                          f_kwargs={},
-                          request_type='local_master',
-                          is_async=False,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-
-    data = raise_if_exc(await dapi.distribute_function())
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

@@ -182,23 +182,3 @@ def enable_instrument(
 
     return WazuhResult({'message': result['status']})
 
-
-def get_test_dummy_metric():
-    """
-    Retrieves a test dummy metric.
-
-    Returns:
-        WazuhResult with the results of the command
-    """
-    msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
-        origin_name=HARDCODED_ORIGIN_NAME,
-        module=HARDCODED_ORIGIN_MODULE,
-        command=MetricCommand.TEST,
-    )
-
-    engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
-    engine_socket.send(msg)
-    result = engine_socket.receive()
-
-    normalized_result = normalize_metrics(result['value'])
-    return WazuhResult({'data': normalized_result})
