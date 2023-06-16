@@ -231,8 +231,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/tmp -> r:\s*/var/tmp\s'
 
   # 1.1.4.2 Ensure nodev option set on /var/tmp partition. (Automated)
   - id: 31015
@@ -254,8 +255,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c: findmnt -kn /var/tmp -> r:\s*/var/tmp\s && r:nodev'
 
   # 1.1.4.3 Ensure noexec option set on /var/tmp partition. (Automated)
   - id: 31016
@@ -277,8 +279,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/tmp -> r:\s*/var/tmp\s && r:noexec'
 
   # 1.1.4.4 Ensure nosuid option set on /var/tmp partition. (Automated)
   - id: 31017
@@ -300,8 +303,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/tmp -> r:\s*/var/tmp\s && r:nosuid'
 
   # 1.1.5.1 Ensure separate partition exists for /var/log. (Automated)
   - id: 31018
@@ -322,8 +326,9 @@ checks:
       - mitre_techniques: ["T1499", "T1499.001"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/log -> r:\s*/var/log\s'
 
   # 1.1.5.2 Ensure nodev option set on /var/log partition. (Automated)
   - id: 31019
@@ -345,8 +350,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/log -> r:\s*/var/log\s && r:nodev'
 
   # 1.1.5.3 Ensure noexec option set on /var/log partition. (Automated)
   - id: 31020
@@ -368,8 +374,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/log -> r:\s*/var/log\s && r:noexec'
 
   # 1.1.5.4 Ensure nosuid option set on /var/log partition. (Automated)
   - id: 31021
@@ -391,8 +398,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/log -> r:\s*/var/log\s && r:nosuid'
 
   # 1.1.6.1 Ensure separate partition exists for /var/log/audit. (Automated)
   - id: 31022
@@ -413,8 +421,9 @@ checks:
       - mitre_techniques: ["T1499", "T1499.001"]
       - pci_dss_v3.2.1: ["10.7"]
       - soc_2: ["A1.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/log/audit -> r:\s*/var/log/audit\s'
 
   # 1.1.6.2 Ensure nodev option set on /var/log/audit partition. (Automated)
   - id: 31023
@@ -436,8 +445,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/log/audit -> r:\s*/var/log/audit\s && r:nodev'
 
   # 1.1.6.3 Ensure noexec option set on /var/log/audit partition. (Automated)
   - id: 31024
@@ -459,8 +469,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/log/audit -> r:\s*/var/log/audit\s && r:noexec'
 
   # 1.1.6.4 Ensure nosuid option set on /var/log/audit partition. (Automated)
   - id: 31025
@@ -482,8 +493,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /var/log/audit -> r:\s*/var/log/audit\s && r:nosuid'
 
   # 1.1.7.1 Ensure separate partition exists for /home. (Automated)
   - id: 31026
@@ -508,8 +520,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /home -> r:\s*/home\s'
 
   # 1.1.7.2 Ensure nodev option set on /home partition. (Automated)
   - id: 31027
@@ -531,8 +544,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /home -> r:\s*/home\s && r:nodev'
 
   # 1.1.7.3 Ensure nosuid option set on /home partition. (Automated)
   - id: 31028
@@ -554,8 +568,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /home -> r:\s*/home\s && r:nosuid'
 
   # 1.1.8.1 Ensure nodev option set on /dev/shm partition. (Automated)
   - id: 31029
@@ -577,8 +592,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /dev/shm -> r:\s*/dev/shm\s && r:nodev'
 
   # 1.1.8.2 Ensure noexec option set on /dev/shm partition. (Automated)
   - id: 31030
@@ -600,8 +616,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /dev/shm  -> r:\s*/dev/shm\s && r:noexec'
 
   # 1.1.8.3 Ensure nosuid option set on /dev/shm partition. (Automated)
   - id: 31031
@@ -623,8 +640,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:findmnt -kn /dev/shm  -> r:\s*/dev/shm\s && r:nosuid'
 
   # 1.1.9 Disable Automounting. (Automated)
   - id: 31032
@@ -641,28 +659,12 @@ checks:
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
       - mitre_techniques: ["T1068", "T1203", "T1211", "T1212"]
-    condition:
+    condition: any
     rules:
+      - "c: dpkg -s autofs -> r:package 'autofs' is not installed"
+      - "c: systemctl is-enabled autofs -> r:No such file or directory|disabled"
 
-  # 1.1.10 Disable USB Storage. (Automated)
-  - id: 31033
-    title: "Disable USB Storage."
-    description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
-    rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
-    impact: "Disabling the usb-storage module will disable any usage of USB storage devices. If requirements and local site policy allow the use of such devices, other solutions should be configured accordingly instead. One example of a commonly used solution is USBGuard."
-    remediation: "Run the following script to disable the cramfs module: If the module is available in the running kernel: - Create a file with install usb-storage /bin/false in the /etc/modprobe.d/ directory - Create a file with blacklist usb-storage in the /etc/modprobe.d/ directory - Unload usb-storage from the kernel If available in ANY installed kernel: - Create a file with blacklist usb-storage in the /etc/modprobe.d/ directory If the kernel module is not available on the system: - No remediation is necessary #!/usr/bin/env bash { l_mname=\"usb-storage\" # set module name l_mtype=\"drivers\" # set module type l_mpath=\"/lib/modules/**/kernel/$l_mtype\" l_mpname=\"$(tr '-' '_' <<< \"$l_mname\")\" l_mndir=\"$(tr '-' '/' <<< \"$l_mname\")\" module_loadable_fix() { # If the module is currently loadable, add \"install {MODULE_NAME} /bin/false\" to a file in \"/etc/modprobe.d\" l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \"\\n - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } module_loaded_fix() { # If the module is currently loaded, unload the module if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \"\\n - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi } module_deny_fix() { # If the module isn't deny listed, denylist the module if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mpname\\b\"; then echo -e \"\\n - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mpname\".conf fi } # Check if the module exists on the system for l_mdir in $l_mpath; do if [ -d \"$l_mdir/$l_mndir\" ] && [ -n \"$(ls -A $l_mdir/$l_mndir)\" ]; then echo -e \"\\n - module: \\\"$l_mname\\\" exists in \\\"$l_mdir\\\"\\n - checking if disabled...\" module_deny_fix if [ \"$l_mdir\" = \"/lib/modules/$(uname -r)/kernel/$l_mtype\" ]; then module_loadable_fix module_loaded_fix fi else echo -e \"\\n - module: \\\"$l_mname\\\" doesn't exist in \\\"$l_mdir\\\"\\n\" fi done echo -e \"\\n - remediation of module: \\\"$l_mname\\\" complete\\n\" }."
-    compliance:
-      - cis: ["1.1.10"]
-      - cis_csc_v8: ["10.3"]
-      - cis_csc_v7: ["8.5", "13.7"]
-      - cmmc_v2.0: ["MP.L2-3.8.7"]
-      - hipaa: ["164.310(d)(1)"]
-      - iso_27001-2013: ["A.12.2.1", "A.8.3.1"]
-      - mitre_mitigations: ["M1034"]
-      - mitre_tactics: ["TA0001", "TA0010"]
-      - mitre_techniques: ["T1052", "T1052.001", "T1091", "T1200"]
-    condition:
-    rules:
+  # 1.1.10 Disable USB Storage. (Automated) - Not Implemented
 
   # 1.2.1 Ensure AIDE is installed. (Automated)
   - id: 31034
@@ -682,8 +684,10 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg -s aide -> r:install ok installed"
+      - "c:dpkg -s aide-common -> r:install ok installed"
 
   # 1.2.2 Ensure filesystem integrity is regularly checked. (Automated)
   - id: 31035
@@ -707,68 +711,15 @@ checks:
       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
       - soc_2: ["CC5.2", "CC7.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled aidecheck.service -> r:enabled"
+      - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
+      - "c:systemctl status aidecheck.timer -> r:Active: active"
 
-  # 1.3.1 Ensure updates, patches, and additional security software are installed. (Manual)
-  - id: 31036
-    title: "Ensure updates, patches, and additional security software are installed."
-    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
-    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Run the following command to update all packages following local site policy guidance on applying updates and patches: # apt upgrade OR # apt dist-upgrade."
-    compliance:
-      - cis: ["1.3.1"]
-      - cis_csc_v8: ["7.3"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - mitre_mitigations: ["M1051"]
-      - mitre_tactics: ["TA0004", "TA0008"]
-      - mitre_techniques: ["T1211"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
-
-  # 1.3.2 Ensure package manager repositories are configured. (Manual)
-  - id: 31037
-    title: "Ensure package manager repositories are configured."
-    description: "Systems need to have package manager repositories configured to ensure they receive the latest patches and updates."
-    rationale: "If a system's package repositories are misconfigured important patches may not be identified or a rogue repository could introduce compromised software."
-    remediation: "Configure your package manager repositories according to site policy."
-    compliance:
-      - cis: ["1.3.2"]
-      - cis_csc_v8: ["7.3"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - mitre_mitigations: ["M1051"]
-      - mitre_tactics: ["TA0001"]
-      - mitre_techniques: ["T1068", "T1195", "T1195.001", "T1195.002", "T1203", "T1210", "T1211", "T1212"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
-
-  # 1.3.3 Ensure GPG keys are configured. (Manual)
-  - id: 31038
-    title: "Ensure GPG keys are configured."
-    description: "Most packages managers implement GPG key signing to verify package integrity during installation."
-    rationale: "It is important to ensure that updates are obtained from a valid source to protect against spoofing that could lead to the inadvertent installation of malware on the system."
-    remediation: "Update your package manager GPG keys in accordance with site policy."
-    compliance:
-      - cis: ["1.3.3"]
-      - cis_csc_v8: ["7.3"]
-      - cis_csc_v7: ["3.4", "3.5"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - mitre_mitigations: ["M1051"]
-      - mitre_tactics: ["TA0001"]
-      - mitre_techniques: ["T1195", "T1195.001", "T1195.002"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition:
-    rules:
+  # 1.3.1 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
+  # 1.3.2 Ensure package manager repositories are configured. (Manual) - Not Implemented
+  # 1.3.3 Ensure GPG keys are configured. (Manual) Not Implemented
 
   # 1.4.1 Ensure bootloader password is set. (Automated)
   - id: 31039
@@ -788,8 +739,10 @@ checks:
       - mitre_techniques: ["T1542"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*set superusers'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*password'
 
   # 1.4.2 Ensure permissions on bootloader config are configured. (Automated)
   - id: 31040
@@ -811,8 +764,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0600/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\(0400/-r--------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.4.3 Ensure authentication required for single user mode. (Automated)
   - id: 31041
@@ -831,8 +786,9 @@ checks:
       - mitre_techniques: ["T1548"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/shadow -> r:^root:\p:'
 
   # 1.5.1 Ensure prelink is not installed. (Automated)
   - id: 31042
@@ -854,51 +810,12 @@ checks:
       - pci_dss_v3.2.1: ["10.2.1", "11.5"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
       - soc_2: ["CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg -s prelink -> r:package 'prelink' is not installed"
 
-  # 1.5.2 Ensure address space layout randomization (ASLR) is enabled. (Automated)
-  - id: 31043
-    title: "Ensure address space layout randomization (ASLR) is enabled."
-    description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
-    rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
-    remediation: 'Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - kernel.randomize_va_space = 2 Example: # printf " kernel.randomize_va_space = 2 " >> /etc/sysctl.d/60-kernel_sysctl.conf Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2 Note: If these settings appear in a conically later file, or later in the same file, these settings will be overwritten.'
-    references:
-      - "http://manpages.ubuntu.com/manpages/focal/man5/sysctl.d.5.html"
-    compliance:
-      - cis: ["1.5.2"]
-      - cis_csc_v8: ["10.5"]
-      - cis_csc_v7: ["8.3"]
-      - mitre_mitigations: ["M1050"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1068"]
-      - nist_sp_800-53: ["SI-16"]
-      - pci_dss_v3.2.1: ["1.4"]
-      - soc_2: ["CC6.8"]
-    condition:
-    rules:
-
-  # 1.5.3 Ensure ptrace_scope is restricted. (Automated)
-  - id: 31044
-    title: "Ensure ptrace_scope is restricted."
-    description: 'The ptrace() system call provides a means by which one process (the "tracer") may observe and control the execution of another process (the "tracee"), and examine and change the tracee''s memory and registers.'
-    rationale: "If one application is compromised, it would be possible for an attacker to attach to other running processes (e.g. Bash, Firefox, SSH sessions, GPG agent, etc) to extract additional credentials and continue to expand the scope of their attack. Enabling restricted mode will limit the ability of a compromised process to PTRACE_ATTACH on other processes running under the same user. With restricted mode, ptrace will continue to work with root user."
-    remediation: 'Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - kernel.yama.ptrace_scope = 1 Example: # printf " kernel.yama.ptrace_scope = 1 " >> /etc/sysctl.d/60-kernel_sysctl.conf Run the following command to set the active kernel parameter: # sysctl -w kernel.yama.ptrace_scope=1 Note: If these settings appear in a conically later file, or later in the same file, these settings will be overwritten.'
-    references:
-      - "https://www.kernel.org/doc/Documentation/security/Yama.txt"
-      - "https://github.com/raj3shp/termspy"
-    compliance:
-      - cis: ["1.5.3"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_techniques: ["T1055.008"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition:
-    rules:
+  # 1.5.2 Ensure address space layout randomization (ASLR) is enabled. (Automated) - Not Implemented
+  # 1.5.3 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
 
   # 1.5.4 Ensure Automatic Error Reporting is not enabled. (Automated)
   - id: 31045
@@ -915,25 +832,12 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -s apport -> !r:enabled"
+      - "c:systemctl is-active apport.service -> !r:active"
 
-  # 1.5.5 Ensure core dumps are restricted. (Automated)
-  - id: 31046
-    title: "Ensure core dumps are restricted."
-    description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
-    rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5)). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
-    remediation: 'Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a file in /etc/sysctl.d/ ending in .conf: - fs.suid_dumpable = 0 Example: # printf " fs.suid_dumpable = 0 " >> /etc/sysctl.d/60-fs_sysctl.conf Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 Note: If these settings appear in a conically later file, or later in the same file, these settings will be overwritten -IF- systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload.'
-    references:
-      - "http://wiki.apparmor.net/index.php/Documentation"
-      - "https://help.ubuntu.com/community/AppArmor"
-      - "https://www.suse.com/documentation/apparmor/"
-    compliance:
-      - cis: ["1.5.5"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1005"]
-    condition:
-    rules:
+  # 1.5.5 Ensure core dumps are restricted. (Automated) - Not Implemented
 
   # 1.6.1.1 Ensure AppArmor is installed. (Automated)
   - id: 31047
@@ -955,8 +859,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg -s apparmor -> r:install ok installed"
 
   # 1.6.1.2 Ensure AppArmor is enabled in the bootloader configuration. (Automated)
   - id: 31048
@@ -978,8 +883,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:security=apparmor'
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
   - id: 31049
@@ -999,8 +906,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - "c:apparmor_status -> r:0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing. (Automated)
   - id: 31050
@@ -1021,8 +930,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
+      - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
+      - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
   # 1.7.1 Ensure message of the day is configured properly. (Automated)
   - id: 31051
@@ -1034,8 +947,10 @@ checks:
       - cis: ["1.7.1"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
-    condition:
+    condition: any
     rules:
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
+      - "not f:/etc/motd"
 
   # 1.7.2 Ensure local login warning banner is configured properly. (Automated)
   - id: 31052
@@ -1047,8 +962,9 @@ checks:
       - cis: ["1.7.2"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.7.3 Ensure remote login warning banner is configured properly. (Automated)
   - id: 31053
@@ -1060,8 +976,9 @@ checks:
       - cis: ["1.7.3"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
-    condition:
+    condition: none
     rules:
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured. (Automated)
   - id: 31054
@@ -1083,8 +1000,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: any
     rules:
+      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - "not f:/etc/motd"
 
   # 1.7.5 Ensure permissions on /etc/issue are configured. (Automated)
   - id: 31055
@@ -1106,8 +1025,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.6 Ensure permissions on /etc/issue.net are configured. (Automated)
   - id: 31056
@@ -1129,8 +1049,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.8.1 Ensure GNOME Display Manager is removed. (Automated)
   - id: 31057
@@ -1150,162 +1071,18 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg -s gdm3 -> r: package 'gdm3' is not installed"
 
-  # 1.8.2 Ensure GDM login banner is configured. (Automated)
-  - id: 31058
-    title: "Ensure GDM login banner is configured."
-    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
-    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
-    remediation: "Run the following script to verify that the banner message is enabled and set: #!/usr/bin/env bash { l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done if [ -n \"$l_pkgoutput\" ]; then l_gdmprofile=\"gdm\" # Set this to desired profile name IaW Local site policy l_bmessage=\"'Authorized uses only. All activity may be monitored and reported'\" # Set to desired banner message if [ ! -f \"/etc/dconf/profile/$l_gdmprofile\" ]; then echo \"Creating profile \\\"$l_gdmprofile\\\"\" echo -e \"user-db:user\\nsystem-db:$l_gdmprofile\\nfile- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults\" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d \"/etc/dconf/db/$l_gdmprofile.d/\" ]; then echo \"Creating dconf database directory \\\"/etc/dconf/db/$l_gdmprofile.d/\\\"\" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\\h*banner-message-enable\\h*=\\h*true\\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo \"creating gdm keyfile for machine-wide settings\" if ! grep -Piq -- '^\\h*banner-message-enable\\h*=\\h*' /etc/dconf/db/$l_gdmprofile.d/*; then l_kfile=\"/etc/dconf/db/$l_gdmprofile.d/01-banner-message\" echo -e \"\\n[org/gnome/login-screen]\\nbanner-message-enable=true\" >> \"$l_kfile\" else l_kfile=\"$(grep -Pil -- '^\\h*banner-message-enable\\h*=\\h*' /etc/dconf/db/$l_gdmprofile.d/*)\" ! grep -Pq '^\\h*\\[org\\/gnome\\/login-screen\\]' \"$l_kfile\" && sed -ri '/^\\s*banner- message-enable/ i\\[org/gnome/login-screen]' \"$l_kfile\" ! grep -Pq '^\\h*banner-message-enable\\h*=\\h*true\\b' \"$l_kfile\" && sed -ri 's/^\\s*(banner-message-enable\\s*=\\s*)(\\S+)(\\s*.*$)/\\1true \\3//' \"$l_kfile\" # sed -ri '/^\\s*\\[org\\/gnome\\/login-screen\\]/ a\\\\nbanner-message-enable=true' \"$l_kfile\" fi fi if ! grep -Piq \"^\\h*banner-message-text=[\\'\\\"]+\\S+\" \"$l_kfile\"; then sed -ri \"/^\\s*banner-message-enable/ a\\banner-message-text=$l_bmessage\" \"$l_kfile\" fi dconf update else echo -e \"\\n\\n - GNOME Desktop Manager isn't installed\\n - Recommendation is Not Applicable\\n - No remediation required\\n\" fi } Note: - There is no character limit for the banner message. gnome-shell autodetects longer stretches of text and enters two column mode. - The banner message cannot be read from an external file. OR Run the following command to remove the gdm3 package: # apt purge gdm3."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/login-banner.html.en"
-    compliance:
-      - cis: ["1.8.2"]
-      - mitre_tactics: ["TA0007"]
-    condition:
-    rules:
-
-  # 1.8.3 Ensure GDM disable-user-list option is enabled. (Automated)
-  - id: 31059
-    title: "Ensure GDM disable-user-list option is enabled."
-    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems. The disable-user-list option controls if a list of users is displayed on the login screen."
-    rationale: "Displaying the user list eliminates half of the Userid/Password equation that an unauthorized person would need to log on."
-    remediation: "Run the following script to enable the disable-user-list option: Note: the l_gdm_profile variable in the script can be changed if a different profile name is desired in accordance with local site policy. #!/usr/bin/env bash { l_gdmprofile=\"gdm\" if [ ! -f \"/etc/dconf/profile/$l_gdmprofile\" ]; then echo \"Creating profile \\\"$l_gdmprofile\\\"\" echo -e \"user-db:user\\nsystem-db:$l_gdmprofile\\nfile- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults\" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d \"/etc/dconf/db/$l_gdmprofile.d/\" ]; then echo \"Creating dconf database directory \\\"/etc/dconf/db/$l_gdmprofile.d/\\\"\" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\\h*disable-user-list\\h*=\\h*true\\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo \"creating gdm keyfile for machine-wide settings\" if ! grep -Piq -- '^\\h*\\[org\\/gnome\\/login-screen\\]' /etc/dconf/db/$l_gdmprofile.d/*; then echo -e \"\\n[org/gnome/login-screen]\\n# Do not show the user list\\ndisable-user-list=true\" >> /etc/dconf/db/$l_gdmprofile.d/00-login- screen else sed -ri '/^\\s*\\[org\\/gnome\\/login-screen\\]/ a\\# Do not show the user list\\ndisable-user-list=true' $(grep -Pil -- '^\\h*\\[org\\/gnome\\/login- screen\\]' /etc/dconf/db/$l_gdmprofile.d/*) fi fi dconf update } Note: When the user profile is created or changed, the user will need to log out and log in again before the changes will be applied. OR Run the following command to remove the GNOME package: # apt purge gdm3."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/login-userlist-"
-    compliance:
-      - cis: ["1.8.3"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0007"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1087", "T1087.001", "T1087.002"]
-    condition:
-    rules:
-
-  # 1.8.4 Ensure GDM screen locks when the user is idle. (Automated)
-  - id: 31060
-    title: "Ensure GDM screen locks when the user is idle."
-    description: "GNOME Desktop Manager can make the screen lock automatically whenever the user is idle for some amount of time. - idle-delay=uint32 {n} - Number of seconds of inactivity before the screen goes blank - lock-delay=uint32 {n} - Number of seconds after the screen is blank before locking the screen Example key file: # Specify the dconf path [org/gnome/desktop/session] # Number of seconds of inactivity before the screen goes blank # Set to 0 seconds if you want to deactivate the screensaver. idle-delay=uint32 900 # Specify the dconf path [org/gnome/desktop/screensaver] # Number of seconds after the screen is blank before locking the screen lock-delay=uint32 5."
-    rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended."
-    remediation: "Create or edit a file in the /etc/dconf/profile/ and verify it includes the following: user-db:user system-db:{NAME_OF_DCONF_DATABASE} Note: local is the name of a dconf database used in the examples. Example: # echo -e '\\nuser-db:user\\nsystem-db:local' >> /etc/dconf/profile/user Create the directory /etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/ if it doesn't already exist: Example: # mkdir /etc/dconf/db/local.d Create the key file `/etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/{FILE_NAME} to provide information for the {NAME_OF_DCONF_DATABASE} database: Example script: #!/usr/bin/env bash { l_key_file=\"/etc/dconf/db/local.d/00-screensaver\" l_idmv=\"900\" # Set max value for idle-delay in seconds (between 1 and 900) l_ldmv=\"5\" # Set max value for lock-delay in seconds (between 0 and 5) { echo '# Specify the dconf path' echo '[org/gnome/desktop/session]' echo '' echo '# Number of seconds of inactivity before the screen goes blank' echo '# Set to 0 seconds if you want to deactivate the screensaver.' echo \"idle-delay=uint32 $l_idmv\" echo '' echo '# Specify the dconf path' echo '[org/gnome/desktop/screensaver]' echo '' echo '# Number of seconds after the screen is blank before locking the screen' echo \"lock-delay=uint32 $l_ldmv\" } > \"$l_key_file\" } Note: You must include the uint32 along with the integer key values as shown. Run the following command to update the system databases: # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/desktop-"
-    compliance:
-      - cis: ["1.8.4"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_tactics: ["TA0027"]
-      - mitre_techniques: ["T1461"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
-    condition:
-    rules:
-
-  # 1.8.5 Ensure GDM screen locks cannot be overridden. (Automated)
-  - id: 31061
-    title: "Ensure GDM screen locks cannot be overridden."
-    description: "GNOME Desktop Manager can make the screen lock automatically whenever the user is idle for some amount of time. By using the lockdown mode in dconf, you can prevent users from changing specific settings. To lock down a dconf key or subpath, create a locks subdirectory in the keyfile directory. The files inside this directory contain a list of keys or subpaths to lock. Just as with the keyfiles, you may add any number of files to this directory. Example Lock File: # Lock desktop screensaver settings /org/gnome/desktop/session/idle-delay /org/gnome/desktop/screensaver/lock-delay."
-    rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended. Without locking down the system settings, user settings take precedence over the system settings."
-    remediation: "Run the following script to ensure screen locks cannot be overridden: #!/usr/bin/env bash { # Check if GNMOE Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"y\" && echo -e \"\\n - Package: \\\"$l_pn\\\" exists on the system\\n - remediating configuration if needed\" done # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then # Look for idle-delay to determine profile in use, needed for remaining tests l_kfd=\"/etc/dconf/db/$(grep -Psril '^\\h*idle- delay\\h*=\\h*uint32\\h+\\d+\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF- 1),a,\".\");print a[1]}').d\" #set directory of key file to be locked # Look for lock-delay to determine profile in use, needed for remaining tests l_kfd2=\"/etc/dconf/db/$(grep -Psril '^\\h*lock- delay\\h*=\\h*uint32\\h+\\d+\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF- 1),a,\".\");print a[1]}').d\" #set directory of key file to be locked if [ -d \"$l_kfd\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Prilq '^\\h*\\/org\\/gnome\\/desktop\\/session\\/idle-delay\\b' \"$l_kfd\"; then echo \" - \\\"idle-delay\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org\\/gnome\\/desktop\\/session\\/idle-delay\\b' \"$l_kfd\")\\\"\" else echo \"creating entry to lock \\\"idle-delay\\\"\" [ ! -d \"$l_kfd\"/locks ] && echo \"creating directory $l_kfd/locks\" && mkdir \"$l_kfd\"/locks { echo -e '\\n# Lock desktop screensaver idle-delay setting' echo '/org/gnome/desktop/session/idle-delay' } >> \"$l_kfd\"/locks/00-screensaver fi else echo -e \" - \\\"idle-delay\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM screen locks when the user is idle\\\" and follow this Recommendation again\" fi if [ -d \"$l_kfd2\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Prilq '^\\h*\\/org\\/gnome\\/desktop\\/screensaver\\/lock- delay\\b' \"$l_kfd2\"; then echo \" - \\\"lock-delay\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org\\/gnome\\/desktop\\/screensaver\\/lock-delay\\b' \"$l_kfd2\")\\\"\" else echo \"creating entry to lock \\\"lock-delay\\\"\" [ ! -d \"$l_kfd2\"/locks ] && echo \"creating directory $l_kfd2/locks\" && mkdir \"$l_kfd2\"/locks { echo -e '\\n# Lock desktop screensaver lock-delay setting' echo '/org/gnome/desktop/screensaver/lock-delay' } >> \"$l_kfd2\"/locks/00-screensaver fi else echo -e \" - \\\"lock-delay\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM screen locks when the user is idle\\\" and follow this Recommendation again\" fi else echo -e \" - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi } Run the following command to update the system databases: # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/desktop-"
-      - "https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en"
-    compliance:
-      - cis: ["1.8.5"]
-      - cis_csc_v8: ["4.3"]
-      - cis_csc_v7: ["16.11"]
-      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-      - hipaa: ["164.312(a)(2)(iii)"]
-      - iso_27001-2013: ["A.8.1.3"]
-      - mitre_tactics: ["TA0027"]
-      - mitre_techniques: ["T1456"]
-      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-      - pci_dss_v3.2.1: ["8.1.8"]
-      - pci_dss_v4.0: ["8.2.8"]
-    condition:
-    rules:
-
-  # 1.8.6 Ensure GDM automatic mounting of removable media is disabled. (Automated)
-  - id: 31062
-    title: "Ensure GDM automatic mounting of removable media is disabled."
-    description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user."
-    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
-    impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
-    remediation: "Run the following script to disable automatic mounting of media for all GNOME users: #!/usr/bin/env bash { l_pkgoutput=\"\" l_output=\"\" l_output2=\"\" l_gpname=\"local\" # Set to desired dconf profile name (defaule is local) # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done echo -e \"$l_packageout\" # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then echo -e \"$l_pkgoutput\" # Look for existing settings and set variables if they exist l_kfile=\"$(grep -Prils -- '^\\h*automount\\b' /etc/dconf/db/*.d)\" l_kfile2=\"$(grep -Prils -- '^\\h*automount-open\\b' /etc/dconf/db/*.d)\" # Set profile name based on dconf db directory ({PROFILE_NAME}.d) if [ -f \"$l_kfile\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" elif [ -f \"$l_kfile2\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile2\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" fi # check for consistency (Clean up configuration if needed) if [ -f \"$l_kfile\" ] && [ \"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" != \"$l_gpname\" ]; then sed -ri \"/^\\s*automount\\s*=/s/^/# /\" \"$l_kfile\" l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media-automount\" fi if [ -f \"$l_kfile2\" ] && [ \"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile2\")\" != \"$l_gpname\" ]; then sed -ri \"/^\\s*automount-open\\s*=/s/^/# /\" \"$l_kfile2\" fi [ -z \"$l_kfile\" ] && l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media- automount\" # Check if profile file exists if grep -Pq -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*; then echo -e \"\\n - dconf database profile exists in: \\\"$(grep -Pl -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*)\\\"\" else [ ! -f \"/etc/dconf/profile/user\" ] && l_gpfile=\"/etc/dconf/profile/user\" || l_gpfile=\"/etc/dconf/profile/user2\" echo -e \" - creating dconf database profile\" { echo -e \"\\nuser-db:user\" echo \"system-db:$l_gpname\" } >> \"$l_gpfile\" fi # create dconf directory if it doesn't exists l_gpdir=\"/etc/dconf/db/$l_gpname.d\" if [ -d \"$l_gpdir\" ]; then echo \" - The dconf database directory \\\"$l_gpdir\\\" exists\" else echo \" - creating dconf database directory \\\"$l_gpdir\\\"\" mkdir \"$l_gpdir\" fi # check automount-open setting if grep -Pqs -- '^\\h*automount-open\\h*=\\h*false\\b' \"$l_kfile\"; then echo \" - \\\"automount-open\\\" is set to false in: \\\"$l_kfile\\\"\" else echo \" - creating \\\"automount-open\\\" entry in \\\"$l_kfile\\\"\" ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautomount-open=false' \"$l_kfile\" fi # check automount setting if grep -Pqs -- '^\\h*automount\\h*=\\h*false\\b' \"$l_kfile\"; then echo \" - \\\"automount\\\" is set to false in: \\\"$l_kfile\\\"\" else echo \" - creating \\\"automount\\\" entry in \\\"$l_kfile\\\"\" ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautomount=false' \"$l_kfile\" fi else echo -e \"\\n - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi # update dconf database dconf update } OR Run the following command to uninstall the GNOME desktop Manager package: # apt purge gdm3."
-    references:
-      - "https://access.redhat.com/solutions/20107"
-    compliance:
-      - cis: ["1.8.6"]
-      - cis_csc_v8: ["10.3"]
-      - cis_csc_v7: ["8.5"]
-      - cmmc_v2.0: ["MP.L2-3.8.7"]
-      - hipaa: ["164.310(d)(1)"]
-      - iso_27001-2013: ["A.12.2.1"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_techniques: ["T1091"]
-    condition:
-    rules:
-
-  # 1.8.7 Ensure GDM disabling automatic mounting of removable media is not overridden. (Automated)
-  - id: 31063
-    title: "Ensure GDM disabling automatic mounting of removable media is not overridden."
-    description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user By using the lockdown mode in dconf, you can prevent users from changing specific settings. To lock down a dconf key or subpath, create a locks subdirectory in the keyfile directory. The files inside this directory contain a list of keys or subpaths to lock. Just as with the keyfiles, you may add any number of files to this directory. Example Lock File: # Lock desktop screensaver settings /org/gnome/desktop/media-handling/automount /org/gnome/desktop/media-handling/automount-open."
-    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
-    impact: "The use of portable hard drives is very common for workstation users."
-    remediation: "Run the following script to lock disable automatic mounting of media for all GNOME users: #!/usr/bin/env bash { # Check if GNMOE Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"y\" && echo -e \"\\n - Package: \\\"$l_pn\\\" exists on the system\\n - remediating configuration if needed\" done # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then # Look for automount to determine profile in use, needed for remaining tests l_kfd=\"/etc/dconf/db/$(grep -Psril '^\\h*automount\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF-1),a,\".\");print a[1]}').d\" #set directory of key file to be locked # Look for automount-open to determine profile in use, needed for remaining tests l_kfd2=\"/etc/dconf/db/$(grep -Psril '^\\h*automount-open\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF-1),a,\".\");print a[1]}').d\" #set directory of key file to be locked if [ -d \"$l_kfd\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Priq '^\\h*\\/org/gnome\\/desktop\\/media- handling\\/automount\\b' \"$l_kfd\"; then echo \" - \\\"automount\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/automount\\b' \"$l_kfd\")\\\"\" else echo \" - creating entry to lock \\\"automount\\\"\" [ ! -d \"$l_kfd\"/locks ] && echo \"creating directory $l_kfd/locks\" && mkdir \"$l_kfd\"/locks { echo -e '\\n# Lock desktop media-handling automount setting' echo '/org/gnome/desktop/media-handling/automount' } >> \"$l_kfd\"/locks/00-media-automount fi else echo -e \" - \\\"automount\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM automatic mounting of removable media is disabled\\\" and follow this Recommendation again\" fi if [ -d \"$l_kfd2\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Priq '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/automount- open\\b' \"$l_kfd2\"; then echo \" - \\\"automount-open\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/automount-open\\b' \"$l_kfd2\")\\\"\" else echo \" - creating entry to lock \\\"automount-open\\\"\" [ ! -d \"$l_kfd2\"/locks ] && echo \"creating directory $l_kfd2/locks\" && mkdir \"$l_kfd2\"/locks { echo -e '\\n# Lock desktop media-handling automount-open setting' echo '/org/gnome/desktop/media-handling/automount-open' } >> \"$l_kfd2\"/locks/00-media-automount fi else echo -e \" - \\\"automount-open\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM automatic mounting of removable media is disabled\\\" and follow this Recommendation again\" fi # update dconf database dconf update else echo -e \" - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi }."
-    references:
-      - "https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en"
-    compliance:
-      - cis: ["1.8.7"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0001", "TA0008"]
-      - mitre_techniques: ["T1091"]
-    condition:
-    rules:
-
-  # 1.8.8 Ensure GDM autorun-never is enabled. (Automated)
-  - id: 31064
-    title: "Ensure GDM autorun-never is enabled."
-    description: "The autorun-never setting allows the GNOME Desktop Display Manager to disable autorun through GDM."
-    rationale: "Malware on removable media may taking advantage of Autorun features when the media is inserted into a system and execute."
-    remediation: "Run the following script to set autorun-never to true for GDM users: #!/usr/bin/env bash { l_pkgoutput=\"\" l_output=\"\" l_output2=\"\" l_gpname=\"local\" # Set to desired dconf profile name (default is local) # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space separated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done echo -e \"$l_pkgoutput\" # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then echo -e \"$l_pkgoutput\" # Look for existing settings and set variables if they exist l_kfile=\"$(grep -Prils -- '^\\h*autorun-never\\b' /etc/dconf/db/*.d)\" # Set profile name based on dconf db directory ({PROFILE_NAME}.d) if [ -f \"$l_kfile\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" fi [ ! -f \"$l_kfile\" ] && l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media- autorun\" # Check if profile file exists if grep -Pq -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*; then echo -e \"\\n - dconf database profile exists in: \\\"$(grep -Pl -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*)\\\"\" else [ ! -f \"/etc/dconf/profile/user\" ] && l_gpfile=\"/etc/dconf/profile/user\" || l_gpfile=\"/etc/dconf/profile/user2\" echo -e \" - creating dconf database profile\" { echo -e \"\\nuser-db:user\" echo \"system-db:$l_gpname\" } >> \"$l_gpfile\" fi # create dconf directory if it doesn't exists l_gpdir=\"/etc/dconf/db/$l_gpname.d\" if [ -d \"$l_gpdir\" ]; then echo \" - The dconf database directory \\\"$l_gpdir\\\" exists\" else echo \" - creating dconf database directory \\\"$l_gpdir\\\"\" mkdir \"$l_gpdir\" fi # check autorun-never setting if grep -Pqs -- '^\\h*autorun-never\\h*=\\h*true\\b' \"$l_kfile\"; then echo \" - \\\"autorun-never\\\" is set to true in: \\\"$l_kfile\\\"\" else echo \" - creating or updating \\\"autorun-never\\\" entry in \\\"$l_kfile\\\"\" if grep -Psq -- '^\\h*autorun-never' \"$l_kfile\"; then sed -ri 's/(^\\s*autorun-never\\s*=\\s*)(\\S+)(\\s*.*)$/\\1true \\3/' \"$l_kfile\" else ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautorun-never=true' \"$l_kfile\" fi fi else echo -e \"\\n - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi # update dconf database dconf update }."
-    compliance:
-      - cis: ["1.8.8"]
-      - cis_csc_v8: ["10.3"]
-      - cis_csc_v7: ["8.5"]
-      - cmmc_v2.0: ["MP.L2-3.8.7"]
-      - hipaa: ["164.310(d)(1)"]
-      - iso_27001-2013: ["A.12.2.1"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0001", "TA0008"]
-      - mitre_techniques: ["T1091"]
-    condition:
-    rules:
-
-  # 1.8.9 Ensure GDM autorun-never is not overridden. (Automated)
-  - id: 31065
-    title: "Ensure GDM autorun-never is not overridden."
-    description: "The autorun-never setting allows the GNOME Desktop Display Manager to disable autorun through GDM. By using the lockdown mode in dconf, you can prevent users from changing specific settings. To lock down a dconf key or subpath, create a locks subdirectory in the keyfile directory. The files inside this directory contain a list of keys or subpaths to lock. Just as with the keyfiles, you may add any number of files to this directory. Example Lock File: # Lock desktop media-handling settings /org/gnome/desktop/media-handling/autorun-never."
-    rationale: "Malware on removable media may taking advantage of Autorun features when the media is inserted into a system and execute."
-    remediation: "Run the following script to ensure that autorun-never=true cannot be overridden: #!/usr/bin/env bash { # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space separated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"y\" && echo -e \"\\n - Package: \\\"$l_pn\\\" exists on the system\\n - remediating configuration if needed\" done # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then # Look for autorun to determine profile in use, needed for remaining tests l_kfd=\"/etc/dconf/db/$(grep -Psril '^\\h*autorun-never\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF-1),a,\".\");print a[1]}').d\" #set directory of key file to be locked if [ -d \"$l_kfd\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Prisq '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/autorun- never\\b' \"$l_kfd\"; then echo \" - \\\"autorun-never\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/autorun-never\\b' \"$l_kfd\")\\\"\" else echo \" - creating entry to lock \\\"autorun-never\\\"\" [ ! -d \"$l_kfd\"/locks ] && echo \"creating directory $l_kfd/locks\" && mkdir \"$l_kfd\"/locks { echo -e '\\n# Lock desktop media-handling autorun-never setting' echo '/org/gnome/desktop/media-handling/autorun-never' } >> \"$l_kfd\"/locks/00-media-autorun fi else echo -e \" - \\\"autorun-never\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM autorun-never is enabled\\\" and follow this Recommendation again\" fi # update dconf database dconf update else echo -e \" - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi }."
-    compliance:
-      - cis: ["1.8.9"]
-      - cis_csc_v8: ["10.3"]
-      - cis_csc_v7: ["8.5"]
-      - cmmc_v2.0: ["MP.L2-3.8.7"]
-      - hipaa: ["164.310(d)(1)"]
-      - iso_27001-2013: ["A.12.2.1"]
-      - mitre_mitigations: ["M1028"]
-      - mitre_tactics: ["TA0001", "TA0008"]
-      - mitre_techniques: ["T1091"]
-    condition:
-    rules:
+  # 1.8.2 Ensure GDM login banner is configured. (Automated) - Not Implemented
+  # 1.8.3 Ensure GDM disable-user-list option is enabled. (Automated) - Not Implemented
+  # 1.8.4 Ensure GDM screen locks when the user is idle. (Automated) - Not Implemented
+  # 1.8.5 Ensure GDM screen locks cannot be overridden. (Automated) - Not Implemented
+  # 1.8.6 Ensure GDM automatic mounting of removable media is disabled. (Automated) - Not Implemented
+  # 1.8.7 Ensure GDM disabling automatic mounting of removable media is not overridden. (Automated) - Not Implemented
+  # 1.8.8 Ensure GDM autorun-never is enabled. (Automated) - Not Implemented
+  # 1.8.9 Ensure GDM autorun-never is not overridden. (Automated) - Not Implemented
 
   # 1.8.10 Ensure XDCMP is not enabled. (Automated)
   - id: 31066
@@ -1325,8 +1102,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
 
   # 2.1.1.1 Ensure a single time synchronization daemon is in use. (Automated)
   - id: 31067
