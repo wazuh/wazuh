@@ -4437,8 +4437,8 @@ void test_get_subkey(void **state)
 void test_w_is_still_a_wildcard(void **state) {
     int ret;
     reg_path_struct** test_reg;
-    int has_wildcard_vec = {0, 1, 1, 0};
-    int checked_vec = {0, 1, 0, 1};
+    int has_wildcard_vec[4] = {0, 1, 1, 0};
+    int checked_vec[4] = {0, 1, 0, 1};
 
     test_reg    = (reg_path_struct**)calloc(2, sizeof(reg_path_struct*));
     test_reg[0] = (reg_path_struct*)calloc(1, sizeof(reg_path_struct));
