@@ -31,6 +31,7 @@ void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type) {
 
         case EXP_TYPE_PCRE2:
             os_calloc(1, sizeof(w_pcre2_code_t), (*var)->pcre2);
+            break;
 
         default:
             break;
@@ -85,6 +86,38 @@ void w_free_expression_t(w_expression_t ** var) {
 
 void w_free_expression(w_expression_t * var) {
     w_free_expression_t(&var);
+}
+
+void w_free_expression_match(w_expression_t * expression, regex_matching **reg){
+    if (expression == NULL) {
+        return;
+    }
+
+    switch (expression->exp_type) {
+         case EXP_TYPE_OSMATCH:
+            OSRegex_free_regex_matching(*reg);
+            os_free(*reg);
+            break;
+
+        case EXP_TYPE_OSREGEX:
+            OSRegex_free_regex_matching(*reg);
+            os_free(*reg);
+            break;
+
+        case EXP_TYPE_PCRE2:
+            OSRegex_free_regex_matching(*reg);
+            os_free(*reg);
+            break;
+
+        case EXP_TYPE_STRING:
+            break;
+
+        case EXP_TYPE_OSIP_ARRAY:
+            break;
+
+        default:
+            break;
+    }
 }
 
 bool w_expression_add_osip(w_expression_t ** var, char * ip) {
