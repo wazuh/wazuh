@@ -50,9 +50,9 @@ import pytest
 import requests
 from pathlib import Path
 
+from wazuh_testing.constants.api import RULES_FILES_ROUTE, CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMON
 from wazuh_testing.constants.paths.analysisd import DEFAULT_RULES_PATH
-from wazuh_testing.modules.api.constants import RULES_FILES_ROUTE, CONFIGURATION_TYPES
 from wazuh_testing.modules.api.helpers import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.utils.file import write_file, delete_file

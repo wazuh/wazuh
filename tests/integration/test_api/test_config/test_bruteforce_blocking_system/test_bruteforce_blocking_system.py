@@ -56,8 +56,8 @@ import os
 import time
 
 import pytest
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMON
-from wazuh_testing.modules.api.constants import CONFIGURATION_TYPES
 from wazuh_testing.modules.api.helpers import login
 from wazuh_testing.modules.api.patterns import API_LOGIN_ERROR_MSG
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template

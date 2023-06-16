@@ -5,9 +5,9 @@ This program is free software; you can redistribute it and/or modify it under th
 """
 import pytest
 
-from wazuh_testing.constants.paths.configurations import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
+from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.modules.api.configuration import get_configuration, append_configuration, delete_configuration_file
-from wazuh_testing.modules.api.constants import API_HOST, API_PORT, CONFIGURATION_TYPES
+from wazuh_testing.constants.api import WAZUH_API_HOST, WAZUH_API_PORT, CONFIGURATION_TYPES
 from wazuh_testing.modules.api.patterns import API_STARTED_MSG
 from wazuh_testing.tools import file_monitor
 from wazuh_testing.utils.callbacks import generate_callback
@@ -56,7 +56,7 @@ def wait_for_api_start(test_configuration: list[dict]) -> None:
     monitor_invalid = file_monitor.FileMonitor(file_to_monitor)
     monitor_invalid.start(
         callback=generate_callback(API_STARTED_MSG, {
-            'host': API_HOST,
-            'port': API_PORT
+            'host': WAZUH_API_HOST,
+            'port': WAZUH_API_PORT
         })
     )

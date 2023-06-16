@@ -50,8 +50,8 @@ import time
 import pytest
 import requests
 
+from wazuh_testing.constants.api import CONFIGURATION_TYPES, AGENTS_ROUTE
 from wazuh_testing.constants.daemons import API_DAEMON
-from wazuh_testing.modules.api.constants import CONFIGURATION_TYPES, AGENTS_ROUTE
 from wazuh_testing.modules.api.helpers import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 

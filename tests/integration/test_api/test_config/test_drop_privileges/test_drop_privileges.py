@@ -49,8 +49,9 @@ import os
 import pwd
 import pytest
 
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMON
-from wazuh_testing.modules.api.constants import CONFIGURATION_TYPES, WAZUH_API_SCRIPT
+from wazuh_testing.constants.paths.api import WAZUH_API_SCRIPT
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.utils.services import search_process_by_command
 
@@ -91,7 +92,9 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, d
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
         - test:
-            - 
+            - Search wazuh-apid process and verify that it is present
+            - Get current user of the process
+            - Check that the user is the expected
         - teardown:
             - Remove configuration and restore backup configuration
             - Stop daemons defined in `daemons_handler_configuration` in this module
