@@ -138,7 +138,7 @@ def test_cache(test_configuration, test_metadata, add_configuration, daemons_han
             brief: Monitor the API log file to detect whether it has been started or not.
         - remove_test_file:
             type: fixture
-            brief: Remove the file after finishing the test execution.
+            brief: Remove the file before and after the test execution.
 
     assertions:
         - Verify that the number of files is the same in the first and second response when `cache` is enabled.

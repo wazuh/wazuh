@@ -53,8 +53,8 @@ def wait_for_api_start(test_configuration: list[dict]) -> None:
         pass
 
     file_to_monitor = WAZUH_API_JSON_LOG_FILE_PATH if log_format == 'json' else WAZUH_API_LOG_FILE_PATH
-    monitor_invalid = file_monitor.FileMonitor(file_to_monitor)
-    monitor_invalid.start(
+    monitor_start_message = file_monitor.FileMonitor(file_to_monitor)
+    monitor_start_message.start(
         callback=generate_callback(API_STARTED_MSG, {
             'host': WAZUH_API_HOST,
             'port': WAZUH_API_PORT
