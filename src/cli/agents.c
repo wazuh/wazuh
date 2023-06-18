@@ -17,7 +17,7 @@ typedef struct agentStatus_t{
     int exit;
     int count;
     cJSON *root;
-    keyActions_t agentsCmdActions;
+    keyActions_t actions;
 }agentStatus_t;
 
 extern char shost[512];
@@ -53,11 +53,11 @@ static void agentsCmd(cmdStatus_t *s){
             }
             cmdSetCustomData(s, status, free);
 
-            status->agentsCmdActions.CursorUp = agentsCursorUp;
-            status->agentsCmdActions.CursorDown = agentsCursorDown;
-            status->agentsCmdActions.Enter = agentsEnter;
-            status->agentsCmdActions.Tab = agentsTab;
-            status->agentsCmdActions.Escape = agentsEscape;
+            status->actions.CursorUp   = (void (*)(void *, stream_t *, char))agentsCursorUp;
+            status->actions.CursorDown = (void (*)(void *, stream_t *, char))agentsCursorDown;
+            status->actions.Enter      = (void (*)(void *, stream_t *, char))agentsEnter;
+            status->actions.Tab        = (void (*)(void *, stream_t *, char))agentsTab;
+            status->actions.Escape     = (void (*)(void *, stream_t *, char))agentsEscape;
 
             /* Obtain agent information */
             status->agents = (cJSON*)calloc(1, sizeof(cJSON));
@@ -93,7 +93,10 @@ static void agentsCmd(cmdStatus_t *s){
             status->selectedAgent = 0;
             status->refresh = 1;
 
-            cmdPrintf(s, "ID   |  AGENT NAME          | AGENT IP             | AGENT STATUS\r\n");
+            //cmdDraw(s, "┘ ┐ │ └ ┼ ─ ├ ┤ ┴ ┬ │ ┌")
+            cmdDraw(s, "┌──────┬──────────────────────┬──────────────────────┬──────────────────────┐\r\n");
+            cmdDraw(s, "│ ID   │  AGENT NAME          │ AGENT IP             │ AGENT STATUS         │\r\n");
+            cmdDraw(s, "├──────┼──────────────────────┼──────────────────────┼──────────────────────┤\r\n");
 
             cmdSetState(s, 1);
         break;
@@ -101,7 +104,7 @@ static void agentsCmd(cmdStatus_t *s){
         case 1:
             status = (agentStatus_t *)cmdGetCustomData(s);
             if( (cmdDataAvailable(s) != 0 && cmdGetChar(s, &key) == 1)){
-                action = keyActionGet(cmdStreamGet(s), &(status->agentsCmdActions), key);
+                action = keyActionGet(cmdStreamGet(s), &(status->actions), key);
                 if(action)
                     action(status, s, key);
             }
@@ -134,7 +137,7 @@ static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize){
             name = cJSON_GetObjectItem(item, "name");
             ip = cJSON_GetObjectItem(item, "ip");
             stat = cJSON_GetObjectItem(item, "status");
-            cmdPrintf(s, "%s%-4s | %-20s | %-20s | %-20s\033[0m\r\n", 
+            cmdDraw(s, "│ %s%-4s │ %-20s │ %-20s │ %-20s\033[0m │\r\n", 
                 set->selectedAgent == i? "\033[47m\033[30m":"",
                 id->valuestring,
                 name->valuestring,
@@ -145,7 +148,9 @@ static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize){
         i++;
     }while(item && i < setSize);
 
-    cmdPrintf(s, "\033[0m\033[%dA", set->count);
+    //cmdDraw(s, "┘ ┐ │ └ ┼ ─ ├ ┤ ┴ ┬ │ ┌")
+    cmdDraw(s, "└──────┴──────────────────────┴──────────────────────┴──────────────────────┘\r\n");
+    cmdPrintf(s, "\033[0m\033[%dA", set->count+1);
 }
 
 static void agentsCursorUp  (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c){

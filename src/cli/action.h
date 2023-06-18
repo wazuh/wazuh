@@ -1,3 +1,6 @@
+#ifndef ACTION_H
+#define ACTION_H
+
 #include "stream.h"
 
 #define UNUSED __attribute__((unused))
@@ -56,3 +59,5 @@ typedef struct keyActions_t{
 }keyActions_t;
 
 keyAction_t keyActionGet(stream_t *s, keyActions_t *actions, unsigned char c);
+
+#endif

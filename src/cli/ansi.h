@@ -7,10 +7,13 @@
 #define LF 0x0A
 #define CR 0x0D
 #define ESC 0x1B
+#define ESC_S "\033"
 
-#define CSI "\033["
-#define ANSI_SHIFT_UP                   "\x0E"
-#define ANSI_SHIFT_DOWN                 "\x0F"
+#define CSI ESC_S "["
+#define ANSI_SHIFT_UP                   0x0E
+#define ANSI_SHIFT_DOWN                 0x0F
+#define ANSI_SHIFT_UP_STR               "\x0E"
+#define ANSI_SHIFT_DOWN_STR             "\x0F"
 
 #define ansiScreenHome                  CSI"H"
 

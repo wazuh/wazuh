@@ -7,6 +7,7 @@
 #include "hints.h"
 #include "color.h"
 #include "ansi.h"
+#include "action.h"
 
 typedef struct command_t command_t;
 typedef struct cmdStatus_t cmdStatus_t;
@@ -22,6 +23,10 @@ void cmdEnd(cmdStatus_t *status);
 /* Command output functions */
 int cmdPrintf(cmdStatus_t *s, char *fmt, ...);
 void cmdString(cmdStatus_t *s, char *str);
+/* It converts following UTF8 characters to its VT100 equivalent:
+    ┘ ┐ │ └ ┼ ─ ├ ┤ ┴ ┬ │ ┌
+ */
+void cmdDraw(cmdStatus_t *c, char *str, ...);
 
 /* Command input functions*/
 int cmdDataAvailable(cmdStatus_t *s);
@@ -34,11 +39,6 @@ int cmdGetState(cmdStatus_t *status);
 /* Command custom data */
 void cmdSetCustomData(cmdStatus_t *s, void *data, void (*f)(void *data));
 void * cmdGetCustomData(cmdStatus_t *s);
-
-/* It converts following UTF8 characters to its VT100 equivalent:
-    ┘ ┐ │ └ ┼ ─ ├ ┤ ┴ ┬ │ ┌
- */
-void cmdDraw(cmdStatus_t *s, char *str);
 
 void cmdExit(cmdStatus_t *s);
 

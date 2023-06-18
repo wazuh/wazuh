@@ -241,4 +241,62 @@ int cmdGetKey(cmdStatus_t *s, char *c){
         default:
         return 0;
     }
+    return 0;
+}
+
+#define UK_CHARSET_G0                       ESC_S "(A"
+#define UK_CHARSET_G1                       ESC_S ")A"
+#define ASCII_CHARSET_G0                    ESC_S "(B"
+#define ASCII_CHARSET_G1                    ESC_S ")B"
+#define SPECIAL_GRAPH_G0                    ESC_S "(0"
+#define SPECIAL_GRAPH_G1                    ESC_S ")0"
+#define ALTERNATE_ROM_STANDARD_CHARSET_G0   ESC_S "(1"
+#define ALTERNATE_ROM_STANDARD_CHARSET_G1   ESC_S ")1"
+#define ALTERNATE_ROM_SCPECIAL_GRAPH ESC_G0 ESC_S "(2"
+#define ALTERNATE_ROM_SCPECIAL_GRAPH ESC_G1 ESC_S ")2"
+
+void cmdDraw(cmdStatus_t *c, char *str, ...){
+    unsigned int i, j, len;
+    char *p;
+    va_list args;
+
+    cmdPrintf(c, UK_CHARSET_G0 SPECIAL_GRAPH_G1 ANSI_SHIFT_DOWN_STR);
+
+    len = strlen(str);
+    p = calloc(1, len + 1);
+    if(!p)
+        return;
+
+    for(i = 0, j = 0; i < len ; i++){
+        switch((unsigned char)str[i]){
+            case 0xE2:
+                i++;
+                switch((unsigned char)str[i]){
+                    case 0x94:
+                        i++;
+                        switch((unsigned char)str[i]){
+                            case 0x98: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x6A'; p[j++] = ANSI_SHIFT_DOWN; break; // ┘
+                            case 0x90: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x6B'; p[j++] = ANSI_SHIFT_DOWN; break; // ┐
+                            case 0x8C: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x6C'; p[j++] = ANSI_SHIFT_DOWN; break; // │
+                            case 0x94: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x6D'; p[j++] = ANSI_SHIFT_DOWN; break; // └
+                            case 0xBC: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x6E'; p[j++] = ANSI_SHIFT_DOWN; break; // ┼
+                            case 0x80: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x71'; p[j++] = ANSI_SHIFT_DOWN; break; // ─
+                            case 0x9C: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x74'; p[j++] = ANSI_SHIFT_DOWN; break; // ├
+                            case 0xA4: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x75'; p[j++] = ANSI_SHIFT_DOWN; break; // ┤
+                            case 0xB4: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x76'; p[j++] = ANSI_SHIFT_DOWN; break; // ┴
+                            case 0xAC: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x77'; p[j++] = ANSI_SHIFT_DOWN; break; // ┬
+                            case 0x82: p[j++] = ANSI_SHIFT_UP; p[j++] = '\x78'; p[j++] = ANSI_SHIFT_DOWN; break; // │
+                            default:   p[j++] = ANSI_SHIFT_UP; p[j++] =   'X' ; p[j++] = ANSI_SHIFT_DOWN; break;
+                        }
+                    break;
+                }
+            break;
+            default:   p[j++] = str[i]; break;
+        }
+    }
+
+    va_start(args, str);
+    cmdVPrintf(c, p, args);
+    va_end(args);
+    free(p);
 }
