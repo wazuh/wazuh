@@ -11,7 +11,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
 # Set pytest marks.
-pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_execd.yaml')
@@ -30,11 +30,11 @@ active_response_configuration = '''restart-wazuh0 - restart-wazuh - 0\n
                                    firewall-drop0 - firewall-drop - 0\n
                                    firewall-drop5 - firewall-drop - 5'''
 
-
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_execd_firewall_drop(test_configuration, test_metadata, configure_local_internal_options,
-                             set_active_response_configuration, authd_simulator, remoted_simulator):
+def test_execd_firewall_drop(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, 
+                             truncate_monitored_files, set_active_response_configuration,
+                             authd_simulator, remoted_simulator, restart_wazuh):
     '''
     description: Check if 'firewall-drop' command of 'active response' is executed correctly.
                  For this purpose, a simulated agent is used and the 'active response'

@@ -10,13 +10,13 @@
         - crypto_method:
             value: "aes"
         - server:
-          elements:
-            - address:
-                value: 127.0.0.1
-            - port:
-                value: 1514
-            - protocol:
-                value: tcp
+            elements:
+                - address:
+                    value: 127.0.0.1
+                - port:
+                    value: 1514
+                - protocol:
+                    value: tcp
     - section: active-response
       elements:
         - disabled:
