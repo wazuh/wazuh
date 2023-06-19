@@ -19,7 +19,7 @@ static const char *socket_location = "location";
 static const char *socket_mode = "mode";
 static const char *socket_prefix = "prefix";
 
-int Read_LogCollecSocket(XML_NODE node, __attribute__((unused)) void *d1, void *d2) {
+int Read_LogCollecSocket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     socket_forwarder *sktf;
     logreader_config *log_config;
