@@ -91,19 +91,22 @@ def test_invalid(test_configuration, test_metadata, restart_wazuh, set_wazuh_con
     tier: 0
 
     parameters:
-        - get_local_internal_options:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - restart_wazuh:
             type: fixture
-            brief: Get internal configuration.
+            brief: Reset Wazuh.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Configure a custom environment for testing.
         - configure_local_internal_options:
             type: fixture
             brief: Set internal configuration for testing.
-        - get_configuration:
-            type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing.
-        - reset_ossec_log:
+        - truncate_monitored_files:
             type: fixture
             brief: Reset the 'ossec.log' file and start a new monitor.
 
