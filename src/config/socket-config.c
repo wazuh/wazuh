@@ -66,10 +66,10 @@ int Read_LogCollecSocket(XML_NODE node, void *d1, __attribute__((unused)) void *
                     merror("Invalid socket name 'agent'.");
                     return OS_INVALID;
                 }
-                free(sktf[pl].name);
+                os_free(sktf[pl].name);
                 os_strdup(node[i]->content, sktf[pl].name);
             } else if (!strcmp(node[i]->element, socket_location)) {
-                free(sktf[pl].location);
+                os_free(sktf[pl].location);
                 os_strdup(node[i]->content, sktf[pl].location);
             } else if (!strcmp(node[i]->element, socket_mode)) {
                 if (strcasecmp(node[i]->content, "tcp") == 0) {
@@ -81,7 +81,7 @@ int Read_LogCollecSocket(XML_NODE node, void *d1, __attribute__((unused)) void *
                     return OS_INVALID;
                 }
             } else if (!strcmp(node[i]->element, socket_prefix)) {
-                free(sktf[pl].prefix);
+                os_free(sktf[pl].prefix);
                 sktf[pl].prefix = filter_special_chars(node[i]->content);
             } else {
                 merror(XML_INVELEM, node[i]->element);
@@ -155,10 +155,10 @@ int Read_AnalysisdSocket(XML_NODE node, void *d1, __attribute__((unused)) void *
                     merror("Invalid socket name 'agent'.");
                     return OS_INVALID;
                 }
-                free(sktf[pl].name);
-                os_strdup(node[i]->content, sktf[pl].name);
+                  os_free(sktf[pl].name);
+                  os_strdup(node[i]->content, sktf[pl].name);
             } else if (!strcmp(node[i]->element, socket_location)) {
-                free(sktf[pl].location);
+                os_free(sktf[pl].location);
                 os_strdup(node[i]->content, sktf[pl].location);
             } else if (!strcmp(node[i]->element, socket_mode)) {
                 if (strcasecmp(node[i]->content, "tcp") == 0) {
@@ -170,7 +170,7 @@ int Read_AnalysisdSocket(XML_NODE node, void *d1, __attribute__((unused)) void *
                     return OS_INVALID;
                 }
             } else if (!strcmp(node[i]->element, socket_prefix)) {
-                free(sktf[pl].prefix);
+                os_free(sktf[pl].prefix);
                 sktf[pl].prefix = filter_special_chars(node[i]->content);
             } else {
                 merror(XML_INVELEM, node[i]->element);

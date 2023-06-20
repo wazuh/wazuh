@@ -268,7 +268,7 @@ int SendJSONtoSCK(char* message, socket_forwarder* Config) {
             break;
         default:
             merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
-            free(message);
+            os_free(message);
             return -1;
         }
 
