@@ -1124,13 +1124,16 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg -s ntp -> r:install ok installed"
+      - "c:dpkg -s chrony -> r:install ok installed"
+      - "c:systemctl is-enabled systemd-timesyncd -> r:^enabled"
 
   # 2.1.2.1 Ensure chrony is configured with authorized timeserver. (Manual)
   - id: 31068
     title: "Ensure chrony is configured with authorized timeserver."
-    description: "- server o The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server’s system time will never be influenced by that of a client. o This directive can be used multiple times to specify multiple servers. o The directive is immediately followed by either the name of the server, or its IP address. - pool o The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. o This directive can be used multiple times to specify multiple pools. o All options valid in the server directive can be used in this directive too."
+    description: "-> server - The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server's system time will never be influenced by that of a client. - This directive can be used multiple times to specify multiple servers. o The directive is immediately followed by either the name of the server, or its IP address. -> pool - The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. - This directive can be used multiple times to specify multiple pools. - All options valid in the server directive can be used in this directive too."
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
     remediation: "Edit /etc/chrony/chrony.conf or a file ending in .sources in /etc/chrony/sources.d/ and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool directive: pool time.nist.gov iburst maxsources 4 #The maxsources option is unique to the pool directive server directive: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run one of the following commands to load the updated time sources into chronyd running config: # systemctl restart chronyd - OR if sources are in a .sources file - # chronyc reload sources OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony."
     compliance:
@@ -1146,8 +1149,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "c:ps -ef -> r:^_chrony && r:/chronyd"
+      - 'f:/etc/chrony/chrony.conf -> r:^server\.+|^pool\.+'
 
   # 2.1.2.2 Ensure chrony is running as user _chrony. (Automated)
   - id: 31069
@@ -1168,8 +1173,9 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/chrony/chrony.conf -> r:^user _chrony"
 
   # 2.1.2.3 Ensure chrony is enabled and running. (Automated)
   - id: 31070
@@ -1190,8 +1196,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled chrony.service -> r:^enabled"
+      - "c:systemctl is-active chrony.service -> r:^active"
 
   # 2.1.3.1 Ensure systemd-timesyncd configured with authorized timeserver. (Automated)
   - id: 31071
@@ -1215,8 +1223,11 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "d:/etc/systemd"
+      - 'd:/etc/systemd -> r:\.+.conf$'
+      - 'd:/etc/systemd -> r:\.+.conf$ -> r:^\s*NTP=|^\s*FallbackNTP='
 
   # 2.1.3.2 Ensure systemd-timesyncd is enabled and running. (Manual)
   - id: 31072
@@ -1237,8 +1248,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:^enabled"
+      - "c:systemctl is-active systemd-timesyncd.service -> r:^active"
 
   # 2.1.4.1 Ensure ntp access control is configured. (Automated)
   - id: 31073
@@ -1261,13 +1274,15 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - 'f:/etc/ntp.conf -> r:^restrict\s*\t*-4\s*\t*default|^restrict\s*\t*default && r:\s*kod && r:\s*nomodify && r:\s*notrap && r:\s*nopeer && r:\s*noquery'
+      - 'f:/etc/ntp.conf -> r:^restrict\s*\t*-6\s*\t*default && r:\s*kod && r:\s*nomodify && r:\s*notrap && r:\s*nopeer && r:\s*noquery'
 
   # 2.1.4.2 Ensure ntp is configured with authorized timeserver. (Manual)
   - id: 31074
     title: "Ensure ntp is configured with authorized timeserver."
-    description: "The various modes are determined by the command keyword and the type of the required IP address. Addresses are classed by type as (s) a remote server or peer (IPv4 class A, B and C), (b) the broadcast address of a local interface, (m) a multicast address (IPv4 class D), or (r) a reference clock address (127.127.x.x). Note: That only those options applicable to each command are listed below. Use of options not listed may not be caught as an error, but may result in some weird and even destructive behavior. If the Basic Socket Interface Extensions for IPv6 (RFC-2553) is detected, support for the IPv6 address family is generated in addition to the default support of the IPv4 address family. In a few cases, including the reslist billboard generated by ntpq or ntpdc, IPv6 addresses are automatically generated. IPv6 addresses can be identified by the presence of colons “:” in the address field. IPv6 addresses can be used almost everywhere where IPv4 addresses can be used, with the exception of reference clock addresses, which are always IPv4. Note: In contexts where a host name is expected, a -4 qualifier preceding the host name forces DNS resolution to the IPv4 namespace, while a -6 qualifier forces DNS resolution to the IPv6 namespace. See IPv6 references for the equivalent classes for that address family. - pool - For type s addresses, this command mobilizes a persistent client mode association with a number of remote servers. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. - server - For type s and r addresses, this command mobilizes a persistent client mode association with the specified remote server or local radio clock. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. This command should not be used for type b or m addresses."
+    description: 'The various modes are determined by the command keyword and the type of the required IP address. Addresses are classed by type as (s) a remote server or peer (IPv4 class A, B and C), (b) the broadcast address of a local interface, (m) a multicast address (IPv4 class D), or (r) a reference clock address (127.127.x.x). Note: That only those options applicable to each command are listed below. Use of options not listed may not be caught as an error, but may result in some weird and even destructive behavior. If the Basic Socket Interface Extensions for IPv6 (RFC-2553) is detected, support for the IPv6 address family is generated in addition to the default support of the IPv4 address family. In a few cases, including the reslist billboard generated by ntpq or ntpdc, IPv6 addresses are automatically generated. IPv6 addresses can be identified by the presence of colons ":" in the address field. IPv6 addresses can be used almost everywhere where IPv4 addresses can be used, with the exception of reference clock addresses, which are always IPv4. Note: In contexts where a host name is expected, a -4 qualifier preceding the host name forces DNS resolution to the IPv4 namespace, while a -6 qualifier forces DNS resolution to the IPv6 namespace. See IPv6 references for the equivalent classes for that address family. - pool - For type s addresses, this command mobilizes a persistent client mode association with a number of remote servers. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. - server - For type s and r addresses, this command mobilizes a persistent client mode association with the specified remote server or local radio clock. In this mode the local clock can synchronized to the remote server, but the remote server can never be synchronized to the local clock. This command should not be used for type b or m addresses.'
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
     remediation: "Edit /etc/ntp.conf and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool mode: pool time.nist.gov iburst server mode: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run the following command to load the updated time sources into ntp running config: # systemctl restart ntp OR If another time synchronization service is in use on the system, run the following command to remove ntp from the system: # apt purge ntp."
     references:
@@ -1286,8 +1301,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/etc/ntp.conf -> r:^pool"
+      - "f:/etc/ntp.conf -> r:^server"
 
   # 2.1.4.3 Ensure ntp is running as user ntp. (Automated)
   - id: 31075
@@ -1307,8 +1324,9 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "f:/usr/lib/ntp/ntp-systemd-wrapper -> r:^RUNASUSER=ntp"
 
   # 2.1.4.4 Ensure ntp is enabled and running. (Automated)
   - id: 31076
@@ -1326,8 +1344,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled ntp.service -> r:^enabled"
+      - "c:systemctl is-active ntp.service -> r:^active"
 
   # 2.2.1 Ensure X Window System is not installed. (Automated)
   - id: 31077
