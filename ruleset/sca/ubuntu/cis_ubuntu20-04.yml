@@ -1368,8 +1368,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' xserver-xorg -> r:unknown ok not-installed"
 
   # 2.2.2 Ensure Avahi Server is not installed. (Automated)
   - id: 31078
@@ -1389,8 +1390,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' avahi-daemon -> r:unknown ok not-installed"
 
   # 2.2.3 Ensure CUPS is not installed. (Automated)
   - id: 31079
@@ -1413,8 +1415,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' cups -> r:unknown ok not-installed"
 
   # 2.2.4 Ensure DHCP Server is not installed. (Automated)
   - id: 31080
@@ -1436,8 +1439,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' isc-dhcp-server -> r:unknown ok not-installed"
 
   # 2.2.5 Ensure LDAP server is not installed. (Automated)
   - id: 31081
@@ -1459,8 +1463,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' slapd -> r:unknown ok not-installed"
 
   # 2.2.6 Ensure NFS is not installed. (Automated)
   - id: 31082
@@ -1477,8 +1482,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nfs-kernel-server -> r:unknown ok not-installed"
 
   # 2.2.7 Ensure DNS Server is not installed. (Automated)
   - id: 31083
@@ -1498,8 +1504,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' bind9 -> r:unknown ok not-installed"
 
   # 2.2.8 Ensure FTP Server is not installed. (Automated)
   - id: 31084
@@ -1519,8 +1526,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' vsftpd -> r:unknown ok not-installed"
 
   # 2.2.9 Ensure HTTP server is not installed. (Automated)
   - id: 31085
@@ -1540,8 +1548,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' apache2 -> r:unknown ok not-installed"
 
   # 2.2.10 Ensure IMAP and POP3 server are not installed. (Automated)
   - id: 31086
@@ -1561,8 +1570,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-imapd -> r:install ok installed"
+      - "not c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dovecot-pop3d -> r:install ok installed"
 
   # 2.2.11 Ensure Samba is not installed. (Automated)
   - id: 31087
@@ -1581,8 +1592,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:unknown ok not-installed"
 
   # 2.2.12 Ensure HTTP Proxy Server is not installed. (Automated)
   - id: 31088
@@ -1602,8 +1614,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' squid -> r:unknown ok not-installed"
 
   # 2.2.13 Ensure SNMP Server is not installed. (Automated)
   - id: 31089
@@ -1623,8 +1636,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' snmp -> r:unknown ok not-installed"
 
   # 2.2.14 Ensure NIS Server is not installed. (Automated)
   - id: 31090
@@ -1644,8 +1658,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' nis -> r:unknown ok not-installed"
 
   # 2.2.15 Ensure dnsmasq is not installed. (Automated)
   - id: 31091
@@ -1665,8 +1680,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' dnsmaq -> r:unknown ok not-installed"
 
   # 2.2.16 Ensure mail transfer agent is configured for local-only mode. (Automated)
   - id: 31092
@@ -1686,8 +1702,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.*LISTEN|::1:25\.*LISTEN'
 
   # 2.2.17 Ensure rsync service is either not installed or is masked. (Automated)
   - id: 31093
@@ -1707,8 +1724,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' rsync -> r:unknown ok not-installed"
+      - "c:systemctl is-active rsync -> r:^inactive"
+      - "c:systemctl is-enabled rsync -> r:^masked"
 
   # 2.3.1 Ensure NIS Client is not installed. (Automated)
   - id: 31094
