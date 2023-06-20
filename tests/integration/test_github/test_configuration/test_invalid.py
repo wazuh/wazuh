@@ -79,7 +79,7 @@ test_configuration = load_configuration_template(configs_path, config_parameters
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+def test_invalid(test_configuration, test_metadata, restart_wazuh, set_wazuh_configuration, configure_local_internal_options,
                  truncate_monitored_files):
     '''
     description: Check if the 'github' module detects invalid configurations. For this purpose, the test
@@ -129,7 +129,6 @@ def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, con
     except ValueError:
         pass
 
-
-    detect_wrong_content_config(test_metadata['error_type'], test_metadata['event_monitor'], 'GitHub', wazuh_log_monitor)
+    detect_wrong_content_config(test_metadata['error_type'], test_metadata['event_monitor'], 'github', wazuh_log_monitor)
     
     assert (wazuh_log_monitor.callback_result != None), f'Error invalid configuration event not detected'
