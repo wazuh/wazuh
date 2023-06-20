@@ -116,7 +116,7 @@ checks:
     remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options: tmpfs /tmp 0 tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 Example of using a volume or disk with specific mount options. The source location of the volume or disk will vary depending on your environment. <device> /tmp <fstype> defaults,nodev,nosuid,noexec 0 0."
     references:
       - "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/"
-      - "https://www.freedesktop.org/software/systemd/man/systemd-fstab-"
+      - "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
     compliance:
       - cis: ["1.1.2.1"]
       - cis_csc_v8: ["4.8"]
@@ -904,6 +904,8 @@ checks:
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
     rationale: "A core dump includes a memory image taken at the time the operating system terminates an application. The memory image could contain sensitive data and is generally useful only for developers trying to debug problems."
     remediation: "Edit /etc/systemd/coredump.conf and edit or add the following line: Storage=none."
+    references:
+      - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
     compliance:
       - cis: ["1.5"]
     condition: all
