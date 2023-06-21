@@ -179,12 +179,22 @@ def truncate_monitored_files() -> None:
 # - - - - - - - - - - - - - - - - - - - - - - -End of Test Configuration Setup - - - - - - - - - - - - - - - - - - - -
 
 # - - - - - - - - - - - - - - - - - - - - - - -Daemon and Socked Handling - -  - - - - - - - - - - - - - - - - - - - -
-@pytest.fixture(scope='function')
-def restart_wazuh(daemon=None):
+@pytest.fixture()
+def restart_wazuh(daemon: str=None) -> None:
     """Restart all Wazuh daemons"""
     services.control_service("restart", daemon=daemon)
     yield
     services.control_service('stop', daemon=daemon)
+
+
+@pytest.fixture(scope='module')
+def restart_wazuh_daemon_after_finishing_module(daemon: str=None) -> None:
+    """
+    Restart a Wazuh daemon
+    """
+    yield
+    file.truncate_file(WAZUH_LOG_PATH)
+    services.control_service("restart", daemon=daemon)
 
 
 def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
