@@ -26,11 +26,13 @@ using ::api::adapter::fromWazuhRequest;
 using ::api::adapter::genericError;
 using ::api::adapter::toWazuhResponse;
 
+using router::Router;
+using router::TEST_ROUTE_MAXIMUM_PRIORITY;
+using router::TEST_ROUTE_MINIMUM_PRIORITY;
+
 using std::optional;
 using std::shared_ptr;
 using std::string;
-
-using ::router::Router;
 
 } // namespace
 
@@ -136,7 +138,7 @@ optional<base::Error> saveSessionsToStore(const shared_ptr<store::IStore>& store
     return store->update(API_SESSIONS_TABLE_NAME, sessionsJson);
 }
 
-inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& router)
+inline int32_t getMaximumAvailablePriority(const shared_ptr<Router>& router)
 {
     // Create a set to store the taken priorities given the table
     std::unordered_set<uint32_t> takenPriorities;
@@ -147,16 +149,16 @@ inline int32_t getMinimumAvailablePriority(const shared_ptr<Router>& router)
         takenPriorities.insert(priority);
     }
 
-    int32_t minAvailablePriority {MINIMUM_PRIORITY};
+    int32_t maxAvailablePriority {TEST_ROUTE_MAXIMUM_PRIORITY};
 
     // The condition may be confusing as the actual priority increases while the value decreases
-    while (takenPriorities.count(minAvailablePriority) > 0 && MAXIMUM_PRIORITY < minAvailablePriority)
+    while (takenPriorities.count(maxAvailablePriority) > 0 && TEST_ROUTE_MINIMUM_PRIORITY >= maxAvailablePriority)
     {
         // If priority is taken, decrease the value (so, increase the priority)
-        minAvailablePriority--;
+        maxAvailablePriority++;
     }
 
-    return minAvailablePriority;
+    return maxAvailablePriority;
 }
 
 inline optional<base::Error>
@@ -346,6 +348,11 @@ api::Handler sessionPost(const shared_ptr<Catalog>& catalog,
             return genericError<ResponseType>(parametersError.value());
         }
 
+        if (eRequest.name().empty())
+        {
+            return genericError<ResponseType>("Session name cannot be empty");
+        }
+
         auto& sessionManager = SessionManager::getInstance();
 
         const auto& sessionName = eRequest.name();
@@ -383,16 +390,16 @@ api::Handler sessionPost(const shared_ptr<Catalog>& catalog,
 
         const auto routeName = fmt::format(TEST_ROUTE_NAME_FORMAT, sessionName);
 
-        // Find the minimum priority that is not already taken
-        const int32_t minAvailablePriority = getMinimumAvailablePriority(router);
-        if (0 > minAvailablePriority)
+        // Find the maximum priority that is not already taken (priority is inversely proportional to the value)
+        const int32_t maxAvailablePriority = getMaximumAvailablePriority(router);
+        if (TEST_ROUTE_MINIMUM_PRIORITY < maxAvailablePriority)
         {
             deleteAssetFromStore(catalog, filterName);
             deleteAssetFromStore(catalog, policyName);
             return genericError<ResponseType>("There is no available priority");
         }
 
-        const auto addRouteError = router->addRoute(routeName, minAvailablePriority, filterName, policyName);
+        const auto addRouteError = router->addRoute(routeName, maxAvailablePriority, filterName, policyName);
         if (addRouteError.has_value())
         {
             deleteAssetFromStore(catalog, filterName);
