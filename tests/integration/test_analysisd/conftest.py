@@ -12,7 +12,7 @@ import pytest
 
 from wazuh_testing.constants.keys.events import *
 from wazuh_testing.constants.keys.alerts import *
-from wazuh_testing.constants.paths.configurations import CUSTOM_RULES_PATH, CUSTOM_RULES_FILE
+from wazuh_testing.constants.paths.configurations import CUSTOM_RULES_PATH, CUSTOM_RULES_FILE, WAZUH_CONF_PATH
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH, WAZUH_LOG_PATH
 from wazuh_testing.constants.users import WAZUH_UNIX_GROUP, WAZUH_UNIX_USER
 from wazuh_testing.modules.analysisd import patterns
@@ -40,20 +40,27 @@ def prepare_custom_rules_file(request, test_metadata):
 
 
 @pytest.fixture()
-def configure_local_rules(configuration):
+def configure_local_rules(request, test_configuration):
     """Configure a custom rule for testing. Restart Wazuh is needed for applying the configuration. """
 
     # save current configuration
     shutil.copy(CUSTOM_RULES_FILE, CUSTOM_RULES_FILE + '.cpy')
 
     # configuration for testing
-    file_test = str(configuration)
+    file_test = str(test_configuration)
     shutil.copy(file_test, CUSTOM_RULES_FILE)
 
     yield
 
     # restore previous configuration
     shutil.move(CUSTOM_RULES_FILE + '.cpy', CUSTOM_RULES_FILE)
+
+
+@pytest.fixture()
+def configure_remove_tags(request, test_metadata):
+    """Configure a custom settting for testing. Restart Wazuh is needed for applying the configuration. """
+    # Remove test case tags from ossec.conf
+    file.replace_regex_in_file(test_metadata['remove_tags'], [''] * len(test_metadata['remove_tags']), WAZUH_CONF_PATH)
 
 
 @pytest.fixture(scope='module')

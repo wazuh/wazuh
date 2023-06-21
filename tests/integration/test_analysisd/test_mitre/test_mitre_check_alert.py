@@ -53,7 +53,7 @@ import jsonschema
 import pytest
 
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH
-from wazuh_testing.modules import ALL_DAEMON_HANDLER
+from wazuh_testing.modules import ALL_DAEMONS
 from wazuh_testing.modules.analysisd import patterns, utils
 from wazuh_testing.tools import file_monitor
 from wazuh_testing.utils import callbacks
@@ -63,7 +63,7 @@ from . import RULES_SAMPLE_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Test daemons to restart.
-daemons_handler_configuration = ALL_DAEMON_HANDLER
+daemons_handler_configuration = {ALL_DAEMONS: True}
 
 # Test variables.
 configurations = []
@@ -77,8 +77,8 @@ for i in range(1, 15):
 
 
 # Test function.
-@pytest.mark.parametrize('configuration', configurations)
-def test_mitre_check_alert(configuration, truncate_monitored_files, configure_local_rules, daemons_handler):
+@pytest.mark.parametrize('test_configuration', configurations)
+def test_mitre_check_alert(test_configuration, truncate_monitored_files, configure_local_rules, daemons_handler):
     '''
     description: Check if MITRE alerts are syntactically and semantically correct.
                  For this purpose, customized rules with MITRE fields are inserted,
@@ -90,7 +90,7 @@ def test_mitre_check_alert(configuration, truncate_monitored_files, configure_lo
     tier: 0
 
     parameters:
-        - configuration:
+        - test_configuration:
             type: fixture
             brief: Configuration from the module.
         - truncate_monitored_files:
@@ -121,7 +121,7 @@ def test_mitre_check_alert(configuration, truncate_monitored_files, configure_lo
     wazuh_alert_monitor = file_monitor.FileMonitor(ALERTS_JSON_PATH)
 
     # Wait until Mitre's event is detected
-    if configuration not in invalid_configurations:
+    if test_configuration not in invalid_configurations:
         wazuh_alert_monitor.start(timeout=30, callback=callbacks.generate_callback(patterns.ANALYSISD_ALERT_STARTED))
         utils.validate_mitre_event(json.loads(wazuh_alert_monitor.callback_result))
     else:

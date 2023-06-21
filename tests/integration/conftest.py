@@ -104,6 +104,24 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
 # - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
 
+@pytest.fixture(scope='session')
+def load_wazuh_basic_configuration():
+    """Load a new basic configuration to the manager"""
+    # Load ossec.conf with all disabled settings
+    minimal_configuration = configuration.get_minimal_configuration()
+
+    # Make a backup from current configuration
+    backup_ossec_configuration = configuration.get_wazuh_conf()
+
+    # Write new configuration
+    configuration.write_wazuh_conf(minimal_configuration)
+
+    yield
+
+    # Restore the ossec.conf backup
+    configuration.write_wazuh_conf(backup_ossec_configuration)
+
+
 @pytest.fixture()
 def set_wazuh_configuration(test_configuration: dict) -> None:
     """Set wazuh configuration
