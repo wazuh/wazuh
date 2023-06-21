@@ -35,9 +35,9 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     eTest::DebugMode debugModeMap;
     switch (parameters.debugLevel)
     {
-        case OUTPUT_ONLY: debugModeMap = eTest::DebugMode::OUTPUT_ONLY; break;
         case OUTPUT_AND_TRACES: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES; break;
         case OUTPUT_AND_TRACES_WITH_DETAILS: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS; break;
+        case OUTPUT_ONLY:
         default: debugModeMap = eTest::DebugMode::OUTPUT_ONLY;
     }
     eRequest.set_debug_mode(debugModeMap);
@@ -198,14 +198,17 @@ void sessionList(std::shared_ptr<apiclnt::Client> client, const Parameters& para
 void configure(CLI::App_p app)
 {
     auto testApp = app->add_subcommand("test", "Utility to test events.");
+    testApp->require_subcommand(1);
     auto parameters = std::make_shared<Parameters>();
 
     testApp->add_option("-a, --api_socket", parameters->apiEndpoint, "Set the API socket path.")
-        ->default_val(ENGINE_SRV_API_SOCK);
+        ->default_val(ENGINE_SRV_API_SOCK)
+        ->check(CLI::ExistingFile);
     const auto client = std::make_shared<apiclnt::Client>(parameters->apiEndpoint);
 
     // API test manage sessions
     auto testSessionApp = testApp->add_subcommand("session", "Manage API sessions.");
+    testSessionApp->require_subcommand(1);
 
     // API test session create
     auto testSessionCreateApp = testSessionApp->add_subcommand("create", "Create a new session.");
@@ -238,7 +241,7 @@ void configure(CLI::App_p app)
     // API test Run
     auto testRunApp = testApp->add_subcommand("run", "Utility to run a test.");
     testRunApp->add_option("-n, --name", parameters->sessionName, "Name of the session to be used.")->required();
-    testRunApp->add_option("-e, --event", parameters->event, "Event to be processed")->required();
+    testRunApp->add_option("-e, --event", parameters->event, "Event to be processed.")->required();
     testRunApp
         ->add_option(
             "-q, --protocol_queue", parameters->protocolQueue, "Event protocol queue identifier (a single character).")
