@@ -5,6 +5,7 @@
 #include "defaultSettings.hpp"
 #include "utils.hpp"
 #include <cmds/apiclnt/client.hpp>
+#include <router/route.hpp>
 
 namespace
 {
@@ -165,13 +166,13 @@ void configure(CLI::App_p app)
     getSubcommand->callback([options, client]() { runGet(client, options->name); });
 
     // Add
-    auto addSubcommand = routerApp->add_subcommand(
-        "add", "Activate a new route, filter and policy asset must exist in the catalog");
+    auto addSubcommand =
+        routerApp->add_subcommand("add", "Activate a new route, filter and policy asset must exist in the catalog");
     addSubcommand->add_option("name", options->name, "Name or identifier of the route.")->required();
     addSubcommand->add_option("filter", options->filterName, "Name of the filter to use.")->required();
     addSubcommand->add_option("priority", options->priority, "Priority of the route.")
         ->required()
-        ->check(CLI::Range(0, 255));
+        ->check(CLI::Range(::router::USER_ROUTE_MAXIMUM_PRIORITY, ::router::USER_ROUTE_MINIMUM_PRIORITY));
     addSubcommand->add_option("policy", options->policy, "Target policy of the route.")->required();
     addSubcommand->callback(
         [options, client]()
@@ -187,7 +188,7 @@ void configure(CLI::App_p app)
     updateSubcommand->add_option("name", options->name, "Name of the route to modify.")->required();
     updateSubcommand->add_option("priority", options->priority, "Priority of the route.")
         ->required()
-        ->check(CLI::Range(0, 255));
+        ->check(CLI::Range(::router::USER_ROUTE_MAXIMUM_PRIORITY, ::router::USER_ROUTE_MINIMUM_PRIORITY));
     updateSubcommand->callback([options, client]() { runUpdate(client, options->name, options->priority); });
 
     // Ingest

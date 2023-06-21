@@ -15,6 +15,13 @@
 namespace router
 {
 
+constexpr int ROUTE_MAXIMUM_PRIORITY {0L};                          ///< Maximum priority allowed for a route
+constexpr int ROUTE_MINIMUM_PRIORITY {255L};                        ///< Minimum priority allowed for a route
+constexpr int TEST_ROUTE_MAXIMUM_PRIORITY {ROUTE_MAXIMUM_PRIORITY}; ///< Maximum priority allowed for a test route
+constexpr int TEST_ROUTE_MINIMUM_PRIORITY {49L};                    ///< Minimum priority allowed for a test route
+constexpr int USER_ROUTE_MAXIMUM_PRIORITY {50L};                    ///< Maximum priority allowed for a user route
+constexpr int USER_ROUTE_MINIMUM_PRIORITY {ROUTE_MINIMUM_PRIORITY}; ///< Minimum priority allowed for a user route
+
 /**
  * @brief Represents a route, it is used to route events to a destination ("target")
  *
