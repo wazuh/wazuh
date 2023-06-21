@@ -35,4 +35,13 @@ bool linerEnded(linerSession_t *s);
 void linerSetHintCallback(hint_t * (*cb)(char *str));
 void linerSetAutoCompleteCallback(linerSession_t *s, void (*cb)(stringList_t *l, char *str));
 
+/* Adds a string to the command history */
+void linerHistoryAdd(linerSession_t *ls, char *s);
+/* Erase command history */
+void linerHistoryClear(linerSession_t *ls);
+/* Resets any command history present and loads the receive list */
+void linerHistoryLoad(linerSession_t *ls, stringList_t *list);
+/* Returns a copy of command history */
+void linerHistoryGet(linerSession_t *ls, stringList_t **list);
+
 #endif //LINER_LINER_H

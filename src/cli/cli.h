@@ -20,5 +20,6 @@ int cliDataAvailable(cliSession_t *s);
 int cliGetChar(cliSession_t *cs, char *c);
 
 stream_t * cliStreamGet(cliSession_t *cs);
+int cliUserLevelGet(cliSession_t *cs);
 
 #endif //CLI_H

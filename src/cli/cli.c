@@ -23,6 +23,7 @@ typedef struct cliSession_t{
     cmdStatus_t *currentCmd;
     linerSession_t *ls;
     stream_t *s;
+    int userLevel;
 }cliSession_t;
 
 static hintStyle_t cliDefaultStyle = {
@@ -108,6 +109,7 @@ void cliTask(cliSession_t *cs){
 
                 cs->currentCmd = cliParse(line, cs);
                 if(cs->currentCmd){
+                    linerHistoryAdd(cs->ls, line);
                     cs->state = cliExecuteCommand;
                 }
                 else{
@@ -171,4 +173,8 @@ int cliGetChar(cliSession_t *cs, char *c){
 
 stream_t * cliStreamGet(cliSession_t *cs){
     return cs->s;
+}
+
+int cliUserLevelGet(cliSession_t *cs){
+    return cs->userLevel;
 }

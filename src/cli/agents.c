@@ -5,10 +5,10 @@
 
 #include "cmd.h"
 #include "shared.h"
-#include "cJSON.h"
 #include "addagent/manage_agents.h"
 #include "hints.h"
 #include "action.h"
+#include "common.h"
 
 typedef struct agentStatus_t{
     cJSON *agents;
@@ -20,8 +20,33 @@ typedef struct agentStatus_t{
     keyActions_t actions;
 }agentStatus_t;
 
+typedef struct agentInfo_t{
+    char *id;
+    char *name;
+    char *ip;
+    char *status;
+    char *os;
+    char *version;
+    char *configSum;
+    char *mergedSum;
+    char *lastKeepAlive;
+    char *syscheckTime;
+    char *syscheckEndTime;
+}agentInfo_t;
+typedef struct agents2Status_t{
+    cJSON *agentList;
+    agentInfo_t *info;
+    int selectedAgent;
+    int refresh;
+    int exit;
+    int count;
+    cJSON *root;
+    keyActions_t actions2;
+};
+
 extern char shost[512];
 static void agentsCmd(cmdStatus_t *s);
+static void agentsCmd2(cmdStatus_t *s);
 static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize);
 
 static void agentsCursorUp  (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c);
@@ -31,7 +56,12 @@ static void agentsTab       (UNUSED agentStatus_t *status, UNUSED stream_t *s, U
 static void agentsEscape    (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c);
 
 void agentsInit(void){
-    cmdLoad("agents", "list agents", hintDefaultStyle, agentsCmd);
+    cmdLoad("agents", "Native agents managment", hintDefaultStyle, agentsCmd);
+    cmdLoad("agents2", "manage-agent & manage-control wrapper", hintDefaultStyle, agentsCmd2);
+}
+
+static void agentsCmd2(cmdStatus_t *s){
+
 }
 
 static void agentsCmd(cmdStatus_t *s){
@@ -93,7 +123,6 @@ static void agentsCmd(cmdStatus_t *s){
             status->selectedAgent = 0;
             status->refresh = 1;
 
-            //cmdDraw(s, "┘ ┐ │ └ ┼ ─ ├ ┤ ┴ ┬ │ ┌")
             cmdDraw(s, "┌──────┬──────────────────────┬──────────────────────┬──────────────────────┐\r\n");
             cmdDraw(s, "│ ID   │  AGENT NAME          │ AGENT IP             │ AGENT STATUS         │\r\n");
             cmdDraw(s, "├──────┼──────────────────────┼──────────────────────┼──────────────────────┤\r\n");
@@ -120,6 +149,7 @@ static void agentsCmd(cmdStatus_t *s){
         case 2:
             status = (agentStatus_t *)cmdGetCustomData(s);
             cJSON_Delete(status->root);
+            cmdPrintf(s, ansiEraseScreen());
             cmdEnd(s);
         break;
     }
@@ -148,9 +178,8 @@ static void showAgentSet(cmdStatus_t *s, agentStatus_t *set, int setSize){
         i++;
     }while(item && i < setSize);
 
-    //cmdDraw(s, "┘ ┐ │ └ ┼ ─ ├ ┤ ┴ ┬ │ ┌")
     cmdDraw(s, "└──────┴──────────────────────┴──────────────────────┴──────────────────────┘\r\n");
-    cmdPrintf(s, "\033[0m\033[%dA", set->count+1);
+    cmdPrintf(s, "\033[0m%s", ansiCursorUp(set->count+1));
 }
 
 static void agentsCursorUp  (UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c){
@@ -158,19 +187,11 @@ static void agentsCursorUp  (UNUSED agentStatus_t *status, UNUSED stream_t *s, U
         status->selectedAgent--;
         status->refresh = 1;
     }
-    else{
-        status->selectedAgent = status->count-1;
-        status->refresh = 1;
-    }
 }
 
 static void agentsCursorDown(UNUSED agentStatus_t *status, UNUSED stream_t *s, UNUSED char c){
     if(status->selectedAgent < status->count-1){
         status->selectedAgent++;
-        status->refresh = 1;
-    }
-    else{
-        status->selectedAgent = 0;
         status->refresh = 1;
     }
 }

@@ -126,7 +126,8 @@ static void yellow1Cmd(cmdStatus_t *s){
 }
 
 static void clearCmd(cmdStatus_t *s){
-    cmdPrintf(s, "clear executed!\n");
+    cmdPrintf(s, ansiEraseScreen());
+
     cmdEnd(s);
 }
 static void continueCmd(cmdStatus_t *s){

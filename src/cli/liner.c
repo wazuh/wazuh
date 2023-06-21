@@ -20,7 +20,6 @@ typedef struct linerSession_t{
     linerHideMode_t hiddenMode;
     char line[LINER_MAX_LENGTH];
     char input[LINER_MAX_LENGTH];
-    char input_to_show[LINER_MAX_LENGTH];
     linerHideMode_t hideMode;
 
     int tabCount;
@@ -28,6 +27,8 @@ typedef struct linerSession_t{
     bool start;
     stream_t stream;
     autocomplete_t autocomplete;
+    stringList_t *history;
+    int historyIndex;
 }linerSession_t;
 
 typedef void (linerAction_t)(UNUSED linerSession_t *ls,UNUSED stream_t *s,UNUSED char c);
@@ -150,6 +151,7 @@ linerSession_t *linerNewSession(stream_t *s){
 
     ses->stream = *s;
     ses->start = 1;
+    stringListRestart(&ses->history);
     return ses;
 }
 
@@ -171,7 +173,6 @@ char * liner(linerSession_t *ls){
     keyAction_t action;
 
     ls->stream.task();
-    usleep(10000);
 
     if(!ls->stream.isOnline())
         return NULL;
@@ -179,7 +180,10 @@ char * liner(linerSession_t *ls){
     if(ls->start){
         ls->start = 0;
         ls->end = 0;
-        linerWriteString(ls, CSI"\x3F""25l" CSI"G" "\r" ansiEraseEntireLine() "\r");
+        linerWriteString(ls, ansiWrapDisable());
+        linerWriteString(ls, ansiTextCursorDisable());
+        linerWriteString(ls, ansiEraseScreen());
+        linerWriteString(ls, CSI"G" "\r" ansiEraseEntireLine() "\r");
         linerWriteString(ls, "wazuh:/>");
     }
 
@@ -194,30 +198,33 @@ char * liner(linerSession_t *ls){
     if(action) {
         action(ls, &(ls->stream), c);
 
-                //s->stream.write(ansiCursorGoToColumn(0), strlen(ansiCursorGoToColumn(0)));
         linerWriteString(ls, CSI"\x3F""25l" CSI"G" "\r" ansiEraseEntireLine() "\r");
         if(ls->end){
             ls->start = 1;
             return ls->line;
         }
         linerWriteString(ls, "wazuh:/>");
-        if(!ls->tabCount)
+
+        if(!ls->tabCount || (!stringListCount(ls->history) && !ls->historyIndex) ){
             linerWriteString(ls, ls->input);
-        else
+        }
+        else if(ls->tabCount){
             linerWriteString(ls, stringListGet(ls->autocomplete.list, ls->tabCount));
-        //linerWriteString(s, ansiCursorSavePosition() " ");  <<-- Works different on windows, linux & xterm
+        }
+        else{
+
+        }
 
         linerHintRefresh(ls);
         linerWriteString(ls, "\r\n");
         linerGetAutocompleteOptions(ls);
 
         linerWriteString(ls, CSI"A" CSI"G" "\r\r");
-
         for(int k = 0 ;k < (int)(8 + (ls->tabCount? strlen(stringListGet(ls->autocomplete.list, ls->tabCount)):strlen(ls->input))); k++)
             linerWriteString(ls, CSI"C");
 
         linerWriteString(ls, ansiModeResetAll());
-        linerWriteString(ls, CSI"\x3F""25h");
+        linerWriteString(ls, ansiTextCursorEnable());
     }
     return NULL;
 }
@@ -306,7 +313,9 @@ static __attribute((unused)) void actionCursorRight(UNUSED linerSession_t *ls,UN
 }
 
 static __attribute((unused)) void actionEscape(UNUSED linerSession_t *ls,UNUSED stream_t *s,UNUSED char c){
-
+    ls->input[0] = 0;
+    ls->tabCount = 0;
+    ls->historyIndex = 0;
 }
 
 static __attribute((unused)) void actionBackspace(UNUSED linerSession_t *ls,UNUSED stream_t *s,UNUSED char c){
@@ -336,14 +345,30 @@ static __attribute((unused)) void actionEnter(UNUSED linerSession_t *ls,UNUSED s
     s->write("\r\n", 2);
 
     ls->tabCount = 0;
+    ls->historyIndex = 0;
     ls->end = 1;
     ls->start = 1;
-
+        
     strncpy(ls->line, ls->input, sizeof(ls->line)-1);
     ls->line[sizeof(ls->line)-1] = 0;
     ls->input[0] = 0;
     stringListRestart(&ls->autocomplete.list);
 }
+
+void linerHistoryAdd(linerSession_t *ls, char *s){
+    stringListAdd(ls->history, s);
+    ls->historyIndex = stringListCount(ls->history);
+}
+
+/* Erase command history */
+void linerHistoryClear(linerSession_t *ls){
+    stringListRestart(&(ls->history));
+}
+
+/* Resets any command history present and loads the receive list */
+void linerHistoryLoad(linerSession_t *ls, stringList_t *list){}
+/* Returns a copy of command history */
+void linerHistoryGet(linerSession_t *ls, stringList_t **list){}
 
 static __attribute((unused)) void actionCtrlA(UNUSED linerSession_t *ls,UNUSED stream_t *s,UNUSED char c){
 
@@ -398,11 +423,30 @@ static __attribute((unused)) void actionCtrlW(UNUSED linerSession_t *ls,UNUSED s
 }
 
 static __attribute((unused)) void actionCursorUp(UNUSED linerSession_t *ls,UNUSED stream_t *s,UNUSED char c){
+    int lc = stringListCount(ls->history);
+    if(!lc)
+        return;
 
+    if(ls->historyIndex > 0)
+        ls->historyIndex--;
+
+    strcpy(ls->input, stringListGet(ls->history, ls->historyIndex));
 }
 
 static __attribute((unused)) void actionCursorDown(UNUSED linerSession_t *ls,UNUSED stream_t *s,UNUSED char c){
+    int lc = stringListCount(ls->history);
+    if(!lc)
+        return;
 
+    if(ls->historyIndex < lc)
+        ls->historyIndex++;
+
+    if(ls->historyIndex == lc){
+        strcpy(ls->input, "");
+    }
+    else{
+        strcpy(ls->input, stringListGet(ls->history, ls->historyIndex));
+    }
 }
 
 static __attribute((unused)) void actionEnd(UNUSED linerSession_t *ls,UNUSED stream_t *s,UNUSED char c){

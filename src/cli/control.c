@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cmd.h"
-#include "cJSON.h"
+#include "common.h"
 
 typedef struct controlStatus_t{
     cmdStatus_t *cmd;
@@ -18,7 +18,6 @@ typedef struct controlStatus_t{
 
 static void controlCmd(cmdStatus_t *status);
 static char *execute(const char *cmd);;
-static cJSON * getObjectFromArrayByKey(cJSON *array, char *key);
 static void printResult(controlStatus_t *c,  char *s);
 static void printHeader(controlStatus_t *c, char *s);
 static void refreshMenu(controlStatus_t *cs);
@@ -124,9 +123,11 @@ static void controlCmd(cmdStatus_t *c){
             }
 
             if(cs->selectedOption){
-                cmdPrintf(cs->cmd, ansiCursorPreviousLines(1));
+                //cmdPrintf(cs->cmd, ansiCursorPreviousLines(1));
+                cmdPrintf(cs->cmd, "%s", ansiCursorUp(1));
                 cmdPrintf(cs->cmd, "\r\n" ansiEraseLineCursorToEnd() "Please wait...");
-                cmdPrintf(cs->cmd, ansiCursorPreviousLines(21));
+                cmdPrintf(cs->cmd, "%s", ansiCursorUp(21));
+                //cmdPrintf(cs->cmd, ansiCursorPreviousLines(21));
                 cmdSetState(c, 2);
             }
 
@@ -178,7 +179,8 @@ static void printHeader(controlStatus_t *c, char *s){
     if(!root){
         cmdPrintf(c, "Bad response 1.\r\n");
         cmdEnd(c);
-        free(s);
+        if(s)
+            free(s);
         return;
     }
 
@@ -235,7 +237,7 @@ static void printResult(controlStatus_t *c,  char *s){
     }
 
     array_size = cJSON_GetArraySize(data_array);
-    cmdDraw(c->cmd, "│%-20s │ %-10s │\r\n", "Daemon", "status");
+    cmdDraw(c->cmd, "\r│%-20s │ %-10s │\r\n", "Daemon", "status");
     cmdDraw(c->cmd, "├─────────────────────┼────────────┤\r\n");
     for(i = 0; i < array_size; i++){
         object = cJSON_GetArrayItem(data_array, i);
@@ -254,25 +256,6 @@ static void printResult(controlStatus_t *c,  char *s){
 
     free(s);
     cJSON_Delete(root);
-}
-
-static cJSON * getObjectFromArrayByKey(cJSON *array, char *key){
-    cJSON *object = NULL, *item = NULL;
-    int array_size, i;
-    
-    if(!array || !cJSON_IsArray(array)){
-        return NULL;
-    }
-
-    array_size = cJSON_GetArraySize(array);
-    for(i = 0; i < array_size; i++){
-        object = cJSON_GetArrayItem(array, i);
-        item = cJSON_GetObjectItemCaseSensitive(object, key);
-        if(item && cJSON_IsString(item)){
-            return item;
-        }
-    }
-    return NULL;
 }
 
 static void controlCursorRight  (UNUSED controlStatus_t *cs, UNUSED stream_t *s, UNUSED char c){
@@ -305,7 +288,8 @@ static void controlEscape    (UNUSED controlStatus_t *cs, UNUSED stream_t *s, UN
 }
 
 static void refreshMenu(controlStatus_t *cs){
-    cmdPrintf(cs->cmd, ansiCursorPreviousLines(3));
+    //cmdPrintf(cs->cmd, ansiCursorPreviousLines(3));
+    cmdPrintf(cs->cmd, "\r%s", ansiCursorUp(3));
     cmdDraw(cs->cmd, "├─────────────────────┴────────────┤\r\n");
     cmdDraw(cs->cmd, "│%s STOP %s  %s START %s %s RESTART %s %s STATUS %s│\r\n",
         cs->currentOption == 0? ansiModeInverseSet():"", ansiModeInverseRes(),

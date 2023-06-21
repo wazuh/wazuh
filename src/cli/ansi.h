@@ -97,6 +97,11 @@
 #define MODE_STRIKE_RESET               0x0800
 #define MODE_RESET                      0x1000
 
+#define ansiWrapDisable()               CSI"\x3F""7l"
+#define ansiWrapEnable()                CSI"\x3F""7h"
+#define ansiTextCursorDisable()         CSI"\x3F""25l"
+#define ansiTextCursorEnable()          CSI"\x3F""25h"
+
 char *ansiMode(int mode, int foreground, int background);
 char *ansiOneParam(char command, int param);
 char *ansiTwoParam(char command, int param1, int param2);

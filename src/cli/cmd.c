@@ -221,12 +221,16 @@ int cmdGetChar(cmdStatus_t *s, char *c){
     return cliGetChar(s->cs, c);
 }
 
+int cmdGetUserLevel(cmdStatus_t *s){
+    return cliUserLevelGet(s->cs);
+}
+
 stream_t * cmdStreamGet(cmdStatus_t *s){
     return cliStreamGet(s->cs);
 }
 
 int cmdGetKey(cmdStatus_t *s, char *c){
-    int da, i;
+    int da;
     char in[4];
     da = cliDataAvailable(s->cs);
     switch(da){
@@ -260,7 +264,8 @@ void cmdDraw(cmdStatus_t *c, char *str, ...){
     char *p;
     va_list args;
 
-    cmdPrintf(c, UK_CHARSET_G0 SPECIAL_GRAPH_G1 ANSI_SHIFT_DOWN_STR);
+// (A )0 SD
+    cmdPrintf(c, SPECIAL_GRAPH_G1 ANSI_SHIFT_DOWN_STR);
 
     len = strlen(str);
     p = calloc(1, len + 1);

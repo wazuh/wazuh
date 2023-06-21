@@ -63,6 +63,9 @@ static char *ansiCommand(char *command){
     if(p)
         snprintf(p, len+1,"\033[%s", command);
     ansiAddToCleanList(p);
+    for(int i=0;i<strlen(p);i++)
+        printf("%02X",(unsigned char) p[i]);
+    printf("\r\n"); fflush(stdout);
     return p;
 }
 
@@ -76,12 +79,12 @@ static void ansiClean(void){
 
 char *ansiOneParam(char command, int param){
     char temp[50];
-    sprintf(temp, "%s%d%c", CSI, param, command);
+    sprintf(temp, "%d%c", param, command);
     return ansiCommand(temp);
 }
 
 char *ansiTwoParam(char command, int param1, int param2){
     char temp[50];
-    sprintf(temp, "%s%d;%d%c", CSI, param1, param2, command);
+    sprintf(temp, "%d;%d%c", param1, param2, command);
     return ansiCommand(temp);
 }
