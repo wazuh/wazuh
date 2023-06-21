@@ -624,11 +624,11 @@ api::Handler runPost(const shared_ptr<Router>& router)
         router::DebugMode debugModeMap;
         switch (debugMode)
         {
-            case eTest::DebugMode::OUTPUT_ONLY: debugModeMap = router::DebugMode::OUTPUT_ONLY; break;
             case eTest::DebugMode::OUTPUT_AND_TRACES: debugModeMap = router::DebugMode::OUTPUT_AND_TRACES; break;
             case eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS:
                 debugModeMap = router::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
                 break;
+            case eTest::DebugMode::OUTPUT_ONLY:
             default: debugModeMap = router::DebugMode::OUTPUT_ONLY;
         }
 
