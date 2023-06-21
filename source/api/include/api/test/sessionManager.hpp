@@ -24,7 +24,7 @@ private:
     std::unordered_map<std::string, Session> m_activeSessions; ///< Map of active sessions
     std::unordered_map<std::string, std::string> m_policyMap;  ///< Map of active policies
     std::unordered_map<std::string, std::string> m_routeMap;   ///< Map of active routes
-    std::unordered_map<std::string, std::string> m_filterMap;   ///< Map of active filter
+    std::unordered_map<std::string, std::string> m_filterMap;  ///< Map of active filter
 
     std::shared_mutex m_sessionMutex;                          ///< Mutex to protect the sessions resources usage
 
