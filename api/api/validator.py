@@ -324,6 +324,25 @@ def check_component_configuration_pair(component: str, configuration: str) -> Wa
                                               f"{WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]}")
 
 
+def check_wpk(wpk_file: str) -> bool:
+    """Function to check if the file wpk extension is correct.
+
+    Parameters
+    ----------
+    wpk_file : str
+        wpk_file string to check.
+
+    Returns
+    -------
+    bool
+        True if the file is OK. False otherwise.
+    """
+    if wpk_file.endswith('.wpk'):
+        return True
+    else:
+        return WazuhError(1006, extra_message=f"Please, ensure {wpk_file} is a valid .wpk file")
+
+
 @draft4_format_checker.checks("alphanumeric")
 def format_alphanumeric(value):
     return check_exp(value, _alphanumeric_param)

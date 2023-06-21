@@ -14,7 +14,7 @@ from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.models.group_added_model import GroupAddedModel
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, deprecate_endpoint
-from api.validator import check_component_configuration_pair
+from api.validator import check_component_configuration_pair, check_wpk
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -723,6 +723,9 @@ async def put_upgrade_custom_agents(request, agents_list: str = None, pretty: bo
     web.Response
         Upgrade message after trying to upgrade the agents.
     """
+    # Check if the file_path parameter is a valid .wpk file
+    raise_if_exc(check_wpk(file_path))
+
     # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
     if 'all' in agents_list:
         agents_list = '*'
