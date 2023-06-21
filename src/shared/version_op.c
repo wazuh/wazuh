@@ -376,6 +376,7 @@ const char *OSX_ReleaseName(int version) {
     /* 20 */ "Big Sur",
     /* 21 */ "Monterey",
     /* 22 */ "Ventura",
+    /* 23 */ "Sonoma",
     };
 
     version -= 10;
