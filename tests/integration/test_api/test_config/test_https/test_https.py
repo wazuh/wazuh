@@ -7,10 +7,10 @@ copyright: Copyright (C) 2015-2023, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'DOS' (Denial-of-service attack) blocking feature of the API handled
-       by the 'wazuh-apid' daemon is working properly. The Wazuh API is an open source 'RESTful' API
-       that allows for interaction with the Wazuh manager from a web browser, command line tool
-       like 'cURL' or any script or program that can make web requests.
+brief: These tests will check that the API works correctly using the 'HTTPS' protocol.
+       The Wazuh API is an open source 'RESTful' API that allows for interaction with
+       the Wazuh manager from a web browser, command line tool like 'cURL' or any script
+       or program that can make web requests.
 
 components:
     - api
@@ -39,20 +39,22 @@ os_version:
 
 references:
     - https://documentation.wazuh.com/current/user-manual/api/getting-started.html
-    - https://documentation.wazuh.com/current/user-manual/api/configuration.html#access
-    - https://en.wikipedia.org/wiki/Denial-of-service_attack
+    - https://documentation.wazuh.com/current/user-manual/api/configuration.html#https
 
 tags:
     - api
 """
 import os
-import time
 import pytest
 import requests
 
-from wazuh_testing.constants.api import CONFIGURATION_TYPES, AGENTS_ROUTE
+from wazuh_testing.constants.api import CONFIGURATION_TYPES, WAZUH_API_HOST, WAZUH_API_PORT
 from wazuh_testing.constants.daemons import API_DAEMON
+from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH
 from wazuh_testing.modules.api.helpers import get_base_url, login
+from wazuh_testing.modules.api.patterns import API_STARTED_MSG
+from wazuh_testing.tools.file_monitor import FileMonitor
+from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 
@@ -67,8 +69,8 @@ configuration_type = CONFIGURATION_TYPES[0]
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 configuration_folder_path = os.path.join(test_data_path, 'configuration_template')
 cases_folder_path = os.path.join(test_data_path, 'test_cases')
-test_configuration_path = os.path.join(configuration_folder_path, 'configuration_DOS_blocking_system.yaml')
-test_cases_path = os.path.join(cases_folder_path, 'cases_DOS_blocking_system.yaml')
+test_configuration_path = os.path.join(configuration_folder_path, 'configuration_https.yaml')
+test_cases_path = os.path.join(cases_folder_path, 'cases_https.yaml')
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
@@ -79,12 +81,11 @@ daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_DOS_blocking_system(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
-                             daemons_handler, wait_for_api_start):
+def test_https(test_configuration, test_metadata, add_configuration, truncate_monitored_files, daemons_handler,
+               wait_for_api_start):
     """
-    description: Check if the API blocking system for IP addresses detected as 'DOS' attack works.
-                 For this purpose, the test causes an IP blocking, makes a request within
-                 the same minute, makes a request after the minute.
+    description: Check if the API works with 'HTTP' and 'HTTPS' protocols. For this purpose, it configures the API
+                 to use both protocols and makes requests to it, waiting for a correct response.
 
     wazuh_min_version: 4.2.0
 
@@ -93,11 +94,9 @@ def test_DOS_blocking_system(test_configuration, test_metadata, add_configuratio
             - Append configuration to the target configuration files (defined by configuration_type)
             - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
-            - Wait until the API is ready to receive requests
+            - Wait until the API is ready to receive requests (and check if the host/port is set as expected)
         - test:
-            - Provoke an API block
-            - Request within a minute
-            - Request after a minute to check if the IP is not blocked anymore
+            - 
         - teardown:
             - Remove configuration and restore backup configuration
             - Truncate the log files
@@ -126,40 +125,23 @@ def test_DOS_blocking_system(test_configuration, test_metadata, add_configuratio
             brief: Monitor the API log file to detect whether it has been started or not.
 
     assertions:
-        - Verify that the IP address is blocked using multiple requests.
-        - Verify that the IP address is still blocked within the one-minute block time.
-        - Verify that the IP address is not blocked when expires the blocking time.
+        - Verify that the API requests are made correctly using both 'HTTP' and 'HTTPS' protocols.
 
-    input_description: Different test cases are in the `cases_DOS_blocking_system.yaml` file which includes API
-                       configuration parameters that will be replaced in the configuration template file.
+    input_description: Different test cases are contained in an external YAML file (cases_https.yaml) which includes
+                       API configuration parameters (HTTPS settings).
 
     expected_output:
-        - r'429' ('Too Many Requests' HTTP status code)
         - r'200' ('OK' HTTP status code)
 
     tags:
-        - dos_attack
+        - ssl
     """
-    max_request_per_minute = test_configuration['blocks']['access']['max_request_per_minute']
-    expected_code = test_metadata['expected_http_code']
-    url = get_base_url() + AGENTS_ROUTE
-    authentication_headers = login()
+    https = test_configuration['blocks']['https']['enabled']
+    protocol = 'https' if https is True else 'http'
+    url = get_base_url(protocol=protocol)
+    authentication_headers = login(protocol=protocol)
 
-    # Provoke an API block
-    for _ in range(max_request_per_minute):
-        requests.get(url, headers=authentication_headers, verify=False)
-
-    # Request within a minute
-    response = requests.get(url, headers=authentication_headers, verify=False)
-    assert response.status_code == expected_code, f"Expected status code: {expected_code}, " \
-                                                  f"but {response.status_code} was returned.\n" \
-                                                  f"Full response: {response.text}"
-
-    # Request after the minute
-    time.sleep(60)  # 60 = 1 minute
     response = requests.get(url, headers=authentication_headers, verify=False)
 
-    # After blocking time, status code must be 200 again
-    assert response.status_code == 200, 'Expected status code was 200, ' \
-                                        f"but {response.status_code} was returned.\n" \
-                                        f"Full response: {response.text}"
+    assert response.status_code == 200, f"Expected status code was 200, but {response.status_code} was " \
+                                        f"returned.\nFull response: {response.text}"

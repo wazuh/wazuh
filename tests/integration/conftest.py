@@ -11,6 +11,7 @@ from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths import ROOT_PREFIX
+from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import queue_monitor, socket_controller
@@ -132,7 +133,7 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
 def truncate_monitored_files_implementation() -> None:
     """Truncate all the log files and json alerts files before and after the test execution"""
     if services.get_service() == WAZUH_MANAGER:
-        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH]
+        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH]
     else:
         log_files = [WAZUH_LOG_PATH]
 

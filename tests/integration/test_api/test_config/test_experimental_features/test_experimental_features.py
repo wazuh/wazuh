@@ -53,6 +53,7 @@ from wazuh_testing.constants.daemons import API_DAEMON
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.modules.api.helpers import get_base_url, login
 
+
 # Marks
 pytestmark = pytest.mark.server
 
@@ -76,8 +77,8 @@ daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_experimental_features(test_configuration, test_metadata, add_configuration, daemons_handler,
-                               wait_for_api_start):
+def test_experimental_features(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
+                               daemons_handler, wait_for_api_start):
     """
     description: Check if requests to an experimental API endpoint are allowed according
                  to the configuration. For this purpose, it configures the API to use
@@ -88,6 +89,7 @@ def test_experimental_features(test_configuration, test_metadata, add_configurat
     test_phases:
         - setup:
             - Append configuration to the target configuration files (defined by configuration_type)
+            - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
         - test:
@@ -95,6 +97,7 @@ def test_experimental_features(test_configuration, test_metadata, add_configurat
             - Check that the response code is the expected
         - teardown:
             - Remove configuration and restore backup configuration
+            - Truncate the log files
             - Stop daemons defined in `daemons_handler_configuration` in this module
 
     tier: 0
@@ -109,6 +112,9 @@ def test_experimental_features(test_configuration, test_metadata, add_configurat
         - add_configuration:
             type: fixture
             brief: Add configuration to the Wazuh API configuration files.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - daemons_handler:
             type: fixture
             brief: Wrapper of a helper function to handle Wazuh daemons.

@@ -78,7 +78,8 @@ daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_cors(test_configuration, test_metadata, add_configuration, daemons_handler, wait_for_api_start):
+def test_cors(test_configuration, test_metadata, add_configuration, truncate_monitored_files, daemons_handler,
+              wait_for_api_start):
     """
     description: Check if expected headers are returned when 'CORS' is enabled.
                  When 'CORS' is enabled, special headers must be returned in case the
@@ -90,6 +91,7 @@ def test_cors(test_configuration, test_metadata, add_configuration, daemons_hand
     test_phases:
         - setup:
             - Append configuration to the target configuration files (defined by configuration_type)
+            - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
         - test:
@@ -98,6 +100,7 @@ def test_cors(test_configuration, test_metadata, add_configuration, daemons_hand
             - If origin is not allowed, check that Access-Control-Allow-Origin is not in the response headers
         - teardown:
             - Remove configuration and restore backup configuration
+            - Truncate the log files
             - Stop daemons defined in `daemons_handler_configuration` in this module
 
     tier: 0
@@ -112,6 +115,9 @@ def test_cors(test_configuration, test_metadata, add_configuration, daemons_hand
         - add_configuration:
             type: fixture
             brief: Add configuration to the Wazuh API configuration files.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - daemons_handler:
             type: fixture
             brief: Wrapper of a helper function to handle Wazuh daemons.

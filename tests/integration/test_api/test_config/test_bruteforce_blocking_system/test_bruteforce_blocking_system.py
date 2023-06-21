@@ -86,8 +86,8 @@ daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_bruteforce_blocking_system(test_configuration, test_metadata, add_configuration, daemons_handler,
-                                    wait_for_api_start):
+def test_bruteforce_blocking_system(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
+                                    daemons_handler, wait_for_api_start):
     """
     description: Check if the blocking time for IP addresses detected as brute-force attack works.
                  For this purpose, the test causes an IP blocking, make a request before
@@ -98,6 +98,7 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
     test_phases:
         - setup:
             - Append configuration to the target configuration files (defined by configuration_type)
+            - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
         - test:
@@ -106,6 +107,7 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
             - Try to login after the block time to check if the IP was removed from the blocked IP addresses
         - teardown:
             - Remove configuration and restore backup configuration
+            - Truncate the log files
             - Stop daemons defined in `daemons_handler_configuration` in this module
 
     tier: 0
@@ -120,6 +122,9 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
         - add_configuration:
             type: fixture
             brief: Add configuration to the Wazuh API configuration files.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - daemons_handler:
             type: fixture
             brief: Wrapper of a helper function to handle Wazuh daemons.

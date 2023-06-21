@@ -7,7 +7,7 @@ import pytest
 
 from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.modules.api.configuration import get_configuration, append_configuration, delete_configuration_file
-from wazuh_testing.constants.api import WAZUH_API_HOST, WAZUH_API_PORT, CONFIGURATION_TYPES
+from wazuh_testing.constants.api import WAZUH_API_PORT, CONFIGURATION_TYPES
 from wazuh_testing.modules.api.patterns import API_STARTED_MSG
 from wazuh_testing.tools import file_monitor
 from wazuh_testing.utils.callbacks import generate_callback
@@ -39,24 +39,36 @@ def add_configuration(test_configuration: list[dict], request: pytest.FixtureReq
 
 
 @pytest.fixture
-def wait_for_api_start(test_configuration: list[dict]) -> None:
+def wait_for_api_start(test_configuration: dict) -> None:
     """Monitor the API log file to detect whether it has been started or not.
 
     Args:
         test_configuration (dict): Configuration data.
-    """
-    # Set the default `log_format` value
-    log_format = 'plain'
-    try:
-        log_format = test_configuration['base']['logs']['format']
-    except (KeyError, TypeError):
-        pass
 
-    file_to_monitor = WAZUH_API_JSON_LOG_FILE_PATH if log_format == 'json' else WAZUH_API_LOG_FILE_PATH
+    Raises:
+        RuntimeError: When the log was not found.
+    """
+    # Set the default values
+    logs_format = 'plain'
+    host = '0.0.0.0'
+    port = WAZUH_API_PORT
+
+    # Check if specific values were set or set the defaults
+    if test_configuration.get('blocks') is not None:
+        logs_configuration = test_configuration['blocks'].get('logs')
+        # Set the default value if `format`` is not set
+        logs_format = 'plain' if logs_configuration is None else logs_configuration.get('format', 'plain')
+        host = test_configuration['blocks'].get('host', '0.0.0.0')
+        port = test_configuration['blocks'].get('port', WAZUH_API_PORT)
+
+    file_to_monitor = WAZUH_API_JSON_LOG_FILE_PATH if logs_format == 'json' else WAZUH_API_LOG_FILE_PATH
     monitor_start_message = file_monitor.FileMonitor(file_to_monitor)
     monitor_start_message.start(
         callback=generate_callback(API_STARTED_MSG, {
-            'host': WAZUH_API_HOST,
-            'port': WAZUH_API_PORT
+            'host': str(host),
+            'port': str(port)
         })
     )
+
+    if monitor_start_message.callback_result is None:
+        raise RuntimeError('The API was not started as expected.')

@@ -55,6 +55,7 @@ from wazuh_testing.constants.paths.api import WAZUH_API_SCRIPT
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.utils.services import search_process_by_command
 
+
 # Marks
 pytestmark = pytest.mark.server
 
@@ -78,7 +79,8 @@ daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_drop_privileges(test_configuration, test_metadata, add_configuration, daemons_handler, wait_for_api_start):
+def test_drop_privileges(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
+                         daemons_handler, wait_for_api_start):
     """
     description: Check if 'drop_privileges' affects the user of the API process. In this test, the 'PID' of the API
                  process is obtained. After that, it gets the user ('root' or 'wazuh') and checks if it matches the
@@ -89,6 +91,7 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, d
     test_phases:
         - setup:
             - Append configuration to the target configuration files (defined by configuration_type)
+            - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
         - test:
@@ -97,6 +100,7 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, d
             - Check that the user is the expected
         - teardown:
             - Remove configuration and restore backup configuration
+            - Truncate the log files
             - Stop daemons defined in `daemons_handler_configuration` in this module
 
     tier: 0
@@ -111,6 +115,9 @@ def test_drop_privileges(test_configuration, test_metadata, add_configuration, d
         - add_configuration:
             type: fixture
             brief: Add configuration to the Wazuh API configuration files.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - daemons_handler:
             type: fixture
             brief: Wrapper of a helper function to handle Wazuh daemons.

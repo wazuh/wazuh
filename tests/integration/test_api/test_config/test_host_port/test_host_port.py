@@ -48,14 +48,11 @@ import os
 import pytest
 import requests
 
-from wazuh_testing.constants.api import CONFIGURATION_TYPES, WAZUH_API_HOST, WAZUH_API_PORT
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMON
-from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH
 from wazuh_testing.modules.api.helpers import get_base_url, login
-from wazuh_testing.modules.api.patterns import API_STARTED_MSG
-from wazuh_testing.tools.file_monitor import FileMonitor
-from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+
 
 # Marks
 pytestmark = pytest.mark.server
@@ -80,7 +77,8 @@ daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_host_port(test_configuration, test_metadata, add_configuration, daemons_handler, wait_for_api_start):
+def test_host_port(test_configuration, test_metadata, add_configuration, truncate_monitored_files, daemons_handler,
+                   wait_for_api_start):
     """
     description: Check different host and port configurations. For this purpose, apply multiple
                  combinations of host and port, verify that the 'aiohttp' http framework correctly
@@ -91,14 +89,16 @@ def test_host_port(test_configuration, test_metadata, add_configuration, daemons
     test_phases:
         - setup:
             - Append configuration to the target configuration files (defined by configuration_type)
+            - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
-            - Wait until the API is ready to receive requests
+            - Wait until the API is ready to receive requests (and check if the host/port is set as expected)
         - test:
             - Check that expected host and port appear in the Wazuh API log
             - If the host and port are well set, make a request with the default host. Otherwise, make a request with
               the host/port defined in the test case data
         - teardown:
             - Remove configuration and restore backup configuration
+            - Truncate the log files
             - Stop daemons defined in `daemons_handler_configuration` in this module
 
     tier: 0
@@ -113,6 +113,9 @@ def test_host_port(test_configuration, test_metadata, add_configuration, daemons
         - add_configuration:
             type: fixture
             brief: Add configuration to the Wazuh API configuration files.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - daemons_handler:
             type: fixture
             brief: Wrapper of a helper function to handle Wazuh daemons.
@@ -139,15 +142,6 @@ def test_host_port(test_configuration, test_metadata, add_configuration, daemons
         expected_exception = test_metadata['expected_exception']
     except KeyError:
         expected_exception = None
-
-    # Check that expected host and port appear in the Wazuh API log
-    monitor_start_message = FileMonitor(WAZUH_API_LOG_FILE_PATH)
-    monitor_start_message.start(
-        callback=generate_callback(API_STARTED_MSG, {
-            'host': WAZUH_API_HOST,
-            'port': WAZUH_API_PORT
-        })
-    )
 
     # If the host and port are well set, make a request with the default host
     if expected_exception is None:
