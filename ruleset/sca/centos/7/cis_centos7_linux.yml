@@ -8,12 +8,12 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security CentOS 7 Benchmark v3.0.0 - 06-30-2020
+# Center for Internet Security CentOS 7 Benchmark v3.1.2 - 08-31-2021
 
 policy:
   id: "cis_centos7_linux"
   file: "cis_centos7_linux.yml"
-  name: "CIS CentOS Linux 7 Benchmark v3.0.0"
+  name: "CIS CentOS Linux 7 Benchmark v3.1.2"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for CentOS 7 systems running on x86 and x64 platforms. This document was tested against CentOS 7."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -33,430 +33,526 @@ checks:
   # 1.1 Filesystem Configuration
   ###############################################
 
-  # 1.1.1.1 cramfs: filesystem
-  - id: 6000
-    title: "Ensure mounting of cramfs filesystems is disabled."
-    description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the server. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create a file in the /etc/modprobe.d/directory ending in .conf. Example: vim /etc/modprobe.d/cramfs.confand add the following line: install cramfs /bin/true. Run the following command to unload the cramfs module: rmmod cramfs."
-    compliance:
-      - cis: ["1.1.1.1"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.5"]
-      - tsc: ["CC6.3"]
-      - cis_level: ["1"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
-    rules:
-      - "c:modprobe -n -v cramfs -> r:install /bin/true|Module cramfs not found"
-      - "not c:lsmod -> r:cramfs"
+  # 1.1.1.1 Ensure mounting of cramfs filesystems is disabled. (Automated)
+   - id: 31157
+     title: "Ensure mounting of cramfs filesystems is disabled."
+     description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
+     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the server. If this filesystem type is not needed, disable it."
+     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/cramfs.conf and add the following line: install cramfs /bin/true Run the following command to unload the cramfs module: # rmmod cramfs."
+     compliance:
+       - cis: ["1.1.1.1"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["5.1"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.1.2 squashfs: filesystem
-  - id: 6001
-    title: "Ensure mounting of squashfs filesystems is disabled."
-    description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems (similar to cramfs ). A squashfs image can be used without having to first decompress the image."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create the file /etc/modprobe.d/CIS.conf and add the following line: install squashfs /bin/true. Run the following command to unload the squashfs module: rmmod squashfs"
-    compliance:
-      - cis: ["1.1.1.2"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.5"]
-      - tsc: ["CC6.3"]
-      - cis_level: ["2"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
-    rules:
-      - "c:modprobe -n -v squashfs -> r:install /bin/true|Module squashfs not found"
-      - "not c:lsmod -> r:squashfs"
+  # 1.1.1.2 Ensure mounting of squashfs filesystems is disabled. (Automated)
+   - id: 31158
+     title: "Ensure mounting of squashfs filesystems is disabled."
+     description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems (similar to cramfs). A squashfs image can be used without having to first decompress the image."
+     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+     impact: "Disabling squashfs will prevent the use of snap. Snap is a package manager for Linux for installing Snap packages. \"Snap\" application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software's end-user. Snaps themselves have no dependency on any external store (\"App store\"), can be obtained from any source and can be therefore used for upstream software deployment. When snaps are deployed on versions of Linux, the Ubuntu app store is used as default back-end, but other stores can be enabled as well."
+     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/squashfs.conf and add the following line: install squashfs /bin/true Run the following command to unload the squashfs module: # rmmod squashfs."
+     compliance:
+       - cis: ["1.1.1.2"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["5.1"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.1.3 udf: filesystem
-  - id: 6002
-    title: "Ensure mounting of udf filesystems is disabled."
-    description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create the file /etc/modprobe.d/CIS.conf and add the following line: install udf /bin/true. Run the following command to unload the udf module: rmmod udf"
-    compliance:
-      - cis: ["1.1.1.3"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.5"]
-      - tsc: ["CC6.3"]
-      - cis_level: ["1"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
-    rules:
-      - "c:modprobe -n -v udf -> r:install /bin/true|Module udf not found"
-      - "not c:lsmod -> r:udf"
+  # 1.1.1.3 Ensure mounting of udf filesystems is disabled. (Automated)
+   - id: 31159
+     title: "Ensure mounting of udf filesystems is disabled."
+     description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
+     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vi /etc/modprobe.d/udf.conf and add the following line: install udf /bin/true Run the following command to unload the udf module: # rmmod udf."
+     compliance:
+       - cis: ["1.1.1.3"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["5.1"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.1.4 FAT: filesystem
-  - id: 6003
-    title: "Ensure mounting of FAT filesystems is disabled."
-    description: "The FAT filesystem format is primarily used on older windows systems and portable USB drives or flash modules. It comes in three types FAT12, FAT16, and FAT32 all of which are supported by the vfat kernel module."
-    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    remediation: "If utilizing UEFI the FAT filesystem format is required. If this case, ensure that the FAT filesystem is only used where appropriate. Run the following command: grep -E -i '\\svfat\\s' /etc/fstab And review that any output is appropriate for your environment.  If not utilizing UEFI: Edit or create a file in the /etc/modprobe.d/ directory ending in .conf and add the following lines: Example: vim /etc/modprobe.d/fat.conf    install fat /bin/true        install vfat /bin/true         install msdos /bin/true  Run the following commands to unload the msdos, vfat, and fatmodules:  # rmmod msdos   # rmmod vfat  # rmmod fat "
-    compliance:
-      - cis: ["1.1.1.4"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.5"]
-      - tsc: ["CC6.3"]
-      - cis_level: ["2"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
-    rules:
-      - "c:modprobe -n -v vfat -> r:install /bin/true|Module vfat not found"
-      - "not c:lsmod -> r:vfat"
-      - "c:modprobe -n -v fat -> r:install /bin/true|Module fat not found"
-      - "not c:lsmod -> r:fat"
-      - "c:modprobe -n -v msdos -> r:install /bin/true|Module msdos not found"
-      - "not c:lsmod -> r:msdos"
+  # 1.1.2 Ensure /tmp is configured. (Automated)
+   - id: 31160
+     title: "Ensure /tmp is configured."
+     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
+     rationale: "Making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
+     impact: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. Running out of /tmp space is a problem regardless of what kind of filesystem lies under it, but in a default installation a disk-based /tmp will essentially have the whole disk available, as it only creates a single / partition. On the other hand, a RAM-based /tmp as with tmpfs will almost certainly be much smaller, which can lead to applications filling up the filesystem much more easily."
+     remediation: "Create or update an entry for /tmp in either /etc/fstab OR in a systemd tmp.mount file: If /etc/fstab is used: configure /etc/fstab as appropriate. Example: tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp # mount -o remount,noexec,nodev,nosuid /tmp OR if systemd tmp.mount file is used: run the following command to create the file /etc/systemd/system/tmp.mount if it doesn't exist: # [ ! -f /etc/systemd/system/tmp.mount ] && cp -v /usr/lib/systemd/system/tmp.mount /etc/systemd/system/ Edit the file /etc/systemd/system/tmp.mount: [Mount] What=tmpfs Where=/tmp Type=tmpfs Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to reload the systemd daemon: # systemctl daemon-reload Run the following command to unmask and start tmp.mount: # systemctl --now unmask tmp.mount."
+     references:
+       - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+       - 'https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/'
+     compliance:
+       - cis: ["1.1.2"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["9.4", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.13.1.1"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.2 /tmp: partition
-  - id: 6004
-    title: "Ensure /tmp is configured."
-    description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
-    rationale: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
-    remediation: "Create or update an entry for /tmp in either /etc/fstab  OR   in a systemd tmp.mount file:  If /etc/fstab is used:  Configure /etc/fstab as appropriate. Example: tmpfs /tmp tmpfs     defaults,rw,nosuid,nodev,noexec,relatime  0 0         Run the following command to remount /tmp:  # mount -o remount,noexec,nodev,nosuid /tmp        OR        If systemd tmp.mount file is used:    Run the following command to create the file /etc/systemd/system/tmp.mount if it doesn't exist:                 # [ ! -f /etc/systemd/system/tmp.mount ] && cp -v /usr/lib/systemd/system/tmp.mount /etc/systemd/system/                      Edit the file /etc/systemd/system/tmp.mount:  [Mount]   What=tmpfs    Where=/tmp    Type=tmpfs    Options=mode=1777,strictatime,noexec,nodev,nosuid     Run the following command to reload the systemd daemon:# systemctl daemon-reload                  Run the following command to unmask tmp.mount:    # systemctl unmask tmp.mpunt                  Run the following command to enable and start tmp.mount:    # systemctl enable --now tmp.mount"
-    compliance:
-      - cis: ["1.1.2"]
-      - cis_csc: ["9.4", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: any
-    rules:
-      - 'c:mount -> r:\s/tmp\s'
-      - 'f:/etc/fstab -> r:\s/tmp\s'
-      - "c:systemctl is-enabled tmp.mount -> r:enabled"
+  # 1.1.3 Ensure noexec option set on /tmp partition. (Automated)
+   - id: 31161
+     title: "Ensure noexec option set on /tmp partition."
+     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
+     remediation: "Edit the /etc/fstab file OR the /etc/systemd/system/local- fs.target.wants/tmp.mount file: IF /etc/fstab is used to mount /tmp Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,noexec /tmp OR if systemd is used to mount /tmp:_ Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add noexec to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to restart the systemd daemon: # systemctl daemon-reload Run the following command to restart tmp.mount # systemctl restart tmp.mount."
+     compliance:
+       - cis: ["1.1.3"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["2.6"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.3 /tmp: noexec
-  - id: 6005
-    title: "Ensure noexec option set on /tmp partition."
-    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
-    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
-    remediation: "Edit the /etc/fstab file OR  the /etc/systemd/system/local-fs.target.wants/tmp.mount file:    IF /etc/fstab is used to mount /tmp       Edit the /etc/fstabfile and add noexecto the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp:      # mount -o remount,noexec /tmp        OR           IF systemd is used to mount /tmp: Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add noexec to the /tmp mount options:       [Mount]      Options=mode=1777,strictatime,noexec,nodev,nosuid         Run the following command to restart the systemd daemon: #  systemctl daemon-reload               Run the following command to restart tmp.mount               # systemctl restart tmp.mount"
-    compliance:
-      - cis: ["1.1.3"]
-      - cis_csc: ["2.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/tmp\s && r:noexec'
+  # 1.1.4 Ensure nodev option set on /tmp partition. (Automated)
+   - id: 31162
+     title: "Ensure nodev option set on /tmp partition."
+     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
+     remediation: "Edit the /etc/fstab file OR the /etc/systemd/system/local- fs.target.wants/tmp.mount file: IF /etc/fstab is used to mount /tmp Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nodev /tmp OR if systemd is used to mount /tmp: Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to restart the systemd daemon: # systemctl daemon-reload Run the following command to restart tmp.mount # systemctl restart tmp.mount."
+     compliance:
+       - cis: ["1.1.4"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["5.1"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.4 /tmp: nodev
-  - id: 6006
-    title: "Ensure nodev option set on /tmp partition."
-    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
-    remediation: "Edit the /etc/fstab   file OR the /etc/systemd/system/local-fs.target.wants/tmp.mount file:   IF /etc/fstab is used to mount /tmp  Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp:          # mount -o remount,nodev /tmp         OR        IF systemd is used to mount /tmp: Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp mount options:    [Mount]   Options=mode=1777,strictatime,noexec,nodev,nosuid                   Run the following command to restart the systemd daemon: #  systemctl daemon-reload               Run the following command to restart tmp.mount            # systemctl restart tmp.mount"
-    compliance:
-      - cis: ["1.1.4"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/tmp\s && r:nodev'
+  # 1.1.5 Ensure nosuid option set on /tmp partition. (Automated)
+   - id: 31163
+     title: "Ensure nosuid option set on /tmp partition."
+     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
+     remediation: "IF /etc/fstab is used to mount /tmp Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,nosuid /tmp OR if systemd is used to mount /tmp: Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp mount options: [Mount] Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to restart the systemd daemon: # systemctl daemon-reload Run the following command to restart tmp.mount: # systemctl restart tmp.mount."
+     compliance:
+       - cis: ["1.1.5"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.5 /tmp: nosuid
-  - id: 6007
-    title: "Ensure nosuid option set on /tmp partition."
-    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
-    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
-    remediation: "IF /etc/fstab is used to mount /tmp Edit the /etc/fstab   file OR the /etc/systemd/system/local-fs.target.wants/tmp.mount file:   IF /etc/fstab is used to mount /tmp  Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp:          # mount -o remount,nosuid /tmp         OR        IF systemd is used to mount /tmp: Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp mount options:    [Mount]   Options=mode=1777,strictatime,noexec,nosuid,nosuid                   Run the following command to restart the systemd daemon: #  systemctl daemon-reload               Run the following command to restart tmp.mount            # systemctl restart tmp.mount"
-    compliance:
-      - cis: ["1.1.5"]
-      - cis_csc: ["5.1", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/tmp\s && r:nosuid'
+  # 1.1.6 Ensure /dev/shm is configured. (Automated)
+   - id: 31164
+     title: "Ensure /dev/shm is configured."
+     description: "/dev/shm is a traditional shared memory concept. One program will create a memory portion, which other processes (if permitted) can access. Mounting tmpfs at /dev/shm is handled automatically by systemd."
+     rationale: "Any user can upload and execute files inside the /dev/shm similar to the /tmp partition. Configuring /dev/shm allows an administrator to set the noexec option on the mount, making /dev/shm useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+     remediation: "Edit /etc/fstab and add or edit the following line: tmpfs /dev/shm tmpfs defaults,noexec,nodev,nosuid,seclabel 0 0 Run the following command to remount /dev/shm: # mount -o remount,noexec,nodev,nosuid /dev/shm."
+     compliance:
+       - cis: ["1.1.6"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.6 /dev/shm:
-  - id: 6008
-    title: "Ensure /dev/shm is configured ."
-    description: "/dev/shm is a traditional shared memory concept. One program will create a memory portion, which other processes (if permitted) can access. Mounting tmpfs at /dev/shm is handled automatically by systemd."
-    rationale: "Any user can upload and execute files inside the /dev/shm similar to the /tmp partition. Configuring /dev/shm allows an administrator to set the noexec option on the mount, making /dev/shm useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
-    remediation: "Edit /etc/fstab and add or edit the following line: tmpfs      /dev/shm    tmpfs   defaults,noexec,nodev,nosuid,seclabel   0 0        Run the following command to remount /dev/shm: # mount -o remount,noexec,nodev,nosuid /dev/shm"
-    compliance:
-      - cis: ["1.1.6"]
-      - cis_csc: ["5.1", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/dev/shm\s'
-      - 'f:/etc/fstab -> r:\s/dev/shm\s'
+  # 1.1.7 Ensure noexec option set on /dev/shm partition. (Automated)
+   - id: 31165
+     title: "Ensure noexec option set on /dev/shm partition."
+     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+     rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
+     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,noexec,nodev,nosuid /dev/shm."
+     compliance:
+       - cis: ["1.1.7"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["2.6", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.7 /dev/shm: noexec
-  - id: 6009
-    title: "Ensure noexec option set on /dev/shm partition."
-    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
-    rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. Run the following command to remount /dev/shm: # mount -o remount,noexec /dev/shm"
-    compliance:
-      - cis: ["1.1.7"]
-      - cis_csc: ["2.6", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:noexec'
+  # 1.1.8 Ensure nodev option set on /dev/shm partition. (Automated)
+   - id: 31166
+     title: "Ensure nodev option set on /dev/shm partition."
+     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+     rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
+     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,noexec,nodev,nosuid /dev/shm."
+     compliance:
+       - cis: ["1.1.8"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.8 /dev/shm: nodev
-  - id: 6010
-    title: "Ensure nodev option set on /dev/shm partition."
-    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. Run the following command to remount /dev/shm: # mount -o remount,nodev /dev/shm"
-    compliance:
-      - cis: ["1.1.8"]
-      - cis_csc: ["5.1", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:nodev'
+  # 1.1.9 Ensure nosuid option set on /dev/shm partition. (Automated)
+   - id: 31167
+     title: "Ensure nosuid option set on /dev/shm partition."
+     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+     rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
+     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm: # mount -o remount,noexec,nodev,nosuid /dev/shm."
+     compliance:
+       - cis: ["1.1.9"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.9 /dev/shm: nosuid
-  - id: 6011
-    title: "Ensure nosuid option set on /dev/shm partition."
-    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
-    rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. Run the following command to remount /dev/shm: # mount -o remount,nosuid /dev/shm"
-    compliance:
-      - cis: ["1.1.9"]
-      - cis_csc: ["5.1", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
+  # 1.1.10 Ensure separate partition exists for /var. (Automated)
+   - id: 31168
+     title: "Ensure separate partition exists for /var."
+     description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
+     rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
+     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+     references:
+       - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+     compliance:
+       - cis: ["1.1.10"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["5.1"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.10 Build considerations - Partition scheme.
-  - id: 6012
-    title: "Ensure separate partition exists for /var."
-    description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
-    rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    compliance:
-      - cis: ["1.1.10"]
-      - cis_csc: ["5.1"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["2"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/var\s'
+  # 1.1.11 Ensure separate partition exists for /var/tmp. (Automated)
+   - id: 31169
+     title: "Ensure separate partition exists for /var/tmp."
+     description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications and is intended for temporary files that are preserved across reboots."
+     rationale: "Since the /var/tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /var/tmp its own file system allows an administrator to set the noexec option on the mount, making /var/tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+     compliance:
+       - cis: ["1.1.11"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.11 bind mount /var/tmp to /tmp
-  - id: 6013
-    title: "Ensure separate partition exists for /var/tmp."
-    description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications and is intended for temporary files that are preserved across reboots."
-    rationale: "Since the /var/tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /var/tmp its own file system allows an administrator to set the noexec option on the mount, making /var/tmp useless for an attacker to install executable code."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    compliance:
-      - cis: ["1.1.11"]
-      - cis_csc: ["5.1", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["2"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/var/tmp\s'
+  # 1.1.12 Ensure /var/tmp partition includes the noexec option. (Automated)
+   - id: 31170
+     title: "Ensure /var/tmp partition includes the noexec option."
+     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp."
+     remediation: "For existing /var/tmp partitions, edit the /etc/fstab file and add noexec to the fourth field (mounting options) of the /var/tmp entry. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,noexec /var/tmp."
+     compliance:
+       - cis: ["1.1.12"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["2.6"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.12 noexec set on /var/tmp
-  - id: 6014
-    title: "Ensure noexec option set on /var/tmp partition."
-    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
-    rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. un the following command to remount /var/tmp: # mount -o remount,noexec /var/tmp"
-    compliance:
-      - cis: ["1.1.12"]
-      - cis_csc: ["2.6"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["2"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/var/tmp\s && r:noexec'
+  # 1.1.13 Ensure /var/tmp partition includes the nodev option. (Automated)
+   - id: 31171
+     title: "Ensure /var/tmp partition includes the nodev option."
+     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+     rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /var/tmp ."
+     remediation: "For existing /var/tmp partitions, edit the /etc/fstab file and add nodev to the fourth field (mounting options) of the /var/tmp entry. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nodev /var/tmp."
+     compliance:
+       - cis: ["1.1.13"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.13 nodev set on /var/tmp
-  - id: 6015
-    title: "Ensure nodev option set on /var/tmp partition."
-    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /var/tmp ."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nodev /var/tmp"
-    compliance:
-      - cis: ["1.1.13"]
-      - cis_csc: ["5.1", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["2"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/var/tmp\s && r:nodev'
+  # 1.1.14 Ensure /var/tmp partition includes the nosuid option. (Automated)
+   - id: 31172
+     title: "Ensure /var/tmp partition includes the nosuid option."
+     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /var/tmp ."
+     remediation: "For existing /var/tmp partitions, edit the /etc/fstab file and add nosuid to the fourth field (mounting options) of the /var/tmp entry. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp : # mount -o remount,nosuid /var/tmp."
+     compliance:
+       - cis: ["1.1.14"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.14 nosuid set on /var/tmp
-  - id: 6016
-    title: "Ensure nosuid option set on /var/tmp partition."
-    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
-    rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /var/tmp."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /var/tmp: # mount -o remount,nosuid /var/tmp"
-    compliance:
-      - cis: ["1.1.14"]
-      - cis_csc: ["5.1", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["2"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/var/tmp\s && r:nosuid'
+  # 1.1.15 Ensure separate partition exists for /var/log. (Automated)
+   - id: 31173
+     title: "Ensure separate partition exists for /var/log."
+     description: "The /var/log directory is used by system services to store log data."
+     rationale: "There are two important reasons to ensure that system logs are stored on a separate partition: protection against resource exhaustion (since logs can grow quite large) and protection of audit data."
+     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+     references:
+       - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+     compliance:
+       - cis: ["1.1.15"]
+       - cis_csc_v8: ["4.1", "8.3"]
+       - cis_csc_v7: ["6.4"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.12.4.1"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["10.7", "11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["A1.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.15 /var/log: partition
-  - id: 6017
-    title: "Ensure separate partition exists for /var/log."
-    description: "The /var/log directory is used by system services to store log data ."
-    rationale: "There are two important reasons to ensure that system logs are stored on a separate partition: protection against resource exhaustion (since logs can grow quite large) and protection of audit data."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    compliance:
-      - cis: ["1.1.15"]
-      - cis_csc: ["6.4"]
-      - pci_dss: ["2.2.4", "10.7"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["2"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/var/log\s'
+  # 1.1.16 Ensure separate partition exists for /var/log/audit. (Automated)
+   - id: 31174
+     title: "Ensure separate partition exists for /var/log/audit."
+     description: "The auditing daemon, auditd , stores log data in the /var/log/audit directory."
+     rationale: "There are two important reasons to ensure that data gathered by auditd is stored on a separate partition: protection against resource exhaustion (since the audit.log file can grow quite large) and protection of audit data. The audit daemon calculates how much free space is left and performs actions based on the results. If other processes (such as syslog) consume space in the same partition as auditd , it may not perform as desired."
+     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+     references:
+       - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+     compliance:
+       - cis: ["1.1.16"]
+       - cis_csc_v8: ["8.3"]
+       - cis_csc_v7: ["6.4"]
+       - iso_27001-2013: ["A.12.4.1"]
+       - pci_dss_v3.2.1: ["10.7"]
+       - soc_2: ["A1.1"]
+     condition:
+     rules:
 
-  # 1.1.16 /var/log/audit: partition
-  - id: 6018
-    title: "Ensure separate partition exists for /var/log/audit."
-    description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
-    rationale: "There are two important reasons to ensure that data gathered by auditd is stored on a separate partition: protection against resource exhaustion (since the audit.log file can grow quite large) and protection of audit data."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    compliance:
-      - cis: ["1.1.16"]
-      - cis_csc: ["6.3"]
-      - pci_dss: ["2.2.4", "10.7"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["2"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/var/log/audit\s'
+  # 1.1.17 Ensure separate partition exists for /home. (Automated)
+   - id: 31175
+     title: "Ensure separate partition exists for /home."
+     description: "The /home directory is used to support disk storage needs of local users."
+     rationale: "If the system is intended to support local users, create a separate partition for the /home directory to protect against resource exhaustion and restrict the type of files that can be stored under /home."
+     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
+     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+     references:
+       - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+     compliance:
+       - cis: ["1.1.17"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.17 /home: partition
-  - id: 6019
-    title: "Ensure separate partition exists for /home."
-    description: "The /home directory is used to support disk storage needs of local users."
-    rationale: "If the system is intended to support local users, create a separate partition for the /home directory to protect against resource exhaustion and restrict the type of files that can be stored under /home."
-    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
-    compliance:
-      - cis: ["1.1.17"]
-      - cis_csc: ["5.1", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["2"]
-    references:
-      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/home\s'
+  # 1.1.18 Ensure /home partition includes the nodev option. (Automated)
+   - id: 31176
+     title: "Ensure /home partition includes the nodev option."
+     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+     rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
+     remediation: "For existing /home partitions, edit the /etc/fstab file and add nodev to the fourth field (mounting options) of the /home entry. See the fstab(5) manual page for more information. Run the following command to remount /home: # mount -o remount,nodev /home."
+     compliance:
+       - cis: ["1.1.18"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.18 /home: nodev
-  - id: 6020
-    title: "Ensure nodev option set on /home partition."
-    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. # mount -o remount,nodev /home"
-    compliance:
-      - cis: ["1.1.18"]
-      - cis_csc: ["5.1", "13"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["2"]
-    condition: all
-    rules:
-      - 'c:mount -> r:\s/home\s && r:nodev'
+  # 1.1.19 Ensure removable media partitions include noexec option. (Automated)
+   - id: 31177
+     title: "Ensure removable media partitions include noexec option."
+     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+     rationale: "Setting this option on a file system prevents users from executing programs from the removable media. This deters users from being able to introduce potentially malicious software on the system."
+     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) of all removable media partitions. Look for entries that have mount points that contain words such as floppy or cdrom. See the fstab(5) manual page for more information."
+     compliance:
+       - cis: ["1.1.19"]
+       - cis_csc_v8: ["3.3"]
+       - cis_csc_v7: ["2.6", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.12.5.1", "A.12.6.2"]
+       - nist_sp_800-53: ["AC-5", "AC-6"]
+       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.3.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1"]
+     condition:
+     rules:
 
-  # 1.1.19 Ensure noexec option set on removable media partitions (Manual)
+  # 1.1.20 Ensure nodev option set on removable media partitions. (Automated)
+   - id: 31178
+     title: "Ensure nodev option set on removable media partitions."
+     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+     rationale: "Removable media containing character and block special devices could be used to circumvent security controls by allowing non-root users to access sensitive device files such as /dev/kmem or the raw disk partitions."
+     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) of all removable media partitions. Look for entries that have mount points that contain words such as floppy or cdrom. See the fstab(5) manual page for more information."
+     compliance:
+       - cis: ["1.1.20"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.20 Ensure nodev option set on removable media partitions (Manual)
+  # 1.1.21 Ensure nosuid option set on removable media partitions. (Automated)
+   - id: 31179
+     title: "Ensure nosuid option set on removable media partitions."
+     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+     rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
+     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) of all removable media partitions. Look for entries that have mount points that contain words such as floppy or cdrom. See the fstab(5) manual page for more information."
+     compliance:
+       - cis: ["1.1.21"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.21 Ensure nosuid option set on removable media partition (Manual)
+  # 1.1.22 Ensure sticky bit is set on all world-writable directories. (Automated)
+   - id: 31180
+     title: "Ensure sticky bit is set on all world-writable directories."
+     description: "Setting the sticky bit on world writable directories prevents users from deleting or renaming files in that directory that are not owned by them."
+     rationale: "This feature prevents the ability to delete or rename files in world writable directories (such as /tmp) that are owned by another user."
+     remediation: "Run the following command to set the sticky bit on all world writable directories: # df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null | xargs -I '{}' chmod a+t '{}'."
+     compliance:
+       - cis: ["1.1.22"]
+       - cis_csc_v8: ["3.3", "4.1"]
+       - cis_csc_v7: ["5.1", "13"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
+       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
+       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
+     condition:
+     rules:
 
-  # 1.1.22 Ensure sticky bit is set on all world-writable directories (Automated)
+  # 1.1.23 Disable Automounting. (Automated)
+   - id: 31181
+     title: "Disable Automounting."
+     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
+     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
+     impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
+     remediation: "Run the following command to mask autofs: # systemctl --now mask autofs OR run the following command to remove autofs # yum remove autofs."
+     compliance:
+       - cis: ["1.1.23"]
+       - cis_csc_v8: ["10.3"]
+       - cis_csc_v7: ["8.4", "8.5"]
+       - cmmc_v2.0: ["MP.L2-3.8.7"]
+       - hipaa: ["164.310(d)(1)"]
+       - iso_27001-2013: ["A.12.2.1"]
+     condition:
+     rules:
 
-  # 1.1.23 Disable Automounting
-  - id: 6021
-    title: "Disable Automounting."
-    description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
-    rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
-    remediation: "Run the following command to disable autofs: systemctl disable autofs"
-    compliance:
-      - cis: ["1.1.23"]
-      - cis_csc: ["8.4", "8.5"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    condition: none
-    rules:
-      - "c:systemctl is-enabled autofs -> r:enabled"
-
-  # 1.1.24 Disable USB Storage
-  - id: 6022
-    title: "Disable USB Storage."
-    description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
-    rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/usb_storage.conf  Add the following line: install usb-storage /bin/true    Run the following command to unload the usb-storage module:  rmmod usb-storage"
-    compliance:
-      - cis: ["1.1.24"]
-      - cis_csc: ["8.4", "8.5"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - "c:modprobe -n -v usb-storage -> r:install /bin/true"
-      - "not c:lsmod -> r:install /bin/true"
+  # 1.1.24 Disable USB Storage. (Automated)
+   - id: 31182
+     title: "Disable USB Storage."
+     description: "USB storage provides a means to transfer and store files insuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
+     rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
+     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: vim /etc/modprobe.d/usb_storage.conf Add the following line: install usb-storage /bin/true Run the following command to unload the usb-storage module: rmmod usb-storage."
+     compliance:
+       - cis: ["1.1.24"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["8.4", "8.5"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.12.2.1"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition:
+     rules:
 
   ###############################################
   # 1.2 Configure Software Updates
