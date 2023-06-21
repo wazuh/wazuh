@@ -3,4 +3,4 @@
   - event:ingest
   resources:
   - "*:*:*"
-  effect: allow
+  effect: deny
