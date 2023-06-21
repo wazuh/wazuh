@@ -38,7 +38,7 @@ checks:
     title: "Ensure mounting of cramfs filesystems is disabled."
     description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the server. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create a file in the /etc/modprobe.d/directory ending in .conf. Example: vim /etc/modprobe.d/cramfs.confand add the following line: install cramfs /bin/true. Run the following command to unload the cramfs module: rmmod cramfs"
+    remediation: "Edit or create a file in the /etc/modprobe.d/directory ending in .conf. Example: vim /etc/modprobe.d/cramfs.confand add the following line: install cramfs /bin/true. Run the following command to unload the cramfs module: rmmod cramfs."
     compliance:
       - cis: ["1.1.1.1"]
       - cis_csc: ["5.1"]
