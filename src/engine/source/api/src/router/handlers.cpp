@@ -79,6 +79,14 @@ api::Handler routePost(std::shared_ptr<::router::Router> router)
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
 
+        if (::router::USER_ROUTE_MAXIMUM_PRIORITY > eRequest.route().priority())
+        {
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("Route priority ({}) must be greater to or equal than {}",
+                            eRequest.route().priority(),
+                            ::router::USER_ROUTE_MAXIMUM_PRIORITY));
+        }
+
         const auto& eEntry = eRequest.route();
         auto error = router->addRoute(eEntry.name(), eEntry.priority(), eEntry.filter(), eEntry.policy());
 
@@ -118,6 +126,22 @@ api::Handler routePatch(std::shared_ptr<::router::Router> router)
         if (errorMsg.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
+        }
+
+        if (::router::USER_ROUTE_MAXIMUM_PRIORITY > eRequest.route().priority())
+        {
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("Route priority ({}) must be greater to or equal than {}",
+                            eRequest.route().priority(),
+                            ::router::USER_ROUTE_MAXIMUM_PRIORITY));
+        }
+
+        if (::router::USER_ROUTE_MINIMUM_PRIORITY < eRequest.route().priority())
+        {
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("Route priority ({}) must be lower to or equal than {}",
+                            eRequest.route().priority(),
+                            ::router::USER_ROUTE_MINIMUM_PRIORITY));
         }
 
         auto eEntry = eRequest.route();

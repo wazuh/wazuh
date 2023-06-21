@@ -9,8 +9,6 @@
 namespace api::test::handlers
 {
 
-constexpr auto MINIMUM_PRIORITY = 255;           ///< Minimum priority allowed for a route
-constexpr auto MAXIMUM_PRIORITY = 0;             ///< Maximum priority allowed for a route
 constexpr auto TEST_DEFAULT_PROTOCOL_QUEUE {49}; ///< Default protocol queue
 
 constexpr auto API_SESSIONS_DATA_FORMAT = R"({"name":"","id":"","creationdate":0,"lifespan":0,"description":"",)"
@@ -78,12 +76,12 @@ json::Json getSessionsAsJson(void);
 std::optional<base::Error> saveSessionsToStore(const std::shared_ptr<store::IStore>& store);
 
 /**
- * @brief Get the minimum available priority for a route.
+ * @brief Get the maximum available priority for a route.
  *
  * @param router Router instance.
- * @return int32_t Minimum available priority. If no priority is available, returns -1.
+ * @return int32_t Maximum available priority.
  */
-inline int32_t getMinimumAvailablePriority(const std::shared_ptr<::router::Router>& router);
+inline int32_t getMaximumAvailablePriority(const std::shared_ptr<::router::Router>& router);
 
 /**
  * @brief Add an asset to the catalog.

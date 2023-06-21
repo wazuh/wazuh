@@ -3,14 +3,6 @@
 namespace router
 {
 
-namespace
-{
-
-constexpr int MAX_PRIORITY = 255L;
-constexpr int MIN_PRIORITY = 0L;
-
-} // namespace
-
 Route::Route(const std::string& name, builder::Asset assetRoute, const std::string& target, int priority)
     : m_name {name}
     , m_filter {assetRoute.getExpression()}
@@ -23,12 +15,12 @@ Route::Route(const std::string& name, builder::Asset assetRoute, const std::stri
 
 void Route::setPriority(int priority)
 {
-    if (priority < MIN_PRIORITY || priority > MAX_PRIORITY)
+    if (priority < ROUTE_MAXIMUM_PRIORITY || priority > ROUTE_MINIMUM_PRIORITY)
     {
         throw std::runtime_error(fmt::format("Route '{}' has an invalid priority. Priority must be between {} and {}",
                                              m_filterName,
-                                             MIN_PRIORITY,
-                                             MAX_PRIORITY));
+                                             ROUTE_MAXIMUM_PRIORITY,
+                                             ROUTE_MINIMUM_PRIORITY));
     }
     m_priority = static_cast<std::size_t>(priority);
 }
