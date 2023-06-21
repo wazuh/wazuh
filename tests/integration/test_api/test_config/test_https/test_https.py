@@ -48,13 +48,9 @@ import os
 import pytest
 import requests
 
-from wazuh_testing.constants.api import CONFIGURATION_TYPES, WAZUH_API_HOST, WAZUH_API_PORT
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMON
-from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH
 from wazuh_testing.modules.api.helpers import get_base_url, login
-from wazuh_testing.modules.api.patterns import API_STARTED_MSG
-from wazuh_testing.tools.file_monitor import FileMonitor
-from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 
@@ -96,7 +92,9 @@ def test_https(test_configuration, test_metadata, add_configuration, truncate_mo
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests (and check if the host/port is set as expected)
         - test:
-            - 
+            - Get url with the configured protocol
+            - Login and get the authorization headers
+            - Make a request to verify if the protocol was successfully configured
         - teardown:
             - Remove configuration and restore backup configuration
             - Truncate the log files
