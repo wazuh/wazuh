@@ -121,7 +121,7 @@ SemParser getUASemParser(const std::string& targetField)
 syntax::Parser getFQDNSynParser()
 {
     using namespace syntax::combinators;
-    const auto p = many1(syntax::parsers::alnum() | syntax::parsers::char_('-') | syntax::parsers::char_('.'));
+    const auto p = many1(syntax::parsers::alnum("-."));
     return [p](std::string_view input)
     {
         auto r = p(input);
