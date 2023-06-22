@@ -13,7 +13,7 @@ from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH
 from wazuh_testing.logger import logger
-from wazuh_testing.tools import queue_monitor, socket_controller
+from wazuh_testing.tools import mocking, queue_monitor, socket_controller
 from wazuh_testing.utils import configuration, database, file, services
 
 
@@ -397,3 +397,13 @@ def connect_to_sockets_module(request: pytest.FixtureRequest) -> None:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
     """
     yield from connect_to_sockets_implementation(request)
+
+
+@pytest.fixture(scope='module')
+def mock_agent_module():
+    """Fixture to create a mocked agent in wazuh databases"""
+    agent_id = mocking.create_mocked_agent(name='mocked_agent')
+
+    yield agent_id
+
+    mocking.delete_mocked_agent(agent_id)
