@@ -160,7 +160,7 @@ void * lccom_main(void * arg);
 #endif
 size_t lccom_dispatch(char * command, char ** output);
 size_t lccom_getconfig(const char * section, char ** output);
-size_t lccom_getstate(char ** output);
+size_t lccom_getstate(char ** output, bool getNextPage);
 
 /*** Global variables ***/
 extern int loop_timeout;
