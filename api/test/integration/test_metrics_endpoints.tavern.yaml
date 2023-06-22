@@ -1,0 +1,79 @@
+---
+test_name: PUT /engine/instruments/enable
+
+stages:
+
+  - name: Enable a existing instrument
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/engine/instruments/enable"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      parameters:
+        scope_name: 'EventQueue'
+        instrument_name: 'ConsumedEvents'
+        enable: 'false'
+    response:
+      status_code: 200
+      message: 'OK'
+
+  - name: Enable a instrument with invalid scope
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/engine/instruments/enable"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      parameters:
+        scope_name: 'InvalidName'
+        instrument_name: 'ConsumedEvents'
+        enable: 'false'
+    response:
+      status_code: 404
+
+  - name: Enable a instrument with invalid instrument name
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/engine/instruments/enable"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      parameters:
+        scope_name: 'EventQueue'
+        instrument_name: 'InvalidName'
+        enable: 'false'
+    response:
+      status_code: 404
+
+---
+test_name: GET /engine/instruments
+
+stages:
+
+  - name: Get list of instruments
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/engine/instruments"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern.helpers:validate_pykwalify
+        extra_kwargs:
+          schema:
+            type: seq
+            required: True
+            sequence:
+              - type: map
+                mapping:
+                  type:
+                    type: str
+                    required: True
+                  name:
+                    type: str
+                    required: True
+                  status:
+                    type: str
+                    required: True
+                  scope:
+                    type: str
+                    required: True
