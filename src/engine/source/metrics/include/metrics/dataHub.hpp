@@ -25,7 +25,7 @@ public:
     /**
      * @copydoc IDataHub.setResource
      */
-    void setResource(const std::string& scope, json::Json object) override;
+    void setResource(const std::string& scope, const json::Json& object) override;
 
     /**
      * @brief Gets a json representation of the contained resources.

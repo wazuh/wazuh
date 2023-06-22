@@ -124,7 +124,7 @@ public:
      *
      * @param data object
      */
-    void data(const json::Json& data) { m_data = data; }
+    void data(const json::Json& data) { m_data = json::Json { data }; }
 
     /**
      * @brief Set error code of the response, overwriting the previous one

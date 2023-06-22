@@ -18,29 +18,35 @@ namespace json
 {
 
 Json::Json(const rapidjson::Value& value)
+    : m_document {rapidjson::Document()}
 {
     m_document.CopyFrom(value, m_document.GetAllocator());
 }
 
 Json::Json(const rapidjson::GenericObject<true, rapidjson::Value>& object)
+    : m_document {rapidjson::Document()}
 {
     m_document.SetObject();
     for (auto& [key, value] : object)
     {
-        m_document.GetObject().AddMember({key, m_document.GetAllocator()},
-                                         {value, m_document.GetAllocator()},
-                                         m_document.GetAllocator());
+        m_document.GetObject().AddMember(
+            {key, m_document.GetAllocator()}, {value, m_document.GetAllocator()}, m_document.GetAllocator());
     }
 }
 
-Json::Json() = default;
+Json::Json()
+    : m_document {rapidjson::Document()}
+{
+    m_document = rapidjson::Document();
+};
 
 Json::Json(rapidjson::Document&& document)
-    : m_document(std::move(document))
 {
+    m_document = std::move(document);
 }
 
 Json::Json(const char* json)
+    : m_document {rapidjson::Document()}
 {
     rapidjson::ParseResult result = m_document.Parse(json);
     if (!result)
@@ -57,14 +63,9 @@ Json::Json(const char* json)
 }
 
 Json::Json(const Json& other)
+    : m_document {rapidjson::Document()}
 {
     m_document.CopyFrom(other.m_document, m_document.GetAllocator());
-}
-
-Json& Json::operator=(const Json& other)
-{
-    m_document.CopyFrom(other.m_document, m_document.GetAllocator());
-    return *this;
 }
 
 bool Json::operator==(const Json& other) const
@@ -86,21 +87,20 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
     else
     {
         // Replace ~ with ~0
-        for (auto pos = ptrPath.find('~'); pos != std::string::npos;
-             pos = ptrPath.find('~', pos + 2))
+        for (auto pos = ptrPath.find('~'); pos != std::string::npos; pos = ptrPath.find('~', pos + 2))
         {
             ptrPath.replace(pos, 1, "~0");
         }
 
         // Replace / with ~1
-        for (auto pos = ptrPath.find('/'); pos != std::string::npos;
-             pos = ptrPath.find('/', pos + 2))
+        for (auto pos = ptrPath.find('/'); pos != std::string::npos; pos = ptrPath.find('/', pos + 2))
         {
             ptrPath.replace(pos, 1, "~1");
         }
 
         // Replace . with /
-        if(!skipDot) {
+        if (!skipDot)
+        {
             std::replace(std::begin(ptrPath), std::end(ptrPath), '.', '/');
         }
 
@@ -363,7 +363,7 @@ std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
             {
                 result.push_back(Json(item));
             }
-            retval = result;
+            retval = std::move(result);
         }
         return retval;
     }
@@ -371,8 +371,7 @@ std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
-std::optional<std::vector<std::tuple<std::string, Json>>>
-Json::getObject(std::string_view path) const
+std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(std::string_view path) const
 {
     std::optional<std::vector<std::tuple<std::string, Json>>> retval {std::nullopt};
     const auto pp = rapidjson::Pointer(path.data());
@@ -387,7 +386,7 @@ Json::getObject(std::string_view path) const
             {
                 result.emplace_back(std::make_tuple(key.GetString(), Json(value)));
             }
-            retval = result;
+            retval = std::move(result);
         }
         return retval;
     }
@@ -398,10 +397,8 @@ Json::getObject(std::string_view path) const
 std::string Json::prettyStr() const
 {
     rapidjson::StringBuffer buffer;
-    rapidjson::PrettyWriter<rapidjson::StringBuffer,
-                            rapidjson::Document::EncodingType,
-                            rapidjson::ASCII<>>
-        writer(buffer);
+    rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(
+        buffer);
     this->m_document.Accept(writer);
     return buffer.GetString();
 }
@@ -409,10 +406,7 @@ std::string Json::prettyStr() const
 std::string Json::str() const
 {
     rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer,
-                      rapidjson::Document::EncodingType,
-                      rapidjson::ASCII<>>
-        writer(buffer);
+    rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(buffer);
     this->m_document.Accept(writer);
     return buffer.GetString();
 }
@@ -428,10 +422,8 @@ std::optional<std::string> Json::str(std::string_view path) const
         if (value)
         {
             rapidjson::StringBuffer buffer;
-            rapidjson::Writer<rapidjson::StringBuffer,
-                              rapidjson::Document::EncodingType,
-                              rapidjson::ASCII<>>
-                writer(buffer);
+            rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(
+                buffer);
             value->Accept(writer);
             retval = std::string {buffer.GetString()};
         }
@@ -450,7 +442,6 @@ std::ostream& operator<<(std::ostream& os, const Json& json)
 size_t Json::size(std::string_view path) const
 {
     const auto pp = rapidjson::Pointer(path.data());
-
 
     if (pp.IsValid())
     {
@@ -1048,9 +1039,8 @@ std::optional<base::Error> Json::validate(const Json& schema) const
         validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
         rapidjson::StringBuffer sb2;
         validator.GetInvalidDocumentPointer().StringifyUriFragment(sb2);
-        return base::Error {fmt::format("Invalid JSON schema: [{}], [{}]",
-                                        std::string {sb.GetString()},
-                                        std::string {sb2.GetString()})};
+        return base::Error {fmt::format(
+            "Invalid JSON schema: [{}], [{}]", std::string {sb.GetString()}, std::string {sb2.GetString()})};
     }
 
     return std::nullopt;
@@ -1066,8 +1056,7 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
     // If equality between a member and itself is false, then it is a duplicate or
     // contains duplicated members.
 
-    auto validateDuplicatedKeys = [](const rapidjson::Value& value,
-                                     auto& recurRef) -> void
+    auto validateDuplicatedKeys = [](const rapidjson::Value& value, auto& recurRef) -> void
     {
         if (value.IsObject())
         {
