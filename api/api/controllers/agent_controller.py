@@ -723,9 +723,6 @@ async def put_upgrade_custom_agents(request, agents_list: str = None, pretty: bo
     web.Response
         Upgrade message after trying to upgrade the agents.
     """
-    # Check if the file_path parameter is a valid .wpk file
-    raise_if_exc(check_wpk(file_path))
-
     # If we use the 'all' keyword and the request is distributed_master, agents_list must be '*'
     if 'all' in agents_list:
         agents_list = '*'
