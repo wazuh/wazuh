@@ -6,8 +6,8 @@
 #include "rocksdb/options.h"
 
 #include <filesystem>
-#include <fstream>
 #include <fmt/format.h>
+#include <fstream>
 #include <optional>
 
 namespace kvdbManager
@@ -69,7 +69,8 @@ std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeNa
         LOG_INFO("KVDB Manager: Created new KVDB Scope : ({})", scopeName);
 
         m_mapScopes.insert(std::make_pair<std::string, std::shared_ptr<KVDBScope>>(
-            std::string(scopeName), std::make_shared<KVDBScope>(this, scopeName)));
+            std::string(scopeName),
+            std::make_shared<KVDBScope>(this, scopeName)));
 
         auto& retScope = m_mapScopes[scopeName];
         return retScope;
@@ -281,7 +282,7 @@ std::optional<base::Error> KVDBManager::createDB(const std::string& name, const 
         auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), cfHandle, key, value.str());
         if (!status.ok())
         {
-            //TODO check error
+            // TODO check error
         }
     }
 
