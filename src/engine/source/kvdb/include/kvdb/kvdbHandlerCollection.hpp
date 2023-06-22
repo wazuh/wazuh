@@ -17,6 +17,65 @@ class KVDBScope;
 class IKVDBHandlerManager;
 
 /**
+ * @brief Helper class to manage the reference counters for a given DB.
+ * This is used to track how many scopes are using a given DB.
+ *
+ */
+class KVDBHandlerInstance
+{
+public:
+    /**
+     * @brief Add a new scope to the reference counter.
+     *
+     * @param scopeName Name of the Scope.
+     *
+     */
+    void addScope(const std::string& scopeName);
+
+    /**
+     * @brief Remove a scope from the reference counter.
+     *
+     * @param scopeName Name of the Scope.
+     */
+    void removeScope(const std::string& scopeName);
+
+    /**
+     * @brief Returns if there are no scopes referencing this DB.
+     *
+     * @return true No scopes are referencing this DB.
+     * @return false Some scopes are referencing this DB.
+     */
+    bool emptyScopes(void);
+
+    /**
+     * @brief Get the list of scopes referencing this DB.
+     *
+     * @return std::vector<std::string> List of Scope names.
+     */
+    std::vector<std::string> getRefNames(void);
+
+    /**
+     * @brief Get the Ref Map object
+     *
+     * @return std::map<std::string, unsigned int> Map of DB names and their reference count.
+     */
+    std::map<std::string, unsigned int> getRefMap(void);
+
+private:
+    /**
+     * @brief Basically a wrapper to std::map<std::string, int> with some helper functions.
+     *
+     */
+    RefCounter m_scopeCounter;
+
+    /**
+     * @brief Mutex to protect the internal counter.
+     *
+     */
+    std::shared_mutex m_mutex;
+};
+
+/**
  * @brief Collection of KVDB Handlers for a given DB and the Scopes referencing them.
  *
  */
@@ -46,9 +105,9 @@ public:
      *
      */
     std::shared_ptr<IKVDBHandler> getKVDBHandler(rocksdb::DB* db,
-                               rocksdb::ColumnFamilyHandle* cfHandle,
-                               const std::string& dbName,
-                               const std::string& scopeName);
+                                                 rocksdb::ColumnFamilyHandle* cfHandle,
+                                                 const std::string& dbName,
+                                                 const std::string& scopeName);
 
     /**
      * @brief Removes a KVDB Handler given the provided DB name and scope name.
@@ -66,7 +125,7 @@ public:
      * @return std::vector<std::string> List of DB names.
      *
      */
-    std::vector<std::string> getDBNames();
+    std::vector<std::string> getDBNames(void);
 
     /**
      * @brief Get the Reference Count of scopes for a given DB.
@@ -75,60 +134,6 @@ public:
      * @return std::map<std::string, unsigned int> Map of Scope names and their reference count.
      */
     std::map<std::string, unsigned int> getRefMap(const std::string& dbName);
-
-private:
-    /**
-     * @brief Helper class to manage the reference counters for a given DB.
-     * This is used to track how many scopes are using a given DB.
-     *
-     */
-    class KVDBHandlerInstance
-    {
-    public:
-        /**
-         * @brief Add a new scope to the reference counter.
-         *
-         * @param scopeName Name of the Scope.
-         *
-         */
-        void addScope(const std::string& scopeName);
-
-        /**
-         * @brief Remove a scope from the reference counter.
-         *
-         * @param scopeName Name of the Scope.
-         */
-        void removeScope(const std::string& scopeName);
-
-        /**
-         * @brief Returns if there are no scopes referencing this DB.
-         *
-         * @return true No scopes are referencing this DB.
-         * @return false Some scopes are referencing this DB.
-         */
-        bool emptyScopes() const;
-
-        /**
-         * @brief Get the list of scopes referencing this DB.
-         *
-         * @return std::vector<std::string> List of Scope names.
-         */
-        std::vector<std::string> getRefNames() const;
-
-        /**
-         * @brief Get the Ref Map object
-         *
-         * @return std::map<std::string, unsigned int> Map of DB names and their reference count.
-         */
-        std::map<std::string, unsigned int> getRefMap() const;
-
-    private:
-        /**
-         * @brief Basically a wrapper to std::map<std::string, int> with some helper functions.
-         *
-         */
-        RefCounter m_scopeCounter;
-    };
 
 private:
     /**
@@ -141,7 +146,7 @@ private:
      * @brief Pointer to the Manager that deals with handlers.
      *
      */
-    IKVDBHandlerManager* m_handleManager {nullptr};
+    IKVDBHandlerManager* m_handleManager;
 
     /**
      * @brief Mutex to protect the internal map.
