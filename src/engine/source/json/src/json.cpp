@@ -37,7 +37,6 @@ Json::Json(const rapidjson::GenericObject<true, rapidjson::Value>& object)
 Json::Json()
     : m_document {rapidjson::Document()}
 {
-    m_document = rapidjson::Document();
 };
 
 Json::Json(rapidjson::Document&& document)
@@ -63,7 +62,7 @@ Json::Json(const char* json)
 }
 
 Json::Json(const Json& other)
-    : m_document {rapidjson::Document()}
+    : m_document {}
 {
     m_document.CopyFrom(other.m_document, m_document.GetAllocator());
 }
