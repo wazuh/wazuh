@@ -136,6 +136,13 @@ async def check_rate_limit(
         Maximum number of requests per minute permitted.
     """
 
+    error_code_mapping = {
+        'general_request_counter': {'code': 6001},
+        'events_request_counter': {
+            'code': 6005,
+            'extra_message': f'For /events endpoint the limit is set to {max_requests} requests.'
+        }
+    }
     if not globals()[current_time_key]:
         globals()[current_time_key] = get_utc_now().timestamp()
 
@@ -147,7 +154,7 @@ async def check_rate_limit(
 
     if globals()[request_counter_key] > max_requests:
         logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
-        raise_if_exc(WazuhTooManyRequests(6001))
+        raise_if_exc(WazuhTooManyRequests(**error_code_mapping[request_counter_key]))
 
 
 @web.middleware
