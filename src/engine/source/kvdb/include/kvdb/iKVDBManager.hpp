@@ -61,7 +61,18 @@ public:
      * otherwise.
      *
      */
-    virtual std::optional<base::Error> createDB(const std::string& name, const std::string& path) = 0;
+    virtual std::optional<base::Error> createDB(const std::string& name) = 0;
+
+    /**
+     * @brief Load a DB with the provided file path.
+     *
+     * @param name Name of the DB.
+     * @param path Path of file to load.
+     * @return std::variant<base::Error> If base::Error not exists the DB was created successfully. Specific error
+     * otherwise.
+     *
+     */
+    virtual std::optional<base::Error> loadDBFromFile(const std::string& name, const std::string& path) = 0;
 
     /**
      * @brief Checks if a DB exists.

@@ -148,7 +148,7 @@ base::Expression existanceCheck(const std::string& targetField,
                                 const std::string& rawName,
                                 const std::vector<std::string>& rawParameters,
                                 std::shared_ptr<defs::IDefinitions> definitions,
-                                bool checkExist,
+                                bool shouldMatch,
                                 std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
 
@@ -202,18 +202,12 @@ base::Expression existanceCheck(const std::string& targetField,
                 }
             }
 
-            // TODO: is this condition right? shouldn't this condition be: "!checkExist ||
-            // (checkExist && found)" as if "checkExist" is "false" and "found" is "true"
-            // then "truth" is false and the result is a
-            bool truth = checkExist ? found : !found;
-            if (truth)
+            if ((shouldMatch && found) || (!shouldMatch && !found))
             {
                 return base::result::makeSuccess(event, successTrace);
             }
-            else
-            {
-                return base::result::makeFailure(event, failureTrace);
-            }
+
+            return base::result::makeFailure(event, failureTrace);
         });
 }
 
