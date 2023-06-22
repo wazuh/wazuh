@@ -375,7 +375,7 @@ def connect_to_sockets(request: pytest.FixtureRequest) -> list:
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Agent Mocking - -  - - - - - - - - - - - - - - - - - - - - - - - - -
 @pytest.fixture()
-def mock_agent_with_custom_system(agent_system: str = 'RHEL8') -> int:
+def mock_agent_with_custom_system(agent_system: str) -> int:
     """Fixture to create a mocked agent with custom system specified as parameter
 
     Args:
