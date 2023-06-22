@@ -7250,7 +7250,7 @@ paths:
         - Engine
       summary: "Get all instruments data"
       description: "Return a list of instruments"
-      operationId: api.controllers.engine.metrics_controller.get_instruments
+      operationId: api.controllers.metrics_controller.get_instruments
       # TODO Change RBAC
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -7307,7 +7307,7 @@ paths:
         - Engine
       summary: "Enable or disable an instrument"
       description: "Return the modified instrument"
-      operationId: api.controllers.engine.metrics_controller.enable_instrument
+      operationId: api.controllers.metrics_controller.enable_instrument
       # TODO Change RBAC
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -7349,7 +7349,7 @@ paths:
       summary: "Get a metric or multiples metrics"
       description: "Return an metric or a list of metrics. If the instrument_name and scope_name are not specified,
       it returns all metrics"
-      operationId: api.controllers.engine.metrics_controller.get_metrics
+      operationId: api.controllers.metrics_controller.get_metrics
       # TODO Change RBAC
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
