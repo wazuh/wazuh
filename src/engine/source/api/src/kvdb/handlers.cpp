@@ -84,10 +84,21 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
             return ::api::adapter::genericError<ResponseType>("The Database already exists.");
         }
 
-        auto resultCreate = kvdbManager->createDB(eRequest.name(), eRequest.path());
+        auto resultCreate = kvdbManager->createDB(eRequest.name());
+
         if (resultCreate)
         {
             return ::api::adapter::genericError<ResponseType>(resultCreate.value().message);
+        }
+
+        if (eRequest.has_path())
+        {
+            auto resultLoad = kvdbManager->loadDBFromFile(eRequest.name(), eRequest.path());
+
+            if (resultLoad)
+            {
+                return ::api::adapter::genericError<ResponseType>(resultLoad.value().message);
+            }
         }
 
         // Adapt the response to wazuh api
@@ -139,7 +150,8 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
     };
 }
 
-api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
+                         std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
     return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -175,7 +187,8 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
@@ -213,7 +226,8 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 }
 
 /* Specific DB endpoint */
-api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
+                   std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
     return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -258,7 +272,8 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
@@ -286,7 +301,8 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
     };
 }
 
-api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
+                      std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
     return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -302,7 +318,7 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        auto errorMsg = !eRequest.has_name() ? std::make_optional("Missing /name")
+        auto errorMsg = !eRequest.has_name()  ? std::make_optional("Missing /name")
                         : !eRequest.has_key() ? std::make_optional("Missing /key")
                                               : std::nullopt;
         if (errorMsg.has_value())
@@ -331,7 +347,8 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
@@ -347,7 +364,8 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
     };
 }
 
-api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
+                   std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
 {
     return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -389,7 +407,7 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
             return ::api::adapter::genericError<ResponseType>("Field /key is empty");
         }
 
-        if (std::get<std::string>(value) == "")
+        if (std::empty(std::get<std::string>(value)))
         {
             return ::api::adapter::genericError<ResponseType>("Field /value is empty");
         }
@@ -405,7 +423,8 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
@@ -420,7 +439,9 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
     };
 }
 
-void registerHandlers(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope, std::shared_ptr<api::Api> api)
+void registerHandlers(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
+                      std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope,
+                      std::shared_ptr<api::Api> api)
 {
 
     //        Manager (Works on the KVDB manager, create/delete/list/dump KVDBs)

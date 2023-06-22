@@ -116,7 +116,6 @@ void KVDBManager::initializeMainDB()
     // In this procedure we join these vectors into a map.
     for (std::size_t cfDescriptorIndex = 0; cfDescriptorIndex < cfDescriptors.size(); cfDescriptorIndex++)
     {
-        m_mapCFHandles.insert(std::make_pair(cfDescriptors[cfDescriptorIndex].name, cfHandles[cfDescriptorIndex]));
         m_mapCFHandles.emplace(cfDescriptors[cfDescriptorIndex].name, cfHandles[cfDescriptorIndex]);
     }
 
@@ -215,62 +214,62 @@ std::optional<base::Error> KVDBManager::deleteDB(const std::string& name)
     return std::nullopt;
 }
 
-std::optional<base::Error> KVDBManager::createDB(const std::string& name, const std::string& path)
+std::optional<base::Error> KVDBManager::loadDBFromFile(const std::string& name, const std::string& path)
 {
-    if (existsDB(name))
+    std::vector<std::tuple<std::string, json::Json>> entries {};
+    rocksdb::ColumnFamilyHandle* cfHandle {nullptr};
+
+    if (m_mapCFHandles.count(name))
     {
-        return std::nullopt;
+        cfHandle = m_mapCFHandles[name];
     }
 
-    std::vector<std::tuple<std::string, json::Json>> entries {};
+    if (!cfHandle)
+    {
+        return base::Error {fmt::format("The DB not exists.")};
+    }
+
+    // TODO: to improve
+    if (std::empty(path))
+    {
+        return base::Error {fmt::format("The path is empty.")};
+    }
 
     // Open file and read content
-    if (!path.empty())
+    std::string contents;
+    // TODO: No check the size, the location, the type of file, the permissions it's a
+    // security issue. The API should be changed to receive a stream instead of a path
+    std::ifstream in(path, std::ios::in | std::ios::binary);
+    if (in)
     {
-        // Open file and read content
-        std::string contents;
-        // TODO: No check the size, the location, the type of file, the permissions it's a
-        // security issue. The API should be changed to receive a stream instead of a path
-        std::ifstream in(path, std::ios::in | std::ios::binary);
-        if (in)
-        {
-            in.seekg(0, std::ios::end);
-            contents.resize(in.tellg());
-            in.seekg(0, std::ios::beg);
-            in.read(&contents[0], contents.size());
-            in.close();
-        }
-        else
-        {
-            return base::Error {fmt::format("An error occurred while opening the file '{}'", path.c_str())};
-        }
-
-        json::Json jKv;
-        try
-        {
-            jKv = json::Json {contents.c_str()};
-        }
-        catch (const std::exception& e)
-        {
-            return base::Error {fmt::format("An error occurred while parsing the JSON file '{}'", path.c_str())};
-        }
-
-        if (!jKv.isObject())
-        {
-            return base::Error {
-                fmt::format("An error occurred while parsing the JSON file '{}': JSON is not an object", path.c_str())};
-        }
-
-        entries = jKv.getObject().value();
+        in.seekg(0, std::ios::end);
+        contents.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&contents[0], contents.size());
+        in.close();
+    }
+    else
+    {
+        return base::Error {fmt::format("An error occurred while opening the file '{}'", path.c_str())};
     }
 
-    auto createResult = createColumnFamily(name);
-
-    if (std::holds_alternative<base::Error>(createResult))
+    json::Json jKv;
+    try
     {
-        return std::get<base::Error>(createResult);
+        jKv = json::Json {contents.c_str()};
     }
-    auto cfHandle = std::get<rocksdb::ColumnFamilyHandle*>(createResult);
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("An error occurred while parsing the JSON file '{}'", path.c_str())};
+    }
+
+    if (!jKv.isObject())
+    {
+        return base::Error {
+            fmt::format("An error occurred while parsing the JSON file '{}': JSON is not an object", path.c_str())};
+    }
+
+    entries = jKv.getObject().value();
 
     for (const auto& [key, value] : entries)
     {
@@ -280,6 +279,25 @@ std::optional<base::Error> KVDBManager::createDB(const std::string& name, const 
             // TODO check error
         }
     }
+
+    return std::nullopt;
+}
+
+std::optional<base::Error> KVDBManager::createDB(const std::string& name)
+{
+    if (existsDB(name))
+    {
+        return std::nullopt;
+    }
+
+    auto createResult = createColumnFamily(name);
+
+    if (std::holds_alternative<base::Error>(createResult))
+    {
+        return std::get<base::Error>(createResult);
+    }
+
+    auto cfHandle = std::get<rocksdb::ColumnFamilyHandle*>(createResult);
 
     return std::nullopt;
 }
