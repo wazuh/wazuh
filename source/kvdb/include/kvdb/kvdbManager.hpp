@@ -123,7 +123,13 @@ public:
      * @copydoc IKVDBManager::createDB
      *
      */
-    std::optional<base::Error> createDB(const std::string& name, const std::string& path = "") override;
+    std::optional<base::Error> createDB(const std::string& name) override;
+
+    /**
+     * @copydoc IKVDBManager::loadDBFromFile
+     *
+     */
+    std::optional<base::Error> loadDBFromFile(const std::string& name, const std::string& path) override;
 
     /**
      * @copydoc IKVDBManager::existsDB
