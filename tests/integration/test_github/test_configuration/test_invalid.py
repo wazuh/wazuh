@@ -56,6 +56,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.global_parameters import GlobalParameters
 from wazuh_testing.modules.integrations.event_monitors import detect_wrong_content_config
 from wazuh_testing.modules.integrations import LOCAL_INTERNAL_OPTIONS as local_internal_options
+from wazuh_testing.modules import ALL_DAEMON_HANDLER as daemons_handler_configuration
 from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.configuration import get_test_cases_data
@@ -79,7 +80,7 @@ test_configuration = load_configuration_template(configs_path, config_parameters
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_invalid(test_configuration, test_metadata, restart_wazuh, set_wazuh_configuration, configure_local_internal_options,
+def test_invalid(test_configuration, test_metadata, daemons_handler, set_wazuh_configuration, configure_local_internal_options,
                  truncate_monitored_files):
     '''
     description: Check if the 'github' module detects invalid configurations. For this purpose, the test
@@ -97,9 +98,9 @@ def test_invalid(test_configuration, test_metadata, restart_wazuh, set_wazuh_con
         - test_metadata:
             type: data
             brief: Configuration cases.
-        - restart_wazuh:
+        - daemons_handler:
             type: fixture
-            brief: Reset Wazuh.
+            brief: Manages daemons to reset Wazuh.
         - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
