@@ -121,25 +121,32 @@ Catalog::Catalog(const Config& config)
     {
         throw std::runtime_error(fmt::format("Error while parsing the environment schema name: {}", e.what()));
     }
-    auto assetSchemaJson = m_store->get(assetSchemaName);
-    if (std::holds_alternative<base::Error>(assetSchemaJson))
+
+    // Asset schema
     {
-        throw std::runtime_error(
-            fmt::format("Error while getting the asset schema: {}", std::get<base::Error>(assetSchemaJson).message));
+        const auto assetSchemaJson = m_store->get(assetSchemaName);
+        if (std::holds_alternative<base::Error>(assetSchemaJson))
+        {
+            throw std::runtime_error(fmt::format("Error while getting the asset schema: {}",
+                                                 std::get<base::Error>(assetSchemaJson).message));
+        }
+
+        m_schemas[Resource::Type::decoder] = json::Json {std::get<json::Json>(assetSchemaJson)};
+        m_schemas[Resource::Type::rule] = json::Json {std::get<json::Json>(assetSchemaJson)};
+        m_schemas[Resource::Type::output] = json::Json {std::get<json::Json>(assetSchemaJson)};
+        m_schemas[Resource::Type::filter] = json::Json {std::get<json::Json>(assetSchemaJson)};
     }
 
-    m_schemas[Resource::Type::decoder] = std::get<json::Json>(assetSchemaJson);
-    m_schemas[Resource::Type::rule] = std::get<json::Json>(assetSchemaJson);
-    m_schemas[Resource::Type::output] = std::get<json::Json>(assetSchemaJson);
-    m_schemas[Resource::Type::filter] = std::get<json::Json>(assetSchemaJson);
-
-    const auto environmentSchemaJson = m_store->get(environmentSchemaName);
-    if (std::holds_alternative<base::Error>(environmentSchemaJson))
+    // Environment schema
     {
-        throw std::runtime_error(fmt::format("Error while getting the environment schema: {}",
-                                             std::get<base::Error>(environmentSchemaJson).message));
+        auto environmentSchemaJson = m_store->get(environmentSchemaName);
+        if (std::holds_alternative<base::Error>(environmentSchemaJson))
+        {
+            throw std::runtime_error(fmt::format("Error while getting the environment schema: {}",
+                                                 std::get<base::Error>(environmentSchemaJson).message));
+        }
+        m_schemas[Resource::Type::policy] = std::move(std::get<json::Json>(environmentSchemaJson));
     }
-    m_schemas[Resource::Type::policy] = std::get<json::Json>(environmentSchemaJson);
 }
 
 std::optional<base::Error> Catalog::postResource(const Resource& collection, const std::string& content)

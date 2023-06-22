@@ -813,10 +813,10 @@ base::Expression opBuilderHelperArrayPresence(const std::string& targetField,
                 {
                     case helper::base::Parameter::Type::REFERENCE:
                     {
-                        const auto resolvedParameter {event->getJson(parameter.m_value)};
+                        auto resolvedParameter {event->getJson(parameter.m_value)};
                         if (resolvedParameter.has_value())
                         {
-                            cmpValue = resolvedParameter.value();
+                            cmpValue = std::move(resolvedParameter.value());
                         }
                         else
                         {
@@ -1575,44 +1575,51 @@ base::Expression opBuilderHelperMatchValue(const std::string& targetField,
 
             // Get value
             json::Json cmpValue {};
-            const auto resolvedField {event->getJson(targetField)};
-            if (resolvedField.has_value())
             {
-                cmpValue = resolvedField.value();
+                auto resolvedField {event->getJson(targetField)};
+                if (resolvedField.has_value())
+                {
+                    cmpValue = std::move(resolvedField.value());
+                }
+                else
+                {
+                    return base::result::makeFailure(event, failureTrace2);
+                }
             }
-            else
+
+            bool isSuccess {false};
+            // TODO Should be a function in json::Json for search in array
+            auto searchCmpValue = [&cmpValue](const std::vector<json::Json>& def) -> bool
             {
-                return base::result::makeFailure(event, failureTrace2);
-            }
+               return std::find_if(def.begin(), def.end(), [&cmpValue](const json::Json& value) { return value == cmpValue; })
+                    != def.end();
+            };
 
             // Get array
-            std::optional<std::vector<json::Json>> resolvedArray;
-
             if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
             {
+                // TODO Should be 1 trace, if exist and is array, in all helers, no shearch for existance twice
                 // Parameter is a reference
                 if (!event->exists(parameter.m_value))
                 {
                     return base::result::makeFailure(event, failureTrace3);
                 }
 
-                resolvedArray = event->getArray(parameter.m_value);
-                if (!resolvedArray.has_value())
+                if (!event->isArray(parameter.m_value))
                 {
                     return base::result::makeFailure(event, failureTrace4);
                 }
+
+                isSuccess = searchCmpValue(event->getArray(parameter.m_value).value());
             }
             else
             {
                 // Parameter is a definition
-                resolvedArray = definitionArray;
+                isSuccess = searchCmpValue(definitionArray.value());
             }
 
             // Check if the array contains the value
-            if (std::find_if(resolvedArray.value().begin(),
-                             resolvedArray.value().end(),
-                             [&cmpValue](const json::Json& value) { return value == cmpValue; })
-                != resolvedArray.value().end())
+            if (isSuccess)
             {
                 return base::result::makeSuccess(event, successTrace);
             }
@@ -1684,7 +1691,7 @@ base::Expression opBuilderHelperMatchKey(const std::string& targetField,
     const std::string failureTrace3 {
         fmt::format("[{}] -> Failure: Parameter '{}' not found", name, parameters[0].m_value)};
     const std::string failureTrace4 {
-        fmt::format("[{}] -> Failure: Parameter '{}' has an invalid type", name, parameters[0].m_value)};
+        fmt::format("[{}] -> Failure: Parameter '{}' has an invalid type", name, parameters[0].m_value)}; // TODO: ???
     const std::string failureTrace5 {
         fmt::format("[{}] -> Failure: Parameter '{}' is not an object", name, parameters[0].m_value)};
 
@@ -1709,33 +1716,31 @@ base::Expression opBuilderHelperMatchKey(const std::string& targetField,
             }
 
             auto pointerPath = json::Json::formatJsonPath(event->getString(targetField).value());
-
-            // Get object
-            std::optional<json::Json> resolvedJson;
+            bool exists {false};
 
             if (helper::base::Parameter::Type::REFERENCE == parameter.m_type)
             {
                 // Parameter is a reference
-                resolvedJson = event->getJson(parameter.m_value);
-                if (!resolvedJson.has_value())
+                if (!event->exists(parameter.m_value))
                 {
-                    return base::result::makeFailure(
-                        event, (!event->exists(parameter.m_value)) ? failureTrace3 : failureTrace4);
+                    return base::result::makeFailure(event, failureTrace3);
                 }
 
-                if (!resolvedJson->isObject())
+                if (!event->isObject(parameter.m_value))
                 {
                     return base::result::makeFailure(event, failureTrace5);
                 }
+
+                exists = event->exists(parameter.m_value + pointerPath);
             }
             else
             {
                 // Parameter is a definition
-                resolvedJson = definitionObject;
+                exists = definitionObject->exists(pointerPath);
             }
 
             // Check if object contains the key
-            if (!resolvedJson->exists(pointerPath))
+            if (!exists)
             {
                 return base::result::makeFailure(event, failureTrace6);
             }

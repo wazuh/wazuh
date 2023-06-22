@@ -22,10 +22,10 @@ json::Json DataHub::getResource(const std::string& scope)
     }
 }
 
-void DataHub::setResource(const std::string& scope, json::Json object)
+void DataHub::setResource(const std::string& scope, const json::Json& object)
 {
     const std::lock_guard<std::mutex> lock(m_mutex);
-    m_resources[scope] = std::move(object);
+    m_resources[scope] = json::Json {object};
 }
 
 json::Json DataHub::getAllResources()

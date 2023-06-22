@@ -299,11 +299,11 @@ base::Expression KVDBSet(const std::string& targetField,
                 const auto refExists = event->exists(value.m_value);
                 if (refExists)
                 {
-                    const auto retvalObject = event->getJson(value.m_value);
+                    auto retvalObject = event->getJson(value.m_value);
 
                     if (retvalObject)
                     {
-                        resolvedJsonValue = retvalObject.value();
+                        resolvedJsonValue = std::move(retvalObject.value());
                         resolvedStrValue = resolvedJsonValue.str();
                         isValueRef = true;
                     }

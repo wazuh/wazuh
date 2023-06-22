@@ -165,7 +165,7 @@ void run(const Options& options)
     };
     auto _testDriver = std::make_shared<TestDriver>();
     _testDriver->driver = fileStore;
-    _testDriver->testPolicy = envTmp;
+    _testDriver->testPolicy = json::Json {envTmp};
 
     // TODO: Handle errors on construction
     builder::Builder _builder(_testDriver, registry);

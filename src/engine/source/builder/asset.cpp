@@ -99,9 +99,10 @@ Asset::Asset(const json::Json& jsonDefinition,
     // Get metadata
     auto metadataPos = std::find_if(
         objectDefinition.begin(), objectDefinition.end(), [](auto tuple) { return std::get<0>(tuple) == "metadata"; });
+
     if (objectDefinition.end() != metadataPos)
     {
-        m_metadata = std::get<1>(*metadataPos);
+        m_metadata = json::Json {std::get<1>(*metadataPos)};
         objectDefinition.erase(metadataPos);
     }
 
