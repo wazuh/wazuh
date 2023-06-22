@@ -87,7 +87,7 @@ public:
      * @return std::map<std::string, RefInfo> Map of DBs and their scopes.
      *
      */
-    virtual std::map<std::string, RefInfo> getKVDBHandlersInfo() = 0;
+    virtual std::map<std::string, RefInfo> getKVDBHandlersInfo() const = 0;
 };
 
 } // namespace kvdbManager
