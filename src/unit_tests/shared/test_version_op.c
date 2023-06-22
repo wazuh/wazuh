@@ -160,7 +160,6 @@ void test_get_unix_version_archlinux(void **state)
     assert_string_equal(ret->os_version, "");
     assert_string_equal(ret->os_platform, "arch");
     assert_string_equal(ret->sysname, "Linux");
-    assert_string_equal(ret->os_build, "rolling");
 }
 
 void test_get_unix_version_opensuse_tumbleweed(void **state)
@@ -193,7 +192,6 @@ void test_get_unix_version_opensuse_tumbleweed(void **state)
     assert_string_equal(ret->os_version, "");
     assert_string_equal(ret->os_platform, "opensuse-tumbleweed");
     assert_string_equal(ret->sysname, "Linux");
-    assert_string_equal(ret->os_build, "rolling");
 }
 
 void test_get_unix_version_alpine(void **state)

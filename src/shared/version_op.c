@@ -424,7 +424,7 @@ os_info *get_unix_version()
                         info->os_name = strdup(name);
                     }
                 } else if (strcmp (tag,"VERSION") == 0) {
-                    if (!version) {    
+                    if (!version) {
                         if (version_id) {
                             os_free(info->os_version);
                         }
@@ -456,6 +456,7 @@ os_info *get_unix_version()
         fclose(os_release);
 
         // If the OS is CentOS, try to get the version from the 'centos-release' file.
+        // If the OS is Arch Linux, openSUSE Tumbleweed set os_version as empty string.
         if (info->os_platform) {
             if (strcmp(info->os_platform, "centos") == 0) {
                 regex_t regexCompiled;
@@ -479,8 +480,10 @@ os_info *get_unix_version()
                     fclose(version_release);
                 }
             }
-            else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0) {
-                os_strdup("rolling", info->os_build);
+            else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0 ||
+                        strcmp(info->os_platform, "arch") == 0) {
+                os_free(info->os_version);
+                os_strdup("", info->os_version);
             }
         }
     }
@@ -576,9 +579,7 @@ os_info *get_unix_version()
                     break;
                 }
             }
-            if (info->os_version == NULL) {
-                os_strdup("rolling", info->os_build);
-            }
+
             regfree(&regexCompiled);
             fclose(version_release);
         // Ubuntu
@@ -891,12 +892,9 @@ os_info *get_unix_version()
                 info->os_version = tmp_os_version;
             }
         }
-    } else if (info->os_build && strcmp(info->os_build, "rolling") == 0) {
-        // Rolling releases doesn't have a version.
-        info->os_version = strdup("");
     } else {
         // Empty version
-        info->os_version = strdup("0.0");
+        os_strdup("0.0", info->os_version);
     }
 
     return info;
