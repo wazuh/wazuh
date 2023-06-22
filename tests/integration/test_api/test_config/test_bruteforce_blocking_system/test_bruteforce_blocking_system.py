@@ -164,7 +164,7 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
 
     # Get values from exception information to verify them later
     exception_message = login_exception.value.args[0]
-    api_response = login_exception.value.args[1]
+    api_response = login_exception.value.args[1].json()
     response_message = api_response['detail']
     response_error_code = api_response['error']
 

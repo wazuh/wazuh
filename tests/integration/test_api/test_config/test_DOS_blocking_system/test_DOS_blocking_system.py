@@ -143,7 +143,7 @@ def test_DOS_blocking_system(test_configuration, test_metadata, add_configuratio
     max_request_per_minute = test_configuration['blocks']['access']['max_request_per_minute']
     expected_code = test_metadata['expected_http_code']
     url = get_base_url() + AGENTS_ROUTE
-    authentication_headers = login()
+    authentication_headers, _ = login()
 
     # Provoke an API block
     for _ in range(max_request_per_minute):

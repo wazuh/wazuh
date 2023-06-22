@@ -157,7 +157,7 @@ def test_cors(test_configuration, test_metadata, add_configuration, truncate_mon
     allow_credentials = str(test_configuration['blocks']['cors']['allow_credentials']).lower()
 
     url = get_base_url()
-    authentication_headers = login()
+    authentication_headers, _ = login()
     origin = test_metadata['origin']
     authentication_headers['origin'] = origin
 

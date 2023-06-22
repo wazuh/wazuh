@@ -93,7 +93,7 @@ def test_jwt_token_exp_timeout(test_configuration, test_metadata, add_configurat
             - Append configuration to the target configuration files (defined by configuration_type)
             - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
-            - Wait until the API is ready to receive requests (and check if the host/port is set as expected)
+            - Wait until the API is ready to receive requests
         - test:
             - Fix to minimum time to avoid waiting longer than necessary
             - Get login token
@@ -147,7 +147,7 @@ def test_jwt_token_exp_timeout(test_configuration, test_metadata, add_configurat
     url = get_base_url() + MANAGER_INFORMATION_ROUTE
 
     # Get token
-    authenticator_headers = login()
+    authenticator_headers, _ = login()
 
     # Request before the token expires
     response = requests.get(url, headers=authenticator_headers, verify=False)

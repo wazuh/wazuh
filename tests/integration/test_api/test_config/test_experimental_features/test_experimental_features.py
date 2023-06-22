@@ -135,7 +135,7 @@ def test_experimental_features(test_configuration, test_metadata, add_configurat
     """
     expected_code = test_metadata['expected_code']
     url = get_base_url() + SYSCOLLECTOR_OS_ROUTE
-    authorization_headers = login()
+    authorization_headers, _ = login()
 
     response = requests.get(url, headers=authorization_headers, verify=False)
     

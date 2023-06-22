@@ -145,7 +145,7 @@ def test_host_port(test_configuration, test_metadata, add_configuration, truncat
 
     # If the host and port are well set, make a request with the default host
     if expected_exception is None:
-        response = requests.get(url=get_base_url(port=port), headers=login(port=port), verify=False)
+        response = requests.get(url=get_base_url(port=port), headers=login(port=port)[0], verify=False)
 
         assert response.status_code == 200, f"Expected status code was 200, but {response.status_code} was received."
     # Otherwise, make a request with the host/port defined in the test case data and check if the exception is thrown

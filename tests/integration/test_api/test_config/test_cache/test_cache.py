@@ -163,7 +163,7 @@ def test_cache(test_configuration, test_metadata, add_configuration, truncate_mo
     cache = test_configuration['blocks']['cache']['enabled']
     cache_expiration_time = test_configuration['blocks']['cache']['time']
     url = get_base_url() + RULES_FILES_ROUTE
-    authentication_headers = login()
+    authentication_headers, _ = login()
 
     # Request rules files before creating a new one
     rule_files = requests.get(url, headers=authentication_headers, verify=False)

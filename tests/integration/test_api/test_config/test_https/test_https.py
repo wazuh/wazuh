@@ -90,7 +90,7 @@ def test_https(test_configuration, test_metadata, add_configuration, truncate_mo
             - Append configuration to the target configuration files (defined by configuration_type)
             - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
-            - Wait until the API is ready to receive requests (and check if the host/port is set as expected)
+            - Wait until the API is ready to receive requests
         - test:
             - Get url with the configured protocol
             - Login and get the authorization headers
@@ -137,7 +137,7 @@ def test_https(test_configuration, test_metadata, add_configuration, truncate_mo
     https = test_configuration['blocks']['https']['enabled']
     protocol = 'https' if https is True else 'http'
     url = get_base_url(protocol=protocol)
-    authentication_headers = login(protocol=protocol)
+    authentication_headers, _ = login(protocol=protocol)
 
     response = requests.get(url, headers=authentication_headers, verify=False)
 
