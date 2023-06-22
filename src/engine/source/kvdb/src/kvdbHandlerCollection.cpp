@@ -8,11 +8,12 @@ namespace kvdbManager
 {
 
 std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB* db,
-                                                  rocksdb::ColumnFamilyHandle* cfHandle,
-                                                  const std::string& dbName,
-                                                  const std::string& scopeName)
+                                                                    rocksdb::ColumnFamilyHandle* cfHandle,
+                                                                    const std::string& dbName,
+                                                                    const std::string& scopeName)
 {
-    std::lock_guard<std::shared_mutex> lock(m_mutex);
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
@@ -31,7 +32,7 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
 
 void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
-    std::lock_guard<std::shared_mutex> lock(m_mutex);
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
 
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
@@ -47,18 +48,21 @@ void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const s
 
 std::vector<std::string> KVDBHandlerCollection::getDBNames()
 {
-    std::lock_guard<std::shared_mutex> lock(m_mutex);
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+
     std::vector<std::string> dbNames;
     for (const auto& instance : m_mapInstances)
     {
         dbNames.push_back(instance.first);
     }
+
     return dbNames;
 }
 
 std::map<std::string, unsigned int> KVDBHandlerCollection::getRefMap(const std::string& dbName)
 {
-    std::lock_guard<std::shared_mutex> lock(m_mutex);
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+
     auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
@@ -68,28 +72,38 @@ std::map<std::string, unsigned int> KVDBHandlerCollection::getRefMap(const std::
     return std::map<std::string, unsigned int>();
 }
 
-void KVDBHandlerCollection::KVDBHandlerInstance::addScope(const std::string& scopeName)
+void KVDBHandlerInstance::addScope(const std::string& scopeName)
 {
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
     m_scopeCounter.addRef(scopeName);
 }
 
-void KVDBHandlerCollection::KVDBHandlerInstance::removeScope(const std::string& scopeName)
+void KVDBHandlerInstance::removeScope(const std::string& scopeName)
 {
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
     m_scopeCounter.removeRef(scopeName);
 }
 
-bool KVDBHandlerCollection::KVDBHandlerInstance::emptyScopes() const
+bool KVDBHandlerInstance::emptyScopes()
 {
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
     return m_scopeCounter.empty();
 }
 
-std::vector<std::string> KVDBHandlerCollection::KVDBHandlerInstance::getRefNames() const
+std::vector<std::string> KVDBHandlerInstance::getRefNames()
 {
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+
     return m_scopeCounter.getRefNames();
 }
 
-std::map<std::string, unsigned int> KVDBHandlerCollection::KVDBHandlerInstance::getRefMap() const
+std::map<std::string, unsigned int> KVDBHandlerInstance::getRefMap()
 {
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+
     return m_scopeCounter.getRefMap();
 }
 
