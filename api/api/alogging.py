@@ -78,19 +78,16 @@ class AccessLogger(AbstractAccessLogger):
             log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" '
             json_info['hash_auth_context'] = hash_auth_context
 
-        if path != '/events' or self.logger.level <= 10:
-            log_info += f'with parameters {json.dumps(query)} and body {json.dumps(body)} done in {time:.3f}s: {status}'
-        elif self.logger.level >= 20:
-            # If log level is info simplify the messages and remove the body value.
-            json_info.pop('body')
+        if path == '/events' and self.logger.level >= 20:
+            # If log level is info simplify the messages for the /events requests.
             events = body.get('events', [])
-            json_info['number_of_events'] = len(events)
-            log_info += f'with parameters {json.dumps(query)} and {len(events)} events done in {time:.3f}s: {status}'
+            body = {'events': len(events)}
+            json_info['body'] = body
+
+        log_info += f'with parameters {json.dumps(query)} and body {json.dumps(body)} done in {time:.3f}s: {status}'
 
         self.logger.info(log_info, extra={'log_type': 'log'})
         self.logger.info(json_info, extra={'log_type': 'json'})
-
-
 
     def log(self, request: web_request.BaseRequest, response: web_request.StreamResponse, time: float):
         """Override the log method to log messages.

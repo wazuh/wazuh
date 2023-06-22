@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+import json
 import logging
 import os
 from unittest.mock import MagicMock, call, patch
@@ -153,7 +154,7 @@ def test_accesslogger_log_hash_auth_context(request_path, token_info, request_bo
 
 
 @pytest.mark.parametrize('request_path,request_body,log_level,log_key,json_key', [
-    ('/events', {"events": ["foo", "bar"]}, 20, 'events', 'number_of_events'),
+    ('/events', {"events": ["foo", "bar"]}, 20, 'body', 'body'),
     ('/events', {"events": ["foo", "bar"]}, 5, 'body', 'body'),
     ('/agents', {}, 20, 'body', 'body'),
     ('/agents', {}, 5, 'body', 'body')
@@ -201,11 +202,19 @@ def test_accesslogger_log_events_correctly(
     test_access_logger.logger.setLevel(log_level)
     test_access_logger.log(request=request, response=MagicMock(), time=0.0)
 
-    message_api_log = mock_logger_info.call_args_list[0][0][0].split(" ")
+    message_api_log = mock_logger_info.call_args_list[0][0][0]
     message_api_json = mock_logger_info.call_args_list[1][0][0]
 
     assert log_key in message_api_log
     assert json_key in message_api_json
+
+    if log_level >= 20 and request_path == '/events':
+        formatted_log = {"events": len(request_body["events"])}
+        assert json.dumps(formatted_log) in message_api_log
+        assert formatted_log == message_api_json[json_key]
+    else:
+        assert json.dumps(request_body) in message_api_log
+        assert request_body == message_api_json[json_key]
 
 
 @pytest.mark.parametrize('json_log', [
