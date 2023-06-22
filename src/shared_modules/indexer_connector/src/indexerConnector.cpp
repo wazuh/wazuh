@@ -13,32 +13,55 @@
 #include "HTTPRequest.hpp"
 
 std::unordered_map<IndexerConnector*, std::unique_ptr<ThreadDispatchQueue>> QUEUE_MAP;
+constexpr auto DATABASE_WORKERS = 1;
 
 IndexerConnector::IndexerConnector(const nlohmann::json& config)
 {
     // Initialize publisher.
     m_selector = std::make_unique<RoundRobinSelector<std::string>>(config.at("servers"));
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
-        [&](const std::string& data)
+        [&](std::queue<std::string>& dataQueue)
         {
-            auto parsedData = nlohmann::json::parse(data);
-            auto server = m_selector->getNext();
-            auto index = parsedData.at("type");
-            auto url = server;
-            url.append("/");
-            url.append(index);
-            url.append("/_doc");
+            try
+            {
+                auto server = m_selector->getNext();
+                auto url = server;
+                nlohmann::json bulkData;
+                url.append("/_bulk");
 
-            std::cout << "URL: " << url << std::endl;
-            std::cout << "Data: " << parsedData.at("data").dump() << std::endl;
-            // Process data.
-            HTTPRequest::instance().post(
-                HttpURL(url),
-                parsedData.at("data"),
-                [&](const std::string& response) { std::cout << "Response: " << response << std::endl; },
-                [&](const std::string& error) { std::cout << "Error: " << error << std::endl; });
+                while (!dataQueue.empty())
+                {
+                    auto data = dataQueue.front();
+                    dataQueue.pop();
+                    auto parsedData = nlohmann::json::parse(data);
+                    auto index = parsedData.at("type");
+                    auto id = parsedData.at("id").get_ref<const std::string&>();
+
+                    if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
+                    {
+                        bulkData.push_back(nlohmann::json({{"delete", {{"_index", index}, {"_id", id}}}}));
+                    }
+                    else
+                    {
+                        bulkData.push_back(nlohmann::json({{"index", {{"_index", index}, {"_id", id}}}}));
+                        bulkData.push_back(parsedData.at("data"));
+                    }
+                }
+
+                // Process data.
+                HTTPRequest::instance().post(
+                    HttpURL(url),
+                    bulkData,
+                    [&](const std::string& response) { std::cout << "Response: " << response << std::endl; },
+                    [&](const std::string& error) { std::cout << "Error: " << error << std::endl; });
+            }
+            catch (const std::exception& e)
+            {
+                std::cout << "Error: " << e.what() << std::endl;
+            }
         },
-        config.at("database_path"));
+        config.at("databasePath"),
+        DATABASE_WORKERS);
 }
 
 IndexerConnector::~IndexerConnector()

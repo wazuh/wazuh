@@ -21,18 +21,22 @@
 #include <iostream>
 #include <thread>
 
+#define ELEMENTS_PER_BULK 50
+
 template<typename Type, typename Functor>
 class ThreadEventDispatcher
 {
 public:
     explicit ThreadEventDispatcher(Functor functor,
                                    const std::string& dbPath,
+                                   const uint64_t bulkSize = ELEMENTS_PER_BULK,
                                    const unsigned int numberOfThreads = std::thread::hardware_concurrency(),
                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
         : m_functor {functor}
         , m_running {true}
         , m_numberOfThreads {numberOfThreads ? numberOfThreads : 1}
         , m_maxQueueSize {maxQueueSize}
+        , m_bulkSize {bulkSize}
     {
         m_queue = std::make_unique<Utils::SafeQueue<Type, RocksDBQueue<Type>>>(RocksDBQueue<Type>(dbPath));
         m_threads.reserve(m_numberOfThreads);
@@ -89,8 +93,8 @@ private:
         {
             while (m_running)
             {
-                Type data;
-                if (m_queue->pop(data))
+                std::queue<Type> data = m_queue->popBulk(ELEMENTS_PER_BULK);
+                if (!data.empty())
                 {
                     m_functor(data);
                 }
@@ -119,6 +123,7 @@ private:
     std::atomic_bool m_running;
     const unsigned int m_numberOfThreads;
     const size_t m_maxQueueSize;
+    const uint64_t m_bulkSize;
 };
 
 #endif // _THREAD_EVENT_DISPATCHER_HPP

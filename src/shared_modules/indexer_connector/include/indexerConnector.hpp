@@ -23,7 +23,7 @@
 #include <json.hpp>
 #include <string>
 
-using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::string)>>;
+using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
 
 class EXPORTED IndexerConnector final
 {
