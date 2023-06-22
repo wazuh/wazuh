@@ -50,7 +50,7 @@ std::vector<std::string> RefCounter::getRefNames() const
     return refNames;
 }
 
-std::map<std::string, unsigned int> RefCounter::getRefMap() const
+std::map<std::string, uint32_t> RefCounter::getRefMap() const
 {
     return m_refMap;
 }

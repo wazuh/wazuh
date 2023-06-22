@@ -1,5 +1,5 @@
-#ifndef _REF_COUNTER_H
-#define _REF_COUNTER_H
+#ifndef _KVDB_REF_COUNTER_H
+#define _KVDB_REF_COUNTER_H
 
 #include <map>
 #include <string>
@@ -9,7 +9,7 @@ namespace kvdbManager
 {
 
 /**
- * @brief Basic Helper wrapping std::map<std::string, unsigned int> to count references.
+ * @brief Basic Helper wrapping std::map<std::string, uint32_t> to count references.
  *
  */
 class RefCounter
@@ -77,16 +77,16 @@ public:
      *
      * @return std::map<std::string, int> Map of references.
      */
-    std::map<std::string, unsigned int> getRefMap() const;
+    std::map<std::string, uint32_t> getRefMap() const;
 
 private:
     /**
      * @brief Map of references with the counters.
      *
      */
-    std::map<std::string, unsigned int> m_refMap;
+    std::map<std::string, uint32_t> m_refMap;
 };
 
 } // namespace kvdbManager
 
-#endif // _REF_COUNTER_H
+#endif // _KVDB_REF_COUNTER_H

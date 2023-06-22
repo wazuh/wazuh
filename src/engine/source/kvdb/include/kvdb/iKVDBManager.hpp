@@ -16,7 +16,7 @@ namespace kvdbManager
  * @brief Reference information for a KVDB Scope or Handler.
  * Typically used to get the number of references to a Scope or Handler.
  */
-using RefInfo = std::map<std::string, unsigned int>;
+using RefInfo = std::map<std::string, uint32_t>;
 
 /**
  * @brief Interface for the KVDBManager class.
