@@ -71,11 +71,7 @@ std::map<std::string, uint32_t> KVDBHandlerCollection::getRefMap(const std::stri
         return it->second->getRefMap();
     }
 
-<<<<<<< Updated upstream
-    return std::map<std::string, uint32_t>();
-=======
     return {};
->>>>>>> Stashed changes
 }
 
 void KVDBHandlerInstance::addScope(const std::string& scopeName)
