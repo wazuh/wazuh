@@ -19,7 +19,8 @@ def authd_simulator() -> Generator:
 def remoted_simulator() -> Generator:
     remoted = RemotedSimulator()
     remoted.start()
+    remoted.send_special_response(b'#!-execd {"version":1,"origin":{"name":"","module":"wazuh-analysisd"},"command":"restart-wazuh0","parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":554}}}}')
 
-    yield 
+    yield
 
     remoted.shutdown()
