@@ -34,6 +34,7 @@ public:
 
     /**
      * @brief Returns if the Manager is in Shutdown mode.
+     *
      * Shutdown mode is a flag added for compatibility with Unit Test cycle. UT Setup and Teardown forces creation of
      * KVDBManagers. In a normal scenario, the Manager is shutdown when the server stops. To cope with both scenarios,
      * the finalize method enables the shutdown mode  and the handlers do not automatically unregister their references

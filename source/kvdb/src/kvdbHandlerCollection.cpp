@@ -14,7 +14,7 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    auto it = m_mapInstances.find(dbName);
+    const auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
         auto& instance = it->second;
@@ -34,10 +34,10 @@ void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const s
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
 
-    auto it = m_mapInstances.find(dbName);
+    const auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
-        auto instance = it->second;
+        auto& instance = it->second;
         instance->removeScope(scopeName);
         if (instance->emptyScopes())
         {
@@ -51,6 +51,8 @@ std::vector<std::string> KVDBHandlerCollection::getDBNames()
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
     std::vector<std::string> dbNames;
+    dbNames.reserve(m_mapInstances.size());
+
     for (const auto& instance : m_mapInstances)
     {
         dbNames.push_back(instance.first);
@@ -59,17 +61,17 @@ std::vector<std::string> KVDBHandlerCollection::getDBNames()
     return dbNames;
 }
 
-std::map<std::string, unsigned int> KVDBHandlerCollection::getRefMap(const std::string& dbName)
+std::map<std::string, uint32_t> KVDBHandlerCollection::getRefMap(const std::string& dbName)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    auto it = m_mapInstances.find(dbName);
+    const auto it = m_mapInstances.find(dbName);
     if (it != m_mapInstances.end())
     {
         return it->second->getRefMap();
     }
 
-    return std::map<std::string, unsigned int>();
+    return std::map<std::string, uint32_t>();
 }
 
 void KVDBHandlerInstance::addScope(const std::string& scopeName)
@@ -100,7 +102,7 @@ std::vector<std::string> KVDBHandlerInstance::getRefNames()
     return m_scopeCounter.getRefNames();
 }
 
-std::map<std::string, unsigned int> KVDBHandlerInstance::getRefMap()
+std::map<std::string, uint32_t> KVDBHandlerInstance::getRefMap()
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
