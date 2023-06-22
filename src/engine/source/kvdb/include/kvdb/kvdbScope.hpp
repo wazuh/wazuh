@@ -38,7 +38,7 @@ private:
      * @brief Pointer to the internal manager that deals with handlers.
      *
      */
-    IKVDBHandlerManager* m_handlerManager {nullptr};
+    IKVDBHandlerManager* m_handlerManager;
 
     /**
      * @brief Name of the Scope.
