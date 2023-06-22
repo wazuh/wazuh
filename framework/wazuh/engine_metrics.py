@@ -5,12 +5,12 @@
 from typing import Optional, List, Dict, Any
 
 from wazuh.core.engine.commands import MetricCommand
-from wazuh.core.engine.transformations import EngineTransformationSequence
 
 from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.results import WazuhResult
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound, WazuhInternalError
 from wazuh.core.wazuh_socket import WazuhSocketJSON, create_wazuh_socket_message
+from wazuh.core.utils import process_array
 
 # TODO Redefine HARDCODED values
 HARDCODED_ORIGIN_NAME = "metric"
@@ -47,9 +47,11 @@ def get_metrics(
         limit: int,
         scope_name: Optional[str] = None,
         instrument_name: Optional[str] = None,
-        select: Optional[str] = None,
-        sort: Optional[str] = None,
-        search: Optional[str] = None,
+        select: Optional[List] = None,
+        sort_by: dict = None,
+        sort_ascending: bool = True,
+        search_text: str = None,
+        complementary_search: bool = False,
         offset: int = 0,
 ) -> WazuhResult:
     """
@@ -65,10 +67,15 @@ def get_metrics(
          Name of the metric instrument.
     select: Optional[str]
         Fields to return (separated by comma).
-    sort: Optional[str]
-        Field(s) to sort the collection by (separated by comma).
-    search: Optional[str]
-        String to search for in the metrics.
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Find items with the specified string.
+    complementary_search : bool
+        If True, only results NOT containing `search_text` will be returned. If False, only results that contains
+        `search_text` will be returned.
     offset: int
         Number of elements to skip before returning the collection.
 
@@ -106,18 +113,19 @@ def get_metrics(
             raise WazuhInternalError(9002)
 
     normalized_result = normalize_metrics(result['value'])
-    final_result = EngineTransformationSequence.default_sequence().apply_sequence(
-        params={'limit': limit, 'select': select, 'sort': sort, 'offset': offset, 'search': search},
-        data=normalized_result
-    )
-    return WazuhResult({'data': final_result})
+    final_result = process_array(normalized_result, limit=limit, offset=offset, select=select, sort_by=sort_by,
+                                 sort_ascending=sort_ascending, search_text=search_text,
+                                 complementary_search=complementary_search)
+    return WazuhResult({'data': final_result['items']})
 
 
 def get_instruments(
         limit: int,
-        select: Optional[str] = None,
-        sort: Optional[str] = None,
-        search: Optional[str] = None,
+        select: Optional[List] = None,
+        sort_by: dict = None,
+        sort_ascending: bool = True,
+        search_text: str = None,
+        complementary_search: bool = False,
         offset: int = 0,
 ):
     """
@@ -129,10 +137,15 @@ def get_instruments(
         Maximum number of metrics to retrieve.
     select: Optional[str]
         Fields to return (separated by comma).
-    sort: Optional[str]
-        Field(s) to sort the collection by (separated by comma).
-    search: Optional[str]
-        String to search for in the metrics.
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Find items with the specified string.
+    complementary_search : bool
+        If True, only results NOT containing `search_text` will be returned. If False, only results that contains
+        `search_text` will be returned.
     offset: int
         Number of elements to skip before returning the collection.
 
@@ -147,11 +160,10 @@ def get_instruments(
     engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
     engine_socket.send(msg)
     result = engine_socket.receive()
-    result = EngineTransformationSequence.default_sequence().apply_sequence(
-        params={'limit': limit, 'select': select, 'sort': sort, 'offset': offset, 'search': search},
-        data=result['value']
-    )
-    return WazuhResult({'data': result})
+    result = process_array(result['value'], limit=limit, offset=offset, select=select, sort_by=sort_by,
+                           sort_ascending=sort_ascending, search_text=search_text,
+                           complementary_search=complementary_search)
+    return WazuhResult({'data': result['items']})
 
 
 def enable_instrument(

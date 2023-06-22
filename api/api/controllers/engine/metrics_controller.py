@@ -7,7 +7,7 @@ from typing import Optional
 from aiohttp import web
 
 from api.encoder import dumps, prettify
-from api.util import raise_if_exc
+from api.util import raise_if_exc, parse_api_param
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh import engine_metrics as metrics
 
@@ -56,8 +56,10 @@ async def get_metrics(request, scope_name: Optional[str] = None,  instrument_nam
         'scope_name': scope_name,
         'instrument_name': instrument_name,
         'select': select,
-        'sort': sort,
-        'search': search,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else None,
+        'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
         'offset': offset,
         'limit': limit
     }
@@ -104,8 +106,10 @@ async def get_instruments(request, select: Optional[str] = None, sort: Optional[
     """
     f_kwargs = {
         'select': select,
-        'sort': sort,
-        'search': search,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else None,
+        'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
         'offset': offset,
         'limit': limit
     }
