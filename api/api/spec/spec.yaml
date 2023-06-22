@@ -7302,7 +7302,7 @@ paths:
 
 
   /engine/instruments/enable:
-    get:
+    put:
       tags:
         - Engine
       summary: "Enable or disable an instrument"
@@ -7319,7 +7319,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
       responses:
         '200':
-          description: "List of instruments"
+          description: "Status of operation"
           content:
             application/json:
               schema:
