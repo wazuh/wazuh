@@ -167,11 +167,6 @@ public:
      * @return Json& The new Json object.
      */
     Json& operator=(const Json& other) = delete;
-    /*
-    m_document.GetAllocator().Clear();
-    m_document.CopyFrom(other.m_document, m_document.GetAllocator());
-    return *this;
-    */
 
     bool operator==(const Json& other) const;
 
