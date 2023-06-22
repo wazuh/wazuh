@@ -52,7 +52,7 @@ import sys
 import pytest
 from pathlib import Path
 
-from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.global_parameters import GlobalParameters
 from wazuh_testing.modules.integrations.event_monitors import detect_wrong_content_config
 from wazuh_testing.modules.integrations import LOCAL_INTERNAL_OPTIONS as local_internal_options
@@ -124,7 +124,7 @@ def test_invalid(test_configuration, test_metadata, restart_wazuh, set_wazuh_con
     tags:
         - invalid_settings
     '''
-    wazuh_log_monitor = FileMonitor(OSSEC_LOG_PATH)
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     
     # Configuration error -> ValueError raised
     try:
