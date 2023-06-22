@@ -4,20 +4,17 @@
 
 from typing import Optional, List, Dict, Any
 
-from wazuh.core.engine.request_message import EngineRequestMessage
 from wazuh.core.engine.commands import MetricCommand
 from wazuh.core.engine.transformations import EngineTransformationSequence
 
 from wazuh.core.common import ENGINE_SOCKET
 from wazuh.core.results import WazuhResult
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound, WazuhInternalError
-from wazuh.core.wazuh_socket import WazuhSocketJSON
+from wazuh.core.wazuh_socket import WazuhSocketJSON, create_wazuh_socket_message
 
 # TODO Redefine HARDCODED values
-HARDCODED_SOCKET_PATH = "som/path/"
 HARDCODED_ORIGIN_NAME = "metric"
 HARDCODED_ORIGIN_MODULE = "metric"
-ENGINE_METRICS_VERSION = 1
 
 
 def normalize_metrics(data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -82,26 +79,22 @@ def get_metrics(
         WazuhResult with the results of the command
     """
 
-    request_builder = EngineRequestMessage(ENGINE_METRICS_VERSION)
-    request_builder.add_origin(
-        name=HARDCODED_ORIGIN_NAME, module=HARDCODED_ORIGIN_MODULE
-    )
-
+    origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
     if scope_name is None and instrument_name is None:
-        request_builder.add_command(command=MetricCommand.DUMP)
+        msg = create_wazuh_socket_message(origin, MetricCommand.DUMP.value)
     elif scope_name is None:
         raise WazuhError(9003)
     elif instrument_name is None:
         raise WazuhError(9003)
     else:
-        request_builder.add_command(command=MetricCommand.GET)
-        request_builder.add_parameters(parameters={
+        parameters = {
             "scopeName": scope_name,
             "instrumentName": instrument_name
-        })
+        }
+        msg = create_wazuh_socket_message(origin, MetricCommand.GET.value, parameters)
 
     engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
-    engine_socket.send(request_builder.to_dict())
+    engine_socket.send(msg)
     result = engine_socket.receive()
 
     if result['status'] == 'ERROR':
@@ -148,11 +141,8 @@ def get_instruments(
     WazuhResult
         WazuhResult with the results of the command
     """
-    msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
-        origin_name=HARDCODED_ORIGIN_NAME,
-        module=HARDCODED_ORIGIN_MODULE,
-        command=MetricCommand.LIST,
-    )
+    origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
+    msg = create_wazuh_socket_message(origin, MetricCommand.LIST.value)
 
     engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
     engine_socket.send(msg)
@@ -186,16 +176,13 @@ def enable_instrument(
     WazuhResult
         WazuhResult with the results of the command
     """
-    msg = EngineRequestMessage(version=ENGINE_METRICS_VERSION).create_message(
-        origin_name=HARDCODED_ORIGIN_NAME,
-        module=HARDCODED_ORIGIN_MODULE,
-        command=MetricCommand.ENABLE,
-        parameters={
-            "scopeName": scope_name,
-            "instrumentName": instrument_name,
-            "status": enable,
-        },
-    )
+    origin = {"name": HARDCODED_ORIGIN_NAME, "module": HARDCODED_ORIGIN_MODULE}
+    parameters = {
+        "scopeName": scope_name,
+        "instrumentName": instrument_name,
+        "status": enable,
+    }
+    msg = create_wazuh_socket_message(origin, MetricCommand.ENABLE.value, parameters)
 
     engine_socket = WazuhSocketJSON(ENGINE_SOCKET)
     engine_socket.send(msg)
