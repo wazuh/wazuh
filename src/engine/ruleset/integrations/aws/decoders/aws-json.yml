@@ -19,6 +19,7 @@ sources:
 
 #TODO: Note this decoder accept all JSON events.
 check:
+  # - wazuh.location: Wazuh-AWS
   - event.original: +starts_with/{
 
 parse:
@@ -34,4 +35,3 @@ normalize:
    map:
     # - wazuh.integration: $~json.integration
     - event.module: aws
-    - wazuh.decoders: +array_append/aws
