@@ -53,7 +53,6 @@ import jsonschema
 import pytest
 
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH
-from wazuh_testing.modules import ALL_DAEMONS
 from wazuh_testing.modules.analysisd import patterns, utils
 from wazuh_testing.tools import file_monitor
 from wazuh_testing.utils import callbacks
@@ -63,7 +62,7 @@ from . import RULES_SAMPLE_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Test daemons to restart.
-daemons_handler_configuration = {ALL_DAEMONS: True}
+daemons_handler_configuration = {'all_daemons': True}
 
 # Test variables.
 configurations = []

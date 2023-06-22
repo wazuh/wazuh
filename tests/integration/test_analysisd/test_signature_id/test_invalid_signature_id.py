@@ -45,7 +45,6 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules import ALL_DAEMONS
 from wazuh_testing.modules.analysisd.testrule import patterns
 from wazuh_testing.tools import file_monitor
 from wazuh_testing.utils import configuration, callbacks
@@ -64,7 +63,7 @@ test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases
 test_configuration = configuration.load_configuration_template(test_configs_path, test_configuration, test_metadata)
 
 # Test daemons to restart.
-daemons_handler_configuration = {ALL_DAEMONS: True}
+daemons_handler_configuration = {'all_daemons': True}
 
 
 # Test function.
