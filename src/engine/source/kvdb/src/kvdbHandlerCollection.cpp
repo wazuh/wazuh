@@ -24,7 +24,7 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
     {
         auto spInstance = std::make_shared<KVDBHandlerInstance>();
         spInstance->addScope(scopeName);
-        m_mapInstances.insert(std::make_pair(dbName, std::move(spInstance)));
+        m_mapInstances.emplace(dbName, std::move(spInstance));
     }
 
     return std::make_shared<KVDBSpace>(m_handleManager, db, cfHandle, dbName, scopeName);
@@ -71,7 +71,11 @@ std::map<std::string, uint32_t> KVDBHandlerCollection::getRefMap(const std::stri
         return it->second->getRefMap();
     }
 
+<<<<<<< Updated upstream
     return std::map<std::string, uint32_t>();
+=======
+    return {};
+>>>>>>> Stashed changes
 }
 
 void KVDBHandlerInstance::addScope(const std::string& scopeName)
