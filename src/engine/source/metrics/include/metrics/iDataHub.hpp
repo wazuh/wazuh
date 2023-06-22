@@ -19,7 +19,7 @@ public:
      * @param scope Name of the resource scope.
      * @param object JSON object with updated information.
      */
-    virtual void setResource(const std::string& scope, json::Json object) = 0;
+    virtual void setResource(const std::string& scope, const json::Json& object) = 0;
 };
 
 } // namespace metricsManager

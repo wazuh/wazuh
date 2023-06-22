@@ -160,9 +160,9 @@ Expression operationBuilder(const std::any& definition,
     try
     {
         auto tuple = std::any_cast<std::tuple<std::string, Json>>(definition);
-        targetField = std::get<0>(tuple);
+        targetField = std::move(std::get<0>(tuple));
         targetFieldPath = Json::formatJsonPath(targetField);
-        value = std::get<1>(tuple);
+        value = std::move(std::get<1>(tuple));
         operationName = fmt::format("{}: {}", targetField, value.str());
     }
     catch (std::exception& e)
