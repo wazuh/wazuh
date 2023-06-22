@@ -1468,7 +1468,7 @@ TEST_F(JsonGettersTest, GetJson)
     // Root
     ASSERT_NO_THROW(got = source.getJson());
     ASSERT_TRUE(got.has_value());
-    expected = source;
+    expected = json::Json {source};
     ASSERT_EQ(expected, got.value());
 
     // Non-existing pointer

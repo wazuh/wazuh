@@ -28,8 +28,8 @@ public:
      * @param json
      */
     explicit WazuhRequest(const json::Json& json)
-        : m_jrequest(json)
     {
+        m_jrequest = json::Json(json);
         m_version = -1;
         m_error = validate();
     }
@@ -38,6 +38,41 @@ public:
      * @brief Destroy the Wazuh Request object
      */
     ~WazuhRequest() = default;
+
+
+    // copy constructor
+    WazuhRequest(const WazuhRequest& other)
+    {
+        m_version = other.m_version;
+        m_jrequest = json::Json {other.m_jrequest};
+        m_error = other.m_error;
+    }
+
+    // move constructor
+    WazuhRequest(WazuhRequest&& other) noexcept
+    {
+        m_version = other.m_version;
+        m_jrequest = std::move(other.m_jrequest);
+        m_error = std::move(other.m_error);
+    }
+
+    // copy assignment
+    WazuhRequest& operator=(const WazuhRequest& other)
+    {
+        m_version = other.m_version;
+        m_jrequest = json::Json {other.m_jrequest};
+        m_error = other.m_error;
+        return *this;
+    }
+
+    // move assignment
+    WazuhRequest& operator=(WazuhRequest&& other) noexcept
+    {
+        m_version = other.m_version;
+        m_jrequest = std::move(other.m_jrequest);
+        m_error = std::move(other.m_error);
+        return *this;
+    }
 
     /**
      * @brief Get command from the request
