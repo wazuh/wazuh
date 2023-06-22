@@ -350,17 +350,32 @@ inline Parser toEnd(const std::vector<std::string>& endTokens)
  * @brief Matches an alphanumeric character. If the input is empty or the first character is not alphanumeric returns a
  * failure.
  *
+ * @param additional String containing additional allowed characters
  * @return Parser
  */
-inline Parser alnum()
+inline Parser alnum(const std::string& additional = "")
 {
-    return [](std::string_view input) -> Result
+    return [additional](std::string_view input) -> Result
     {
-        if (input.empty() || !std::isalnum(input[0]))
+        if (input.empty())
         {
             return abs::makeFailure<ResultT>(input, {});
         }
 
+        if (!std::isalnum(input[0]))
+        {
+            if (!additional.empty())
+            {
+                if (additional.npos == additional.find(input[0]))
+                {
+                    return abs::makeFailure<ResultT>(input, {});
+                }
+            }
+            else
+            {
+                return abs::makeFailure<ResultT>(input, {});
+            }
+        }
         return abs::makeSuccess<ResultT>(input.substr(1));
     };
 }

@@ -28,9 +28,9 @@ SemParser getSemParser(const std::string& targetField)
     };
 }
 
-syntax::Parser getSynParser()
+syntax::Parser getSynParser(const std::string& additional = "")
 {
-    return syntax::combinators::many1(syntax::parsers::alnum());
+    return syntax::combinators::many1(syntax::parsers::alnum(additional));
 }
 } // namespace
 
@@ -38,12 +38,13 @@ namespace hlp::parsers
 {
 Parser getAlphanumericParser(const Params& params)
 {
-    if (!params.options.empty())
+    if (params.options.size() > 1)
     {
-        throw std::runtime_error("alphanumeric parser doesn't accept parameters");
+        throw std::runtime_error("alphanumeric parser accepts 0 or 1 parameter, "
+                                 "a string with the additional characters");
     }
 
-    const auto synP = getSynParser();
+    const auto synP = params.options.size() == 1 ? getSynParser(params.options[0]) : getSynParser();
     const auto semP =
         params.targetField.empty() ? noSemParser() : getSemParser(params.targetField);
 
