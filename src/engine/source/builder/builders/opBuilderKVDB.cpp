@@ -177,27 +177,29 @@ base::Expression existanceCheck(const std::string& targetField,
              std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler))](base::Event event)
         {
             bool found = false;
-            try // TODO We are only using try for JSON::get. Is correct to
-                // wrap everything?
+            std::optional<std::string> value;
+
+            try
             {
-                const auto value = event->getString(targetField);
-                if (value.has_value())
-                {
-                    auto result = kvdbHandler->contains(value.value());
-                    if (std::holds_alternative<base::Error>(result))
-                    {
-                        return base::result::makeFailure(event,
-                                                         failureTrace + ": " + std::get<base::Error>(result).message);
-                    }
-                    else
-                    {
-                        found = std::get<bool>(result);
-                    }
-                }
+                value = event->getString(targetField);
             }
             catch (std::exception& e)
             {
                 return base::result::makeFailure(event, failureTrace + ": " + e.what());
+            }
+
+            if (value.has_value())
+            {
+                auto result = kvdbHandler->contains(value.value());
+                if (std::holds_alternative<base::Error>(result))
+                {
+                    return base::result::makeFailure(event,
+                                                     failureTrace + ": " + std::get<base::Error>(result).message);
+                }
+                else
+                {
+                    found = std::get<bool>(result);
+                }
             }
 
             // TODO: is this condition right? shouldn't this condition be: "!checkExist ||

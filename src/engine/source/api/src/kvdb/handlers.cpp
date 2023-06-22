@@ -72,7 +72,7 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
             return ::api::adapter::genericError<ResponseType>("Missing /name");
         }
 
-        if (eRequest.name() == "")
+        if (std::empty(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
@@ -84,8 +84,7 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
             return ::api::adapter::genericError<ResponseType>("The Database already exists.");
         }
 
-        const auto path = eRequest.has_path() ? eRequest.path() : std::string {""};
-        auto resultCreate = kvdbManager->createDB(eRequest.name(), path);
+        auto resultCreate = kvdbManager->createDB(eRequest.name(), eRequest.path());
         if (resultCreate)
         {
             return ::api::adapter::genericError<ResponseType>(resultCreate.value().message);
@@ -117,7 +116,7 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
             return ::api::adapter::genericError<ResponseType>("Missing /name");
         }
 
-        if (eRequest.name() == "")
+        if (std::empty(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>("/name is empty");
         }
@@ -160,7 +159,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
         {
             return ::api::adapter::genericError<ResponseType>("Missing /name");
         }
-        if (eRequest.name() == "")
+        if (std::empty(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
@@ -176,7 +175,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
-            throw std::runtime_error(fmt::format("Engine KVDB API: {}", std::get<base::Error>(resultHandler).message));
+            return ::api::adapter::genericError<ResponseType>(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
@@ -238,12 +237,12 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
 
-        if (eRequest.name() == "")
+        if (std::empty(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
 
-        if (eRequest.key() == "")
+        if (std::empty(eRequest.key()))
         {
             return ::api::adapter::genericError<ResponseType>("Field /key is empty");
         }
@@ -259,7 +258,7 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
-            throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+            return ::api::adapter::genericError<ResponseType>(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
@@ -311,12 +310,12 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
             return ::api::adapter::genericError<ResponseType>(errorMsg.value());
         }
 
-        if (eRequest.name() == "")
+        if (std::empty(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
 
-        if (eRequest.key() == "")
+        if (std::empty(eRequest.key()))
         {
             return ::api::adapter::genericError<ResponseType>("Field /key is empty");
         }
@@ -332,7 +331,7 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, st
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
-            throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+            return ::api::adapter::genericError<ResponseType>(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
@@ -380,12 +379,12 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
             return ::api::adapter::genericError<ResponseType>(std::get<base::Error>(value).message);
         }
 
-        if (eRequest.name() == "")
+        if (std::empty(eRequest.name()))
         {
             return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
 
-        if (eRequest.entry().key() == "")
+        if (std::empty(eRequest.entry().key()))
         {
             return ::api::adapter::genericError<ResponseType>("Field /key is empty");
         }
@@ -406,7 +405,7 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, std::
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
-            throw std::runtime_error(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
+            return ::api::adapter::genericError<ResponseType>(fmt::format("Engine KVDB API: {}.", std::get<base::Error>(resultHandler).message));
         }
 
         auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler));
