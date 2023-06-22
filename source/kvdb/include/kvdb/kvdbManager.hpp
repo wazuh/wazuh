@@ -87,7 +87,7 @@ public:
      * @copydoc IKVDBManager::getKVDBHandlersInfo
      *
      */
-    std::map<std::string, RefInfo> getKVDBHandlersInfo() override;
+    std::map<std::string, RefInfo> getKVDBHandlersInfo() const override;
 
     /**
      * @copydoc IKVDBHandlerManager::getKVDBHandler
@@ -105,7 +105,7 @@ public:
      * @copydoc IKVDBHandlerManager::managerShuttingDown
      *
      */
-    bool managerShuttingDown() override;
+    bool managerShuttingDown() const override;
 
     /**
      * @copydoc IKVDBManager::listDBs

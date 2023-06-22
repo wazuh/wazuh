@@ -43,7 +43,7 @@ public:
      * @return true The Manager is shutting down.
      * @return false The Manager is not shutting down.
      */
-    virtual bool managerShuttingDown() = 0;
+    virtual bool managerShuttingDown() const = 0;
 };
 
 } // namespace kvdbManager
