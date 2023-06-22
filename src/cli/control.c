@@ -17,7 +17,6 @@ typedef struct controlStatus_t{
 }controlStatus_t;
 
 static void controlCmd(cmdStatus_t *status);
-static char *execute(const char *cmd);;
 static void printResult(controlStatus_t *c,  char *s);
 static void printHeader(controlStatus_t *c, char *s);
 static void refreshMenu(controlStatus_t *cs);
@@ -29,14 +28,14 @@ static void controlTab        (UNUSED controlStatus_t *cs, UNUSED stream_t *s, U
 static void controlEscape     (UNUSED controlStatus_t *cs, UNUSED stream_t *s, UNUSED char c);
 
 static const char *cmds[] = {
-        "/var/ossec/bin/wazuh-control -j info",
-        "/var/ossec/bin/wazuh-control -j stop",
-        "/var/ossec/bin/wazuh-control -j start",
-        "/var/ossec/bin/wazuh-control -j restart",
-        "/var/ossec/bin/wazuh-control -j status",
-        "/var/ossec/bin/wazuh-control -j enable",
-        "/var/ossec/bin/wazuh-control -j disable",
-    };
+    "/var/ossec/bin/wazuh-control -j info",
+    "/var/ossec/bin/wazuh-control -j stop",
+    "/var/ossec/bin/wazuh-control -j start",
+    "/var/ossec/bin/wazuh-control -j restart",
+    "/var/ossec/bin/wazuh-control -j status",
+    "/var/ossec/bin/wazuh-control -j enable",
+    "/var/ossec/bin/wazuh-control -j disable",
+};
 
 
 void controlInit(void){
@@ -145,28 +144,6 @@ static void controlCmd(cmdStatus_t *c){
         break;
         default:break;
     }
-}
-
-static char *execute(const char *cmd){
-    char buffer[1024] = {0};
-    int len;
-    FILE *p;
-    char *r;
-    
-    p = popen(cmd, "r");
-
-    if(!p)
-        return NULL;
-    
-    if(fgets(buffer, sizeof(buffer), p) == NULL){
-        pclose(p);
-        return NULL;
-    }
-    len = strlen(buffer);
-    r = calloc(1, len + 1);
-    strcpy(r, buffer);
-    printf("r: %s\r\n", r);
-    return r;
 }
 
 static void printHeader(controlStatus_t *c, char *s){
