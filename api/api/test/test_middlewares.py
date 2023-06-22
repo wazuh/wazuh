@@ -106,25 +106,30 @@ async def test_middlewares_prevent_bruteforce_attack(request_info, stats):
 
 
 @freeze_time(datetime(1970, 1, 1))
-@pytest.mark.parametrize("current_time,max_requests,current_time_key", [
-    (-80, 300, 'events_current_time'),
-    (-80, 300, 'general_current_time'),
-    (0, 0, 'events_current_time'),
-    (0, 0, 'general_current_time'),
+@pytest.mark.parametrize("current_time,max_requests,current_time_key, current_counter_key,expected_error_args", [
+    (-80, 300, 'events_current_time', 'events_request_counter', {}),
+    (-80, 300, 'general_current_time', 'general_request_counter', {}),
+    (0, 0, 'events_current_time', 'events_request_counter', {
+        'code': 6005,
+        'extra_message': 'For /events endpoint the limit is set to 0 requests.'
+    }),
+    (0, 0, 'general_current_time', 'general_request_counter', {'code': 6001}),
 ])
 @pytest.mark.asyncio
-async def test_middlewares_check_rate_limit(current_time, max_requests, current_time_key):
+async def test_middlewares_check_rate_limit(
+    current_time, max_requests, current_time_key, current_counter_key, expected_error_args
+):
     """Test if the rate limit mechanism triggers when the `max_requests` are reached."""
 
     with patch(f"api.middlewares.{current_time_key}", new=current_time):
         with patch("api.middlewares.raise_if_exc") as raise_mock:
             await check_rate_limit(
                 DummyRequest({'remote': 'ip'}),
-                current_time_key='events_current_time',
-                request_counter_key='events_request_counter',
+                current_time_key=current_time_key,
+                request_counter_key=current_counter_key,
                 max_requests=max_requests)
             if max_requests == 0:
-                raise_mock.assert_called_once_with(WazuhTooManyRequests(6001))
+                raise_mock.assert_called_once_with(WazuhTooManyRequests(**expected_error_args))
 
 
 @patch("api.middlewares.unlock_ip")
