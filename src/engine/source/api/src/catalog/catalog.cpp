@@ -3,7 +3,7 @@
 #include <fmt/format.h>
 #include <logging/logging.hpp>
 
-#include "yml2Json.hpp"
+#include <utilsYml.hpp>
 
 namespace api::catalog
 {
@@ -71,7 +71,7 @@ Catalog::Catalog(const Config& config)
             // TODO: Expose internals on json::Json ??
             rapidjson::Document doc;
             doc.Parse(json.str().c_str());
-            auto yaml = yml2json::internal::json2yaml(doc);
+            auto yaml = utilsYml::Converter::json2yaml(doc);
             YAML::Emitter out;
             out << yaml;
             result = out.c_str();
@@ -90,7 +90,7 @@ Catalog::Catalog(const Config& config)
         std::variant<json::Json, base::Error> result;
         try
         {
-            result = json::Json {yml2json::loadYMLfromString(content)};
+            result = json::Json {utilsYml::Converter::loadYMLfromString(content)};
         }
         catch (const std::exception& e)
         {

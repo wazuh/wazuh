@@ -23,6 +23,7 @@ struct Parameters
     std::string apiEndpoint;
     std::string description;
     std::string event;
+    bool jsonFormat;
     std::string policy;
     std::string protocolLocation;
     std::string sessionName;
