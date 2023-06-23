@@ -621,8 +621,11 @@ api::Handler runPost(const shared_ptr<Router>& router)
         // Set optional parameters
         const auto debugMode = eRequest.has_debug_mode() ? eRequest.debug_mode() : eTest::DebugMode::OUTPUT_ONLY;
 
-        const auto protocolQueue =
-            eRequest.has_protocol_queue() ? eRequest.protocol_queue() : TEST_DEFAULT_PROTOCOL_QUEUE;
+        const uint8_t protocolQueue =
+            (eRequest.has_protocol_queue() && eRequest.protocol_queue() > TEST_MIN_PROTOCOL_QUEUE
+             && eRequest.protocol_queue() < TEST_MAX_PROTOCOL_QUEUE)
+                ? eRequest.protocol_queue()
+                : TEST_DEFAULT_PROTOCOL_QUEUE;
 
         const auto protocolLocation =
             eRequest.has_protocol_location() ? eRequest.protocol_location() : TEST_DEFAULT_PROTOCOL_LOCATION;
@@ -649,13 +652,21 @@ api::Handler runPost(const shared_ptr<Router>& router)
         }
 
         // Event in Wazuh format
-        const auto eventFormat = fmt::format(TEST_EVENT_CONTENT_FORMAT,
-                                             protocolQueue,
-                                             protocolLocation,
-                                             eRequest.event().string_value(),
-                                             eRequest.name());
-        auto ev = std::make_shared<json::Json>(eventFormat.c_str());
+        const auto eventFormat = fmt::format("{}:{}:{}", protocolQueue, protocolLocation, eRequest.event().string_value());
+        base::Event ev;
+        try
+        {
+            ev = base::parseEvent::parseOssecEvent(eventFormat);
+        }
+        catch(const std::exception& e)
+        {
+            return ::api::adapter::genericError<ResponseType>(e.what());
+        }
 
+        // Add new field for filter
+        ev->setString(eRequest.name(), TEST_FIELD_TO_CHECK_IN_FILTER);
+
+        // Enqueue event
         const auto enqueueEventError = router->enqueueEvent(std::move(ev));
         if (enqueueEventError.has_value())
         {

@@ -1,27 +1,25 @@
-#ifndef _YML_TO_JSON_H
-#define _YML_TO_JSON_H
-
 #include <iostream>
-
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
-#include <yaml-cpp/yaml.h>
+#include <utilsYml.hpp>
 
 // #TODO Adds a thread-safe mechanism (?)
 // #TODO Adds test
 // #TODO Convert to static class
-namespace yml2json
+namespace utilsYml
 {
 
-namespace internal
+rapidjson::Document Converter::loadYMLfromFile(const std::string& filepath)
 {
-constexpr auto QUOTED_TAG = "!";
+    YAML::Node root = YAML::LoadFile(filepath);
+    rapidjson::Document doc;
 
-rapidjson::Value parse_scalar(const YAML::Node& node,
-                                     rapidjson::Document::AllocatorType& allocator)
+    rapidjson::Value val = yaml2json(root, doc.GetAllocator());
+    doc.CopyFrom(val, doc.GetAllocator());
+
+    return doc;
+}
+
+rapidjson::Value Converter::parse_scalar(const YAML::Node& node, rapidjson::Document::AllocatorType& allocator)
 {
-
     rapidjson::Value v;
     if (QUOTED_TAG == node.Tag())
     {
@@ -51,7 +49,7 @@ rapidjson::Value parse_scalar(const YAML::Node& node,
     return v;
 }
 
-YAML::Node parse_scalar(const rapidjson::Value& node)
+YAML::Node Converter::parse_scalar(const rapidjson::Value& node)
 {
     YAML::Node n;
     if (node.IsString())
@@ -78,7 +76,18 @@ YAML::Node parse_scalar(const rapidjson::Value& node)
     return n;
 }
 
-YAML::Node json2yaml(const rapidjson::Value& value)
+rapidjson::Document Converter::loadYMLfromString(const std::string& yamlStr)
+{
+    YAML::Node root = YAML::Load(yamlStr);
+    rapidjson::Document doc;
+
+    rapidjson::Value val = yaml2json(root, doc.GetAllocator());
+    doc.CopyFrom(val, doc.GetAllocator());
+
+    return doc;
+}
+
+YAML::Node Converter::json2yaml(const rapidjson::Value& value)
 {
     YAML::Node node;
     if (value.IsObject())
@@ -103,22 +112,24 @@ YAML::Node json2yaml(const rapidjson::Value& value)
     return node;
 }
 
-rapidjson::Value yaml2json(const YAML::Node& root,
-                                  rapidjson::Document::AllocatorType& allocator)
+rapidjson::Value Converter::yaml2json(const YAML::Node& root, rapidjson::Document::AllocatorType& allocator)
 {
-
     rapidjson::Value v;
 
     switch (root.Type())
     {
-        case YAML::NodeType::Null: v.SetNull(); break;
+        case YAML::NodeType::Null:
+            v.SetNull();
+            break;
 
-        case YAML::NodeType::Scalar: v = parse_scalar(root, allocator); break;
+        case YAML::NodeType::Scalar:
+            v = parse_scalar(root, allocator);
+            break;
 
         case YAML::NodeType::Sequence:
             v.SetArray();
 
-            for (auto&& node : root)
+            for (const auto& node : root)
             {
                 v.PushBack(yaml2json(node, allocator), allocator);
             }
@@ -128,7 +139,7 @@ rapidjson::Value yaml2json(const YAML::Node& root,
         case YAML::NodeType::Map:
             v.SetObject();
 
-            for (auto&& it : root)
+            for (const auto& it : root)
             {
                 v.AddMember(
                     rapidjson::Value(it.first.as<std::string>().c_str(), allocator),
@@ -138,46 +149,13 @@ rapidjson::Value yaml2json(const YAML::Node& root,
 
             break;
 
-        default: v.SetNull(); break;
+        default:
+            v.SetNull();
+            break;
     }
 
     return v;
 }
 
-} // namespace internal
-
-inline rapidjson::Document loadYMLfromFile(const std::string& filepath)
-{
-    // YAML::Node root = YAML::LoadAllFromFile(filepath)[x];
-    YAML::Node root = YAML::LoadFile(filepath);
-    rapidjson::Document doc; //, tmpAllocator;
-    // rapidjson::Document::AllocatorType& allocator =
-    // tmpAllocator.GetAllocator();
-
-    rapidjson::Value val = internal::yaml2json(root, doc.GetAllocator());
-    // doc.CopyFrom(val, doc.GetAllocator());
-
-    return doc;
-}
-
-/** Loads a YAML string and returns a rapidjson::Document.
- *
- * @param yamlStr The YAML string to load.
- * @return rapidjson::Document The parsed YAML string.
- * @throws YAML::ParserException If the YAML string is invalid.
- */
-inline rapidjson::Document loadYMLfromString(const std::string& yamlStr)
-{
-    YAML::Node root = YAML::Load(yamlStr);
-    rapidjson::Document doc, tmpAllocator;
-    rapidjson::Document::AllocatorType& allocator = tmpAllocator.GetAllocator();
-
-    rapidjson::Value val = internal::yaml2json(root, allocator);
-    doc.CopyFrom(val, doc.GetAllocator());
-
-    return doc;
-}
-
 } // namespace yml2json
 
-#endif // _YML_TO_JSON_H
