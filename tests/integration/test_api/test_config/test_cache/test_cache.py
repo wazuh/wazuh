@@ -22,6 +22,11 @@ targets:
 
 daemons:
     - wazuh-apid
+    - wazuh-modulesd
+    - wazuh-analysisd
+    - wazuh-execd
+    - wazuh-db
+    - wazuh-remoted
 
 os_platform:
     - linux
@@ -51,7 +56,7 @@ import requests
 from pathlib import Path
 
 from wazuh_testing.constants.api import RULES_FILES_ROUTE, CONFIGURATION_TYPES
-from wazuh_testing.constants.daemons import API_DAEMON
+from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths.analysisd import DEFAULT_RULES_PATH
 from wazuh_testing.modules.api.helpers import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -76,7 +81,7 @@ test_cases_path = os.path.join(cases_folder_path, 'cases_cache.yaml')
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-daemons_handler_configuration = {'daemons': [API_DAEMON]}
+daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
 
 
 # Fixtures

@@ -7,9 +7,10 @@ copyright: Copyright (C) 2015-2023, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check that the settings related to the API host address and listening port
-       are working correctly. The Wazuh API is an open source 'RESTful' API that allows for interaction
-       with the Wazuh manager from a web browser, command line tool like 'cURL' or any script
+brief: These tests will check if the 'request_timeout' setting of the API is working properly.
+       This setting allows specifying the time limit for the API to process a request.
+       The Wazuh API is an open source 'RESTful' API that allows for interaction with
+       the Wazuh manager from a web browser, command line tool like 'cURL' or any script
        or program that can make web requests.
 
 components:
@@ -44,18 +45,17 @@ os_version:
 
 references:
     - https://documentation.wazuh.com/current/user-manual/api/getting-started.html
-    - https://documentation.wazuh.com/current/user-manual/api/configuration.html#api-configuration-options
+    - https://documentation.wazuh.com/current/user-manual/api/configuration.html
 
 tags:
     - api
 """
 import os
 import pytest
-import requests
 
 from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
-from wazuh_testing.modules.api.helpers import get_base_url, login
+from wazuh_testing.modules.api.helpers import login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 
@@ -70,8 +70,8 @@ configuration_type = CONFIGURATION_TYPES[0]
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 configuration_folder_path = os.path.join(test_data_path, 'configuration_template')
 cases_folder_path = os.path.join(test_data_path, 'test_cases')
-test_configuration_path = os.path.join(configuration_folder_path, 'configuration_host_port.yaml')
-test_cases_path = os.path.join(cases_folder_path, 'cases_host_port.yaml')
+test_configuration_path = os.path.join(configuration_folder_path, 'configuration_request_timeout.yaml')
+test_cases_path = os.path.join(cases_folder_path, 'cases_request_timeout.yaml')
 
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
@@ -82,25 +82,25 @@ daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
 # Tests
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_host_port(test_configuration, test_metadata, add_configuration, truncate_monitored_files, daemons_handler,
-                   wait_for_api_start):
+def test_request_timeout(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
+                         daemons_handler, wait_for_api_start):
     """
-    description: Check different host and port configurations. For this purpose, apply multiple
-                 combinations of host and port, verify that the 'aiohttp' http framework correctly
-                 publishes that value in the 'api.log' and check that the request returns the expected one.
+    description: Check if the maximum request time for an API request works.
+                 For this purpose, a value of '0' seconds is set for the 'request_timeout'
+                 setting, and a request is made to the API, expecting an error in the response.
 
-    wazuh_min_version: 4.2.0
+    wazuh_min_version: 4.3.0
 
     test_phases:
         - setup:
             - Append configuration to the target configuration files (defined by configuration_type)
             - Truncate the log files
             - Restart daemons defined in `daemons_handler_configuration` in this module
-            - Wait until the API is ready to receive requests (and check if the host/port is set as expected)
+            - Wait until the API is ready to receive requests
         - test:
-            - Check that expected host and port appear in the Wazuh API log
-            - If the host and port are well set, make a request with the default host. Otherwise, make a request with
-              the host/port defined in the test case data
+            - Make a login request to the API and verify that a RuntimeError is thrown
+            - Check if the status code is the expected
+            - Check if the error code in the response is the expected
         - teardown:
             - Remove configuration and restore backup configuration
             - Truncate the log files
@@ -129,32 +129,30 @@ def test_host_port(test_configuration, test_metadata, add_configuration, truncat
             brief: Monitor the API log file to detect whether it has been started or not.
 
     assertions:
-        - Verify that the API starts listening on the specified IP address and port.
-        - Verify that using a valid configuration, the API request is performed correctly
-        - Verify that the expected exceptions are thrown
+        - Verify that the request cannot finish successfully, resulting in a timeout error.
 
-    input_description: Different test cases are contained in an external YAML file (cases_host_port.yaml)
-                       which includes API configuration parameters (IP addresses and ports).
+    input_description: A test case is contained in an external YAML file (conf.yaml) which includes
+                       API configuration parameters ('request_timeout' set to '0' seconds).
 
     expected_output:
-        - '.*INFO: Listening on {host}:{port}.+'
-        - r'200' ('OK' HTTP status code)
+        - 500 ('Internal server error' HTTP status code)
+        - 3021 ('timeout error' in the response body)
     """
-    host = test_configuration['blocks']['host']
-    port = test_configuration['blocks']['port']
-    timeout_before_exception = 3
-    try:
-        expected_exception = test_metadata['expected_exception']
-    except KeyError:
-        expected_exception = None
+    expected_status_code = test_metadata['expected_status_code']
+    expected_error_code = test_metadata['expected_error_code']
 
-    # If the host and port are well set, make a request with the default host
-    if expected_exception is None:
-        response = requests.get(url=get_base_url(port=port), headers=login(port=port)[0], verify=False)
+    # Make a login request to the API and verify that a RuntimeError is thrown
+    with pytest.raises(RuntimeError) as exception:
+        login()
 
-        assert response.status_code == 200, f"Expected status code was 200, but {response.status_code} was received."
-    # Otherwise, make a request with the host/port defined in the test case data and check if the exception is thrown
-    else:
-        # Wait `timeout_before_exception` seconds to make sure that the exception is thrown
-        with pytest.raises(requests.exceptions.ConnectionError):
-            login(host=host, port=port, timeout=timeout_before_exception)
+    response = exception.value.args[1]
+    response_error_code = response.json()['error']
+
+    # Check if the status code is the expected
+    assert response.status_code == expected_status_code, f"Expected status code was {expected_status_code}, " \
+                                                         f"but {response.status_code} was returned.\n" \
+                                                         f"Full response: {response.text}"
+    # Check if the error code in the response is the expected
+    assert response_error_code == expected_error_code, f"Expected error code was {expected_error_code}, " \
+                                                       f"but {response_error_code} was returned.\n" \
+                                                       f"Full response: {response.text}"

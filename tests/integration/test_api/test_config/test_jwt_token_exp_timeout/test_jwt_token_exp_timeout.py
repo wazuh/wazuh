@@ -22,6 +22,11 @@ targets:
 
 daemons:
     - wazuh-apid
+    - wazuh-modulesd
+    - wazuh-analysisd
+    - wazuh-execd
+    - wazuh-db
+    - wazuh-remoted
 
 os_platform:
     - linux
@@ -51,7 +56,7 @@ import pytest
 import requests
 
 from wazuh_testing.constants.api import CONFIGURATION_TYPES, MANAGER_INFORMATION_ROUTE
-from wazuh_testing.constants.daemons import API_DAEMON
+from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.helpers import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -73,7 +78,7 @@ test_cases_path = os.path.join(cases_folder_path, 'cases_jwt_token_exp_timeout.y
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-daemons_handler_configuration = {'daemons': [API_DAEMON]}
+daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
 
 
 # Tests

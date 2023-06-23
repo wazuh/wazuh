@@ -23,6 +23,11 @@ targets:
 
 daemons:
     - wazuh-apid
+    - wazuh-modulesd
+    - wazuh-analysisd
+    - wazuh-execd
+    - wazuh-db
+    - wazuh-remoted
 
 os_platform:
     - linux
@@ -50,7 +55,7 @@ import pwd
 import pytest
 
 from wazuh_testing.constants.api import CONFIGURATION_TYPES
-from wazuh_testing.constants.daemons import API_DAEMON
+from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths.api import WAZUH_API_SCRIPT
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.utils.services import search_process_by_command
@@ -73,7 +78,7 @@ test_cases_path = os.path.join(cases_folder_path, 'cases_drop_privileges.yaml')
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-daemons_handler_configuration = {'daemons': [API_DAEMON]}
+daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
 
 
 # Tests

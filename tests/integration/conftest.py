@@ -11,7 +11,7 @@ from typing import List
 
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
-from wazuh_testing.constants.daemons import WAZUH_MANAGER
+from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH
@@ -226,6 +226,7 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         logger.debug('Stopping wazuh using wazuh-control')
         services.control_service('stop')
     else:
+        if daemons == API_DAEMONS_REQUIREMENTS: daemons.reverse() # Stop in reverse, otherwise the next start will fail
         for daemon in daemons:
             logger.debug(f"Stopping {daemon}")
             services.control_service('stop', daemon=daemon)
