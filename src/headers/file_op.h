@@ -599,7 +599,7 @@ char * abspath(const char * path, char * buffer, size_t size);
  * @return The content of the file
  * @retval NULL The file doesn't exist or its size exceeds the maximum allowed
  */
-char * w_get_file_content(const char * path, int max_size);
+char * w_get_file_content(const char * path, long max_size);
 
 /**
  * @brief Check if a file is gzip compressed

@@ -972,6 +972,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
     int8_t rhel_enabled = (strcasestr(name, vu_feed_tag[FEED_REDHAT])) ? 1 : 0;
     int8_t msu_enabled = (strcasestr(name, vu_feed_tag[FEED_MSU])) ? 1 : 0;
     int8_t arch_enabled = (strcasestr(name, vu_feed_tag[FEED_ARCH])) ? 1 : 0;
+    int8_t nvd_enabled = (strcasestr(name, vu_feed_tag[FEED_NVD])) ? 1 : 0;
 
     memset(options, '\0', sizeof(provider_options));
 
@@ -984,7 +985,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             if (rhel_enabled) {
                 minfo("'%s' option at module '%s' is deprecated. Use '%s' instead.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name, XML_OS);
             // Even though MSU and ArchLinux are multi_provider, they do not use the update_from_year option.
-            } else if (msu_enabled || arch_enabled) {
+            } else if (msu_enabled || arch_enabled || nvd_enabled) {
                 mwarn("'%s' option cannot be used for '%s' provider.", node[i]->element, name);
                 continue;
             }
