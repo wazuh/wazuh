@@ -17,9 +17,8 @@ metadata:
 sources:
   - decoder/integrations/0
 
-#TODO: Note this decoder accept all JSON events.
 check:
-  # - wazuh.location: Wazuh-AWS
+  - wazuh.origin: Wazuh-AWS #TODO: Check
   - event.original: +starts_with/{
 
 parse:
@@ -33,5 +32,4 @@ normalize:
  - check:
     - ~json.integration: aws
    map:
-    # - wazuh.integration: $~json.integration
     - event.module: aws
