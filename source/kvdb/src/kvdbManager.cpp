@@ -340,7 +340,7 @@ std::map<std::string, kvdbManager::RefInfo> KVDBManager::getKVDBScopesInfo()
         auto scopeName = entry.first;
         auto refCounter = entry.second;
         auto refInfo = refCounter.getRefMap();
-        retValue.insert(std::make_pair(scopeName, refInfo));
+        retValue.emplace(scopeName, refInfo);
     }
 
     return retValue;
