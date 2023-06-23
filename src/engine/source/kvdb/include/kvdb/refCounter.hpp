@@ -22,14 +22,6 @@ public:
     RefCounter() = default;
 
     /**
-     * @brief Construct a new RefCounter object by copy.
-     *
-     * @param refMap object to copy.
-     *
-     */
-    RefCounter(const RefCounter&);
-
-    /**
      * @brief Destroy the RefCounter object
      *
      */
