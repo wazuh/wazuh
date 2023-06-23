@@ -1,12 +1,25 @@
 #include "cmds/test.hpp"
 
+#include "defaultSettings.hpp"
+#include "utils.hpp"
 #include <api/test/handlers.hpp>
 #include <cmds/apiclnt/client.hpp>
 #include <cmds/details/stackExecutor.hpp>
 #include <eMessages/test.pb.h>
+#include <google/protobuf/util/json_util.h>
+#include <utilsYml.hpp>
 
-#include "defaultSettings.hpp"
-#include "utils.hpp"
+namespace
+{
+std::atomic<bool> gs_doRun = true;
+cmd::details::StackExecutor g_exitHanlder {};
+
+void sigint_handler(const int signum)
+{
+    gs_doRun = false;
+}
+
+} // namespace
 
 namespace cmd::test
 {
@@ -18,43 +31,86 @@ constexpr auto OUTPUT_ONLY {0};
 constexpr auto OUTPUT_AND_TRACES {1};
 constexpr auto OUTPUT_AND_TRACES_WITH_DETAILS {2};
 
-void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
+int clear_icanon(bool flag)
+{
+    struct termios settings;
+
+    if (tcgetattr(STDIN_FILENO, &settings) < 0)
+    {
+        return 0;
+    }
+
+    if (flag)
+    {
+        settings.c_lflag &= ~ICANON;
+    }
+    else
+    {
+        settings.c_lflag |= ICANON;
+    }
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &settings) < 0)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+void printToHumanReadable(const std::string& jsonOutputAndTrace)
+{
+    try
+    {
+        auto tmp = json::Json {jsonOutputAndTrace.c_str()};
+        tmp.erase("/status");
+
+        auto processJson = [&](const std::string& jsonPath, const std::string& rootName)
+        {
+            auto jsonValue = tmp.getJson(jsonPath);
+            if (jsonValue.has_value())
+            {
+                rapidjson::Document doc;
+                doc.Parse(jsonValue.value().str().c_str());
+
+                auto yaml = utilsYml::Converter::json2yaml(doc);
+
+                YAML::Node rootNode;
+                rootNode[rootName] = yaml;
+
+                YAML::Emitter out;
+                out << rootNode;
+                std::cout << std::endl << out.c_str() << std::endl << std::endl;
+            }
+        };
+
+        processJson("/traces", "Traces");
+        processJson("/output", "Output");
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "Error: " << e.what() << std::endl << std::endl;
+    }
+}
+
+void processEvent(const std::string& eventStr,
+                  const Parameters& parameters,
+                  std::shared_ptr<apiclnt::Client> client,
+                  eTest::RunPost_Request eRequest)
 {
     using RequestType = eTest::RunPost_Request;
     using ResponseType = eTest::RunPost_Response;
     const std::string command {api::test::handlers::TEST_RUN_API_CMD};
 
-    // Set policy name
-    RequestType eRequest;
-    eRequest.set_name(parameters.sessionName);
-
-    // Set protocol queue
-    eRequest.set_protocol_queue(parameters.protocolQueue);
-
-    // Set debug mode
-    eTest::DebugMode debugModeMap;
-    switch (parameters.debugLevel)
-    {
-        case OUTPUT_AND_TRACES: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES; break;
-        case OUTPUT_AND_TRACES_WITH_DETAILS: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS; break;
-        case OUTPUT_ONLY:
-        default: debugModeMap = eTest::DebugMode::OUTPUT_ONLY;
-    }
-    eRequest.set_debug_mode(debugModeMap);
-
-    // Set location
-    eRequest.set_protocol_location(parameters.protocolLocation);
-
     // Set event
     json::Json jevent {};
     try
     {
-        jevent = json::Json {parameters.event.c_str()};
+        jevent = json::Json {eventStr.c_str()};
     }
     catch (const std::exception& e)
     {
         // If not, set it as a string
-        jevent.setString(parameters.event);
+        jevent.setString(eventStr);
     }
 
     // Convert the value to protobuf value
@@ -74,19 +130,88 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print results
-    if (eTest::DebugMode::OUTPUT_AND_TRACES == eRequest.debug_mode()
-        || eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS == eRequest.debug_mode())
+    std::string jsonOutputAndTrace;
+    google::protobuf::util::MessageToJsonString(eResponse, &jsonOutputAndTrace);
+    if (parameters.jsonFormat)
     {
-        const auto& traces = eResponse.traces();
-        const auto jsonDecoders = eMessage::eMessageToJson<google::protobuf::Value>(traces);
-        std::cerr << std::endl << std::endl << "DECODERS:" << std::endl << std::endl;
-        std::cout << std::get<std::string>(jsonDecoders) << std::endl;
+        std::cout << jsonOutputAndTrace << std::endl;
     }
+    else
+    {
+        printToHumanReadable(jsonOutputAndTrace);
+    }
+}
 
-    const auto& output = eResponse.output();
-    const auto jsonOutput = eMessage::eMessageToJson<google::protobuf::Value>(output);
-    std::cerr << std::endl << std::endl << "OUTPUT:" << std::endl << std::endl;
-    std::cout << std::get<std::string>(jsonOutput) << std::endl;
+void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
+{
+    using RequestType = eTest::RunPost_Request;
+    using ResponseType = eTest::RunPost_Response;
+
+    // Set policy name
+    RequestType eRequest;
+    eRequest.set_name(parameters.sessionName);
+
+    // Set protocol queue
+    eRequest.set_protocol_queue(parameters.protocolQueue);
+
+    // Set debug mode
+    eTest::DebugMode debugModeMap;
+    switch (parameters.debugLevel)
+    {
+        case OUTPUT_ONLY: debugModeMap = eTest::DebugMode::OUTPUT_ONLY; break;
+        case OUTPUT_AND_TRACES: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES; break;
+        case OUTPUT_AND_TRACES_WITH_DETAILS: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS; break;
+        default: debugModeMap = eTest::DebugMode::OUTPUT_ONLY;
+    }
+    eRequest.set_debug_mode(debugModeMap);
+
+    // Set location
+    eRequest.set_protocol_location(parameters.protocolLocation);
+
+    if (!parameters.event.empty())
+    {
+        processEvent(parameters.event, parameters, client, eRequest);
+    }
+    else
+    {
+        std::cout << std::endl << std::endl << "Enter a log in single line (Crtl+C to exit):" << std::endl << std::endl;
+
+        // Only set non-canonical mode when connected to terminal
+        if (isatty(fileno(stdin)))
+        {
+            if (!clear_icanon(true))
+            {
+                std::cout
+                    << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be "
+                       "processed correctly."
+                    << std::endl
+                    << std::endl;
+            }
+        }
+
+        // Stdin loop
+        std::string line;
+        while (gs_doRun && std::getline(std::cin, line))
+        {
+            if (!line.empty())
+            {
+                processEvent(line, parameters, client, eRequest);
+            }
+            else
+            {
+                std::cout << std::endl
+                          << std::endl
+                          << "Enter a log in single line (Crtl+C to exit):" << std::endl
+                          << std::endl;
+            }
+        }
+
+        if (isatty(fileno(stdin)))
+        {
+            clear_icanon(false);
+        }
+        g_exitHanlder.execute();
+    }
 }
 
 void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
@@ -241,7 +366,7 @@ void configure(CLI::App_p app)
     // API test Run
     auto testRunApp = testApp->add_subcommand("run", "Utility to run a test.");
     testRunApp->add_option("-n, --name", parameters->sessionName, "Name of the session to be used.")->required();
-    testRunApp->add_option("-e, --event", parameters->event, "Event to be processed.")->required();
+    testRunApp->add_option("-e, --event", parameters->event, "Event to be processed");
     testRunApp
         ->add_option(
             "-q, --protocol_queue", parameters->protocolQueue, "Event protocol queue identifier (a single character).")
@@ -253,6 +378,9 @@ void configure(CLI::App_p app)
                          "Full tracing, ddd[3]: 2 + detailed parser trace.");
     testRunApp->add_option("--protocol_location", parameters->protocolLocation, "Protocol location.")
         ->default_val(ENGINE_PROTOCOL_LOCATION);
+    testRunApp->add_flag("-j, --json",
+                         parameters->jsonFormat,
+                         "Allows the output and trace generated by an event to be printed in Json format.");
     testRunApp->callback([parameters, client]() { run(client, *parameters); });
 }
 

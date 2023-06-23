@@ -26,21 +26,37 @@ private:
     std::string m_socketPath;
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<uvw::PipeHandle> m_clientHandle;
+    std::shared_ptr<uvw::TimerHandle> m_timer;
+    bool m_isFirstExecution;
 
 public:
     Client(const std::string& socketPath)
         : m_socketPath(socketPath)
         , m_loop(uvw::Loop::getDefault())
         , m_clientHandle(m_loop->resource<uvw::PipeHandle>())
+        , m_timer(m_loop->resource<uvw::TimerHandle>())
+        , m_isFirstExecution(true)
     {
+        setupTimer();
+    }
+
+    void setupTimer()
+    {
+        m_timer->on<uvw::TimerEvent>(
+            [this](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
+            {
+                if (!m_clientHandle->closing())
+                {
+                    m_clientHandle->close();
+                }
+                timerRef.close();
+            });
     }
 
     base::utils::wazuhProtocol::WazuhResponse send(const base::utils::wazuhProtocol::WazuhRequest& request)
     {
-        // Prepare request
         auto requestStr = request.toStr();
 
-        // Add protocol header
         int32_t length = requestStr.size();
         std::unique_ptr<char[]> buffer(new char[sizeof(length) + length]);
         std::memcpy(buffer.get(), &length, sizeof(length));
@@ -48,33 +64,9 @@ public:
         auto requestWithHeader = std::string(buffer.get(), sizeof(length) + length);
 
         std::string error;
-        auto timer = m_loop->resource<uvw::TimerHandle>();
-
-        // Stablish connection, send request and receive response
         auto clientHandle = m_loop->resource<uvw::PipeHandle>();
-
-        // Timeout, close the client
-        timer->on<uvw::TimerEvent>(
-            [clientHandle, timer, &error](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
-            {
-                if (!clientHandle->closing())
-                {
-                    clientHandle->close();
-                }
-                timer->close();
-                error = "Connection timeout";
-            });
-
-        timer->on<uvw::ErrorEvent>(
-            [timer, &error](const uvw::ErrorEvent& errorUvw, uvw::TimerHandle& timerRef)
-            {
-                timer->close();
-                error = errorUvw.what();
-            });
-
-        timer->on<uvw::CloseEvent>([](const uvw::CloseEvent&, uvw::TimerHandle& timer) {});
-
         std::string response;
+
         clientHandle->on<uvw::ErrorEvent>(
             [&error](const uvw::ErrorEvent& event, uvw::PipeHandle& handle)
             {
@@ -84,7 +76,7 @@ public:
             });
 
         clientHandle->once<uvw::ConnectEvent>(
-            [&requestWithHeader](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
+            [&requestWithHeader, &clientHandle](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
             {
                 std::vector<char> buffer {requestWithHeader.begin(), requestWithHeader.end()};
                 handle.write(buffer.data(), buffer.size());
@@ -112,29 +104,71 @@ public:
                 }
             });
 
-        clientHandle->once<uvw::EndEvent>([](const uvw::EndEvent&, uvw::PipeHandle& handle) { handle.close(); });
+        clientHandle->once<uvw::EndEvent>(
+            [this](const uvw::EndEvent&, uvw::PipeHandle& handle)
+            {
+                // Stop the loop after receiving the first response
+                m_loop->stop();
+            });
 
         clientHandle->once<uvw::CloseEvent>(
-            [timer, this](const uvw::CloseEvent&, uvw::PipeHandle& handle)
+            [this](const uvw::CloseEvent&, uvw::PipeHandle& handle)
             {
-                if (!timer->closing())
+                // Stop the loop after closing the connection
+                m_loop->stop();
+            });
+
+        auto timer = m_loop->resource<uvw::TimerHandle>();
+        timer->on<uvw::TimerEvent>(
+            [clientHandle, timer, &error](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
+            {
+                if (!clientHandle->closing())
                 {
-                    timer->close();
+                    clientHandle->close();
+                }
+                timer->close();
+                error = "Connection timeout";
+            });
+
+        timer->on<uvw::ErrorEvent>(
+            [timer, &error](const uvw::ErrorEvent& errorUvw, uvw::TimerHandle& timerRef)
+            {
+                timer->close();
+                error = errorUvw.what();
+            });
+
+        timer->on<uvw::CloseEvent>(
+            [this](const uvw::CloseEvent&, uvw::TimerHandle& timer)
+            {
+                // Stop loop only after first run
+                if (m_isFirstExecution)
+                {
+                    m_loop->stop();
+                }
+            });
+
+        clientHandle->once<uvw::ConnectEvent>(
+            [this, timer](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
+            {
+                // Start timer for first run only
+                if (m_isFirstExecution)
+                {
+                    timer->start(uvw::TimerHandle::Time {DEFAULT_TIMEOUT}, uvw::TimerHandle::Time {DEFAULT_TIMEOUT});
                 }
             });
 
         // Stablish connection
         clientHandle->connect(m_socketPath);
-        timer->start(uvw::TimerHandle::Time {DEFAULT_TIMEOUT}, uvw::TimerHandle::Time {DEFAULT_TIMEOUT});
+        m_isFirstExecution = false; // Mark that it is no longer the first run
         m_loop->run();
 
-        // Return response
+        // Return response and handle errors
         if (!error.empty())
         {
             throw ClientException(error, ClientException::Type::SOCKET_COMMUNICATION_ERROR);
         }
 
-        // Parse response
+        // Parse answer
         base::utils::wazuhProtocol::WazuhResponse parsedResponse;
         try
         {
