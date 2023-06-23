@@ -479,9 +479,8 @@ os_info *get_unix_version()
                     regfree(&regexCompiled);
                     fclose(version_release);
                 }
-            }
-            else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0 ||
-                        strcmp(info->os_platform, "arch") == 0) {
+            } else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0 ||
+                          strcmp(info->os_platform, "arch") == 0) {
                 os_free(info->os_version);
                 os_strdup("", info->os_version);
             }
@@ -578,6 +577,9 @@ os_info *get_unix_version()
                     snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
                     break;
                 }
+            }
+            if (info->os_version == NULL) {
+            os_strdup("", info->os_version);
             }
 
             regfree(&regexCompiled);
@@ -852,46 +854,48 @@ os_info *get_unix_version()
     }
 
     if (info->os_version) { // Parsing version
-        // os_major.os_minor (os_codename)
-        os_strdup(info->os_version, version);
-        if (codename = strstr(version, " ("), codename){
-            *codename = '\0';
-            codename += 2;
-            *(codename + strlen(codename) - 1) = '\0';
-            info->os_codename = strdup(codename);
-        }
-        free(version);
-        // Get os_major
-        if (w_regexec("^([0-9]+)\\.*", info->os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size + 1, info->os_major);
-            snprintf(info->os_major, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
-        }
-        // Get os_minor
-        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", info->os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size + 1, info->os_minor);
-            snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
-        }
-        // Get os_patch
-        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size + 1, info->os_patch);
-            snprintf(info->os_patch, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
-        }
-        // Get OSX codename
-        if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
-            if (info->os_codename) {
-                char * tmp_os_version;
-                size_t len = 4;
-                len += strlen(info->os_version);
-                len += strlen(info->os_codename);
-                os_malloc(len, tmp_os_version);
-                snprintf(tmp_os_version, len, "%s (%s)", info->os_version, info->os_codename);
-                free(info->os_version);
-                info->os_version = tmp_os_version;
+	    if (strcmp(info->os_version, "") != 0) {
+            // os_major.os_minor (os_codename)
+            os_strdup(info->os_version, version);
+            if (codename = strstr(version, " ("), codename){
+                *codename = '\0';
+                codename += 2;
+                *(codename + strlen(codename) - 1) = '\0';
+                info->os_codename = strdup(codename);
             }
-        }
+            free(version);
+            // Get os_major
+            if (w_regexec("^([0-9]+)\\.*", info->os_version, 2, match)) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, info->os_major);
+                snprintf(info->os_major, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
+            }
+            // Get os_minor
+            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", info->os_version, 2, match)) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, info->os_minor);
+                snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
+            }
+            // Get os_patch
+            if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match)) {
+                match_size = match[1].rm_eo - match[1].rm_so;
+                os_malloc(match_size + 1, info->os_patch);
+                snprintf(info->os_patch, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
+            }
+            // Get OSX codename
+            if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
+                if (info->os_codename) {
+                    char * tmp_os_version;
+                    size_t len = 4;
+                    len += strlen(info->os_version);
+                    len += strlen(info->os_codename);
+                    os_malloc(len, tmp_os_version);
+                    snprintf(tmp_os_version, len, "%s (%s)", info->os_version, info->os_codename);
+                    free(info->os_version);
+                    info->os_version = tmp_os_version;
+                }
+            }
+    	}
     } else {
         // Empty version
         os_strdup("0.0", info->os_version);
