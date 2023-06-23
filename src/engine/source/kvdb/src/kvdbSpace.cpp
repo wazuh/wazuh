@@ -33,14 +33,7 @@ std::optional<base::Error> KVDBSpace::set(const std::string& key, const std::str
 
 std::optional<base::Error> KVDBSpace::set(const std::string& key, const json::Json& value)
 {
-    auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), m_pCFhandle, rocksdb::Slice(key), rocksdb::Slice(value.str()));
-
-    if (status.ok())
-    {
-        return std::nullopt;
-    }
-
-    return base::Error {fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value.str(), key, status.getState())};
+    return set(key, value.str());
 }
 
 std::optional<base::Error> KVDBSpace::add(const std::string& key)
@@ -101,8 +94,6 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBSpac
         return base::Error {
             fmt::format("Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
     }
-
-    iter->Reset();
 
     return content;
 }
