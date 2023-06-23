@@ -2,9 +2,11 @@ import pytest
 
 from pathlib import Path
 
-from wazuh_testing.constants.paths.logs import OSSEC_LOG_PATH
-from wazuh_testing.modules.execd import EXECD_DEBUG_CONFIG
-from wazuh_testing.tools import file_monitor
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.modules.agentd.patterns import AGENTD_CONNECTED_TO_SERVER
+from wazuh_testing.modules.execd import EXECD_DEBUG_CONFIG, patterns
+from wazuh_testing.tools.file_monitor import FileMonitor
+from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
@@ -23,18 +25,21 @@ test_configuration = load_configuration_template(configs_path, test_configuratio
 
 # Test internal options.
 local_internal_options = EXECD_DEBUG_CONFIG
-
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 # Test Active Response configuration
-active_response_configuration = '''restart-wazuh0 - restart-wazuh - 0\n
-                                   restart-wazuh0 - restart-wazuh.exe - 0\n
-                                   firewall-drop0 - firewall-drop - 0\n
-                                   firewall-drop5 - firewall-drop - 5'''
+active_response_configuration = 'restart-wazuh0 - restart-wazuh - 0\n' \
+                                'restart-wazuh0 - restart-wazuh.exe - 0\n' \
+                                'firewall-drop0 - firewall-drop - 0\n' \
+                                'firewall-drop5 - firewall-drop - 5'
+
 
 # Test function.
+
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_execd_firewall_drop(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, 
-                             truncate_monitored_files, set_active_response_configuration,
-                             authd_simulator, remoted_simulator, restart_wazuh):
+def test_execd_firewall_drop(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                             truncate_monitored_files, active_response_configuration, authd_simulator,
+                             remoted_simulator, daemons_handler):
     '''
     description: Check if 'firewall-drop' command of 'active response' is executed correctly.
                  For this purpose, a simulated agent is used and the 'active response'
@@ -85,4 +90,7 @@ def test_execd_firewall_drop(test_configuration, test_metadata, set_wazuh_config
     tags:
         - simulator
     '''
-    pass
+    # Wait for agent to connect to the server.
+    FileMonitor(WAZUH_LOG_PATH).start(callback=generate_callback(AGENTD_CONNECTED_TO_SERVER))
+    # Once the agent is 'connected' send the input
+    remoted_simulator.send_custom_message(test_metadata['input'])

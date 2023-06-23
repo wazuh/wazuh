@@ -6,6 +6,9 @@
     rule_id: 5715
     ip: 3.3.3.3
     success: yes
+    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-analysisd"},"command":"firewall-drop5",
+            "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":5715},
+            "data":{"dstuser":"Test.","srcip":"3.3.3.3"}}}}'
 
 - name: Firewall drops - Command drop0
   description: Checks the firewall-drop0 command does not succeed
@@ -15,3 +18,5 @@
     rule_id: 5715
     ip: 3.3.3.3
     success: no
+    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-analysisd"},"command":"restart-wazuh0",
+            "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":554}}}}'

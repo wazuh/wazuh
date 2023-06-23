@@ -11,7 +11,11 @@ from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths import ROOT_PREFIX
+<<<<<<< HEAD
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH
+=======
+from wazuh_testing.constants.paths.logs import ACTIVE_RESPONSE_LOG_PATH, WAZUH_LOG_PATH, ALERTS_JSON_PATH
+>>>>>>> 0547bf8f31 (feat(#17426): add fixture to wait for the agent to connect)
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import queue_monitor, socket_controller
 from wazuh_testing.utils import configuration, database, file, mocking, services
@@ -101,50 +105,10 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
     items[:] = selected_tests
 
 
-# - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
 
-@pytest.fixture(scope='session')
-def load_wazuh_basic_configuration():
-    """Load a new basic configuration to the manager"""
-    # Load ossec.conf with all disabled settings
-    minimal_configuration = configuration.get_minimal_configuration()
-
-    # Make a backup from current configuration
-    backup_ossec_configuration = configuration.get_wazuh_conf()
-
-    # Write new configuration
-    configuration.write_wazuh_conf(minimal_configuration)
-
-    yield
-
-    # Restore the ossec.conf backup
-    configuration.write_wazuh_conf(backup_ossec_configuration)
-
-
-@pytest.fixture()
-def set_wazuh_configuration(test_configuration: dict) -> None:
-    """Set wazuh configuration
-
-    Args:
-        test_configuration (dict): Configuration template data to write in the ossec.conf
-    """
-    # Save current configuration
-    backup_config = configuration.get_wazuh_conf()
-
-    # Configuration for testing
-    test_config = configuration.set_section_wazuh_conf(test_configuration.get('sections'))
-
-    # Set new configuration
-    configuration.write_wazuh_conf(test_config)
-
-    # Set current configuration
-    session_parameters.current_configuration = test_config
-
-    yield
-
-    # Restore previous configuration
-    configuration.write_wazuh_conf(backup_config)
+# - - - - - - - - - - - - - - - - - - - - - - - - Implemenation functions - - - - - - - - - - - - - - - - - - - - - - - -
 
 
 def truncate_monitored_files_implementation() -> None:
@@ -152,7 +116,7 @@ def truncate_monitored_files_implementation() -> None:
     if services.get_service() == WAZUH_MANAGER:
         log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH]
     else:
-        log_files = [WAZUH_LOG_PATH]
+        log_files = [WAZUH_LOG_PATH, ACTIVE_RESPONSE_LOG_PATH]
 
     for log_file in log_files:
         if os.path.isfile(os.path.join(ROOT_PREFIX, log_file)):
@@ -163,18 +127,6 @@ def truncate_monitored_files_implementation() -> None:
     for log_file in log_files:
         if os.path.isfile(os.path.join(ROOT_PREFIX, log_file)):
             file.truncate_file(log_file)
-
-
-@pytest.fixture()
-def truncate_monitored_files() -> None:
-    """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
-    yield from truncate_monitored_files_implementation()
-
-
-@pytest.fixture(scope='module')
-def truncate_monitored_files_module() -> None:
-    """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
-    yield from truncate_monitored_files_implementation()
 
 
 def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
@@ -244,6 +196,96 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         for daemon in daemons:
             logger.debug(f"Stopping {daemon}")
             services.control_service('stop', daemon=daemon)
+
+
+def connect_to_sockets_implementation(request: pytest.FixtureRequest) -> None:
+    """Connect to the specified sockets for the test.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+
+    Returns:
+        receiver_sockets (list): List of SocketControllers.
+    """
+    receiver_sockets_params = getattr(request.module, 'receiver_sockets_params')
+
+    # Create the SocketControllers
+    receiver_sockets = list()
+    for address, family, protocol in receiver_sockets_params:
+        receiver_sockets.append(socket_controller.SocketController(address=address, family=family, connection_protocol=protocol))
+
+    setattr(request.module, 'receiver_sockets', receiver_sockets)
+
+    yield receiver_sockets
+
+    for socket in receiver_sockets:
+        try:
+            # We flush the buffer before closing the connection if the protocol is TCP:
+            if socket.protocol == 1:
+                socket.sock.settimeout(5)
+                socket.receive()  # Flush buffer before closing connection
+            socket.close()
+        except OSError as e:
+            if e.errno == 9:
+                # Do not try to close the socket again if it was reused or closed already
+                pass
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - End of Implemenation functions - - - - - - - - - - - - - - - - - - - - - - -
+
+@pytest.fixture(scope='session')
+def load_wazuh_basic_configuration():
+    """Load a new basic configuration to the manager"""
+    # Load ossec.conf with all disabled settings
+    minimal_configuration = configuration.get_minimal_configuration()
+
+    # Make a backup from current configuration
+    backup_ossec_configuration = configuration.get_wazuh_conf()
+
+    # Write new configuration
+    configuration.write_wazuh_conf(minimal_configuration)
+
+    yield
+
+    # Restore the ossec.conf backup
+    configuration.write_wazuh_conf(backup_ossec_configuration)
+
+
+@pytest.fixture()
+def set_wazuh_configuration(test_configuration: dict) -> None:
+    """Set wazuh configuration
+
+    Args:
+        test_configuration (dict): Configuration template data to write in the ossec.conf
+    """
+    # Save current configuration
+    backup_config = configuration.get_wazuh_conf()
+
+    # Configuration for testing
+    test_config = configuration.set_section_wazuh_conf(test_configuration.get('sections'))
+
+    # Set new configuration
+    configuration.write_wazuh_conf(test_config)
+
+    # Set current configuration
+    session_parameters.current_configuration = test_config
+
+    yield
+
+    # Restore previous configuration
+    configuration.write_wazuh_conf(backup_config)
+
+
+@pytest.fixture()
+def truncate_monitored_files() -> None:
+    """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
+    yield from truncate_monitored_files_implementation()
+
+
+@pytest.fixture(scope='module')
+def truncate_monitored_files_module() -> None:
+    """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
+    yield from truncate_monitored_files_implementation()
 
 
 @pytest.fixture()
@@ -344,39 +386,6 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
     database.delete_dbs()
 
     services.control_service('start')
-
-
-def connect_to_sockets_implementation(request: pytest.FixtureRequest) -> None:
-    """Connect to the specified sockets for the test.
-
-    Args:
-        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
-
-    Returns:
-        receiver_sockets (list): List of SocketControllers.
-    """
-    receiver_sockets_params = getattr(request.module, 'receiver_sockets_params')
-
-    # Create the SocketControllers
-    receiver_sockets = list()
-    for address, family, protocol in receiver_sockets_params:
-        receiver_sockets.append(socket_controller.SocketController(address=address, family=family, connection_protocol=protocol))
-
-    setattr(request.module, 'receiver_sockets', receiver_sockets)
-
-    yield receiver_sockets
-
-    for socket in receiver_sockets:
-        try:
-            # We flush the buffer before closing the connection if the protocol is TCP:
-            if socket.protocol == 1:
-                socket.sock.settimeout(5)
-                socket.receive()  # Flush buffer before closing connection
-            socket.close()
-        except OSError as e:
-            if e.errno == 9:
-                # Do not try to close the socket again if it was reused or closed already
-                pass
 
 
 @pytest.fixture()
