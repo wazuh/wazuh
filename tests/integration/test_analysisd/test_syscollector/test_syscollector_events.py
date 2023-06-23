@@ -139,7 +139,7 @@ def test_syscollector_events(test_metadata, configure_local_internal_options, mo
     receiver_sockets[0].send(test_msg)
 
     # Set callback according to stage parameters
-    alert_callback = utils.CallbackWithContext(utils.callback_check_syscollector_alert, alert_expected_values)
+    alert_callback = utils.CallbackWithContext(utils.callback_check_alert, alert_expected_values)
 
     # Start monitor
     log_monitor = file_monitor.FileMonitor(ALERTS_JSON_PATH)
