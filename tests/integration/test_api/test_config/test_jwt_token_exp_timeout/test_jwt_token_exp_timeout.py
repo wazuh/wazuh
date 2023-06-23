@@ -55,6 +55,7 @@ import time
 import pytest
 import requests
 
+from wazuh_testing import session_parameters
 from wazuh_testing.constants.api import CONFIGURATION_TYPES, MANAGER_INFORMATION_ROUTE
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.helpers import get_base_url, login
@@ -152,7 +153,7 @@ def test_jwt_token_exp_timeout(test_configuration, test_metadata, add_configurat
     url = get_base_url() + MANAGER_INFORMATION_ROUTE
 
     # Get token
-    authenticator_headers, _ = login()
+    authenticator_headers, _ = login(sleep_time=session_parameters.default_timeout, login_attempts=2)
 
     # Request before the token expires
     response = requests.get(url, headers=authenticator_headers, verify=False)
