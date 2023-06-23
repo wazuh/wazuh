@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <kvdb/kvdbManager.hpp>
 #include <kvdb/kvdbScope.hpp>
@@ -15,6 +16,32 @@ namespace
 
 const std::string KVDB_PATH {"/tmp/kvdbTestSuitePath/"};
 const std::string KVDB_DB_FILENAME {"TEST_DB"};
+const std::string KVDB_TEST_1 {"test1"};
+const std::string KVDB_TEST_2 {"test2"};
+const std::string JSON_FILE_WITH_VALUE_OK {"/tmp/kvdb_with_value.json"};
+const std::string JSON_FILE_WITHOUT_VALUE_OK {"/tmp/kvdb_without_value.json"};
+const std::string JSON_FILE_NOK {"/tmp/kvdb_nok.json"};
+const std::string JSON_FILE_NOT_EXISTS {"/tmp/kvdb_not_exists.json"};
+
+const std::string rawValueKeyA;
+const std::string valueKeyA {fmt::format("\"{}\"", rawValueKeyA)};
+const int rawValueKeyB {69};
+const std::string valueKeyB {fmt::format("{}", rawValueKeyB)};
+const std::string rawValueKeyCA {"valueCA"};
+const std::string rawValueKeyCB {"valueCB"};
+const std::string rawValueKeyCC {"valueCC"};
+const std::string valueKeyC {fmt::format("[\"{}\",\"{}\",\"{}\"]", rawValueKeyCA, rawValueKeyCB, rawValueKeyCC)};
+const std::string rawValueKeyDA {"valueDA"};
+const int rawValueKeyDB {666};
+const int rawValueKeyDC0 {10};
+const int rawValueKeyDC1 {7};
+const int rawValueKeyDC2 {1992};
+const std::string valueKeyD {fmt::format("{{\"keyDA\":\"{}\",\"keyDB\":{},\"keyDC\":[{},{},{}]}}",
+                                         rawValueKeyDA,
+                                         rawValueKeyDB,
+                                         rawValueKeyDC0,
+                                         rawValueKeyDC1,
+                                         rawValueKeyDC2)};
 
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
@@ -42,6 +69,9 @@ protected:
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, spMetrics);
 
         kvdbManager->initialize();
+
+        createJsonFileWithoutValueOK();
+        createJsonFileNOK();
     };
 
     void TearDown() override
@@ -53,6 +83,59 @@ protected:
             std::filesystem::remove_all(KVDB_PATH);
         }
     };
+
+    void createJsonFileWithValueOK()
+    {
+        if (std::filesystem::exists(JSON_FILE_WITH_VALUE_OK))
+        {
+            std::filesystem::remove(JSON_FILE_WITH_VALUE_OK);
+        }
+        std::ofstream file(JSON_FILE_WITH_VALUE_OK);
+        if (file.is_open())
+        {
+            file << fmt::format("{{\n\t\"keyA\": {},\n\t\"keyB\": {},\n"
+                                "\t\"keyC\": {},\n\t\"keyD\": {}\n}}",
+                                valueKeyA,
+                                valueKeyB,
+                                valueKeyC,
+                                valueKeyD);
+            file.close();
+        }
+    }
+
+    void createJsonFileWithoutValueOK()
+    {
+        if (std::filesystem::exists(JSON_FILE_WITHOUT_VALUE_OK))
+        {
+            std::filesystem::remove(JSON_FILE_WITHOUT_VALUE_OK);
+        }
+        std::ofstream file(JSON_FILE_WITHOUT_VALUE_OK);
+
+        if (file.is_open())
+        {
+            file << R"({
+                        "keyA":"",
+                        "keyB":"",
+                        "keyC":""
+                    })";
+            file.close();
+        }
+    }
+
+    void createJsonFileNOK()
+    {
+        if (std::filesystem::exists(JSON_FILE_NOK))
+        {
+            std::filesystem::remove(JSON_FILE_NOK);
+        }
+        std::ofstream file(JSON_FILE_NOK);
+
+        if (file.is_open())
+        {
+            file << R"(raw text)";
+            file.close();
+        }
+    }
 
     api::wpRequest getWRequest(const bool& mustBeLoaded)
     {
@@ -69,6 +152,16 @@ protected:
         json::Json data {};
         data.setObject();
         data.setString(kvdbName, "/name");
+        return api::wpRequest::create(rCommand, rOrigin, data);
+    }
+
+    api::wpRequest commonWRequest(const std::string& kvdbName, const std::string& jsonFile)
+    {
+        // create request
+        json::Json data {};
+        data.setObject();
+        data.setString(kvdbName, "/name");
+        data.setString(jsonFile, "/path");
         return api::wpRequest::create(rCommand, rOrigin, data);
     }
 
@@ -134,8 +227,8 @@ TEST_F(KVDBApiTest, managerGetWitMultipleDBsLoaded)
 {
     api::Handler cmd;
 
-    kvdbManager->createDB("test2");
-    kvdbManager->getKVDBHandler("test2", "test");
+    kvdbManager->createDB(KVDB_TEST_2);
+    kvdbManager->getKVDBHandler(KVDB_TEST_2, "test");
 
     ASSERT_NO_THROW(cmd = managerGet(KVDBApiTest::kvdbManager));
     const auto response = cmd(getWRequest(true));
@@ -182,8 +275,79 @@ TEST_F(KVDBApiTest, managerPost)
 {
     api::Handler cmd;
     ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
-    const auto response = cmd(commonWRequest("test1"));
+    const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerPostWithJsonWithValueOK)
+{
+    api::Handler cmd;
+    createJsonFileWithValueOK();
+    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_WITH_VALUE_OK));
+    const auto expectedData = json::Json {R"({"status":"OK"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerPostWithJsonWithoutValueOK)
+{
+    api::Handler cmd;
+    createJsonFileWithoutValueOK();
+    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_WITHOUT_VALUE_OK));
+    const auto expectedData = json::Json {R"({"status":"OK"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerPostWithPathEmpty)
+{
+    api::Handler cmd;
+    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest(KVDB_TEST_1, {""}));
+    const auto expectedData = json::Json {R"({"status":"ERROR","error":"The path is empty."})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerPostWithJsonPathNotExists)
+{
+    api::Handler cmd;
+    createJsonFileNOK();
+    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_NOT_EXISTS));
+    const auto expectedData = json::Json {
+        R"({"status":"ERROR","error":"An error occurred while opening the file '/tmp/kvdb_not_exists.json'"})"};
+
+    ASSERT_TRUE(response.isValid());
+    ASSERT_EQ(response.error(), 0);
+    ASSERT_FALSE(response.message().has_value());
+    ASSERT_EQ(response.data(), expectedData);
+}
+
+TEST_F(KVDBApiTest, managerPostWithJsonNOK)
+{
+    api::Handler cmd;
+    createJsonFileNOK();
+    ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
+    const auto response = cmd(commonWRequest(KVDB_TEST_1, JSON_FILE_NOK));
+    const auto expectedData = json::Json {
+        R"({"status":"ERROR","error":"An error occurred while parsing the JSON file '/tmp/kvdb_nok.json'"})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
@@ -195,10 +359,10 @@ TEST_F(KVDBApiTest, managerPostDBExists)
 {
     api::Handler cmd;
 
-    kvdbManager->createDB("test1");
+    kvdbManager->createDB(KVDB_TEST_1);
 
     ASSERT_NO_THROW(cmd = managerPost(KVDBApiTest::kvdbManager));
-    const auto response = cmd(commonWRequest("test1"));
+    const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"The Database already exists."})"};
 
     ASSERT_TRUE(response.isValid());
@@ -241,9 +405,9 @@ TEST_F(KVDBApiTest, managerDeleteNameEmpty)
 TEST_F(KVDBApiTest, managerDelete)
 {
     api::Handler cmd;
-    kvdbManager->createDB("test1");
+    kvdbManager->createDB(KVDB_TEST_1);
     ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
-    const auto response = cmd(commonWRequest("test1"));
+    const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"OK"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -255,9 +419,9 @@ TEST_F(KVDBApiTest, managerDelete)
 TEST_F(KVDBApiTest, managerDeleteDBNotExists)
 {
     api::Handler cmd;
-    kvdbManager->createDB("test2");
+    kvdbManager->createDB(KVDB_TEST_2);
     ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
-    const auto response = cmd(commonWRequest("test1"));
+    const auto response = cmd(commonWRequest(KVDB_TEST_1));
     const auto expectedData = json::Json {R"({"status":"ERROR","error":"/name KVDB does not exist"})"};
 
     ASSERT_TRUE(response.isValid());
@@ -276,7 +440,8 @@ TEST_F(KVDBApiTest, managerDeleteDBInUse)
     ASSERT_TRUE(std::holds_alternative<std::shared_ptr<kvdbManager::IKVDBHandler>>(handler));
     ASSERT_NO_THROW(cmd = managerDelete(KVDBApiTest::kvdbManager));
     const auto response = cmd(commonWRequest("test2"));
-    const auto expectedData = json::Json {R"({"status":"ERROR","error":"Could not remove the DB test2. Usage Reference Count: 1."})"};
+    const auto expectedData =
+        json::Json {R"({"status":"ERROR","error":"Could not remove the DB test2. Usage Reference Count: 1."})"};
 
     ASSERT_TRUE(response.isValid());
     ASSERT_EQ(response.error(), 0);
