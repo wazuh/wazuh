@@ -135,7 +135,11 @@ def test_max_upload_size(test_configuration, test_metadata, add_configuration, t
             - Restart daemons defined in `daemons_handler_configuration` in this module
             - Wait until the API is ready to receive requests
         - test:
-            - 
+            - Create a new group
+            - Check if it was created or not depending on the expected code
+            - Upload a new CDB list (another type of content)
+            - Check if the CDB list was uploaded or not depending on the expected code
+            - Delete the created content to clean the environment
         - teardown:
             - Remove configuration and restore backup configuration
             - Truncate the log files
@@ -175,20 +179,19 @@ def test_max_upload_size(test_configuration, test_metadata, add_configuration, t
     """
     content_size = test_metadata['request_content_size']
     expected_code = test_metadata['expected_code']
+
     base_url = get_base_url()
     authentication_headers, _ = login()
-
     group_name = create_group_name(content_size)
+    cdb_list_name = 'new_cdb_list'
+    cdb_list_content = create_cdb_list(content_size).encode()
 
-    # Create a new group.
+    # Create a new group
     response = requests.post(base_url + GROUPS_ROUTE, headers=authentication_headers, verify=False,
                              json={'group_id': group_name})
     # Check if it was created or not depending on the expected code
     assert response.status_code == expected_code, f"Expected status code was {expected_code}, but " \
                                                   f"{response.status_code} was returned: {response.json()}"
-
-    cdb_list_name = 'new_cdb_list'
-    cdb_list_content = create_cdb_list(content_size).encode()
 
     # Upload a new CDB list (another type of content)
     authentication_headers['Content-Type'] = 'application/octet-stream'
@@ -199,7 +202,7 @@ def test_max_upload_size(test_configuration, test_metadata, add_configuration, t
                                                   f"{response.status_code} was returned: {response.json()}"
 
     # Delete the created content to clean the environment
-    if response.status_code == 200:
+    if expected_code == 200:
         requests.delete(base_url + f"{GROUPS_ROUTE}?groups_list={group_name}", headers=authentication_headers,
                         verify=False)
         requests.delete(base_url + f"{CDB_LIST_ROUTE}/{cdb_list_name}", headers=authentication_headers,
