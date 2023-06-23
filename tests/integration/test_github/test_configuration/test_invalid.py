@@ -47,13 +47,10 @@ references:
 tags:
     - github_configuration
 '''
-import os
-import sys
 import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.global_parameters import GlobalParameters
 from wazuh_testing.modules.integrations.event_monitors import detect_wrong_content_config
 from wazuh_testing.modules.integrations import LOCAL_INTERNAL_OPTIONS as local_internal_options
 from wazuh_testing.modules import ALL_DAEMON_HANDLER as daemons_handler_configuration
@@ -77,11 +74,13 @@ cases_path = Path(TEST_CASES_PATH, 'cases_invalid_configuration.yaml')
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
+
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_invalid(test_configuration, test_metadata, daemons_handler, set_wazuh_configuration, configure_local_internal_options,
-                 truncate_monitored_files):
+def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                 truncate_monitored_files, daemons_handler):
     '''
     description: Check if the 'github' module detects invalid configurations. For this purpose, the test
                  will configure that module using invalid configuration settings with different attributes.
@@ -126,12 +125,6 @@ def test_invalid(test_configuration, test_metadata, daemons_handler, set_wazuh_c
         - invalid_settings
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    
-    # Configuration error -> ValueError raised
-    try:
-        control_service('restart')
-    except ValueError:
-        pass
 
     detect_wrong_content_config(test_metadata['error_type'], test_metadata['event_monitor'], 'github', wazuh_log_monitor)
     
