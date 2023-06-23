@@ -29,7 +29,7 @@ constexpr auto ENGINE_SRV_API_SOCK_ENV = "WZE_API_SOCK";
 constexpr auto ENGINE_SRV_API_QUEUE_TASK = 50;
 constexpr auto ENGINE_SRV_API_QUEUE_TASK_ENV = "WZE_API_QUEUE_TASK";
 
-constexpr auto ENGINE_SRV_API_TIMEOUT = 2000;
+constexpr auto ENGINE_SRV_API_TIMEOUT = 1000;
 constexpr auto ENGINE_SRV_API_TIMEOUT_ENV = "WZE_API_TIMEOUT";
 
 // Store module
@@ -65,7 +65,7 @@ constexpr auto ENGINE_QUEUE_FLOOD_SLEEP_ENV = "WZE_QUEUE_FLOOD_SLEEP";
  ******************************************************************************/
 constexpr auto ENGINE_KVDB_TEST_PATH = "/var/ossec/etc/kvdb_test/";
 constexpr auto ENGINE_PROTOCOL_QUEUE = 1;
-constexpr auto ENGINE_PROTOCOL_LOCATION = "/dev/stdin";
+constexpr auto ENGINE_PROTOCOL_LOCATION = "api.test";
 constexpr auto TRACE_ALL = "ALL";
 } // namespace cmd
 
