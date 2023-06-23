@@ -78,19 +78,19 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
-# Fixtures
 
+# Fixtures
 @pytest.fixture
 def remove_test_file():
     """Remove the file before and after the test execution."""
     delete_file(test_file)
 
-    yield 
+    yield
 
     delete_file(test_file)
 
-# Tests
 
+# Tests
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_cache(test_configuration, test_metadata, add_configuration, truncate_monitored_files, daemons_handler,

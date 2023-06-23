@@ -73,8 +73,8 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
-# Tests
 
+# Tests
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_experimental_features(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
@@ -138,7 +138,7 @@ def test_experimental_features(test_configuration, test_metadata, add_configurat
     authorization_headers, _ = login()
 
     response = requests.get(url, headers=authorization_headers, verify=False)
-    
+
     assert response.status_code == expected_code, f"Expected status code was {expected_code}, " \
                                                   f"but {response.status_code} was returned.\n" \
                                                   f"Full response: {response.text}"

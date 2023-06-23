@@ -75,8 +75,8 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 daemons_handler_configuration = {'daemons': [API_DAEMON]}
 
-# Tests
 
+# Tests
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_jwt_token_exp_timeout(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
