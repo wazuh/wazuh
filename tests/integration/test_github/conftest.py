@@ -5,12 +5,15 @@
 import pytest
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.file_monitor import FileMonitor
-from wazuh_testing.modules.integrations.event_monitors import detect_integration_start
-
+from wazuh_testing.utils import callbacks
 
 @pytest.fixture()
 def wait_for_github_start():
     # Wait for module github starts
-    file_monitor = FileMonitor(WAZUH_LOG_PATH)
-    detect_integration_start("GitHub",file_monitor)
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.MODULESD_STARTED, {
+                              'integration': 'GitHub'
+                          }))     
+    assert (wazuh_log_monitor.callback_result == None), f'Error invalid configuration event not detected'
