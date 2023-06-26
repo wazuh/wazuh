@@ -13,10 +13,16 @@
 namespace builder::internals::builders
 {
 
-Builder getStageBuilderOutputs(std::shared_ptr<Registry<Builder>> registry)
+Builder getStageBuilderOutputs(std::weak_ptr<Registry<Builder>> weakRegistry)
 {
-    return [registry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
+    return [weakRegistry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
+        if (weakRegistry.expired())
+        {
+            throw std::runtime_error("Outputs stage: Registry expired");
+        }
+        auto registry = weakRegistry.lock();
+
         json::Json jsonDefinition;
 
         // Get json and check is as expected

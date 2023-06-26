@@ -12,10 +12,16 @@
 namespace builder::internals::builders
 {
 
-Builder getStageBuilderParse(std::shared_ptr<Registry<Builder>> registry)
+Builder getStageBuilderParse(std::weak_ptr<Registry<Builder>> weakRegistry)
 {
-    return [registry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
+    return [weakRegistry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
+        if (weakRegistry.expired())
+        {
+            throw std::runtime_error("Parse stage: Registry expired");
+        }
+        auto registry = weakRegistry.lock();
+
         // Assert value is as expected
         json::Json jsonDefinition;
         try
