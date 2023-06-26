@@ -1,14 +1,13 @@
 import pytest
 
 from wazuh_testing.constants.paths.configurations import ACTIVE_RESPONSE_CONFIGURATION
-from wazuh_testing.constants.paths.logs import ACTIVE_RESPONSE_LOG_PATH, WAZUH_LOG_PATH
-from wazuh_testing.modules.execd.patterns import EXECD_THREAD_STARTED
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.patterns import AGENTD_CONNECTED_TO_SERVER
+from wazuh_testing.modules.execd.patterns import EXECD_RECEIVED_MESSAGE
 from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators import AuthdSimulator, RemotedSimulator
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
-from wazuh_testing.utils.services import control_service
 
 
 @pytest.fixture()
@@ -53,3 +52,14 @@ def active_response_configuration(request):
         file.write_file(ACTIVE_RESPONSE_CONFIGURATION, backup)
     else:
         file.delete_file(ACTIVE_RESPONSE_CONFIGURATION)
+
+
+@pytest.fixture()
+def send_execd_message(test_metadata, authd_simulator, remoted_simulator, daemons_handler):
+    monitor = FileMonitor(WAZUH_LOG_PATH)
+    # Wait for agent to connect to the server.
+    monitor.start(callback=generate_callback(AGENTD_CONNECTED_TO_SERVER))
+    # Once the agent is 'connected' send the input
+    remoted_simulator.send_custom_message(test_metadata['input'])
+    # Wait for execd to start.
+    monitor.start(callback=generate_callback(EXECD_RECEIVED_MESSAGE))

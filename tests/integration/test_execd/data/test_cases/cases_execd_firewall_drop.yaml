@@ -18,5 +18,5 @@
     rule_id: 5715
     ip: 3.3.3.3
     success: no
-    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-analysisd"},"command":"restart-wazuh0",
-            "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":554}}}}'
+    input: '#!-execd {"version":1,"origin":{"name":"","module":"wazuh-analysisd"},"command":"firewall-drop0",
+            "parameters":{"extra_args":[],"alert":{"rule":{"level":5,"description":"Test.","id":5715},"data":{"dstuser":"Test."}}}}'

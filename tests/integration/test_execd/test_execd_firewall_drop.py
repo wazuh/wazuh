@@ -2,18 +2,20 @@ import pytest
 
 from pathlib import Path
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules.agentd.patterns import AGENTD_CONNECTED_TO_SERVER
-from wazuh_testing.modules.execd import EXECD_DEBUG_CONFIG, patterns
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ACTIVE_RESPONSE_LOG_PATH
+from wazuh_testing.modules.active_response import patterns
+from wazuh_testing.modules.execd import EXECD_DEBUG_CONFIG
+from wazuh_testing.modules.execd.patterns import EXECD_EXECUTING_COMMAND
 from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
 # Set pytest marks.
-pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.tier(level=1)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_execd.yaml')
@@ -38,8 +40,7 @@ active_response_configuration = 'restart-wazuh0 - restart-wazuh - 0\n' \
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_execd_firewall_drop(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                             truncate_monitored_files, active_response_configuration, authd_simulator,
-                             remoted_simulator, daemons_handler):
+                             truncate_monitored_files, active_response_configuration, send_execd_message):
     '''
     description: Check if 'firewall-drop' command of 'active response' is executed correctly.
                  For this purpose, a simulated agent is used and the 'active response'
@@ -90,7 +91,25 @@ def test_execd_firewall_drop(test_configuration, test_metadata, set_wazuh_config
     tags:
         - simulator
     '''
-    # Wait for agent to connect to the server.
-    FileMonitor(WAZUH_LOG_PATH).start(callback=generate_callback(AGENTD_CONNECTED_TO_SERVER))
-    # Once the agent is 'connected' send the input
-    remoted_simulator.send_custom_message(test_metadata['input'])
+    # Instantiate the monitors.
+    ar_monitor = FileMonitor(ACTIVE_RESPONSE_LOG_PATH)
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    # If the command is invalid, check it raised the warning.
+    if not test_metadata['success']:
+        callback = generate_callback(patterns.ACTIVE_RESPONSE_CANNOT_READ_SRCIP)
+        ar_monitor.start(callback=callback)
+        assert ar_monitor.callback_result, 'AR `firewall-drop` did not fail.'
+        return
+
+    # Wait for the firewall drop command to be executed.
+    wazuh_log_monitor.start(callback=generate_callback(EXECD_EXECUTING_COMMAND))
+    assert wazuh_log_monitor.callback_result, 'Execd `executing` command log not raised.'
+
+    # Wait and check the add command to be executed.
+    ar_monitor.start(callback=generate_callback(patterns.ACTIVE_RESPONSE_ADD_COMMAND))
+    assert '"command":"add"' in ar_monitor.callback_result, 'AR `add` command not executed.'
+
+    # Wait and check the delete command to be executed.
+    ar_monitor.start(callback=generate_callback(patterns.ACTIVE_RESPONSE_DELETE_COMMAND))
+    assert '"command":"delete"' in ar_monitor.callback_result, 'AR `delete` command not executed.'
