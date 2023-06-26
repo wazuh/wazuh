@@ -18,7 +18,7 @@ namespace builder::internals::builders
  * @param registry Registry of builders.
  * @return Builder
  */
-Builder getStageMapBuilder(std::shared_ptr<Registry<Builder>> registry);
+Builder getStageMapBuilder(std::weak_ptr<Registry<Builder>> weakRegistry);
 
 } // namespace builder::internals::builders
 

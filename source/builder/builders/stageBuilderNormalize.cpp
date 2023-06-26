@@ -19,10 +19,16 @@ const std::unordered_map<std::string, std::string> allowedBlocks = {
     {"map", "stage.map"}, {"check", "stage.check"}, {"logpar", "parser.logpar"}};
 }
 
-Builder getStageNormalizeBuilder(std::shared_ptr<Registry<Builder>> registry)
+Builder getStageNormalizeBuilder(std::weak_ptr<Registry<Builder>> weakRegistry)
 {
-    return [registry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
+    return [weakRegistry](const std::any& definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
+        if (weakRegistry.expired())
+        {
+            throw std::runtime_error("Normalize stage: Registry expired");
+        }
+        auto registry = weakRegistry.lock();
+
         json::Json jsonDefinition;
 
         try

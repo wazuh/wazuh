@@ -10,10 +10,16 @@
 
 namespace builder::internals::builders
 {
-Builder getStageMapBuilder(std::shared_ptr<Registry<Builder>> registry)
+Builder getStageMapBuilder(std::weak_ptr<Registry<Builder>> weakRegistry)
 {
-    return [registry](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
+    return [weakRegistry](std::any definition, std::shared_ptr<defs::IDefinitions> definitions)
     {
+        if (weakRegistry.expired())
+        {
+            throw std::runtime_error("Map stage: Registry expired");
+        }
+        auto registry = weakRegistry.lock();
+
         json::Json jsonDefinition;
 
         try

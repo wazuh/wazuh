@@ -508,9 +508,15 @@ void configure(CLI::App_p app)
         ->default_val(false);
 
     // Register callback
+    auto weakApp = std::weak_ptr<CLI::App>(app);
     startApp->callback(
-        [app, options]()
+        [weakApp, options]()
         {
+            if (weakApp.expired())
+            {
+                throw std::runtime_error("Server start: App expired");
+            }
+            auto app = weakApp.lock();
             auto confManager = std::make_shared<conf::IConf<conf::CliConf>>(conf::CliConf(app));
             runStart(confManager);
         });
