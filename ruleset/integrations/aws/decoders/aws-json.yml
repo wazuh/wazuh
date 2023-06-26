@@ -18,7 +18,7 @@ sources:
   - decoder/integrations/0
 
 check:
-  - wazuh.origin: Wazuh-AWS #TODO: Check
+  - wazuh.origin: Wazuh-AWS
   - event.original: +starts_with/{
 
 parse:
