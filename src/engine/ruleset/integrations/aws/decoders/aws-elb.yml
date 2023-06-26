@@ -2,185 +2,110 @@
 name: decoder/aws-elb/0
 
 metadata:
-  title: AWS ELB Decoder
-  description: Decoder for Amazon ELB logs
+  title: Wazuh integration of AWS ELB Decoder
+  description: Decoder for wazuh integration of Amazon ELB (ALB, CLB, NLB) logs
+  module: AWS
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.4
   references:
+    - https://documentation.wazuh.com/current/amazon/services/supported-services/elastic-load-balancing/alb.html#amazon-alb
+    - https://documentation.wazuh.com/current/amazon/services/supported-services/elastic-load-balancing/clb.html#amazon-clb
+    - https://documentation.wazuh.com/current/amazon/services/supported-services/elastic-load-balancing/nlb.html#amazon-nlb
     - https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/access-log-collection.html
     - https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-access-logs.html
     - https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html
-  product.name: AWS Elastic Load Balancing
+  versions:
+    - "4.4"
   author:
       name: Wazuh, Inc.
       url: https://wazuh.com
       date: 2023/01/20
 
 sources:
-  - decoder/integrations/0
+  - decoder/aws-json/0
 
-#TODO: Once the events arrive tagged, uncomment these lines below
-# check:
-#   - event.module: aws
-#   - event.dataset: aws.elb
-
-definitions:
-  ELBTIMESTAMP: <@timestamp/%FT%TZ>?<@timestamp/%FT%T>
-  ELBNAME: <aws.elb.name>
-  ELBSOURCE: <source.ip>:<source.port>
-
-
-  ELBBACKEND: <aws.elb.backend.ip>:<aws.elb.backend.port>
-  # TODO: this should be replace by an optional but it doesn't work as expected
-  # making mandatory NO_BE.. variations: <~/literal/->?<aws.elb.backend.ip>(?:<aws.elb.backend.port>)
-
-  # Or -1 for each time field
-  ELBPROCESSINGTIME: >-
-    <aws.elb.request_processing_time.sec>
-    <aws.elb.backend_processing_time.sec>
-    <aws.elb.response_processing_time.sec>
-
-  #  Or '-' for each expression
-  ELBSSL: <~/literal/->?<aws.elb.ssl_cipher> <~/literal/->?<aws.elb.ssl_protocol>
-  ELBCOMMON: $ELBTIMESTAMP $ELBNAME $ELBSOURCE $ELBBACKEND $ELBPROCESSINGTIME
-  # TODO: Change in name format due to issue replacing definitions
-  NO_BE_ELBCOMMON: $ELBTIMESTAMP $ELBNAME $ELBSOURCE - $ELBPROCESSINGTIME
-  ELBHTTPLOG: >-
-    $ELBCOMMON
-    <http.response.status_code>
-    <~/literal/->?<aws.elb.backend.http.response.status_code>
-    <http.request.body.bytes>
-    <http.response.body.bytes>
-    \"<http.request.method> <~url_original/uri> HTTP/<http.version>\"
-    \"<user_agent.original>\"
-    $ELBSSL
-  NO_BE_ELBHTTPLOG: >-
-    $NO_BE_ELBCOMMON
-    <http.response.status_code>
-    <~/literal/->?<aws.elb.backend.http.response.status_code>
-    <http.request.body.bytes>
-    <http.response.body.bytes>
-    \"<http.request.method> <~url_original/uri> HTTP/<http.version>\"
-    \"<user_agent.original>\"
-    $ELBSSL
-  ELBTCPLOG: >-
-    $ELBCOMMON
-    -
-    -
-    <source.bytes>
-    <destination.bytes>
-    \"- - -<~>\"
-    \"-\"
-    $ELBSSL
-  ELBV2TYPE: <aws.elb.type>
-
-parse:
-  logpar:
-    # HTTP (Classic ELB)
-    # 2019-10-14T12:00:20.694172Z wazuh-aws-elb-test 175.16.150.1:54127 10.0.1.185:80 0.000043 0.000785 0.000023 200 200 0 612 "GET http://18.194.223.56:80/ HTTP/1.1" "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36" - -
-    - event.original: $ELBHTTPLOG
-    # 2019-10-14T12:00:20.694172Z wazuh-aws-elb-test 175.16.150.1:54127 - 0.000043 0.000785 0.000023 200 200 0 612 "GET http://18.194.223.56:80/ HTTP/1.1" "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36" - -
-    - event.original: $NO_BE_ELBHTTPLOG
-
-    # TCP (Classic ELB)
-    # 2019-10-17T13:22:51.758784Z wazuh-aws-elb-test-elb 81.2.69.193:51600 10.0.0.47:80 0.000943 0.00001 0.000015 - - 134 859 "- - - " "-" - -
-    - event.original: $ELBTCPLOG
-
-    # HTTP from Application Load Balancers (v2 Load Balancers)
-    # http 2019-10-11T15:55:11.987940Z app/wazuh-aws-elb-test/c86a326e7dc14222 81.2.69.193:37856 10.0.0.192:80 0.000 0.001 0.000 200 200 125 859 "GET http://wazuh-aws-elb-test-12030537.eu-central-1.elb.amazonaws.com:80/ HTTP/1.1" "curl/7.58.0" - - arn:aws:elasticloadbalancing:eu-central-1:627959692251:targetgroup/test-lb-instances/8f04c4fe71f5f794 "Root=1-5da0a5df-7c958e828ff43b63d0e0fac4" "-" "-" 0 2019-10-11T15:55:11.987000Z "forward" "-" "-"
-    - event.original: >-
-        $ELBV2TYPE
-        $ELBHTTPLOG
-        <aws.elb.target_group.arn>
-        "<aws.elb.trace_id>"
-        "<~/literal/->?<destination.domain>"
-        "<~/literal/->?<aws.elb.chosen_cert.arn>"
-        <aws.elb.matched_rule_priority>
-        <event.start/2018-08-14T14:30:02.203151Z>
-        <~/literal/"-">?<~tmp.actions_executed/quoted>
-        "<~/literal/->?<aws.elb.redirect_url>"
-        "<~/literal/->?<aws.elb.error.reason>"(? <~tmp.http_v2_optional>)
-    # http 2018-07-02T22:23:00.186641Z app/my-loadbalancer/50dc6c490c0c9190 192.168.131.39:2817 - 0.000 0.001 0.000 200 200 34 366 "GET http://www.example.com:80/ HTTP/1.1" "curl/7.46.0" - - arn:aws:elasticloadbalancing:us-east-2:123456789012:targetgroup/my-targets/73e2d6bc24d8a067 "Root=1-58337262-36d228ad5d99923122bbe354" "-" "-" 0 2018-07-02T22:22:48.364000Z "forward" "-" "-" "123" "1234" "clasif" "reason"
-    - event.original: >-
-        $ELBV2TYPE
-        $NO_BE_ELBHTTPLOG
-        <aws.elb.target_group.arn>
-        "<aws.elb.trace_id>"
-        "<~/literal/->?<destination.domain>"
-        "<~/literal/->?<aws.elb.chosen_cert.arn>"
-        <aws.elb.matched_rule_priority>
-        <event.start/2018-08-14T14:30:02.203151Z>
-        <~/literal/"-">?<~tmp.actions_executed/quoted>
-        "<~/literal/->?<aws.elb.redirect_url>"
-        "<~/literal/->?<aws.elb.error.reason>"(? <~tmp.http_v2_optional>)
-
-    # TCP from Network Load Balancers (v2 Load Balancers)
-    # tls 1.0 2018-12-20T02:59:40 net/my-network-loadbalancer/c6e77e28c25b2234 g3d3b5e7bb4864cd 89.160.20.112:51341 172.100.100.185:443 5 2 98 246 - arn:aws:acm:us-east-2:671290407336:certificate/2a108f19-aded-46b0-8493-c63eb1ef4a99 - ECDHE-RSA-AES128-SHA tlsv12 - my-network-loadbalancer-c6e77e28c25b2234.elb.us-east-2.amazonaws.com
-    - event.original: >-
-        $ELBV2TYPE <?~version/float> $ELBTIMESTAMP
-        $ELBNAME
-        <aws.elb.listener>
-        $ELBSOURCE
-        $ELBBACKEND
-        <aws.elb.connection_time.ms>
-        <aws.elb.tls_handshake_time.ms>
-        <source.bytes>
-        <destination.bytes>
-        <~/literal/->?<aws.elb.incoming_tls_alert>
-        <~/literal/->?<aws.elb.chosen_cert.arn>
-        <~/literal/->?<aws.elb.chosen_cert.serial>
-        $ELBSSL
-        <~/literal/->?<~ssl_named_group>
-        <~/literal/->?<destination.domain>
+check: +string_equal/~json.aws.source/alb OR +string_equal/~json.aws.source/elb OR +string_equal/~json.aws.source/nlb
+  #TODO: Once the events arrive tagged, uncomment these lines below and remove the above line
+  # - event.module: aws
+  # - event.dataset: aws-elb
 
 normalize:
+  - logpar:
+      - ~json.aws.request: <http.request.method> <url.original> HTTP/<http.version>
+      - ~json.aws.ssl_protocol: <tls.version>v<tls.version_protocol>
+
   - map:
-      - event.kind: event
-      - event.dataset: aws.elb
+      - wazuh.decoders: +array_append/aws-elb
       - event.module: aws
+      - event.dataset: aws-elb
+      - event.kind: event
+      - event.type: +array_append/connection
+
+      - event.end: $~json.aws.time
+      - event.start: $~json.aws.request_creation_time
+
       - cloud.provider: aws
       - service.type: aws
-      - trace.id: $aws.elb.trace_id
-      - aws.elb.action_executed: +split/$~tmp.actions_executed/,
-      - aws.elb.target_port: "+split/$~tmp.target_port/ "
-      - aws.elb.target_status_code: "+split/$~tmp.target_status_code/ "
-      - event.end: $@timestamp
-      - tls.cipher: $aws.elb.ssl_cipher
-      - url: $~url_original
-      - aws.elb.ssl_named_group: $~ssl_named_group
-      # TODO: process ssl_protocol once parse is avaliable on normalize
-      - wazuh.decoders: +array_append/aws-elb
+      - trace.id: $~json.aws.trace_id
+      - tls.cipher: $~json.aws.ssl_cipher
 
-  - check:
-      - http: +exists
+      - client.port: $~json.aws.client_port
+      - client.address: $~json.aws.client_ip
+
+      - event.action: $~json.aws.action_executed
+      - event.reason: $~json.aws.classification_reason
+      # can event.duration be calculated as a sum of request_processing_time, target_processing_time,
+      # response_processing_time ?
+
+      - http.response.status_code: $~json.aws.target_status_code
+      - destination.bytes: $~json.aws.received_bytes
+      - source.bytes: $~json.aws.sent_bytes
+
+      - destination.port: $~json.aws.target_port
+      - destination.address: $~json.aws.target_ip
+
+      - related.ip: $~json.aws.target_ip_list
+      - url.domain: $~json.aws.domain_name
+      - process.exit_code: $~json.aws.elb_status_code
+      - process.name: $~json.aws.elb
+
+      - error.message: $~json.aws.error_reason
+      - user_agent.original: $~json.aws.user_agent
+      - log.file.path: $~json.aws.log_info.log_file
+
+      # Temporary and custom fields
+      - ~json.temp_value_status_code: +parse_long/$~json.aws.target_status_code
+      - ~aws_elb.related_ports: $~json.aws.target_port_list
+      - ~aws_elb.target_group_arn: $~json.aws.target_group_arn
+      - ~aws_elb.classification: $~json.aws.classification
+      - ~aws_elb.redirect_url: $~json.aws.redirect_url
+      - ~aws_elb.bucket: $~json.aws.log_info.s3bucket
+
+    logpar:
+      - url.original: 'http://<source.ip>:<source.port>/'
+
+  - check: +string_equal/~json.aws.type/http
     map:
-      - aws.elb.protocol: http
       - event.category: +array_append/web
 
+  - check: +string_not_equal/~json.aws.type/http
+    map:
+      - event.category: +array_append/network
+
   - check:
-      - http.response.status_code: +int_less/400
+      - ~json.temp_value_status_code: +int_less/400
     map:
       - event.outcome: success
 
   - check:
-      - http.response.status_code: +int_greater_or_equal/400
+      - ~json.temp_value_status_code: +int_greater_or_equal/400
     map:
       - event.outcome: failure
 
-  - check:
-      - http: +not_exists
-    map:
-      - aws.elb.protocol: tcp
-      - event.category: +array_append/network
-
-  - logpar:
-    - ~tmp.http_v2_optional: >-
-        "<~/literal/->?<~tmp.target_port>"
-        "<~/literal/->?<~tmp.target_status_code>"
-        "<~/literal/->?<aws.elb.classification>"
-        "<~/literal/->?<aws.elb.classification_reason>"
-
-    - aws.elb.ssl_protocol: <tls.version>v<tls.version_protocol>
-
   - map:
-      - ~tmp: +delete
-      - ~url_original: +delete
-      - ~ssl_named_group: +delete
+      - ~json: +delete
+      - ~aws_elb: +delete
+      # ~aws_elb.related_ports: +delete
+      # ~aws_elb.classification: +delete
+      # ~aws_elb.redirect_url: +delete
+      # ~aws_elb.bucket: +delete
