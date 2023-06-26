@@ -11,7 +11,7 @@
 #ifndef RUN_CHECK_WRAPPERS_H
 #define RUN_CHECK_WRAPPERS_H
 
-#include "syscheckd/include/syscheck.h"
+#include "../../../../syscheckd/include/syscheck.h"
 
 void __wrap_fim_send_scan_info(fim_scan_event event);
 

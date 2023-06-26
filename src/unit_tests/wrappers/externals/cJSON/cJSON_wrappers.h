@@ -10,7 +10,7 @@
 #ifndef CJSON_WRAPPERS_H
 #define CJSON_WRAPPERS_H
 
-#include "external/cJSON/cJSON.h"
+#include <cJSON.h>
 #include <stdbool.h>
 
 #ifdef WIN32

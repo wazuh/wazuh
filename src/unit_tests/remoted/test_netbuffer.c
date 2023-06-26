@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "remoted/remoted.h"
+#include "../../remoted/remoted.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/linux/socket_wrappers.h"

@@ -15,7 +15,7 @@
 
 
 #include "os_err.h"
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 typedef struct test_struct {
     wdb_t *wdb;

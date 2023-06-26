@@ -7,9 +7,10 @@
 
 
 import json
-import os
 import sys
 import time
+import os
+import re
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 # Exit error codes
@@ -65,7 +66,7 @@ def main(args: list[str]):
             )
             debug_enabled = (len(args) > 4 and args[4] == 'debug')
         else:
-            msg = '# ERROR: Wrong arguments'
+            msg = '# Error: Wrong arguments'
             bad_arguments = True
 
         # Logging the call
@@ -73,7 +74,7 @@ def main(args: list[str]):
             f.write(msg + '\n')
 
         if bad_arguments:
-            debug("# ERROR: Exiting, bad arguments. Inputted: %s" % args)
+            debug("# Error: Exiting, bad arguments. Inputted: %s" % args)
             sys.exit(ERR_BAD_ARGUMENTS)
 
         # Core function
@@ -103,11 +104,12 @@ def process_args(args: list[str]) -> None:
     json_alert  = get_json_alert(alert_file_location)
     debug(f"# Opening alert file at '{alert_file_location}' with '{json_alert}'")
 
-    debug("# Generating message")
-    msg: any    = generate_msg(json_alert,apikey)
+    # Request VirusTotal info
+    debug("# Requesting VirusTotal information")
+    msg: any    = request_virustotal_info(json_alert, apikey)
 
     if not msg:
-        debug("# ERROR: Empty message")
+        debug("# Error: Empty message")
         raise Exception
 
     send_msg(msg, json_alert["agent"])
@@ -127,7 +129,7 @@ def debug(msg: str) -> None:
         with open(LOG_FILE, "a") as f:
             f.write(msg)
 
-def generate_msg(alert: any,apikey: str) -> dict[str, str]:
+def request_virustotal_info(alert: any,apikey: str) -> dict[str, str]:
     """
         Generate the JSON object with the message to be send
 
@@ -142,10 +144,16 @@ def generate_msg(alert: any,apikey: str) -> dict[str, str]:
             The JSON message to send
     """
     alert_output = {}
-    # If there is no a md5 checksum present in the alert. Exit.
+
+    # If there is no md5 checksum present in the alert. Exit.
     if not "md5_after" in alert["syscheck"]:
-        debug("# ERROR: Exiting, MD5 checksum not found in alert.")
-        sys.exit(ERR_BAD_MD5_SUM)
+        debug("# No md5 checksum present in the alert")
+        return None
+
+    # If the md5_after field is not a md5 hash checksum. Exit
+    if not (isinstance(alert["syscheck"]["md5_after"],str) is True and len(re.findall(r'\b([a-f\d]{32}|[A-F\d]{32})\b', alert["syscheck"]["md5_after"])) == 1) :
+        debug("# md5_after field in the alert is not a md5 hash checksum")
+        return None
 
     # Request info using VirusTotal API
     try:
@@ -246,7 +254,7 @@ def send_msg(msg: any, agent:any = None) -> None:
         sock.send(string.encode())
         sock.close()
     except FileNotFoundError:
-        debug(" # Error: Unable to open socket connection at %s" % SOCKET_ADDR)
+        debug("# Error: Unable to open socket connection at %s" % SOCKET_ADDR)
         sys.exit(ERR_SOCKET_OPERATION)
 
 def get_json_alert(file_location: str) -> any:

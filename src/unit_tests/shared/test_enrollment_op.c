@@ -6,8 +6,8 @@
 #include <string.h>
 
 #include "shared.h"
-#include "os_auth/check_cert.h"
-#include "os_auth/auth.h"
+#include "../os_auth/check_cert.h"
+#include "../os_auth/auth.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"

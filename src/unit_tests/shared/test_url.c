@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "headers/shared.h"
+#include "../headers/shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
@@ -739,4 +739,3 @@ int main(void)
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
 }
-

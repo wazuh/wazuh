@@ -14,7 +14,7 @@
 #include <time.h>
 #include <pthread.h>
 #include "shared.h"
-#include "os_crypto/sha1/sha1_op.h"
+#include "../os_crypto/sha1/sha1_op.h"
 
 /* Defines to switch according to different OS_AddSocket or, failing that, the case of using UDP protocol */
 #define OS_ADDSOCKET_ERROR          0   ///< OSHash_Set_ex returns 0 on error (* see OS_AddSocket and OSHash_Set_ex)

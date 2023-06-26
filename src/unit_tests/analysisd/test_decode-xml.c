@@ -16,8 +16,8 @@
 #include <cmocka.h>
 
 #include "../../headers/shared.h"
-#include "os_regex/os_regex.h"
-#include "os_xml/os_xml.h"
+#include "../os_regex/os_regex.h"
+#include "../os_xml/os_xml.h"
 #include "../../analysisd/analysisd.h"
 #include "../../analysisd/eventinfo.h"
 #include "../../analysisd/decoders/decoder.h"

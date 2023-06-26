@@ -11,7 +11,7 @@
 #ifndef SHA1_OP_WRAPPERS_H
 #define SHA1_OP_WRAPPERS_H
 
-#include "headers/shared.h"
+#include "../../../../headers/shared.h"
 #include <string.h>
 #include <sys/types.h>
 

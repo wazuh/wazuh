@@ -45,7 +45,7 @@ info:
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v4.4.2/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v4.5.0/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -6984,14 +6984,6 @@ components:
       schema:
         type: string
         format: xml_filename_path
-    default_ruleset_path:
-      in: query
-      name: default_ruleset
-      description: "Search for the given filename in the Wazuh default ruleset if true. Otherwise, search for it in the custom user ruleset"
-      required: false
-      schema:
-        type: boolean
-        default: true
 
 
 tags:
@@ -7063,10 +7055,10 @@ paths:
                     $ref: '#/components/schemas/BasicInfo'
               example:
                 title: "Wazuh API"
-                api_version: "v4.3.0"
+                api_version: "v4.5.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v4.4.2/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v4.5.0/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -11647,7 +11639,7 @@ paths:
                       name: "wazuh"
                       node: "master-node"
                     full_log: "ERROR"
-                    decoder:
+                    decoder: None
                     location: "/var/log/syslog"
                   alert: false
                   codemsg: 1
@@ -13994,7 +13986,6 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
-        - $ref: '#/components/parameters/default_ruleset_path'
       responses:
         '200':
           description: "Rule content"
@@ -14771,7 +14762,6 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/xml_filename_path'
         - $ref: '#/components/parameters/raw'
-        - $ref: '#/components/parameters/default_ruleset_path'
       responses:
         '200':
           description: "Decoder content"

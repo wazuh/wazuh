@@ -15,10 +15,10 @@
 #define ARGV0 "wazuh-remoted"
 #endif
 
-#include "config/config.h"
-#include "config/remote-config.h"
-#include "config/global-config.h"
-#include "os_crypto/md5/md5_op.h"
+#include "../config/config.h"
+#include "../config/remote-config.h"
+#include "../config/global-config.h"
+#include "../os_crypto/md5/md5_op.h"
 #include "sec.h"
 
 #define FD_LIST_INIT_VALUE 1024

@@ -7,6 +7,7 @@ import sys
 from datetime import datetime
 from hashlib import md5
 from unittest.mock import call, patch, MagicMock
+from typing import Optional
 
 import pytest
 import pytz
@@ -26,7 +27,7 @@ PRESENT_DATE = "2022-06-15T12:00:00.000000Z"
 FUTURE_DATE = "2022-12-31T12:00:00.000000Z"
 
 
-def create_mocked_blob(blob_name: str, last_modified: datetime = None):
+def create_mocked_blob(blob_name: str, last_modified: datetime = None, content_length: Optional[int] = None):
     """Return a fake blob with name and creation time.
 
     Parameters:
@@ -35,6 +36,8 @@ def create_mocked_blob(blob_name: str, last_modified: datetime = None):
         The name of the fake blob.
     last_modified : str
         The last modified time property of the fake blob. datetime.now() will be used if no creation_time is provided.
+    content_length: Optional[int]
+        The content_length property of the fake blob. This property is only set if the length is not None
 
     Returns
     -------
@@ -44,6 +47,11 @@ def create_mocked_blob(blob_name: str, last_modified: datetime = None):
     blob = MagicMock()
     blob.name = blob_name
     blob.properties.last_modified = (last_modified if last_modified else datetime.now()).replace(tzinfo=pytz.UTC)
+
+    # Add Blob length property
+    if content_length:
+        blob.properties.content_length = content_length
+
     return blob
 
 
@@ -707,6 +715,35 @@ def test_get_blobs(mock_send, mock_update, blob_date, min_date, max_date, desire
         mock_send.assert_has_calls(calls)
         assert mock_update.call_count == len(blob_list) if not extension else len(
             [blob.name for blob in blob_list if extension in blob.name])
+
+
+def test_that_empty_blobs_are_omitted():
+    """Test get_blobs checks the size of the blob and omits it if is is empty"""
+
+    # List of empty blobs to use
+    list_of_empty_blobs = [
+        create_mocked_blob("Example1", content_length=0),
+        create_mocked_blob("Example2", content_length=0)
+    ]
+
+    iterator_with_marker = MagicMock(next_marker=None)
+    iterator_with_marker.__iter__.return_value = list_of_empty_blobs
+
+    # Mock for the blob service
+    blob_service = MagicMock()
+    blob_service.list_blobs.return_value = iterator_with_marker
+
+    container_name = "container"
+    marker = "marker"
+    md5_hash = "hash"
+    azure.get_blobs(container_name=container_name, blob_service=blob_service, md5_hash=md5_hash, next_marker=marker,
+                    min_datetime=parse(PRESENT_DATE), max_datetime=parse(FUTURE_DATE),
+                    desired_datetime=parse(FUTURE_DATE))
+
+    for blob in list_of_empty_blobs:
+        assert(blob.properties.content_length.call_count, 1)
+
+    assert(blob_service.get_blob_to_text.call_count, 0)
 
 
 @patch('azure-logs.update_row_object')

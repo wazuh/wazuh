@@ -11,7 +11,6 @@ from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION, AGENT_NAME_
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if WAZUH_VERSION == '' else '.'.join(WAZUH_VERSION.split('.')[:2]).lstrip('v')
 
-
 class WazuhException(Exception):
     """
     Wazuh Exception object.
@@ -584,28 +583,28 @@ class WazuhException(Exception):
         self._cmd_error = cmd_error
         self._dapi_errors = {} if dapi_errors is None else deepcopy(dapi_errors)
 
-        error_details = self.ERRORS[self._code] if not cmd_error else extra_message
-        if isinstance(error_details, dict):
-            code_message, code_remediation = error_details.get('message', ''), error_details.get('remediation', None)
-        else:
-            code_message, code_remediation = error_details, None
+        if not cmd_error and self._code in self.ERRORS:
+            error_details = self.ERRORS[self._code]
+            if isinstance(error_details, dict):
+                code_message, code_remediation = error_details.get('message', ''), error_details.get('remediation', None)
+            else:
+                code_message, code_remediation = error_details, None
 
-        if not cmd_error:
             if extra_message:
                 if isinstance(extra_message, dict):
                     self._message = code_message.format(**extra_message)
                 else:
-                    self._message = "{0}: {1}".format(code_message, extra_message)
+                    self._message = f"{code_message}: {extra_message}"
             else:
                 self._message = code_message
+            self._remediation = code_remediation if extra_remediation is None \
+                else f"{code_remediation}: {extra_remediation}"
         else:
             self._message = extra_message
-
-        self._remediation = code_remediation if extra_remediation is None \
-            else f"{code_remediation}: {extra_remediation}"
+            self._remediation = None
 
     def __str__(self):
-        return "Error {0} - {1}".format(self._code, self._message)
+        return f"Error {self._code} - {self._message}"
 
     def __repr__(self):
         return repr(self.to_dict())

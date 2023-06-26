@@ -13,7 +13,7 @@
 policy:
   id: "cis_ubuntu18-04"
   file: "cis_ubuntu18-04.yml"
-  name: "CIS benchmark for Ubuntu Linux 18.04 LTS"
+  name: "CIS Ubuntu Linux 18.04 LTS Benchmark v2.0.1"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 18.04 LTS."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
