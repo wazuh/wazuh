@@ -13,8 +13,8 @@ from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH
 from wazuh_testing.logger import logger
-from wazuh_testing.tools import mocking, queue_monitor, socket_controller
-from wazuh_testing.utils import configuration, database, file, services
+from wazuh_testing.tools import queue_monitor, socket_controller
+from wazuh_testing.utils import configuration, database, file, mocking, services
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - - -
