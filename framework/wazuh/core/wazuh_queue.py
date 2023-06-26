@@ -69,17 +69,13 @@ class BaseQueue:
         ------
         WazuhInternalError(1011)
             If there was an error communicating with queue.
-        WazuhInternalError(1012)
-            If the size of the message is bigger than the buffer socket for Wazuh.
         """
         try:
             sent = self.socket.send(msg)
 
             if sent == 0:
                 raise WazuhInternalError(1011, self.path)
-        except socket.error as e:
-            if e.errno == 90:
-                raise WazuhInternalError(1012, "The size of the event is longer than the buffer socket for Wazuh.")
+        except socket.error:
             raise WazuhInternalError(1011, self.path)
 
     def close(self):
@@ -192,6 +188,15 @@ class WazuhAnalysisdQueue(BaseQueue):
     WazuhAnalysisdQueue Object.
     """
 
+    MAX_MSG_SIZE = 65535
+
+    def _connect(self):
+        try:
+            self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            self.socket.connect(self.path)
+        except Exception:
+            raise WazuhInternalError(1010, self.path)
+
     def send_msg(self, msg_header: str, msg: str):
         """Send message to analysisd.
 
@@ -204,10 +209,19 @@ class WazuhAnalysisdQueue(BaseQueue):
 
         Raises
         ------
+        WazuhInternalError(1012)
+            If the size of the event is bigger than the message size that analysisd can handle.
         WazuhError(1014)
             If there was an error communicating with socket.
         """
         socket_msg = f"{msg_header}{msg}".encode()
+
+        if len(socket_msg) > self.MAX_MSG_SIZE:
+            raise WazuhError(
+                1012,
+                "The size of the event is bigger than the message size that analysisd can handle"
+                f"({self.MAX_MSG_SIZE}b)."
+            )
 
         try:
             # Send message

@@ -90,7 +90,7 @@ def test_BaseQueue_protected_send(mock_conn, send_response, error):
 
 @pytest.mark.parametrize(
         "errno,match",
-        [(1, ".* 1011 .*"), (90, ".* 1012 .*")]
+        [(1, ".* 1011 .*")]
 )
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.BaseQueue.MAX_MSG_SIZE', new=0)
@@ -199,14 +199,19 @@ def test_WazuhAnalysisdQueue_send_msg(mock_send, mock_conn):
     mock_send.assert_called_once_with(f'{msg_header}{msg}'.encode())
 
 
+@pytest.mark.parametrize(
+        "max_msg_size,expected_error_code",
+        ([20, 1014], [1, 1012])
+)
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhAnalysisdQueue._send', side_effect=Exception)
-def test_WazuhAnalysisdQueue_send_msg_ko(mock_send, mock_conn):
+def test_WazuhAnalysisdQueue_send_msg_ko(mock_send, mock_conn, max_msg_size, expected_error_code):
     """Test WazuhAnalysisdQueue.send_msg function exceptions."""
 
     queue = WazuhAnalysisdQueue('test_path')
+    queue.MAX_MSG_SIZE = max_msg_size
 
-    with pytest.raises(WazuhException, match=f'.* {1014} .*'):
+    with pytest.raises(WazuhException, match=f'.* {expected_error_code} .*'):
         queue.send_msg(msg_header='1:Head:', msg="{'foo': 1}")
 
     mock_conn.assert_called_once_with('test_path')
