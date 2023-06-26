@@ -2028,7 +2028,7 @@ int main(void) {
 #ifdef __linux__
             cmocka_unit_test_teardown(test_get_unix_version_Ubuntu1904, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_centos, delete_os_info),
-  	        cmocka_unit_test_teardown(test_get_unix_version_archlinux_distro_based, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_archlinux_distro_based, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_archlinux_no_version_id, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_archlinux, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed_no_version_id, delete_os_info),

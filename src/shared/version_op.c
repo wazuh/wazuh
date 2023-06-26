@@ -579,7 +579,7 @@ os_info *get_unix_version()
                 }
             }
             if (info->os_version == NULL) {
-            os_strdup("", info->os_version);
+                os_strdup("", info->os_version);
             }
 
             regfree(&regexCompiled);
@@ -854,7 +854,7 @@ os_info *get_unix_version()
     }
 
     if (info->os_version) { // Parsing version
-	    if (strcmp(info->os_version, "") != 0) {
+        if (strcmp(info->os_version, "") != 0) {
             // os_major.os_minor (os_codename)
             os_strdup(info->os_version, version);
             if (codename = strstr(version, " ("), codename){
@@ -895,7 +895,7 @@ os_info *get_unix_version()
                     info->os_version = tmp_os_version;
                 }
             }
-    	}
+        }
     } else {
         // Empty version
         os_strdup("0.0", info->os_version);
