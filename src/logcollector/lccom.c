@@ -13,6 +13,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 #include "state.h"
+#include <langinfo.h>
 
 #define LEN_LOCATION   (10)
 #define LEN_BOOL_STR   (5)
@@ -28,6 +29,7 @@ void addClosingTags(char *strJson);
 void addHeaderInterval(char *strJson, char *bufferTmp, char *headerData, size_t lenHeaderData, char *header, size_t lenHeader);
 void extractHeadersFromJson(char *buffJson, char *headerGlobal, char *headerInterval, char *headerData, size_t *LenHeaderInterval, size_t *LenHeaderData, size_t *LenHeaderGlobal);
 void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *headerInterval, char *headerData, size_t LenHeaderInterval, size_t LenHeaderData, size_t LenHeaderGlobal, size_t counter, bool getNextPage);
+bool isJsonUpdated(void);
 uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage);
 
 size_t lccom_dispatch(char * command, char ** output){
@@ -265,6 +267,32 @@ void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *
     }
 }
 
+bool isJsonUpdated(void) {
+    static time_t mtime_prev = 0;
+    time_t mtime_current = 0;
+    struct stat outstat;
+    struct tm *tm_stat;
+    char date_string[256];
+    bool isJsonUpdated = false;
+
+    /*should be reset index to the first page when some files are added or removed*/
+    if (stat(LOGCOLLECTOR_STATE, &outstat) == 0) {
+        tm_stat = localtime(&outstat.st_mtime);
+        /* Get localized date string. */
+        strftime(date_string, sizeof(date_string), nl_langinfo(D_T_FMT), tm_stat);
+        mtime_current = mktime(tm_stat);
+        mdebug2(" %s %s\n", date_string, LOGCOLLECTOR_STATE);
+    }
+
+    if (difftime(mtime_current, mtime_prev) != 0 && mtime_prev != 0) {
+        mdebug2("cJSON has updated");
+        isJsonUpdated = true;
+    }
+    mtime_prev = mtime_current;
+
+    return isJsonUpdated;
+}
+
 uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
     char buffer[OS_MAXSTR] = {0};
     char headerGlobal[MAX_LEN_HEADER] = {0};
@@ -272,7 +300,6 @@ uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
     char headerData[MAX_LEN_HEADER] = {0};
     bool isReadyIndex = 0;
     uint16_t i = 0;
-    static uint16_t i_prev = 0;
     static uint16_t apiLatestIndex = 0;
     size_t ptrs[OS_MAXSTR] = {0};
     size_t counter = 0;
@@ -281,14 +308,7 @@ uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
     size_t LenHeaderGlobal = 0;
 
     isReadyIndex = getObjectIndexFromJsonStats (*output, ptrs, &i);
-
-    /*reset index to the first page when some files are added or removed*/
-    if (i_prev != i && i_prev != 0) {
-        getNextPage = false;
-    }
     apiLatestIndex = (getNextPage == false) ? 0 : apiLatestIndex;
-    i_prev = i;
-
     extractHeadersFromJson(*output, headerGlobal, headerInterval, headerData, &LenHeaderInterval, &LenHeaderData, &LenHeaderGlobal);
 
     if (isReadyIndex) {
@@ -313,9 +333,17 @@ uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
     return  strlen(buffer);
 }
 
+void replaceBoolToStr(char *buffer, char *match, bool value) {
+    char *ptr = NULL;
+    if (buffer != NULL && match != NULL) {
+        if ((ptr = strstr(buffer, match)) != NULL) {
+            memcpy(ptr + strlen(match), value == true ? "true " : "false", LEN_BOOL_STR);
+        }
+    }
+}
+
 size_t lccom_getstate(char ** output, bool getNextPage) {
     size_t retval = 0;
-    char *ptr = NULL;
     cJSON * state_json = NULL;
     cJSON * w_packet = cJSON_CreateObject();
     if (state_json = w_logcollector_state_get(), state_json == NULL) {
@@ -326,17 +354,17 @@ size_t lccom_getstate(char ** output, bool getNextPage) {
     } else {
         cJSON_AddNumberToObject(w_packet, "error", 0);
         cJSON_AddFalseToObject(w_packet, "remaining");
+        cJSON_AddFalseToObject(w_packet, "json_updated");
         cJSON_AddItemToObject(w_packet, "data", state_json);
     }
     *output = cJSON_PrintUnformatted(w_packet);
     cJSON_Delete(w_packet);
 
     if (strlen(*output) > OS_MAXSTR) {
-        //getNextPage = true; /*only for test*/
+        /*getNextPage = true; only for test*/
         retval = getJsonStr64kBlockFromLatestIndex(output, getNextPage);
-        if ((ptr = strstr(*output, "\"remaining\":")) != NULL) {
-            memcpy(ptr + strlen("\"remaining\":"), (strlen(*output) >= OS_MAXSTR - (2*SIZE_1KB)) ? "true " : "false", LEN_BOOL_STR);
-        }
+        replaceBoolToStr(*output, "\"remaining\":", strlen(*output) >= OS_MAXSTR - (2*SIZE_1KB));
+        replaceBoolToStr(*output, "\"json_updated\":", isJsonUpdated());
     } else {
         retval = strlen(*output);
     }
