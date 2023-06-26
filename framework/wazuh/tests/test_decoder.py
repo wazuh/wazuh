@@ -28,7 +28,9 @@ with patch('wazuh.core.common.getgrnam'):
 test_data_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 decoder_ossec_conf = {
     'ruleset': {
-        'decoder_dir': ['tests/data/decoders'],
+        'decoder_dir': ['tests/data/decoders', 
+                        'tests/data/etc/decoders',
+                        'tests/data/etc/decoders/subpath'],
         'decoder_exclude': 'test2_decoders.xml'
     }
 }
@@ -104,9 +106,9 @@ def test_get_decoders_files(conf, exception):
 
 
 @pytest.mark.parametrize('status, relative_dirname, filename, expected_files', [
-    (None, None, None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
-    ('all', None, None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
-    ('enabled', None, None, {'test1_decoders.xml', 'wrong_decoders.xml'}),
+    (None, None, None, {'test1_decoders.xml', 'test2_decoders.xml', 'test3_decoders.xml', 'wrong_decoders.xml'}),
+    ('all', None, None, {'test1_decoders.xml', 'test2_decoders.xml', 'test3_decoders.xml', 'wrong_decoders.xml'}),
+    ('enabled', None, None, {'test1_decoders.xml', 'test3_decoders.xml', 'wrong_decoders.xml'}),
     ('disabled', None, None, {'test2_decoders.xml'}),
     ('all', 'tests/data/decoders', None, {'test1_decoders.xml', 'test2_decoders.xml', 'wrong_decoders.xml'}),
     ('all', 'wrong_path', None, set()),
@@ -131,9 +133,9 @@ def test_get_decoders_files_filters(status, relative_dirname, filename, expected
 
 @pytest.mark.parametrize('filename, default_ruleset', [
     ('test1_decoders.xml', True),
-    ('test2_decoders.xml', True),
     ('test3_decoders.xml', False),
-    ('subpath/test4_decoders.xml', False),
+    ('subpath/test2_decoders.xml', False),
+    ('subpath/test3_decoders.xml', False),
 ])
 @patch('wazuh.core.common.DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "decoders"))
 @patch('wazuh.core.common.USER_DECODERS_PATH', new=os.path.join(test_data_path, "tests", "data", "etc", "decoders"))
@@ -172,6 +174,11 @@ def test_get_decoder_file_exceptions():
     assert not result.affected_items
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1503
 
+    # File exists in default ruleset but not in custom ruleset
+    result = decoder.get_decoder_file(filename='test1_decoders.xml', raw=False, default_ruleset=False)
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1503
+    
     # Invalid XML
     result = decoder.get_decoder_file(filename='wrong_decoders.xml')
     assert not result.affected_items
@@ -184,10 +191,9 @@ def test_get_decoder_file_exceptions():
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1502
     
     # Path Traversal vulnerability - relative path
-    result = decoder.get_decoder_file(filename='../path_traversal.file', raw=False, default_ruleset=False)
+    result = decoder.get_decoder_file(filename='../../../../../path_traversal.xml', raw=False, default_ruleset=False)
     assert not result.affected_items
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1504
-
 
     # Path Traversal vulnerability - absolute path
     result = decoder.get_decoder_file(filename='/usr/bin/bash', raw=False, default_ruleset=False)

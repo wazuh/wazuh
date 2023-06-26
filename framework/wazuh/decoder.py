@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from os import remove
-from os.path import join, exists, abspath, commonpath, basename
+from os.path import join, exists, commonpath, basename, relpath, normpath
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -197,27 +197,43 @@ def get_decoder_file(filename: str, raw: bool = False, default_ruleset: bool = T
         Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
 
-    @expose_resources(actions=['decoders:read'], resources=['decoder:file:{filename}'])
-    def validate_rbac_file(filename: list = None):
-        return
-
-    # validate rbac read permission for the decoder
-    validate_rbac_file(filename=[basename(filename)])
-
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
                                       all_msg='Selected decoder was returned')
+
     decoders_path = common.DECODERS_PATH if default_ruleset else common.USER_DECODERS_PATH
-    full_path = abspath(join(decoders_path, filename))
-    if commonpath([decoders_path, full_path]) != decoders_path:
+    full_path = normpath(join(decoders_path, filename))
+    if commonpath([common.WAZUH_PATH, full_path]) != common.WAZUH_PATH:
+        # validate path traversal, the file must be inside WAZUH_PATH
         result.add_failed_item(id_=filename, 
                                error=WazuhError(1504, extra_message=f"{filename}"))
         return result
-
-    if not exists(full_path):
+    
+    base_filename = basename(filename)
+    # if the filename doesn't have a relative path, the search is only by name
+    # relative_dirname parameter is set to None.
+    rel_dir = relpath(full_path, common.WAZUH_PATH).replace(f"/{base_filename}", '')
+    decoders = get_decoders_files(filename=[base_filename], 
+                                  relative_dirname=None if base_filename == filename \
+                                                        else rel_dir).affected_items
+    if len(decoders) == 0:
         result.add_failed_item(id_=filename, 
                                error=WazuhError(1503, extra_message=f"{filename}"))
         return result
-
+    elif len(decoders) > 1:
+        # if many files match the filename criteria, 
+        # filter decoders that starts with rel_dir of the file
+        # and from the result, select the decoder with the shorter
+        # relative path length
+        decoders = list(filter(lambda x: x['relative_dirname'].startswith(rel_dir), decoders))
+        decoder = min(decoders, key=lambda x: len(x['relative_dirname']))
+        full_path = join(common.WAZUH_PATH, decoder['relative_dirname'], base_filename)
+    elif not decoders[0]['relative_dirname'].startswith(rel_dir):
+        # Found only one decoder but it is not inside
+        # the default_ruleset path
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1503, extra_message=f"{filename}"))
+        return result
+        
     try:
         with open(full_path) as f:
             file_content = f.read()

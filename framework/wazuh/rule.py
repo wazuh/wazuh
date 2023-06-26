@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from os import remove
-from os.path import exists, join, abspath, commonpath, basename
+from os.path import exists, join, abspath, commonpath, basename, relpath, normpath
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -313,37 +313,53 @@ def get_rule_file(filename: str = None, raw: bool = False, default_ruleset: bool
     Parameters
     ----------
     filename : str, optional
-        Name of the rule file. Default `None`
+        Name of the rule file. Default `None`.
     raw : bool, optional
-        Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format)
+        Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format).
+    default_ruleset : bool
+        Whether the file is in the default or custom ruleset directory
 
     Returns
     -------
     str or AffectedItemsWazuhResult
         Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
-
-    @expose_resources(actions=['rules:read'], resources=['rule:file:{filename}'])
-    def validate_rbac_file(filename: list = None):
-        return
-
-    # validate rbac read permission for the rule
-    validate_rbac_file(filename=[basename(filename)])
-
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',
                                       all_msg='Selected rule was returned')
+
     rules_path = common.RULES_PATH if default_ruleset else common.USER_RULES_PATH
-    full_path = abspath(join(rules_path, filename))
-    if commonpath([rules_path, full_path]) != rules_path:
+    full_path = normpath(join(rules_path, filename))
+    if commonpath([common.WAZUH_PATH, full_path]) != common.WAZUH_PATH:
+        # validate path traversal, the file must be inside WAZUH_PATH
         result.add_failed_item(id_=filename,
                                error=WazuhError(1414, extra_message=f"{filename}"))
         return result
-
-    if not exists(full_path):
-        result.add_failed_item(id_=filename,
+    
+    base_filename = basename(filename)
+    # if the filename doesn't have a relative path, the search is only by name
+    # relative_dirname parameter is set to None.
+    rel_dir = relpath(full_path, common.WAZUH_PATH).replace(f"/{base_filename}", '')
+    rules = get_rules_files(filename=[base_filename], 
+                                  relative_dirname=None if base_filename == filename \
+                                                        else rel_dir).affected_items
+    if len(rules) == 0:
+        result.add_failed_item(id_=filename, 
                                error=WazuhError(1415, extra_message=f"{filename}"))
         return result
-
+    elif len(rules) > 1:
+        # if many files match the filename criteria, 
+        # filter decoders that starts with rel_dir of the file
+        # and from the result, select the decoder with the shorter
+        # relative path length
+        rules = list(filter(lambda x: x['relative_dirname'].startswith(rel_dir), rules))
+        rule = min(rules, key=lambda x: len(x['relative_dirname']))
+        full_path = join(common.WAZUH_PATH, rule['relative_dirname'], base_filename)
+    elif not rules[0]['relative_dirname'].startswith(rel_dir):
+        # Found only one rule file but it is not inside
+        # the default_ruleset path
+        result.add_failed_item(id_=filename, 
+                               error=WazuhError(1415, extra_message=f"{filename}"))
+        return result
     try:
         with open(full_path) as f:
             content = f.read()
