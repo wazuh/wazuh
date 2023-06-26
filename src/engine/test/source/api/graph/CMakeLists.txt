@@ -13,3 +13,8 @@ target_include_directories(graph_handler_test
 
 target_link_libraries(graph_handler_test gtest_main gmock_main api test_mocks)
 gtest_discover_tests(graph_handler_test)
+
+set(GRAPH_ASSETS_PATH_TEST "${CMAKE_CURRENT_SOURCE_DIR}/assets/")
+target_compile_definitions(graph_handler_test PRIVATE
+  GRAPH_ASSETS_PATH_TEST="${GRAPH_ASSETS_PATH_TEST}"
+)

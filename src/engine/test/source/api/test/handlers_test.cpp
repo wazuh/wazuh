@@ -17,7 +17,6 @@ using namespace api::sessionManager;
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
 constexpr auto SIZE_QUEUE {100};
-auto EXECUTION_NUMBER {0};
 constexpr auto ASSET_PATH {"test/source/api/test/assets/"};
 constexpr auto ROUTER_TABLE {"internal/router_table/0"};
 constexpr auto JSON_DECODER {"decoder/core-hostinfo/0"};
@@ -28,6 +27,15 @@ constexpr auto JSON_POLICY {"policy/wazuh/0"};
 constexpr auto JSON_INTEGRATION {"integration/wazuh-core/0"};
 constexpr auto JSON_SCHEMA_ASSET {"schema/wazuh-asset/0"};
 constexpr auto JSON_SCHEMA_POLICY {"schema/wazuh-policy/0"};
+const auto PATH_ROUTER_TABLE = ASSETS_PATH_TEST + std::string(ROUTER_TABLE);
+const auto PATH_POLICY = ASSETS_PATH_TEST + std::string(JSON_POLICY);
+const auto PATH_DECODER = ASSETS_PATH_TEST + std::string(JSON_DECODER);
+const auto PATH_FILTER = ASSETS_PATH_TEST + std::string(JSON_FILTER);
+const auto PATH_INTEGRATION = ASSETS_PATH_TEST + std::string(JSON_INTEGRATION);
+const auto PATH_WAZUH_ASSET = ASSETS_PATH_TEST + std::string(JSON_SCHEMA_ASSET);
+const auto PATH_WAZUH_POLICY = ASSETS_PATH_TEST + std::string(JSON_SCHEMA_POLICY);
+const auto PATH_DUMMY_FILTER = ASSETS_PATH_TEST + std::string(JSON_DUMMY_FILTER);
+const auto PATH_DUMMY_POLICY = ASSETS_PATH_TEST + std::string(JSON_DUMMY_POLICY);
 
 std::string readJsonFile(const std::string& filePath)
 {
@@ -84,7 +92,7 @@ std::shared_ptr<builder::Builder> fakeBuilder(std::shared_ptr<MockStore> store)
     return builder;
 };
 
-class TestSessionDeleteCommand : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
+class TestSessionDeleteCommand : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
 protected:
     api::Handler m_cmdAPI;
@@ -92,7 +100,6 @@ protected:
     std::shared_ptr<::router::Router> m_spRouter;
     std::shared_ptr<MockStore> m_spMockStore;
     std::shared_ptr<builder::Builder> m_spMockeBuilder;
-    std::tuple<std::string, std::string, std::string, std::string, std::string, std::string> m_paths;
 
     void SetUp() override
     {
@@ -100,42 +107,17 @@ protected:
         m_spMockStore = std::make_shared<MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
-        std::filesystem::path currentPath = std::filesystem::current_path();
-
-        while (!currentPath.empty())
-        {
-            if (currentPath.filename() == "engine")
-            {
-                break;
-            }
-
-            currentPath = currentPath.parent_path();
-        }
-
-        auto absolutePath = currentPath / ASSET_PATH;
-        auto pathrouterTable = absolutePath / ROUTER_TABLE;
-        auto pathPolicy = absolutePath  / JSON_POLICY;
-        auto pathDecoder = absolutePath  / JSON_DECODER;
-        auto pathFilter = absolutePath  / JSON_FILTER;
-        auto pathIntegration = absolutePath  / JSON_INTEGRATION;
-        auto pathWazuhAsset = absolutePath  / JSON_SCHEMA_ASSET;
-        auto pathWazuhPolicy = absolutePath  / JSON_SCHEMA_POLICY;
-        auto pathDummyFilter = absolutePath  / JSON_DUMMY_FILTER;
-        auto pathDummyPolicy = absolutePath  / JSON_DUMMY_POLICY;
-
-        m_paths = std::make_tuple(pathFilter, pathIntegration, pathPolicy, pathDecoder, pathDummyFilter, pathDummyPolicy);
-
         EXPECT_CALL(*m_spMockStore, get(testing::_))
         .WillRepeatedly(testing::Invoke(
             [&](const base::Name& name)
             {
                 if (name == ROUTER_TABLE)
                 {
-                    return json::Json {readJsonFile(pathrouterTable).c_str()};
+                    return json::Json {readJsonFile(PATH_ROUTER_TABLE).c_str()};
                 }
                 else if (name == JSON_FILTER)
                 {
-                    return json::Json {readJsonFile(pathFilter).c_str()};
+                    return json::Json {readJsonFile(PATH_FILTER).c_str()};
                 }
                 else
                 {
@@ -163,11 +145,11 @@ protected:
             {
                 if (name == JSON_SCHEMA_ASSET)
                 {
-                    return json::Json {readJsonFile(pathWazuhAsset).c_str()};
+                    return json::Json {readJsonFile(PATH_WAZUH_ASSET).c_str()};
                 }
                 else if (name == JSON_SCHEMA_POLICY)
                 {
-                    return json::Json {readJsonFile(pathWazuhPolicy).c_str()};
+                    return json::Json {readJsonFile(PATH_WAZUH_POLICY).c_str()};
                 }
                 else
                 {
@@ -178,24 +160,16 @@ protected:
 
         m_spCatalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
     }
-
-    static void TearDownTestCase()
-    {
-        EXECUTION_NUMBER = 0;
-    }
 };
 
 TEST_P(TestSessionDeleteCommand, Functionality)
 {
-    auto [sessionDeleteParams, outputSessionDelete] = GetParam();
+    auto [executionNumber, sessionDeleteParams, outputSessionDelete] = GetParam();
 
     auto numTest {3};
 
-    int executionNumber = ++EXECUTION_NUMBER;
-
     const auto expectedData = json::Json {outputSessionDelete.c_str()};
-
-    if (executionNumber > (numTest - 1))
+    if (executionNumber == numTest)
     {
         EXPECT_CALL(*m_spMockStore, get(testing::_))
             .WillRepeatedly(testing::Invoke(
@@ -203,27 +177,27 @@ TEST_P(TestSessionDeleteCommand, Functionality)
                 {
                     if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(std::get<0>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
                     }
                     if (name == JSON_DUMMY_FILTER)
                     {
-                        return json::Json {readJsonFile(std::get<4>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DUMMY_FILTER).c_str()};
                     }
                     else if (name == JSON_INTEGRATION)
                     {
-                        return json::Json {readJsonFile(std::get<1>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_INTEGRATION).c_str()};
                     }
                     else if (name == JSON_POLICY)
                     {
-                        return json::Json {readJsonFile(std::get<2>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_POLICY).c_str()};
                     }
                     else if (name == JSON_DUMMY_POLICY)
                     {
-                        return json::Json {readJsonFile(std::get<5>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DUMMY_POLICY).c_str()};
                     }
                     else if (name == JSON_DECODER)
                     {
-                        return json::Json {readJsonFile(std::get<3>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DECODER).c_str()};
                     }
                     else
                     {
@@ -266,19 +240,19 @@ TEST_P(TestSessionDeleteCommand, Functionality)
 INSTANTIATE_TEST_SUITE_P(
     Functionality,
     TestSessionDeleteCommand,
-    ::testing::Values(std::make_tuple(R"({})", R"({
+    ::testing::Values(std::make_tuple(1, R"({})", R"({
                         "status": "ERROR",
                         "error": "Missing both /name and /delete_all fields, at least one field must be set"
                     })"),
-                      std::make_tuple(R"({"name":"dummy"})", R"({
+                      std::make_tuple(2, R"({"name":"dummy"})", R"({
                         "status": "ERROR",
                         "error": "Session 'dummy' could not be found"
                     })"),
-                    std::make_tuple(R"({"name":"dummy"})", R"({
+                    std::make_tuple(3, R"({"name":"dummy"})", R"({
                         "status": "OK"
                     })")));
 
-class TestSessionListCommand : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
+class TestSessionListCommand : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
 protected:
     api::Handler m_cmdAPI;
@@ -286,7 +260,6 @@ protected:
     std::shared_ptr<::router::Router> m_spRouter;
     std::shared_ptr<MockStore> m_spMockStore;
     std::shared_ptr<builder::Builder> m_spMockeBuilder;
-    std::tuple<std::string, std::string, std::string, std::string, std::string, std::string> m_paths;
 
     void SetUp() override
     {
@@ -294,42 +267,17 @@ protected:
         m_spMockStore = std::make_shared<MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
-        std::filesystem::path currentPath = std::filesystem::current_path();
-
-        while (!currentPath.empty())
-        {
-            if (currentPath.filename() == "engine")
-            {
-                break;
-            }
-
-            currentPath = currentPath.parent_path();
-        }
-
-        auto absolutePath = currentPath / ASSET_PATH;
-        auto pathrouterTable = absolutePath / ROUTER_TABLE;
-        auto pathPolicy = absolutePath  / JSON_POLICY;
-        auto pathDecoder = absolutePath  / JSON_DECODER;
-        auto pathFilter = absolutePath  / JSON_FILTER;
-        auto pathIntegration = absolutePath  / JSON_INTEGRATION;
-        auto pathWazuhAsset = absolutePath  / JSON_SCHEMA_ASSET;
-        auto pathWazuhPolicy = absolutePath  / JSON_SCHEMA_POLICY;
-        auto pathDummyFilter = absolutePath  / JSON_DUMMY_FILTER;
-        auto pathDummyPolicy = absolutePath  / JSON_DUMMY_POLICY;
-
-        m_paths = std::make_tuple(pathFilter, pathIntegration, pathPolicy, pathDecoder, pathDummyFilter, pathDummyPolicy);
-
         EXPECT_CALL(*m_spMockStore, get(testing::_))
         .WillRepeatedly(testing::Invoke(
             [&](const base::Name& name)
             {
                 if (name == ROUTER_TABLE)
                 {
-                    return json::Json {readJsonFile(pathrouterTable).c_str()};
+                    return json::Json {readJsonFile(PATH_ROUTER_TABLE).c_str()};
                 }
                 else if (name == JSON_FILTER)
                 {
-                    return json::Json {readJsonFile(pathFilter).c_str()};
+                    return json::Json {readJsonFile(PATH_FILTER).c_str()};
                 }
                 else
                 {
@@ -357,11 +305,11 @@ protected:
             {
                 if (name == JSON_SCHEMA_ASSET)
                 {
-                    return json::Json {readJsonFile(pathWazuhAsset).c_str()};
+                    return json::Json {readJsonFile(PATH_WAZUH_ASSET).c_str()};
                 }
                 else if (name == JSON_SCHEMA_POLICY)
                 {
-                    return json::Json {readJsonFile(pathWazuhPolicy).c_str()};
+                    return json::Json {readJsonFile(PATH_WAZUH_POLICY).c_str()};
                 }
                 else
                 {
@@ -372,18 +320,11 @@ protected:
 
         m_spCatalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
     }
-
-    static void TearDownTestCase()
-    {
-        EXECUTION_NUMBER = 0;
-    }
 };
 
 TEST_P(TestSessionListCommand, Functionality)
 {
-    auto [sessionListParams, outputSessionList] = GetParam();
-
-    int executionNumber = ++EXECUTION_NUMBER;
+    auto [executionNumber, sessionListParams, outputSessionList] = GetParam();
 
     json::Json tmp;
 
@@ -393,27 +334,27 @@ TEST_P(TestSessionListCommand, Functionality)
             {
                 if (name == JSON_FILTER)
                 {
-                    return json::Json {readJsonFile(std::get<0>(m_paths)).c_str()};
+                    return json::Json {readJsonFile(PATH_FILTER).c_str()};
                 }
                 if (name == JSON_DUMMY_FILTER)
                 {
-                    return json::Json {readJsonFile(std::get<4>(m_paths)).c_str()};
+                    return json::Json {readJsonFile(PATH_DUMMY_FILTER).c_str()};
                 }
                 else if (name == JSON_INTEGRATION)
                 {
-                    return json::Json {readJsonFile(std::get<1>(m_paths)).c_str()};
+                    return json::Json {readJsonFile(PATH_INTEGRATION).c_str()};
                 }
                 else if (name == JSON_POLICY)
                 {
-                    return json::Json {readJsonFile(std::get<2>(m_paths)).c_str()};
+                    return json::Json {readJsonFile(PATH_POLICY).c_str()};
                 }
                 else if (name == JSON_DUMMY_POLICY)
                 {
-                    return json::Json {readJsonFile(std::get<5>(m_paths)).c_str()};
+                    return json::Json {readJsonFile(PATH_DUMMY_POLICY).c_str()};
                 }
                 else if (name == JSON_DECODER)
                 {
-                    return json::Json {readJsonFile(std::get<3>(m_paths)).c_str()};
+                    return json::Json {readJsonFile(PATH_DECODER).c_str()};
                 }
                 else
                 {
@@ -486,7 +427,7 @@ TEST_P(TestSessionListCommand, Functionality)
 INSTANTIATE_TEST_SUITE_P(
     Functionality,
     TestSessionListCommand,
-    ::testing::Values(std::make_tuple(R"({"name":"dummy"})", R"({
+    ::testing::Values(std::make_tuple(1, R"({"name":"dummy"})", R"({
             "data": {
                 "status": "OK",
                 "policy": "policy/dummy_policy/0",
@@ -497,14 +438,14 @@ INSTANTIATE_TEST_SUITE_P(
             },
             "error": 0
         })"),
-        std::make_tuple(R"({})", R"({
+        std::make_tuple(2, R"({})", R"({
             "status": "OK",
             "list": [
                 "dummy"
             ]
         })")));
 
-class TestSessionPostCommand : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
+class TestSessionPostCommand : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
 protected:
     api::Handler m_cmdAPI;
@@ -512,7 +453,6 @@ protected:
     std::shared_ptr<::router::Router> m_spRouter;
     std::shared_ptr<MockStore> m_spMockStore;
     std::shared_ptr<builder::Builder> m_spMockeBuilder;
-    std::tuple<std::string, std::string, std::string, std::string, std::string, std::string> m_paths;
 
     void SetUp() override
     {
@@ -520,42 +460,17 @@ protected:
         m_spMockStore = std::make_shared<MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
-        std::filesystem::path currentPath = std::filesystem::current_path();
-
-        while (!currentPath.empty())
-        {
-            if (currentPath.filename() == "engine")
-            {
-                break;
-            }
-
-            currentPath = currentPath.parent_path();
-        }
-
-        auto absolutePath = currentPath / ASSET_PATH;
-        auto pathrouterTable = absolutePath / ROUTER_TABLE;
-        auto pathPolicy = absolutePath  / JSON_POLICY;
-        auto pathDecoder = absolutePath  / JSON_DECODER;
-        auto pathFilter = absolutePath  / JSON_FILTER;
-        auto pathIntegration = absolutePath  / JSON_INTEGRATION;
-        auto pathWazuhAsset = absolutePath  / JSON_SCHEMA_ASSET;
-        auto pathWazuhPolicy = absolutePath  / JSON_SCHEMA_POLICY;
-        auto pathDummyFilter = absolutePath  / JSON_DUMMY_FILTER;
-        auto pathDummyPolicy = absolutePath  / JSON_DUMMY_POLICY;
-
-        m_paths = std::make_tuple(pathFilter, pathIntegration, pathPolicy, pathDecoder, pathDummyFilter, pathDummyPolicy);
-
         EXPECT_CALL(*m_spMockStore, get(testing::_))
         .WillRepeatedly(testing::Invoke(
             [&](const base::Name& name)
             {
                 if (name == ROUTER_TABLE)
                 {
-                    return json::Json {readJsonFile(pathrouterTable).c_str()};
+                    return json::Json {readJsonFile(PATH_ROUTER_TABLE).c_str()};
                 }
                 else if (name == JSON_FILTER)
                 {
-                    return json::Json {readJsonFile(pathFilter).c_str()};
+                    return json::Json {readJsonFile(PATH_FILTER).c_str()};
                 }
                 else
                 {
@@ -583,11 +498,11 @@ protected:
             {
                 if (name == JSON_SCHEMA_ASSET)
                 {
-                    return json::Json {readJsonFile(pathWazuhAsset).c_str()};
+                    return json::Json {readJsonFile(PATH_WAZUH_ASSET).c_str()};
                 }
                 else if (name == JSON_SCHEMA_POLICY)
                 {
-                    return json::Json {readJsonFile(pathWazuhPolicy).c_str()};
+                    return json::Json {readJsonFile(PATH_WAZUH_POLICY).c_str()};
                 }
                 else
                 {
@@ -598,20 +513,13 @@ protected:
 
         m_spCatalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
     }
-
-    static void TearDownTestCase()
-    {
-        EXECUTION_NUMBER = 0;
-    }
 };
 
 TEST_P(TestSessionPostCommand, Functionality)
 {
-    auto [sessionPostParams, outputSessionPost] = GetParam();
+    auto [executionNumber, sessionPostParams, outputSessionPost] = GetParam();
 
     auto numTest {3};
-
-    int executionNumber = ++EXECUTION_NUMBER;
 
     if (executionNumber > 1)
     {
@@ -621,27 +529,27 @@ TEST_P(TestSessionPostCommand, Functionality)
                 {
                     if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(std::get<0>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
                     }
                     if (name == JSON_DUMMY_FILTER)
                     {
-                        return json::Json {readJsonFile(std::get<4>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DUMMY_FILTER).c_str()};
                     }
                     else if (name == JSON_INTEGRATION)
                     {
-                        return json::Json {readJsonFile(std::get<1>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_INTEGRATION).c_str()};
                     }
                     else if (name == JSON_POLICY)
                     {
-                        return json::Json {readJsonFile(std::get<2>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_POLICY).c_str()};
                     }
                     else if (name == JSON_DUMMY_POLICY)
                     {
-                        return json::Json {readJsonFile(std::get<5>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DUMMY_POLICY).c_str()};
                     }
                     else if (name == JSON_DECODER)
                     {
-                        return json::Json {readJsonFile(std::get<3>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DECODER).c_str()};
                     }
                     else
                     {
@@ -659,18 +567,24 @@ TEST_P(TestSessionPostCommand, Functionality)
     base::utils::wazuhProtocol::WazuhRequest request;
     ASSERT_NO_THROW(request = api::wpRequest::create(rCommand, rOrigin, sessionPostCommandparams));
     auto response = m_cmdAPI(request);
-
-    // check response
-    const auto expectedData = json::Json {outputSessionPost.c_str()};
-
-    EXPECT_TRUE(response.isValid());
-    EXPECT_EQ(response.error(), 0);
-    EXPECT_FALSE(response.message().has_value());
-    EXPECT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
-                                            << "Expected: " << expectedData.prettyStr() << std::endl;
     
     if (executionNumber == numTest)
     {
+        ASSERT_NO_THROW(m_cmdAPI = sessionPost(m_spCatalog, m_spRouter, m_spMockStore));
+        json::Json sessionPostCommandparams {sessionPostParams.c_str()};
+        base::utils::wazuhProtocol::WazuhRequest request;
+        ASSERT_NO_THROW(request = api::wpRequest::create(rCommand, rOrigin, sessionPostCommandparams));
+        auto response = m_cmdAPI(request);
+
+        // check response
+        const auto expectedData = json::Json {outputSessionPost.c_str()};
+
+        EXPECT_TRUE(response.isValid());
+        EXPECT_EQ(response.error(), 0);
+        EXPECT_FALSE(response.message().has_value());
+        EXPECT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
+                                                << "Expected: " << expectedData.prettyStr() << std::endl;
+
         EXPECT_CALL(*m_spMockStore, del(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         EXPECT_CALL(*m_spMockStore, update(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         
@@ -678,10 +592,21 @@ TEST_P(TestSessionPostCommand, Functionality)
         json::Json sessionsDeleteCommandparams {R"({"delete_all":true})"};
         base::utils::wazuhProtocol::WazuhRequest requestDelete;
         ASSERT_NO_THROW(requestDelete = api::wpRequest::create(rCommand, rOrigin, sessionsDeleteCommandparams));
-        auto response = m_cmdAPI(requestDelete);
+        auto responseDelete = m_cmdAPI(requestDelete);
+        EXPECT_TRUE(responseDelete.isValid());
+        EXPECT_EQ(responseDelete.error(), 0);
+        EXPECT_FALSE(responseDelete.message().has_value());
+    }
+    else
+    {
+        // check response
+        const auto expectedData = json::Json {outputSessionPost.c_str()};
+
         EXPECT_TRUE(response.isValid());
         EXPECT_EQ(response.error(), 0);
         EXPECT_FALSE(response.message().has_value());
+        EXPECT_EQ(response.data(), expectedData) << "Response: " << response.data().prettyStr() << std::endl
+                                                << "Expected: " << expectedData.prettyStr() << std::endl;
     }
 
     m_spRouter->stop();
@@ -690,11 +615,11 @@ TEST_P(TestSessionPostCommand, Functionality)
 INSTANTIATE_TEST_SUITE_P(
     Functionality,
     TestSessionPostCommand,
-    ::testing::Values(std::make_tuple(R"({})", R"({"status":"ERROR","error":"Missing /name field"})"),
-                      std::make_tuple(R"({"name":"dummy"})", R"({
+    ::testing::Values(std::make_tuple(1, R"({})", R"({"status":"ERROR","error":"Missing /name field"})"),
+                      std::make_tuple(2, R"({"name":"dummy"})", R"({
                         "status": "OK"
                     })"),
-                    std::make_tuple(R"({"name":"dummy"})", R"({
+                    std::make_tuple(3, R"({"name":"dummy"})", R"({
                         "status": "ERROR",
                         "error": "Session 'dummy' already exists"
                     })")));
@@ -737,7 +662,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(std::make_tuple(R"({})", R"({"status":"ERROR","error":"Missing /name field"})"),
                       std::make_tuple(R"({"name":"dummy"})", R"({"status":"ERROR","error":"Missing /event field"})")));
 
-class TestRunCommandIntegration : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>>
+class TestRunCommandIntegration : public ::testing::TestWithParam<std::tuple<int, std::string, std::string, std::string>>
 {
 protected:
     api::Handler m_cmdAPI;
@@ -745,7 +670,6 @@ protected:
     std::shared_ptr<::router::Router> m_spRouter;
     std::shared_ptr<MockStore> m_spMockStore;
     std::shared_ptr<builder::Builder> m_spMockeBuilder;
-    std::tuple<std::string, std::string, std::string, std::string, std::string, std::string> m_paths;
 
     void SetUp() override
     {
@@ -753,42 +677,17 @@ protected:
         m_spMockStore = std::make_shared<MockStore>();
         m_spMockeBuilder = fakeBuilder(m_spMockStore);
 
-        std::filesystem::path currentPath = std::filesystem::current_path();
-
-        while (!currentPath.empty())
-        {
-            if (currentPath.filename() == "engine")
-            {
-                break;
-            }
-
-            currentPath = currentPath.parent_path();
-        }
-
-        auto absolutePath = currentPath / ASSET_PATH;
-        auto pathrouterTable = absolutePath / ROUTER_TABLE;
-        auto pathPolicy = absolutePath  / JSON_POLICY;
-        auto pathDecoder = absolutePath  / JSON_DECODER;
-        auto pathFilter = absolutePath  / JSON_FILTER;
-        auto pathIntegration = absolutePath  / JSON_INTEGRATION;
-        auto pathWazuhAsset = absolutePath  / JSON_SCHEMA_ASSET;
-        auto pathWazuhPolicy = absolutePath  / JSON_SCHEMA_POLICY;
-        auto pathDummyFilter = absolutePath  / JSON_DUMMY_FILTER;
-        auto pathDummyPolicy = absolutePath  / JSON_DUMMY_POLICY;
-
-        m_paths = std::make_tuple(pathFilter, pathIntegration, pathPolicy, pathDecoder, pathDummyFilter, pathDummyPolicy);
-
         EXPECT_CALL(*m_spMockStore, get(testing::_))
         .WillRepeatedly(testing::Invoke(
             [&](const base::Name& name)
             {
                 if (name == ROUTER_TABLE)
                 {
-                    return json::Json {readJsonFile(pathrouterTable).c_str()};
+                    return json::Json {readJsonFile(PATH_ROUTER_TABLE).c_str()};
                 }
                 else if (name == JSON_FILTER)
                 {
-                    return json::Json {readJsonFile(pathFilter).c_str()};
+                    return json::Json {readJsonFile(PATH_FILTER).c_str()};
                 }
                 else
                 {
@@ -816,11 +715,11 @@ protected:
             {
                 if (name == JSON_SCHEMA_ASSET)
                 {
-                    return json::Json {readJsonFile(pathWazuhAsset).c_str()};
+                    return json::Json {readJsonFile(PATH_WAZUH_ASSET).c_str()};
                 }
                 else if (name == JSON_SCHEMA_POLICY)
                 {
-                    return json::Json {readJsonFile(pathWazuhPolicy).c_str()};
+                    return json::Json {readJsonFile(PATH_WAZUH_POLICY).c_str()};
                 }
                 else
                 {
@@ -831,18 +730,11 @@ protected:
 
         m_spCatalog = std::make_shared<api::catalog::Catalog>(catalogConfig);
     }
-    
-    static void TearDownTestCase()
-    {
-        EXECUTION_NUMBER = 0;
-    }
 };
 
 TEST_P(TestRunCommandIntegration, Functionality)
 {
-    auto [runPostParams, sessionPostParams, outputRunPost] = GetParam();
-
-    int executionNumber = ++EXECUTION_NUMBER;
+    auto [executionNumber, runPostParams, sessionPostParams, outputRunPost] = GetParam();
 
     if (executionNumber > 1)
     {
@@ -852,27 +744,27 @@ TEST_P(TestRunCommandIntegration, Functionality)
                 {
                     if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(std::get<0>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
                     }
                     if (name == JSON_DUMMY_FILTER)
                     {
-                        return json::Json {readJsonFile(std::get<4>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DUMMY_FILTER).c_str()};
                     }
                     else if (name == JSON_INTEGRATION)
                     {
-                        return json::Json {readJsonFile(std::get<1>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_INTEGRATION).c_str()};
                     }
                     else if (name == JSON_POLICY)
                     {
-                        return json::Json {readJsonFile(std::get<2>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_POLICY).c_str()};
                     }
                     else if (name == JSON_DUMMY_POLICY)
                     {
-                        return json::Json {readJsonFile(std::get<5>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DUMMY_POLICY).c_str()};
                     }
                     else if (name == JSON_DECODER)
                     {
-                        return json::Json {readJsonFile(std::get<3>(m_paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DECODER).c_str()};
                     }
                     else
                     {
@@ -928,8 +820,8 @@ TEST_P(TestRunCommandIntegration, Functionality)
 INSTANTIATE_TEST_SUITE_P(
     Functionality,
     TestRunCommandIntegration,
-    ::testing::Values(std::make_tuple(R"({"name":"dummy", "event":"hello world!"})", R"({"name":"dummy"})", R"({"status":"ERROR","error":"Session 'dummy' could not be found"})"),
-                      std::make_tuple(R"({"name":"dummy", "event":"hello world!"})", R"({"name":"dummy"})", R"({
+    ::testing::Values(std::make_tuple(1, R"({"name":"dummy", "event":"hello world!"})", R"({"name":"dummy"})", R"({"status":"ERROR","error":"Session 'dummy' could not be found"})"),
+                      std::make_tuple(2, R"({"name":"dummy", "event":"hello world!"})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "output": {
                             "wazuh": {
@@ -940,7 +832,7 @@ INSTANTIATE_TEST_SUITE_P(
                             "~TestSessionName": "dummy"
                         }
                     })"),
-                    std::make_tuple(R"({"name":"dummy", "event":"hello world!", "debug_mode":1})", R"({"name":"dummy"})", R"({
+                    std::make_tuple(3, R"({"name":"dummy", "event":"hello world!", "debug_mode":1})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "output": {
                             "~TestSessionName": "dummy",
@@ -958,7 +850,7 @@ INSTANTIATE_TEST_SUITE_P(
                             }
                         }
                     })"),
-                    std::make_tuple(R"({"name":"dummy", "event":"hello world!", "debug_mode":2})", R"({"name":"dummy"})", R"({
+                    std::make_tuple(4, R"({"name":"dummy", "event":"hello world!", "debug_mode":2})", R"({"name":"dummy"})", R"({
                         "status": "OK",
                         "output": {
                             "~TestSessionName": "dummy",
