@@ -339,7 +339,7 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
     ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
-    ('000', 'agent', 'agent', 'sockets', 'ok {"agent": {"enabled": "yes"}}'),
+    ('000', 'agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('000', 'agentless', 'agentless', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
     ('000', 'analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('000', 'com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),

@@ -803,7 +803,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
         The active configuration the agent is currently using.
     """
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
-    component_socket_mapping = {'agent': 'agent', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
+    component_socket_mapping = {'agent': 'analysis', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
                                 'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
                                 'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}
