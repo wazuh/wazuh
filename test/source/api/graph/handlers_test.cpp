@@ -23,6 +23,11 @@ constexpr auto JSON_FILTER {"filter/allow-all/0"};
 constexpr auto JSON_INTEGRATION {"integration/wazuh-core/0"};
 constexpr auto JSON_POLICY {"policy/wazuh/0"};
 constexpr auto JSON_SCHEMA {"schema/wazuh-logpar-types/0"};
+const auto PATH_POLICY = GRAPH_ASSETS_PATH_TEST + std::string(JSON_POLICY);
+const auto PATH_DECODER = GRAPH_ASSETS_PATH_TEST + std::string(JSON_DECODER);
+const auto PATH_FILTER = GRAPH_ASSETS_PATH_TEST + std::string(JSON_FILTER);
+const auto PATH_INTEGRATION = GRAPH_ASSETS_PATH_TEST + std::string(JSON_INTEGRATION);
+const auto PATH_SCHEMA = GRAPH_ASSETS_PATH_TEST + std::string(JSON_SCHEMA);
 
 std::string readJsonFile(const std::string& filePath)
 {
@@ -47,32 +52,12 @@ protected:
     api::graph::handlers::Config graphConfig;
     api::Handler cmdAPI;
     std::shared_ptr<MockStore> m_spMockStore;
-    std::tuple<std::string, std::string, std::string, std::string, std::string> paths;
 
     void SetUp() override
     {
         initLogging();
 
         std::filesystem::path currentPath = std::filesystem::current_path();
-
-        while (!currentPath.empty())
-        {
-            if (currentPath.filename() == "engine")
-            {
-                break;
-            }
-
-            currentPath = currentPath.parent_path();
-        }
-
-        auto absolutePath = currentPath / ASSET_PATH;
-        auto pathLogpar = absolutePath / JSON_SCHEMA;
-        auto pathPolicy = absolutePath / JSON_POLICY;
-        auto pathIntegration = absolutePath / JSON_INTEGRATION;
-        auto pathDecoder = absolutePath / JSON_DECODER;
-        auto pathFilter = absolutePath / JSON_FILTER;
-
-        paths = std::make_tuple(pathLogpar, pathPolicy, pathIntegration, pathDecoder, pathFilter);
 
         m_spMockStore = std::make_shared<MockStore>();
         auto metrics = std::make_shared<metricsManager::MetricsManager>();
@@ -92,23 +77,23 @@ TEST_P(GraphGetCommand, ParameterEvaluation)
                 {
                     if (name == JSON_SCHEMA)
                     {
-                        return json::Json {readJsonFile(std::get<0>(paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_SCHEMA).c_str()};
                     }
                     else if (name == JSON_POLICY)
                     {
-                        return json::Json {readJsonFile(std::get<1>(paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_POLICY).c_str()};
                     }
                     else if (name == JSON_INTEGRATION)
                     {
-                        return json::Json {readJsonFile(std::get<2>(paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_INTEGRATION).c_str()};
                     }
                     else if (name == JSON_DECODER)
                     {
-                        return json::Json {readJsonFile(std::get<3>(paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_DECODER).c_str()};
                     }
                     else if (name == JSON_FILTER)
                     {
-                        return json::Json {readJsonFile(std::get<4>(paths)).c_str()};
+                        return json::Json {readJsonFile(PATH_FILTER).c_str()};
                     }
                     else
                     {
@@ -153,5 +138,5 @@ INSTANTIATE_TEST_SUITE_P(
         "content":"digraph G {\ncompound=true;\nfontname=\"Helvetica,Arial,sans-serif\";\nfontsize=12;\nnode [fontname=\"Helvetica,Arial,sans-serif\", fontsize=10];\nedge [fontname=\"Helvetica,Arial,sans-serif\", fontsize=8];\nenvironment [label=\"policy/wazuh/0\", shape=Mdiamond];\n\nsubgraph cluster_decoders {\nlabel=\"decoders\";\nstyle=filled;\ncolor=lightgrey;\nnode [style=filled,color=white];\ndecodercorehostinfo0 [label=\"decoder/core-hostinfo/0\"];\ndecodersInput [label=\"decodersInput\"];\ndecodersInput -> decodercorehostinfo0;\n}\nenvironment -> decodersInput;\n}\n"}
         )"),
         std::make_tuple(R"({"policy":"policy/wazuh/0","type": "expressions"})", R"({"status":"OK",
-        "content":"strict digraph G {\n\n    compound=true;\n    fontname=\"Helvetica,Arial,sans-serif\";\n    fontsize=12;\n    node [color=\"#57abff\", fontname=\"Helvetica,Arial,sans-serif\", fontsize=10, fontcolor=\"white\"];\n    edge [fontname=\"Helvetica,Arial,sans-serif\", fontsize=8];\n    \nsubgraph cluster_16 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Chain\";\n16 [label=\"policy/wazuh/0 [16]\"];\n}\n16 -> 17 [ltail=cluster_16 lhead=cluster_17 label=0 fontcolor=\"red\"];\nsubgraph cluster_17 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Or\";\n17 [label=\"decodersInput [17]\"];\n}\n17 -> 18 [ltail=cluster_17 lhead=cluster_18 label=0 fontcolor=\"red\"];\nsubgraph cluster_18 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Implication\";\n18 [label=\"decoder/core-hostinfo/0 [18]\"];\n}\n18 -> 9 [ltail=cluster_18 lhead=cluster_9 label=0 fontcolor=\"red\"];\nsubgraph cluster_9 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"And\";\n9 [label=\"stage.check [9]\"];\n}\n9 -> 8 [ltail=cluster_9 lhead=cluster_8 label=0 fontcolor=\"red\"];\nsubgraph cluster_8 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Term\";\n8 [label=\"condition.value[/wazuh/queue==51] [8]\"];\n}\n18 -> 10 [ltail=cluster_18 lhead=cluster_10 label=1 fontcolor=\"red\"];\nsubgraph cluster_10 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"And\";\n10 [label=\"stages [10]\"];\n}\n10 -> 14 [ltail=cluster_10 lhead=cluster_14 label=0 fontcolor=\"red\"];\nsubgraph cluster_14 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Chain\";\n14 [label=\"stage.normalize [14]\"];\n}\n14 -> 13 [ltail=cluster_14 lhead=cluster_13 label=0 fontcolor=\"red\"];\nsubgraph cluster_13 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"And\";\n13 [label=\"subblock [13]\"];\n}\n13 -> 12 [ltail=cluster_13 lhead=cluster_12 label=0 fontcolor=\"red\"];\nsubgraph cluster_12 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Chain\";\n12 [label=\"stage.map [12]\"];\n}\n12 -> 11 [ltail=cluster_12 lhead=cluster_11 label=0 fontcolor=\"red\"];\nsubgraph cluster_11 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Term\";\n11 [label=\"helper.array_append[/wazuh/decoders, core-hostinfo] [11]\"];\n}\n}\n"}
+        "content": "strict digraph G {\n\n    compound=true;\n    fontname=\"Helvetica,Arial,sans-serif\";\n    fontsize=12;\n    node [color=\"#57abff\", fontname=\"Helvetica,Arial,sans-serif\", fontsize=10, fontcolor=\"white\"];\n    edge [fontname=\"Helvetica,Arial,sans-serif\", fontsize=8];\n    \nsubgraph cluster_8 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Chain\";\n8 [label=\"policy/wazuh/0 [8]\"];\n}\n8 -> 9 [ltail=cluster_8 lhead=cluster_9 label=0 fontcolor=\"red\"];\nsubgraph cluster_9 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Or\";\n9 [label=\"decodersInput [9]\"];\n}\n9 -> 10 [ltail=cluster_9 lhead=cluster_10 label=0 fontcolor=\"red\"];\nsubgraph cluster_10 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Implication\";\n10 [label=\"decoder/core-hostinfo/0 [10]\"];\n}\n10 -> 1 [ltail=cluster_10 lhead=cluster_1 label=0 fontcolor=\"red\"];\nsubgraph cluster_1 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"And\";\n1 [label=\"stage.check [1]\"];\n}\n1 -> 0 [ltail=cluster_1 lhead=cluster_0 label=0 fontcolor=\"red\"];\nsubgraph cluster_0 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Term\";\n0 [label=\"condition.value[/wazuh/queue==51] [0]\"];\n}\n10 -> 2 [ltail=cluster_10 lhead=cluster_2 label=1 fontcolor=\"red\"];\nsubgraph cluster_2 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"And\";\n2 [label=\"stages [2]\"];\n}\n2 -> 6 [ltail=cluster_2 lhead=cluster_6 label=0 fontcolor=\"red\"];\nsubgraph cluster_6 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Chain\";\n6 [label=\"stage.normalize [6]\"];\n}\n6 -> 5 [ltail=cluster_6 lhead=cluster_5 label=0 fontcolor=\"red\"];\nsubgraph cluster_5 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"And\";\n5 [label=\"subblock [5]\"];\n}\n5 -> 4 [ltail=cluster_5 lhead=cluster_4 label=0 fontcolor=\"red\"];\nsubgraph cluster_4 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Chain\";\n4 [label=\"stage.map [4]\"];\n}\n4 -> 3 [ltail=cluster_4 lhead=cluster_3 label=0 fontcolor=\"red\"];\nsubgraph cluster_3 {\n\n    style=\"rounded,filled\";\n    color=\"#57abff\";\n    \nlabel=\"Term\";\n3 [label=\"helper.array_append[/wazuh/decoders, core-hostinfo] [3]\"];\n}\n}\n"}
         )")));
