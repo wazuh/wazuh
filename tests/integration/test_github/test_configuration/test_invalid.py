@@ -55,7 +55,6 @@ from wazuh_testing.modules.modulesd.configuration import LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.modules import ALL_DAEMON_HANDLER as daemons_handler_configuration
 from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.file_monitor import FileMonitor
-from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.configuration import get_test_cases_data
 from wazuh_testing.utils.configuration import load_configuration_template
 from wazuh_testing.utils import callbacks
@@ -97,9 +96,6 @@ def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, con
         - test_metadata:
             type: data
             brief: Configuration cases.
-        - daemons_handler:
-            type: fixture
-            brief: Manages daemons to reset Wazuh.
         - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
@@ -109,6 +105,12 @@ def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, con
         - truncate_monitored_files:
             type: fixture
             brief: Reset the 'ossec.log' file and start a new monitor.
+        - daemons_handler:
+            type: fixture
+            brief: Manages daemons to reset Wazuh.
+        - wait_for_github_start:
+            type: fixture
+            brief: Checks integration start message does not appear.
 
     assertions:
         - Verify that the 'github' module generates error events when invalid configurations are used.
