@@ -51,13 +51,14 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules.integrations.event_monitors import detect_wrong_content_config
-from wazuh_testing.modules.integrations import LOCAL_INTERNAL_OPTIONS as local_internal_options
+from wazuh_testing.modules.modulesd.configuration import LOCAL_INTERNAL_OPTIONS
 from wazuh_testing.modules import ALL_DAEMON_HANDLER as daemons_handler_configuration
+from wazuh_testing.modules.modulesd import patterns
 from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.configuration import get_test_cases_data
 from wazuh_testing.utils.configuration import load_configuration_template
+from wazuh_testing.utils import callbacks
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
@@ -73,14 +74,13 @@ cases_path = Path(TEST_CASES_PATH, 'cases_invalid_configuration.yaml')
 # Test configurations.
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
-
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
-
+local_internal_options = {LOCAL_INTERNAL_OPTIONS: '2'}
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                 truncate_monitored_files, daemons_handler):
+                 truncate_monitored_files, daemons_handler, wait_for_github_start):
     '''
     description: Check if the 'github' module detects invalid configurations. For this purpose, the test
                  will configure that module using invalid configuration settings with different attributes.
@@ -124,8 +124,12 @@ def test_invalid(test_configuration, test_metadata, set_wazuh_configuration, con
     tags:
         - invalid_settings
     '''
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    detect_wrong_content_config(test_metadata['error_type'], test_metadata['event_monitor'], 'github', wazuh_log_monitor)
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.MODULESD_CONFIGURATION_ERROR, {
+                              'error_type': str(test_metadata['error_type']),
+                              'tag': str(test_metadata['event_monitor']),
+                              'integration': str(test_metadata['module']),
+                          }))    
     
     assert (wazuh_log_monitor.callback_result != None), f'Error invalid configuration event not detected'

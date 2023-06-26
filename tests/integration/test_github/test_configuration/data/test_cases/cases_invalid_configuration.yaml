@@ -12,6 +12,7 @@
   metadata:
     event_monitor: 'enabled'
     error_type: 'Invalid'
+    module: 'github'
 
 - name: Invalid_Only_Future_Events
   description: Check github integration does not start with Invalid Only Future Events
@@ -27,6 +28,8 @@
   metadata:
     event_monitor: 'only_future_events'
     error_type: 'Invalid'
+    module: 'github'
+
 
 - name: Invalid_Interval
   description: Check github integration does not start with Invalid Interval
@@ -42,6 +45,8 @@
   metadata:
     event_monitor: 'interval'
     error_type: 'Invalid'
+    module: 'github'
+
     
 - name: Invalid_Curl_Max_Size
   description: Check github integration does not start with Invalid Curl Max Size
@@ -57,6 +62,8 @@
   metadata:
     event_monitor: 'curl_max_size'
     error_type: 'Invalid'
+    module: 'github'
+
 
 - name: Invalid_Time_Delay
   description: Check github integration does not start with Invalid Time Delay
@@ -72,6 +79,8 @@
   metadata:
     event_monitor: 'time_delay'
     error_type: 'Invalid'
+    module: 'github'
+
 
 - name: Empty_Org_Name
   description: Check github integration does not start with Invalid Org Name
@@ -87,6 +96,8 @@
   metadata:
     event_monitor: 'org_name'
     error_type: 'Empty'
+    module: 'github'
+
 
 - name: Empty_Api_Token
   description: Check github integration does not start with Invalid Api Token
@@ -102,6 +113,8 @@
   metadata:
     event_monitor: 'api_token'
     error_type: 'Empty'
+    module: 'github'
+
 
 - name: Invalid_Event_Type
   description: Check github integration does not start with Invalid Event Type
@@ -117,4 +130,5 @@
   metadata:
     event_monitor: 'event_type'
     error_type: 'Invalid'
-    
+    module: 'github'
+
