@@ -54,12 +54,13 @@ def wait_for_api_start(test_configuration: dict) -> None:
     port = WAZUH_API_PORT
 
     # Check if specific values were set or set the defaults
-    if test_configuration.get('blocks') is not None:
-        logs_configuration = test_configuration['blocks'].get('logs')
-        # Set the default value if `format`` is not set
-        logs_format = 'plain' if logs_configuration is None else logs_configuration.get('format', 'plain')
-        host = test_configuration['blocks'].get('host', '0.0.0.0')
-        port = test_configuration['blocks'].get('port', WAZUH_API_PORT)
+    if test_configuration is not None:
+        if test_configuration.get('blocks') is not None:
+            logs_configuration = test_configuration['blocks'].get('logs')
+            # Set the default value if `format`` is not set
+            logs_format = 'plain' if logs_configuration is None else logs_configuration.get('format', 'plain')
+            host = test_configuration['blocks'].get('host', '0.0.0.0')
+            port = test_configuration['blocks'].get('port', WAZUH_API_PORT)
 
     file_to_monitor = WAZUH_API_JSON_LOG_FILE_PATH if logs_format == 'json' else WAZUH_API_LOG_FILE_PATH
     monitor_start_message = file_monitor.FileMonitor(file_to_monitor)

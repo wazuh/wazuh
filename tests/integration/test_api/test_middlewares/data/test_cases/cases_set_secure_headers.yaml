@@ -1,0 +1,10 @@
+- name: SECURITY_HEADERS
+  description: Check response headers fulfill the REST standard
+  configuration_parameters:
+    MAX_REQUEST_PER_MINUTE: 15
+  metadata:
+    security_headers:
+      Cache-control: no-store
+      Content-Security-Policy: none
+      X-Content-Type-Options: nosniff
+      X-Frame-Options: DENY

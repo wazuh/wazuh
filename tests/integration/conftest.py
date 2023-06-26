@@ -185,7 +185,7 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         daemons_handler_configuration = getattr(request.module, 'daemons_handler_configuration')
         if 'daemons' in daemons_handler_configuration and not all_daemons:
             daemons = daemons_handler_configuration['daemons']
-            if not daemons or (type(daemons) == list and len(daemons) == 0):
+            if not daemons or (type(daemons) == list and len(daemons) == 0) or type(daemons) != list:
                 logger.error('Daemons list is not set')
                 raise ValueError
 
