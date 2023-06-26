@@ -198,7 +198,7 @@ WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
         'integrator': {"integration"},
         'logcollector': {"localfile", "socket", "internal"},
         'mail': {"global", "alerts", "internal"},
-        'monitor': {"global", "internal"},
+        'monitor': {"global", "internal", "reports"},
         'request': {"global", "remote", "internal"},
         'syscheck': {"syscheck", "rootcheck", "internal"},
         'wazuh-db': {"wdb", "internal"},
