@@ -1,0 +1,3 @@
+#!/bin/bash
+
+docker run -it wazuh-winagent-lc /bin/bash

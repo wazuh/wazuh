@@ -1,0 +1,76 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+# Path of the local share folder
+share_path = "share"
+# Path of the vm share folder
+share_folder = "/vagrant"
+vb_disable_timesync = ["setextradata", :id, "VBoxInternal/Devices/VMMDev/0/Config/GetHostTimeDisabled", 1]
+ip_server = "172.17.0.2"
+ip_indexer = "172.17.0.2"
+ip_dashboard =  "172.17.0.2"
+
+ip_w11 = "172.17.0.61"
+ip_w10 = "173.17.0.60"
+
+boxes = {
+  "windows10" => {
+    "box" => "baunegaard/win10pro-en",
+    "memory" => "3072",
+    "cpus" => 2,
+    #"group" => "/LinuxAgents",
+    "ip" => ip_w10,
+    #"script_path" => "#{boot_scripts_path}/ubuntu.sh",
+    #"nfs_linux_share" => nfs_linux_opts,
+    "vbcustomize" => vb_disable_timesync
+   },
+  #  "windows11" => {
+  #   "box" => "tranphuquy19/win11x64-professional",
+  #   "memory" => "3072",
+  #   "cpus" => 2,
+  #   #"group" => "/LinuxAgents",
+  #   "ip" => ip_w11,
+  #   #"script_path" => "#{boot_scripts_path}/ubuntu.sh",
+  #   #"nfs_linux_share" => nfs_linux_opts,
+  #   "vbcustomize" => vb_disable_timesync
+  #  },
+}
+
+
+Vagrant.configure("2") do |config|    
+  boxes.each do |key, value|
+    config.vm.define "#{key}" do |node|
+      node.vm.box = "#{value['box']}"
+      if value.key?("box_version")
+        node.vm.box_version = "#{value['box_version']}"
+      end
+      # node.vm.network :private_network, ip: "#{value['ip']}"
+      node.vm.network "public_network", ip: "172.17.0.17"
+      node.vm.hostname = "#{key}"
+      if value.key?("password")
+        node.ssh.password = "#{value['password']}"
+      end
+      config.ssh.insert_key = false
+      # Execute the provision script
+      if value.key?("script_path")
+        node.vm.provision :shell, path: "#{value['script_path']}"
+      end
+      # Synced folders
+      if value.key?("nfs_linux_share")
+      node.vm.synced_folder "#{share_path}","#{share_folder}",
+        type: "nfs",
+        linux__nfs_options: key["nfs_linux_share"]
+      else
+        node.vm.synced_folder "#{share_path}","#{share_folder}"
+      end
+      node.vm.provider "virtualbox" do |vb|
+        vb.memory = "#{value['memory']}"
+        vb.cpus = "#{value['cpus']}"
+        vb.name = "#{key}"
+        if value.key?("vbcustomize")
+          vb.customize value['vbcustomize']
+        end
+        #vb.customize ["modifyvm", "#{key}", "--groups", "#{value['group']}"]
+      end
+    end
+  end
+end

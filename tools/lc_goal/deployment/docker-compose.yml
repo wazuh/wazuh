@@ -1,0 +1,56 @@
+version: "3.9"
+services:
+  wazuh-all-in-one:
+    build:
+      context: ../
+      dockerfile: build/wazuh_all_in_one/Dockerfile
+    image: wazuh-all-in-one
+    hostname: wazuh.all-in.one
+    volumes:
+      - ../build/wazuh_all_in_one/entrypoint.sh:/root/entrypoint.sh:rw
+    entrypoint: /bin/bash -c "chmod +x  ./entrypoint.sh && ./entrypoint.sh"
+    networks:
+      mybridge:
+        ipv4_address: 10.5.0.2
+
+  wazuh-winagent-lc:
+    profiles: ["winagent"]
+    build:
+      context: ../
+      dockerfile: build/winagent/Dockerfile
+    hostname: wazuh.winagent.lc
+
+  wazuh-agent-lc:
+    build:
+      context: ../
+      dockerfile: build/agent/Dockerfile
+    hostname: wazuh-agent.lc
+    command: sleep 30 && service wazuh-agent start && tail -f /dev/null
+    depends_on:
+      - wazuh-all-in-one
+    networks:
+      - mybridge
+
+  unit-test-lc:
+    profiles: ["tests"]
+    build:
+      context: ../
+      dockerfile: build/unit_test/Dockerfile
+    image: unit-test-lc
+    hostname: wazuh-tests.lc
+    command: tail -f /dev/null
+    depends_on:
+      - wazuh-all-in-one
+    networks:
+      - mybridge
+
+
+
+
+networks:
+  mybridge:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1

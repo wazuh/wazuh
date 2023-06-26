@@ -1,0 +1,8 @@
+#!/bin/bash
+#docker run -it unit-test-lc /bin/bash
+if [[ "$(docker container ls |grep unit-test-lc -c)" -eq "0" ]]; then
+  docker start unit-test-lc 
+  docker run -it -P --name unit-test-lc -v wazuh-4.4.4:/root/wazuh-4.4.4 unit-test-lc:latest
+else
+  docker exec -it unit-test-lc /bin/bash
+fi
