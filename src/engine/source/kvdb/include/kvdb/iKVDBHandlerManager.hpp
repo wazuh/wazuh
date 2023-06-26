@@ -1,9 +1,10 @@
 #ifndef _I_KVDB_HANDLER_MANAGER_H
 #define _I_KVDB_HANDLER_MANAGER_H
 
-#include <kvdb/iKVDBHandler.hpp>
 #include <memory>
 #include <string>
+
+#include <kvdb/iKVDBHandler.hpp>
 
 namespace kvdbManager
 {
