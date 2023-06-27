@@ -187,6 +187,12 @@ void runStart(ConfHandler confManager)
         {
             api = std::make_shared<api::Api>();
             LOG_DEBUG("API created.");
+            g_exitHanlder.add(
+                [api]()
+                {
+                    LOG_INFO("API terminated.");
+                    eMessage::ShutdownEMessageLibrary();
+                });
         }
 
         // Queue
