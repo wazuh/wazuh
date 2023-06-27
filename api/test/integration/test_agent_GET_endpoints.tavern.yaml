@@ -2721,7 +2721,7 @@ stages:
       verify: False
       <<: *get_agents_groups
       params:
-        q: 'name=default'
+        q: name=default
     response:
       status_code: 200
       json:
@@ -3573,7 +3573,7 @@ stages:
       verify: False
       <<: *groups_id_files_request
       params:
-        q: 'filename=agent.conf'
+        q: filename=agent.conf
     response:
       status_code: 200
       json:
