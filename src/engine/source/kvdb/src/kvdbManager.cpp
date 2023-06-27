@@ -18,7 +18,7 @@ KVDBManager::KVDBManager(const KVDBManagerOptions& options,
 {
     m_ManagerOptions = options;
     m_spMetricsScope = metricsManager->getMetricsScope("KVDB");
-    m_kvdbHandlerCollection = std::make_unique<KVDBHandlerCollection>(this);
+    m_kvdbHandlerCollection = std::make_shared<KVDBHandlerCollection>();
 }
 
 void KVDBManager::initialize()
@@ -53,22 +53,6 @@ std::variant<rocksdb::ColumnFamilyHandle*, base::Error> KVDBManager::createColum
     }
 
     return base::Error {fmt::format("Could not create DB {}, RocksDB Status: {}", name, s.ToString())};
-}
-
-std::shared_ptr<IKVDBScope> KVDBManager::getKVDBScope(const std::string& scopeName)
-{
-    const std::lock_guard<std::mutex> lock(m_mutexScopes);
-
-    auto it = m_mapScopes.find(scopeName);
-    if (m_mapScopes.end() != it)
-    {
-        return it->second;
-    }
-
-    LOG_INFO("KVDB Manager: Created new KVDB Scope : ({})", scopeName);
-
-    auto retScope = m_mapScopes.emplace(scopeName, std::make_shared<KVDBScope>(this, scopeName));
-    return retScope.first->second;
 }
 
 void KVDBManager::initializeOptions()
@@ -157,10 +141,11 @@ std::variant<std::shared_ptr<IKVDBHandler>, base::Error> KVDBManager::getKVDBHan
         return base::Error {fmt::format("The DB {} not exists.", dbName)};
     }
 
-    auto retHandler = m_kvdbHandlerCollection->getKVDBHandler(m_pRocksDB, cfHandle, dbName, scopeName);
-    assert(retHandler);
+    m_kvdbHandlerCollection->addKVDBHandler(dbName, scopeName);
 
-    return retHandler;
+    auto kvdbHandler = std::make_shared<KVDBHandler>(m_pRocksDB, cfHandle, m_kvdbHandlerCollection, dbName, scopeName);
+
+    return kvdbHandler;
 }
 
 void KVDBManager::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)

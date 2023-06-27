@@ -151,9 +151,9 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
 }
 
 api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
-                         std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+                         const std::string& kvdbScopeName)
 {
-    return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
+    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eKVDB::managerDump_Request;
         using ResponseType = eKVDB::managerDump_Response;
@@ -176,14 +176,14 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
             return ::api::adapter::genericError<ResponseType>("Field /name is empty");
         }
 
-        auto resultExists = kvdbManager->existsDB(eRequest.name());
+        auto resultExists = spkvdbManager->existsDB(eRequest.name());
 
         if (!resultExists)
         {
             return ::api::adapter::genericError<ResponseType>("/name KVDB does not exist");
         }
 
-        auto resultHandler = kvdbScope->getKVDBHandler(eRequest.name());
+        auto resultHandler = spkvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
@@ -227,9 +227,9 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 
 /* Specific DB endpoint */
 api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
-                   std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+                   const std::string& kvdbScopeName)
 {
-    return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
+    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eKVDB::dbGet_Request;
         using ResponseType = eKVDB::dbGet_Response;
@@ -261,14 +261,14 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
             return ::api::adapter::genericError<ResponseType>("Field /key is empty");
         }
 
-        auto resultExists = kvdbManager->existsDB(eRequest.name());
+        auto resultExists = spkvdbManager->existsDB(eRequest.name());
 
         if (!resultExists)
         {
             return ::api::adapter::genericError<ResponseType>("/name KVDB does not exist");
         }
 
-        auto resultHandler = kvdbScope->getKVDBHandler(eRequest.name());
+        auto resultHandler = spkvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
@@ -302,9 +302,9 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 }
 
 api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
-                      std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+                      const std::string& kvdbScopeName)
 {
-    return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
+    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eKVDB::dbDelete_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -336,14 +336,14 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
             return ::api::adapter::genericError<ResponseType>("Field /key is empty");
         }
 
-        auto resultExists = kvdbManager->existsDB(eRequest.name());
+        auto resultExists = spkvdbManager->existsDB(eRequest.name());
 
         if (!resultExists)
         {
             return ::api::adapter::genericError<ResponseType>("/name KVDB does not exist");
         }
 
-        auto resultHandler = kvdbScope->getKVDBHandler(eRequest.name());
+        auto resultHandler = spkvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
@@ -365,9 +365,9 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 }
 
 api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
-                   std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope)
+                   const std::string& kvdbScopeName)
 {
-    return [kvdbManager, kvdbScope](api::wpRequest wRequest) -> api::wpResponse
+    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](api::wpRequest wRequest) -> api::wpResponse
     {
         using RequestType = eKVDB::dbPut_Request;
         using ResponseType = eEngine::GenericStatus_Response;
@@ -412,14 +412,14 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
             return ::api::adapter::genericError<ResponseType>("Field /value is empty");
         }
 
-        auto resultExists = kvdbManager->existsDB(eRequest.name());
+        auto resultExists = spkvdbManager->existsDB(eRequest.name());
 
         if (!resultExists)
         {
             return ::api::adapter::genericError<ResponseType>("/name KVDB does not exist");
         }
 
-        auto resultHandler = kvdbScope->getKVDBHandler(eRequest.name());
+        auto resultHandler = spkvdbManager->getKVDBHandler(eRequest.name(), kvdbScopeName);
 
         if (std::holds_alternative<base::Error>(resultHandler))
         {
@@ -440,7 +440,7 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 }
 
 void registerHandlers(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
-                      std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope,
+                      const std::string& kvdbScopeName,
                       std::shared_ptr<api::Api> api)
 {
 
@@ -448,11 +448,11 @@ void registerHandlers(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
     const bool ok = api->registerHandler("kvdb.manager/post", managerPost(kvdbManager))
                     && api->registerHandler("kvdb.manager/delete", managerDelete(kvdbManager))
                     && api->registerHandler("kvdb.manager/get", managerGet(kvdbManager))
-                    && api->registerHandler("kvdb.manager/dump", managerDump(kvdbManager, kvdbScope)) &&
+                    && api->registerHandler("kvdb.manager/dump", managerDump(kvdbManager, kvdbScopeName)) &&
                     // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
-                    api->registerHandler("kvdb.db/put", dbPut(kvdbManager, kvdbScope))
-                    && api->registerHandler("kvdb.db/delete", dbDelete(kvdbManager, kvdbScope))
-                    && api->registerHandler("kvdb.db/get", dbGet(kvdbManager, kvdbScope));
+                    api->registerHandler("kvdb.db/put", dbPut(kvdbManager, kvdbScopeName))
+                    && api->registerHandler("kvdb.db/delete", dbDelete(kvdbManager, kvdbScopeName))
+                    && api->registerHandler("kvdb.db/get", dbGet(kvdbManager, kvdbScopeName));
 
     if (!ok)
     {

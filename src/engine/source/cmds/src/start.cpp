@@ -235,8 +235,7 @@ void runStart(ConfHandler confManager)
                     kvdbManager->finalize();
                 });
 
-            auto kvdbScope = kvdbManager->getKVDBScope("api");
-            api::kvdb::handlers::registerHandlers(kvdbManager, kvdbScope, api);
+            api::kvdb::handlers::registerHandlers(kvdbManager, "api", api);
 
             LOG_DEBUG("KVDB API registered.");
         }
@@ -289,7 +288,7 @@ void runStart(ConfHandler confManager)
             builder::internals::dependencies deps;
             deps.logparDebugLvl = 0;
             deps.logpar = logpar;
-            deps.kvdbScope = kvdbManager->getKVDBScope("builder");
+            deps.kvdbScopeName = "builder";
             deps.kvdbManager = kvdbManager;
             deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
             deps.schema = schema;
