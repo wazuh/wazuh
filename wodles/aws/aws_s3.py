@@ -112,13 +112,13 @@ ALL_REGIONS = [
 ################################################################################
 
 def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dict):
-    """Creates a botocore.config.Config object with the specified profile and profile_config.
+    """Create a botocore.config.Config object with the specified profile and profile_config.
 
     This function reads the profile configuration from the provided profile_config object and extracts the necessary
     parameters to create a botocore.config.Config object.
     It handles the signature version, s3, proxies, and proxies_config settings found in the .aws/config file for the
     specified profile. If a setting is not found, a default value is used based on the boto3 documentation and config is
-    set into the boto_config
+    set into the boto_config.
 
     Parameters
     ----------
@@ -316,7 +316,7 @@ class WazuhIntegration:
 
     @staticmethod
     def default_config(profile: str) -> dict:
-        """Sets the parameters found in user config file as a default configuration for client.
+        """Set the parameters found in user config file as a default configuration for client.
 
         This method is called when Wazuh Integration is instantiated and sets a default config using .aws/config file
         using the profile received from parameter.
@@ -324,28 +324,28 @@ class WazuhIntegration:
         If .aws/config file exist the file is retrieved and read to check for the existence of retry parameters mode and
         max attempts if they exist and empty dictionary is returned and config is handled by botocore but if they don't
         exist a botocore Config object is created and default configuration is set using user config for received
-        profile and retries parameters are set to avoid a throttling exception
+        profile and retries parameters are set to avoid a throttling exception.
 
         Parameters
         ----------
         profile : string
-                Aws profile configuration to use
+                Aws profile configuration to use.
 
         Returns
         -------
         dict
-            Configuration dictionary
+            Configuration dictionary.
 
         Raises
         ------
         KeyError
-            KeyError when there is no region in user config file
+            KeyError when there is no region in user config file.
 
         ValueError
-            ValueError when there is an error parsing config file
+            ValueError when there is an error parsing config file.
 
         NoSectionError
-            configparser error when given profile does not exist in user config file
+            configparser error when given profile does not exist in user config file.
         """
         args = {}
 
