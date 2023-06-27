@@ -13,7 +13,6 @@
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
 #include "state.h"
-#include <langinfo.h>
 
 #define LEN_LOCATION   (10)
 #define LEN_BOOL_STR   (5)
@@ -279,7 +278,7 @@ bool isJsonUpdated(void) {
     if (stat(LOGCOLLECTOR_STATE, &outstat) == 0) {
         tm_stat = localtime(&outstat.st_mtime);
         /* Get localized date string. */
-        strftime(date_string, sizeof(date_string), nl_langinfo(D_T_FMT), tm_stat);
+        strftime(date_string, sizeof(date_string), "%c", tm_stat);
         mtime_current = mktime(tm_stat);
         mdebug2(" %s %s\n", date_string, LOGCOLLECTOR_STATE);
     }
