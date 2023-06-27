@@ -64,7 +64,7 @@ normalize:
       - event.id: $~json.aws.request_id
       - event.kind: event
       - event.type: +array_append/access
-      - event.start: $~json.aws.time
+      - event.start: +parse_date/$~json.aws.time/%d\/%b\/%Y:%T %z
       - http.request.referrer: $~json.aws.referer
       - http.response.body.bytes: $~json.aws.bytes_sent
       - http.response.status_code: $~json.aws.http_status
