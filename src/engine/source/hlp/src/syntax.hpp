@@ -357,26 +357,11 @@ inline Parser alnum(const std::string& additional = "")
 {
     return [additional](std::string_view input) -> Result
     {
-        if (input.empty())
+        if (!input.empty() && (std::isalnum(input[0]) || additional.find(input[0]) != std::string::npos))
         {
-            return abs::makeFailure<ResultT>(input, {});
+            return abs::makeSuccess<ResultT>(input.substr(1));
         }
-
-        if (!std::isalnum(input[0]))
-        {
-            if (!additional.empty())
-            {
-                if (additional.npos == additional.find(input[0]))
-                {
-                    return abs::makeFailure<ResultT>(input, {});
-                }
-            }
-            else
-            {
-                return abs::makeFailure<ResultT>(input, {});
-            }
-        }
-        return abs::makeSuccess<ResultT>(input.substr(1));
+        return abs::makeFailure<ResultT>(input, {});
     };
 }
 
