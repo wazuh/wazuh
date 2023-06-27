@@ -1,0 +1,78 @@
+name: decoder/wazuh-dashboard/0
+
+metadata:
+  module: wazuh-dashboard
+  dataset: wazuh-dashboard-log
+  title: Wazuh Dashboard logs
+  description: Decoder for Wazuh Dashboard logs
+  compatibility: This decoder has been tested with logs from Wazuh version 4.4
+  versions:
+    - "4.4"
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2023-06-15
+  references:
+    - "https://documentation.wazuh.com/current/user-manual/wazuh-dashboard/index.html"
+    - "https://opensearch.org/docs/latest/monitoring-your-cluster/logs/"
+    - "https://www.elastic.co/guide/en/kibana/current/logging-configuration.html"
+
+sources:
+  - decoder/syslog/0
+
+check:
+  - process.name: opensearch-dashboards
+  - message: +starts_with/{
+  # TODO: Once the events arrive tagged, uncommnet the following two lines
+  # - event.module: wazuh-dashboard
+  # - event.dataset: wazuh-dashboard-log
+
+parse:
+  logpar:
+    - message: "<~json/json>"
+
+normalize:
+  - map:
+      - event.module: wazuh-dashboard
+      - event.dataset: wazuh-dashboard-log
+      - wazuh.decoders: +array_append/wazuh-dashboard
+      - event.category: +array_append/web
+      - event.type: +array_append/$~json.type
+      - '@timestamp': $~json.@timestamp
+      - tags: $~json.tags
+      - message: $~json.message
+
+  - check:
+      - ~json.type: error
+    map:
+      - log.level: $~json.level
+      - error.message: $~json.error.message
+      - error.stack_trace: $~json.error.stack
+      - error.code: $~json.error.code
+      - url.original: $~json.url
+
+  - check:
+      - ~json.type: response
+    logpar:
+      - ~json.req.url: <url.path>(?\?<url.query>)
+    map:
+      - http.request.method: $~json.req.method
+      - destination.address: $~json.req.headers.host
+      - source.address: $~json.req.remoteAddress
+      - user_agent.original: $~json.req.userAgent
+      - http.request.referrer: $~json.req.referer
+      - http.request.body.bytes: $~json.req.headers.content-length
+      - http.response.status_code: $~json.res.statusCode
+
+  - check:
+      - http.response.status_code: +int_less/400
+    map:
+      - event.outcome: success
+
+  - check:
+      - http.response.status_code: +int_greater_or_equal/400
+    map:
+      - event.outcome: failure
+
+  - map:
+      - ~json: +delete
