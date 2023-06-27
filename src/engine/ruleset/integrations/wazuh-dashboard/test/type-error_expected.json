@@ -18,7 +18,6 @@
             "start": "2023-06-23T14:58:39.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
@@ -76,7 +75,6 @@
             "start": "2023-06-26T18:45:02.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
