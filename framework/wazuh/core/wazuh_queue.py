@@ -219,8 +219,7 @@ class WazuhAnalysisdQueue(BaseQueue):
         if len(socket_msg) > self.MAX_MSG_SIZE:
             raise WazuhError(
                 1012,
-                "The size of the event is bigger than the message size that analysisd can handle"
-                f"({self.MAX_MSG_SIZE}b)."
+                f"The event is too large to be sent to analysisd (maximum is {self.MAX_MSG_SIZE}B)"
             )
 
         try:
