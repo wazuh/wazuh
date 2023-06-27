@@ -16,14 +16,21 @@ namespace details
 constexpr auto ORIGIN_NAME {"engine_integrated_test_api"};
 } // namespace details
 
+constexpr auto SESSION_GET_DATA_FORMAT = R"({{"id":"{}","creation_date":"{}","policy":"{}", "filter":"{}",)"
+                                         R"("route":"{}","lifespan":{},"description":"{}"}})";  ///< Session data format
+
+constexpr auto OUTPUT_ONLY {0};
+constexpr auto OUTPUT_AND_TRACES {1};
+constexpr auto OUTPUT_AND_TRACES_WITH_DETAILS {2};
+
 struct Parameters
 {
     bool deleteAll;
-    int debugLevel;
+    bool jsonFormat;
+    int32_t debugLevel;
     std::string apiEndpoint;
     std::string description;
     std::string event;
-    bool jsonFormat;
     std::string policy;
     std::string protocolLocation;
     std::string sessionName;
@@ -33,7 +40,7 @@ struct Parameters
 
 /**
  * @brief Command handler to test an event in a certain session.
- * 
+ *
  * @param client Client instance
  * @param parameters Parameters instance
  */
