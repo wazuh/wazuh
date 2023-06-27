@@ -56,6 +56,18 @@ public:
      * functions) are not thread safe.
      */
     std::optional<base::Error> processEvent(base::Event event);
+
+    /**
+     * @brief Complete the policy, needed to be able to free rxcpp resources
+     *
+     */
+    void complete()
+    {
+        if (m_controller)
+        {
+            m_controller->complete();
+        }
+    }
 };
 
 } // namespace router
