@@ -64,7 +64,7 @@ list(APPEND logcollector_names "test_lccom")
 list(APPEND logcollector_flags "-Wl,--wrap,w_logcollector_state_get -Wl,--wrap,cJSON_CreateObject \
                                 -Wl,--wrap,cJSON_AddNumberToObject \
                                 -Wl,--wrap,cJSON_AddObjectToObject -Wl,--wrap,cJSON_AddStringToObject \
-                                -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_PrintUnformatted \
+                                -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddFalseToObject -Wl,--wrap,cJSON_PrintUnformatted \
                                 -Wl,--wrap,cJSON_Delete ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND logcollector_names "test_macos_log")

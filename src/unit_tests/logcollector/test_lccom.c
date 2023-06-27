@@ -23,7 +23,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 
-size_t lccom_getstate(char ** output);
+size_t lccom_getstate(char ** output, bool getNextPage);
 
 /* setup/teardown */
 
@@ -60,13 +60,19 @@ void test_lccom_getstate_ok(void ** state) {
     expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
     will_return(__wrap_cJSON_AddNumberToObject, NULL);
 
+    expect_string(__wrap_cJSON_AddFalseToObject, name, "remaining");
+    will_return(__wrap_cJSON_AddFalseToObject, NULL);
+
+    expect_string(__wrap_cJSON_AddFalseToObject, name, "json_updated");
+    will_return(__wrap_cJSON_AddFalseToObject, NULL);
+
     expect_function_call(__wrap_cJSON_AddItemToObject);
     will_return(__wrap_cJSON_AddItemToObject, 0);
 
     will_return(__wrap_cJSON_PrintUnformatted, json);
     expect_function_call(__wrap_cJSON_Delete);
 
-    size_t retval = lccom_getstate(&output);
+    size_t retval = lccom_getstate(&output, false);
 
     assert_int_equal(strlen(json), retval);
     assert_string_equal(json, output);
@@ -98,7 +104,7 @@ void test_lccom_getstate_null(void ** state) {
     will_return(__wrap_cJSON_PrintUnformatted, json);
     expect_function_call(__wrap_cJSON_Delete);
 
-    size_t retval = lccom_getstate(&output);
+    size_t retval = lccom_getstate(&output, false);
 
     assert_int_equal(strlen(json), retval);
     assert_string_equal(json, output);
