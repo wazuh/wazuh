@@ -78,6 +78,16 @@ std::optional<base::Error> PolicyManager::deletePolicy(const std::string& name)
 void PolicyManager::delAllPolicies()
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
+
+    // TODO: Redesing the logic so this is not needed to be manual
+    for (auto& [name, runPolicy] : m_policies)
+    {
+        for (auto& policy : runPolicy)
+        {
+            policy.complete();
+        }
+    }
+
     m_policies.clear();
 }
 
