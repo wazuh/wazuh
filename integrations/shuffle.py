@@ -55,7 +55,7 @@ ALERT_INDEX     = 1
 WEBHOOK_INDEX   = 3
 
 
-def main(args: list[str]):
+def main(args):
     global debug_enabled
     try:
         # Read arguments
@@ -89,7 +89,7 @@ def main(args: list[str]):
         raise
 
 
-def process_args(args: list[str]) -> None:
+def process_args(args) -> None:
     """
         This is the core function, creates a message with all valid fields
         and overwrite or add with the optional fields

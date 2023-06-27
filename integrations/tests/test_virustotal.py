@@ -162,21 +162,21 @@ def test_process_args():
     with patch("virustotal.open", mock_open()), \
             patch('virustotal.get_json_alert') as alert_load,\
             patch('virustotal.send_msg') as send_msg, \
-            patch('virustotal.generate_msg', return_value=msg_template) as generate_msg, \
+            patch('virustotal.request_virustotal_info', return_value=msg_template) as request_virustotal_info, \
             patch('requests.post', return_value=requests.Response):
         alert_load.return_value = alert_template
         virustotal.process_args(sys_args_template)
-        generate_msg.assert_called_once_with(alert_template,sys_args_template[2])
-        generated_msg = virustotal.generate_msg(alert_template,sys_args_template[2])
+        request_virustotal_info.assert_called_once_with(alert_template,sys_args_template[2])
+        generated_msg = virustotal.request_virustotal_info(alert_template,sys_args_template[2])
         assert generated_msg==msg_template
         send_msg.assert_called_once_with(msg_template,msg_template['agent'])
 
 def test_process_args_not_sending_message():
-    """Test that the send_msg function is not executed due to empty message after generate_msg."""
+    """Test that the send_msg function is not executed due to empty message after request_virustotal_info."""
     with patch("virustotal.open", mock_open()), \
             patch('virustotal.get_json_alert') as alert_load,\
             patch('virustotal.send_msg') as send_msg, \
-            patch('virustotal.generate_msg', return_value=''), \
+            patch('virustotal.request_virustotal_info', return_value=''), \
             pytest.raises(Exception):
         alert_load.return_value = alert_template
         virustotal.process_args(sys_args_template)

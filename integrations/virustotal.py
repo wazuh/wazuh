@@ -51,7 +51,7 @@ ALERT_INDEX     = 1
 APIKEY_INDEX    = 2
 
 
-def main(args: list[str]):
+def main(args):
     global debug_enabled
     try:
         # Read arguments
@@ -84,7 +84,7 @@ def main(args: list[str]):
         debug(str(e))
         raise
 
-def process_args(args: list[str]) -> None:
+def process_args(args) -> None:
     """
         This is the core function, creates a message with all valid fields
         and overwrite or add with the optional fields
@@ -129,7 +129,7 @@ def debug(msg: str) -> None:
         with open(LOG_FILE, "a") as f:
             f.write(msg)
 
-def request_virustotal_info(alert: any,apikey: str) -> dict[str, str]:
+def request_virustotal_info(alert: any, apikey: str):
     """
         Generate the JSON object with the message to be send
 
@@ -173,8 +173,8 @@ def request_virustotal_info(alert: any,apikey: str) -> dict[str, str]:
     alert_output["virustotal"]["source"]["sha1"]         = alert["syscheck"]["sha1_after"]
 
     # Check if VirusTotal has any info about the hash
-    if vt_response_data['response_code']:
-        alert_output["virustotal"]["found"] = 1
+    if in_database(vt_response_data, hash):
+      alert_output["virustotal"]["found"] = 1
 
     # Info about the file found in VirusTotal
     if alert_output["virustotal"]["found"] == 1:
@@ -188,6 +188,12 @@ def request_virustotal_info(alert: any,apikey: str) -> dict[str, str]:
         alert_output["virustotal"]["permalink"]      = vt_response_data['permalink']
 
     return alert_output
+
+def in_database(data, hash):
+  result = data['response_code']
+  if result == 0:
+    return False
+  return True
 
 def query_api(hash: str, apikey: str) -> any:
     """
