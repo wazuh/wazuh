@@ -7,6 +7,7 @@
 #include <error.hpp>
 #include <google/protobuf/message.h>
 #include <google/protobuf/struct.pb.h>
+#include <google/protobuf/stubs/common.h>
 #include <google/protobuf/util/json_util.h>
 
 namespace eMessage
@@ -106,6 +107,17 @@ eRepeatedFieldToJson(const google::protobuf::RepeatedPtrField<T>& repeatedPtrFie
     jsonArray += "]";
     return jsonArray;
 }
+
+/**
+ * @brief Shutdown the eMessage library (call this before the program exits)
+ *
+ * This function shutdown the google::protobuf library, is not necessary to call but is recommended for a clean exit.
+ */
+inline void ShutdownEMessageLibrary()
+{
+    google::protobuf::ShutdownProtobufLibrary();
+}
+
 } // namespace eMessage
 
 #endif // _PROTO_EMESSAGE_EMESSAGE_HPP
