@@ -3760,9 +3760,63 @@ def arg_valid_iam_role_duration(arg_string):
         If the number provided is not in the expected range.
     """
     # Session duration must be between 15m and 12h
-    if not (arg_string is None or (900 <= int(arg_string) <= 3600)):
+    # Session duration must be between 15m and 12h
+    if arg_string is None:
+        return None
+
+    # Validate if the argument is a number
+    if not arg_string.isdigit():
+        raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be a valid number.")
+
+    # Convert to integer and check range
+    num_seconds = int(arg_string)
+    if not (900 <= num_seconds <= 3600):
         raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
-    return int(arg_string)
+
+    return num_seconds
+
+
+def args_valid_iam_role_arn(iam_role_arn):
+    """Checks if the IAM role ARN specified is a valid parameter.
+
+    Parameters
+    ----------
+    iam_role_arn : str
+        The IAM role ARN to validate.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the ARN provided is not in the expected format.
+    """
+    pattern = r'^arn:aws:connect:\w+(?:-\w+)+:\d{12}:instance\/[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+$'
+
+    if not re.match(pattern, iam_role_arn):
+        raise argparse.ArgumentTypeError("Invalid ARN specified. Value must be a valid ARN.")
+
+    return iam_role_arn
+
+
+def args_valid_sqs_name(sqs_name):
+    """Checks if the SQS name specified is a valid parameter.
+
+    Parameters
+    ----------
+    sqs_name : str
+        The SQS name to validate.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the SQS name provided is not in the expected format.
+    """
+    pattern = r'^[a-zA-Z0-9-_]{1,80}$'
+
+    if not re.match(pattern, sqs_name):
+        raise argparse.ArgumentTypeError("Invalid SQS Name specified. Value must be up to 80 characters and the valid "
+                                         "values are alphanumeric characters, hyphens (-), and underscores (_)")
+
+    return sqs_name
 
 
 def get_script_arguments():
@@ -3778,7 +3832,7 @@ def get_script_arguments():
     group.add_argument('-sb', '--subscriber', dest='subscriber', help='Specify the type of the subscriber',
                        action='store')
     parser.add_argument('-q', '--queue', dest='queue', help='Specify the name of the SQS',
-                        action='store')
+                        type=args_valid_sqs_name, action='store')
     parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
                         help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
@@ -3800,6 +3854,7 @@ def get_script_arguments():
                         default=None)
     parser.add_argument('-i', '--iam_role_arn', dest='iam_role_arn',
                         help='ARN of IAM role to assume for access to S3 bucket',
+                        type=args_valid_iam_role_arn,
                         default=None)
     parser.add_argument('-n', '--aws_account_alias', dest='aws_account_alias',
                         help='AWS Account ID Alias', default='')
