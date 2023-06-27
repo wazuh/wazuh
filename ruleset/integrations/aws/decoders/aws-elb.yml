@@ -64,7 +64,7 @@ normalize:
       - destination.port: $~json.aws.target_port
       - destination.address: $~json.aws.target_ip
 
-      - related.ip: $~json.aws.target_ip_list
+      - related.ip: '+split/$~json.aws.target_ip_list/ '
       - url.domain: $~json.aws.domain_name
       - process.exit_code: $~json.aws.elb_status_code
       - process.name: $~json.aws.elb
