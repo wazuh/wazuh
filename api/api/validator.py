@@ -217,7 +217,7 @@ WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
 
 def check_exp(exp: str, regex: re.Pattern) -> bool:
     """Function to check if an expression matches a regex.
-    
+
     Parameters
     ----------
     exp : str
@@ -237,7 +237,7 @@ def check_exp(exp: str, regex: re.Pattern) -> bool:
 
 def check_xml(xml_string: str) -> bool:
     """Function to check if an XML string is correct.
-    
+
     Parameters
     ----------
     xml_string : str
@@ -260,7 +260,7 @@ def check_xml(xml_string: str) -> bool:
 
 def allowed_fields(filters: Dict) -> List:
     """Return a list with allowed fields.
-    
+
     Parameters
     ----------
     filters : dict
@@ -276,7 +276,7 @@ def allowed_fields(filters: Dict) -> List:
 
 def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = True) -> bool:
     """Check if a path is correct.
-    
+
     Parameters
     ----------
     path : str

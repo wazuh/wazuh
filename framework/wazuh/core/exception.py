@@ -535,6 +535,7 @@ class WazuhException(Exception):
                'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
+        6005: {'message': 'Maximum number of requests per minute reached'},
 
         # Logtest
         7000: {'message': 'Error trying to get logtest response'},

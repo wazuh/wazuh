@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+import json
 import logging
 import os
 from unittest.mock import MagicMock, call, patch
@@ -150,6 +151,70 @@ def test_accesslogger_log_hash_auth_context(request_path, token_info, request_bo
         else:
             assert message_api_log[1] == request.remote
             assert 'hash_auth_context' not in message_api_json
+
+
+@pytest.mark.parametrize('request_path,request_body,log_level,log_key,json_key', [
+    ('/events', {"events": ["foo", "bar"]}, 20, 'body', 'body'),
+    ('/events', {"events": ["foo", "bar"]}, 5, 'body', 'body'),
+    ('/agents', {}, 20, 'body', 'body'),
+    ('/agents', {}, 5, 'body', 'body')
+])
+@patch('logging.Logger.info')
+@patch('logging.Logger.debug')
+def test_accesslogger_log_events_correctly(
+    mock_logger_debug, mock_logger_info, request_path, request_body, log_level, log_key, json_key
+):
+    """Test that the authorization context hash is logged properly when using log().
+
+    Parameters
+    ----------
+    request_path : str
+        Path used in the custom request.
+    request_body : dict
+        Request body used in the custom request.
+    log_level: int
+        Log level used un the custom request.
+    """
+
+    # Create a class with custom methods for request
+    class CustomRequest:
+        def __init__(self):
+            self.request_dict = {}
+            self.path = request_path
+            self.body = request_body
+            self.query = {}
+            self.remote = 'test'
+            self.method = 'test'
+            self.user = 'test'
+
+        def __contains__(self, key):
+            return key in self.request_dict
+
+        def __getitem__(self, key):
+            return self.request_dict[key]
+
+        def get(self, *args, **kwargs):
+            return getattr(self, args[0]) if args[0] in self.__dict__.keys() else args[1]
+
+    # Create an AccessLogger object and log a mocked call
+    request = CustomRequest()
+    test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
+    test_access_logger.logger.setLevel(log_level)
+    test_access_logger.log(request=request, response=MagicMock(), time=0.0)
+
+    message_api_log = mock_logger_info.call_args_list[0][0][0]
+    message_api_json = mock_logger_info.call_args_list[1][0][0]
+
+    assert log_key in message_api_log
+    assert json_key in message_api_json
+
+    if log_level >= 20 and request_path == '/events':
+        formatted_log = {"events": len(request_body["events"])}
+        assert json.dumps(formatted_log) in message_api_log
+        assert formatted_log == message_api_json[json_key]
+    else:
+        assert json.dumps(request_body) in message_api_log
+        assert request_body == message_api_json[json_key]
 
 
 @pytest.mark.parametrize('json_log', [
