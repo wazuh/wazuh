@@ -37,6 +37,13 @@
 #define mdebug1(msg, ...) _mtdebug1(WM_OSQUERYMONITOR_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_OSQUERYMONITOR_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #ifdef WIN32
 static DWORD WINAPI wm_osquery_monitor_main(void *arg);
 #else
@@ -45,7 +52,7 @@ static void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor);
 static void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
 static int wm_osquery_check_logfile(const char * path, FILE * fp);
 static int wm_osquery_packs(wm_osquery_monitor_t *osquery);
-static char * wm_osquery_already_running(char * text);
+STATIC char * wm_osquery_already_running(char * text);
 cJSON *wm_osquery_dump(const wm_osquery_monitor_t *osquery_monitor);
 
 static volatile int active = 1;
@@ -425,6 +432,8 @@ char * wm_osquery_already_running(char * text) {
             // Find "Pidfile::Error::Busy"
         } else if (strstr(text, PATTERNS[2]) != NULL) {
             os_strdup("unknown", text);
+        } else {
+            text = NULL;
         }
     }
     return text;
