@@ -25,6 +25,7 @@ daemons:
 
 os_platform:
     - linux
+    - Windows
 
 os_version:
     - Arch Linux
@@ -36,6 +37,10 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
+    - Windows 11
+    - Windows 10
+    - Windows Server 2019
+    - Windows Server 2016
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/active-response/#active-response
@@ -44,10 +49,10 @@ import pytest
 
 from pathlib import Path
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ACTIVE_RESPONSE_LOG_PATH
-from wazuh_testing.modules.active_response import patterns as ar_patterns
-from wazuh_testing.modules.execd import patterns as execd_paterns
+from wazuh_testing.constants.paths.logs import ACTIVE_RESPONSE_LOG_PATH, WAZUH_LOG_PATH
+from wazuh_testing.modules.active_response.patterns import ACTIVE_RESPONSE_RESTART_WAZUH
 from wazuh_testing.modules.execd import EXECD_DEBUG_CONFIG
+from wazuh_testing.modules.execd.patterns import EXECD_SHUTDOWN_RECEIVED
 from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data
@@ -59,7 +64,7 @@ from . import TEST_CASES_PATH
 pytestmark = [pytest.mark.agent, pytest.mark.tier(level=1)]
 
 # Configuration and cases data.
-cases_path = Path(TEST_CASES_PATH, 'cases_execd_firewall_drop.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_execd_restart.yaml')
 
 # Test configurations.
 _, test_metadata, cases_ids = get_test_cases_data(cases_path)
@@ -69,18 +74,18 @@ local_internal_options = EXECD_DEBUG_CONFIG
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 # Test Active Response configuration
-active_response_configuration = 'firewall-drop5 - firewall-drop - 5'
+active_response_configuration = 'restart-wazuh0 - restart-wazuh - 0\nrestart-wazuh0 - restart-wazuh.exe - 0'
 
 
-# Test function.
+# Test Function.
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=cases_ids)
-def test_execd_firewall_drop(test_metadata, configure_local_internal_options, truncate_monitored_files,
-                             active_response_configuration, daemons_handler, send_execd_message):
+def test_execd_restart(test_metadata, configure_local_internal_options, truncate_monitored_files,
+                       active_response_configuration, daemons_handler, send_execd_message):
     '''
-    description: Check if 'firewall-drop' command of 'active response' is executed correctly.
-                 For this purpose, a simulated agent is used and the 'active response'
-                 is sent to it. This response includes an IP address that must be added
-                 and removed from 'iptables', the Linux firewall.
+    description: Check if 'restart-wazuh' command of 'active response' is executed correctly.
+                 For this purpose, a simulated agent is used, to which the active response is sent.
+                 This response includes the order to restart the Wazuh agent,
+                 which must restart after receiving this response.
 
     wazuh_min_version: 4.2.0
 
@@ -126,21 +131,13 @@ def test_execd_firewall_drop(test_metadata, configure_local_internal_options, tr
     if error_message := test_metadata.get('expected_error'):
         callback = generate_callback(error_message)
         ar_monitor.start(callback=callback)
-        assert ar_monitor.callback_result, 'AR `firewall-drop` did not fail.'
+        assert ar_monitor.callback_result, 'AR `wazuh-restart` did not fail.'
         return
 
-    # Wait for the firewall drop command to be executed.
-    wazuh_log_monitor.start(callback=generate_callback(execd_paterns.EXECD_EXECUTING_COMMAND))
-    assert wazuh_log_monitor.callback_result, 'Execd `executing` command log not raised.'
+    # Check the shutdown received log is raised.
+    wazuh_log_monitor.start(callback=generate_callback(EXECD_SHUTDOWN_RECEIVED))
+    assert wazuh_log_monitor.callback_result, 'Execd `shutdown` log not raised.'
 
     # Wait and check the add command to be executed.
-    ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_FIREWALL_DROP))
-    assert ar_monitor.callback_result, 'AR `firewall-drop` program not used.'
-
-    # Wait and check the add command to be executed.
-    ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_ADD_COMMAND))
-    assert '"command":"add"' in ar_monitor.callback_result, 'AR `add` command not executed.'
-
-    # Wait and check the delete command to be executed.
-    ar_monitor.start(callback=generate_callback(ar_patterns.ACTIVE_RESPONSE_DELETE_COMMAND))
-    assert '"command":"delete"' in ar_monitor.callback_result, 'AR `delete` command not executed.'
+    ar_monitor.start(callback=generate_callback(ACTIVE_RESPONSE_RESTART_WAZUH))
+    assert  ar_monitor.callback_result, 'AR `restart-wazuh` program not used.'
