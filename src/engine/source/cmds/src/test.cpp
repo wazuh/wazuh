@@ -15,6 +15,9 @@
 
 namespace
 {
+
+using std::string;
+
 std::atomic<bool> gs_doRun {true};
 cmd::details::StackExecutor g_exitHanlder {};
 
@@ -69,7 +72,7 @@ inline bool clear_icanon(const bool& doClearIcanon)
  * @return std::optional<YAML::Node> YAML node
  */
 inline std::optional<YAML::Node>
-processJson(const json::Json& jsonObject, const std::string& jsonPath, const std::string& rootName)
+processJson(const json::Json& jsonObject, const string& jsonPath, const string& rootName)
 {
     const auto jsonValue = jsonObject.getJson(jsonPath);
 
@@ -106,7 +109,7 @@ inline void printYML(const YAML::Node& node)
  *
  * @param strJsonObject Json value
  */
-inline void printJsonAsYML(const std::string& strJsonObject)
+inline void printJsonAsYML(const string& strJsonObject)
 {
     std::optional<YAML::Node> outputNode;
     try
@@ -140,32 +143,32 @@ namespace cmd::test
 namespace eTest = ::com::wazuh::api::engine::test;
 namespace eEngine = ::com::wazuh::api::engine;
 
-void processEvent(const std::string& eventStr,
+void processEvent(const string& eventStr,
                   const Parameters& parameters,
                   std::shared_ptr<apiclnt::Client> client,
                   eTest::RunPost_Request eRequest)
 {
     using RequestType = eTest::RunPost_Request;
     using ResponseType = eTest::RunPost_Response;
-    const std::string command {api::test::handlers::TEST_RUN_API_CMD};
+    const string command {api::test::handlers::TEST_RUN_API_CMD};
 
     // Set event
-    json::Json jevent {};
+    json::Json jsonEvent {};
     try
     {
-        jevent = json::Json {eventStr.c_str()};
+        jsonEvent = json::Json {eventStr.c_str()};
     }
     catch (const std::exception& e)
     {
         // If not, set it as a string
-        jevent.setString(eventStr);
+        jsonEvent.setString(eventStr);
     }
 
     // Convert the value to protobuf value
-    const auto protoEvent = eMessage::eMessageFromJson<google::protobuf::Value>(jevent.str());
+    const auto protoEvent = eMessage::eMessageFromJson<google::protobuf::Value>(jsonEvent.str());
     if (std::holds_alternative<base::Error>(protoEvent)) // Should not happen but just in case
     {
-        const auto msj = std::get<base::Error>(protoEvent).message + ". For value " + jevent.str();
+        const auto msj = std::get<base::Error>(protoEvent).message + ". For value " + jsonEvent.str();
         throw ::cmd::ClientException(msj, ClientException::Type::PROTOBUFF_SERIALIZE_ERROR);
     }
 
@@ -178,7 +181,7 @@ void processEvent(const std::string& eventStr,
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print results
-    std::string jsonOutputAndTrace;
+    string jsonOutputAndTrace;
     google::protobuf::util::MessageToJsonString(eResponse, &jsonOutputAndTrace);
     if (parameters.jsonFormat)
     {
@@ -234,7 +237,7 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
         }
 
         // Stdin loop
-        std::string line;
+        string line;
         while (gs_doRun && std::getline(std::cin, line))
         {
             if (!line.empty())
@@ -254,6 +257,7 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
         {
             clear_icanon(false);
         }
+
         g_exitHanlder.execute();
     }
 }
@@ -262,7 +266,7 @@ void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
 {
     using RequestType = eTest::SessionPost_Request;
     using ResponseType = eTest::SessionPost_Response;
-    const std::string command {api::test::handlers::TEST_POST_SESSION_API_CMD};
+    const string command {api::test::handlers::TEST_POST_SESSION_API_CMD};
 
     RequestType eRequest;
 
@@ -290,7 +294,7 @@ void sessionDelete(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
 {
     using RequestType = eTest::SessionsDelete_Request;
     using ResponseType = eTest::SessionsDelete_Response;
-    const std::string command {api::test::handlers::TEST_DELETE_SESSIONS_API_CMD};
+    const string command {api::test::handlers::TEST_DELETE_SESSIONS_API_CMD};
 
     RequestType eRequest;
 
@@ -321,7 +325,7 @@ void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& param
 {
     using RequestType = eTest::SessionGet_Request;
     using ResponseType = eTest::SessionGet_Response;
-    const std::string command {api::test::handlers::TEST_GET_SESSION_DATA_API_CMD};
+    const string command {api::test::handlers::TEST_GET_SESSION_DATA_API_CMD};
 
     RequestType eRequest;
 
@@ -332,6 +336,7 @@ void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& param
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
     const auto output = fmt::format(SESSION_GET_DATA_FORMAT,
                                     eResponse.id(),
                                     eResponse.creation_date(),
@@ -348,7 +353,7 @@ void sessionList(std::shared_ptr<apiclnt::Client> client, const Parameters& para
 {
     using RequestType = eTest::SessionsGet_Request;
     using ResponseType = eTest::SessionsGet_Response;
-    const std::string command {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
+    const string command {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
 
     // Call the API
     RequestType eRequest;
@@ -403,8 +408,6 @@ void configure(CLI::App_p app)
     auto testSessionListApp = testSessionApp->add_subcommand("list", "List sessions.");
     testSessionListApp->callback([parameters, client]() { sessionList(client, *parameters); });
 
-    /** ************************************************************************************************************ */
-
     // API test Run
     auto testRunApp = testApp->add_subcommand("run", "Utility to run a test.");
     testRunApp->add_option("-n, --name", parameters->sessionName, "Name of the session to be used.")->required();
@@ -412,7 +415,7 @@ void configure(CLI::App_p app)
     testRunApp
         ->add_option(
             "-q, --protocol_queue", parameters->protocolQueue, "Event protocol queue identifier (a single character).")
-        ->default_val(ENGINE_PROTOCOL_QUEUE);
+        ->default_val(ENGINE_PROTOCOL_DEFAULT_QUEUE);
     testRunApp->add_flag("-d, --debug",
                          parameters->debugLevel,
                          "Enable debug mode [0-3]. Flag can appear multiple times. "

@@ -17,7 +17,7 @@ constexpr auto ORIGIN_NAME {"engine_integrated_test_api"};
 } // namespace details
 
 constexpr auto SESSION_GET_DATA_FORMAT = R"({{"id":"{}","creation_date":"{}","policy":"{}", "filter":"{}",)"
-                                         R"("route":"{}","lifespan":{},"description":"{}"}})";  ///< Session data format
+                                         R"("route":"{}","lifespan":{},"description":"{}"}})"; ///< Session data format
 
 constexpr auto OUTPUT_ONLY {0};
 constexpr auto OUTPUT_AND_TRACES {1};
@@ -33,9 +33,9 @@ struct Parameters
     std::string event;
     std::string policy;
     std::string protocolLocation;
+    std::string protocolQueue;
     std::string sessionName;
     uint32_t lifespan;
-    uint32_t protocolQueue;
 };
 
 /**

@@ -44,13 +44,13 @@ PROTOBUF_CONSTEXPR SessionGet_Response::SessionGet_Response(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.creation_date_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.filter_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.route_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.status_)*/0
+  , /*decltype(_impl_.id_)*/0u
+  , /*decltype(_impl_.creation_date_)*/0u
   , /*decltype(_impl_.lifespan_)*/0u} {}
 struct SessionGet_ResponseDefaultTypeInternal {
   PROTOBUF_CONSTEXPR SessionGet_ResponseDefaultTypeInternal()
@@ -155,9 +155,9 @@ PROTOBUF_CONSTEXPR RunPost_Request::RunPost_Request(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.protocol_queue_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.protocol_location_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.event_)*/nullptr
-  , /*decltype(_impl_.protocol_queue_)*/0u
   , /*decltype(_impl_.debug_mode_)*/0} {}
 struct RunPost_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR RunPost_RequestDefaultTypeInternal()
@@ -220,13 +220,13 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionGet_Response, _impl_.description_),
   ~0u,
   0,
+  5,
+  6,
   1,
   2,
   3,
-  4,
-  5,
   7,
-  6,
+  4,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::SessionPost_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -301,10 +301,10 @@ const uint32_t TableStruct_test_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::RunPost_Request, _impl_.debug_mode_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::RunPost_Request, _impl_.protocol_location_),
   0,
-  2,
   3,
-  4,
   1,
+  4,
+  2,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::RunPost_Response, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::test::RunPost_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -353,7 +353,7 @@ const char descriptor_table_protodef_test_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "\000\210\001\001B\007\n\005_name\"\331\002\n\023SessionGet_Response\0222\n"
   "\006status\030\001 \001(\0162\".com.wazuh.api.engine.Ret"
   "urnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\017\n\002id\030\003 \001("
-  "\tH\001\210\001\001\022\032\n\rcreation_date\030\004 \001(\tH\002\210\001\001\022\023\n\006po"
+  "\rH\001\210\001\001\022\032\n\rcreation_date\030\004 \001(\rH\002\210\001\001\022\023\n\006po"
   "licy\030\005 \001(\tH\003\210\001\001\022\023\n\006filter\030\006 \001(\tH\004\210\001\001\022\022\n\005"
   "route\030\007 \001(\tH\005\210\001\001\022\025\n\010lifespan\030\010 \001(\rH\006\210\001\001\022"
   "\030\n\013description\030\t \001(\tH\007\210\001\001B\010\n\006_errorB\005\n\003_"
@@ -377,7 +377,7 @@ const char descriptor_table_protodef_test_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "H\000\210\001\001B\010\n\006_error\"\227\002\n\017RunPost_Request\022\021\n\004n"
   "ame\030\001 \001(\tH\000\210\001\001\022*\n\005event\030\002 \001(\0132\026.google.p"
   "rotobuf.ValueH\001\210\001\001\022\033\n\016protocol_queue\030\003 \001"
-  "(\rH\002\210\001\001\022=\n\ndebug_mode\030\004 \001(\0162$.com.wazuh."
+  "(\tH\002\210\001\001\022=\n\ndebug_mode\030\004 \001(\0162$.com.wazuh."
   "api.engine.test.DebugModeH\003\210\001\001\022\036\n\021protoc"
   "ol_location\030\005 \001(\tH\004\210\001\001B\007\n\005_nameB\010\n\006_even"
   "tB\021\n\017_protocol_queueB\r\n\013_debug_modeB\024\n\022_"
@@ -657,25 +657,25 @@ class SessionGet_Response::_Internal {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_id(HasBits* has_bits) {
-    (*has_bits)[0] |= 2u;
+    (*has_bits)[0] |= 32u;
   }
   static void set_has_creation_date(HasBits* has_bits) {
-    (*has_bits)[0] |= 4u;
+    (*has_bits)[0] |= 64u;
   }
   static void set_has_policy(HasBits* has_bits) {
-    (*has_bits)[0] |= 8u;
+    (*has_bits)[0] |= 2u;
   }
   static void set_has_filter(HasBits* has_bits) {
-    (*has_bits)[0] |= 16u;
+    (*has_bits)[0] |= 4u;
   }
   static void set_has_route(HasBits* has_bits) {
-    (*has_bits)[0] |= 32u;
+    (*has_bits)[0] |= 8u;
   }
   static void set_has_lifespan(HasBits* has_bits) {
     (*has_bits)[0] |= 128u;
   }
   static void set_has_description(HasBits* has_bits) {
-    (*has_bits)[0] |= 64u;
+    (*has_bits)[0] |= 16u;
   }
 };
 
@@ -692,13 +692,13 @@ SessionGet_Response::SessionGet_Response(const SessionGet_Response& from)
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.error_){}
-    , decltype(_impl_.id_){}
-    , decltype(_impl_.creation_date_){}
     , decltype(_impl_.policy_){}
     , decltype(_impl_.filter_){}
     , decltype(_impl_.route_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.status_){}
+    , decltype(_impl_.id_){}
+    , decltype(_impl_.creation_date_){}
     , decltype(_impl_.lifespan_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -708,22 +708,6 @@ SessionGet_Response::SessionGet_Response(const SessionGet_Response& from)
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (from._internal_has_error()) {
     _this->_impl_.error_.Set(from._internal_error(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.id_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.id_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (from._internal_has_id()) {
-    _this->_impl_.id_.Set(from._internal_id(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.creation_date_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.creation_date_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (from._internal_has_creation_date()) {
-    _this->_impl_.creation_date_.Set(from._internal_creation_date(), 
       _this->GetArenaForAllocation());
   }
   _impl_.policy_.InitDefault();
@@ -772,26 +756,18 @@ inline void SessionGet_Response::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.error_){}
-    , decltype(_impl_.id_){}
-    , decltype(_impl_.creation_date_){}
     , decltype(_impl_.policy_){}
     , decltype(_impl_.filter_){}
     , decltype(_impl_.route_){}
     , decltype(_impl_.description_){}
     , decltype(_impl_.status_){0}
+    , decltype(_impl_.id_){0u}
+    , decltype(_impl_.creation_date_){0u}
     , decltype(_impl_.lifespan_){0u}
   };
   _impl_.error_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.error_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.id_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.id_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.creation_date_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.creation_date_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.policy_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -823,8 +799,6 @@ SessionGet_Response::~SessionGet_Response() {
 inline void SessionGet_Response::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.error_.Destroy();
-  _impl_.id_.Destroy();
-  _impl_.creation_date_.Destroy();
   _impl_.policy_.Destroy();
   _impl_.filter_.Destroy();
   _impl_.route_.Destroy();
@@ -842,31 +816,29 @@ void SessionGet_Response::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x0000007fu) {
+  if (cached_has_bits & 0x0000001fu) {
     if (cached_has_bits & 0x00000001u) {
       _impl_.error_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.id_.ClearNonDefaultToEmpty();
-    }
-    if (cached_has_bits & 0x00000004u) {
-      _impl_.creation_date_.ClearNonDefaultToEmpty();
-    }
-    if (cached_has_bits & 0x00000008u) {
       _impl_.policy_.ClearNonDefaultToEmpty();
     }
-    if (cached_has_bits & 0x00000010u) {
+    if (cached_has_bits & 0x00000004u) {
       _impl_.filter_.ClearNonDefaultToEmpty();
     }
-    if (cached_has_bits & 0x00000020u) {
+    if (cached_has_bits & 0x00000008u) {
       _impl_.route_.ClearNonDefaultToEmpty();
     }
-    if (cached_has_bits & 0x00000040u) {
+    if (cached_has_bits & 0x00000010u) {
       _impl_.description_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.status_ = 0;
-  _impl_.lifespan_ = 0u;
+  if (cached_has_bits & 0x000000e0u) {
+    ::memset(&_impl_.id_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&_impl_.lifespan_) -
+        reinterpret_cast<char*>(&_impl_.id_)) + sizeof(_impl_.lifespan_));
+  }
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -897,23 +869,21 @@ const char* SessionGet_Response::_InternalParse(const char* ptr, ::_pbi::ParseCo
         } else
           goto handle_unusual;
         continue;
-      // optional string id = 3;
+      // optional uint32 id = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
-          auto str = _internal_mutable_id();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _Internal::set_has_id(&has_bits);
+          _impl_.id_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.SessionGet_Response.id"));
         } else
           goto handle_unusual;
         continue;
-      // optional string creation_date = 4;
+      // optional uint32 creation_date = 4;
       case 4:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
-          auto str = _internal_mutable_creation_date();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _Internal::set_has_creation_date(&has_bits);
+          _impl_.creation_date_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.SessionGet_Response.creation_date"));
         } else
           goto handle_unusual;
         continue;
@@ -1013,24 +983,16 @@ uint8_t* SessionGet_Response::_InternalSerialize(
         2, this->_internal_error(), target);
   }
 
-  // optional string id = 3;
+  // optional uint32 id = 3;
   if (_internal_has_id()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_id().data(), static_cast<int>(this->_internal_id().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.test.SessionGet_Response.id");
-    target = stream->WriteStringMaybeAliased(
-        3, this->_internal_id(), target);
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_id(), target);
   }
 
-  // optional string creation_date = 4;
+  // optional uint32 creation_date = 4;
   if (_internal_has_creation_date()) {
-    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_creation_date().data(), static_cast<int>(this->_internal_creation_date().length()),
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
-      "com.wazuh.api.engine.test.SessionGet_Response.creation_date");
-    target = stream->WriteStringMaybeAliased(
-        4, this->_internal_creation_date(), target);
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(4, this->_internal_creation_date(), target);
   }
 
   // optional string policy = 5;
@@ -1096,7 +1058,7 @@ size_t SessionGet_Response::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x0000007fu) {
+  if (cached_has_bits & 0x0000001fu) {
     // optional string error = 2;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -1104,43 +1066,29 @@ size_t SessionGet_Response::ByteSizeLong() const {
           this->_internal_error());
     }
 
-    // optional string id = 3;
-    if (cached_has_bits & 0x00000002u) {
-      total_size += 1 +
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-          this->_internal_id());
-    }
-
-    // optional string creation_date = 4;
-    if (cached_has_bits & 0x00000004u) {
-      total_size += 1 +
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-          this->_internal_creation_date());
-    }
-
     // optional string policy = 5;
-    if (cached_has_bits & 0x00000008u) {
+    if (cached_has_bits & 0x00000002u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_policy());
     }
 
     // optional string filter = 6;
-    if (cached_has_bits & 0x00000010u) {
+    if (cached_has_bits & 0x00000004u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_filter());
     }
 
     // optional string route = 7;
-    if (cached_has_bits & 0x00000020u) {
+    if (cached_has_bits & 0x00000008u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_route());
     }
 
     // optional string description = 9;
-    if (cached_has_bits & 0x00000040u) {
+    if (cached_has_bits & 0x00000010u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_description());
@@ -1153,11 +1101,23 @@ size_t SessionGet_Response::ByteSizeLong() const {
       ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
   }
 
-  // optional uint32 lifespan = 8;
-  if (cached_has_bits & 0x00000080u) {
-    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_lifespan());
-  }
+  if (cached_has_bits & 0x000000e0u) {
+    // optional uint32 id = 3;
+    if (cached_has_bits & 0x00000020u) {
+      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_id());
+    }
 
+    // optional uint32 creation_date = 4;
+    if (cached_has_bits & 0x00000040u) {
+      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_creation_date());
+    }
+
+    // optional uint32 lifespan = 8;
+    if (cached_has_bits & 0x00000080u) {
+      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_lifespan());
+    }
+
+  }
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -1177,34 +1137,37 @@ void SessionGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x0000007fu) {
+  if (cached_has_bits & 0x0000001fu) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_error(from._internal_error());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_id(from._internal_id());
-    }
-    if (cached_has_bits & 0x00000004u) {
-      _this->_internal_set_creation_date(from._internal_creation_date());
-    }
-    if (cached_has_bits & 0x00000008u) {
       _this->_internal_set_policy(from._internal_policy());
     }
-    if (cached_has_bits & 0x00000010u) {
+    if (cached_has_bits & 0x00000004u) {
       _this->_internal_set_filter(from._internal_filter());
     }
-    if (cached_has_bits & 0x00000020u) {
+    if (cached_has_bits & 0x00000008u) {
       _this->_internal_set_route(from._internal_route());
     }
-    if (cached_has_bits & 0x00000040u) {
+    if (cached_has_bits & 0x00000010u) {
       _this->_internal_set_description(from._internal_description());
     }
   }
   if (from._internal_status() != 0) {
     _this->_internal_set_status(from._internal_status());
   }
-  if (cached_has_bits & 0x00000080u) {
-    _this->_internal_set_lifespan(from._internal_lifespan());
+  if (cached_has_bits & 0x000000e0u) {
+    if (cached_has_bits & 0x00000020u) {
+      _this->_impl_.id_ = from._impl_.id_;
+    }
+    if (cached_has_bits & 0x00000040u) {
+      _this->_impl_.creation_date_ = from._impl_.creation_date_;
+    }
+    if (cached_has_bits & 0x00000080u) {
+      _this->_impl_.lifespan_ = from._impl_.lifespan_;
+    }
+    _this->_impl_._has_bits_[0] |= cached_has_bits;
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -1229,14 +1192,6 @@ void SessionGet_Response::InternalSwap(SessionGet_Response* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.error_, lhs_arena,
       &other->_impl_.error_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.id_, lhs_arena,
-      &other->_impl_.id_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.creation_date_, lhs_arena,
-      &other->_impl_.creation_date_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.policy_, lhs_arena,
@@ -2718,16 +2673,16 @@ class RunPost_Request::_Internal {
   }
   static const ::PROTOBUF_NAMESPACE_ID::Value& event(const RunPost_Request* msg);
   static void set_has_event(HasBits* has_bits) {
-    (*has_bits)[0] |= 4u;
+    (*has_bits)[0] |= 8u;
   }
   static void set_has_protocol_queue(HasBits* has_bits) {
-    (*has_bits)[0] |= 8u;
+    (*has_bits)[0] |= 2u;
   }
   static void set_has_debug_mode(HasBits* has_bits) {
     (*has_bits)[0] |= 16u;
   }
   static void set_has_protocol_location(HasBits* has_bits) {
-    (*has_bits)[0] |= 2u;
+    (*has_bits)[0] |= 4u;
   }
 };
 
@@ -2737,7 +2692,7 @@ RunPost_Request::_Internal::event(const RunPost_Request* msg) {
 }
 void RunPost_Request::clear_event() {
   if (_impl_.event_ != nullptr) _impl_.event_->Clear();
-  _impl_._has_bits_[0] &= ~0x00000004u;
+  _impl_._has_bits_[0] &= ~0x00000008u;
 }
 RunPost_Request::RunPost_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
@@ -2752,9 +2707,9 @@ RunPost_Request::RunPost_Request(const RunPost_Request& from)
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
+    , decltype(_impl_.protocol_queue_){}
     , decltype(_impl_.protocol_location_){}
     , decltype(_impl_.event_){nullptr}
-    , decltype(_impl_.protocol_queue_){}
     , decltype(_impl_.debug_mode_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -2764,6 +2719,14 @@ RunPost_Request::RunPost_Request(const RunPost_Request& from)
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (from._internal_has_name()) {
     _this->_impl_.name_.Set(from._internal_name(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.protocol_queue_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.protocol_queue_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_protocol_queue()) {
+    _this->_impl_.protocol_queue_.Set(from._internal_protocol_queue(), 
       _this->GetArenaForAllocation());
   }
   _impl_.protocol_location_.InitDefault();
@@ -2777,9 +2740,7 @@ RunPost_Request::RunPost_Request(const RunPost_Request& from)
   if (from._internal_has_event()) {
     _this->_impl_.event_ = new ::PROTOBUF_NAMESPACE_ID::Value(*from._impl_.event_);
   }
-  ::memcpy(&_impl_.protocol_queue_, &from._impl_.protocol_queue_,
-    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.debug_mode_) -
-    reinterpret_cast<char*>(&_impl_.protocol_queue_)) + sizeof(_impl_.debug_mode_));
+  _this->_impl_.debug_mode_ = from._impl_.debug_mode_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.test.RunPost_Request)
 }
 
@@ -2791,14 +2752,18 @@ inline void RunPost_Request::SharedCtor(
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
+    , decltype(_impl_.protocol_queue_){}
     , decltype(_impl_.protocol_location_){}
     , decltype(_impl_.event_){nullptr}
-    , decltype(_impl_.protocol_queue_){0u}
     , decltype(_impl_.debug_mode_){0}
   };
   _impl_.name_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.name_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.protocol_queue_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.protocol_queue_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   _impl_.protocol_location_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -2818,6 +2783,7 @@ RunPost_Request::~RunPost_Request() {
 inline void RunPost_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
+  _impl_.protocol_queue_.Destroy();
   _impl_.protocol_location_.Destroy();
   if (this != internal_default_instance()) delete _impl_.event_;
 }
@@ -2833,23 +2799,22 @@ void RunPost_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     if (cached_has_bits & 0x00000001u) {
       _impl_.name_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
-      _impl_.protocol_location_.ClearNonDefaultToEmpty();
+      _impl_.protocol_queue_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000004u) {
+      _impl_.protocol_location_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000008u) {
       GOOGLE_DCHECK(_impl_.event_ != nullptr);
       _impl_.event_->Clear();
     }
   }
-  if (cached_has_bits & 0x00000018u) {
-    ::memset(&_impl_.protocol_queue_, 0, static_cast<size_t>(
-        reinterpret_cast<char*>(&_impl_.debug_mode_) -
-        reinterpret_cast<char*>(&_impl_.protocol_queue_)) + sizeof(_impl_.debug_mode_));
-  }
+  _impl_.debug_mode_ = 0;
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -2879,12 +2844,13 @@ const char* RunPost_Request::_InternalParse(const char* ptr, ::_pbi::ParseContex
         } else
           goto handle_unusual;
         continue;
-      // optional uint32 protocol_queue = 3;
+      // optional string protocol_queue = 3;
       case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
-          _Internal::set_has_protocol_queue(&has_bits);
-          _impl_.protocol_queue_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_protocol_queue();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.test.RunPost_Request.protocol_queue"));
         } else
           goto handle_unusual;
         continue;
@@ -2954,10 +2920,14 @@ uint8_t* RunPost_Request::_InternalSerialize(
         _Internal::event(this).GetCachedSize(), target, stream);
   }
 
-  // optional uint32 protocol_queue = 3;
+  // optional string protocol_queue = 3;
   if (_internal_has_protocol_queue()) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_protocol_queue(), target);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_protocol_queue().data(), static_cast<int>(this->_internal_protocol_queue().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.test.RunPost_Request.protocol_queue");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_protocol_queue(), target);
   }
 
   // optional .com.wazuh.api.engine.test.DebugMode debug_mode = 4;
@@ -3002,23 +2972,25 @@ size_t RunPost_Request::ByteSizeLong() const {
           this->_internal_name());
     }
 
-    // optional string protocol_location = 5;
+    // optional string protocol_queue = 3;
     if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_protocol_queue());
+    }
+
+    // optional string protocol_location = 5;
+    if (cached_has_bits & 0x00000004u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_protocol_location());
     }
 
     // optional .google.protobuf.Value event = 2;
-    if (cached_has_bits & 0x00000004u) {
+    if (cached_has_bits & 0x00000008u) {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
           *_impl_.event_);
-    }
-
-    // optional uint32 protocol_queue = 3;
-    if (cached_has_bits & 0x00000008u) {
-      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_protocol_queue());
     }
 
     // optional .com.wazuh.api.engine.test.DebugMode debug_mode = 4;
@@ -3052,14 +3024,14 @@ void RunPost_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const 
       _this->_internal_set_name(from._internal_name());
     }
     if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_protocol_location(from._internal_protocol_location());
+      _this->_internal_set_protocol_queue(from._internal_protocol_queue());
     }
     if (cached_has_bits & 0x00000004u) {
-      _this->_internal_mutable_event()->::PROTOBUF_NAMESPACE_ID::Value::MergeFrom(
-          from._internal_event());
+      _this->_internal_set_protocol_location(from._internal_protocol_location());
     }
     if (cached_has_bits & 0x00000008u) {
-      _this->_impl_.protocol_queue_ = from._impl_.protocol_queue_;
+      _this->_internal_mutable_event()->::PROTOBUF_NAMESPACE_ID::Value::MergeFrom(
+          from._internal_event());
     }
     if (cached_has_bits & 0x00000010u) {
       _this->_impl_.debug_mode_ = from._impl_.debug_mode_;
@@ -3089,6 +3061,10 @@ void RunPost_Request::InternalSwap(RunPost_Request* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.name_, lhs_arena,
       &other->_impl_.name_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.protocol_queue_, lhs_arena,
+      &other->_impl_.protocol_queue_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.protocol_location_, lhs_arena,

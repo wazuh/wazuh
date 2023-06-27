@@ -8,7 +8,6 @@
 #include <eMessages/eMessage.h>
 #include <eMessages/test.pb.h>
 
-
 #include <api/adapter.hpp>
 #include <api/catalog/resource.hpp>
 #include <api/test/sessionManager.hpp>
@@ -62,14 +61,14 @@ optional<base::Error> loadSessionsFromJson(const shared_ptr<Catalog>& catalog,
             return optional<base::Error> {base::Error {"Invalid session JSON format"}};
         }
 
-        const auto sessionName = jsonSession.getString("/name");
-        const auto sessionID = jsonSession.getString("/id");
-        const auto creationDate = jsonSession.getInt64("/creationdate");
-        const auto lifespan = jsonSession.getInt64("/lifespan");
+        const auto creationDate = jsonSession.getInt("/creationdate");
         const auto description = jsonSession.getString("/description");
         const auto filterName = jsonSession.getString("/filtername");
+        const auto lifespan = jsonSession.getInt("/lifespan");
         const auto policyName = jsonSession.getString("/policyname");
         const auto routeName = jsonSession.getString("/routename");
+        const auto sessionID = jsonSession.getInt("/id");
+        const auto sessionName = jsonSession.getString("/name");
 
         if (!sessionName.has_value() || !sessionID.has_value() || !creationDate.has_value() || !lifespan.has_value()
             || !description.has_value() || !filterName.has_value() || !policyName.has_value() || !routeName.has_value())
@@ -81,10 +80,10 @@ optional<base::Error> loadSessionsFromJson(const shared_ptr<Catalog>& catalog,
                                                                      policyName.value(),
                                                                      filterName.value(),
                                                                      routeName.value(),
+                                                                     sessionID.value(),
                                                                      lifespan.value(),
                                                                      description.value(),
-                                                                     creationDate.value(),
-                                                                     sessionID.value());
+                                                                     creationDate.value());
         if (createSessionError.has_value())
         {
             return createSessionError;
@@ -113,20 +112,17 @@ json::Json getSessionsAsJson(void)
     auto list = sessionManager.getSessionsList();
     for (auto& sessionName : list)
     {
-        static int i = -1;
-        i++;
-
         auto session = sessionManager.getSession(sessionName);
         auto jsonSession = json::Json(API_SESSIONS_DATA_FORMAT);
 
-        jsonSession.setString(session->getSessionName(), "/name");
-        jsonSession.setString(session->getSessionID(), "/id");
-        jsonSession.setInt64(session->getCreationDate(), "/creationdate");
-        jsonSession.setInt64(session->getLifespan(), "/lifespan");
+        jsonSession.setInt(session->getCreationDate(), "/creationdate");
+        jsonSession.setInt(session->getLifespan(), "/lifespan");
+        jsonSession.setInt(session->getSessionID(), "/id");
         jsonSession.setString(session->getDescription(), "/description");
         jsonSession.setString(session->getFilterName(), "/filtername");
         jsonSession.setString(session->getPolicyName(), "/policyname");
         jsonSession.setString(session->getRouteName(), "/routename");
+        jsonSession.setString(session->getSessionName(), "/name");
 
         jsonSessions.appendJson(jsonSession);
     }
@@ -193,9 +189,9 @@ addAssetToCatalog(const shared_ptr<Catalog>& catalog, const string& assetType, c
 }
 
 inline optional<base::Error>
-addTestFilterToCatalog(const shared_ptr<Catalog>& catalog, const string& sessionName, const string& filterName)
+addTestFilterToCatalog(const shared_ptr<Catalog>& catalog, const string& filterName, const uint32_t sessionID)
 {
-    const auto filterContent = fmt::format(FILTER_CONTENT_FORMAT, filterName, sessionName);
+    const auto filterContent = fmt::format(FILTER_CONTENT_FORMAT, filterName, sessionID);
     return addAssetToCatalog(catalog, "filter", filterContent);
 }
 
@@ -379,9 +375,12 @@ api::Handler sessionPost(const shared_ptr<Catalog>& catalog,
 
         // Set up the test session's filter
 
+        // A session ID is obtained, which will be used to create the filter
+        const uint32_t sessionID {sessionManager.getNewSessionID()};
+
         const auto filterName = fmt::format(TEST_FILTER_FULL_NAME_FORMAT, sessionName);
 
-        const auto addFilterError = addTestFilterToCatalog(catalog, sessionName, filterName);
+        const auto addFilterError = addTestFilterToCatalog(catalog, filterName, sessionID);
         if (addFilterError.has_value())
         {
             deleteAssetFromStore(catalog, policyName);
@@ -411,11 +410,13 @@ api::Handler sessionPost(const shared_ptr<Catalog>& catalog,
 
         // Create the session
 
+        // If the description is not set, use an empty string
+        const string description {eRequest.has_description() ? eRequest.description() : ""};
         // If the lifespan is not set, use 0 (no expiration). TODO: review what to do in this case
-        const auto lifespan = eRequest.has_lifespan() ? eRequest.lifespan() : 0;
-        const auto description = eRequest.has_description() ? eRequest.description() : "";
-        const auto createSessionError =
-            sessionManager.createSession(sessionName, policyName, filterName, routeName, lifespan, description);
+        const uint32_t lifespan {eRequest.has_lifespan() ? eRequest.lifespan() : 0};
+
+        const auto createSessionError = sessionManager.createSession(
+            sessionName, policyName, filterName, routeName, sessionID, lifespan, description);
         if (createSessionError.has_value())
         {
             deleteRouteFromRouter(router, routeName);
@@ -485,7 +486,7 @@ api::Handler sessionGet(void)
         ResponseType eResponse;
 
         // TODO: improve creation date representation
-        eResponse.set_creation_date(std::to_string(session->getCreationDate()));
+        eResponse.set_creation_date(session->getCreationDate());
         eResponse.set_description(session->getDescription());
         eResponse.set_filter(session->getFilterName());
         eResponse.set_id(session->getSessionID());
@@ -623,25 +624,36 @@ api::Handler runPost(const shared_ptr<Router>& router)
         // Set optional parameters
         const auto debugMode = eRequest.has_debug_mode() ? eRequest.debug_mode() : eTest::DebugMode::OUTPUT_ONLY;
 
-        const uint8_t protocolQueue =
-            (eRequest.has_protocol_queue() && eRequest.protocol_queue() > TEST_MIN_PROTOCOL_QUEUE
-             && eRequest.protocol_queue() < TEST_MAX_PROTOCOL_QUEUE)
-                ? eRequest.protocol_queue()
-                : TEST_DEFAULT_PROTOCOL_QUEUE;
+        const string defaultQueue {static_cast<char>(TEST_DEFAULT_PROTOCOL_QUEUE)};
+        const string strProtocolQueue {(eRequest.has_protocol_queue()) ? eRequest.protocol_queue() : defaultQueue};
+        if (eRequest.protocol_queue().size() > 1)
+        {
+            return ::api::adapter::genericError<ResponseType>("Protocol queue must be a single character long");
+        }
+
+        const uint8_t protocolQueue {static_cast<uint8_t>(strProtocolQueue.at(0))};
+        if (TEST_MAX_PROTOCOL_QUEUE < protocolQueue)
+        {
+            return ::api::adapter::genericError<ResponseType>(
+                fmt::format("Protocol queue ({}) must be a value between {} and {}",
+                            protocolQueue,
+                            TEST_MIN_PROTOCOL_QUEUE,
+                            TEST_MAX_PROTOCOL_QUEUE));
+        }
 
         const auto protocolLocation =
             eRequest.has_protocol_location() ? eRequest.protocol_location() : TEST_DEFAULT_PROTOCOL_LOCATION;
 
         // Set debug mode
-        router::DebugMode debugModeMap;
+        router::DebugMode routerDebugMode;
         switch (debugMode)
         {
-            case eTest::DebugMode::OUTPUT_AND_TRACES: debugModeMap = router::DebugMode::OUTPUT_AND_TRACES; break;
+            case eTest::DebugMode::OUTPUT_AND_TRACES: routerDebugMode = router::DebugMode::OUTPUT_AND_TRACES; break;
             case eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS:
-                debugModeMap = router::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
+                routerDebugMode = router::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS;
                 break;
             case eTest::DebugMode::OUTPUT_ONLY:
-            default: debugModeMap = router::DebugMode::OUTPUT_ONLY;
+            default: routerDebugMode = router::DebugMode::OUTPUT_ONLY;
         }
 
         // Get session
@@ -677,7 +689,7 @@ api::Handler runPost(const shared_ptr<Router>& router)
         }
 
         // Get payload (output and traces)
-        auto payload = router->getData(session.value().getPolicyName(), debugModeMap);
+        auto payload = router->getData(session.value().getPolicyName(), routerDebugMode);
 
         if (std::holds_alternative<base::Error>(payload))
         {
