@@ -18,10 +18,9 @@ def run(_, resource_handler: rs.ResourceHandler):
 |   |   |
 |---|---|
 | event.module | {doc["event"]["module"]} |'''
-    if doc['event']['dataset']:
+    if 'dataset' in doc['event']:
         readme_str += f'''
 | event.dataset | {doc["event"]["dataset"]} |
-
 '''
     readme_str += f'{doc["overview"]}\n\n'
     readme_str += f'## Compatibility\n\n'
