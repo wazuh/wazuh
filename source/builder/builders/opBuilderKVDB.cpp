@@ -124,24 +124,24 @@ base::Expression KVDBGet(const std::string& targetField,
 // <field>: +kvdb_get/<DB>/<ref_key>
 HelperBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
-    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](const std::string& targetField,
+    return [kvdbManager, kvdbScopeName](const std::string& targetField,
                        const std::string& rawName,
                        const std::vector<std::string>& rawParameters,
                        std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return KVDBGet(targetField, rawName, rawParameters, definitions, false, spkvdbManager, kvdbScopeName);
+        return KVDBGet(targetField, rawName, rawParameters, definitions, false, kvdbManager, kvdbScopeName);
     };
 }
 
 // <field>: +kvdb_get_merge/<DB>/<ref_key>
 HelperBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
-    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](const std::string& targetField,
+    return [kvdbManager, kvdbScopeName](const std::string& targetField,
                        const std::string& rawName,
                        const std::vector<std::string>& rawParameters,
                        std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return KVDBGet(targetField, rawName, rawParameters, definitions, true, spkvdbManager, kvdbScopeName);
+        return KVDBGet(targetField, rawName, rawParameters, definitions, true, kvdbManager, kvdbScopeName);
     };
 }
 
@@ -218,12 +218,12 @@ base::Expression existanceCheck(const std::string& targetField,
 // <field>: +kvdb_match/<DB>
 HelperBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
-    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](const std::string& targetField,
+    return [kvdbManager, kvdbScopeName](const std::string& targetField,
                        const std::string& rawName,
                        const std::vector<std::string>& rawParameters,
                        std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return existanceCheck(targetField, rawName, rawParameters, definitions, true, spkvdbManager, kvdbScopeName);
+        return existanceCheck(targetField, rawName, rawParameters, definitions, true, kvdbManager, kvdbScopeName);
     };
 }
 
@@ -231,12 +231,12 @@ HelperBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, c
 // <field>: +kvdb_not_match/<DB>
 HelperBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
-    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](const std::string& targetField,
+    return [kvdbManager, kvdbScopeName](const std::string& targetField,
                        const std::string& rawName,
                        const std::vector<std::string>& rawParameters,
                        std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return existanceCheck(targetField, rawName, rawParameters, definitions, false, spkvdbManager, kvdbScopeName);
+        return existanceCheck(targetField, rawName, rawParameters, definitions, false, kvdbManager, kvdbScopeName);
     };
 }
 
@@ -366,12 +366,12 @@ base::Expression KVDBSet(const std::string& targetField,
 // <field>: +kvdb_set/<db>/<field>/<value>
 HelperBuilder getOpBuilderKVDBSet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
-    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](const std::string& targetField,
+    return [kvdbManager, kvdbScopeName](const std::string& targetField,
                        const std::string& rawName,
                        const std::vector<std::string>& rawParameters,
                        std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return KVDBSet(targetField, rawName, rawParameters, definitions, spkvdbManager, kvdbScopeName);
+        return KVDBSet(targetField, rawName, rawParameters, definitions, kvdbManager, kvdbScopeName);
     };
 }
 
@@ -449,12 +449,12 @@ base::Expression KVDBDelete(const std::string& targetField,
 // <field>: +kvdb_delete/<db>
 HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
-    return [spkvdbManager = std::move(kvdbManager), kvdbScopeName](const std::string& targetField,
+    return [kvdbManager, kvdbScopeName](const std::string& targetField,
                        const std::string& rawName,
                        const std::vector<std::string>& rawParameters,
                        std::shared_ptr<defs::IDefinitions> definitions)
     {
-        return KVDBDelete(targetField, rawName, rawParameters, definitions, spkvdbManager, kvdbScopeName);
+        return KVDBDelete(targetField, rawName, rawParameters, definitions, kvdbManager, kvdbScopeName);
     };
 }
 

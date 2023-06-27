@@ -108,6 +108,7 @@ void run(const Options& options)
         deps.logparDebugLvl = logparDebugLvl;
         deps.logpar = logpar;
         deps.kvdbScopeName = "test";
+        deps.kvdbManager = kvdbManager;
         deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
         deps.schema = std::make_shared<schemf::Schema>();
         builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
