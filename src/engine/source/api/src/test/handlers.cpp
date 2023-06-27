@@ -5,17 +5,19 @@
 
 #include <fmt/format.h>
 
-#include <api/adapter.hpp>
-#include <api/catalog/resource.hpp>
-
 #include <eMessages/eMessage.h>
 #include <eMessages/test.pb.h>
 
-#include "api/test/sessionManager.hpp"
-#include "json/json.hpp"
+
+#include <api/adapter.hpp>
+#include <api/catalog/resource.hpp>
+#include <api/test/sessionManager.hpp>
+#include <json/json.hpp>
 
 namespace
 {
+
+constexpr auto WAZUH_EVENT_FORMAT = "{}:{}:{}"; ///< Wazuh event format
 
 using namespace api::sessionManager;
 
@@ -652,22 +654,23 @@ api::Handler runPost(const shared_ptr<Router>& router)
         }
 
         // Event in Wazuh format
-        const auto eventFormat = fmt::format("{}:{}:{}", protocolQueue, protocolLocation, eRequest.event().string_value());
-        base::Event ev;
+        const auto eventFormat =
+            fmt::format(WAZUH_EVENT_FORMAT, protocolQueue, protocolLocation, eRequest.event().string_value());
+        base::Event event;
         try
         {
-            ev = base::parseEvent::parseOssecEvent(eventFormat);
+            event = base::parseEvent::parseOssecEvent(eventFormat);
         }
-        catch(const std::exception& e)
+        catch (const std::exception& e)
         {
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
         // Add new field for filter
-        ev->setString(eRequest.name(), TEST_FIELD_TO_CHECK_IN_FILTER);
+        event->setString(eRequest.name(), TEST_FIELD_TO_CHECK_IN_FILTER);
 
         // Enqueue event
-        const auto enqueueEventError = router->enqueueEvent(std::move(ev));
+        const auto enqueueEventError = router->enqueueEvent(std::move(event));
         if (enqueueEventError.has_value())
         {
             return ::api::adapter::genericError<ResponseType>(enqueueEventError.value().message);

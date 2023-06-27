@@ -2,21 +2,134 @@
 
 #include "defaultSettings.hpp"
 #include "utils.hpp"
+
+#include <google/protobuf/util/json_util.h>
+
+#include <iostream>
+
 #include <api/test/handlers.hpp>
 #include <cmds/apiclnt/client.hpp>
 #include <cmds/details/stackExecutor.hpp>
 #include <eMessages/test.pb.h>
-#include <google/protobuf/util/json_util.h>
 #include <utilsYml.hpp>
 
 namespace
 {
-std::atomic<bool> gs_doRun = true;
+std::atomic<bool> gs_doRun {true};
 cmd::details::StackExecutor g_exitHanlder {};
 
-void sigint_handler(const int signum)
+/**
+ * @brief Signal handler for SIGINT
+ *
+ * @param signum Signal number
+ */
+void sigint_handler(const int signalNumber)
 {
     gs_doRun = false;
+}
+
+/**
+ * @brief Signal handler for SIGTERM
+ *
+ * @param signum Signal number
+ */
+inline bool clear_icanon(const bool& doClearIcanon)
+{
+    bool retval {false};
+    struct termios settings;
+
+    if (tcgetattr(STDIN_FILENO, &settings) >= 0)
+    {
+        retval = true;
+
+        if (doClearIcanon)
+        {
+            settings.c_lflag &= ~ICANON;
+        }
+        else
+        {
+            settings.c_lflag |= ICANON;
+        }
+
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &settings) < 0)
+        {
+            retval = false;
+        }
+    }
+
+    return retval;
+}
+
+/**
+ * @brief Process a json value and return it as a YAML node
+ *
+ * @param tmp Json value
+ * @param jsonPath Json path
+ * @param rootName Root name
+ * @return std::optional<YAML::Node> YAML node
+ */
+inline std::optional<YAML::Node>
+processJson(const json::Json& jsonObject, const std::string& jsonPath, const std::string& rootName)
+{
+    const auto jsonValue = jsonObject.getJson(jsonPath);
+
+    if (jsonValue.has_value())
+    {
+        rapidjson::Document doc;
+        doc.Parse(jsonValue.value().str().c_str());
+
+        const auto yaml = utilsYml::Converter::json2yaml(doc);
+
+        YAML::Node rootNode;
+        rootNode[rootName] = yaml;
+
+        return rootNode;
+    }
+
+    return std::nullopt;
+}
+
+/**
+ * @brief Print a YAML node
+ *
+ * @param node YAML node
+ */
+inline void printYML(const YAML::Node& node)
+{
+    YAML::Emitter out;
+    out << node;
+    std::cout << out.c_str() << std::endl;
+}
+
+/**
+ * @brief Print a json object string as YAML
+ *
+ * @param strJsonObject Json value
+ */
+inline void printJsonAsYML(const std::string& strJsonObject)
+{
+    std::optional<YAML::Node> outputNode;
+    try
+    {
+        auto jsonObject = json::Json {strJsonObject.c_str()};
+        jsonObject.erase("/status");
+
+        outputNode = processJson(jsonObject, "/traces", "Traces");
+        if (outputNode.has_value())
+        {
+            printYML(outputNode.value());
+        }
+
+        outputNode = processJson(jsonObject, "/output", "Output");
+        if (outputNode.has_value())
+        {
+            printYML(outputNode.value());
+        }
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "Error: " << e.what() << std::endl << std::endl;
+    }
 }
 
 } // namespace
@@ -26,71 +139,6 @@ namespace cmd::test
 
 namespace eTest = ::com::wazuh::api::engine::test;
 namespace eEngine = ::com::wazuh::api::engine;
-
-constexpr auto OUTPUT_ONLY {0};
-constexpr auto OUTPUT_AND_TRACES {1};
-constexpr auto OUTPUT_AND_TRACES_WITH_DETAILS {2};
-
-int clear_icanon(bool flag)
-{
-    struct termios settings;
-
-    if (tcgetattr(STDIN_FILENO, &settings) < 0)
-    {
-        return 0;
-    }
-
-    if (flag)
-    {
-        settings.c_lflag &= ~ICANON;
-    }
-    else
-    {
-        settings.c_lflag |= ICANON;
-    }
-
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &settings) < 0)
-    {
-        return 0;
-    }
-
-    return 1;
-}
-
-void printToHumanReadable(const std::string& jsonOutputAndTrace)
-{
-    try
-    {
-        auto tmp = json::Json {jsonOutputAndTrace.c_str()};
-        tmp.erase("/status");
-
-        auto processJson = [&](const std::string& jsonPath, const std::string& rootName)
-        {
-            auto jsonValue = tmp.getJson(jsonPath);
-            if (jsonValue.has_value())
-            {
-                rapidjson::Document doc;
-                doc.Parse(jsonValue.value().str().c_str());
-
-                auto yaml = utilsYml::Converter::json2yaml(doc);
-
-                YAML::Node rootNode;
-                rootNode[rootName] = yaml;
-
-                YAML::Emitter out;
-                out << rootNode;
-                std::cout << std::endl << out.c_str() << std::endl << std::endl;
-            }
-        };
-
-        processJson("/traces", "Traces");
-        processJson("/output", "Output");
-    }
-    catch (const std::exception& e)
-    {
-        std::cout << "Error: " << e.what() << std::endl << std::endl;
-    }
-}
 
 void processEvent(const std::string& eventStr,
                   const Parameters& parameters,
@@ -138,7 +186,7 @@ void processEvent(const std::string& eventStr,
     }
     else
     {
-        printToHumanReadable(jsonOutputAndTrace);
+        printJsonAsYML(jsonOutputAndTrace);
     }
 }
 
@@ -158,9 +206,9 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     eTest::DebugMode debugModeMap;
     switch (parameters.debugLevel)
     {
-        case OUTPUT_ONLY: debugModeMap = eTest::DebugMode::OUTPUT_ONLY; break;
         case OUTPUT_AND_TRACES: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES; break;
         case OUTPUT_AND_TRACES_WITH_DETAILS: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS; break;
+        case OUTPUT_ONLY:
         default: debugModeMap = eTest::DebugMode::OUTPUT_ONLY;
     }
     eRequest.set_debug_mode(debugModeMap);
@@ -177,16 +225,12 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
         std::cout << std::endl << std::endl << "Enter a log in single line (Crtl+C to exit):" << std::endl << std::endl;
 
         // Only set non-canonical mode when connected to terminal
-        if (isatty(fileno(stdin)))
+        if (isatty(fileno(stdin)) && !clear_icanon(true))
         {
-            if (!clear_icanon(true))
-            {
-                std::cout
-                    << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be "
-                       "processed correctly."
-                    << std::endl
-                    << std::endl;
-            }
+            std::cout << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be "
+                         "processed correctly."
+                      << std::endl
+                      << std::endl;
         }
 
         // Stdin loop
@@ -288,9 +332,7 @@ void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& param
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
-
-    const auto output = fmt::format(R"({{"id":"{}","creation_date":"{}","policy":"{}", "filter":"{}","route":"{}",)"
-                                    R"("lifespan":{},"description":"{}"}})",
+    const auto output = fmt::format(SESSION_GET_DATA_FORMAT,
                                     eResponse.id(),
                                     eResponse.creation_date(),
                                     eResponse.policy(),

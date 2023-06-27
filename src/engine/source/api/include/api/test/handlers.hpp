@@ -9,7 +9,7 @@
 namespace api::test::handlers
 {
 
-constexpr auto TEST_DEFAULT_PROTOCOL_QUEUE {1}; ///< Default protocol queue
+constexpr uint8_t TEST_DEFAULT_PROTOCOL_QUEUE {1}; ///< Default protocol queue
 constexpr uint8_t TEST_MIN_PROTOCOL_QUEUE {0};
 constexpr uint8_t TEST_MAX_PROTOCOL_QUEUE {9};
 
@@ -23,11 +23,11 @@ constexpr auto DEFAULT_SESSION_LIFESPAN = 0;                        ///< Default
 
 constexpr auto ASSET_NAME_FIELD_FORMAT = R"("name":"{}")"; ///< JSON name field format, where '{}' is the asset name
 constexpr auto FILTER_CONTENT_FORMAT =
-    R"({{"name": "{}", "check":[{{"~TestSessionName":"{}"}}]}})";   ///< Filter content format
-constexpr auto TEST_FILTER_FULL_NAME_FORMAT = "filter/{}_filter/0"; ///< Filter name format, '{}' is the session name
-constexpr auto TEST_POLICY_FULL_NAME_FORMAT = "policy/{}_policy/0"; ///< Policy name format, '{}' is the session name
-constexpr auto TEST_ROUTE_NAME_FORMAT = "{}_route";                 ///< Route name format, '{}' is the session name
-constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "/~0TestSessionName"; ///< Field to check in filter.
+    R"({{"name": "{}", "check":[{{"~TestSessionName":"{}"}}]}})";     ///< Filter content format
+constexpr auto TEST_FILTER_FULL_NAME_FORMAT = "filter/{}_filter/0";   ///< Filter name format, '{}' is the session name
+constexpr auto TEST_POLICY_FULL_NAME_FORMAT = "policy/{}_policy/0";   ///< Policy name format, '{}' is the session name
+constexpr auto TEST_ROUTE_NAME_FORMAT = "{}_route";                   ///< Route name format, '{}' is the session name
+constexpr auto TEST_FIELD_TO_CHECK_IN_FILTER = "/~0TestSessionName";  ///< Field to check in filter.
 constexpr auto TEST_DEFAULT_PROTOCOL_LOCATION = "api.test";           ///< Default protocol location
 
 constexpr auto TEST_DELETE_SESSIONS_API_CMD = "test.sessions/delete"; ///< API command to delete sessions

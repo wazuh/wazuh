@@ -1,5 +1,5 @@
-#ifndef _SESSIONS_MANAGER_HPP
-#define _SESSIONS_MANAGER_HPP
+#ifndef _API_TEST_SESSION_MANAGER_HPP
+#define _API_TEST_SESSION_MANAGER_HPP
 
 #include <optional>
 #include <shared_mutex>
@@ -76,4 +76,4 @@ public:
 
 } // namespace api::sessionManager
 
-#endif // _SESSIONS_MANAGER_HPP
+#endif // _API_TEST_SESSION_MANAGER_HPP
