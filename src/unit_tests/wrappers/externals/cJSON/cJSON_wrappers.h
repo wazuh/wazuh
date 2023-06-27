@@ -31,6 +31,8 @@ cJSON *__wrap_cJSON_AddStringToObject(cJSON *const object, const char *const nam
 
 cJSON *__wrap_cJSON_AddObjectToObject(cJSON *const object, const char *const name);
 
+cJSON* __wrap_cJSON_AddFalseToObject(__attribute__ ((__unused__)) cJSON * const object, const char * const name);
+
 extern cJSON *__real_cJSON_AddStringToObject(cJSON *const object, const char *const name, const char *const string);
 
 cJSON *__wrap_cJSON_AddArrayToObject(cJSON *const object, const char *const name);
