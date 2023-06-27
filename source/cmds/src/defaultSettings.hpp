@@ -64,7 +64,7 @@ constexpr auto ENGINE_QUEUE_FLOOD_SLEEP_ENV = "WZE_QUEUE_FLOOD_SLEEP";
  *  Test
  ******************************************************************************/
 constexpr auto ENGINE_KVDB_TEST_PATH = "/var/ossec/etc/kvdb_test/";
-constexpr auto ENGINE_PROTOCOL_QUEUE = 1;
+constexpr auto ENGINE_PROTOCOL_DEFAULT_QUEUE = '1';
 constexpr auto ENGINE_PROTOCOL_LOCATION = "api.test";
 constexpr auto TRACE_ALL = "ALL";
 } // namespace cmd

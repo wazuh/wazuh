@@ -18,10 +18,10 @@ public:
             const std::string& policyName,
             const std::string& filterName,
             const std::string& routeName,
+            const uint32_t sessionID,
             const uint32_t lifespan,
             const std::string& description,
-            const std::time_t creationDate,
-            const std::string& sessionID = "")
+            const std::time_t creationDate)
         : m_creationDate(creationDate)
         , m_description(description)
         , m_filterName(filterName)
@@ -31,10 +31,6 @@ public:
         , m_sessionID(sessionID)
         , m_sessionName(sessionName)
     {
-        if (m_sessionID.empty())
-        {
-            m_sessionID = generateSessionID();
-        }
     }
 
     /**
@@ -68,9 +64,9 @@ public:
     /**
      * @brief Get the session ID.
      *
-     * @return std::string
+     * @return uint32_t
      */
-    std::string getSessionID(void) const { return m_sessionID; };
+    uint32_t getSessionID(void) const { return m_sessionID; };
 
     /**
      * @brief Get the session name.
@@ -94,21 +90,14 @@ public:
     uint32_t getLifespan(void) const { return m_lifespan; };
 
 private:
-    const std::string m_description;
-    const std::string m_filterName;
-    const std::string m_policyName;
-    const std::string m_routeName;
-    const std::string m_sessionName;
-    const std::time_t m_creationDate;
-    const uint32_t m_lifespan; ///< Session m_lifespan in seconds. 0 means no expiration.
-    std::string m_sessionID;
-
-    /**
-     * @brief Generates a session ID based on the creation date.
-     *
-     * @return std::string
-     */
-    std::string generateSessionID(void) { return std::to_string(m_creationDate); }
+    const std::string m_description;  ///< Session description.
+    const std::string m_filterName;   ///< Filter name.
+    const std::string m_policyName;   ///< Policy name.
+    const std::string m_routeName;    ///< Route name.
+    const std::string m_sessionName;  ///< Session name.
+    const std::time_t m_creationDate; ///< Session creation date.
+    const uint32_t m_lifespan;        ///< Session m_lifespan in minutes. 0 means no expiration.
+    const uint32_t m_sessionID;       ///< Session ID.
 };
 
 } // namespace api::sessionManager
