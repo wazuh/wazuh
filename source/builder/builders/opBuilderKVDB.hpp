@@ -13,6 +13,8 @@
 namespace builder::internals::builders
 {
 
+using namespace kvdbManager;
+
 /**
  * @brief Common builder for KVDB get operations
  *
@@ -29,7 +31,8 @@ base::Expression KVDBGet(const std::string& targetField,
                          const std::vector<std::string>& rawParameters,
                          std::shared_ptr<defs::IDefinitions> definitions,
                          bool merge,
-                         std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
+                         std::shared_ptr<IKVDBManager> kvdbManager,
+                         const std::string& kvdbScopeName);
 
 /**
  * @brief Builder for KVDB set operation
@@ -45,7 +48,8 @@ base::Expression KVDBSet(const std::string& targetField,
                          const std::string& rawName,
                          const std::vector<std::string>& rawParameters,
                          std::shared_ptr<defs::IDefinitions> definitions,
-                         std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
+                         std::shared_ptr<IKVDBManager> kvdbManager,
+                         const std::string& kvdbScopeName);
 
 /**
  * @brief Builder for KVDB delete operation
@@ -62,7 +66,8 @@ base::Expression KVDBDelete(const std::string& targetField,
                             const std::string& rawName,
                             const std::vector<std::string>& rawParameters,
                             std::shared_ptr<defs::IDefinitions> definitions,
-                            std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
+                            std::shared_ptr<IKVDBManager> kvdbManager,
+                            const std::string& kvdbScopeName);
 
 /**
  * @brief Builds KVDB extract function helper
@@ -70,7 +75,7 @@ base::Expression KVDBDelete(const std::string& targetField,
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-HelperBuilder getOpBuilderKVDBGet(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
+HelperBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Builds KVDB extract and merge function helper
@@ -78,7 +83,7 @@ HelperBuilder getOpBuilderKVDBGet(std::shared_ptr<kvdbManager::IKVDBScope> kvdbS
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-HelperBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
+HelperBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief get the KVDB match function helper builder
@@ -86,7 +91,7 @@ HelperBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<kvdbManager::IKVDBScope> 
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-HelperBuilder getOpBuilderKVDBMatch(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
+HelperBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Get the KVDB not-match function helper builder
@@ -94,7 +99,7 @@ HelperBuilder getOpBuilderKVDBMatch(std::shared_ptr<kvdbManager::IKVDBScope> kvd
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-HelperBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
+HelperBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Get the KVDB Set function helper builder
@@ -102,7 +107,7 @@ HelperBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<kvdbManager::IKVDBScope> 
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-HelperBuilder getOpBuilderKVDBSet(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
+HelperBuilder getOpBuilderKVDBSet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Delete a KVDB function helper builder
@@ -110,7 +115,7 @@ HelperBuilder getOpBuilderKVDBSet(std::shared_ptr<kvdbManager::IKVDBScope> kvdbS
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope);
+HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 } // namespace builder::internals::builders
 

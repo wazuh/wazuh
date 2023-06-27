@@ -1,25 +1,34 @@
+#include <kvdb/kvdbHandler.hpp>
+
+#include <kvdb/iKVDBHandlerCollection.hpp>
+
 #include <fmt/format.h>
-#include <kvdb/kvdbSpace.hpp>
-#include <logging/logging.hpp>
 #include <json/json.hpp>
+#include <logging/logging.hpp>
 
 namespace kvdbManager
 {
 
-KVDBSpace::KVDBSpace(IKVDBHandlerManager* manager,
-                     rocksdb::DB* db,
+KVDBHandler::KVDBHandler(rocksdb::DB* db,
                      rocksdb::ColumnFamilyHandle* cfHandle,
+                     std::shared_ptr<IKVDBHandlerCollection> collection,
                      const std::string& spaceName,
                      const std::string& scopeName)
-    : KVDBManagedHandler(manager, spaceName, scopeName)
-    , m_pRocksDB(db)
+    : m_pRocksDB(db)
     , m_pCFhandle(cfHandle)
+    , m_dbName(spaceName)
+    , m_scopeName(scopeName)
+    , m_spCollection(collection)
 {
 }
 
-KVDBSpace::~KVDBSpace() {}
+KVDBHandler::~KVDBHandler() 
+{
+    assert(m_spCollection);
+    m_spCollection->removeKVDBHandler(m_dbName, m_scopeName);
+}
 
-std::optional<base::Error> KVDBSpace::set(const std::string& key, const std::string& value)
+std::optional<base::Error> KVDBHandler::set(const std::string& key, const std::string& value)
 {
     auto status = m_pRocksDB->Put(rocksdb::WriteOptions(), m_pCFhandle, rocksdb::Slice(key), rocksdb::Slice(value));
 
@@ -31,17 +40,17 @@ std::optional<base::Error> KVDBSpace::set(const std::string& key, const std::str
     return base::Error {fmt::format("Cannot save value '{}' in key '{}'. Error: {}", value, key, status.getState())};
 }
 
-std::optional<base::Error> KVDBSpace::set(const std::string& key, const json::Json& value)
+std::optional<base::Error> KVDBHandler::set(const std::string& key, const json::Json& value)
 {
     return set(key, value.str());
 }
 
-std::optional<base::Error> KVDBSpace::add(const std::string& key)
+std::optional<base::Error> KVDBHandler::add(const std::string& key)
 {
     return set(key, "");
 }
 
-std::optional<base::Error> KVDBSpace::remove(const std::string& key)
+std::optional<base::Error> KVDBHandler::remove(const std::string& key)
 {
     auto status = m_pRocksDB->Delete(rocksdb::WriteOptions(), m_pCFhandle, rocksdb::Slice(key));
 
@@ -53,7 +62,7 @@ std::optional<base::Error> KVDBSpace::remove(const std::string& key)
     return base::Error {fmt::format("Cannot remove key '{}'. Error: {}", key, status.getState())};
 }
 
-std::variant<bool, base::Error> KVDBSpace::contains(const std::string& key)
+std::variant<bool, base::Error> KVDBHandler::contains(const std::string& key)
 {
     try
     {
@@ -66,7 +75,7 @@ std::variant<bool, base::Error> KVDBSpace::contains(const std::string& key)
     }
 }
 
-std::variant<std::string, base::Error> KVDBSpace::get(const std::string& key)
+std::variant<std::string, base::Error> KVDBHandler::get(const std::string& key)
 {
     std::string value;
     auto status = m_pRocksDB->Get(rocksdb::ReadOptions(), m_pCFhandle, rocksdb::Slice(key), &value);
@@ -79,7 +88,7 @@ std::variant<std::string, base::Error> KVDBSpace::get(const std::string& key)
     return base::Error {fmt::format("Cannot get key '{}'. Error: {}", value, key, status.getState())};
 }
 
-std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBSpace::dump()
+std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBHandler::dump()
 {
     std::unordered_map<std::string, std::string> content {};
     std::shared_ptr<rocksdb::Iterator> iter(m_pRocksDB->NewIterator(rocksdb::ReadOptions(), m_pCFhandle));
@@ -92,7 +101,7 @@ std::variant<std::unordered_map<std::string, std::string>, base::Error> KVDBSpac
     if (!iter->status().ok())
     {
         return base::Error {
-            fmt::format("Database '{}': Could not iterate over database: '{}'", m_dbName, iter->status().ToString())};
+            fmt::format("Database '{}': Could not iterate over database: '{}'", "TODO: m_dbName", iter->status().ToString())};
     }
 
     return content;
