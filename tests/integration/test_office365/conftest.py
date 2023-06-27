@@ -10,10 +10,10 @@ from wazuh_testing.tools.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 
 @pytest.fixture()
-def wait_for_github_start():
+def wait_for_office365_start():
     # Wait for module github starts
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.MODULESD_STARTED, {
-                              'integration': 'GitHub'
+                              'integration': 'Office365'
                           }))     
     assert (wazuh_log_monitor.callback_result == None), f'Error invalid configuration event not detected'
