@@ -21,6 +21,8 @@ from wazuh.core.wazuh_socket import WazuhSocket
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
+OSSEC_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
+
 
 class LoggingFormat(Enum):
     plain = "plain"

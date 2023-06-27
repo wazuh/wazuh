@@ -34,6 +34,8 @@ lock_acquired = False
 
 agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
 
+GROUP_FILES_FIELDS = ['filename', 'hash']
+
 
 class WazuhDBQueryAgents(WazuhDBQuery):
     """Class used to query Wazuh agents."""

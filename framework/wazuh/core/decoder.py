@@ -13,6 +13,7 @@ REQUIRED_FIELDS = ['filename', 'position']
 SORT_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status']
 DYNAMIC_OPTIONS = {'program_name', 'prematch', 'regex'}
 DECODER_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status', 'details']
+DECODER_FILES_FIELDS = ['filename', 'relative_dirname', 'status']
 
 
 class Status(Enum):
