@@ -67,6 +67,12 @@ std::optional<base::Error> PolicyManager::deletePolicy(const std::string& name)
         return base::Error {fmt::format("Policy '{}' does not exist", name)};
     }
 
+    // Complete the policies before deleting them
+    for (auto& policy : it->second)
+    {
+        policy.complete();
+    }
+
     if (m_policies.erase(name) != 1)
     {
         return base::Error {fmt::format("Policy '{}' could not be deleted", name)};
