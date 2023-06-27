@@ -140,7 +140,7 @@ async def check_rate_limit(
         'general_request_counter': {'code': 6001},
         'events_request_counter': {
             'code': 6005,
-            'extra_message': f'For /events endpoint the limit is set to {max_requests} requests.'
+            'extra_message': f'For POST /events endpoint the limit is set to {max_requests} requests.'
         }
     }
     if not globals()[current_time_key]:
