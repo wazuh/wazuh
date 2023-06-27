@@ -1620,6 +1620,36 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Get rules files using query parameter
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        q: filename=0275-squid_rules.xml
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - filename: 0275-squid_rules.xml
+              relative_dirname: ruleset/rules
+              status: enabled
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    
+  - name: Get rules files using an invalid query
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        q: filename%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
 ---
 test_name: GET /rules/files/{filename}
 

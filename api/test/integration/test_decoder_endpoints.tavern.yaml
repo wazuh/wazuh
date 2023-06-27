@@ -731,6 +731,33 @@ stages:
       json:
         error: 1403
 
+  - name: Get decoders files using query parameter
+    request:
+      verify: False
+      <<: *get_decoders_files
+      params:
+        q: 'filename=0005-wazuh_decoders.xml'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: !anyint
+    
+  - name: Get decoders files using an invalid query
+    request:
+      verify: False
+      <<: *get_decoders_files
+      params:
+        q: filename%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
 ---
 test_name: GET /decoders/files
 
