@@ -50,11 +50,11 @@ normalize:
 
       - host.id : $~json.aws.host_id
       - registry.key: $~json.aws.key
-      - file.size: $~json.aws.object_sent
+      - file.size: +parse_long/$~json.aws.object_sent
       - user_agent.name: $~json.aws.user_agent
 
       - client.address: $~json.aws.remote_ip
-      - client.ip: $~json.aws.remote_ip
+      - client.ip: +parse_ip/$~json.aws.remote_ip
       - client.user.id: $~json.aws.requester
       - cloud.provider: aws
       - event.action: $~json.aws.operation
@@ -66,9 +66,9 @@ normalize:
       - event.type: +array_append/access
       - event.start: +parse_date/$~json.aws.time/%d\/%b\/%Y:%T %z
       - http.request.referrer: $~json.aws.referer
-      - http.response.body.bytes: $~json.aws.bytes_sent
+      - http.response.body.bytes: +parse_long/$~json.aws.bytes_sent
       - http.response.status_code: $~json.aws.http_status
-      - related.ip: +array_append/$~json.aws.remote_ip
+      - related.ip: +array_append/$client.ip
       - related.user: +array_append/$~json.aws.bucket_owner
       - tls.cipher: $~json.aws.cipher_suite
 
