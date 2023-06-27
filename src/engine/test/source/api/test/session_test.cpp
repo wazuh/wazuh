@@ -15,10 +15,7 @@ const auto& SESSION_LIFESPAM {600};
 
 class SessionManagerTest : public ::testing::Test
 {
-    void SetUp() override
-    {
-        initLogging();
-    }
+    void SetUp() override { initLogging(); }
 };
 
 TEST_F(SessionManagerTest, GetInstance)
@@ -43,9 +40,7 @@ TEST_F(SessionManagerTest, GetInstanceMultiThreaded)
     // Create multiple threads that call getInstance
     for (int i = 0; i < numThreads; ++i)
     {
-        threads.emplace_back([&instances, i]() {
-            instances[i] = &SessionManager::getInstance();
-        });
+        threads.emplace_back([&instances, i]() { instances[i] = &SessionManager::getInstance(); });
     }
 
     // Wait for all threads to finish
@@ -77,7 +72,8 @@ TEST_F(SessionManagerTest, ListSessions)
         const auto& currentFilterName = FILTER_NAME + std::to_string(i);
         const auto& currentRouteName = ROUTE_NAME + std::to_string(i);
 
-        const auto createSession = instance.createSession(currentSessionName, currentPolicyName, currentFilterName, currentRouteName);
+        const auto createSession = instance.createSession(
+            currentSessionName, currentPolicyName, currentFilterName, currentRouteName, instance.getNewSessionID());
         ASSERT_FALSE(createSession.has_value());
     }
 
@@ -97,18 +93,22 @@ TEST_F(SessionManagerTest, GetSession)
     auto& instance = SessionManager::getInstance();
     ASSERT_NE(&instance, nullptr) << "SessionManager instance is null";
 
-    const auto createSession = instance.createSession(SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME, SESSION_LIFESPAM, SESSION_DESCRIPTION);
+    const uint32_t sessionID = instance.getNewSessionID();
+
+    const auto createSession = instance.createSession(
+        SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME, sessionID, SESSION_LIFESPAM, SESSION_DESCRIPTION);
     ASSERT_FALSE(createSession.has_value());
 
     auto session = instance.getSession(SESSION_NAME);
     ASSERT_TRUE(session.has_value());
 
-    ASSERT_STREQ(session.value().getSessionName().c_str(), SESSION_NAME);
-    ASSERT_STREQ(session.value().getPolicyName().c_str(), POLICY_NAME);
-    ASSERT_STREQ(session.value().getFilterName().c_str(), FILTER_NAME);
-    ASSERT_STREQ(session.value().getRouteName().c_str(), ROUTE_NAME);
-    ASSERT_STREQ(session.value().getDescription().c_str(), SESSION_DESCRIPTION);
     ASSERT_EQ(session.value().getLifespan(), SESSION_LIFESPAM);
+    ASSERT_EQ(session.value().getSessionID(), sessionID);
+    ASSERT_STREQ(session.value().getDescription().c_str(), SESSION_DESCRIPTION);
+    ASSERT_STREQ(session.value().getFilterName().c_str(), FILTER_NAME);
+    ASSERT_STREQ(session.value().getPolicyName().c_str(), POLICY_NAME);
+    ASSERT_STREQ(session.value().getRouteName().c_str(), ROUTE_NAME);
+    ASSERT_STREQ(session.value().getSessionName().c_str(), SESSION_NAME);
 
     auto sessionNotFound = instance.getSession(POLICY_NAME);
     ASSERT_FALSE(sessionNotFound.has_value());
@@ -129,7 +129,8 @@ TEST_F(SessionManagerTest, DeleteSessions)
         const auto& currentFilterName = FILTER_NAME + std::to_string(i);
         const auto& currentRouteName = ROUTE_NAME + std::to_string(i);
 
-        const auto createSession = instance.createSession(currentSessionName, currentPolicyName, currentFilterName, currentRouteName);
+        const auto createSession = instance.createSession(
+            currentSessionName, currentPolicyName, currentFilterName, currentRouteName, instance.getNewSessionID());
         ASSERT_FALSE(createSession.has_value());
     }
 
@@ -141,19 +142,18 @@ TEST_F(SessionManagerTest, DeleteSessions)
 
     ASSERT_TRUE(instance.getSessionsList().empty());
 
-    const auto createSession = instance.createSession(SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME);
+    const auto createSession =
+        instance.createSession(SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME, instance.getNewSessionID());
     ASSERT_FALSE(instance.getSessionsList().empty());
 
     ASSERT_TRUE(instance.deleteSessions(true));
     ASSERT_TRUE(instance.getSessionsList().empty());
 }
 
-class SessionManagerParameterizedTest : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string, std::string, std::string>>
+class SessionManagerParameterizedTest
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string, std::string, std::string>>
 {
-    void SetUp() override
-    {
-        initLogging();
-    }
+    void SetUp() override { initLogging(); }
 };
 
 TEST_P(SessionManagerParameterizedTest, CreateSession)
@@ -163,10 +163,12 @@ TEST_P(SessionManagerParameterizedTest, CreateSession)
     auto& instance = SessionManager::getInstance();
     ASSERT_NE(&instance, nullptr) << "SessionManager instance is null";
 
-    const auto createSessionWithoutError = instance.createSession(SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME);
+    const auto createSessionWithoutError =
+        instance.createSession(SESSION_NAME, POLICY_NAME, FILTER_NAME, ROUTE_NAME, instance.getNewSessionID());
     ASSERT_FALSE(createSessionWithoutError.has_value());
 
-    const auto createSessionWithError = instance.createSession(sessionNameParameter, policyNameParameter, filterNameParameter, routeNameParameter);
+    const auto createSessionWithError = instance.createSession(
+        sessionNameParameter, policyNameParameter, filterNameParameter, routeNameParameter, instance.getNewSessionID());
     ASSERT_TRUE(createSessionWithError.has_value());
     ASSERT_STREQ(output.c_str(), createSessionWithError.value().message.c_str());
 
@@ -176,8 +178,21 @@ TEST_P(SessionManagerParameterizedTest, CreateSession)
 INSTANTIATE_TEST_SUITE_P(
     CreateSession,
     SessionManagerParameterizedTest,
-    ::testing::Values(std::make_tuple(SESSION_NAME, "policy1", "filter1", "route1", fmt::format("Session name '{}' already exists", SESSION_NAME)),
-                      std::make_tuple("session1", POLICY_NAME, "filter1", "route1", fmt::format("Policy '{}' is already assigned to a route '{}'", POLICY_NAME, ROUTE_NAME)),
-                      std::make_tuple("session1", "policy1", FILTER_NAME, "route1", fmt::format("Filter '{}' is already assigned to a route '{}'", FILTER_NAME, ROUTE_NAME)),
-                      std::make_tuple("session1", "policy1", "filter1", ROUTE_NAME, fmt::format("Route name '{}' already exists", ROUTE_NAME))));
-
+    ::testing::Values(
+        std::make_tuple(SESSION_NAME,
+                        "policy1",
+                        "filter1",
+                        "route1",
+                        fmt::format("Session name '{}' already exists", SESSION_NAME)),
+        std::make_tuple("session1",
+                        POLICY_NAME,
+                        "filter1",
+                        "route1",
+                        fmt::format("Policy '{}' is already assigned to a route '{}'", POLICY_NAME, ROUTE_NAME)),
+        std::make_tuple("session1",
+                        "policy1",
+                        FILTER_NAME,
+                        "route1",
+                        fmt::format("Filter '{}' is already assigned to a route '{}'", FILTER_NAME, ROUTE_NAME)),
+        std::make_tuple(
+            "session1", "policy1", "filter1", ROUTE_NAME, fmt::format("Route name '{}' already exists", ROUTE_NAME))));

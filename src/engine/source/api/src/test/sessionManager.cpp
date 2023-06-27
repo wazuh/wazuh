@@ -12,6 +12,9 @@ using std::string;
 namespace api::sessionManager
 {
 
+// Initialize session ID counter to 0
+uint32_t SessionManager::m_sessionIDCounter = 0;
+
 SessionManager& SessionManager::getInstance(void)
 {
     static std::once_flag flag;
@@ -27,51 +30,61 @@ std::optional<base::Error> SessionManager::createSession(const string& sessionNa
                                                          const string& policyName,
                                                          const string& filterName,
                                                          const string& routeName,
-                                                         uint32_t lifespan,
+                                                         const uint32_t sessionID,
+                                                         const uint32_t lifespan,
                                                          const string& description,
-                                                         const std::time_t creationDate,
-                                                         const string& sessionID)
+                                                         const std::time_t creationDate)
 {
     std::unique_lock<std::shared_mutex> lock(m_sessionMutex);
 
+    // Check if the session name is already in use
     if (m_activeSessions.count(sessionName) > 0)
     {
-        return base::Error {fmt::format("Session name '{}' already exists", sessionName)};
+        return base::Error {fmt::format(SESSION_NAME_ERROR_MSG, sessionName)};
     }
 
+    // Check if the policy name is already in use
     if (m_policyMap.count(policyName) > 0)
     {
-        return base::Error {
-            fmt::format("Policy '{}' is already assigned to a route '{}'", policyName, m_policyMap[policyName])};
+        return base::Error {fmt::format(POLICY_NAME_ERROR_MSG, policyName, m_policyMap[policyName])};
     }
 
+    // Check if the filter name is already in use
     if (m_filterMap.count(filterName) > 0)
     {
-        return base::Error {
-            fmt::format("Filter '{}' is already assigned to a route '{}'", filterName, m_filterMap[filterName])};
+        return base::Error {fmt::format(FILTER_NAME_ERROR_MSG, filterName, m_filterMap[filterName])};
     }
 
-    if (m_routeMap.count(routeName) > 0)
+    // Check if the route name is already in use
+    if (m_routeSet.count(routeName) > 0)
     {
-        return base::Error {fmt::format("Route name '{}' already exists", routeName)};
+        return base::Error {fmt::format(ROUTE_NAME_ERROR_MSG, routeName)};
     }
 
-    Session session(sessionName, policyName, filterName, routeName, lifespan, description, creationDate, sessionID);
-    m_activeSessions.emplace(sessionName, session);
-    m_routeMap.emplace(routeName, sessionName);
-    m_policyMap.emplace(policyName, routeName);
-    m_filterMap.emplace(filterName, routeName);
+    // Check if the session ID is already in use
+    if (m_idSet.count(sessionID) > 0)
+    {
+        return base::Error {fmt::format(SESSION_ID_ERROR_MSG, sessionID)};
+    }
 
-    LOG_DEBUG("Session created: ID={}, Name={}, Creation Date={}, Policy Name={}, Filter Name={}, Route Name={}, Life "
-              "Span={}, Description={}\n",
-              session.getSessionID(),
-              session.getSessionName(),
-              session.getCreationDate(),
-              session.getPolicyName(),
-              session.getFilterName(),
-              session.getRouteName(),
-              session.getLifespan(),
-              session.getDescription());
+    Session session(sessionName, policyName, filterName, routeName, sessionID, lifespan, description, creationDate);
+
+    m_activeSessions.emplace(sessionName, session);
+    m_filterMap.emplace(filterName, routeName);
+    m_policyMap.emplace(policyName, routeName);
+
+    m_idSet.insert(sessionID);
+    m_routeSet.insert(routeName);
+
+    LOG_DEBUG(SESSION_DEBUG_MSG,
+              sessionID,
+              sessionName,
+              creationDate,
+              policyName,
+              filterName,
+              routeName,
+              lifespan,
+              description);
 
     return std::nullopt;
 }
@@ -110,9 +123,11 @@ bool SessionManager::deleteSessions(const bool removeAll, const string sessionNa
     if (removeAll)
     {
         m_activeSessions.clear();
-        m_policyMap.clear();
-        m_routeMap.clear();
         m_filterMap.clear();
+        m_policyMap.clear();
+
+        m_idSet.clear();
+        m_routeSet.clear();
 
         sessionRemoved = true;
     }
@@ -122,14 +137,17 @@ bool SessionManager::deleteSessions(const bool removeAll, const string sessionNa
         auto sessionIt = m_activeSessions.find(sessionName);
         if (sessionIt != m_activeSessions.end())
         {
-            const auto& policyName = sessionIt->second.getPolicyName();
             const auto& filterName = sessionIt->second.getFilterName();
+            const auto& policyName = sessionIt->second.getPolicyName();
             const auto& routeName = sessionIt->second.getRouteName();
+            const auto& sessionID = sessionIt->second.getSessionID();
 
             m_activeSessions.erase(sessionIt);
             m_policyMap.erase(policyName);
             m_filterMap.erase(filterName);
-            m_routeMap.erase(routeName);
+
+            m_routeSet.erase(routeName);
+            m_idSet.erase(sessionID);
 
             sessionRemoved = true;
         }
@@ -155,6 +173,20 @@ bool SessionManager::doesSessionExist(const std::string& sessionName)
     }
 
     return doesExist;
+}
+
+uint32_t SessionManager::getNewSessionID(void)
+{
+    std::unique_lock<std::shared_mutex> lock(m_sessionMutex);
+
+    uint32_t id = m_sessionIDCounter++;
+
+    while (m_idSet.count(id) > 0 && 0 != id)
+    {
+        id = m_sessionIDCounter++;
+    }
+
+    return id;
 }
 
 } // namespace api::sessionManager
