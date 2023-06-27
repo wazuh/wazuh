@@ -29,7 +29,6 @@ protected:
 
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
-    std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope;
 
     void SetUp() override
     {
@@ -47,10 +46,9 @@ protected:
 
         kvdbManager->initialize();
 
-        kvdbScope = kvdbManager->getKVDBScope("builder_test");
         auto err = kvdbManager->createDB(DB_NAME_1);
         ASSERT_FALSE(err);
-        auto result = kvdbScope->getKVDBHandler(DB_NAME_1);
+        auto result = kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
         ASSERT_FALSE(std::holds_alternative<base::Error>(result));
     }
 
@@ -80,13 +78,15 @@ TEST_F(opBuilderKVDBGetTest, BuildsGetI)
                                  {DB_NAME_1, "key"},
                                  std::make_shared<defs::mocks::FailDef>(),
                                  false,
-                                 opBuilderKVDBGetTest::kvdbScope));
+                                 kvdbManager,
+                                 "builder_test"));
     ASSERT_NO_THROW(bld::KVDBGet("/field",
                                  "",
                                  {DB_NAME_1, "key"},
                                  std::make_shared<defs::mocks::FailDef>(),
                                  true,
-                                 opBuilderKVDBGetTest::kvdbScope));
+                                 kvdbManager,
+                                 "builder_test"));
 }
 
 TEST_F(opBuilderKVDBGetTest, BuildsGetII)
@@ -96,13 +96,15 @@ TEST_F(opBuilderKVDBGetTest, BuildsGetII)
                                  {DB_NAME_1, "$key"},
                                  std::make_shared<defs::mocks::FailDef>(),
                                  false,
-                                 opBuilderKVDBGetTest::kvdbScope));
+                                 kvdbManager,
+                                 "builder_test"));
     ASSERT_NO_THROW(bld::KVDBGet("/field",
                                  "",
                                  {DB_NAME_1, "$key"},
                                  std::make_shared<defs::mocks::FailDef>(),
                                  true,
-                                 opBuilderKVDBGetTest::kvdbScope));
+                                 kvdbManager,
+                                 "builder_test"));
 }
 
 TEST_F(opBuilderKVDBGetTest, WrongNumberOfParameters)
@@ -112,18 +114,23 @@ TEST_F(opBuilderKVDBGetTest, WrongNumberOfParameters)
                               {DB_NAME_1},
                               std::make_shared<defs::mocks::FailDef>(),
                               false,
-                              opBuilderKVDBGetTest::kvdbScope),
+                              kvdbManager,
+                              "builder_test"),
                  std::runtime_error);
     ASSERT_THROW(
         bld::KVDBGet(
-            "/field", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>(), true, opBuilderKVDBGetTest::kvdbScope),
+            "/field", "", {DB_NAME_1}, 
+            std::make_shared<defs::mocks::FailDef>(), 
+            true,
+            kvdbManager,
+            "builder_test"),
         std::runtime_error);
 }
 
 TEST_F(opBuilderKVDBGetTest, GetSuccessCases)
 {
     // Insert data in DB
-    auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
+    auto res = kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     handler->set("keyString", R"("string_value")");
@@ -133,27 +140,27 @@ TEST_F(opBuilderKVDBGetTest, GetSuccessCases)
     handler->set("keyNull", "null");
 
     // Operations value key
-    auto op1 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op1 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldString", "", {DB_NAME_1, "keyString"}, std::make_shared<defs::mocks::FailDef>());
-    auto op2 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op2 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldNumber", "", {DB_NAME_1, "keyNumber"}, std::make_shared<defs::mocks::FailDef>());
-    auto op3 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op3 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldObject", "", {DB_NAME_1, "keyObject"}, std::make_shared<defs::mocks::FailDef>());
-    auto op4 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op4 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldArray", "", {DB_NAME_1, "keyArray"}, std::make_shared<defs::mocks::FailDef>());
-    auto op5 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op5 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldNull", "", {DB_NAME_1, "keyNull"}, std::make_shared<defs::mocks::FailDef>());
 
     // Operations reference key
-    auto op6 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op6 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldString", "", {DB_NAME_1, "$keyString"}, std::make_shared<defs::mocks::FailDef>());
-    auto op7 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op7 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldNumber", "", {DB_NAME_1, "$keyNumber"}, std::make_shared<defs::mocks::FailDef>());
-    auto op8 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op8 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldObject", "", {DB_NAME_1, "$keyObject"}, std::make_shared<defs::mocks::FailDef>());
-    auto op9 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op9 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldArray", "", {DB_NAME_1, "$keyArray"}, std::make_shared<defs::mocks::FailDef>());
-    auto op10 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op10 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/fieldNull", "", {DB_NAME_1, "$keyNull"}, std::make_shared<defs::mocks::FailDef>());
 
     // Events templates
@@ -294,11 +301,11 @@ TEST_F(opBuilderKVDBGetTest, GetSuccessCases)
 
 TEST_F(opBuilderKVDBGetTest, GetFailKeyNotFound)
 {
-    auto op1 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op1 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/field", "", {DB_NAME_1, "NotFoundKey"}, std::make_shared<defs::mocks::FailDef>());
-    auto op2 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op2 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/field", "", {DB_NAME_1, "$NotFoundKey"}, std::make_shared<defs::mocks::FailDef>());
-    auto op3 = bld::getOpBuilderKVDBGet(kvdbScope)(
+    auto op3 = bld::getOpBuilderKVDBGet(kvdbManager, "builder_test")(
         "/field", "", {DB_NAME_1, "$fieldNotFound"}, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({
@@ -316,22 +323,22 @@ TEST_F(opBuilderKVDBGetTest, GetFailKeyNotFound)
 TEST_F(opBuilderKVDBGetTest, GetMergeSuccessCases)
 {
     // Insert data in DB
-    auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
+    auto res = kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     handler->set("keyObject", R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
     handler->set("keyArray", R"(["value1", "value2", "value3"])");
 
     // Operations value key
-    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/fieldObject", "", {DB_NAME_1, "keyObject"}, std::make_shared<defs::mocks::FailDef>());
-    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/fieldArray", "", {DB_NAME_1, "keyArray"}, std::make_shared<defs::mocks::FailDef>());
 
     // Operations reference key
-    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/fieldObject", "", {DB_NAME_1, "$keyObject"}, std::make_shared<defs::mocks::FailDef>());
-    auto op4 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op4 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/fieldArray", "", {DB_NAME_1, "$keyArray"}, std::make_shared<defs::mocks::FailDef>());
 
     // Events templates
@@ -373,11 +380,11 @@ TEST_F(opBuilderKVDBGetTest, GetMergeSuccessCases)
 
 TEST_F(opBuilderKVDBGetTest, GetMergeFailKeyNotFound)
 {
-    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/field", "", {DB_NAME_1, "NotFoundKey"}, std::make_shared<defs::mocks::FailDef>());
-    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/field", "", {DB_NAME_1, "$NotFoundKey"}, std::make_shared<defs::mocks::FailDef>());
-    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/field", "", {DB_NAME_1, "$fieldNotFound"}, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({
@@ -395,14 +402,14 @@ TEST_F(opBuilderKVDBGetTest, GetMergeFailKeyNotFound)
 TEST_F(opBuilderKVDBGetTest, GetMergeFailTargetNotFound)
 {
     // Insert data in DB
-    auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
+    auto res = kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     handler->set("keyObject", R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
 
-    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/fieldNotFound", "", {DB_NAME_1, "keyObject"}, std::make_shared<defs::mocks::FailDef>());
-    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/fieldNotFound", "", {DB_NAME_1, "$keyObject"}, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({
@@ -418,18 +425,18 @@ TEST_F(opBuilderKVDBGetTest, GetMergeFailTargetNotFound)
 TEST_F(opBuilderKVDBGetTest, GetMergeFailTypeErrors)
 {
     // Insert data in DB
-    auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
+    auto res = kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     handler->set("keyObject", R"({"field1": "value1", "field2": "value2", "field3": "value3"})");
     handler->set("keyArray", R"(["value1", "value2", "value3"])");
     handler->set("keyString", R"("value1")");
 
-    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op1 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/fieldObject", "", {DB_NAME_1, "keyArray"}, std::make_shared<defs::mocks::FailDef>());
-    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op2 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/fieldArray", "", {DB_NAME_1, "keyObject"}, std::make_shared<defs::mocks::FailDef>());
-    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbScope)(
+    auto op3 = bld::getOpBuilderKVDBGetMerge(kvdbManager, "builder_test")(
         "/fieldString", "", {DB_NAME_1, "keyString"}, std::make_shared<defs::mocks::FailDef>());
 
     auto event = std::make_shared<json::Json>(R"({

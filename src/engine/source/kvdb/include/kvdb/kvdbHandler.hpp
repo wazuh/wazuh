@@ -1,15 +1,14 @@
-#ifndef _KVDB_SPACE_H
-#define _KVDB_SPACE_H
+#ifndef _KVDB_HANDLER_H
+#define _KVDB_HANDLER_H
 
 #include "rocksdb/db.h"
 
 #include <kvdb/iKVDBHandler.hpp>
-#include <kvdb/kvdbManagedHandler.hpp>
 
 namespace kvdbManager
 {
 
-class IKVDBHandlerManager;
+class IKVDBHandlerCollection;
 
 /**
  * @brief This is the concrete implementation of a KVDB Handler.
@@ -18,32 +17,30 @@ class IKVDBHandlerManager;
  * Foreseeing possible changes where RocksDB and CF mapping
  * is not 1:n and also integrating prefix access (N/A yet).
  */
-class KVDBSpace
+class KVDBHandler
     : public IKVDBHandler
-    , public KVDBManagedHandler
 {
 public:
     /**
-     * @brief Construct a new KVDBSpace object
+     * @brief Construct a new KVDBHandler object
      *
-     * @param manager Pointer to the Manager that deals with handlers.
      * @param db Pointer to the RocksDB:DB instance.
      * @param cfHandle Pointer to the RocksDB:ColumnFamilyHandle instance.
      * @param spaceName Name of the Space.
      * @param scopeName Name of the Scope.
      *
      */
-    KVDBSpace(IKVDBHandlerManager* manager,
-              rocksdb::DB* db,
-              rocksdb::ColumnFamilyHandle* cfHandle,
-              const std::string& spaceName,
-              const std::string& scopeName);
+    KVDBHandler(rocksdb::DB* db,
+                rocksdb::ColumnFamilyHandle* cfHandle,
+                std::shared_ptr<IKVDBHandlerCollection> collection,
+                const std::string& spaceName,
+                const std::string& scopeName);
 
     /**
-     * @brief Destroy the KVDBSpace object
+     * @brief Destroy the KVDBHandler object
      *
      */
-    ~KVDBSpace();
+    ~KVDBHandler();
 
     /**
      * @copydoc IKVDBHandler::set(const std::string& key, const std::string& value)
@@ -99,8 +96,12 @@ protected:
      *
      */
     rocksdb::DB* m_pRocksDB;
+
+    std::string m_dbName;
+    std::string m_scopeName;
+    std::shared_ptr<IKVDBHandlerCollection> m_spCollection;
 };
 
 } // namespace kvdbManager
 
-#endif // _KVDB_SPACE_H
+#endif // _KVDB_HANDLER_H

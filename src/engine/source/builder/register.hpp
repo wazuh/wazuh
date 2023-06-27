@@ -30,7 +30,7 @@ struct dependencies
 {
     size_t logparDebugLvl;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
-    std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope;
+    std::string kvdbScopeName;
     std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
     std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
     std::shared_ptr<schemf::ISchema> schema;
@@ -119,12 +119,12 @@ static void registerHelperBuilders(std::shared_ptr<Registry<HelperBuilder>> help
     helperRegistry->registerBuilder(builders::opBuilderWdbUpdate, "wdb_update");
 
     // KVDB
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBDelete(dependencies.kvdbScope), "kvdb_delete");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGet(dependencies.kvdbScope), "kvdb_get");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGetMerge(dependencies.kvdbScope), "kvdb_get_merge");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBMatch(dependencies.kvdbScope), "kvdb_match");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBNotMatch(dependencies.kvdbScope), "kvdb_not_match");
-    helperRegistry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbScope), "kvdb_set");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBDelete(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_delete");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGet(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_get");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBGetMerge(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_get_merge");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBMatch(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_match");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBNotMatch(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_not_match");
+    helperRegistry->registerBuilder(builders::getOpBuilderKVDBSet(dependencies.kvdbManager, dependencies.kvdbScopeName), "kvdb_set");
 
     // SCA decoder
     helperRegistry->registerBuilder(builders::opBuilderSCAdecoder, "sca_decoder");

@@ -1,20 +1,18 @@
 #ifndef _KVDB_HANDLER_COLLECTION_H
 #define _KVDB_HANDLER_COLLECTION_H
 
+#include <kvdb/iKVDBHandlerCollection.hpp>
+
 #include <map>
 #include <memory>
 #include <set>
 #include <shared_mutex>
-#include <string>
 
-#include <kvdb/kvdbSpace.hpp>
+#include <kvdb/kvdbHandler.hpp>
 #include <kvdb/refCounter.hpp>
 
 namespace kvdbManager
 {
-
-class KVDBScope;
-class IKVDBHandlerManager;
 
 /**
  * @brief Helper class to manage the reference counters for a given DB.
@@ -79,35 +77,18 @@ private:
  * @brief Collection of KVDB Handlers for a given DB and the Scopes referencing them.
  *
  */
-class KVDBHandlerCollection
+class KVDBHandlerCollection : public IKVDBHandlerCollection
 {
 public:
     /**
-     * @brief Construct a new KVDBHandlerCollection object
+     * @brief Registers a KVDB Handler and manage the reference counters and mappings.
      *
-     * @param handleManager Pointer to the Manager that deals with handlers.
-     *
-     */
-    KVDBHandlerCollection(IKVDBHandlerManager* handleManager)
-        : m_handleManager(handleManager)
-    {
-    }
-
-    /**
-     * @brief Gets a KVDB Handler given the provided DB name and scope name.
-     * This automatically manage the reference counters and mappings.
-     *
-     * @param db Pointer to the RocksDB DB Internals.
-     * @param cfHandle Pointer to the RocksDB Column Family Handle.
      * @param dbName Name of the DB.
      * @param scopeName Name of the Scope.
-     * @return std::shared_ptr<IKVDBHandler> A KVDBHandler.
      *
      */
-    std::shared_ptr<IKVDBHandler> getKVDBHandler(rocksdb::DB* db,
-                                                 rocksdb::ColumnFamilyHandle* cfHandle,
-                                                 const std::string& dbName,
-                                                 const std::string& scopeName);
+    void addKVDBHandler(const std::string& dbName,
+                        const std::string& scopeName) override;
 
     /**
      * @brief Removes a KVDB Handler given the provided DB name and scope name.
@@ -117,7 +98,8 @@ public:
      * @param scopeName Name of the Scope.
      *
      */
-    void removeKVDBHandler(const std::string& dbName, const std::string& scopeName);
+    void removeKVDBHandler(const std::string& dbName, 
+                           const std::string& scopeName) override;
 
     /**
      * @brief Returns all the registered Database names.
@@ -141,12 +123,6 @@ private:
      *
      */
     std::map<std::string, std::shared_ptr<KVDBHandlerInstance>> m_mapInstances;
-
-    /**
-     * @brief Pointer to the Manager that deals with handlers.
-     *
-     */
-    IKVDBHandlerManager* m_handleManager;
 
     /**
      * @brief Mutex to protect the internal map.

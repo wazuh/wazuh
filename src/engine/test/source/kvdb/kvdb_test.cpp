@@ -77,9 +77,8 @@ TEST_F(KVDBTest, Startup)
 
 TEST_F(KVDBTest, ScopeTest)
 {
-    auto scope = m_spKVDBManager->getKVDBScope("scope1");
     ASSERT_FALSE(m_spKVDBManager->createDB("test_db"));
-    auto resultHandler = scope->getKVDBHandler("test_db");
+    auto resultHandler = m_spKVDBManager->getKVDBHandler("test_db", "scope1");
 
     ASSERT_FALSE(std::holds_alternative<base::Error>(resultHandler));
 
@@ -101,23 +100,20 @@ TEST_F(KVDBTest, ScopeTest)
 
 TEST_F(KVDBTest, ScopeInfoEmpty)
 {
-    auto scope = m_spKVDBManager->getKVDBScope("scope1");
     auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
     ASSERT_EQ(scopeInfo.size(), 0);
 }
 
 TEST_F(KVDBTest, ScopeInfoSingle)
 {
-    auto scope = m_spKVDBManager->getKVDBScope("scope1");
     auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
     ASSERT_EQ(scopeInfo.size(), 0);
 }
 
 TEST_F(KVDBTest, ScopeInfoSingleOneHandler)
 {
-    auto scope = m_spKVDBManager->getKVDBScope("scope1");
     m_spKVDBManager->createDB("db_test");
-    auto handler = scope->getKVDBHandler("db_test");
+    auto handler = m_spKVDBManager->getKVDBHandler("db_test", "scope1");
     auto scopeInfo = m_spKVDBManager->getKVDBScopesInfo();
     ASSERT_EQ(scopeInfo.size(), 1);
 }

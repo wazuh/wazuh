@@ -6,7 +6,6 @@
 #include <defs/mocks/failDef.hpp>
 #include <rapidjson/document.h>
 #include <kvdb/kvdbManager.hpp>
-#include <kvdb/kvdbExcept.hpp>
 #include <metrics/metricsManager.hpp>
 
 using namespace metricsManager;
@@ -28,7 +27,6 @@ protected:
     static constexpr auto DB_NAME_1 = "TEST_DB";
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
-    std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope;
 
     void SetUp() override
     {
@@ -36,10 +34,9 @@ protected:
         kvdbManager::KVDBManagerOptions kvdbManagerOptions { DB_DIR, DB_NAME };
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
 
-        kvdbScope = kvdbManager->getKVDBScope("builder_test");
         auto err = kvdbManager->createDB(DB_NAME_1);
         ASSERT_FALSE(err);
-        auto result = kvdbScope->getKVDBHandler(DB_NAME_1);
+        auto result = kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
         ASSERT_FALSE(std::holds_alternative<base::Error>(result));
     }
 
