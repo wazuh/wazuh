@@ -43,24 +43,16 @@ configuration: |
   NLB https://documentation.wazuh.com/current/amazon/services/supported-services/elastic-load-balancing/nlb.html#amazon-nlb
 
   ```xml
-  <localfile>
-    <!-- Edit location to appropriate path if needed -->
-    <location>[AWS ELB log path]</location>
-    <log_format>json</log_format>
-    <label key="event.module">aws</label>
-    <label key="event.dataset">aws.elb</label>
-  </localfile>
-
   <wodle name="aws-s3">
-  <disabled>no</disabled>
-  <interval>10m</interval>
-  <run_on_start>yes</run_on_start>
-  <skip_on_error>yes</skip_on_error>
-  <bucket type="alb">
-    <name>wazuh-aws-wodle</name>
-    <path>ALB</path>
-    <aws_profile>default</aws_profile>
-  </bucket>
+    <disabled>no</disabled>
+    <interval>10m</interval>
+    <run_on_start>yes</run_on_start>
+    <skip_on_error>yes</skip_on_error>
+    <bucket type="alb">
+      <name>wazuh-aws-wodle</name>
+      <path>ALB</path>
+      <aws_profile>default</aws_profile>
+    </bucket>
   </wodle>
 
   <wodle name="aws-s3">
@@ -90,4 +82,4 @@ configuration: |
   ```
 event:
   module: aws
-  dataset: aws.cloudtrail, aws.elb, aws.s3access
+  dataset: aws-cloudtrail, aws-elb, aws-s3access
