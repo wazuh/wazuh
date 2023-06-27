@@ -35,6 +35,7 @@ lock_acquired = False
 agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
 
 GROUP_SORT_FIELDS = ['name', 'mergedSum', 'configSum', 'count']
+GROUP_FILES_FIELDS = ['filename', 'hash']
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
