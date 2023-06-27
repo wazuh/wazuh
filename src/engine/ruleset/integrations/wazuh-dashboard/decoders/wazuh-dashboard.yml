@@ -2,7 +2,6 @@ name: decoder/wazuh-dashboard/0
 
 metadata:
   module: wazuh-dashboard
-  dataset: wazuh-dashboard-log
   title: Wazuh Dashboard logs
   description: Decoder for Wazuh Dashboard logs
   compatibility: This decoder has been tested with logs from Wazuh version 4.4
@@ -15,7 +14,6 @@ metadata:
   references:
     - "https://documentation.wazuh.com/current/user-manual/wazuh-dashboard/index.html"
     - "https://opensearch.org/docs/latest/monitoring-your-cluster/logs/"
-    - "https://www.elastic.co/guide/en/kibana/current/logging-configuration.html"
 
 sources:
   - decoder/syslog/0
@@ -25,7 +23,6 @@ check:
   - message: +starts_with/{
   # TODO: Once the events arrive tagged, uncommnet the following two lines
   # - event.module: wazuh-dashboard
-  # - event.dataset: wazuh-dashboard-log
 
 parse:
   logpar:
@@ -34,7 +31,6 @@ parse:
 normalize:
   - map:
       - event.module: wazuh-dashboard
-      - event.dataset: wazuh-dashboard-log
       - wazuh.decoders: +array_append/wazuh-dashboard
       - event.category: +array_append/web
       - event.type: +array_append/$~json.type
