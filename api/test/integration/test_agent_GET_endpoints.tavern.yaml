@@ -3539,6 +3539,37 @@ stages:
       json:
         <<: *error_spec
 
+  - name: Get groups using valid select
+    request:
+      verify: False
+      <<: *groups_id_files_request
+      params:
+        select: 'filename'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'filename'
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Get groups using invalid select
+    request:
+      verify: False
+      <<: *groups_id_files_request
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        error: 1724
+
 ---
 test_name: GET /groups/{group_id}/files filter hash
 

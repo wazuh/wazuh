@@ -1620,6 +1620,37 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Show rules files using valid select
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        select: 'file,status'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'file,status'
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Show rules files using invalid select
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json:
+        <<: *invalid_select
+
 ---
 test_name: GET /rules/files/{filename}
 

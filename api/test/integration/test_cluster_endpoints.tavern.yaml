@@ -1778,6 +1778,37 @@ stages:
             key: "level"
             expected_values: "info"
 
+  - name: Read logs using valid select
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        select: 'timestamp,tag'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'timestamp,tag'
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Read logs using invalid select
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        error: 1724
+
 ---
 test_name: GET /cluster/{node_id}/logs/summary
 
