@@ -1,5 +1,5 @@
-#ifndef _API_SESSION_HPP
-#define _API_SESSION_HPP
+#ifndef _API_TEST_SESSION_HPP
+#define _API_TEST_SESSION_HPP
 
 #include <ctime>
 #include <string>
@@ -113,4 +113,4 @@ private:
 
 } // namespace api::sessionManager
 
-#endif // _API_SESSION_HPP
+#endif // _API_TEST_SESSION_HPP

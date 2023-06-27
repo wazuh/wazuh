@@ -55,7 +55,7 @@ public:
 
     base::utils::wazuhProtocol::WazuhResponse send(const base::utils::wazuhProtocol::WazuhRequest& request)
     {
-        auto requestStr = request.toStr();
+        const auto requestStr = request.toStr();
 
         int32_t length = requestStr.size();
         std::unique_ptr<char[]> buffer(new char[sizeof(length) + length]);
@@ -63,8 +63,9 @@ public:
         std::memcpy(buffer.get() + sizeof(length), requestStr.data(), length);
         auto requestWithHeader = std::string(buffer.get(), sizeof(length) + length);
 
-        std::string error;
         auto clientHandle = m_loop->resource<uvw::PipeHandle>();
+
+        std::string error;
         std::string response;
 
         clientHandle->on<uvw::ErrorEvent>(
@@ -76,7 +77,7 @@ public:
             });
 
         clientHandle->once<uvw::ConnectEvent>(
-            [&requestWithHeader, &clientHandle](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
+            [&requestWithHeader](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
             {
                 std::vector<char> buffer {requestWithHeader.begin(), requestWithHeader.end()};
                 handle.write(buffer.data(), buffer.size());
@@ -120,7 +121,7 @@ public:
 
         auto timer = m_loop->resource<uvw::TimerHandle>();
         timer->on<uvw::TimerEvent>(
-            [clientHandle, timer, &error](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
+            [&clientHandle, &timer, &error](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
             {
                 if (!clientHandle->closing())
                 {
@@ -131,7 +132,7 @@ public:
             });
 
         timer->on<uvw::ErrorEvent>(
-            [timer, &error](const uvw::ErrorEvent& errorUvw, uvw::TimerHandle& timerRef)
+            [&timer, &error](const uvw::ErrorEvent& errorUvw, uvw::TimerHandle& timerRef)
             {
                 timer->close();
                 error = errorUvw.what();
@@ -148,7 +149,7 @@ public:
             });
 
         clientHandle->once<uvw::ConnectEvent>(
-            [this, timer](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
+            [this, &timer](const uvw::ConnectEvent&, uvw::PipeHandle& handle)
             {
                 // Start timer for first run only
                 if (m_isFirstExecution)
