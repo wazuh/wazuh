@@ -35,7 +35,7 @@ protected:
 
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
-    std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope;
+
 
     void SetUp() override
     {
@@ -53,7 +53,6 @@ protected:
 
         kvdbManager->initialize();
 
-        kvdbScope = kvdbManager->getKVDBScope("builder_test");
         ASSERT_FALSE(kvdbManager->createDB("test_db"));
     }
 
@@ -82,7 +81,8 @@ TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithValues)
                             "",
                             {DB_NAME_1, "key", "value"},
                             std::make_shared<defs::mocks::FailDef>(),
-                            opBuilderKVDBSetTest::kvdbScope));
+                            kvdbManager,
+                            "builder_test"));
 }
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithReferences)
@@ -91,29 +91,30 @@ TEST_F(opBuilderKVDBSetTest, buildKVDBSetWithReferences)
                          "",
                          {"$SOME_DB_NAME_1", "$key", "$value"},
                          std::make_shared<defs::mocks::FailDef>(),
-                         opBuilderKVDBSetTest::kvdbScope),
+                         kvdbManager,
+                         "builder_test"),
                  std::runtime_error);
 }
 
 TEST_F(opBuilderKVDBSetTest, buildKVDBSetWrongAmountOfParametersError)
 {
     ASSERT_THROW(
-        KVDBSet("/output", "", {}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBSetTest::kvdbScope),
+        KVDBSet("/output", "", {}, std::make_shared<defs::mocks::FailDef>(), kvdbManager, "builder_test"),
         std::runtime_error);
     ASSERT_THROW(
-        KVDBSet("/output", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>(), opBuilderKVDBSetTest::kvdbScope),
+        KVDBSet("/output", "", {DB_NAME_1}, std::make_shared<defs::mocks::FailDef>(), kvdbManager, "builder_test"),
         std::runtime_error);
     ASSERT_THROW(KVDBSet("/output",
                          "",
                          {DB_NAME_1, "key"},
                          std::make_shared<defs::mocks::FailDef>(),
-                         opBuilderKVDBSetTest::kvdbScope),
+                         kvdbManager, "builder_test"),
                  std::runtime_error);
     ASSERT_THROW(KVDBSet("/output",
                          "",
                          {DB_NAME_1, "key", "value", "unexpected"},
                          std::make_shared<defs::mocks::FailDef>(),
-                         opBuilderKVDBSetTest::kvdbScope),
+                         kvdbManager, "builder_test"),
                  std::runtime_error);
 }
 
@@ -138,61 +139,61 @@ TEST_F(opBuilderKVDBSetTest, SetSuccessCases)
     string dbOp1 {DB_NAME_1};
     string keyOp1 {"some_key"};
     string valueOp1 {"some_value"};
-    const auto op1 = getOpBuilderKVDBSet(kvdbScope)(
+    const auto op1 = getOpBuilderKVDBSet(kvdbManager, "builder_test")(
         "/output", "", {DB_NAME_1, keyOp1, valueOp1}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp2 {DB_NAME_1};
     string keyOp2 {"fieldString"};
     string valueOp2 {"$fieldString"};
-    const auto op2 = getOpBuilderKVDBSet(kvdbScope)(
+    const auto op2 = getOpBuilderKVDBSet(kvdbManager, "builder_test")(
         "/output", "", {DB_NAME_1, keyOp2, valueOp2}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp3 {DB_NAME_1};
     string keyOp3 {"fieldIntNumber"};
     string valueOp3 {"$fieldIntNumber"};
-    const auto op3 = getOpBuilderKVDBSet(kvdbScope)(
+    const auto op3 = getOpBuilderKVDBSet(kvdbManager, "builder_test")(
         "/output", "", {DB_NAME_1, keyOp3, valueOp3}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp4 {DB_NAME_1};
     string keyOp4 {"fieldObject"};
     string valueOp4 {"$fieldObject"};
-    const auto op4 = getOpBuilderKVDBSet(kvdbScope)(
+    const auto op4 = getOpBuilderKVDBSet(kvdbManager, "builder_test")(
         "/output", "", {DB_NAME_1, keyOp4, valueOp4}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp5 {DB_NAME_1};
     string keyOp5 {"fieldArray"};
     string valueOp5 {"$fieldArray"};
-    const auto op5 = getOpBuilderKVDBSet(kvdbScope)(
+    const auto op5 = getOpBuilderKVDBSet(kvdbManager, "builder_test")(
         "/output", "", {DB_NAME_1, keyOp5, valueOp5}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp6 {DB_NAME_1};
     string keyOp6 {"fieldNull"};
     string valueOp6 {"$fieldNull"};
-    const auto op6 = getOpBuilderKVDBSet(kvdbScope)(
+    const auto op6 = getOpBuilderKVDBSet(kvdbManager, "builder_test")(
         "/output", "", {DB_NAME_1, keyOp6, valueOp6}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp7 {DB_NAME_1};
     string keyOp7 {"fieldDoubleNumber"};
     string valueOp7 {"$fieldDoubleNumber"};
-    const auto op7 = getOpBuilderKVDBSet(kvdbScope)(
+    const auto op7 = getOpBuilderKVDBSet(kvdbManager, "builder_test")(
         "/output", "", {DB_NAME_1, keyOp7, valueOp7}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp8 {DB_NAME_1};
     string keyOp8 {"fieldTrue"};
     string valueOp8 {"$fieldTrue"};
-    const auto op8 = getOpBuilderKVDBSet(kvdbScope)(
+    const auto op8 = getOpBuilderKVDBSet(kvdbManager, "builder_test")(
         "/output", "", {DB_NAME_1, keyOp8, valueOp8}, std::make_shared<defs::mocks::FailDef>());
 
     string dbOp9 {DB_NAME_1};
     string keyOp9 {"fieldFalse"};
     string valueOp9 {"$fieldFalse"};
-    const auto op9 = getOpBuilderKVDBSet(kvdbScope)(
+    const auto op9 = getOpBuilderKVDBSet(kvdbManager, "builder_test")(
         "/output", "", {DB_NAME_1, keyOp9, valueOp9}, std::make_shared<defs::mocks::FailDef>());
 
     auto result = op1->getPtr<Term<EngineOp>>()->getFn()(event);
     ASSERT_TRUE(result);
     ASSERT_EQ(*result.payload(), *expectedEvent);
-    auto res = kvdbScope->getKVDBHandler(DB_NAME_1);
+    auto res = kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
     ASSERT_FALSE(std::holds_alternative<base::Error>(res));
     auto handler = std::move(std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(res));
     auto rawValue = handler->get(keyOp1);

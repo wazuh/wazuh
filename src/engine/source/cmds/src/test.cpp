@@ -82,7 +82,6 @@ void run(const Options& options)
     kvdbManager::KVDBManagerOptions kvdbOptions { options.kvdbPath, "kvdb" };
     auto kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbOptions, metricsManager);
     kvdbManager->initialize();
-    auto kvdbScope = kvdbManager->getKVDBScope("test");
 
     auto fileStore = std::make_shared<store::FileDriver>(options.fileStorage);
 
@@ -108,7 +107,7 @@ void run(const Options& options)
         builder::internals::dependencies deps;
         deps.logparDebugLvl = logparDebugLvl;
         deps.logpar = logpar;
-        deps.kvdbScope = kvdbScope;
+        deps.kvdbScopeName = "test";
         deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
         deps.schema = std::make_shared<schemf::Schema>();
         builder::internals::registerHelperBuilders(deps.helperRegistry, deps);

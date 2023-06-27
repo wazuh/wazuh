@@ -30,7 +30,6 @@ protected:
 
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
-    std::shared_ptr<kvdbManager::IKVDBScope> kvdbScope;
 
     void SetUp() override
     {
@@ -38,10 +37,9 @@ protected:
         kvdbManager::KVDBManagerOptions kvdbManagerOptions { DB_DIR, DB_NAME };
         kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
 
-        kvdbScope = kvdbManager->getKVDBScope("builder_test");
         auto err = kvdbManager->createDB(DB_NAME_1);
         ASSERT_FALSE(err);
-        auto result = kvdbScope->getKVDBHandler(DB_NAME_1);
+        auto result = kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
         ASSERT_FALSE(std::holds_alternative<base::Error>(result));
     }
 
@@ -99,7 +97,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
 TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
 {
     // Set Up KVDB
-    auto res = kvdbManager->getHandler("TEST_DB");
+    auto res = kvdbManager->getHandler("TEST_DB", "builder_test");
     if (auto err = std::get_if<base::Error>(&res))
     {
         throw std::runtime_error(err->message);

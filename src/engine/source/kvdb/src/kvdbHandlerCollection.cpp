@@ -7,10 +7,8 @@
 namespace kvdbManager
 {
 
-std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB* db,
-                                                                    rocksdb::ColumnFamilyHandle* cfHandle,
-                                                                    const std::string& dbName,
-                                                                    const std::string& scopeName)
+void KVDBHandlerCollection::addKVDBHandler(const std::string& dbName,
+                                           const std::string& scopeName)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
@@ -26,8 +24,6 @@ std::shared_ptr<IKVDBHandler> KVDBHandlerCollection::getKVDBHandler(rocksdb::DB*
         spInstance->addScope(scopeName);
         m_mapInstances.emplace(dbName, std::move(spInstance));
     }
-
-    return std::make_shared<KVDBSpace>(m_handleManager, db, cfHandle, dbName, scopeName);
 }
 
 void KVDBHandlerCollection::removeKVDBHandler(const std::string& dbName, const std::string& scopeName)

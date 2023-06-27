@@ -27,8 +27,7 @@ CPMAddPackage(
 ####################################################################################################
 add_library(kvdb STATIC
     ${ENGINE_KVDB_SOURCE_DIR}/kvdbManager.cpp
-    ${ENGINE_KVDB_SOURCE_DIR}/kvdbScope.cpp
-    ${ENGINE_KVDB_SOURCE_DIR}/kvdbSpace.cpp
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdbHandler.cpp
     ${ENGINE_KVDB_SOURCE_DIR}/kvdbHandlerCollection.cpp
     ${ENGINE_KVDB_SOURCE_DIR}/refCounter.cpp
 )

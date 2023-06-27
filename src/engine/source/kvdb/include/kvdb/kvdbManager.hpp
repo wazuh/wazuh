@@ -9,13 +9,11 @@
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 
-#include <utils/baseMacros.hpp>
+#include <error.hpp>
 
-#include <kvdb/iKVDBHandlerManager.hpp>
 #include <kvdb/iKVDBManager.hpp>
 #include <kvdb/kvdbHandlerCollection.hpp>
-#include <kvdb/kvdbScope.hpp>
-#include <kvdb/kvdbSpace.hpp>
+#include <kvdb/kvdbHandler.hpp>
 
 namespace metricsManager
 {
@@ -44,7 +42,6 @@ struct KVDBManagerOptions
  */
 class KVDBManager final
     : public IKVDBManager
-    , public IKVDBHandlerManager
 {
     WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
 
@@ -72,12 +69,6 @@ public:
     void finalize();
 
     /**
-     * @copydoc IKVDBManager::getKVDBScope
-     *
-     */
-    std::shared_ptr<IKVDBScope> getKVDBScope(const std::string& scopeName) override;
-
-    /**
      * @copydoc IKVDBManager::getKVDBScopesInfo
      *
      */
@@ -90,19 +81,19 @@ public:
     std::map<std::string, RefInfo> getKVDBHandlersInfo() const override;
 
     /**
-     * @copydoc IKVDBHandlerManager::getKVDBHandler
+     * @copydoc IKVDBManager::getKVDBHandler
      *
      */
     std::variant<std::shared_ptr<IKVDBHandler>, base::Error> getKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
 
     /**
-     * @copydoc IKVDBHandlerManager::removeKVDBHandler
+     * @copydoc IKVDBManager::removeKVDBHandler
      *
      */
     void removeKVDBHandler(const std::string& dbName, const std::string& scopeName) override;
 
     /**
-     * @copydoc IKVDBHandlerManager::managerShuttingDown
+     * @copydoc IKVDBManager::managerShuttingDown
      *
      */
     bool managerShuttingDown() const override;
@@ -160,22 +151,13 @@ private:
      * @brief Custom Collection Object to wrap maps, searchs, references, related to handlers and scopes.
      *
      */
-    std::unique_ptr<KVDBHandlerCollection> m_kvdbHandlerCollection;
-
-    // TODO: Check if this is needed and possibly hide the handlers methods with another interface.
-    friend class kvdbManager::KVDBScope;
+    std::shared_ptr<KVDBHandlerCollection> m_kvdbHandlerCollection;
 
     /**
      * @brief Pointer to the Metrics Manager through MetricsScope.
      *
      */
     std::shared_ptr<metricsManager::IMetricsScope> m_spMetricsScope;
-
-    /**
-     * @brief Collection of DB Scopes. Scopes are identifiers for users of db.
-     *
-     */
-    std::map<std::string, std::shared_ptr<KVDBScope>> m_mapScopes;
 
     /**
      * @brief Create a Column Family object and store in map.
