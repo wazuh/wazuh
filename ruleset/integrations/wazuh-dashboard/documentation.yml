@@ -16,6 +16,7 @@ configuration: |
     <location>/var/log/syslog</location>
   </localfile>
   ```
+  Note: Wazuh dashboard integration depends on syslog integration. Therefore, this integration must be previously added to the engine.
+
 event:
   module: wazuh-dashboard
-  dataset: wazuh-dashboard-log

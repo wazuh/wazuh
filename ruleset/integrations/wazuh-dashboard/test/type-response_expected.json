@@ -18,7 +18,6 @@
             "start": "2023-06-23T15:18:26.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
@@ -89,7 +88,6 @@
             "start": "2023-06-23T15:18:27.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
@@ -160,7 +158,6 @@
             "start": "2023-06-23T15:18:28.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
@@ -231,7 +228,6 @@
             "start": "2023-06-23T15:14:32.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
@@ -302,7 +298,6 @@
             "start": "2023-06-23T15:31:24.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
@@ -373,7 +368,6 @@
             "start": "2023-06-23T15:18:26.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
@@ -441,7 +435,6 @@
             "start": "2023-06-23T14:58:39.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
@@ -509,7 +502,6 @@
             "start": "2023-06-26T18:39:55.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
@@ -578,7 +570,6 @@
             "start": "2023-06-23T20:46:39.000Z",
             "kind": "event",
             "module": "wazuh-dashboard",
-            "dataset": "wazuh-dashboard-log",
             "category": [
                 "web"
             ],
