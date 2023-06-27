@@ -1,0 +1,3 @@
+name: integration/wazuh-dashboard/0
+decoders:
+- decoder/wazuh-dashboard/0
