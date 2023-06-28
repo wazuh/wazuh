@@ -451,7 +451,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.in_str.pop(string_id, None)
             return b'ok', b'Forwarded response'
         elif req_id in self.server.local_server.clients:
-            asyncio.create_task(self.forward_dapi_response(data))
+            task = asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
         else:
             raise exception.WazuhClusterError(3032, extra_message=req_id)

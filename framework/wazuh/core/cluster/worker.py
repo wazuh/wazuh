@@ -212,14 +212,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             logger = self.task_loggers['Agent-info sync']
             return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-info')
         elif command == b'dapi_res':
-            asyncio.create_task(self.forward_dapi_response(data))
+            task = asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
         elif command == b'sendsyn_res':
-            asyncio.create_task(self.forward_sendsync_response(data))
+            task = asyncio.create_task(self.forward_sendsync_response(data))
             return b'ok', b'Response forwarded to worker'
         elif command == b'sendsyn_err':
             sendsync_client, error_msg = data.split(b' ', 1)
-            asyncio.create_task(self.log_exceptions(
+            task = asyncio.create_task(self.log_exceptions(
                 self.server.local_server.clients[sendsync_client.decode()].send_request(b'err', error_msg)))
             return b'ok', b'SendSync error forwarded to worker'
         elif command == b'dapi':
