@@ -30,15 +30,15 @@
 #define ARGV0 "wazuh-authd"
 #endif
 
-#include "addagent/manage_agents.h"
-#include "os_net/os_net.h"
-#include "config/authd-config.h"
+#include "../addagent/manage_agents.h"
+#include "../os_net/os_net.h"
+#include "../config/authd-config.h"
 #include <pthread.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha1/sha1_op.h"
+#include "../os_crypto/md5/md5_op.h"
+#include "../os_crypto/sha1/sha1_op.h"
 
 extern BIO *bio_err;
 #define KEYFILE  "etc/sslmanager.key"

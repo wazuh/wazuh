@@ -45,15 +45,17 @@ tags:
     - events
 '''
 import pytest
+import json
 
 from pathlib import Path
 
 from wazuh_testing import session_parameters
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH, ANALYSISD_QUEUE_SOCKET_PATH
-from wazuh_testing.modules.analysisd import callbacks, ANALYSISD_DEBUG_CONFIG
+from wazuh_testing.modules.analysisd import patterns, configuration as analysisd_config
+from wazuh_testing.modules.monitord import configuration as monitord_config
 from wazuh_testing.tools import mitm
-from wazuh_testing.utils import configuration
+from wazuh_testing.utils import configuration, callbacks
 
 from . import TEST_CASES_PATH
 
@@ -61,13 +63,13 @@ from . import TEST_CASES_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=2), pytest.mark.server]
 
 # Configuration and cases data.
-cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_events.yaml')
+test_cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_events.yaml')
 
 # Test configurations.
-_, metadata, cases_ids = configuration.get_test_cases_data(cases_path)
+_, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
 
 # Test internal options.
-local_internal_options = ANALYSISD_DEBUG_CONFIG
+local_internal_options = {analysisd_config.ANALYSISD_DEBUG: '2', monitord_config.MONITORD_ROTATE_LOG: '0'}
 
 # Test variables.
 receiver_sockets_params = [(ANALYSISD_QUEUE_SOCKET_PATH, 'AF_UNIX', 'UDP')]
@@ -79,9 +81,9 @@ monitored_sockets_params = [(WAZUH_DB_DAEMON, mitm_wdb, True), (ANALYSISD_DAEMON
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 # Test function.
-@pytest.mark.parametrize('metadata', metadata, ids=cases_ids)
-def test_validate_socket_responses(metadata, configure_local_internal_options, configure_sockets_environment,
-                                   connect_to_sockets, wait_for_analysisd_startup):
+@pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
+def test_validate_socket_responses(test_metadata, configure_local_internal_options, configure_sockets_environment,
+                                   connect_to_sockets_module, wait_for_analysisd_startup):
     '''
     description: Validate every response from the 'wazuh-analysisd' daemon socket
                  to the 'wazuh-db' daemon socket using 'syscheck' common events.
@@ -91,12 +93,18 @@ def test_validate_socket_responses(metadata, configure_local_internal_options, c
     tier: 2
 
     parameters:
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Configure the Wazuh local internal options.
         - configure_sockets_environment:
             type: fixture
             brief: Configure environment for sockets and MITM.
         - connect_to_sockets_module:
             type: fixture
-            brief: Module scope version of 'connect_to_sockets' fixture.
+            brief: Module scope version of 'connect_to_sockets_module' fixture.
         - wait_for_analysisd_startup:
             type: fixture
             brief: Wait until the 'wazuh-analysisd' has begun and the 'alerts.json' file is created.
@@ -121,10 +129,15 @@ def test_validate_socket_responses(metadata, configure_local_internal_options, c
         - man_in_the_middle
         - wdb_socket
     '''
+    callback = callbacks.generate_callback(patterns.ANALYSISD_QUEUE_DB_MESSSAGE)
+
     # Start monitor
-    receiver_sockets[0].send(metadata['input'])
-    monitored_sockets[0].start(callback=callbacks.callback_wazuh_db_message, timeout=session_parameters.default_timeout)
+    receiver_sockets[0].send(test_metadata['input'])
+    monitored_sockets[0].start(callback=callback, timeout=session_parameters.default_timeout)
 
     # Check that expected message appears
-    expected = callbacks.callback_analysisd_message(metadata['output'])
-    assert monitored_sockets[0].callback_result == expected, 'Failed test case stage: {}'.format(metadata['stage'])
+    for actual, expected in zip(monitored_sockets[0].callback_result, callback(test_metadata['output'])):
+        try:
+            assert json.loads(actual) == json.loads(expected), 'Failed test case stage: {}'.format(test_metadata['stage'])
+        except json.decoder.JSONDecodeError:
+            assert actual == expected, 'Failed test case stage: {}'.format(test_metadata['stage'])

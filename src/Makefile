@@ -15,6 +15,7 @@ uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 
+
 ifeq (${TARGET}, winagent)
 WAZUH_LIB_OUTPUT_PATH := win32/
 STRIP_TOOL := i686-w64-mingw32-strip
@@ -99,7 +100,7 @@ DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 IMAGE_TRUST_CHECKS?=1
-CA_NAME?=DigiCert High Assurance EV Root CA
+CA_NAME?=DigiCert Assured ID Root CA
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
@@ -227,16 +228,16 @@ endif
 		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 else
 ifeq (${uname_S},Darwin)
-		DEFINES+=-DDarwin
-		DEFINES+=-DHIGHFIRST
-		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
-		AR_LDFLAGS+=-pthread
-		AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
-		SHARED=dylib
-		OSSEC_LIBS+=-framework Security
-		PRECOMPILED_OS:=darwin
+	DEFINES+=-DDarwin
+	DEFINES+=-DHIGHFIRST
+	OSSEC_CFLAGS+=-pthread
+	OSSEC_LDFLAGS+=-pthread
+	OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
+	AR_LDFLAGS+=-pthread
+	AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
+	SHARED=dylib
+	OSSEC_LIBS+=-framework Security
+	PRECOMPILED_OS:=darwin
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
@@ -644,7 +645,7 @@ help: failtarget
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
-	@echo "   make CA_NAME="DigiCert High Assurance EV Root CA" This flag controls the CA name used to verify the dll and exe files signature. The default value is "DigiCert High Assurance EV Root CA"."
+	@echo "   make CA_NAME="DigiCert Assured ID Root CA" This flag controls the CA name used to verify the dll and exe files signature. The default value is DigiCert Assured ID Root CA."
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
@@ -778,6 +779,7 @@ hybrid: external ${CPPLIBDEPS}
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
+
 agent: external ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 	${MAKE} ${BUILD_AGENT}
@@ -951,7 +953,11 @@ ifeq (${TARGET},winagent)
 	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ./Configure $(OPENSSL_FLAGS) mingw && ${MAKE} build_libs
 else
 ifeq (${uname_S},Darwin)
+ifeq (${uname_M},arm64)
+	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-arm64-cc && ${MAKE} build_libs
+else
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
+endif
 else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs

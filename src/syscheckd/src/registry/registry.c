@@ -16,14 +16,14 @@
 #include "../../include/syscheck.h"
 #include "../../config/syscheck-config.h"
 #include "../db/include/db.h"
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha1/sha1_op.h"
-#include "os_crypto/md5_sha1/md5_sha1_op.h"
+#include "../os_crypto/md5/md5_op.h"
+#include "../os_crypto/sha1/sha1_op.h"
+#include "../os_crypto/md5_sha1/md5_sha1_op.h"
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
 #ifdef WAZUH_UNIT_TESTING
-#include "unit_tests/wrappers/windows/winreg_wrappers.h"
+#include "../../../unit_tests/wrappers/windows/winreg_wrappers.h"
 extern int _base_line;
 #else
 static int _base_line = 0;

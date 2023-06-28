@@ -11,8 +11,8 @@
 #ifndef FIM_DB_WRAPPERS_H
 #define FIM_DB_WRAPPERS_H
 
-#include "syscheckd/include/syscheck.h"
-#include "syscheckd/src/db/include/fimCommonDefs.h"
+#include "../../../../syscheckd/include/syscheck.h"
+#include "../../../../syscheckd/src/db/include/fimCommonDefs.h"
 
 int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
                                      fim_type type,

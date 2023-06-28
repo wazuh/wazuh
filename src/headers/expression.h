@@ -12,8 +12,8 @@
 #define EXPRESSION_H_
 #define PCRE2_CODE_UNIT_WIDTH 8
 
-#include "external/libpcre2/include/pcre2.h"
-#include "os_regex/os_regex.h"
+#include "../external/libpcre2/include/pcre2.h"
+#include "../os_regex/os_regex.h"
 
 #define OSMATCH_STR  "osmatch"
 #define OSREGEX_STR  "osregex"
@@ -107,6 +107,13 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
  */
 bool w_expression_match(w_expression_t * expression, const char * str_test, const char ** end_match,
                         regex_matching * regex_match);
+
+/**
+ * @brief Frees regex_matching object
+ * @param expression expression with compiled pattern
+  * @param regex_match Structure to manage pattern matches.
+ */
+void w_free_expression_match(w_expression_t * expression, regex_matching **reg);
 
 /**
  * @brief Fill a match_data with PCRE2 result

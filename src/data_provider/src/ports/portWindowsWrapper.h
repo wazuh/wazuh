@@ -182,7 +182,7 @@ class WindowsPortWrapper final : public IPortWrapper
         }
         std::string processName() const override
         {
-            return m_processName;
+            return Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_processName);
         }
 };
 

@@ -15,7 +15,7 @@
 #define ASYS_MAX_NUM_AGENTS_STATS 75
 
 #include <stdint.h>
-#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "../wazuh_db/helpers/wdb_global_helpers.h"
 
 /* Status structures */
 

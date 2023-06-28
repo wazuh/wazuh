@@ -109,10 +109,10 @@ tests that we consider the basic ones are performed. These tests are the followi
 - `test_agent_PUT_endpoints.tavern.yaml`
 - `test_cluster_endpoints.tavern.yaml`
 - `test_experimental_endpoints.tavern.yaml`
-- `test_agent_DELETE_endpoints.tavern.yaml`
-- `test_agent_GET_endpoints.tavern.yaml`
-- `test_agent_POST_endpoints.tavern.yaml`
-- `test_agent_PUT_endpoints.tavern.yaml`
+- `test_security_DELETE_endpoints.tavern.yaml`
+- `test_security_GET_endpoints.tavern.yaml`
+- `test_security_POST_endpoints.tavern.yaml`
+- `test_security_PUT_endpoints.tavern.yaml`
 
 The `wazuh/api/test/integration/mapping` directory contains the `integration_test_api_endpoints.json` file that
 represents a mapping between the API and framework files; and the API integration tests that need to be performed. The

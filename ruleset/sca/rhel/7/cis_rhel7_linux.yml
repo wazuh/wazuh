@@ -13,7 +13,7 @@
 policy:
   id: "cis_rhel7_linux"
   file: "cis_rhel7_linux.yml"
-  name: "CIS Benchmark for Red Hat Enterprise Linux 7"
+  name: "CIS Red Hat Enterprise Linux 7 Benchmark v3.0.1"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 7 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 7.4."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -28,7 +28,6 @@ requirements:
     - "f:/etc/redhat-release -> r:^Oracle && r:release 7"
     - "f:/etc/redhat-release -> r:^Better && r:release 7"
     - "f:/etc/redhat-release -> r:^OpenVZ && r:release 7"
-    - "f:/etc/system-release -> r:^Amazon && r:release 2"
 
 variables:
   $sshd_file: /etc/ssh/sshd_config

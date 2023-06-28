@@ -40,7 +40,7 @@ endif()
 
 # Add compiling flags
 add_compile_options(-ggdb -O0 -g -coverage)
-add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT -D_WIN32_WINNT=0x600)
+add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT -D_WIN32_WINNT=0x600 -DWAZUH_UNIT_TESTING)
 
 # Add logcollector objects
 file(GLOB logcollector_lib ${SRC_FOLDER}/logcollector/*.o)

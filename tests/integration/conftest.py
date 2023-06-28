@@ -11,14 +11,16 @@ from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths import ROOT_PREFIX
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import queue_monitor, socket_controller
-from wazuh_testing.utils import configuration, database, file, services, mocking
+from wazuh_testing.utils import configuration, database, file, mocking, services
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
-def pytest_addoption(parser) -> None:
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
     """Add command-line options to the tests.
 
     Args:
@@ -50,7 +52,7 @@ def pytest_addoption(parser) -> None:
     )
 
 
-def pytest_collection_modifyitems(config, items: List[pytest.Item]) -> None:
+def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item]) -> None:
     """Deselect tests that do not match with the specified environment or tier.
 
     Args:
@@ -99,15 +101,33 @@ def pytest_collection_modifyitems(config, items: List[pytest.Item]) -> None:
     items[:] = selected_tests
 
 
-# - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
-# - - - - - - - - - - - - - - - - - - - - - - -Test Configuration Setup - -  - - - - - - - - - - - - - - - - - - - - -
+
+@pytest.fixture(scope='session')
+def load_wazuh_basic_configuration():
+    """Load a new basic configuration to the manager"""
+    # Load ossec.conf with all disabled settings
+    minimal_configuration = configuration.get_minimal_configuration()
+
+    # Make a backup from current configuration
+    backup_ossec_configuration = configuration.get_wazuh_conf()
+
+    # Write new configuration
+    configuration.write_wazuh_conf(minimal_configuration)
+
+    yield
+
+    # Restore the ossec.conf backup
+    configuration.write_wazuh_conf(backup_ossec_configuration)
+
+
 @pytest.fixture()
 def set_wazuh_configuration(test_configuration: dict) -> None:
     """Set wazuh configuration
 
     Args:
-        test_configuration (dict): Configuration template data to write in the ossec.config
+        test_configuration (dict): Configuration template data to write in the ossec.conf
     """
     # Save current configuration
     backup_config = configuration.get_wazuh_conf()
@@ -127,41 +147,10 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
     configuration.write_wazuh_conf(backup_config)
 
 
-@pytest.fixture(scope='module')
-def configure_local_internal_options(request: pytest.FixtureRequest) -> None:
-    """Configure the local internal options file.
-
-    Takes the `local_internal_options` variable from the request.
-    The `local_internal_options` is a dict with keys and values as the Wazuh `local_internal_options` format.
-    E.g.: local_internal_options = {'monitord.rotate_log': '0', 'syscheck.debug': '0' }
-
-    Args:
-        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
-    """
-    try:
-        local_internal_options = request.param
-    except AttributeError:
-        try:
-            local_internal_options = getattr(request.module, 'local_internal_options')
-        except AttributeError:
-            raise AttributeError('Error when using the fixture "configure_local_internal_options", no '
-                                 'parameter has been passed explicitly, nor is the variable local_internal_options '
-                                 'found in the module.') from AttributeError
-
-    backup_local_internal_options = configuration.get_local_internal_options_dict()
-
-    configuration.set_local_internal_options_dict(local_internal_options)
-
-    yield
-
-    configuration.set_local_internal_options_dict(backup_local_internal_options)
-
-
-@pytest.fixture()
-def truncate_monitored_files() -> None:
+def truncate_monitored_files_implementation() -> None:
     """Truncate all the log files and json alerts files before and after the test execution"""
     if services.get_service() == WAZUH_MANAGER:
-        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH]
+        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, ARCHIVES_LOG_PATH]
     else:
         log_files = [WAZUH_LOG_PATH]
 
@@ -176,25 +165,16 @@ def truncate_monitored_files() -> None:
             file.truncate_file(log_file)
 
 
-# - - - - - - - - - - - - - - - - - - - - - - -End of Test Configuration Setup - - - - - - - - - - - - - - - - - - - -
-
-# - - - - - - - - - - - - - - - - - - - - - - -Daemon and Socked Handling - -  - - - - - - - - - - - - - - - - - - - -
 @pytest.fixture()
-def restart_wazuh(daemon: str = None) -> None:
-    """Restart all Wazuh daemons"""
-    services.control_service("restart", daemon=daemon)
-    yield
-    services.control_service('stop', daemon=daemon)
+def truncate_monitored_files() -> None:
+    """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
+    yield from truncate_monitored_files_implementation()
 
 
 @pytest.fixture(scope='module')
-def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
-    """
-    Restart a Wazuh daemon
-    """
-    yield
-    file.truncate_file(WAZUH_LOG_PATH)
-    services.control_service("restart", daemon=daemon)
+def truncate_monitored_files_module() -> None:
+    """Wrapper of `truncate_monitored_files_implementation` which contains the general implementation."""
+    yield from truncate_monitored_files_implementation()
 
 
 def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
@@ -266,24 +246,64 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
             services.control_service('stop', daemon=daemon)
 
 
-@pytest.fixture
+@pytest.fixture()
 def daemons_handler(request: pytest.FixtureRequest) -> None:
-    """Wrapper of `daemons_handler_impl` which contains the general implementation.
-
-    Args:
-        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
-    """
-    yield from daemons_handler_impl(request)
-
-
-@pytest.fixture(scope='module')
-def daemons_handler_module(request: pytest.FixtureRequest) -> None:
-    """Wrapper of `daemons_handler_impl` which contains the general implementation.
+    """Wrapper of `daemons_handler_implementation` which contains the general implementation.
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
     """
     yield from daemons_handler_implementation(request)
+
+
+@pytest.fixture(scope='module')
+def daemons_handler_module(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `daemons_handler_implementation` which contains the general implementation.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    yield from daemons_handler_implementation(request)
+
+
+@pytest.fixture(scope='module')
+def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
+    """
+    Restart a Wazuh daemon
+    """
+    yield
+    file.truncate_file(WAZUH_LOG_PATH)
+    services.control_service("restart", daemon=daemon)
+
+
+@pytest.fixture(scope='module')
+def configure_local_internal_options(request: pytest.FixtureRequest) -> None:
+    """Configure the local internal options file.
+
+    Takes the `local_internal_options` variable from the request.
+    The `local_internal_options` is a dict with keys and values as the Wazuh `local_internal_options` format.
+    E.g.: local_internal_options = {'monitord.rotate_log': '0', 'syscheck.debug': '0' }
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    try:
+        local_internal_options = request.param
+    except AttributeError:
+        try:
+            local_internal_options = getattr(request.module, 'local_internal_options')
+        except AttributeError:
+            raise AttributeError('Error when using the fixture "configure_local_internal_options", no '
+                                 'parameter has been passed explicitly, nor is the variable local_internal_options '
+                                 'found in the module.') from AttributeError
+
+    backup_local_internal_options = configuration.get_local_internal_options_dict()
+
+    configuration.set_local_internal_options_dict(local_internal_options)
+
+    yield
+
+    configuration.set_local_internal_options_dict(backup_local_internal_options)
 
 
 @pytest.fixture(scope='module')
@@ -336,9 +356,8 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
     services.control_service('start')
 
 
-@pytest.fixture(scope='module')
-def connect_to_sockets(request: pytest.FixtureRequest) -> list:
-    """Module scope version of connect_to_sockets.
+def connect_to_sockets_implementation(request: pytest.FixtureRequest) -> None:
+    """Connect to the specified sockets for the test.
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
@@ -371,9 +390,30 @@ def connect_to_sockets(request: pytest.FixtureRequest) -> list:
                 pass
 
 
+@pytest.fixture()
+def connect_to_sockets(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `connect_to_sockets_implementation` which contains the general implementation.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    yield from connect_to_sockets_implementation(request)
+
+
+@pytest.fixture(scope='module')
+def connect_to_sockets_module(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `connect_to_sockets_implementation` which contains the general implementation.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    yield from connect_to_sockets_implementation(request)
+
 # - - - - - - - - - - - - - - - - - - - - -End of Daemon and Socked Handling - -  - - - - - - - - - - - - - - - - - - -
 
+
 # - - - - - - - - - - - - - - - - - - - - - - - - -Agent Mocking - -  - - - - - - - - - - - - - - - - - - - - - - - - -
+
 @pytest.fixture()
 def mock_agent_with_custom_system(agent_system: str) -> int:
     """Fixture to create a mocked agent with custom system specified as parameter
@@ -388,6 +428,16 @@ def mock_agent_with_custom_system(agent_system: str) -> int:
         raise ValueError(f"{agent_system} is not supported as mocked system for an agent")
 
     agent_id = mocking.create_mocked_agent(**mocking.SYSTEM_DATA[agent_system])
+    
+    yield agent_id
+    
+    mocking.delete_mocked_agent(agent_id)
+
+
+@pytest.fixture(scope='module')
+def mock_agent_module():
+    """Fixture to create a mocked agent in wazuh databases"""
+    agent_id = mocking.create_mocked_agent(name='mocked_agent')
 
     yield agent_id
 

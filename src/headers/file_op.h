@@ -17,7 +17,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include <sys/stat.h>
-#include <external/cJSON/cJSON.h>
+#include <cJSON.h>
 
 #ifdef WIN32
 #include <winsock2.h>

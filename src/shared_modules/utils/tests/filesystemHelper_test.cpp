@@ -35,8 +35,8 @@ TEST_F(FilesystemUtilsTest, FilesystemExistsDir)
 
 TEST_F(FilesystemUtilsTest, FilesystemExistsRegular)
 {
-    // Check correct input
-    EXPECT_TRUE(Utils::existsRegular(R"(/etc/bash.bashrc)"));
+    // Check correct input, for macos and linux.
+    EXPECT_TRUE(Utils::existsRegular(R"(/etc/services)"));
 
     // Check wrong input
     EXPECT_FALSE(Utils::existsRegular(R"(/etc)"));

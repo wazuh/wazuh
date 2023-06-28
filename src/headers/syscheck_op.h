@@ -70,8 +70,8 @@ extern const char *SYSCHECK_EVENT_STRINGS[];
 #endif
 
 #include "../syscheckd/include/syscheck.h"
-#include "analysisd/eventinfo.h"
-#include "os_net/os_net.h"
+#include "../analysisd/eventinfo.h"
+#include "../os_net/os_net.h"
 
 #define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000
 #define FILE_ATTRIBUTE_NO_SCRUB_DATA            0x00020000

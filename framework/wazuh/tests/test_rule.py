@@ -12,27 +12,26 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-
         del sys.modules['wazuh.rbac.orm']
         from wazuh.tests.util import RBAC_bypasser
-
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh import rule
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.core.exception import WazuhError
 
+
 # Variables
 parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 data_path = 'core/tests/data/rules'
 
 rule_ossec_conf = {
-    "ruleset": {
-        "rule_dir": [
-            "core/tests/data/rules"
-        ],
-        "rule_exclude": ["0010-rules_config.xml"]
-    }
+  "ruleset": {
+    "rule_dir": [
+      "core/tests/data/rules"
+    ],
+    "rule_exclude": ["0010-rules_config.xml"]
+  }
 }
 
 other_rule_ossec_conf = {
@@ -43,6 +42,7 @@ other_rule_ossec_conf = {
         'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel']
     }
 }
+
 
 rule_contents = '''
 <group name="ossec,">
@@ -231,7 +231,6 @@ def test_get_requirement_invalid(mocked_config, requirement):
     ('0010-rules_config.xml', True),
     ('0015-ossec_rules.xml', False)
 ])
-@patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, data_path))
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file(mock_config, file_, raw):
     """Test downloading a specified rule filter."""
@@ -244,23 +243,20 @@ def test_get_rules_file(mock_config, file_, raw):
         assert not d_files.failed_items
 
 
-@patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, data_path))
+@pytest.mark.parametrize('item, file_, error_code', [
+    ([{'relative_dirname': 'ruleset/rules'}], 'no_exists_os_error.xml', 1414),
+    ([], 'no_exists_unk_error.xml', 1415)
+])
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_failed(mock_config):
+def test_get_rules_file_failed(mock_config, item, file_, error_code):
     """Test downloading a specified rule filter."""
-    with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(all_msg="test", affected_items=[
-                                                                               {'relative_dirname': data_path}])):
-        result = rule.get_rule_file(filename="does_not_exist.xml")
+    with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
+            all_msg='test', affected_items=item)):
+        result = rule.get_rule_file(filename=file_)
         assert not result.affected_items
-        assert result.render()['data']['failed_items'][0]['error']['code'] == 1414
-
-    with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(all_msg="test", affected_items=[])):
-        result = rule.get_rule_file(filename="does_not_exist.xml")
-        assert not result.affected_items
-        assert result.render()['data']['failed_items'][0]['error']['code'] == 1415
+        assert result.render()['data']['failed_items'][0]['error']['code'] == error_code
 
 
-@patch('wazuh.core.common.RULES_PATH', new=os.path.join(parent_directory, "tests", "data"))
 @patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
     affected_items=[{'relative_dirname': 'tests/data'}]))
 def test_get_rules_file_invalid_xml(get_rules_mock):
@@ -335,7 +331,7 @@ def test_delete_rule_file():
     with patch('wazuh.rule.exists', return_value=True):
         # Assert returned type is AffectedItemsWazuhResult when everything is correct
         with patch('wazuh.rule.remove'):
-            assert (isinstance(rule.delete_rule_file(filename='file'), AffectedItemsWazuhResult))
+            assert(isinstance(rule.delete_rule_file(filename='file'), AffectedItemsWazuhResult))
         # Assert error code when remove() method returns IOError
         with patch('wazuh.manager.remove', side_effect=IOError()):
             result = rule.delete_rule_file(filename='file')

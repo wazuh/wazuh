@@ -12,7 +12,7 @@
 #ifndef URL_GET_H_
 #define URL_GET_H_
 
-#include <external/curl/include/curl/curl.h>
+#include "../external/curl/include/curl/curl.h"
 
 #define WURL_WRITE_FILE_ERROR "Cannot open file '%s'"
 #define WURL_DOWNLOAD_FILE_ERROR "Cannot download file '%s' from URL: '%s'"

@@ -13,7 +13,7 @@
 policy:
   id: "cis_apple_macos_10_13"
   file: "cis_apple_macOS_10.13.yml"
-  name: "CIS Apple macOS 10.13 Benchmark"
+  name: "CIS Apple macOS 10.13 Benchmark v1.0.0"
   description: "This document, CIS Apple macOS 10.13 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for Apple macOS 10.13. This guide was tested against Apple macOS 10.13."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

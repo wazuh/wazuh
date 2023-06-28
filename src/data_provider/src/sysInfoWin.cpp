@@ -28,7 +28,6 @@
 #include "stringHelper.h"
 #include "registryHelper.h"
 #include "defs.h"
-#include "debug_op.h"
 #include "osinfo/sysOsInfoWin.h"
 #include "windowsHelper.h"
 #include "encodingWindowsHelper.h"
@@ -291,8 +290,8 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         SysInfoProcess process(pId, processHandle);
 
         // Current process information
-        jsProcessInfo["name"]       = processName(processEntry);
-        jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
+        jsProcessInfo["name"]       = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
+        jsProcessInfo["cmd"]        = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8((isSystemProcess(pId)) ? "none" : process.cmd());
         jsProcessInfo["stime"]      = process.kernelModeTime();
         jsProcessInfo["size"]       = process.pageFileUsage();
         jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
@@ -345,7 +344,14 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
 
                 if (packageReg.string("InstallDate", value))
                 {
-                    install_time = value;
+                    try
+                    {
+                        install_time = Utils::normalizeTimestamp(value, packageReg.keyModificationDate());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        install_time = packageReg.keyModificationDate();
+                    }
                 }
                 else
                 {

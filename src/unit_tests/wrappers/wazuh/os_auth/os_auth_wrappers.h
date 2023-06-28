@@ -12,9 +12,9 @@
 #define OS_AUTH_WRAPPERS_H
 
 #include <openssl/ssl.h>
-#include <headers/shared.h>
-#include <headers/sec.h>
-#include "cJSON.h"
+#include "../headers/shared.h"
+#include "../headers/sec.h"
+#include <cJSON.h>
 
 SSL_CTX *__wrap_os_ssl_keys(int is_server, const char *os_dir, const char *ciphers, const char *cert, const char *key,
                             const char *ca_cert, int auto_method);

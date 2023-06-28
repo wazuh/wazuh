@@ -12,9 +12,9 @@
 #define SYSCHECK_H
 
 #include "commonDefs.h"
-#include "config/syscheck-config.h"
+#include "../../config/syscheck-config.h"
 #include "syscheck_op.h"
-#include "external/cJSON/cJSON.h"
+#include <cJSON.h>
 
 #define MAX_LINE PATH_MAX+256
 

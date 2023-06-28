@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "headers/shared.h"
-#include "remoted/remoted.h"
+#include "../../headers/shared.h"
+#include "../../remoted/remoted.h"
 #include "../wrappers/common.h"
 #include "../wrappers/linux/socket_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -31,7 +31,7 @@
 #include "../wrappers/wazuh/remoted/netcounter_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/msgs_wrappers.h"
 #include "../wrappers/wazuh/remoted/state_wrappers.h"
-#include "remoted/secure.c"
+#include "../../remoted/secure.c"
 
 extern keystore keys;
 extern remoted logr;
